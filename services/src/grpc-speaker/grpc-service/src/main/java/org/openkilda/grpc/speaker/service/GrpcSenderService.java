@@ -36,6 +36,7 @@ import org.openkilda.messaging.model.grpc.SwitchInfoStatus;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -48,8 +49,12 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class GrpcSenderService {
-    // TODO auth
-    private final String name = "kilda";
+
+    @Value("${grpc.user}")
+    private String name;
+
+    @Value("${grpc.pass}")
+    private String password;
 
     private NoviflowResponseMapper mapper;
 
@@ -65,7 +70,7 @@ public class GrpcSenderService {
      */
     public CompletableFuture<LogicalPort> createLogicalPort(String switchAddress, LogicalPortDto port) {
         GrpcSession sender = new GrpcSession(switchAddress);
-        return sender.login(name, name)
+        return sender.login(name, password)
                 .thenCompose(e -> sender.setLogicalPort(port))
                 .thenCompose(e -> sender.showConfigLogicalPort(port.getLogicalPortNumber()))
                 .thenApply(portOptional -> portOptional
@@ -82,7 +87,7 @@ public class GrpcSenderService {
      */
     public CompletableFuture<List<LogicalPort>> dumpLogicalPorts(String switchAddress) {
         GrpcSession sender = new GrpcSession(switchAddress);
-        return sender.login(name, name)
+        return sender.login(name, password)
                 .thenCompose(e -> sender.dumpLogicalPorts())
                 .thenApply(ports -> ports.stream().map(mapper::toLogicalPort).collect(Collectors.toList()))
                 .whenComplete((e, ex) -> sender.shutdown());
@@ -96,7 +101,7 @@ public class GrpcSenderService {
      */
     public CompletableFuture<SwitchInfoStatus> getSwitchStatus(String switchAddress) {
         GrpcSession sender = new GrpcSession(switchAddress);
-        return sender.login(name, name)
+        return sender.login(name, password)
                 .thenCompose(e -> sender.showSwitchStatus())
                 .thenApply(statusOptional -> statusOptional
                         .map(mapper::toSwitchInfo)
@@ -114,7 +119,7 @@ public class GrpcSenderService {
      */
     public CompletableFuture<LogicalPort> showConfigLogicalPort(String switchAddress, Integer port) {
         GrpcSession sender = new GrpcSession(switchAddress);
-        return sender.login(name, name)
+        return sender.login(name, password)
                 .thenCompose(e -> sender.showConfigLogicalPort(port))
                 .thenApply(statusOptional -> statusOptional
                         .map(mapper::toLogicalPort)
@@ -132,7 +137,7 @@ public class GrpcSenderService {
      */
     public CompletableFuture<GrpcDeleteOperationResponse> deleteConfigLogicalPort(String switchAddress, Integer port) {
         GrpcSession sender = new GrpcSession(switchAddress);
-        return sender.login(name, name)
+        return sender.login(name, password)
                 .thenCompose(e -> sender.deleteLogicalPort(port))
                 .thenApply(optional -> optional
                         .map(value -> new GrpcDeleteOperationResponse(value.getReplyStatus() == 0))
@@ -151,7 +156,7 @@ public class GrpcSenderService {
     public CompletableFuture<EnableLogMessagesResponse> enableLogMessages(String switchAddress,
                                                                           LogMessagesDto logMessagesDto) {
         GrpcSession sender = new GrpcSession(switchAddress);
-        return sender.login(name, name)
+        return sender.login(name, password)
                 .thenCompose(e -> sender.enableLogMessages(logMessagesDto))
                 .thenApply(optional -> optional
                         .map(value -> new EnableLogMessagesResponse(logMessagesDto.getState()))
@@ -170,7 +175,7 @@ public class GrpcSenderService {
     public CompletableFuture<EnableLogMessagesResponse> enableLogOferror(String switchAddress,
                                                                          LogOferrorsDto logOferrorsDto) {
         GrpcSession sender = new GrpcSession(switchAddress);
-        return sender.login(name, name)
+        return sender.login(name, password)
                 .thenCompose(e -> sender.enableLogOferrors(logOferrorsDto))
                 .thenApply(optional -> optional
                         .map(value -> new EnableLogMessagesResponse(logOferrorsDto.getState()))
@@ -188,7 +193,7 @@ public class GrpcSenderService {
      */
     public CompletableFuture<RemoteLogServer> showConfigRemoteLogServer(String switchAddress) {
         GrpcSession sender = new GrpcSession(switchAddress);
-        return sender.login(name, name)
+        return sender.login(name, password)
                 .thenCompose(e -> sender.showConfigRemoteLogServer())
                 .thenApply(optional -> optional
                         .map(mapper::toRemoteLogServer)
@@ -207,7 +212,7 @@ public class GrpcSenderService {
     public CompletableFuture<RemoteLogServer> setConfigRemoteLogServer(
             String switchAddress, RemoteLogServerDto remoteLogServerDto) {
         GrpcSession sender = new GrpcSession(switchAddress);
-        return sender.login(name, name)
+        return sender.login(name, password)
                 .thenCompose(e -> sender.setConfigRemoteLogServer(remoteLogServerDto))
                 .thenCompose(e -> sender.showConfigRemoteLogServer())
                 .thenApply(optional -> optional
@@ -226,7 +231,7 @@ public class GrpcSenderService {
     public CompletableFuture<GrpcDeleteOperationResponse> deleteConfigRemoteLogServer(
             String switchAddress) {
         GrpcSession sender = new GrpcSession(switchAddress);
-        return sender.login(name, name)
+        return sender.login(name, password)
                 .thenCompose(e -> sender.deleteConfigRemoteLogServer())
                 .thenApply(optional -> optional
                         .map(value -> new GrpcDeleteOperationResponse(value.getReplyStatus() == 0))
@@ -246,7 +251,7 @@ public class GrpcSenderService {
     public CompletableFuture<PortConfigSetupResponse> setPortConfig(
             String switchAddress, Integer portNumber, PortConfigDto portConfigDto) {
         GrpcSession sender = new GrpcSession(switchAddress);
-        return sender.login(name, name)
+        return sender.login(name, password)
                 .thenCompose(e -> sender.setPortConfig(portNumber, portConfigDto))
                 .thenApply(optional -> optional
                         .map(value -> new PortConfigSetupResponse(value.getReplyStatus() == 0))
@@ -265,7 +270,7 @@ public class GrpcSenderService {
      */
     public CompletableFuture<LicenseResponse> setConfigLicense(String switchAddress, LicenseDto licenseDto) {
         GrpcSession sender = new GrpcSession(switchAddress);
-        return sender.login(name, name)
+        return sender.login(name, password)
                 .thenCompose(e -> sender.setConfigLicense(licenseDto))
                 .thenApply(optional -> optional
                         .map(value -> new LicenseResponse(value.getReplyStatus() == 0))
