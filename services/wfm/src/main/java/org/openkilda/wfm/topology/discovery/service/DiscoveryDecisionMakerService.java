@@ -94,12 +94,11 @@ public class DiscoveryDecisionMakerService {
         }
     }
 
-    public HashMap<Endpoint, Long> getLastDiscovery() {
-        return null;
-    }
-
     private DecisionMakerFsm locateControllerCreateIfAbsent(Endpoint endpoint) {
         return controller.computeIfAbsent(endpoint, key -> DecisionMakerFsm.create(endpoint, failTimeout, awaitTime));
     }
 
+    public void clear(IDecisionMakerCarrier carrier, Endpoint endpoint) {
+        controller.remove(endpoint);
+    }
 }

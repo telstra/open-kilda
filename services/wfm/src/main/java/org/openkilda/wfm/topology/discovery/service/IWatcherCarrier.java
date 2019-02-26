@@ -25,4 +25,6 @@ public interface IWatcherCarrier {
     void discoveryFailed(Endpoint endpoint, long currentTime);
 
     void sendDiscovery(DiscoverIslCommandData discoveryRequest);
+
+    void clearDiscovery(Endpoint endpoint);
 }

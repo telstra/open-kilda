@@ -66,7 +66,33 @@ public class DiscoveryWatcherServiceTest {
 
     @Test
     public void removeWatch() {
-        //TODO: not critical
+        DiscoveryWatcherService w = new DiscoveryWatcherService(10, taskId);
+        w.addWatch(carrier, Endpoint.of(new SwitchId(1), 1), 1);
+        w.addWatch(carrier, Endpoint.of(new SwitchId(1), 2), 2);
+        w.addWatch(carrier, Endpoint.of(new SwitchId(2), 1), 3);
+        w.addWatch(carrier, Endpoint.of(new SwitchId(2), 2), 4);
+        w.addWatch(carrier, Endpoint.of(new SwitchId(3), 1), 5);
+
+        verify(carrier, times(5)).sendDiscovery(any(DiscoverIslCommandData.class));
+
+        w.confirmation(Endpoint.of(new SwitchId(1), 2), 1);
+        w.confirmation(Endpoint.of(new SwitchId(2), 1), 2);
+
+        assertThat(w.getConfirmedPackets().size(), is(2));
+        assertThat(w.getTimeouts().size(), is(5));
+        assertThat(w.getProducedPackets().size(), is(3));
+
+        w.removeWatch(carrier, Endpoint.of(new SwitchId(1), 2));
+        w.removeWatch(carrier, Endpoint.of(new SwitchId(2), 2));
+
+        verify(carrier).clearDiscovery(Endpoint.of(new SwitchId(1), 2));
+        verify(carrier).clearDiscovery(Endpoint.of(new SwitchId(2), 2));
+
+        assertThat(w.getConfirmedPackets().size(), is(1));
+        assertThat(w.getProducedPackets().size(), is(2));
+
+        w.tick(carrier, 100);
+        assertThat(w.getTimeouts().size(), is(0));
     }
 
     @Test

@@ -65,9 +65,14 @@ public class DiscoveryWatcherService {
         packetNo += 1;
     }
 
-    public void removeWatch(Endpoint endpoint) {
-        log.debug("Remove (dummy) discovery poll endpoint {}", endpoint);
-        // No action required (at least we can't imagine them now).
+    /**
+     * Remove endpoint from discovery process.
+     */
+    public void removeWatch(IWatcherCarrier carrier, Endpoint endpoint) {
+        log.debug("Remove discovery poll endpoint {}", endpoint);
+        carrier.clearDiscovery(endpoint);
+        producedPackets.removeIf(packet -> packet.endpoint.equals(endpoint));
+        confirmedPackets.removeIf(packet -> packet.endpoint.equals(endpoint));
     }
 
     /**
@@ -95,6 +100,8 @@ public class DiscoveryWatcherService {
         Packet packet = Packet.of(endpoint, packetNo);
         if (producedPackets.remove(packet)) {
             confirmedPackets.add(packet);
+        } else if (log.isDebugEnabled()) {
+            log.debug("Can't find produced packet for {} id:{} task:{}", endpoint, packetNo, taskId);
         }
     }
 
@@ -123,7 +130,8 @@ public class DiscoveryWatcherService {
         if (wasProduced || wasConfirmed) {
             carrier.discoveryReceived(packet.endpoint, discoveryEvent, clock.getCurrentTimeMs());
         } else {
-            log.error("Receive invalid discovery packet on {} id:{} task:{}", packet.endpoint, packet.packetNo, taskId);
+            log.error("Receive invalid or removed discovery packet on {} id:{} task:{}",
+                    packet.endpoint, packet.packetNo, taskId);
         }
     }
 

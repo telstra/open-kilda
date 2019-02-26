@@ -30,6 +30,7 @@ import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryWatcherService;
 import org.openkilda.wfm.topology.discovery.service.IWatcherCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
+import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command.DecisionMakerClearCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command.DecisionMakerCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command.DecisionMakerDiscoveryCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command.DecisionMakerFailCommand;
@@ -126,6 +127,11 @@ public class WatcherHandler extends AbstractBolt {
         public void sendDiscovery(DiscoverIslCommandData discoveryRequest) {
             SwitchId switchId = discoveryRequest.getSwitchId();
             emit(STREAM_SPEAKER_ID, makeSpeakerTuple(switchId.toString(), discoveryRequest));
+        }
+
+        @Override
+        public void clearDiscovery(Endpoint endpoint) {
+            emit(makeDefaultTuple(new DecisionMakerClearCommand(endpoint)));
         }
 
         private Values makeDefaultTuple(DecisionMakerCommand command) {

@@ -13,19 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command;
+package org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryWatcherService;
-import org.openkilda.wfm.topology.discovery.service.IWatcherCarrier;
+import org.openkilda.wfm.topology.discovery.service.DiscoveryDecisionMakerService;
+import org.openkilda.wfm.topology.discovery.service.IDecisionMakerCarrier;
 
-public class WatcherRemoveCommand extends WatcherCommand {
-    public WatcherRemoveCommand(Endpoint endpoint) {
+
+public class DecisionMakerClearCommand extends DecisionMakerCommand {
+
+    public DecisionMakerClearCommand(Endpoint endpoint) {
         super(endpoint);
     }
 
     @Override
-    public void apply(DiscoveryWatcherService service, IWatcherCarrier carrier) {
-        service.removeWatch(carrier, getEndpoint());
+    public void apply(DiscoveryDecisionMakerService service, IDecisionMakerCarrier carrier) {
+        service.clear(carrier, getEndpoint());
     }
 }

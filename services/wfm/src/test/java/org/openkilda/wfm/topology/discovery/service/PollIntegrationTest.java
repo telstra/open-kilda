@@ -174,6 +174,11 @@ public class PollIntegrationTest {
         }
 
         @Override
+        public void clearDiscovery(Endpoint endpoint) {
+
+        }
+
+        @Override
         public void linkDiscovered(IslInfoData discoveryEvent) {
             // dummy, no need implementation
         }

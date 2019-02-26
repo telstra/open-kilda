@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.discovery.service;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.only;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 
@@ -106,5 +107,19 @@ public class DiscoveryDecisionMakerServiceTest {
         verify(carrier, never()).linkDestroyed(any(Endpoint.class));
         w.tick(carrier, 31);
         verify(carrier).linkDestroyed(eq(endpointAlpha));
+    }
+
+    @Test
+    public void removeWatchTest() {
+        DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(10, 5);
+
+        w.discovered(carrier, endpointAlpha, islBetaAlpha, 0);
+        w.discovered(carrier, endpointAlpha, islBetaAlpha, 0);
+        verify(carrier, only()).linkDiscovered(islBetaAlpha);
+
+        reset(carrier);
+        w.clear(carrier, endpointAlpha);
+        w.discovered(carrier, endpointAlpha, islBetaAlpha, 0);
+        verify(carrier, only()).linkDiscovered(islBetaAlpha);
     }
 }
