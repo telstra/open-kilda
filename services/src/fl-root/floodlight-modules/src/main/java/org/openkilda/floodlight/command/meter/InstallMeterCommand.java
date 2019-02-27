@@ -20,9 +20,9 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.MAX_CENTEC_SW
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 
 import org.openkilda.floodlight.FloodlightResponse;
-import org.openkilda.floodlight.command.IdempotentMessageInstaller;
-import org.openkilda.floodlight.command.IdempotentMessageInstaller.ErrorTypeHelper;
-import org.openkilda.floodlight.command.MessageInstaller;
+import org.openkilda.floodlight.command.IdempotentMessageWriter;
+import org.openkilda.floodlight.command.IdempotentMessageWriter.ErrorTypeHelper;
+import org.openkilda.floodlight.command.MessageWriter;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.error.SwitchOperationException;
@@ -77,7 +77,7 @@ public class InstallMeterCommand extends MeterCommand {
     }
 
     @Override
-    public List<MessageInstaller> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
+    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
             throws SwitchOperationException {
         FeatureDetectorService featureDetectorService = moduleContext.getServiceImpl(FeatureDetectorService.class);
         FloodlightModuleConfigurationProvider provider =
@@ -86,7 +86,7 @@ public class InstallMeterCommand extends MeterCommand {
 
         OFMeterMod meterInstallCommand = buildMeter(switchManagerConfig, featureDetectorService, sw);
 
-        return Collections.singletonList(IdempotentMessageInstaller.<OFMeterConfigStatsReply>builder()
+        return Collections.singletonList(IdempotentMessageWriter.<OFMeterConfigStatsReply>builder()
                 .message(meterInstallCommand)
                 .request(getMeterRequest(sw.getOFFactory()))
                 .ofEntryChecker(new MeterChecker(meterInstallCommand))
@@ -96,16 +96,13 @@ public class InstallMeterCommand extends MeterCommand {
 
     private OFMeterMod buildMeter(SwitchManagerConfig config, FeatureDetectorService featureDetectorService,
                                  IOFSwitch sw) throws UnsupportedSwitchOperationException, InvalidMeterIdException {
-        Set<Switch.Feature> supportedFeatures = featureDetectorService.detectSwitch(sw);
-
-        if (!supportedFeatures.contains(Feature.METERS)) {
-            throw new UnsupportedSwitchOperationException(sw.getId(), "Switch doesn't support meters");
-        }
+        checkSwitchSupportCommand(sw, featureDetectorService);
 
         if (meterId > 0L) {
             long burstSize = Math.max(config.getFlowMeterMinBurstSizeInKbits(),
                     (long) (bandwidth * config.getFlowMeterBurstCoefficient()));
 
+            Set<Switch.Feature> supportedFeatures = featureDetectorService.detectSwitch(sw);
             if (supportedFeatures.contains(Feature.LIMITED_BURST_SIZE)) {
                 // Burst size > 32 000 Kbit/s is not supported by Centec switches
                 burstSize = Math.min(burstSize, MAX_CENTEC_SWITCH_BURST_SIZE);

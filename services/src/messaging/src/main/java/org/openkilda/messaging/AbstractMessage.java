@@ -32,6 +32,10 @@ public abstract class AbstractMessage implements Serializable {
     private MessageContext messageContext;
 
     public AbstractMessage(MessageContext messageContext) {
-        this.messageContext = messageContext;
+        if (messageContext != null) {
+            this.messageContext = messageContext;
+        } else {
+            this.messageContext = new MessageContext();
+        }
     }
 }

@@ -16,10 +16,14 @@
 package org.openkilda.floodlight.command.meter;
 
 import org.openkilda.floodlight.command.OfCommand;
+import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
+import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.messaging.MessageContext;
+import org.openkilda.messaging.model.Switch.Feature;
 import org.openkilda.model.SwitchId;
 
 import lombok.AllArgsConstructor;
+import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.OFVersion;
@@ -27,6 +31,7 @@ import org.projectfloodlight.openflow.protocol.meterband.OFMeterBand;
 import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 
 abstract class MeterCommand extends OfCommand {
@@ -36,6 +41,14 @@ abstract class MeterCommand extends OfCommand {
     MeterCommand(SwitchId switchId, MessageContext messageContext, Long meterId) {
         super(switchId, messageContext);
         this.meterId = meterId;
+    }
+
+    void checkSwitchSupportCommand(IOFSwitch sw, FeatureDetectorService featureDetectorService)
+            throws UnsupportedSwitchOperationException {
+        Set<Feature> supportedFeatures = featureDetectorService.detectSwitch(sw);
+        if (!supportedFeatures.contains(Feature.METERS)) {
+            throw new UnsupportedSwitchOperationException(sw.getId(), "Switch doesn't support meters");
+        }
     }
 
     @AllArgsConstructor

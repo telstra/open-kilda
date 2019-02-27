@@ -18,7 +18,7 @@ package org.openkilda.floodlight.command.flow;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
-import org.openkilda.floodlight.command.MessageInstaller;
+import org.openkilda.floodlight.command.MessageWriter;
 import org.openkilda.floodlight.command.OfCommand;
 import org.openkilda.floodlight.command.meter.InstallMeterCommand;
 import org.openkilda.floodlight.error.SwitchOperationException;
@@ -79,8 +79,8 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
     }
 
     @Override
-    public List<MessageInstaller> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
-        List<MessageInstaller> commands = new ArrayList<>(2);
+    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
+        List<MessageWriter> commands = new ArrayList<>(2);
         FeatureDetectorService featureDetectorService = moduleContext.getServiceImpl(FeatureDetectorService.class);
 
         try {
@@ -94,7 +94,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
         }
 
         OFFlowMod ruleCommand = getInstallRuleCommand(sw, featureDetectorService);
-        commands.add(new MessageInstaller(ruleCommand));
+        commands.add(new MessageWriter(ruleCommand));
         return commands;
     }
 

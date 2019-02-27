@@ -82,7 +82,7 @@ public abstract class OfCommand {
             DatapathId dpid = DatapathId.of(switchId.toLong());
             sw = switchManager.lookupSwitch(dpid);
 
-            return executeCommand(sw, sessionService, moduleContext)
+            return writeCommand(sw, sessionService, moduleContext)
                     .handle((result, error) -> {
                         if (error != null) {
                             getLogger().error("Failed to execute of command", error);
@@ -96,14 +96,13 @@ public abstract class OfCommand {
         }
     }
 
-    protected CompletableFuture<Optional<OFMessage>> executeCommand(IOFSwitch sw, SessionService sessionService,
-                                                                    FloodlightModuleContext moduleContext)
+    protected CompletableFuture<Optional<OFMessage>> writeCommand(IOFSwitch sw, SessionService sessionService,
+                                                                  FloodlightModuleContext moduleContext)
             throws SwitchOperationException {
         CompletableFuture<Optional<OFMessage>> chain = CompletableFuture.completedFuture(null);
-        for (MessageInstaller message : getCommands(sw, moduleContext)) {
+        for (MessageWriter message : getCommands(sw, moduleContext)) {
             chain = chain.thenCompose(res -> {
                 try {
-                    getLogger().info("Executing command {}", message);
                     return message.writeTo(sw, sessionService);
                 } catch (SwitchWriteException e) {
                     throw new CompletionException(e);
@@ -118,7 +117,7 @@ public abstract class OfCommand {
 
     protected abstract FloodlightResponse buildResponse();
 
-    public abstract List<MessageInstaller> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
+    public abstract List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
             throws SwitchOperationException;
 
     protected final Logger getLogger() {

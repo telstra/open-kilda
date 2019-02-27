@@ -16,8 +16,12 @@
 package org.openkilda.floodlight.command.flow;
 
 import org.openkilda.floodlight.FloodlightResponse;
-import org.openkilda.floodlight.command.MessageInstaller;
+import org.openkilda.floodlight.command.MessageWriter;
+import org.openkilda.floodlight.command.OfCommand;
+import org.openkilda.floodlight.command.meter.RemoveMeterCommand;
 import org.openkilda.floodlight.error.SwitchOperationException;
+import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
+import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.messaging.MessageContext;
@@ -35,6 +39,7 @@ import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -44,9 +49,8 @@ import java.util.stream.Stream;
 
 public class FlowRemoveCommand extends FlowCommand {
 
-    final Long meterId;
-    final DeleteRulesCriteria criteria;
-
+    private final Long meterId;
+    private final DeleteRulesCriteria criteria;
 
     public FlowRemoveCommand(@JsonProperty("flowid") String flowId,
                              @JsonProperty("message_context") MessageContext messageContext,
@@ -61,7 +65,13 @@ public class FlowRemoveCommand extends FlowCommand {
 
     @Override
     protected FloodlightResponse buildError(Throwable error) {
-        return null;
+        return FlowErrorResponse.errorBuilder()
+                .flowId(flowId)
+                .switchId(switchId)
+                .description(error.getMessage())
+                .success(false)
+                .messageContext(messageContext)
+                .build();
     }
 
     @Override
@@ -70,22 +80,20 @@ public class FlowRemoveCommand extends FlowCommand {
     }
 
     @Override
-    protected CompletableFuture<Optional<OFMessage>> executeCommand(IOFSwitch sw, SessionService sessionService,
-                                                                    FloodlightModuleContext moduleContext) {
-        CompletableFuture<List<OFFlowStatsEntry>> entriesBeforeFuture = dumpFlowTable(sw);
+    protected CompletableFuture<Optional<OFMessage>> writeCommand(IOFSwitch sw, SessionService sessionService,
+                                                                  FloodlightModuleContext moduleContext) {
+        CompletableFuture<List<OFFlowStatsEntry>> entriesBeforeDeletion = dumpFlowTable(sw);
 
-        CompletableFuture<Optional<OFMessage>> deletionStage = entriesBeforeFuture.thenCompose(entries ->  {
-            try {
-                return super.executeCommand(sw, sessionService, moduleContext);
-            } catch (SwitchOperationException e) {
-                throw new CompletionException(e);
-            }
-        });
+        CompletableFuture<List<OFFlowStatsEntry>> entriesAfterDeletion = entriesBeforeDeletion
+                .thenCompose(entries ->  {
+                    try {
+                        return super.writeCommand(sw, sessionService, moduleContext);
+                    } catch (SwitchOperationException e) {
+                        throw new CompletionException(e);
+                    }})
+                .thenCompose(deleted -> dumpFlowTable(sw));
 
-        CompletableFuture<List<OFFlowStatsEntry>> entriesAfterFuture =
-                deletionStage.thenCompose(deleted -> dumpFlowTable(sw));
-
-        return entriesAfterFuture.thenCombine(entriesBeforeFuture, (entriesAfter, entriesBefore) ->
+        return entriesAfterDeletion.thenCombine(entriesBeforeDeletion, (entriesAfter, entriesBefore) ->
                 entriesBefore.stream()
                         .map(entry -> entry.getCookie().getValue())
                         .filter(cookieBefore -> entriesAfter.stream()
@@ -96,11 +104,24 @@ public class FlowRemoveCommand extends FlowCommand {
     }
 
     @Override
-    public List<MessageInstaller> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
-        return getDeleteCommands(sw, criteria)
+    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
+        List<MessageWriter> commands = new ArrayList<>();
+
+        try {
+            OfCommand meterRemoveCommand = new RemoveMeterCommand(messageContext, switchId, meterId);
+            commands.addAll(meterRemoveCommand.getCommands(sw, moduleContext));
+        } catch (UnsupportedSwitchOperationException e) {
+            getLogger().debug("Meter {} won't be deleted from switch {}: {}", meterId, e.getDpId(), e.getMessage());
+        } catch (SwitchOperationException e) {
+            buildError(e);
+        }
+
+        getDeleteCommands(sw, criteria)
                 .stream()
-                .map(MessageInstaller::new)
-                .collect(Collectors.toList());
+                .map(MessageWriter::new)
+                .forEach(commands::add);
+
+        return commands;
     }
 
     List<OFFlowDelete> getDeleteCommands(IOFSwitch sw, DeleteRulesCriteria... criterias) {
@@ -139,5 +160,4 @@ public class FlowRemoveCommand extends FlowCommand {
 
         return builder.build();
     }
-
 }

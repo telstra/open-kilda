@@ -999,21 +999,7 @@ class RecordHandler implements Runnable {
     }
 
     private void parseRecord(ConsumerRecord<String, String> record) {
-        try {
-            OfCommand ofCommand = MAPPER.readValue(record.value(), OfCommand.class);
-
-            try (CorrelationContextClosable closable =
-                         CorrelationContext.create(ofCommand.getMessageContext().getCorrelationId())) {
-                KafkaTopicFactory kafkaTopicFactory = new KafkaTopicFactory(context);
-                ofCommand.execute(context.getModuleContext())
-                        .thenAccept(response -> getKafkaProducer()
-                                .sendMessageAndTrack(kafkaTopicFactory.getTopic(response), record.key(), response));
-                return;
-            }
-        } catch (JsonMappingException e) {
-            logger.trace("Received deprecated command message");
-        } catch (IOException e) {
-            logger.error("Error while parsing record {}", record.value(), e);
+        if (handleOfCommand()) {
             return;
         }
 
@@ -1038,6 +1024,26 @@ class RecordHandler implements Runnable {
         } catch (Exception exception) {
             logger.error("error processing message '{}'", message, exception);
         }
+    }
+
+    private boolean handleOfCommand() {
+        try {
+            OfCommand ofCommand = MAPPER.readValue(record.value(), OfCommand.class);
+
+            try (CorrelationContextClosable closable =
+                         CorrelationContext.create(ofCommand.getMessageContext().getCorrelationId())) {
+                KafkaTopicFactory kafkaTopicFactory = new KafkaTopicFactory(context);
+                ofCommand.execute(context.getModuleContext())
+                        .thenAccept(response -> getKafkaProducer()
+                                .sendMessageAndTrack(kafkaTopicFactory.getTopic(response), record.key(), response));
+            }
+        } catch (JsonMappingException e) {
+            logger.trace("Received deprecated command message");
+            return false;
+        } catch (IOException e) {
+            logger.error("Error while parsing record {}", record.value(), e);
+        }
+        return true;
     }
 
     @Override

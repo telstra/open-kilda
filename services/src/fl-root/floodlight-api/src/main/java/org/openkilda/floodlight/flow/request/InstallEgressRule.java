@@ -23,9 +23,14 @@ import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
-@Value
+@Getter
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
 public class InstallEgressRule extends InstallTransitRule {
 
     /**
@@ -41,6 +46,7 @@ public class InstallEgressRule extends InstallTransitRule {
     protected Integer outputVlanId;
 
     @JsonCreator
+    @Builder
     public InstallEgressRule(@JsonProperty("message_context") MessageContext messageContext,
                              @JsonProperty(FLOW_ID) final String id,
                              @JsonProperty("cookie") final Long cookie,

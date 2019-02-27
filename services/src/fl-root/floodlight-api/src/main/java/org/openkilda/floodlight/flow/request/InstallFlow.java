@@ -19,7 +19,13 @@ import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
+@Getter
+@ToString
+@EqualsAndHashCode(callSuper = true)
 public class InstallFlow extends FlowRequest {
 
     /**
