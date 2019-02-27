@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.command.flow;
 
-import org.openkilda.floodlight.command.MessageInstaller;
+import org.openkilda.floodlight.command.MessageWriter;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
@@ -53,7 +53,7 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
     }
 
     @Override
-    public List<MessageInstaller> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
+    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
         List<OFAction> actionList = new ArrayList<>();
         OFFactory ofFactory = sw.getOFFactory();
 
@@ -72,7 +72,7 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
                 .setInstructions(ImmutableList.of(actions))
                 .build();
 
-        return Collections.singletonList(new MessageInstaller(flowMod));
+        return Collections.singletonList(new MessageWriter(flowMod));
     }
 
     private OFAction getOutputAction(OFFactory ofFactory) {

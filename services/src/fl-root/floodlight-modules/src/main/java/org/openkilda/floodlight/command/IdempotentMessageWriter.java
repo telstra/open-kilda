@@ -40,17 +40,17 @@ import java.util.function.Function;
  * to check whether a switch already has installed a specific rule, if don't - install it on a switch.
  */
 @Slf4j
-public class IdempotentMessageInstaller<T extends OFStatsReply> extends MessageInstaller {
+public class IdempotentMessageWriter<T extends OFStatsReply> extends MessageWriter {
 
     private final OFRequest<T> request;
     private final Function<T, Boolean> ofEntryChecker;
     private final ErrorTypeHelper errorTypeHelper;
 
     @Builder
-    public IdempotentMessageInstaller(@NonNull OFMessage message,
-                                      @NonNull OFRequest<T> request,
-                                      @NonNull Function<T, Boolean> ofEntryChecker,
-                                      @NonNull ErrorTypeHelper errorTypeHelper) {
+    public IdempotentMessageWriter(@NonNull OFMessage message,
+                                   @NonNull OFRequest<T> request,
+                                   @NonNull Function<T, Boolean> ofEntryChecker,
+                                   @NonNull ErrorTypeHelper errorTypeHelper) {
         super(message);
         this.request = request;
         this.ofEntryChecker = ofEntryChecker;

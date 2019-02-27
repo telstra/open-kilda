@@ -23,7 +23,14 @@ import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
+@Getter
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
 public class RemoveRule extends FlowRequest {
     @JsonProperty("cookie")
     private Long cookie;
@@ -31,14 +38,20 @@ public class RemoveRule extends FlowRequest {
     @JsonProperty("criteria")
     private DeleteRulesCriteria criteria;
 
+    @JsonProperty("meter_id")
+    private Long meterId;
+
     @JsonCreator
+    @Builder
     public RemoveRule(@JsonProperty("message_context") MessageContext messageContext,
                       @JsonProperty(FLOW_ID) final String flowId,
                       @JsonProperty("switch_id") final SwitchId switchId,
                       @JsonProperty("cookie") final Long cookie,
-                      @JsonProperty("criteria") DeleteRulesCriteria criteria) {
+                      @JsonProperty("criteria") DeleteRulesCriteria criteria,
+                      @JsonProperty("meter_id") Long meterId) {
         super(messageContext, flowId, switchId);
         this.criteria = criteria;
         this.cookie = cookie;
+        this.meterId = meterId;
     }
 }

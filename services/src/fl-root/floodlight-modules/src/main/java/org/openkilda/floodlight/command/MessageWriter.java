@@ -31,7 +31,7 @@ import java.util.concurrent.CompletableFuture;
 @AllArgsConstructor
 @Getter
 @Slf4j
-public class MessageInstaller {
+public class MessageWriter {
 
     final OFMessage ofMessage;
 
@@ -48,7 +48,7 @@ public class MessageInstaller {
             return session.write(ofMessage)
                     .whenComplete((result, error) -> {
                         if (error == null) {
-                            log.info("OF command successfully executed {}", ofMessage);
+                            log.debug("OF command successfully executed {}", ofMessage);
                         }
                     });
         }

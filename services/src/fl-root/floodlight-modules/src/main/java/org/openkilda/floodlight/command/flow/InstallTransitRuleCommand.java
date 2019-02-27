@@ -17,7 +17,7 @@ package org.openkilda.floodlight.command.flow;
 
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 
-import org.openkilda.floodlight.command.MessageInstaller;
+import org.openkilda.floodlight.command.MessageWriter;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
@@ -56,7 +56,7 @@ public class InstallTransitRuleCommand extends FlowInstallCommand {
     }
 
     @Override
-    public List<MessageInstaller> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
+    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
         OFFactory factory = sw.getOFFactory();
         List<OFAction> actionList = new ArrayList<>();
 
@@ -67,7 +67,7 @@ public class InstallTransitRuleCommand extends FlowInstallCommand {
                 .setInstructions(ImmutableList.of(applyActions(factory, actionList)))
                 .setMatch(match)
                 .build();
-        return Collections.singletonList(new MessageInstaller(flowMod));
+        return Collections.singletonList(new MessageWriter(flowMod));
     }
 
     final OFAction setOutputPort(OFFactory ofFactory) {

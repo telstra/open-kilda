@@ -31,25 +31,18 @@ import lombok.EqualsAndHashCode;
 public class FlowErrorResponse extends FlowResponse {
 
     @JsonProperty
-    private Error error;
+    private String description;
 
     @JsonCreator
     @Builder(builderMethodName = "errorBuilder")
     public FlowErrorResponse(@JsonProperty("success") boolean success,
-                             @JsonProperty("error") Error error,
+                             @JsonProperty("error") String description,
                              @JsonProperty("command_context") MessageContext messageContext,
                              @JsonProperty(FLOW_ID) String flowId,
                              @JsonProperty("switch_id") SwitchId switchId) {
         super(success, messageContext, flowId, switchId);
 
-        this.error = error;
-    }
-
-    public enum Error {
-        SWITCH_UNAVAILABLE,
-        UNSUPPORTED_OPERATION,
-        OPERATION_TIMEOUT,
-        OTHER
+        this.description = description;
     }
 
 }
