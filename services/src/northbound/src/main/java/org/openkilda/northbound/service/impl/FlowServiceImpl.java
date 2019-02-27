@@ -45,6 +45,7 @@ import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -55,6 +56,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PathDiscrepancyDto;
 import org.openkilda.northbound.dto.flows.PingInput;
@@ -118,6 +120,9 @@ public class FlowServiceImpl implements FlowService {
      */
     @Value("#{kafkaTopicsConfig.getPingTopic()}")
     private String pingTopic;
+
+    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
+    private String nbworkerTopic;
 
     @Value("${neo4j.uri}")
     private String neoUri;
@@ -224,6 +229,21 @@ public class FlowServiceImpl implements FlowService {
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
         return messagingChannel.sendAndGet(topic, request)
+                .thenApply(FlowResponse.class::cast)
+                .thenApply(FlowResponse::getPayload)
+                .thenApply(flowMapper::toFlowOutput);
+    }
+
+    @Override
+    public CompletableFuture<FlowPayload> patchFlow(String flowId, FlowPatchDto flowPatchDto) {
+        logger.info("Patch flow request for flow {}", flowId);
+
+        FlowDto flowDto = flowMapper.toFlowDto(flowPatchDto);
+        flowDto.setFlowId(flowId);
+        CommandMessage request = new CommandMessage(new FlowPatchRequest(flowDto), System.currentTimeMillis(),
+                RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGet(nbworkerTopic, request)
                 .thenApply(FlowResponse.class::cast)
                 .thenApply(FlowResponse::getPayload)
                 .thenApply(flowMapper::toFlowOutput);

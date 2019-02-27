@@ -156,6 +156,12 @@ public class Flow implements Serializable {
     @Convert(graphPropertyType = String.class)
     private FlowStatus status;
 
+    @Property(name = "max_latency")
+    private Integer maxLatency;
+
+    @Property(name = "priority")
+    private Integer priority;
+
     @Property(name = "time_modify")
     @Convert(InstantStringConverter.class)
     private Instant timeModify;
@@ -168,7 +174,7 @@ public class Flow implements Serializable {
             Switch srcSwitch, Switch destSwitch, int srcPort, int srcVlan, int destPort, int destVlan,
             FlowPath flowPath, long bandwidth, String description, int transitVlan,
             Integer meterId, boolean ignoreBandwidth, boolean periodicPings,
-            FlowStatus status, Instant timeModify) {
+            FlowStatus status, Integer maxLatency, Integer priority, Instant timeModify) {
         this.flowId = flowId;
         this.cookie = cookie;
         setSrcSwitch(srcSwitch);
@@ -185,6 +191,8 @@ public class Flow implements Serializable {
         this.ignoreBandwidth = ignoreBandwidth;
         this.periodicPings = periodicPings;
         this.status = status;
+        this.maxLatency = maxLatency;
+        this.priority = priority;
         setTimeModify(timeModify);
     }
 

@@ -139,6 +139,12 @@ public class FlowDto implements Serializable {
     @JsonProperty("state")
     private FlowState state;
 
+    @JsonProperty("max_latency")
+    private Integer maxLatency;
+
+    @JsonProperty("priority")
+    private Integer priority;
+
     public FlowDto() {
     }
 
@@ -161,6 +167,8 @@ public class FlowDto implements Serializable {
      * @param transitVlan       transit vlan id
      * @param flowPath          flow switch path
      * @param state             flow state
+     * @param maxLatency        max latency
+     * @param priority          flow priority
      */
     @JsonCreator
     @Builder(toBuilder = true)
@@ -180,7 +188,9 @@ public class FlowDto implements Serializable {
                    @JsonProperty("meter_id") final Integer meterId,
                    @JsonProperty("transit_vlan") final int transitVlan,
                    @JsonProperty(Utils.FLOW_PATH) final PathInfoData flowPath,
-                   @JsonProperty("state") FlowState state) {
+                   @JsonProperty("state") FlowState state,
+                   @JsonProperty("max_latency") Integer maxLatency,
+                   @JsonProperty("priority") Integer priority) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
@@ -198,6 +208,8 @@ public class FlowDto implements Serializable {
         this.meterId = meterId;
         this.flowPath = flowPath;
         this.state = state;
+        this.maxLatency = maxLatency;
+        this.priority = priority;
     }
 
     /**
@@ -220,7 +232,9 @@ public class FlowDto implements Serializable {
                 flow.getMeterId(),
                 flow.getTransitVlan(),
                 flow.getFlowPath(),
-                flow.getState());
+                flow.getState(),
+                flow.getMaxLatency(),
+                flow.getPriority());
     }
 
     /**
@@ -256,7 +270,7 @@ public class FlowDto implements Serializable {
                 destinationPort,
                 sourceVlan,
                 destinationVlan,
-                null, 0, null, null);
+                null, 0, null, null, null, null);
     }
 
     public FlowDto(FlowPayload input) {
@@ -273,7 +287,9 @@ public class FlowDto implements Serializable {
                 input.getDestination().getPortNumber(),
                 input.getSource().getVlanId(),
                 input.getDestination().getVlanId(),
-                null, 0, null, null);
+                null, 0, null, null,
+                input.getMaxLatency(),
+                input.getPriority());
     }
 
     /**
