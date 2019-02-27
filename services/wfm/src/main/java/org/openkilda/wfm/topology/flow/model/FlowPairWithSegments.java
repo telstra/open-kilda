@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.flow.model;
 
 import org.openkilda.model.FlowPair;
-import org.openkilda.model.FlowSegment;
+import org.openkilda.model.PathSegment;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -27,6 +27,6 @@ import java.util.List;
 @AllArgsConstructor
 public class FlowPairWithSegments {
     FlowPair flowPair;
-    List<FlowSegment> forwardSegments;
-    List<FlowSegment> reverseSegments;
+    List<PathSegment> forwardSegments;
+    List<PathSegment> reverseSegments;
 }

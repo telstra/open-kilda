@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.nbworker.services;
 
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.error.IslNotFoundException;
@@ -31,32 +31,32 @@ import java.util.Set;
 public class FlowOperationsService {
 
     private IslRepository islRepository;
-    private FlowRepository flowRepository;
+    private FlowPairRepository flowPairRepository;
 
     public FlowOperationsService(RepositoryFactory repositoryFactory) {
         this.islRepository = repositoryFactory.createIslRepository();
-        this.flowRepository = repositoryFactory.createFlowRepository();
+        this.flowPairRepository = repositoryFactory.createFlowPairRepository();
     }
 
     /**
      * Return all flows for a particular link.
      *
      * @param srcSwitchId source switch id.
-     * @param srcPort source port.
+     * @param srcPort     source port.
      * @param dstSwitchId destination switch id.
-     * @param dstPort destination port.
+     * @param dstPort     destination port.
      * @return all flows for a particular link.
      * @throws IslNotFoundException if there is no link with these parameters.
      */
     public Collection<FlowPair> getFlowIdsForLink(SwitchId srcSwitchId, Integer srcPort,
-                                                SwitchId dstSwitchId, Integer dstPort)
+                                                  SwitchId dstSwitchId, Integer dstPort)
             throws IslNotFoundException {
 
         if (!islRepository.findByEndpoints(srcSwitchId, srcPort, dstSwitchId, dstPort).isPresent()) {
             throw new IslNotFoundException(srcSwitchId, srcPort, dstSwitchId, dstPort);
         }
 
-        return flowRepository.findAllFlowPairsWithSegment(srcSwitchId, srcPort, dstSwitchId, dstPort);
+        return flowPairRepository.findAllFlowPairsWithSegment(srcSwitchId, srcPort, dstSwitchId, dstPort);
     }
 
     /**
@@ -66,6 +66,6 @@ public class FlowOperationsService {
      * @return all flows for a switch.
      */
     public Set<String> getFlowIdsForSwitch(SwitchId switchId) {
-        return flowRepository.findFlowIdsBySwitch(switchId);
+        return flowPairRepository.findFlowIdsBySwitch(switchId);
     }
 }

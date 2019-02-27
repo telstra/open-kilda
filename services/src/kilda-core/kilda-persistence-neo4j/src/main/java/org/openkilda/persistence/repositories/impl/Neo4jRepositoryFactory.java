@@ -19,6 +19,7 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
+import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -59,6 +60,11 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public FlowRepository createFlowRepository() {
         return new Neo4jFlowRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public FlowPairRepository createFlowPairRepository() {
+        return new Neo4jFlowPairRepository(sessionFactory, transactionManager);
     }
 
     @Override

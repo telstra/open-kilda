@@ -18,46 +18,56 @@ package org.openkilda.wfm.topology.flow.service;
 import static java.util.Objects.requireNonNull;
 import static org.apache.commons.collections4.ListUtils.union;
 
+import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.FlowSegment;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.PathId;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.UnidirectionalFlow;
+import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.flow.resources.FlowResources;
+import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
+import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanResources;
 import org.openkilda.wfm.topology.flow.model.FlowPairWithSegments;
 import org.openkilda.wfm.topology.flow.model.UpdatedFlowPairWithSegments;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
 
-import com.google.common.collect.Lists;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class FlowService extends BaseFlowService {
     private SwitchRepository switchRepository;
-    private FlowSegmentRepository flowSegmentRepository;
+    private FlowPathRepository flowPathRepository;
     private IslRepository islRepository;
     private PathComputerFactory pathComputerFactory;
     private FlowResourcesManager flowResourcesManager;
@@ -68,7 +78,7 @@ public class FlowService extends BaseFlowService {
         super(persistenceManager);
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
-        flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
+        flowPathRepository = repositoryFactory.createFlowPathRepository();
         islRepository = repositoryFactory.createIslRepository();
         this.pathComputerFactory = requireNonNull(pathComputerFactory);
         this.flowResourcesManager = requireNonNull(flowResourcesManager);
@@ -81,12 +91,13 @@ public class FlowService extends BaseFlowService {
      * <p/>
      * The flow is created with IN_PROGRESS status.
      *
-     * @param flow   the flow to be created.
+     * @param flow the flow to be created.
      * @param sender the command sender for flow rules installation.
      * @return the created flow with the path and resources set.
      */
-    public FlowPair createFlow(Flow flow, FlowCommandSender sender) throws RecoverableException,
-            UnroutableFlowException, FlowAlreadyExistException, FlowValidationException, SwitchValidationException {
+    public FlowPair createFlow(UnidirectionalFlow flow, FlowCommandSender sender) throws RecoverableException,
+            UnroutableFlowException, FlowAlreadyExistException, FlowValidationException,
+            SwitchValidationException, ResourceAllocationException {
         flowValidator.validate(flow);
 
         if (doesFlowExist(flow.getFlowId())) {
@@ -95,23 +106,23 @@ public class FlowService extends BaseFlowService {
 
         // TODO: the strategy is defined either per flow or system-wide.
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair pathPair = pathComputer.getPath(flow);
+        PathPair pathPair = pathComputer.getPath(flow.getFlowEntity());
 
         flow.setStatus(FlowStatus.IN_PROGRESS);
 
         log.info("Creating the flow {} with path: {}", flow, pathPair);
 
+        FlowPair flowPair = allocateFlowResources(buildFlowPair(flow, pathPair));
+
         FlowPairWithSegments result = transactionManager.doInTransaction(() -> {
-            FlowPair flowPair = flowResourcesManager.allocateFlow(buildFlowPair(flow, pathPair));
+            List<PathSegment> forwardSegments = flowPair.getFlowEntity().getForwardPath().getSegments();
+            List<PathSegment> reverseSegments = flowPair.getFlowEntity().getReversePath().getSegments();
+            lockSwitches(union(forwardSegments, reverseSegments));
 
-            List<FlowSegment> forwardSegments = buildFlowSegments(flowPair.getForward());
-            List<FlowSegment> reverseSegments = buildFlowSegments(flowPair.getReverse());
-            List<FlowSegment> flowSegments = union(forwardSegments, reverseSegments);
+            flowPairRepository.createOrUpdate(flowPair);
 
-            lockSwitches(flowSegments);
-
-            flowRepository.createOrUpdate(flowPair);
-            createFlowSegments(flowSegments);
+            updateIslsForFlowPath(flowPair.getFlowEntity().getForwardPath());
+            updateIslsForFlowPath(flowPair.getFlowEntity().getReversePath());
 
             return new FlowPairWithSegments(flowPair, forwardSegments, reverseSegments);
         });
@@ -126,37 +137,35 @@ public class FlowService extends BaseFlowService {
      * Stores a flow and related entities into DB, and invokes flow rules installation via the command sender.
      *
      * @param flowPair the flow to be saved.
-     * @param sender   the command sender for flow rules installation.
+     * @param sender the command sender for flow rules installation.
      */
-    public void saveFlow(FlowPair flowPair, FlowCommandSender sender) throws FlowAlreadyExistException {
-        Flow forward = flowPair.getForward();
-        Flow reverse = flowPair.getReverse();
-
-        if (doesFlowExist(forward.getFlowId())) {
-            throw new FlowAlreadyExistException(forward.getFlowId());
+    public void saveFlow(FlowPair flowPair, FlowCommandSender sender) throws FlowAlreadyExistException,
+            ResourceAllocationException {
+        if (doesFlowExist(flowPair.getFlowEntity().getFlowId())) {
+            throw new FlowAlreadyExistException(flowPair.getFlowEntity().getFlowId());
         }
 
         log.info("Saving (pushing) the flow: {}", flowPair);
 
+        flowPair.getForward().setSrcSwitch(switchRepository.reload(flowPair.getForward().getSrcSwitch()));
+        flowPair.getForward().setDestSwitch(switchRepository.reload(flowPair.getForward().getDestSwitch()));
+        flowPair.getReverse().setSrcSwitch(switchRepository.reload(flowPair.getReverse().getSrcSwitch()));
+        flowPair.getReverse().setDestSwitch(switchRepository.reload(flowPair.getReverse().getDestSwitch()));
+        FlowPair flowPairWithResources = allocateFlowResources(flowPair);
+
         FlowPairWithSegments result = transactionManager.doInTransaction(() -> {
-            List<FlowSegment> forwardSegments = buildFlowSegments(forward);
-            List<FlowSegment> reverseSegments = buildFlowSegments(reverse);
-            List<FlowSegment> flowSegments = union(forwardSegments, reverseSegments);
-
-            lockSwitches(flowSegments);
-
-            flowResourcesManager.registerUsedByFlow(flowPair);
+            List<PathSegment> forwardSegments = flowPairWithResources.getFlowEntity().getForwardPath().getSegments();
+            List<PathSegment> reverseSegments = flowPairWithResources.getFlowEntity().getReversePath().getSegments();
+            lockSwitches(union(forwardSegments, reverseSegments));
 
             //TODO(siakovenko): flow needs to be validated (existence of switches, same end-points, etc.)
-            forward.setSrcSwitch(switchRepository.reload(forward.getSrcSwitch()));
-            forward.setDestSwitch(switchRepository.reload(forward.getDestSwitch()));
-            reverse.setSrcSwitch(switchRepository.reload(reverse.getSrcSwitch()));
-            reverse.setDestSwitch(switchRepository.reload(reverse.getDestSwitch()));
 
-            flowRepository.createOrUpdate(flowPair);
-            createFlowSegments(flowSegments);
+            flowPairRepository.createOrUpdate(flowPairWithResources);
 
-            return new FlowPairWithSegments(flowPair, forwardSegments, reverseSegments);
+            updateIslsForFlowPath(flowPairWithResources.getFlowEntity().getForwardPath());
+            updateIslsForFlowPath(flowPairWithResources.getFlowEntity().getReversePath());
+
+            return new FlowPairWithSegments(flowPairWithResources, forwardSegments, reverseSegments);
         });
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
@@ -180,21 +189,29 @@ public class FlowService extends BaseFlowService {
 
             FlowPair flowPair = foundFlowPair.get();
 
-            List<FlowSegment> forwardSegments = getFlowSegments(flowPair.getForward());
-            List<FlowSegment> reverseSegments = getFlowSegments(flowPair.getReverse());
-            List<FlowSegment> flowSegments = union(forwardSegments, reverseSegments);
-
-            lockSwitches(flowSegments);
+            List<PathSegment> forwardSegments = flowPair.getFlowEntity().getForwardPath().getSegments();
+            List<PathSegment> reverseSegments = flowPair.getFlowEntity().getReversePath().getSegments();
+            lockSwitches(union(forwardSegments, reverseSegments));
 
             log.info("Deleting the flow: {}", flowPair);
 
-            flowRepository.delete(flowPair);
-            deleteFlowSegments(flowSegments);
+            flowPairRepository.delete(flowPair);
 
-            flowResourcesManager.deallocateFlow(flowPair);
+            updateIslsForFlowPath(flowPair.getFlowEntity().getForwardPath());
+            updateIslsForFlowPath(flowPair.getFlowEntity().getReversePath());
 
             return Optional.of(new FlowPairWithSegments(flowPair, forwardSegments, reverseSegments));
         }).orElseThrow(() -> new FlowNotFoundException(flowId));
+
+        FlowPath forwardPath = result.getFlowPair().getForward().getFlowPath();
+        FlowPath reversePath = result.getFlowPair().getReverse().getFlowPath();
+        FlowResources flowResources = FlowResources.builder()
+                .unmaskedCookie(forwardPath.getCookie().getUnmaskedValue())
+                .forward(PathResources.builder().pathId(forwardPath.getPathId()).build())
+                .reverse(PathResources.builder().pathId(reversePath.getPathId()).build())
+                .build();
+
+        flowResourcesManager.deallocateFlowResources(result.getFlowPair().getFlowEntity(), flowResources);
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
         sender.sendRemoveRulesCommand(result);
@@ -208,56 +225,67 @@ public class FlowService extends BaseFlowService {
      * <p/>
      * The updated flow has IN_PROGRESS status.
      *
-     * @param flowId  the flow to be replaced.
+     * @param flowId the flow to be replaced.
      * @param newFlow the flow to be applied.
-     * @param sender  the command sender for flow rules installation and deletion.
+     * @param sender the command sender for flow rules installation and deletion.
      * @return the updated flow with the path and resources set.
      */
-    public FlowPair updateFlow(String flowId, Flow newFlow, FlowCommandSender sender) throws RecoverableException,
-            UnroutableFlowException, FlowNotFoundException, FlowValidationException, SwitchValidationException {
+    public FlowPair updateFlow(String flowId, UnidirectionalFlow newFlow, FlowCommandSender sender)
+            throws RecoverableException, UnroutableFlowException, FlowNotFoundException,
+            FlowValidationException, SwitchValidationException, ResourceAllocationException {
         flowValidator.validate(newFlow);
 
         // TODO: the strategy is defined either per flow or system-wide.
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair pathPair = pathComputer.getPath(newFlow, true);
+        PathPair pathPair = pathComputer.getPath(newFlow.getFlowEntity(), true);
 
         newFlow.setStatus(FlowStatus.IN_PROGRESS);
 
+        Optional<FlowPair> foundFlowPair = getFlowPair(flowId);
+        if (!foundFlowPair.isPresent()) {
+            throw new FlowNotFoundException(flowId);
+        }
+        FlowPair currentFlow = foundFlowPair.get();
+        FlowPair newFlowWithResources = allocateFlowResources(buildFlowPair(newFlow, pathPair));
+
         UpdatedFlowPairWithSegments result = transactionManager.doInTransaction(() -> {
-            Optional<FlowPair> foundFlowPair = getFlowPair(flowId);
-            if (!foundFlowPair.isPresent()) {
-                return Optional.<UpdatedFlowPairWithSegments>empty();
-            }
-
-            FlowPair currentFlow = foundFlowPair.get();
-
-            List<FlowSegment> forwardSegments = getFlowSegments(currentFlow.getForward());
-            List<FlowSegment> reverseSegments = getFlowSegments(currentFlow.getReverse());
-            List<FlowSegment> flowSegments = union(forwardSegments, reverseSegments);
+            List<PathSegment> forwardSegments = currentFlow.getFlowEntity().getForwardPath().getSegments();
+            List<PathSegment> reverseSegments = currentFlow.getFlowEntity().getReversePath().getSegments();
+            List<PathSegment> flowSegments = union(forwardSegments, reverseSegments);
 
             log.info("Updating the flow with {} and path: {}", newFlow, pathPair);
 
-            FlowPair newFlowWithResources = flowResourcesManager.allocateFlow(buildFlowPair(newFlow, pathPair));
-
-            List<FlowSegment> newForwardSegments = buildFlowSegments(newFlowWithResources.getForward());
-            List<FlowSegment> newReverseSegments = buildFlowSegments(newFlowWithResources.getReverse());
-            List<FlowSegment> newFlowSegments = union(newForwardSegments, newReverseSegments);
+            List<PathSegment> newForwardSegments = newFlowWithResources.getFlowEntity().getForwardPath().getSegments();
+            List<PathSegment> newReverseSegments = newFlowWithResources.getFlowEntity().getReversePath().getSegments();
+            List<PathSegment> newFlowSegments = union(newForwardSegments, newReverseSegments);
 
             lockSwitches(union(flowSegments, newFlowSegments));
 
-            flowRepository.delete(currentFlow);
-            deleteFlowSegments(flowSegments);
+            flowPairRepository.delete(currentFlow);
 
-            flowRepository.createOrUpdate(newFlowWithResources);
-            createFlowSegments(newFlowSegments);
+            updateIslsForFlowPath(currentFlow.getFlowEntity().getForwardPath());
+            updateIslsForFlowPath(currentFlow.getFlowEntity().getReversePath());
 
-            flowResourcesManager.deallocateFlow(currentFlow);
+            flowPairRepository.createOrUpdate(newFlowWithResources);
 
-            return Optional.of(UpdatedFlowPairWithSegments.builder()
+            updateIslsForFlowPath(newFlowWithResources.getFlowEntity().getForwardPath());
+            updateIslsForFlowPath(newFlowWithResources.getFlowEntity().getReversePath());
+
+            return UpdatedFlowPairWithSegments.builder()
                     .oldFlowPair(currentFlow).oldForwardSegments(forwardSegments).oldReverseSegments(reverseSegments)
                     .flowPair(newFlowWithResources).forwardSegments(newForwardSegments)
-                    .reverseSegments(newReverseSegments).build());
-        }).orElseThrow(() -> new FlowNotFoundException(flowId));
+                    .reverseSegments(newReverseSegments).build();
+        });
+
+        FlowPath forwardPath = currentFlow.getForward().getFlowPath();
+        FlowPath reversePath = currentFlow.getReverse().getFlowPath();
+        FlowResources flowResources = FlowResources.builder()
+                .unmaskedCookie(forwardPath.getCookie().getUnmaskedValue())
+                .forward(PathResources.builder().pathId(forwardPath.getPathId()).build())
+                .reverse(PathResources.builder().pathId(reversePath.getPathId()).build())
+                .build();
+
+        flowResourcesManager.deallocateFlowResources(currentFlow.getFlowEntity(), flowResources);
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
         sender.sendUpdateRulesCommand(result);
@@ -271,19 +299,19 @@ public class FlowService extends BaseFlowService {
      * <p/>
      * The rerouted flow has IN_PROGRESS status.
      *
-     * @param flowId         the flow to be rerouted.
+     * @param flowId the flow to be rerouted.
      * @param forceToReroute if true the flow will be recreated even there's no better path found.
-     * @param sender         the command sender for flow rules installation and deletion.
+     * @param sender the command sender for flow rules installation and deletion.
      */
     public ReroutedFlow rerouteFlow(String flowId, boolean forceToReroute, FlowCommandSender sender)
-            throws RecoverableException, UnroutableFlowException, FlowNotFoundException {
+            throws RecoverableException, UnroutableFlowException, FlowNotFoundException, ResourceAllocationException {
         FlowPair currentFlow = getFlowPair(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
         log.warn("Origin flow {} path: {}", flowId, currentFlow.getForward().getFlowPath());
 
         // TODO: the strategy is defined either per flow or system-wide.
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair pathPair = pathComputer.getPath(currentFlow.getForward(), true);
+        PathPair pathPair = pathComputer.getPath(currentFlow.getFlowEntity(), true);
 
         log.warn("Potential New Path for flow {} with LEFT path: {}, RIGHT path: {}",
                 flowId, pathPair.getForward(), pathPair.getReverse());
@@ -298,34 +326,47 @@ public class FlowService extends BaseFlowService {
             return new ReroutedFlow(currentFlow, null);
         }
 
+        FlowPair newFlow = allocateFlowResources(buildFlowPair(currentFlow.getForward(), pathPair));
+
         UpdatedFlowPairWithSegments result = transactionManager.doInTransaction(() -> {
-            FlowPair newFlow = flowResourcesManager.allocateFlow(buildFlowPair(currentFlow.getForward(), pathPair));
             newFlow.setStatus(FlowStatus.IN_PROGRESS);
 
-            List<FlowSegment> forwardSegments = getFlowSegments(currentFlow.getForward());
-            List<FlowSegment> reverseSegments = getFlowSegments(currentFlow.getReverse());
-            List<FlowSegment> flowSegments = union(forwardSegments, reverseSegments);
+            List<PathSegment> forwardSegments = currentFlow.getFlowEntity().getForwardPath().getSegments();
+            List<PathSegment> reverseSegments = currentFlow.getFlowEntity().getReversePath().getSegments();
+            List<PathSegment> flowSegments = union(forwardSegments, reverseSegments);
 
-            List<FlowSegment> newForwardSegments = buildFlowSegments(newFlow.getForward());
-            List<FlowSegment> newReverseSegments = buildFlowSegments(newFlow.getReverse());
-            List<FlowSegment> newFlowSegments = union(newForwardSegments, newReverseSegments);
+            List<PathSegment> newForwardSegments = newFlow.getFlowEntity().getForwardPath().getSegments();
+            List<PathSegment> newReverseSegments = newFlow.getFlowEntity().getReversePath().getSegments();
+            List<PathSegment> newFlowSegments = union(newForwardSegments, newReverseSegments);
 
             lockSwitches(union(flowSegments, newFlowSegments));
 
             // No need to re-read currentFlow as it's going to be removed.
-            flowRepository.delete(currentFlow);
-            deleteFlowSegments(flowSegments);
+            flowPairRepository.delete(currentFlow);
 
-            flowRepository.createOrUpdate(newFlow);
-            createFlowSegments(newFlowSegments);
+            updateIslsForFlowPath(currentFlow.getFlowEntity().getForwardPath());
+            updateIslsForFlowPath(currentFlow.getFlowEntity().getReversePath());
 
-            flowResourcesManager.deallocateFlow(currentFlow);
+            flowPairRepository.createOrUpdate(newFlow);
+
+            updateIslsForFlowPath(newFlow.getFlowEntity().getForwardPath());
+            updateIslsForFlowPath(newFlow.getFlowEntity().getReversePath());
 
             return UpdatedFlowPairWithSegments.builder()
                     .oldFlowPair(currentFlow).oldForwardSegments(forwardSegments).oldReverseSegments(reverseSegments)
                     .flowPair(newFlow).forwardSegments(newForwardSegments)
                     .reverseSegments(newReverseSegments).build();
         });
+
+        FlowPath forwardPath = currentFlow.getForward().getFlowPath();
+        FlowPath reversePath = currentFlow.getReverse().getFlowPath();
+        FlowResources flowResources = FlowResources.builder()
+                .unmaskedCookie(forwardPath.getCookie().getUnmaskedValue())
+                .forward(PathResources.builder().pathId(forwardPath.getPathId()).build())
+                .reverse(PathResources.builder().pathId(reversePath.getPathId()).build())
+                .build();
+
+        flowResourcesManager.deallocateFlowResources(currentFlow.getFlowEntity(), flowResources);
 
         log.warn("Rerouted flow with new path: {}", result.getFlowPair());
 
@@ -335,68 +376,103 @@ public class FlowService extends BaseFlowService {
         return new ReroutedFlow(currentFlow, result.getFlowPair());
     }
 
-    private FlowPair buildFlowPair(Flow flow, PathPair pathPair) {
-        Instant timestamp = Instant.now();
+    private FlowPair buildFlowPair(UnidirectionalFlow flow, PathPair pathPair) {
+        FlowPath forwardPath = buildFlowPath(flow.getFlowId(), pathPair.getForward());
+        forwardPath.setBandwidth(flow.getBandwidth());
+        forwardPath.setIgnoreBandwidth(flow.isIgnoreBandwidth());
 
-        Flow forward = flow.toBuilder()
+        FlowPath reversePath = buildFlowPath(flow.getFlowId(), pathPair.getReverse());
+        reversePath.setBandwidth(flow.getBandwidth());
+        reversePath.setIgnoreBandwidth(flow.isIgnoreBandwidth());
+
+        Flow flowEntity = Flow.builder()
+                .flowId(flow.getFlowId())
                 .srcSwitch(switchRepository.reload(flow.getSrcSwitch()))
+                .srcPort(flow.getSrcPort())
+                .srcVlan(flow.getSrcVlan())
                 .destSwitch(switchRepository.reload(flow.getDestSwitch()))
-                .timeModify(timestamp)
-                .flowPath(pathPair.getForward())
+                .destPort(flow.getDestPort())
+                .destVlan(flow.getDestVlan())
+                .bandwidth(flow.getBandwidth())
+                .ignoreBandwidth(flow.isIgnoreBandwidth())
+                .description(flow.getDescription())
+                .periodicPings(flow.isPeriodicPings())
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .status(flow.getStatus())
+                .timeModify(Instant.now())
+                .forwardPath(forwardPath)
+                .reversePath(reversePath)
                 .build();
-        Flow reverse = flow.toBuilder()
-                .timeModify(timestamp)
-                .srcSwitch(forward.getDestSwitch())
-                .srcPort(flow.getDestPort())
-                .srcVlan(flow.getDestVlan())
-                .destSwitch(forward.getSrcSwitch())
-                .destPort(flow.getSrcPort())
-                .destVlan(flow.getSrcVlan())
-                .flowPath(pathPair.getReverse())
-                .build();
-        return FlowPair.builder().forward(forward).reverse(reverse).build();
+
+        return new FlowPair(flowEntity, null, null);
     }
 
-    private List<FlowSegment> buildFlowSegments(Flow flow) {
-        List<FlowSegment> segments = new ArrayList<>();
+    private FlowPath buildFlowPath(String flowId, Path path) {
+        PathId pathId = new PathId(UUID.randomUUID().toString());
+        List<PathSegment> segments = path.getSegments().stream()
+                .map(segment -> PathSegment.builder()
+                        .pathId(pathId)
+                        .srcSwitch(switchRepository.reload(Switch.builder()
+                                .switchId(segment.getSrcSwitchId()).build()))
+                        .srcPort(segment.getSrcPort())
+                        .destSwitch(switchRepository.reload(Switch.builder()
+                                .switchId(segment.getDestSwitchId()).build()))
+                        .destPort(segment.getDestPort())
+                        .latency(segment.getLatency())
+                        .build())
+                .collect(Collectors.toList());
+        return FlowPath.builder()
+                .flowId(flowId)
+                .pathId(pathId)
+                .srcSwitch(switchRepository.reload(Switch.builder()
+                        .switchId(path.getSrcSwitchId()).build()))
+                .destSwitch(switchRepository.reload(Switch.builder()
+                        .switchId(path.getDestSwitchId()).build()))
+                .segments(segments)
+                .build();
+    }
 
-        List<FlowPath.Node> nodes = flow.getFlowPath().getNodes();
-        for (int i = 0; i < nodes.size(); i += 2) {
-            FlowPath.Node src = nodes.get(i);
-            FlowPath.Node dst = nodes.get(i + 1);
+    private FlowPair allocateFlowResources(FlowPair flowPair) throws ResourceAllocationException {
+        Flow flow = flowPair.getFlowEntity();
+        FlowResources flowResources = flowResourcesManager.allocateFlowResources(flow);
 
-            FlowSegment segment = FlowSegment.builder()
-                    .flowId(flow.getFlowId())
-                    .srcSwitch(switchRepository.reload(Switch.builder().switchId(src.getSwitchId()).build()))
-                    .srcPort(src.getPortNo())
-                    .seqId(src.getSeqId())
-                    .latency(src.getSegmentLatency())
-                    .destSwitch(switchRepository.reload(Switch.builder().switchId(dst.getSwitchId()).build()))
-                    .destPort(dst.getPortNo())
-                    .bandwidth(flow.getBandwidth())
-                    .cookie(flow.getCookie())
-                    .ignoreBandwidth(flow.isIgnoreBandwidth())
-                    .build();
-
-            segments.add(segment);
+        FlowPath forwardPath = flowPair.getForward().getFlowPath();
+        forwardPath.setPathId(flowResources.getForward().getPathId());
+        forwardPath.setCookie(Cookie.buildForwardCookie(flowResources.getUnmaskedCookie()));
+        if (flowResources.getForward().getMeterId() != null) {
+            forwardPath.setMeterId(flowResources.getForward().getMeterId());
         }
+        flow.setForwardPath(forwardPath);
 
-        return segments;
+        FlowPath reversePath = flowPair.getReverse().getFlowPath();
+        reversePath.setPathId(flowResources.getReverse().getPathId());
+        reversePath.setCookie(Cookie.buildReverseCookie(flowResources.getUnmaskedCookie()));
+        if (flowResources.getReverse().getMeterId() != null) {
+            reversePath.setMeterId(flowResources.getReverse().getMeterId());
+        }
+        flow.setReversePath(reversePath);
+
+        //TODO: hard-coded encapsulation will be removed in Flow H&S
+        TransitVlanResources forwardTransitVlanResources =
+                (TransitVlanResources) flowResources.getForward().getEncapsulationResources();
+        TransitVlanResources reverseTransitVlanResources =
+                (TransitVlanResources) flowResources.getReverse().getEncapsulationResources();
+
+        return new FlowPair(flow, forwardTransitVlanResources.getTransitVlan(),
+                reverseTransitVlanResources.getTransitVlan());
     }
 
-    private void createFlowSegments(List<FlowSegment> flowSegments) {
-        flowSegments.forEach(flowSegment -> {
-            log.debug("Creating the flow segment: {}", flowSegment);
+    private void updateIslsForFlowPath(FlowPath path) {
+        path.getSegments().forEach(pathSegment -> {
+            log.debug("Updating ISL for the path segment: {}", pathSegment);
 
-            flowSegmentRepository.createOrUpdate(flowSegment);
-
-            updateIslAvailableBandwidth(flowSegment.getSrcSwitch().getSwitchId(), flowSegment.getSrcPort(),
-                    flowSegment.getDestSwitch().getSwitchId(), flowSegment.getDestPort());
+            updateIslAvailableBandwidth(pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort(),
+                    pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort());
         });
     }
 
     private void updateIslAvailableBandwidth(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort) {
-        long usedBandwidth = flowSegmentRepository.getUsedBandwidthBetweenEndpoints(
+        long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(
                 srcSwitchId, srcPort, dstSwitchId, dstPort);
 
         islRepository.findByEndpoints(srcSwitchId, srcPort, dstSwitchId, dstPort)
@@ -407,22 +483,7 @@ public class FlowService extends BaseFlowService {
                 });
     }
 
-    private List<FlowSegment> getFlowSegments(Flow flow) {
-        return Lists.newArrayList(flowSegmentRepository.findByFlowIdAndCookie(flow.getFlowId(), flow.getCookie()));
-    }
-
-    private void deleteFlowSegments(List<FlowSegment> flowSegments) {
-        flowSegments.forEach(segment -> {
-            log.debug("Deleting the flow segment: {}", segment);
-
-            flowSegmentRepository.delete(segment);
-
-            updateIslAvailableBandwidth(segment.getSrcSwitch().getSwitchId(), segment.getSrcPort(),
-                    segment.getDestSwitch().getSwitchId(), segment.getDestPort());
-        });
-    }
-
-    private void lockSwitches(List<FlowSegment> flowSegments) {
+    private void lockSwitches(List<PathSegment> flowSegments) {
         Set<Switch> switches = new HashSet<>();
         flowSegments.forEach(flowSegment -> switches.add(flowSegment.getSrcSwitch()));
         switchRepository.lockSwitches(switches.toArray(new Switch[0]));

@@ -16,9 +16,9 @@
 package org.openkilda.wfm.topology.nbworker.services;
 
 import org.openkilda.messaging.info.network.PathsInfoData;
-import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory;
+import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
@@ -59,7 +59,7 @@ public class PathsService {
             throw new SwitchNotFoundException(dstSwitchId);
         }
 
-        List<FlowPath> flowPaths = pathComputer.getNPaths(srcSwitchId, dstSwitchId, MAX_PATH_COUNT);
+        List<Path> flowPaths = pathComputer.getNPaths(srcSwitchId, dstSwitchId, MAX_PATH_COUNT);
 
         List<PathsInfoData> paths = flowPaths.stream().map(PathMapper.INSTANCE::map)
                 .map(path -> PathsInfoData.builder().path(path).build())
