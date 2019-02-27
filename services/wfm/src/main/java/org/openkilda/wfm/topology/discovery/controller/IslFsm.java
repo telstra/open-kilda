@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.discovery.controller;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Isl.IslBuilder;
 import org.openkilda.model.IslStatus;
@@ -26,6 +27,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
@@ -55,6 +57,7 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
     private final FlowSegmentRepository flowSegmentRepository;
     private final SwitchRepository switchRepository;
     private final TransactionManager transactionManager;
+    private final FeatureTogglesRepository featureTogglesRepository;
 
     private final int costRaiseOnPhysicalDown;
 
@@ -156,6 +159,7 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
         flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
+        featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
 
         transactionManager = persistenceManager.getTransactionManager();
 
@@ -287,9 +291,11 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
     }
 
     private void triggerDownFlowReroute(IslFsmContext context) {
-        RerouteInactiveFlows trigger = new RerouteInactiveFlows(String.format(
-                "ISL %s status become %s", discoveryFacts.getReference(), IslStatus.ACTIVE));
-        context.getOutput().triggerReroute(trigger);
+        if (shouldEmitDownFlowReroute()) {
+            RerouteInactiveFlows trigger = new RerouteInactiveFlows(String.format(
+                    "ISL %s status become %s", discoveryFacts.getReference(), IslStatus.ACTIVE));
+            context.getOutput().triggerReroute(trigger);
+        }
     }
 
     private boolean shouldUseBfd() {
@@ -341,7 +347,7 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
         applyIslAvailableBandwidth(link, source, dest);
         applyIslStatus(link, uniStatus, timeNow);
 
-        islRepository.createOrUpdate(link);
+        pushIslChanges(link);
     }
 
     private void saveStatus(Instant timeNow) {
@@ -354,7 +360,7 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
         Isl link = loadOrCreateIsl(source, dest, timeNow);
 
         applyIslStatus(link, uniStatus, timeNow);
-        islRepository.createOrUpdate(link);
+        pushIslChanges(link);
     }
 
     private void raiseCostOnPhysicalDown(Instant timeNow) {
@@ -370,25 +376,36 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
         log.debug("Raise ISL {} ===> {} cost due to physical down (cost-now:{}, raise:{})",
                   source, dest, link.getCost(), costRaiseOnPhysicalDown);
         applyIslCostRaiseOnPhysicalDown(link, timeNow);
-        islRepository.createOrUpdate(link);
+        pushIslChanges(link);
     }
 
     private Isl loadOrCreateIsl(Endpoint source, Endpoint dest, Instant timeNow) {
         return islRepository.findByEndpoints(
                 source.getDatapath(), source.getPortNumber(), dest.getDatapath(), dest.getPortNumber())
+                .map(link -> {
+                    log.debug("Read ISL object: {}", link);
+                    switchRepository.lockSwitches(link.getSrcSwitch(), link.getDestSwitch());
+                    return link;
+                })
                 .orElseGet(() -> createIsl(source, dest, timeNow));
     }
 
     private Isl createIsl(Endpoint source, Endpoint dest, Instant timeNow) {
+        Switch sourceSwitch = loadSwitch(source);
+        Switch destSwitch = loadSwitch(dest);
+        switchRepository.lockSwitches(sourceSwitch, destSwitch);
+
         IslBuilder islBuilder = Isl.builder()
                 .timeCreate(timeNow)
                 .timeModify(timeNow)
-                .srcSwitch(loadSwitch(source))
+                .srcSwitch(sourceSwitch)
                 .srcPort(source.getPortNumber())
-                .destSwitch(loadSwitch(dest))
+                .destSwitch(destSwitch)
                 .destPort(dest.getPortNumber());
         applyIslLinkProps(source, dest, islBuilder);
-        return islBuilder.build();
+        Isl link = islBuilder.build();
+        log.debug("Create new DB object (prefilled): {}", link);
+        return link;
     }
 
     private Switch loadSwitch(Endpoint endpoint) {
@@ -457,6 +474,11 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
         }
     }
 
+    private void pushIslChanges(Isl link) {
+        log.debug("Write ISL object: {}", link);
+        islRepository.createOrUpdate(link);
+    }
+
     private DiscoveryEndpointStatus getAggregatedStatus() {
         DiscoveryEndpointStatus forward = endpointStatus.getForward();
         DiscoveryEndpointStatus reverse = endpointStatus.getReverse();
@@ -469,6 +491,13 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
         }
 
         return DiscoveryEndpointStatus.DOWN;
+    }
+
+    private boolean shouldEmitDownFlowReroute() {
+        Optional<FeatureToggles> featureToggles = featureTogglesRepository.find();
+        return featureToggles.isPresent()
+                && featureToggles.get().getFlowsRerouteOnIslDiscoveryEnabled() != null
+                && featureToggles.get().getFlowsRerouteOnIslDiscoveryEnabled();
     }
 
     private static IslStatus mapStatus(DiscoveryEndpointStatus status) {

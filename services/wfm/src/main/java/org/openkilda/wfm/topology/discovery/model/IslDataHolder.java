@@ -43,7 +43,7 @@ public class IslDataHolder {
     private IslDataHolder(IslDataHolder first, IslDataHolder second) {
         speed = Math.min(first.speed, second.speed);
         latency = Math.max(first.latency, second.latency);
-        availableBandwidth = Math.min(first.latency, second.availableBandwidth);
+        availableBandwidth = Math.min(first.availableBandwidth, second.availableBandwidth);
     }
 
     public IslDataHolder merge(IslDataHolder other) {

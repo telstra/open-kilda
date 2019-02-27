@@ -49,7 +49,7 @@ public class CommandContext implements Serializable {
      * correlation ID i.e. it contain original correlation ID plus part passed in argument.
      */
     public CommandContext fork(String correlationIdExtension) {
-        CommandContext nested = new CommandContext(correlationIdExtension + " : " + correlationId);
+        CommandContext nested = new CommandContext(correlationId + " : " + correlationIdExtension);
         nested.merge(this);
         return nested;
     }
