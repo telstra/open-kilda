@@ -111,7 +111,7 @@ public class GrpcSession {
     public CompletableFuture<Optional<StatusSwitch>> showSwitchStatus() {
         GrpcResponseObserver<StatusSwitch> observer = new GrpcResponseObserver<>();
 
-        log.debug("Getting switch status for switch {}", address);
+        log.info("Getting switch status for switch {}", address);
 
         stub.showStatusSwitch(StatusSwitch.newBuilder().build(), observer);
         return observer.future
@@ -132,7 +132,7 @@ public class GrpcSession {
                 .setLogicalportno(port.getLogicalPortNumber())
                 .build();
 
-        log.debug("About to create logical port: {}", request);
+        log.info("About to create logical port: {}", request);
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
 
@@ -152,7 +152,7 @@ public class GrpcSession {
                 .setLogicalportno(port)
                 .build();
 
-        log.debug("Reading logical port {} from the switch: {}", port, address);
+        log.info("Reading logical port {} from the switch: {}", port, address);
 
         GrpcResponseObserver<LogicalPort> observer = new GrpcResponseObserver<>();
         stub.showConfigLogicalPort(request, observer);
@@ -169,7 +169,7 @@ public class GrpcSession {
     public CompletableFuture<List<LogicalPort>> dumpLogicalPorts() {
         LogicalPort request = LogicalPort.newBuilder().build();
 
-        log.debug("Getting all logical ports for switch: {}", address);
+        log.info("Getting all logical ports for switch: {}", address);
 
         GrpcResponseObserver<LogicalPort> observer = new GrpcResponseObserver<>();
         stub.showConfigLogicalPort(request, observer);
@@ -190,7 +190,7 @@ public class GrpcSession {
                 .setLogicalportno(port)
                 .build();
 
-        log.debug("Deleting logical port for switch {}", address);
+        log.info("Deleting logical port for switch {}", address);
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
         stub.delConfigLogicalPort(logicalPort, observer);
@@ -210,7 +210,7 @@ public class GrpcSession {
                 .setStatus(OnOff.forNumber(logMessagesDto.getState().getNumber()))
                 .build();
 
-        log.debug("Change enabling status of log messages for switch {}", address);
+        log.info("Change enabling status of log messages for switch {}", address);
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
         stub.setLogMessages(logMessages, observer);
@@ -230,7 +230,7 @@ public class GrpcSession {
                 .setStatus(OnOff.forNumber(logOferrorsDto.getState().getNumber()))
                 .build();
 
-        log.debug("Change enabling status of log OF errors for switch {}", address);
+        log.info("Change enabling status of log OF errors for switch {}", address);
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
         stub.setLogOferrors(logOferrors, observer);
@@ -247,7 +247,7 @@ public class GrpcSession {
     public CompletableFuture<Optional<RemoteLogServer>> showConfigRemoteLogServer() {
         ShowRemoteLogServer showRemoteLogServer = ShowRemoteLogServer.newBuilder().build();
 
-        log.debug("Get remote log server for switch {}", address);
+        log.info("Get remote log server for switch {}", address);
 
         GrpcResponseObserver<RemoteLogServer> observer = new GrpcResponseObserver<>();
         stub.showConfigRemoteLogServer(showRemoteLogServer, observer);
@@ -271,7 +271,7 @@ public class GrpcSession {
                 .build();
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
-        log.debug("Set remote log server for switch {}", address);
+        log.info("Set remote log server for switch {}", address);
         stub.setConfigRemoteLogServer(logServer, observer);
 
         return observer.future
@@ -287,7 +287,7 @@ public class GrpcSession {
         RemoteLogServer logServer = RemoteLogServer.newBuilder().build();
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
-        log.debug("Delete remote log server for switch {}", address);
+        log.info("Delete remote log server for switch {}", address);
         stub.delConfigRemoteLogServer(logServer, observer);
 
         return observer.future
@@ -342,7 +342,7 @@ public class GrpcSession {
         }
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
-        log.debug("Set port {} configuration for switch {}", portNumber, address);
+        log.info("Set port {} configuration for switch {}", portNumber, address);
 
         stub.setConfigPort(builder.build(), observer);
 
@@ -366,7 +366,7 @@ public class GrpcSession {
         }
 
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>();
-        log.debug("Set license for switch {}", address);
+        log.info("Set license for switch {}", address);
 
         stub.setConfigLicense(licenseBuilder.build(), observer);
 

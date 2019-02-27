@@ -42,7 +42,8 @@ public class MessageConsumerConfig {
     /**
      * Kafka queue poll timeout.
      */
-    private static final int POLL_TIMEOUT = 3000;
+    @Value("${grpc.speaker.kafka.session.timeout}")
+    private int pollTimeout;
 
     /**
      * Kafka bootstrap servers.
@@ -111,7 +112,7 @@ public class MessageConsumerConfig {
         ConcurrentKafkaListenerContainerFactory<String, CommandMessage> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
-        factory.getContainerProperties().setPollTimeout(POLL_TIMEOUT);
+        factory.getContainerProperties().setPollTimeout(pollTimeout);
         factory.setConcurrency(kafkaListeners);
         return factory;
     }

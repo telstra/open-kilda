@@ -27,9 +27,9 @@ import lombok.NoArgsConstructor;
 import lombok.NonNull;
 
 @Data
-@EqualsAndHashCode
 @AllArgsConstructor
 @NoArgsConstructor
+@EqualsAndHashCode
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
 public class LogMessagesDto {

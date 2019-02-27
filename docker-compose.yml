@@ -322,9 +322,6 @@ services:
       context: services/src/grpc-speaker/grpc-service/
     ports:
     - "8091:8091"
-    environment:
-      REST_USERNAME: 'kilda'
-      REST_PASSWORD: 'kilda'
     depends_on:
       kafka:
         condition: service_healthy

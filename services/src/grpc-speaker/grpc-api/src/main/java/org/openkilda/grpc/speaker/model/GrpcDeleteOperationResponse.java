@@ -17,11 +17,9 @@ package org.openkilda.grpc.speaker.model;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Value;
 
-@Data
-@AllArgsConstructor
+@Value
 @JsonNaming(SnakeCaseStrategy.class)
 public class GrpcDeleteOperationResponse {
 
