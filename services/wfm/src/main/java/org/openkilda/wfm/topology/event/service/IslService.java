@@ -21,7 +21,7 @@ import org.openkilda.model.IslStatus;
 import org.openkilda.model.LinkProps;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -42,7 +42,7 @@ public class IslService {
     private IslRepository islRepository;
     private LinkPropsRepository linkPropsRepository;
     private SwitchRepository switchRepository;
-    private FlowSegmentRepository flowSegmentRepository;
+    private FlowPathRepository flowPathRepository;
     private FeatureTogglesRepository featureTogglesRepository;
 
     private int islCostWhenUnderMaintenance;
@@ -54,7 +54,7 @@ public class IslService {
         islRepository = repositoryFactory.createIslRepository();
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
-        flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
+        flowPathRepository = repositoryFactory.createFlowPathRepository();
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }
 
@@ -123,7 +123,7 @@ public class IslService {
             islRepository.createOrUpdate(reverseIsl);
         });
 
-        long usedBandwidth = flowSegmentRepository.getUsedBandwidthBetweenEndpoints(
+        long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(
                 isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(),
                 isl.getDestSwitch().getSwitchId(), isl.getDestPort());
         daoIsl.setAvailableBandwidth(daoIsl.getMaxBandwidth() - usedBandwidth);
@@ -254,7 +254,7 @@ public class IslService {
         Collection<Isl> isls = islRepository.findBySrcEndpoint(isl.getSrcSwitch().getSwitchId(), isl.getSrcPort())
                 .stream()
                 .filter(link -> IslStatus.ACTIVE == link.getStatus()
-                              || IslStatus.MOVED == islStatus)
+                        || IslStatus.MOVED == islStatus)
                 .collect(Collectors.toList());
 
         for (Isl link : isls) {

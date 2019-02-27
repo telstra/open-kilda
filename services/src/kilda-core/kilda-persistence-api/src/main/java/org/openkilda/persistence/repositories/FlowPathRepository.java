@@ -18,7 +18,6 @@ package org.openkilda.persistence.repositories;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
-import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
@@ -33,13 +32,11 @@ public interface FlowPathRepository extends Repository<FlowPath> {
 
     Collection<FlowPath> findByFlowGroupId(String flowGroupId);
 
-    Collection<PathSegment> findPathSegmentsBySrcSwitchId(SwitchId switchId);
+    Collection<FlowPath> findByEndpointSwitch(SwitchId switchId);
 
-    Collection<FlowPath> findBySegmentSrcSwitchId(SwitchId switchId);
+    Collection<FlowPath> findBySegmentSrcSwitch(SwitchId switchId);
 
-    Collection<PathSegment> findPathSegmentsByDestSwitchId(SwitchId switchId);
-
-    Collection<FlowPath> findBySegmentDestSwitchId(SwitchId switchId);
+    Collection<FlowPath> findBySegmentDestSwitch(SwitchId switchId);
 
     long getUsedBandwidthBetweenEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
 }

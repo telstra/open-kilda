@@ -88,8 +88,6 @@ public class FlowPath implements Serializable {
     @Property(name = "ignore_bandwidth")
     private boolean ignoreBandwidth;
 
-    private Long minAvailableBandwidth;
-
     @Property(name = "time_create")
     @Convert(InstantStringConverter.class)
     private Instant timeCreate;
@@ -152,13 +150,13 @@ public class FlowPath implements Serializable {
     }
 
     /**
-     * Checks whether a flow is forward.
+     * Checks whether a flow path has forward masked cookie.
      *
      * @return boolean flag
      */
-    public boolean isForward() {
-        boolean isForward = cookie.isMarkedAsForward();
-        boolean isReversed = cookie.isMarkedAsReversed();
+    public boolean hasForwardCookie() {
+        boolean isForward = cookie.isMaskedAsForward();
+        boolean isReversed = cookie.isMaskedAsReversed();
 
         if (isForward && isReversed) {
             throw new IllegalArgumentException(
@@ -166,15 +164,6 @@ public class FlowPath implements Serializable {
         }
 
         return isForward;
-    }
-
-    /**
-     * Checks whether a flow is reverse.
-     *
-     * @return boolean flag
-     */
-    public boolean isReverse() {
-        return !isForward();
     }
 
     /**

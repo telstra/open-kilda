@@ -146,8 +146,6 @@ public class Flow implements Serializable {
                 FlowEncapsulationType encapsulationType, FlowStatus status,
                 Integer maxLatency, Integer priority,
                 Instant timeCreate, Instant timeModify) {
-        validateEndpoints(srcSwitch.getSwitchId(), srcPort, destSwitch.getSwitchId(), destPort);
-
         this.flowId = flowId;
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
@@ -194,18 +192,6 @@ public class Flow implements Serializable {
         } else {
             this.forwardPath = null;
             this.forwardPathId = null;
-        }
-    }
-
-    private void validateEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId destSwitchId, int destPort) {
-        checkArgument(srcSwitchId.compareTo(destSwitchId) <= 0,
-                "The source and destination endpoints are in wrong order. "
-                        + "The source is expected to be less or equal to the destination.");
-
-        if (srcSwitchId.equals(destSwitchId)) {
-            checkArgument(srcPort < destPort,
-                    "The source and destination ports are in wrong order. "
-                            + "The source is expected to be less or equal to the destination.");
         }
     }
 

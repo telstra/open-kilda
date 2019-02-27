@@ -30,7 +30,6 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Sets;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 
@@ -175,28 +174,6 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     }
 
     @Override
-    public Collection<Flow> findBySrcSwitchId(SwitchId switchId) {
-        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
-        return loadAll(srcSwitchFilter).stream()
-                .map(flow -> {
-                    flow.setForwardPath(findFlowPathByPathId(flow.getForwardPathId()));
-                    flow.setReversePath(findFlowPathByPathId(flow.getReversePathId()));
-                    return flow;
-                }).collect(Collectors.toList());
-    }
-
-    @Override
-    public Collection<Flow> findByDstSwitchId(SwitchId switchId) {
-        Filter dstSwitchFilter = createDstSwitchFilter(switchId);
-        return loadAll(dstSwitchFilter).stream()
-                .map(flow -> {
-                    flow.setForwardPath(findFlowPathByPathId(flow.getForwardPathId()));
-                    flow.setReversePath(findFlowPathByPathId(flow.getReversePathId()));
-                    return flow;
-                }).collect(Collectors.toList());
-    }
-
-    @Override
     public void createOrUpdate(Flow flow) {
         transactionManager.doInTransaction(() -> {
             lockSwitches(requireManagedEntity(flow.getSrcSwitch()), requireManagedEntity(flow.getDestSwitch()));
@@ -260,15 +237,21 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     }
 
     @Override
-    public Set<String> findFlowIdsBySwitch(SwitchId switchId) {
+    public Set<String> findFlowIdsWithSwitchInPath(SwitchId switchId) {
         Map<String, Object> parameters = ImmutableMap.of(
                 "switch_id", switchId);
 
-        return Sets.newHashSet(getSession().query(String.class, "MATCH (src:switch)-[ps:path_segment]->(dst:switch) "
-                + "WHERE src.name=$switch_id "
-                + "OR dst.name=$switch_id "
+        Set<String> flowIds = new HashSet<>();
+        // Treat empty status as UP to support old storage schema.
+        getSession().query(String.class, "MATCH (src:switch)-[f:flow]->(dst:switch) "
+                + "WHERE (src.name=$switch_id OR dst.name=$switch_id) "
+                + "RETURN f.flowid", parameters).forEach(flowIds::add);
+
+        getSession().query(String.class, "MATCH (src:switch)-[ps:path_segment]->(dst:switch) "
+                + "WHERE (src.name=$switch_id OR dst.name=$switch_id) "
                 + "MATCH ()-[fp:flow_path { path_id: ps.path_id }]->() "
-                + "RETURN fp.flow_id", parameters));
+                + "RETURN fp.flow_id", parameters).forEach(flowIds::add);
+        return flowIds;
     }
 
     private FlowPath findFlowPathByPathId(PathId pathId) {

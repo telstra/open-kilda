@@ -88,7 +88,7 @@ public class Cookie implements Comparable<Cookie>, Serializable {
     /**
      * Checks whether the cookie corresponds to the forward flow mask.
      */
-    public boolean isMarkedAsForward() {
+    public boolean isMaskedAsForward() {
         boolean isMatch;
         if ((value & 0xE000000000000000L) != 0) {
             isMatch = (value & FORWARD_FLOW_COOKIE_MASK) != 0;
@@ -102,7 +102,7 @@ public class Cookie implements Comparable<Cookie>, Serializable {
     /**
      * Checks whether the cookie corresponds to the reverse flow mask.
      */
-    public boolean isMarkedAsReversed() {
+    public boolean isMaskedAsReversed() {
         boolean isMatch;
         if ((value & 0xE000000000000000L) != 0) {
             isMatch = (value & REVERSE_FLOW_COOKIE_MASK) != 0;

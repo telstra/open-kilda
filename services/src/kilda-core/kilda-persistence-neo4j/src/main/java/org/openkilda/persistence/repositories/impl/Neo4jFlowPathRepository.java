@@ -119,7 +119,7 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
         paths.forEach(path -> path.setSegments(findPathSegmentsByPathId(path.getPathId())));
         return paths;
     }
-    
+
     private List<PathSegment> findPathSegmentsByPathId(PathId pathId) {
         Filter pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, pathId);
 
@@ -129,39 +129,46 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     }
 
     @Override
-    public Collection<PathSegment> findPathSegmentsBySrcSwitchId(SwitchId switchId) {
-        Filter srcSwitchIdFilter = createSrcSwitchFilter(switchId);
+    public Collection<FlowPath> findByEndpointSwitch(SwitchId switchId) {
+        Map<String, Object> parameters = ImmutableMap.of("switch_id", switchId.toString());
+        String query = "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
+                + "WHERE src.name = $switch_id or dst.name = $switch_id "
+                + "RETURN src, fp, dst";
 
-        return getSession().loadAll(PathSegment.class, srcSwitchIdFilter, getDepthLoadEntity());
-    }
-
-    @Override
-    public Collection<FlowPath> findBySegmentSrcSwitchId(SwitchId switchId) {
+        Collection<FlowPath> paths = Lists.newArrayList(getSession().query(FlowPath.class, query, parameters));
         //TODO: this is slow and requires optimization
-        return findPathSegmentsBySrcSwitchId(switchId).stream()
-                .map(PathSegment::getPathId)
-                .map(this::findById)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
+        paths.forEach(path -> path.setSegments(findPathSegmentsByPathId(path.getPathId())));
+        return paths;
     }
 
     @Override
-    public Collection<PathSegment> findPathSegmentsByDestSwitchId(SwitchId switchId) {
-        Filter destSwitchIdFilter = createDstSwitchFilter(switchId);
+    public Collection<FlowPath> findBySegmentSrcSwitch(SwitchId switchId) {
+        Map<String, Object> parameters = ImmutableMap.of("switch_id", switchId.toString());
+        String query = "MATCH (:switch {name: $switch_id})-[ps:path_segment]->(:switch) "
+                + "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
+                + "WHERE ps.path_id = fp.path_id "
+                + "RETURN src, fp, dst";
 
-        return getSession().loadAll(PathSegment.class, destSwitchIdFilter, getDepthLoadEntity());
-    }
-
-    @Override
-    public Collection<FlowPath> findBySegmentDestSwitchId(SwitchId switchId) {
+        Collection<FlowPath> paths = Lists.newArrayList(getSession().query(FlowPath.class, query, parameters));
         //TODO: this is slow and requires optimization
-        return findPathSegmentsByDestSwitchId(switchId).stream()
-                .map(PathSegment::getPathId)
-                .map(this::findById)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
+        paths.forEach(path -> path.setSegments(findPathSegmentsByPathId(path.getPathId())));
+
+        return paths;
+    }
+
+    @Override
+    public Collection<FlowPath> findBySegmentDestSwitch(SwitchId switchId) {
+        Map<String, Object> parameters = ImmutableMap.of("switch_id", switchId.toString());
+        String query = "MATCH (:switch)-[ps:path_segment]->(:switch {name: $switch_id}) "
+                + "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
+                + "WHERE ps.path_id = fp.path_id "
+                + "RETURN src, fp, dst";
+
+        Collection<FlowPath> paths = Lists.newArrayList(getSession().query(FlowPath.class, query, parameters));
+        //TODO: this is slow and requires optimization
+        paths.forEach(path -> path.setSegments(findPathSegmentsByPathId(path.getPathId())));
+
+        return paths;
     }
 
     @Override
