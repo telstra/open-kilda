@@ -24,6 +24,7 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
+import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
@@ -38,6 +39,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -106,17 +108,22 @@ public class IslUtils {
      * Returns 'reverse' version of the passed ISL.
      *
      * @param isl ISL to reverse
+     * @deprecated use isl.getReversed() instead
      */
+    @Deprecated
     public static Isl reverseIsl(Isl isl) {
-        if (isl.getDstSwitch() == null) {
-            return isl; //don't reverse not connected ISL
-        }
-        ASwitchFlow reversedAsw = null;
-        if (isl.getAswitch() != null) {
-            reversedAsw = isl.getAswitch().getReversed();
-        }
-        return Isl.factory(isl.getDstSwitch(), isl.getDstPort(), isl.getSrcSwitch(),
-                isl.getSrcPort(), isl.getMaxBandwidth(), reversedAsw, isl.isBfd());
+        return isl.getReversed();
+    }
+
+    /**
+     * Converts a given Isl object to LinkPropsDto object.
+     *
+     * @param isl Isl object to convert
+     * @param props Isl props to set when creating LinkPropsDto
+     */
+    public LinkPropsDto toLinkProps(Isl isl, HashMap props) {
+        return new LinkPropsDto(isl.getSrcSwitch().getDpId().toString(), isl.getSrcPort(),
+                isl.getDstSwitch().getDpId().toString(), isl.getDstPort(), props);
     }
 
     /**
