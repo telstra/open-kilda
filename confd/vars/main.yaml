@@ -82,6 +82,7 @@ kilda_opentsdb_workers_datapointparserbolt: 1
 kilda_opentsdb_batch_size: 50
 kilda_opentsdb_flush_interval: 1
 kilda_opentsdb_workers: 1
+kilda_opentsdb_metric_prefix: "kilda."
 
 kilda_production_fileserver: "http://127.0.0.1"
 

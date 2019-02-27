@@ -49,6 +49,7 @@ opentsdb.batch.size = 50
 opentsdb.flush.interval = 1
 opentsdb.workers = 1
 opentsdb.client.chunked-requests.enabled = true
+opentsdb.metric.prefix = kilda.
 
 neo4j.uri = bolt://neo4j.pendev:7687
 neo4j.user = neo4j
