@@ -17,15 +17,15 @@ package org.openkilda.wfm.topology.nbworker.services;
 
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowSegment;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -50,7 +50,7 @@ public class SwitchOperationsService {
     private LinkOperationsService linkOperationsService;
     private IslRepository islRepository;
     private FlowRepository flowRepository;
-    private FlowSegmentRepository flowSegmentRepository;
+    private FlowPathRepository flowPathRepository;
 
     public SwitchOperationsService(RepositoryFactory repositoryFactory,
                                    TransactionManager transactionManager,
@@ -61,7 +61,7 @@ public class SwitchOperationsService {
                 = new LinkOperationsService(repositoryFactory, transactionManager, islCostWhenUnderMaintenance);
         this.islRepository = repositoryFactory.createIslRepository();
         this.flowRepository = repositoryFactory.createFlowRepository();
-        this.flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
+        this.flowPathRepository = repositoryFactory.createFlowPathRepository();
     }
 
     /**
@@ -134,7 +134,6 @@ public class SwitchOperationsService {
      * @param switchId ID of switch to be deleted
      * @param force if True all switch relationships will be deleted too.
      *              If False switch will be deleted only if it has no relations.
-     *
      * @return True if switch was deleted, False otherwise
      * @throws SwitchNotFoundException if switch is not found
      */
@@ -196,12 +195,12 @@ public class SwitchOperationsService {
      * @throws IllegalSwitchStateException if switch has Flow Segment relations
      */
     public void checkSwitchHasNoFlowSegments(SwitchId switchId) throws IllegalSwitchStateException {
-        Collection<FlowSegment> outgoingFlowSegments = flowSegmentRepository.findBySrcSwitchId(switchId);
-        Collection<FlowSegment> ingoingFlowSegments = flowSegmentRepository.findByDestSwitchId(switchId);
+        Collection<FlowPath> outgoingFlowPaths = flowPathRepository.findBySegmentSrcSwitchId(switchId);
+        Collection<FlowPath> ingoingFlowPaths = flowPathRepository.findBySegmentDestSwitchId(switchId);
 
-        if (!ingoingFlowSegments.isEmpty() || !outgoingFlowSegments.isEmpty()) {
+        if (!ingoingFlowPaths.isEmpty() || !outgoingFlowPaths.isEmpty()) {
             String message = String.format("Switch '%s' has %d assigned rules. It must be freed first.",
-                    switchId, ingoingFlowSegments.size() + outgoingFlowSegments.size());
+                    switchId, ingoingFlowPaths.size() + outgoingFlowPaths.size());
             throw new IllegalSwitchStateException(switchId.toString(), message);
         }
     }

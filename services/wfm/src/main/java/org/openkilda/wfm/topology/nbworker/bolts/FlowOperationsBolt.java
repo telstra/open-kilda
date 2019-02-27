@@ -24,9 +24,9 @@ import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.request.RerouteFlowsForIslRequest;
-import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.share.mappers.FlowMapper;
@@ -99,7 +99,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         try {
             flowIds = flowOperationsService.getFlowIdsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
                     .map(FlowPair::getForward)
-                    .map(Flow::getFlowId)
+                    .map(UnidirectionalFlow::getFlowId)
                     .collect(Collectors.toList());
         } catch (IslNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
