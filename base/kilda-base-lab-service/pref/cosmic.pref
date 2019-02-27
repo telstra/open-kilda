@@ -1,0 +1,12 @@
+Package: *
+Pin: release n=cosmic
+Pin-Priority: -10
+
+# 18.04 -> 18.10
+Package: iperf3
+Pin: release n=cosmic
+Pin-Priority: 1000
+
+Package: libiperf0
+Pin: release n=cosmic
+Pin-Priority: 1000

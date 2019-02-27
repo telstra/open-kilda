@@ -13,9 +13,14 @@
 #   limitations under the License.
 #
 
-FROM ubuntu:xenial
+FROM ubuntu:bionic
 
 ENV DEBIAN_FRONTEND noninteractive
+
+# pick some packages from cosmic release
+RUN echo "deb http://ru.archive.ubuntu.com/ubuntu/ cosmic main restricted" >> /etc/apt/sources.list
+RUN echo "deb http://ru.archive.ubuntu.com/ubuntu/ cosmic universe" >> /etc/apt/sources.list
+COPY pref/cosmic.pref /etc/apt/preferences.d/
 
 RUN apt update \
     && apt install -y --no-install-recommends \
