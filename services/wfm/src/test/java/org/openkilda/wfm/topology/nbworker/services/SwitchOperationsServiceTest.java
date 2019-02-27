@@ -48,9 +48,7 @@ public class SwitchOperationsServiceTest extends Neo4jBasedTest {
 
     @Test
     public void shouldUpdateLinkUnderMaintenanceFlag() throws SwitchNotFoundException {
-        Switch sw = new Switch();
-        sw.setSwitchId(TEST_SWITCH_ID);
-        sw.setStatus(SwitchStatus.ACTIVE);
+        Switch sw = Switch.builder().switchId(TEST_SWITCH_ID).status(SwitchStatus.ACTIVE).build();
         switchRepository.createOrUpdate(sw);
 
         switchOperationsService.updateSwitchUnderMaintenanceFlag(TEST_SWITCH_ID, true);

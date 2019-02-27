@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.resilience
 
+import spock.lang.Ignore
+
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -18,6 +20,7 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 
+@Ignore
 @Slf4j
 @Narrative("Test system behavior under different factors or events that randomly appear across the topology")
 class ChaosSpec extends BaseSpecification {

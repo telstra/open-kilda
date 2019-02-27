@@ -146,8 +146,6 @@ public class Flow implements Serializable {
                 FlowEncapsulationType encapsulationType, FlowStatus status,
                 Integer maxLatency, Integer priority,
                 Instant timeCreate, Instant timeModify) {
-        validateEndpoints(srcSwitch.getSwitchId(), srcPort, destSwitch.getSwitchId(), destPort);
-
         this.flowId = flowId;
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
@@ -168,6 +166,8 @@ public class Flow implements Serializable {
         this.priority = priority;
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
+
+        validateEndpoints();
     }
 
     /**
@@ -197,15 +197,21 @@ public class Flow implements Serializable {
         }
     }
 
-    private void validateEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId destSwitchId, int destPort) {
-        checkArgument(srcSwitchId.compareTo(destSwitchId) <= 0,
+    private void validateEndpoints() {
+        checkArgument(srcSwitch.getSwitchId().compareTo(destSwitch.getSwitchId()) <= 0,
                 "The source and destination endpoints are in wrong order. "
                         + "The source is expected to be less or equal to the destination.");
 
-        if (srcSwitchId.equals(destSwitchId)) {
-            checkArgument(srcPort < destPort,
+        if (srcSwitch.getSwitchId().equals(destSwitch.getSwitchId())) {
+            checkArgument(srcPort <= destPort,
                     "The source and destination ports are in wrong order. "
-                            + "The source is expected to be less or equal to the destination.");
+                            + "The source port is expected to be less or equal to the destination port.");
+
+            if (srcPort == destPort) {
+                checkArgument(srcVlan <= destVlan,
+                        "The source and destination vlans are in wrong order. "
+                                + "The source vlan is expected to be less  to the destination vlan.");
+            }
         }
     }
 

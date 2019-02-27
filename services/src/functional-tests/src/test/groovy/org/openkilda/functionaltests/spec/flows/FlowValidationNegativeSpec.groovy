@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import spock.lang.Ignore
+
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.BaseSpecification
@@ -27,6 +29,7 @@ import spock.lang.Unroll
             """)
 class FlowValidationNegativeSpec extends BaseSpecification {
 
+    @Ignore
     @Unroll
     def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration"() {
         given: "Two flows with #flowConfig configuration"

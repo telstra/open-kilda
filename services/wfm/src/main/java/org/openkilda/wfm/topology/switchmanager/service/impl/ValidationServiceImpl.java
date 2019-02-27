@@ -16,12 +16,10 @@
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import org.openkilda.model.Cookie;
-import org.openkilda.model.Flow;
-import org.openkilda.model.FlowSegment;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
@@ -35,24 +33,24 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class ValidationServiceImpl implements ValidationService {
-    private FlowRepository flowRepository;
-    private FlowSegmentRepository flowSegmentRepository;
+    private FlowPathRepository flowPathRepository;
 
     public ValidationServiceImpl(PersistenceManager persistenceManager) {
-        this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        this.flowSegmentRepository = persistenceManager.getRepositoryFactory().createFlowSegmentRepository();
+        this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
     }
 
     @Override
     public ValidateRulesResult validate(SwitchId switchId, Set<Long> presentCookies) {
         log.debug("Validating rules on switch {}", switchId);
 
-        Set<Long> expectedCookies = flowSegmentRepository.findByDestSwitchId(switchId).stream()
-                .map(FlowSegment::getCookie)
+        Set<Long> expectedCookies = flowPathRepository.findBySegmentDestSwitchId(switchId).stream()
+                .map(FlowPath::getCookie)
+                .map(Cookie::getValue)
                 .collect(Collectors.toSet());
 
-        flowRepository.findBySrcSwitchId(switchId).stream()
-                .map(Flow::getCookie)
+        flowPathRepository.findBySrcSwitchId(switchId).stream()
+                .map(FlowPath::getCookie)
+                .map(Cookie::getValue)
                 .forEach(expectedCookies::add);
 
         presentCookies.removeIf(Cookie::isDefaultRule);

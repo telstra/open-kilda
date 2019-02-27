@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import spock.lang.Ignore
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeFalse
 import static org.junit.Assume.assumeTrue
@@ -464,6 +466,7 @@ class SwitchRulesSpec extends BaseSpecification {
         ]
     }
 
+    @Ignore
     @Unroll
     def "Able to synchronize rules for #description on a switch (install missing rules)"() {
         given: "Two active not neighboring switches"

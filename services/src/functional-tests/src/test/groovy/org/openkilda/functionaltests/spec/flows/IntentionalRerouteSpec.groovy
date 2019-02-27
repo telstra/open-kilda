@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import spock.lang.Ignore
+
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -18,6 +20,7 @@ import spock.lang.Narrative
 
 import javax.inject.Provider
 
+@Ignore
 @Narrative("Verify that on-demand reroute operations are performed accurately.")
 class IntentionalRerouteSpec extends BaseSpecification {
 

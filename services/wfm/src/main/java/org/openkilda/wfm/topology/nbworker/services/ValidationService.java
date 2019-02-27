@@ -19,11 +19,9 @@ import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.model.Cookie;
-import org.openkilda.model.Flow;
-import org.openkilda.model.FlowSegment;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 
 import com.google.common.collect.ImmutableList;
@@ -44,19 +42,21 @@ public class ValidationService {
 
     /**
      * Runs validating process.
+     *
      * @return validation result as RulesResponse
      */
     public SyncRulesResponse validate(SwitchFlowEntries request) {
         SwitchId switchId = request.getSwitchId();
         log.debug("Validating rules on switch {}", switchId);
 
-        FlowSegmentRepository flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
-        Set<Long> expectedCookies = flowSegmentRepository.findByDestSwitchId(switchId).stream()
-                .map(FlowSegment::getCookie)
+        FlowPathRepository flowPathRepository = repositoryFactory.createFlowPathRepository();
+        Set<Long> expectedCookies = flowPathRepository.findBySegmentDestSwitchId(switchId).stream()
+                .map(FlowPath::getCookie)
+                .map(Cookie::getValue)
                 .collect(Collectors.toSet());
-        FlowRepository flowRepository = repositoryFactory.createFlowRepository();
-        flowRepository.findBySrcSwitchId(switchId).stream()
-                .map(Flow::getCookie)
+        flowPathRepository.findBySrcSwitchId(switchId).stream()
+                .map(FlowPath::getCookie)
+                .map(Cookie::getValue)
                 .forEach(expectedCookies::add);
         if (log.isDebugEnabled()) {
             log.debug("Expected rules on switch {}: {}", switchId, cookiesIntoLogRepresentaion(expectedCookies));

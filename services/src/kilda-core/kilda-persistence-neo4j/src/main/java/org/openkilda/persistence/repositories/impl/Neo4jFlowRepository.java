@@ -175,28 +175,6 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     }
 
     @Override
-    public Collection<Flow> findBySrcSwitchId(SwitchId switchId) {
-        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
-        return loadAll(srcSwitchFilter).stream()
-                .map(flow -> {
-                    flow.setForwardPath(findFlowPathByPathId(flow.getForwardPathId()));
-                    flow.setReversePath(findFlowPathByPathId(flow.getReversePathId()));
-                    return flow;
-                }).collect(Collectors.toList());
-    }
-
-    @Override
-    public Collection<Flow> findByDstSwitchId(SwitchId switchId) {
-        Filter dstSwitchFilter = createDstSwitchFilter(switchId);
-        return loadAll(dstSwitchFilter).stream()
-                .map(flow -> {
-                    flow.setForwardPath(findFlowPathByPathId(flow.getForwardPathId()));
-                    flow.setReversePath(findFlowPathByPathId(flow.getReversePathId()));
-                    return flow;
-                }).collect(Collectors.toList());
-    }
-
-    @Override
     public void createOrUpdate(Flow flow) {
         transactionManager.doInTransaction(() -> {
             lockSwitches(requireManagedEntity(flow.getSrcSwitch()), requireManagedEntity(flow.getDestSwitch()));

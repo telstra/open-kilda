@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import spock.lang.Ignore
+
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -104,6 +106,7 @@ class SwitchDeleteSpec extends BaseSpecification {
         database.resetCosts()
     }
 
+    @Ignore
     @Unroll
     def "Unable to delete an inactive switch with a #flowType flow assigned"() {
         requireProfiles("virtual")

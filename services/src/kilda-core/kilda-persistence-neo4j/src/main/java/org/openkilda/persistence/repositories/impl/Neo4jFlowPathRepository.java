@@ -129,6 +129,16 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     }
 
     @Override
+    public Collection<FlowPath> findBySrcSwitchId(SwitchId switchId) {
+        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
+
+        Collection<FlowPath> paths = loadAll(srcSwitchFilter);
+        //TODO: this is slow and requires optimization
+        paths.forEach(path -> path.setSegments(findPathSegmentsByPathId(path.getPathId())));
+        return paths;
+    }
+
+    @Override
     public Collection<PathSegment> findPathSegmentsBySrcSwitchId(SwitchId switchId) {
         Filter srcSwitchIdFilter = createSrcSwitchFilter(switchId);
 

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
+import spock.lang.Ignore
+
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -75,6 +77,7 @@ when connection is lost(not port down)"() {
         }
     }
 
+    @Ignore
     def "Get all flows (UP/DOWN) going through a particular link"() {
         given: "Two active not neighboring switches"
         def switches = topology.getActiveSwitches()

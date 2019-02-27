@@ -33,6 +33,8 @@ public interface FlowPathRepository extends Repository<FlowPath> {
 
     Collection<FlowPath> findByFlowGroupId(String flowGroupId);
 
+    Collection<FlowPath> findBySrcSwitchId(SwitchId switchId);
+
     Collection<PathSegment> findPathSegmentsBySrcSwitchId(SwitchId switchId);
 
     Collection<FlowPath> findBySegmentSrcSwitchId(SwitchId switchId);
