@@ -207,7 +207,7 @@ public class RestClientManager {
 
             if (HttpMethod.POST.equals(httpMethod) || HttpMethod.PUT.equals(httpMethod)) {
                 LOGGER.info("[invoke] Executing POST/ PUT request : httpEntityEnclosingRequest : "
-                        + httpEntityEnclosingRequest + " : payload : " + payload);
+                        + httpEntityEnclosingRequest);
                 if (!StringUtil.isNullOrEmpty(headers)) {
                     for (String header : headers.split("\n")) {
                         getHeaders(headersMap, header);
