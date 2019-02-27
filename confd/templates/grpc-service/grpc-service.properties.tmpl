@@ -15,7 +15,5 @@ grpc.speaker.kafka.session.timeout=30000
 grpc.speaker.kafka.messages.expiration.minutes=15
 
 server.contextPath=/api/v1
-security.rest.username.env=REST_USERNAME
-security.rest.password.env=REST_PASSWORD
 security.rest.username.default={{ getv "/kilda_grpc_username" }}
 security.rest.password.default={{ getv "/kilda_grpc_username" }}
