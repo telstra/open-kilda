@@ -342,8 +342,8 @@ public class StatsIntegrationService {
     private List<Query> getIslLossPacketsQueries(List<Query> queries, final String downsample, final String flowId,
             final String srcSwitch, final String srcPort, final String dstSwitch, final String dstPort,
             final StatsType statsType, final List<String> metricList) {
-        Map<String, String[]> rxParams = getParam(statsType, null, null, flowId, srcSwitch, srcPort, null, null);
-        Map<String, String[]> txParams = getParam(statsType, null, null, flowId, null, null, dstSwitch, dstPort);
+        Map<String, String[]> txParams = getParam(statsType, null, null, flowId, srcSwitch, srcPort, null, null);
+        Map<String, String[]> rxParams = getParam(statsType, null, null, flowId, null, null, dstSwitch, dstPort);
         if (metricList != null && !metricList.isEmpty()) {
             queries.add(getQuery(downsample, metricList.get(0), rxParams, 0, statsType));
             queries.add(getQuery(downsample, metricList.get(1), txParams, 0, statsType));
