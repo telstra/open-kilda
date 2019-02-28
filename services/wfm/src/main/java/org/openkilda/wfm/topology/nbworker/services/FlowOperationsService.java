@@ -25,9 +25,9 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.share.service.IntersectionComputer;
-import org.openkilda.wfm.topology.flow.service.FlowNotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
 
