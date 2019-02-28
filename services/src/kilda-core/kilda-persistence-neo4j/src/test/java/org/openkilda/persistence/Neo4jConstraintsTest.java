@@ -15,30 +15,30 @@
 
 package org.openkilda.persistence;
 
-import org.openkilda.model.FlowCookie;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
-import org.openkilda.persistence.repositories.FlowCookieRepository;
+import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.persistence.repositories.impl.Neo4jFlowCookieRepository;
+import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository;
+import org.openkilda.persistence.repositories.impl.Neo4jTransitVlanRepository;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class Neo4jConstraintsTest extends Neo4jBasedTest {
-    static final long TEST_COOKIE = 1;
-    static final long TEST_COOKIE_2 = 2;
+    static final int TEST_VLAN = 1;
+    static final int TEST_VLAN_2 = 2;
     static final String TEST_FLOW_1_ID = "test_flow_1";
     static final String TEST_FLOW_2_ID = "test_flow_2";
 
     static SwitchRepository switchRepository;
-    static FlowCookieRepository flowCookieRepository;
+    static TransitVlanRepository transitVlanRepository;
 
     @BeforeClass
     public static void setUp() {
         switchRepository = new Neo4jSwitchRepository(neo4jSessionFactory, txManager);
-        flowCookieRepository = new Neo4jFlowCookieRepository(neo4jSessionFactory, txManager);
+        transitVlanRepository = new Neo4jTransitVlanRepository(neo4jSessionFactory, txManager);
     }
 
     @Test(expected = ConstraintViolationException.class)
@@ -49,20 +49,20 @@ public class Neo4jConstraintsTest extends Neo4jBasedTest {
         Switch dstSwitch = buildTestSwitch(2);
         switchRepository.createOrUpdate(dstSwitch);
 
-        FlowCookie flowCookie1 = FlowCookie.builder()
-                .unmaskedCookie(TEST_COOKIE)
+        TransitVlan transitVlan1 = TransitVlan.builder()
+                .vlan(TEST_VLAN)
                 .flowId(TEST_FLOW_1_ID)
                 .pathId(new PathId(TEST_FLOW_1_ID + "_path"))
                 .build();
-        flowCookieRepository.createOrUpdate(flowCookie1);
+        transitVlanRepository.createOrUpdate(transitVlan1);
 
         // when
-        FlowCookie flowCookie2 = FlowCookie.builder()
-                .unmaskedCookie(TEST_COOKIE_2)
+        TransitVlan transitVlan2 = TransitVlan.builder()
+                .vlan(TEST_VLAN_2)
                 .flowId(TEST_FLOW_2_ID)
                 .pathId(new PathId(TEST_FLOW_1_ID + "_path"))
                 .build();
-        flowCookieRepository.createOrUpdate(flowCookie2);
+        transitVlanRepository.createOrUpdate(transitVlan2);
     }
 
     @Test(expected = ConstraintViolationException.class)
@@ -73,20 +73,20 @@ public class Neo4jConstraintsTest extends Neo4jBasedTest {
         Switch dstSwitch = buildTestSwitch(2);
         switchRepository.createOrUpdate(dstSwitch);
 
-        FlowCookie flowCookie1 = FlowCookie.builder()
-                .unmaskedCookie(TEST_COOKIE)
+        TransitVlan transitVlan1 = TransitVlan.builder()
+                .vlan(TEST_VLAN)
                 .flowId(TEST_FLOW_1_ID)
                 .pathId(new PathId(TEST_FLOW_1_ID + "_path"))
                 .build();
-        flowCookieRepository.createOrUpdate(flowCookie1);
+        transitVlanRepository.createOrUpdate(transitVlan1);
 
         // when
-        FlowCookie flowCookie2 = FlowCookie.builder()
-                .unmaskedCookie(TEST_COOKIE_2)
+        TransitVlan transitVlan2 = TransitVlan.builder()
+                .vlan(TEST_VLAN_2)
                 .flowId(TEST_FLOW_1_ID)
                 .pathId(new PathId(TEST_FLOW_1_ID + "_path"))
                 .build();
-        flowCookieRepository.createOrUpdate(flowCookie2);
+        transitVlanRepository.createOrUpdate(transitVlan2);
     }
 
     @Test(expected = ConstraintViolationException.class)
@@ -97,20 +97,20 @@ public class Neo4jConstraintsTest extends Neo4jBasedTest {
         Switch dstSwitch = buildTestSwitch(2);
         switchRepository.createOrUpdate(dstSwitch);
 
-        FlowCookie flowCookie1 = FlowCookie.builder()
-                .unmaskedCookie(TEST_COOKIE)
+        TransitVlan transitVlan1 = TransitVlan.builder()
+                .vlan(TEST_VLAN)
                 .flowId(TEST_FLOW_1_ID)
                 .pathId(new PathId(TEST_FLOW_1_ID + "_path"))
                 .build();
-        flowCookieRepository.createOrUpdate(flowCookie1);
+        transitVlanRepository.createOrUpdate(transitVlan1);
 
         // when
-        FlowCookie flowCookie2 = FlowCookie.builder()
-                .unmaskedCookie(TEST_COOKIE)
+        TransitVlan transitVlan2 = TransitVlan.builder()
+                .vlan(TEST_VLAN)
                 .flowId(TEST_FLOW_1_ID)
                 .pathId(new PathId(TEST_FLOW_1_ID + "_path"))
                 .build();
-        flowCookieRepository.createOrUpdate(flowCookie2);
+        transitVlanRepository.createOrUpdate(transitVlan2);
     }
 }
 

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -57,12 +57,12 @@ public class Port implements Serializable {
     @Convert(graphPropertyType = String.class)
     private SwitchId switchId;
 
-    @Property(name = "port_no")
-    private int portNo;
-
     @NonNull
     @Relationship(type = "owned_by")
     private Switch theSwitch;
+
+    @Property(name = "port_no")
+    private int portNo;
 
     @Convert(graphPropertyType = String.class)
     private PortStatus status;
@@ -74,7 +74,7 @@ public class Port implements Serializable {
     private String uniqueIndex;
 
     @Builder(toBuilder = true)
-    public Port(int portNo, PortStatus status, @NonNull Switch theSwitch) {
+    public Port(@NonNull Switch theSwitch, int portNo, PortStatus status) {
         this.portNo = portNo;
         this.status = status;
 

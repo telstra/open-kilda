@@ -33,11 +33,11 @@ public interface RepositoryFactory {
 
     LinkPropsRepository createLinkPropsRepository();
 
-    FeatureTogglesRepository createFeatureTogglesRepository();
-
     SwitchPortRepository createSwitchPortRepository();
 
     SwitchRepository createSwitchRepository();
 
     TransitVlanRepository createTransitVlanRepository();
+
+    FeatureTogglesRepository createFeatureTogglesRepository();
 }

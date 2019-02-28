@@ -19,12 +19,12 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.model.FlowMeter;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanPool;
 
 import com.google.common.collect.ImmutableMap;
@@ -73,28 +73,34 @@ public class FlowResourcesManager {
                     .retryOn(ResourceNotAvailableException.class)
                     .withMaxRetries(MAX_ALLOCATION_ATTEMPTS))
                     .get(() -> transactionManager.doInTransaction(() -> {
-                        FlowResources.FlowResourcesBuilder flowResources = FlowResources.builder()
-                                .forwardPathId(forwardPathId)
-                                .reversePathId(reversePathId);
-                        flowResources.unmaskedCookie(cookiePool.allocate(flow.getFlowId(),
-                                forwardPathId, reversePathId));
+                        PathResources.PathResourcesBuilder forward = PathResources.builder()
+                                .pathId(forwardPathId);
+                        PathResources.PathResourcesBuilder reverse = PathResources.builder()
+                                .pathId(reversePathId);
 
                         if (flow.getBandwidth() > 0L) {
-                            FlowMeter forwardMeter = meterPool.allocateMeter(
-                                    flow.getSrcSwitch().getSwitchId(), flow.getFlowId(), forwardPathId);
-                            flowResources.forwardMeterId(forwardMeter.getMeterId());
-                            FlowMeter reverseMeter = meterPool.allocateMeter(
-                                    flow.getDestSwitch().getSwitchId(), flow.getFlowId(), reversePathId);
-                            flowResources.reverseMeterId(reverseMeter.getMeterId());
+                            forward.meterId(meterPool.allocate(
+                                    flow.getSrcSwitch().getSwitchId(), flow.getFlowId(), forwardPathId));
+
+                            reverse.meterId(meterPool.allocate(
+                                    flow.getDestSwitch().getSwitchId(), flow.getFlowId(), reversePathId));
                         }
 
                         if (!flow.isOneSwitchFlow()) {
-                            flowResources.encapsulationResources(
-                                    getEncapsulationResourcesProvider(flow.getEncapsulationType())
-                                            .allocate(flow, forwardPathId, reversePathId));
+                            EncapsulationResourcesProvider encapsulationResourcesProvider =
+                                    getEncapsulationResourcesProvider(flow.getEncapsulationType());
+                            forward.encapsulationResources(
+                                    encapsulationResourcesProvider.allocate(flow, forwardPathId));
+
+                            reverse.encapsulationResources(
+                                    encapsulationResourcesProvider.allocate(flow, reversePathId));
                         }
 
-                        return flowResources.build();
+                        return FlowResources.builder()
+                                .unmaskedCookie(cookiePool.allocate(flow.getFlowId()))
+                                .forward(forward.build())
+                                .reverse(reverse.build())
+                                .build();
                     }));
         } catch (ConstraintViolationException | ResourceNotAvailableException ex) {
             throw new ResourceAllocationException("Unable to allocate resources", ex);
@@ -117,15 +123,19 @@ public class FlowResourcesManager {
     /**
      * Deallocate the flow resources.
      */
-    public void deallocateFlowResources(Flow flow, PathId forwardPathId, PathId reversePathId) {
-        log.debug("Deallocate flow resources for {}/{}.", forwardPathId, reversePathId);
+    public void deallocateFlowResources(Flow flow, FlowResources flowResources) {
+        log.debug("Deallocate flow resources for {}: {}.", flow, flowResources);
 
         transactionManager.doInTransaction(() -> {
-            cookiePool.deallocate(forwardPathId, reversePathId);
-            meterPool.deallocateMeter(forwardPathId);
-            meterPool.deallocateMeter(reversePathId);
-            getEncapsulationResourcesProvider(flow.getEncapsulationType())
-                    .deallocate(forwardPathId, reversePathId);
+            cookiePool.deallocate(flowResources.getUnmaskedCookie());
+
+            meterPool.deallocate(flowResources.getForward().getPathId());
+            meterPool.deallocate(flowResources.getReverse().getPathId());
+
+            EncapsulationResourcesProvider encapsulationResourcesProvider =
+                    getEncapsulationResourcesProvider(flow.getEncapsulationType());
+            encapsulationResourcesProvider.deallocate(flowResources.getForward().getPathId());
+            encapsulationResourcesProvider.deallocate(flowResources.getReverse().getPathId());
         });
     }
 }

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -46,6 +46,10 @@ public class Cookie implements Comparable<Cookie>, Serializable {
 
     public static Cookie buildReverseCookie(long unmaskedCookie) {
         return new Cookie(unmaskedCookie | Cookie.REVERSE_FLOW_COOKIE_MASK);
+    }
+
+    public long getUnmaskedValue() {
+        return value & FLOW_COOKIE_VALUE_MASK;
     }
 
     public boolean isDefaultRule() {

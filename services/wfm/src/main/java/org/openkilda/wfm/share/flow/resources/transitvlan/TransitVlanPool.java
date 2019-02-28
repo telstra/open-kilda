@@ -48,43 +48,36 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
     }
 
     /**
-     * Allocates vlans for the flow paths.
+     * Allocates a vlan for the flow path.
      */
     @Override
-    public TransitVlanResources allocate(Flow flow, PathId forwardPathId, PathId reversePathId) {
-        return transactionManager.doInTransaction(() ->
-                TransitVlanResources.builder()
-                        .forwardTransitVlan(claimTransitVlan(flow.getFlowId(), forwardPathId))
-                        .reverseTransitVlan(claimTransitVlan(flow.getFlowId(), reversePathId))
-                        .build());
-    }
+    public TransitVlanResources allocate(Flow flow, PathId pathId) {
+        return transactionManager.doInTransaction(() -> {
+            int availableVlan = transitVlanRepository.findAvailableVlan().orElse(minTransitVlan);
+            if (availableVlan >= maxTransitVlan) {
+                throw new ResourceNotAvailableException("No vlan available");
+            }
 
-    private TransitVlan claimTransitVlan(String flowId, PathId pathId) {
-        int availableVlan = transitVlanRepository.findAvailableVlan().orElse(minTransitVlan);
-        if (availableVlan >= maxTransitVlan) {
-            throw new ResourceNotAvailableException("No vlan available");
-        }
+            TransitVlan transitVlan = TransitVlan.builder()
+                    .vlan(availableVlan)
+                    .flowId(flow.getFlowId())
+                    .pathId(pathId)
+                    .build();
+            transitVlanRepository.createOrUpdate(transitVlan);
 
-        TransitVlan transitVlan = TransitVlan.builder()
-                .vlan(availableVlan)
-                .flowId(flowId)
-                .pathId(pathId)
-                .build();
-        transitVlanRepository.createOrUpdate(transitVlan);
-
-        return transitVlan;
+            return TransitVlanResources.builder()
+                    .transitVlan(transitVlan)
+                    .build();
+        });
     }
 
     /**
-     * Deallocates vlans of the paths.
+     * Deallocates a vlan of the path.
      */
     @Override
-    public void deallocate(PathId forwardPathId, PathId reversePathId) {
-        transactionManager.doInTransaction(() -> {
-            transitVlanRepository.findByPathId(forwardPathId)
-                    .ifPresent(transitVlanRepository::delete);
-            transitVlanRepository.findByPathId(reversePathId)
-                    .ifPresent(transitVlanRepository::delete);
-        });
+    public void deallocate(PathId pathId) {
+        transactionManager.doInTransaction(() ->
+                transitVlanRepository.findByPathId(pathId)
+                        .ifPresent(transitVlanRepository::delete));
     }
 }

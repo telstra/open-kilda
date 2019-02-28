@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -50,14 +50,14 @@ public class TransitVlan implements Serializable {
     private Long entityId;
 
     @NonNull
+    @Property(name = "flow_id")
+    private String flowId;
+
+    @NonNull
     @Property(name = "path_id")
     @Index(unique = true)
     @Convert(graphPropertyType = String.class)
     private PathId pathId;
-
-    @NonNull
-    @Property(name = "flow_id")
-    private String flowId;
 
     @NonNull
     @Property(name = "vlan")
@@ -65,9 +65,9 @@ public class TransitVlan implements Serializable {
     private int vlan;
 
     @Builder(toBuilder = true)
-    public TransitVlan(@NonNull PathId pathId, @NonNull String flowId, int vlan) {
-        this.pathId = pathId;
+    public TransitVlan(@NonNull String flowId, @NonNull PathId pathId, int vlan) {
         this.flowId = flowId;
+        this.pathId = pathId;
         this.vlan = vlan;
     }
 }

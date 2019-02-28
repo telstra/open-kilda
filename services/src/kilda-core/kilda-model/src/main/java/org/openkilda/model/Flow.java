@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -112,15 +112,14 @@ public class Flow implements Serializable {
     private boolean periodicPings;
 
     @NonNull
-    @Property(name = "status")
-    // Enforce usage of custom converters.
-    @Convert(graphPropertyType = String.class)
-    private FlowStatus status;
-
-    @NonNull
     @Property(name = "encapsulation_type")
     @Convert(graphPropertyType = String.class)
     private FlowEncapsulationType encapsulationType;
+
+    @NonNull
+    // Enforce usage of custom converters.
+    @Convert(graphPropertyType = String.class)
+    private FlowStatus status;
 
     @Property(name = "time_create")
     @Convert(InstantStringConverter.class)
@@ -135,8 +134,10 @@ public class Flow implements Serializable {
                 int srcPort, int srcVlan, int destPort, int destVlan,
                 FlowPath forwardPath, FlowPath reversePath,
                 long bandwidth, boolean ignoreBandwidth, String description, boolean periodicPings,
-                FlowStatus status, FlowEncapsulationType encapsulationType,
+                FlowEncapsulationType encapsulationType, FlowStatus status,
                 Instant timeCreate, Instant timeModify) {
+        validateEndpoints(srcSwitch.getSwitchId(), srcPort, destSwitch.getSwitchId(), destPort);
+
         this.flowId = flowId;
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
@@ -150,8 +151,8 @@ public class Flow implements Serializable {
         this.ignoreBandwidth = ignoreBandwidth;
         this.description = description;
         this.periodicPings = periodicPings;
-        this.status = status;
         this.encapsulationType = encapsulationType;
+        this.status = status;
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
     }
@@ -180,6 +181,18 @@ public class Flow implements Serializable {
         } else {
             this.forwardPath = null;
             this.forwardPathId = null;
+        }
+    }
+
+    private void validateEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId destSwitchId, int destPort) {
+        checkArgument(srcSwitchId.compareTo(destSwitchId) <= 0,
+                "The source and destination endpoints are in wrong order. "
+                        + "The source is expected to be less or equal to the destination.");
+
+        if (srcSwitchId.equals(destSwitchId)) {
+            checkArgument(srcPort < destPort,
+                    "The source and destination ports are in wrong order. "
+                            + "The source is expected to be less or equal to the destination.");
         }
     }
 

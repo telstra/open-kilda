@@ -28,7 +28,7 @@ public interface OtsdbQueryService {
      * @param start gather stats 'after' this date
      * @param end gather stats 'before' this date
      * @param aggregator The name of an aggregation function to use. {@link Aggregator}
-     * @param metric Metric name, e.g. "pen.switch.state"
+     * @param metric Metric name, e.g. "kilda.switch.state"
      * @param tags tags in form of key-value pairs
      * @return query results
      * @see <a href="http://opentsdb.net/docs/build/html/api_http/query/index.html:>OpenTsdb HTTP API</a>

@@ -42,7 +42,7 @@ public class IslStatsTopology extends AbstractTopology<IslStatsTopologyConfig> {
         logger.debug("connecting to {} topic", topoDiscoTopic);
         builder.setSpout(ISL_STATS_SPOUT_ID, createKafkaSpout(topoDiscoTopic, ISL_STATS_SPOUT_ID));
 
-        IslStatsBolt verifyIslStatsBolt = new IslStatsBolt();
+        IslStatsBolt verifyIslStatsBolt = new IslStatsBolt(topologyConfig.getMetricPrefix());
         logger.debug("starting {} bolt", ISL_STATS_BOLT_ID);
         builder.setBolt(ISL_STATS_BOLT_ID, verifyIslStatsBolt, topologyConfig.getParallelism())
                 .shuffleGrouping(ISL_STATS_SPOUT_ID);

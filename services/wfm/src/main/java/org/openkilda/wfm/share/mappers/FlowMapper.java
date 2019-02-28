@@ -20,6 +20,7 @@ import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
@@ -128,6 +129,7 @@ public abstract class FlowMapper {
                 .periodicPings(flow.isPeriodicPings())
                 .forwardPath(forward ? flowPath : null)
                 .reversePath(forward ? null : flowPath)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build();
 
         TransitVlan transitVlan = TransitVlan.builder()

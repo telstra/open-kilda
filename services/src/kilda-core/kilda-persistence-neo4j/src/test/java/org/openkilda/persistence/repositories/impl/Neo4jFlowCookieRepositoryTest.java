@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package org.openkilda.persistence.repositories.impl;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.model.FlowCookie;
-import org.openkilda.model.PathId;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 
@@ -42,7 +41,6 @@ public class Neo4jFlowCookieRepositoryTest extends Neo4jBasedTest {
     public void shouldCreateFlowCookie() {
         FlowCookie cookie = FlowCookie.builder()
                 .unmaskedCookie(TEST_COOKIE)
-                .pathId(new PathId(TEST_FLOW_ID + "_path"))
                 .flowId(TEST_FLOW_ID)
                 .build();
         flowCookieRepository.createOrUpdate(cookie);
@@ -58,7 +56,6 @@ public class Neo4jFlowCookieRepositoryTest extends Neo4jBasedTest {
     public void shouldDeleteFlowCookie() {
         FlowCookie cookie = FlowCookie.builder()
                 .unmaskedCookie(TEST_COOKIE)
-                .pathId(new PathId(TEST_FLOW_ID + "_path"))
                 .flowId(TEST_FLOW_ID)
                 .build();
         flowCookieRepository.createOrUpdate(cookie);
@@ -72,7 +69,6 @@ public class Neo4jFlowCookieRepositoryTest extends Neo4jBasedTest {
     public void shouldDeleteFoundFlowCookie() {
         FlowCookie cookie = FlowCookie.builder()
                 .unmaskedCookie(TEST_COOKIE)
-                .pathId(new PathId(TEST_FLOW_ID + "_path"))
                 .flowId(TEST_FLOW_ID)
                 .build();
         flowCookieRepository.createOrUpdate(cookie);

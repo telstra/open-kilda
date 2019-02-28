@@ -93,11 +93,11 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     @Override
-    public List<Path> getNPaths(SwitchId srcSwitch, SwitchId dstSwitch, int count)
+    public List<Path> getNPaths(SwitchId srcSwitchId, SwitchId dstSwitchId, int count)
             throws RecoverableException, UnroutableFlowException {
         Flow flow = Flow.builder()
-                .srcSwitch(Switch.builder().switchId(srcSwitch).build())
-                .destSwitch(Switch.builder().switchId(dstSwitch).build())
+                .srcSwitch(Switch.builder().switchId(srcSwitchId).build())
+                .destSwitch(Switch.builder().switchId(dstSwitchId).build())
                 .ignoreBandwidth(false)
                 .bandwidth(1) // to get ISLs with non zero available bandwidth
                 .build();
@@ -105,19 +105,20 @@ public class InMemoryPathComputer implements PathComputer {
         AvailableNetwork availableNetwork = availableNetworkFactory.getAvailableNetwork(flow, false);
 
         List<List<Edge>> paths =
-                pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitch, dstSwitch, count);
+                pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitchId, dstSwitchId, count);
         return paths.stream()
-                .map(pathEdges -> convertToPath(srcSwitch, dstSwitch, pathEdges))
+                .map(edges -> convertToPath(srcSwitchId, dstSwitchId, edges))
                 .sorted(Comparator.comparing(Path::getMinAvailableBandwidth)
                         .thenComparing(Path::getLatency))
                 .limit(count)
                 .collect(Collectors.toList());
     }
 
-    private PathPair convertToPathPair(SwitchId srcSwitch, SwitchId dstSwitch, Pair<List<Edge>, List<Edge>> biPath) {
+    private PathPair convertToPathPair(SwitchId srcSwitchId, SwitchId dstSwitchId,
+                                       Pair<List<Edge>, List<Edge>> biPath) {
         return PathPair.builder()
-                .forward(convertToPath(srcSwitch, dstSwitch, biPath.getLeft()))
-                .reverse(convertToPath(dstSwitch, srcSwitch, biPath.getRight()))
+                .forward(convertToPath(srcSwitchId, dstSwitchId, biPath.getLeft()))
+                .reverse(convertToPath(dstSwitchId, srcSwitchId, biPath.getRight()))
                 .build();
     }
 

@@ -55,7 +55,7 @@ public class MeterPool {
     /**
      * Allocates a meter for the flow path.
      */
-    public FlowMeter allocateMeter(SwitchId switchId, String flowId, PathId pathId) {
+    public MeterId allocate(SwitchId switchId, String flowId, PathId pathId) {
         return transactionManager.doInTransaction(() -> {
             MeterId availableMeterId = flowMeterRepository.findAvailableMeterId(switchId).orElse(minMeterId);
             if (availableMeterId.compareTo(maxMeterId) >= 0) {
@@ -74,14 +74,14 @@ public class MeterPool {
                     .build();
             flowMeterRepository.createOrUpdate(flowMeter);
 
-            return flowMeter;
+            return flowMeter.getMeterId();
         });
     }
 
     /**
      * Deallocates a meter of the flow path.
      */
-    public void deallocateMeter(PathId pathId) {
+    public void deallocate(PathId pathId) {
         transactionManager.doInTransaction(() ->
                 flowMeterRepository.findByPathId(pathId)
                         .ifPresent(flowMeterRepository::delete)

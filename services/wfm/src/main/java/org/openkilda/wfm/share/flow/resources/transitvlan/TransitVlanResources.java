@@ -26,8 +26,7 @@ import lombok.Value;
 @Builder
 public class TransitVlanResources implements EncapsulationResources {
 
-    private TransitVlan forwardTransitVlan;
-    private TransitVlan reverseTransitVlan;
+    private TransitVlan transitVlan;
 
     @Override
     public final FlowEncapsulationType getEncapsulationType() {

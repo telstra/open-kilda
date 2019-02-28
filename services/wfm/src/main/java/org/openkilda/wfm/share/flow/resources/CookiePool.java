@@ -16,7 +16,6 @@
 package org.openkilda.wfm.share.flow.resources;
 
 import org.openkilda.model.FlowCookie;
-import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
@@ -45,11 +44,11 @@ public class CookiePool {
     }
 
     /**
-     * Allocates cookies for the flow paths.
+     * Allocates a cookie for the flow.
      *
      * @return unmasked allocated cookie.
      */
-    public long allocate(String flowId, PathId forwardPathId, PathId reversePathId) {
+    public long allocate(String flowId) {
         return transactionManager.doInTransaction(() -> {
             long availableCookie = flowCookieRepository.findAvailableUnmaskedCookie().orElse(minCookie);
             if (availableCookie > maxCookie) {
@@ -59,29 +58,19 @@ public class CookiePool {
             FlowCookie forwardFlowCookie = FlowCookie.builder()
                     .unmaskedCookie(availableCookie)
                     .flowId(flowId)
-                    .pathId(forwardPathId)
                     .build();
             flowCookieRepository.createOrUpdate(forwardFlowCookie);
-
-            FlowCookie reverseFlowCookie = FlowCookie.builder()
-                    .unmaskedCookie(availableCookie)
-                    .flowId(flowId)
-                    .pathId(reversePathId)
-                    .build();
-            flowCookieRepository.createOrUpdate(reverseFlowCookie);
 
             return availableCookie;
         });
     }
 
     /**
-     * Deallocates cookies of the paths.
+     * Deallocates a cookie.
      */
-    public void deallocate(PathId forwardPathId, PathId reversePathId) {
+    public void deallocate(long unmaskedCookie) {
         transactionManager.doInTransaction(() -> {
-            flowCookieRepository.findByPathId(forwardPathId)
-                    .ifPresent(flowCookieRepository::delete);
-            flowCookieRepository.findByPathId(reversePathId)
+            flowCookieRepository.findByCookie(unmaskedCookie)
                     .ifPresent(flowCookieRepository::delete);
         });
     }

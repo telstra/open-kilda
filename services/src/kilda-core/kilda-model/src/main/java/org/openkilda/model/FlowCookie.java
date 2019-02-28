@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -28,12 +28,11 @@ import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.Index;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
 
 import java.io.Serializable;
 
 /**
- * Represents a cookie allocated for a flow path.
+ * Represents a cookie allocated for a flow.
  */
 @Data
 @NoArgsConstructor
@@ -50,23 +49,16 @@ public class FlowCookie implements Serializable {
     private Long entityId;
 
     @NonNull
-    @Property(name = "path_id")
-    @Index(unique = true)
-    @Convert(graphPropertyType = String.class)
-    private PathId pathId;
-
-    @NonNull
     @Property(name = "flow_id")
     private String flowId;
 
     @NonNull
     @Property(name = "unmasked_cookie")
-    @Index
+    @Index(unique = true)
     private long unmaskedCookie;
 
     @Builder(toBuilder = true)
-    public FlowCookie(@NonNull PathId pathId, @NonNull String flowId, long unmaskedCookie) {
-        this.pathId = pathId;
+    public FlowCookie(@NonNull String flowId, long unmaskedCookie) {
         this.flowId = flowId;
         this.unmaskedCookie = unmaskedCookie;
     }

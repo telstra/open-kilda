@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -60,23 +60,23 @@ public class FlowMeter implements Serializable {
     private SwitchId switchId;
 
     @NonNull
+    @Relationship(type = "owned_by")
+    private Switch theSwitch;
+
+    @NonNull
     @Property(name = "meter_id")
     @Convert(graphPropertyType = Long.class)
     private MeterId meterId;
 
     @NonNull
-    @Relationship(type = "owned_by")
-    private Switch theSwitch;
+    @Property(name = "flow_id")
+    private String flowId;
 
     @NonNull
     @Property(name = "path_id")
     @Index(unique = true)
     @Convert(graphPropertyType = String.class)
     private PathId pathId;
-
-    @NonNull
-    @Property(name = "flow_id")
-    private String flowId;
 
     // Hidden as used to imitate unique composite index for non-enterprise Neo4j versions.
     @Setter(AccessLevel.NONE)
@@ -85,12 +85,12 @@ public class FlowMeter implements Serializable {
     private String uniqueIndex;
 
     @Builder(toBuilder = true)
-    public FlowMeter(@NonNull MeterId meterId, @NonNull Switch theSwitch,
-                     @NonNull PathId pathId, @NonNull String flowId) {
-        this.meterId = meterId;
+    public FlowMeter(@NonNull Switch theSwitch, @NonNull MeterId meterId,
+                     @NonNull String flowId, @NonNull PathId pathId) {
         this.theSwitch = theSwitch;
-        this.pathId = pathId;
+        this.meterId = meterId;
         this.flowId = flowId;
+        this.pathId = pathId;
         setTheSwitch(theSwitch);
     }
 

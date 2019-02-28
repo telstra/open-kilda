@@ -16,12 +16,11 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.FlowCookie;
-import org.openkilda.model.PathId;
 
 import java.util.Optional;
 
 public interface FlowCookieRepository extends Repository<FlowCookie> {
-    Optional<FlowCookie> findByPathId(PathId pathId);
+    Optional<FlowCookie> findByCookie(long unmaskedCookie);
 
     Optional<Long> findAvailableUnmaskedCookie();
 }

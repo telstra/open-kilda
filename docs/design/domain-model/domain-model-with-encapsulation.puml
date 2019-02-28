@@ -2,21 +2,17 @@
 
 title Kilda Domain Model
 
-class SwitchId {
-    id
-}
-
 class Switch {
     id : SwitchId
-
-    status : SwitchStatus
 
     controller
     hostname
     address
     description
 
-    meter_max
+    status : SwitchStatus
+
+    under_maintenance
     __
     unique constraint on switch_id
 }
@@ -28,7 +24,6 @@ enum SwitchStatus {
 }
 
 Switch o--> SwitchStatus
-Switch o--> SwitchId
 
 enum PortStatus {
     UP
@@ -47,19 +42,6 @@ class Port {
 Port o--> PortStatus
 Port --> Switch
 
-class Rule {
-    switch : Switch
-    cookie
-    meter_id
-
-    path_id
-    flow_id
-    __
-    unique constraint on switch_id+cookie
-}
-
-Rule --> Switch
-
 class Isl {
     id = src_switch+src_port+dst_switch+dst_port :  for simplify where clause
 
@@ -69,17 +51,18 @@ class Isl {
     dst_switch : Switch
     dst_port
 
-    forward_status
-    forward_latency
-    forward_available_bandwidth
-
-    reverse_status
-    reverse_latency
-    reverse_available_bandwidth
-
     cost
     speed
     max_bandwidth
+    available_bandwidth
+
+    forward_status: IslStatus
+    forward_latency
+    forward_available_bandwidth
+
+    reverse_status: IslStatus
+    reverse_latency
+    reverse_available_bandwidth
     __
     unique constraint on src_switch+src_port+dst_switch+dst_port
 }
@@ -120,10 +103,12 @@ class Flow {
 
     description
     bandwidth
-    ignoreBandwidth
+    ignore_bandwidth
+    periodic_pings
+
+    encapsulation_type : FlowEncapsulationType
 
     status : FlowStatus
-    encapsulationType : FlowEncapsulationType
     __
     unique constraint on flow_id
 }
@@ -134,6 +119,12 @@ Flow_id_note .. Flow
 Flow --> Switch
 Flow --> FlowPath
 
+enum FlowEncapsulationType {
+   TRANSIT_VLAN
+}
+
+Flow o--> FlowEncapsulationType
+
 class FlowPath {
     path_id
 
@@ -141,10 +132,17 @@ class FlowPath {
     dst_switch : Switch
 
     flow_id
+
     cookie
     meter_id
 
-    status : FlowStatus
+    latency
+
+    bandwidth
+    ignore_bandwidth
+    min_available_bandwidth
+
+    status : FlowPathStatus
     ==
     pathSegments() : PathSegment[]
     __
@@ -154,16 +152,17 @@ class FlowPath {
 FlowPath --> Switch
 FlowPath --> Flow
 
-enum FlowEncapsulationType {
-   TRANSIT_VLAN
+enum FlowPathStatus {
+    IN_PROGRESS
+    ACTIVE
+    INACTIVE
 }
-
-Flow o--> FlowEncapsulationType
+FlowPath o--> FlowPathStatus
 
 enum FlowStatus {
+    IN_PROGRESS
     UP
     DOWN
-    IN_PROGRESS
 }
 
 Flow o--> FlowStatus
@@ -177,6 +176,8 @@ class PathSegment {
     dst_switch : Switch
     dst_port
 
+    seq_id
+
     latency
 }
 
@@ -185,10 +186,11 @@ PathSegment --> Isl : by src and dst endpoints
 
 class FlowMeter {
     switch : Switch
-    meter_id
 
-    path_id
     flow_id
+    path_id
+
+    meter_id
     __
     unique constraint on switch_id+meter_id
 }
@@ -198,29 +200,25 @@ FlowMeter --> Flow
 FlowMeter --> FlowPath
 
 class FlowCookie {
-    switch : Switch
-    cookie
-
-    path_id
     flow_id
+
+    unmasked_cookie
     __
-    unique constraint on cookie
-    unique constraint on path_id
+    unique constraint on unmasked_cookie
 }
 
-FlowCookie --> Switch
 FlowCookie --> Flow
-FlowCookie --> FlowPath
 
 package "Vlan-based Encapsulation" {
 
     class TransitVlan {
+        flow_id
         path_id
 
-        flow_id
-        transit_vlan
+        vlan
         __
-        unique constraint on flow_id
+        unique constraint on path_id
+        unique constraint on vlan
     }
 
     TransitVlan --> FlowPath

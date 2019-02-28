@@ -85,12 +85,13 @@ public class FlowRemoveCommand extends FlowCommand {
         CompletableFuture<List<OFFlowStatsEntry>> entriesBeforeDeletion = dumpFlowTable(sw);
 
         CompletableFuture<List<OFFlowStatsEntry>> entriesAfterDeletion = entriesBeforeDeletion
-                .thenCompose(entries ->  {
+                .thenCompose(entries -> {
                     try {
                         return super.writeCommand(sw, sessionService, moduleContext);
                     } catch (SwitchOperationException e) {
                         throw new CompletionException(e);
-                    }})
+                    }
+                })
                 .thenCompose(deleted -> dumpFlowTable(sw));
 
         return entriesAfterDeletion.thenCombine(entriesBeforeDeletion, (entriesAfter, entriesBefore) ->

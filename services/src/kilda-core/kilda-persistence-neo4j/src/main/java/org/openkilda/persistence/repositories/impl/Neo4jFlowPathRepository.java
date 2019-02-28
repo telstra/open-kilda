@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -121,10 +121,32 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     }
 
     @Override
+    public Collection<FlowPath> findBySegmentSrcSwitchId(SwitchId switchId) {
+        //TODO: this is slow and requires optimization
+        return findPathSegmentsBySrcSwitchId(switchId).stream()
+                .map(PathSegment::getPathId)
+                .map(this::findById)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public Collection<PathSegment> findPathSegmentsByDestSwitchId(SwitchId switchId) {
         Filter destSwitchIdFilter = createDstSwitchFilter(switchId);
 
         return getSession().loadAll(PathSegment.class, destSwitchIdFilter, getDepthLoadEntity());
+    }
+
+    @Override
+    public Collection<FlowPath> findBySegmentDestSwitchId(SwitchId switchId) {
+        //TODO: this is slow and requires optimization
+        return findPathSegmentsByDestSwitchId(switchId).stream()
+                .map(PathSegment::getPathId)
+                .map(this::findById)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
     }
 
     @Override

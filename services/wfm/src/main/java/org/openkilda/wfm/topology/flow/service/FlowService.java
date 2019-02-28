@@ -41,6 +41,7 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
+import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanResources;
@@ -90,7 +91,7 @@ public class FlowService extends BaseFlowService {
      * <p/>
      * The flow is created with IN_PROGRESS status.
      *
-     * @param flow   the flow to be created.
+     * @param flow the flow to be created.
      * @param sender the command sender for flow rules installation.
      * @return the created flow with the path and resources set.
      */
@@ -136,7 +137,7 @@ public class FlowService extends BaseFlowService {
      * Stores a flow and related entities into DB, and invokes flow rules installation via the command sender.
      *
      * @param flowPair the flow to be saved.
-     * @param sender   the command sender for flow rules installation.
+     * @param sender the command sender for flow rules installation.
      */
     public void saveFlow(FlowPair flowPair, FlowCommandSender sender) throws FlowAlreadyExistException,
             ResourceAllocationException {
@@ -202,9 +203,15 @@ public class FlowService extends BaseFlowService {
             return Optional.of(new FlowPairWithSegments(flowPair, forwardSegments, reverseSegments));
         }).orElseThrow(() -> new FlowNotFoundException(flowId));
 
-        flowResourcesManager.deallocateFlowResources(result.getFlowPair().getFlowEntity(),
-                result.getFlowPair().getFlowEntity().getForwardPathId(),
-                result.getFlowPair().getFlowEntity().getReversePathId());
+        FlowPath forwardPath = result.getFlowPair().getForward().getFlowPath();
+        FlowPath reversePath = result.getFlowPair().getReverse().getFlowPath();
+        FlowResources flowResources = FlowResources.builder()
+                .unmaskedCookie(forwardPath.getCookie().getUnmaskedValue())
+                .forward(PathResources.builder().pathId(forwardPath.getPathId()).build())
+                .reverse(PathResources.builder().pathId(reversePath.getPathId()).build())
+                .build();
+
+        flowResourcesManager.deallocateFlowResources(result.getFlowPair().getFlowEntity(), flowResources);
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
         sender.sendRemoveRulesCommand(result);
@@ -218,9 +225,9 @@ public class FlowService extends BaseFlowService {
      * <p/>
      * The updated flow has IN_PROGRESS status.
      *
-     * @param flowId  the flow to be replaced.
+     * @param flowId the flow to be replaced.
      * @param newFlow the flow to be applied.
-     * @param sender  the command sender for flow rules installation and deletion.
+     * @param sender the command sender for flow rules installation and deletion.
      * @return the updated flow with the path and resources set.
      */
     public FlowPair updateFlow(String flowId, UnidirectionalFlow newFlow, FlowCommandSender sender)
@@ -270,9 +277,15 @@ public class FlowService extends BaseFlowService {
                     .reverseSegments(newReverseSegments).build();
         });
 
-        flowResourcesManager.deallocateFlowResources(currentFlow.getFlowEntity(),
-                currentFlow.getFlowEntity().getForwardPathId(),
-                currentFlow.getFlowEntity().getReversePathId());
+        FlowPath forwardPath = currentFlow.getForward().getFlowPath();
+        FlowPath reversePath = currentFlow.getReverse().getFlowPath();
+        FlowResources flowResources = FlowResources.builder()
+                .unmaskedCookie(forwardPath.getCookie().getUnmaskedValue())
+                .forward(PathResources.builder().pathId(forwardPath.getPathId()).build())
+                .reverse(PathResources.builder().pathId(reversePath.getPathId()).build())
+                .build();
+
+        flowResourcesManager.deallocateFlowResources(currentFlow.getFlowEntity(), flowResources);
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
         sender.sendUpdateRulesCommand(result);
@@ -286,9 +299,9 @@ public class FlowService extends BaseFlowService {
      * <p/>
      * The rerouted flow has IN_PROGRESS status.
      *
-     * @param flowId         the flow to be rerouted.
+     * @param flowId the flow to be rerouted.
      * @param forceToReroute if true the flow will be recreated even there's no better path found.
-     * @param sender         the command sender for flow rules installation and deletion.
+     * @param sender the command sender for flow rules installation and deletion.
      */
     public ReroutedFlow rerouteFlow(String flowId, boolean forceToReroute, FlowCommandSender sender)
             throws RecoverableException, UnroutableFlowException, FlowNotFoundException, ResourceAllocationException {
@@ -345,9 +358,15 @@ public class FlowService extends BaseFlowService {
                     .reverseSegments(newReverseSegments).build();
         });
 
-        flowResourcesManager.deallocateFlowResources(currentFlow.getFlowEntity(),
-                currentFlow.getFlowEntity().getForwardPathId(),
-                currentFlow.getFlowEntity().getReversePathId());
+        FlowPath forwardPath = currentFlow.getForward().getFlowPath();
+        FlowPath reversePath = currentFlow.getReverse().getFlowPath();
+        FlowResources flowResources = FlowResources.builder()
+                .unmaskedCookie(forwardPath.getCookie().getUnmaskedValue())
+                .forward(PathResources.builder().pathId(forwardPath.getPathId()).build())
+                .reverse(PathResources.builder().pathId(reversePath.getPathId()).build())
+                .build();
+
+        flowResourcesManager.deallocateFlowResources(currentFlow.getFlowEntity(), flowResources);
 
         log.warn("Rerouted flow with new path: {}", result.getFlowPair());
 
@@ -418,26 +437,29 @@ public class FlowService extends BaseFlowService {
         FlowResources flowResources = flowResourcesManager.allocateFlowResources(flow);
 
         FlowPath forwardPath = flowPair.getForward().getFlowPath();
-        forwardPath.setPathId(flowResources.getForwardPathId());
+        forwardPath.setPathId(flowResources.getForward().getPathId());
         forwardPath.setCookie(Cookie.buildForwardCookie(flowResources.getUnmaskedCookie()));
-        if (flowResources.getForwardMeterId() != null) {
-            forwardPath.setMeterId(flowResources.getForwardMeterId());
+        if (flowResources.getForward().getMeterId() != null) {
+            forwardPath.setMeterId(flowResources.getForward().getMeterId());
         }
         flow.setForwardPath(forwardPath);
 
         FlowPath reversePath = flowPair.getReverse().getFlowPath();
-        reversePath.setPathId(flowResources.getReversePathId());
+        reversePath.setPathId(flowResources.getReverse().getPathId());
         reversePath.setCookie(Cookie.buildReverseCookie(flowResources.getUnmaskedCookie()));
-        if (flowResources.getReverseMeterId() != null) {
-            reversePath.setMeterId(flowResources.getReverseMeterId());
+        if (flowResources.getReverse().getMeterId() != null) {
+            reversePath.setMeterId(flowResources.getReverse().getMeterId());
         }
         flow.setReversePath(reversePath);
 
         //TODO: hard-coded encapsulation will be removed in Flow H&S
-        TransitVlanResources transitVlanResources = (TransitVlanResources) flowResources.getEncapsulationResources();
+        TransitVlanResources forwardTransitVlanResources =
+                (TransitVlanResources) flowResources.getForward().getEncapsulationResources();
+        TransitVlanResources reverseTransitVlanResources =
+                (TransitVlanResources) flowResources.getReverse().getEncapsulationResources();
 
-        return new FlowPair(flow, transitVlanResources.getForwardTransitVlan(),
-                transitVlanResources.getReverseTransitVlan());
+        return new FlowPair(flow, forwardTransitVlanResources.getTransitVlan(),
+                reverseTransitVlanResources.getTransitVlan());
     }
 
     private void updateIslsForFlowPath(FlowPath path) {

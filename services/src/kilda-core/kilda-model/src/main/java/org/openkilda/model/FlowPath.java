@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ import java.util.List;
  */
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId", "segments"})
+@EqualsAndHashCode(exclude = {"entityId", "segments", "minAvailableBandwidth"})
 @RelationshipEntity(type = "flow_path")
 public class FlowPath implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -81,10 +81,14 @@ public class FlowPath implements Serializable {
     @Convert(graphPropertyType = Long.class)
     private MeterId meterId;
 
+    private long latency;
+
     private long bandwidth;
 
     @Property(name = "ignore_bandwidth")
     private boolean ignoreBandwidth;
+
+    private Long minAvailableBandwidth;
 
     @Property(name = "time_create")
     @Convert(InstantStringConverter.class)
@@ -100,8 +104,6 @@ public class FlowPath implements Serializable {
     @Convert(graphPropertyType = String.class)
     private FlowPathStatus status;
 
-    private long latency;
-
     @NonNull
     @Transient
     private List<PathSegment> segments;
@@ -109,21 +111,21 @@ public class FlowPath implements Serializable {
     @Builder(toBuilder = true)
     public FlowPath(@NonNull PathId pathId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
                     @NonNull String flowId, Cookie cookie, MeterId meterId,
-                    long bandwidth, boolean ignoreBandwidth,
+                    long latency, long bandwidth, boolean ignoreBandwidth,
                     Instant timeCreate, Instant timeModify,
-                    FlowPathStatus status, long latency, @NonNull List<PathSegment> segments) {
+                    FlowPathStatus status, @NonNull List<PathSegment> segments) {
         this.pathId = pathId;
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
         this.flowId = flowId;
         this.cookie = cookie;
         this.meterId = meterId;
+        this.latency = latency;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
         this.status = status;
-        this.latency = latency;
         setSegments(segments);
     }
 

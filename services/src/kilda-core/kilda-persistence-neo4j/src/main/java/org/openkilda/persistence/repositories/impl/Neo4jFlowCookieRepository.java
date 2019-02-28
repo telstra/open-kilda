@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package org.openkilda.persistence.repositories.impl;
 import static java.lang.String.format;
 
 import org.openkilda.model.FlowCookie;
-import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
@@ -35,19 +34,19 @@ import java.util.Optional;
  * Neo4J OGM implementation of {@link FlowCookieRepository}.
  */
 public class Neo4jFlowCookieRepository extends Neo4jGenericRepository<FlowCookie> implements FlowCookieRepository {
-    static final String PATH_ID_PROPERTY_NAME = "path_id";
+    static final String UNMASKED_COOKIE_PROPERTY_NAME = "unmasked_cookie";
 
     public Neo4jFlowCookieRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
     }
 
     @Override
-    public Optional<FlowCookie> findByPathId(PathId pathId) {
-        Filter pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, pathId);
+    public Optional<FlowCookie> findByCookie(long unmaskedCookie) {
+        Filter cookieFilter = new Filter(UNMASKED_COOKIE_PROPERTY_NAME, ComparisonOperator.EQUALS, unmaskedCookie);
 
-        Collection<FlowCookie> cookies = loadAll(pathIdFilter);
+        Collection<FlowCookie> cookies = loadAll(cookieFilter);
         if (cookies.size() > 1) {
-            throw new PersistenceException(format("Found more that 1 Cookie entity by (%s)", pathId));
+            throw new PersistenceException(format("Found more that 1 Cookie entity by (%s)", unmaskedCookie));
         }
         return cookies.isEmpty() ? Optional.empty() : Optional.of(cookies.iterator().next());
     }

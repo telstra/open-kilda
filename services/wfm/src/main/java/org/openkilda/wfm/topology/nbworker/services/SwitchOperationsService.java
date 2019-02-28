@@ -17,9 +17,9 @@ package org.openkilda.wfm.topology.nbworker.services;
 
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
-import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
@@ -87,7 +87,7 @@ public class SwitchOperationsService {
     /**
      * Update the "Under maintenance" flag for the switch.
      *
-     * @param switchId         switch id.
+     * @param switchId switch id.
      * @param underMaintenance "Under maintenance" flag.
      * @return updated switch.
      * @throws SwitchNotFoundException if there is no switch with this switch id.
@@ -132,8 +132,8 @@ public class SwitchOperationsService {
      * Delete switch.
      *
      * @param switchId ID of switch to be deleted
-     * @param force    if True all switch relationships will be deleted too.
-     *                 If False switch will be deleted only if it has no relations.
+     * @param force if True all switch relationships will be deleted too.
+     *              If False switch will be deleted only if it has no relations.
      * @return True if switch was deleted, False otherwise
      * @throws SwitchNotFoundException if switch is not found
      */
@@ -155,7 +155,7 @@ public class SwitchOperationsService {
     /**
      * Check that switch is not in 'Active' state.
      *
-     * @throws SwitchNotFoundException     if there is no such switch.
+     * @throws SwitchNotFoundException if there is no such switch.
      * @throws IllegalSwitchStateException if switch is in 'Active' state
      */
     public void checkSwitchIsDeactivated(SwitchId switchId)
@@ -195,12 +195,12 @@ public class SwitchOperationsService {
      * @throws IllegalSwitchStateException if switch has Flow Segment relations
      */
     public void checkSwitchHasNoFlowSegments(SwitchId switchId) throws IllegalSwitchStateException {
-        Collection<PathSegment> outgoingFlowSegments = flowPathRepository.findPathSegmentsBySrcSwitchId(switchId);
-        Collection<PathSegment> ingoingFlowSegments = flowPathRepository.findPathSegmentsByDestSwitchId(switchId);
+        Collection<FlowPath> outgoingFlowPaths = flowPathRepository.findBySegmentSrcSwitchId(switchId);
+        Collection<FlowPath> ingoingFlowPaths = flowPathRepository.findBySegmentDestSwitchId(switchId);
 
-        if (!ingoingFlowSegments.isEmpty() || !outgoingFlowSegments.isEmpty()) {
+        if (!ingoingFlowPaths.isEmpty() || !outgoingFlowPaths.isEmpty()) {
             String message = String.format("Switch '%s' has %d assigned rules. It must be freed first.",
-                    switchId, ingoingFlowSegments.size() + outgoingFlowSegments.size());
+                    switchId, ingoingFlowPaths.size() + outgoingFlowPaths.size());
             throw new IllegalSwitchStateException(switchId.toString(), message);
         }
     }

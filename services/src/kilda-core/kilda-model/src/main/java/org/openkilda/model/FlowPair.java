@@ -22,7 +22,7 @@ import java.util.Collections;
 import java.util.UUID;
 
 /**
- * A pair (forward & reverse) of flows.
+ * A pair (forward & reverse) of unidirectional flows.
  *
  * @deprecated Must be replaced with new model entities: {@link org.openkilda.model.Flow}
  */
