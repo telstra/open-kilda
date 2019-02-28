@@ -22,7 +22,6 @@ import static java.util.stream.Collectors.toSet;
 
 import org.openkilda.model.SwitchId;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
-import org.openkilda.testing.tools.IslUtils;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
@@ -172,7 +171,7 @@ public class TopologyDefinition {
                 .collect(toList());
         for (Isl isl : isls) {
             if (isl.getDstSwitch().getDpId().equals(sw.getDpId())) {
-                isls.set(isls.indexOf(isl), IslUtils.reverseIsl(isl));
+                isls.set(isls.indexOf(isl), isl.getReversed());
             }
         }
         return isls;

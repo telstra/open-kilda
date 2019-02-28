@@ -45,7 +45,7 @@ class VirtualEnvCleanupExtension extends AbstractGlobalExtension implements Spri
             northbound.deleteAllFlows()
 
             log.info("Resetting available bandwidth on all links")
-            topology.islsForActiveSwitches.collect { [it, islUtils.reverseIsl(it)] }.flatten().each {
+            topology.islsForActiveSwitches.collect { [it, it.reversed] }.flatten().each {
                 database.revertIslBandwidth(it)
             }
 
@@ -56,7 +56,7 @@ class VirtualEnvCleanupExtension extends AbstractGlobalExtension implements Spri
 
             log.info("Unset maintenance mode from all affected links")
             northbound.getAllLinks().findAll { it.underMaintenance }.each {
-                northbound.setLinkMaintenance(islUtils.getLinkUnderMaintenance(it, false, false))
+                northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(it, false, false))
             }
 
             log.info("Deleting all link props")

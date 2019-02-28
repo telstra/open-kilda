@@ -353,7 +353,7 @@ class FlowCrudSpec extends BaseSpecification {
         and: "The flow has symmetric forward and reverse paths even though there is a more preferable reverse path"
         def forwardIsls = pathHelper.getInvolvedIsls(PathHelper.convert(flowPath))
         def reverseIsls = pathHelper.getInvolvedIsls(PathHelper.convert(flowPath, "reversePath"))
-        forwardIsls.collect { islUtils.reverseIsl(it) }.reverse() == reverseIsls
+        forwardIsls.collect { it.reversed }.reverse() == reverseIsls
 
         and: "Delete the flow and reset costs"
         flowHelper.deleteFlow(flow.id)
