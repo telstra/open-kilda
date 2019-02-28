@@ -20,6 +20,8 @@ class IslCostSpec extends BaseSpecification {
 
     def "ISL cost is increased due to bringing port down on a switch (ISL cost < isl.cost.when.port.down)"() {
         given: "Active forward and reverse ISLs with equal cost"
+        database.resetCosts()
+
         def isl = topology.islsForActiveSwitches.first()
         def reverseIsl = islUtils.reverseIsl(isl)
 

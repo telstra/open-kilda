@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
+import spock.lang.Ignore
+
 import static org.junit.Assume.assumeNotNull
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
@@ -21,6 +23,7 @@ import java.util.concurrent.TimeUnit
 @Narrative("Verify scenarios around replugging ISLs between different switches/ports.")
 class IslReplugSpec extends BaseSpecification {
 
+    @Ignore("Not implemented in new discovery-topology")
     def "ISL status changes to MOVED when replugging ISL into another switch"() {
         given: "A connected a-switch link"
         def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }

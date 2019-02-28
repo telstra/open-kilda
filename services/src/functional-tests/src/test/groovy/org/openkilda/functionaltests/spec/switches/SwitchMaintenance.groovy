@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import spock.lang.Ignore
+
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -122,6 +124,7 @@ class SwitchMaintenance extends BaseSpecification {
         northbound.setSwitchMaintenance(sw.dpId, false, false)
     }
 
+    @Ignore("Not implemented in new discovery-topology")
     def "Link discovered by a switch under maintenance is marked as maintained"() {
         given: "An active link"
         //TODO(ylobankov): Remove avoiding of links with a-switch once issue #2038 is merged.

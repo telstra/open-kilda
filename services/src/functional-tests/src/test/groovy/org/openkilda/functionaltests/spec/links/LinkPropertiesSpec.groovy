@@ -150,6 +150,7 @@ class LinkPropertiesSpec extends BaseSpecification {
         database.getIslCost(isl) == Constants.DEFAULT_COST
     }
 
+    @Ignore("Not implemented in new discovery-topology")
     def "Newly discovered link gets cost from link props"() {
         given: "An active link"
         //TODO(ylobankov): Remove avoiding of links with a-switch once issue #2038 is merged.

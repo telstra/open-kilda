@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import spock.lang.Ignore
+
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -134,6 +136,7 @@ class SwitchDeleteSpec extends BaseSpecification {
         "casual"        | getFlowHelper().randomFlow(*getTopology().getActiveSwitches()[0..1])
     }
 
+    @Ignore("Not implemented in new discovery-topology")
     def "Able to delete an inactive switch without any ISLs"() {
         requireProfiles("virtual")
 

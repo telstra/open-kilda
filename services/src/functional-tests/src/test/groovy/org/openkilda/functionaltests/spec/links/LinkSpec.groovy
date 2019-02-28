@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
+import spock.lang.Ignore
+
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -163,6 +165,7 @@ class LinkSpec extends BaseSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
     }
 
+    @Ignore("Not implemented in new discovery-topology")
     def "Unable to delete a nonexistent link"() {
         given: "Parameters of nonexistent link"
         def parameters = new LinkParametersDto(new SwitchId(1).toString(), 100, new SwitchId(2).toString(), 100)
@@ -189,6 +192,7 @@ class LinkSpec extends BaseSpecification {
         exc.responseBodyAsString.contains("ISL must NOT be in active state")
     }
 
+    @Ignore("Not implemented in new discovery-topology")
     def "Able to delete an inactive link"() {
         given: "An inactive link"
         def isl = topology.getIslsForActiveSwitches()[0]

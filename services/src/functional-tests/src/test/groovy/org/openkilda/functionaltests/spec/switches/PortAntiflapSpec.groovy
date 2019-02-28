@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import spock.lang.Ignore
+
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
@@ -30,6 +32,7 @@ Initially, port is considered 'flapping' if it changes status quicker than once 
 change status from UP to DOWN only after 'antiflap.min' in case of a single-time change of status)
 """)
 @Issue("https://github.com/telstra/open-kilda/issues/1729")
+@Ignore("New discovery-topology incompatibility.")
 class PortAntiflapSpec extends BaseSpecification {
 
     @Value('${antiflap.min}')
