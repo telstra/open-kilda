@@ -255,7 +255,7 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsm.S
 
     private void updatePortLinkMode(SwitchFsmContext context, PortFacts portFacts) {
         if (isPhysicalPort(portFacts.getPortNumber())) {
-            context.getOutput().setPortLinkMode(portFacts);
+            context.getOutput().setPortLinkMode(portFacts.getEndpoint(), portFacts.getLinkStatus());
         } else {
             context.getOutput().setBfdPortLinkMode(portFacts);
         }

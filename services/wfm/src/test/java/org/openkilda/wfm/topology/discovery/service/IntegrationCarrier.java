@@ -111,8 +111,8 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
     }
 
     @Override
-    public void setPortLinkMode(PortFacts portFacts) {
-        portService.updateLinkStatus(portFacts.getEndpoint(), portFacts.getLinkStatus());
+    public void setPortLinkMode(Endpoint endpoint, PortFacts.LinkStatus linkStatus) {
+        portService.updateLinkStatus(endpoint, linkStatus);
     }
 
     @Override

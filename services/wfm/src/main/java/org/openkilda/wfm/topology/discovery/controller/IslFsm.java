@@ -497,6 +497,7 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         return DiscoveryEndpointStatus.DOWN;
     }
 
+    // TODO(surabujin): move this check into reroute topology
     private boolean shouldEmitDownFlowReroute() {
         Optional<FeatureToggles> featureToggles = featureTogglesRepository.find();
         return featureToggles.isPresent()

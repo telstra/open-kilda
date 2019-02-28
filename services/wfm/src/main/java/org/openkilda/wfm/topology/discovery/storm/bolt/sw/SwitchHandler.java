@@ -125,8 +125,8 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
     }
 
     @Override
-    public void setPortLinkMode(PortFacts port) {
-        emit(STREAM_PORT_ID, getCurrentTuple(), makePortTuple(new PortLinkStatusCommand(port)));
+    public void setPortLinkMode(Endpoint endpoint, PortFacts.LinkStatus linkStatus) {
+        emit(STREAM_PORT_ID, getCurrentTuple(), makePortTuple(new PortLinkStatusCommand(endpoint, linkStatus)));
     }
 
     @Override

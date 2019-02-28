@@ -27,7 +27,7 @@ public interface ISwitchCarrier {
 
     void setOnlineMode(Endpoint endpoint, boolean mode);
 
-    void setPortLinkMode(PortFacts port);
+    void setPortLinkMode(Endpoint endpoint, PortFacts.LinkStatus linkStatus);
 
     void setupBfdPortHandler(BfdPortFacts portFacts);
 

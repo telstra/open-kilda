@@ -15,19 +15,20 @@
 
 package org.openkilda.wfm.topology.discovery.storm.bolt.port.command;
 
+import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.PortHandler;
 
 public class PortLinkStatusCommand extends PortCommand {
-    private final PortFacts facts;
+    private final PortFacts.LinkStatus linkStatus;
 
-    public PortLinkStatusCommand(PortFacts facts) {
-        super(facts.getEndpoint());
-        this.facts = facts;
+    public PortLinkStatusCommand(Endpoint endpoint, PortFacts.LinkStatus linkStatus) {
+        super(endpoint);
+        this.linkStatus = linkStatus;
     }
 
     @Override
     public void apply(PortHandler handler) {
-        handler.processUpdateLinkStatus(getEndpoint(), facts.getLinkStatus());
+        handler.processUpdateLinkStatus(getEndpoint(), linkStatus);
     }
 }

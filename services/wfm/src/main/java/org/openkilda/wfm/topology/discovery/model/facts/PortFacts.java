@@ -47,7 +47,10 @@ public class PortFacts implements Serializable {
         return endpoint.getPortNumber();
     }
 
-    private static LinkStatus mapLinkStatus(SpeakerSwitchPortView.State adminStatus) {
+    /**
+     * Map {@link SpeakerSwitchPortView.State} into {@link LinkStatus}.
+     */
+    public static LinkStatus mapLinkStatus(SpeakerSwitchPortView.State adminStatus) {
         switch (adminStatus) {
             case UP:
                 return LinkStatus.UP;
