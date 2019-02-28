@@ -26,6 +26,7 @@ import org.openkilda.testing.tools.IslUtils;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
@@ -303,6 +304,22 @@ public class TopologyDefinition {
         public String toString() {
             return String.format("%s-%s -> %s-%s", srcSwitch.dpId.toString(), srcPort,
                     dstSwitch != null ? dstSwitch.dpId.toString() : "null", dstSwitch != null ? dstPort : "null");
+        }
+
+        /**
+         * Returns the 'reverse' version of this ISL.
+         */
+        @JsonIgnore
+        public Isl getReversed() {
+            if (this.getDstSwitch() == null) {
+                return this; //don't reverse not connected ISL
+            }
+            ASwitchFlow reversedAsw = null;
+            if (this.getAswitch() != null) {
+                reversedAsw = this.getAswitch().getReversed();
+            }
+            return Isl.factory(this.getDstSwitch(), this.getDstPort(), this.getSrcSwitch(),
+                    this.getSrcPort(), this.getMaxBandwidth(), reversedAsw, this.isBfd());
         }
     }
 
