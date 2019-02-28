@@ -29,6 +29,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.northbound.dto.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.flows.PingOutput;
 import org.openkilda.northbound.dto.flows.UniFlowPingOutput;
 
@@ -50,6 +51,8 @@ public interface FlowMapper {
     @Mapping(target = "ignoreBandwidth", source = "ignoreBandwidth")
     @Mapping(target = "status", source = "state")
     FlowPayload toFlowOutput(FlowDto f);
+
+    FlowDto toFlowDto(FlowPatchDto flowPatchDto);
 
     PingOutput toPingOutput(FlowPingResponse response);
 

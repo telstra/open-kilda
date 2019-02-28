@@ -21,13 +21,16 @@ import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
+import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.request.RerouteFlowsForIslRequest;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.nbworker.StreamType;
@@ -54,7 +57,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
      */
     @Override
     public void init() {
-        this.flowOperationsService = new FlowOperationsService(repositoryFactory);
+        this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
     }
 
     @Override
@@ -65,6 +68,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
             result = processGetFlowsForLinkRequest((GetFlowsForIslRequest) request);
         } else if (request instanceof RerouteFlowsForIslRequest) {
             result = processRerouteFlowsForLinkRequest((RerouteFlowsForIslRequest) request, tuple);
+        } else if (request instanceof FlowPatchRequest) {
+            result = processFlowPatchRequest((FlowPatchRequest) request);
         } else {
             unhandledInput(tuple);
         }
@@ -112,6 +117,18 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         });
 
         return Collections.singletonList(new FlowsResponse(flowIds));
+    }
+
+    private List<FlowResponse> processFlowPatchRequest(FlowPatchRequest request) {
+        FlowDto flowDto = request.getFlow();
+
+        try {
+            Flow flow = flowOperationsService.updateFlow(FlowMapper.INSTANCE.map(flowDto));
+            return Collections.singletonList(new FlowResponse(FlowMapper.INSTANCE.map(flow)));
+
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Flow was not found.");
+        }
     }
 
     @Override

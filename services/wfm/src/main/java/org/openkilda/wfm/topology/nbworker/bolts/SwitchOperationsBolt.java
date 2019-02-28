@@ -62,7 +62,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
     public void init() {
         this.switchOperationsService =
                 new SwitchOperationsService(repositoryFactory, transactionManager, islCostWhenUnderMaintenance);
-        this.flowOperationsService = new FlowOperationsService(repositoryFactory);
+        this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
     }
 
     @Override
