@@ -161,7 +161,7 @@ public final class BfdPortFsm extends
         return builder.newStateMachine(BfdPortFsmState.INIT, persistenceManager, portFacts);
     }
 
-    private BfdPortFsm(PersistenceManager persistenceManager, BfdPortFacts portFacts) {
+    public BfdPortFsm(PersistenceManager persistenceManager, BfdPortFacts portFacts) {
         this.persistenceManager = persistenceManager;
         this.portFacts = portFacts;
         this.logicalEndpoint = portFacts.getEndpoint();
@@ -170,12 +170,12 @@ public final class BfdPortFsm extends
 
     // -- FSM actions --
 
-    private void consumeHistory(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+    protected void consumeHistory(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                 BfdPortFsmContext context) {
         this.discriminator = context.getDiscriminator();
     }
 
-    private void handleInitChoice(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+    protected void handleInitChoice(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                   BfdPortFsmContext context) {
         if (discriminator == null) {
             fire(BfdPortFsmEvent._INIT_CHOICE_CLEAN, context);
@@ -184,7 +184,7 @@ public final class BfdPortFsm extends
         }
     }
 
-    private void installingEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+    protected void installingEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                  BfdPortFsmContext context) {
         allocateDiscriminator();
 
@@ -212,7 +212,7 @@ public final class BfdPortFsm extends
         }
     }
 
-    private void releaseResources(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+    protected void releaseResources(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                   BfdPortFsmContext context) {
         BfdPortRepository repository = persistenceManager.getRepositoryFactory()
                 .createBfdPortRepository();
@@ -221,12 +221,12 @@ public final class BfdPortFsm extends
         discriminator = null;
     }
 
-    private void handleCleaning(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+    protected void handleCleaning(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                 BfdPortFsmContext context) {
         // TODO emit FL-BFD-producer remove
     }
 
-    private void cleaningUpdateUpStatus(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+    protected void cleaningUpdateUpStatus(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                         BfdPortFsmContext context) {
         switch (event) {
             case PORT_UP:
@@ -241,7 +241,7 @@ public final class BfdPortFsm extends
         }
     }
 
-    private void handleCleaningChoice(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+    protected void handleCleaningChoice(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                       BfdPortFsmContext context) {
         if (upStatus) {
             fire(BfdPortFsmEvent._CLEANING_CHOICE_HOLD, context);
@@ -250,17 +250,18 @@ public final class BfdPortFsm extends
         }
     }
 
-    private void waitReleaseExit(BfdPortFsmState from,  BfdPortFsmState to, BfdPortFsmEvent event,
+    protected void waitReleaseExit(BfdPortFsmState from,  BfdPortFsmState to, BfdPortFsmEvent event,
                                  BfdPortFsmContext context) {
         upStatus = false;
     }
 
-    private void upEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
+    protected void upEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
         // TODO emit bfd-up
         upStatus = true;
     }
 
-    private void downEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
+    protected void downEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                             BfdPortFsmContext context) {
         // TODO emit bfd-down
         upStatus = false;
     }

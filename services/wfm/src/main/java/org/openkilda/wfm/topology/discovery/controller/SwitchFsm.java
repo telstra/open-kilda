@@ -107,7 +107,7 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsm.S
         return builder.newStateMachine(SwitchFsmState.INIT, persistenceManager, switchId, bfdLocalPortOffset);
     }
 
-    private SwitchFsm(PersistenceManager persistenceManager, SwitchId switchId, Integer bfdLocalPortOffset) {
+    public SwitchFsm(PersistenceManager persistenceManager, SwitchId switchId, Integer bfdLocalPortOffset) {
         this.transactionManager = persistenceManager.getTransactionManager();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
@@ -117,14 +117,15 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsm.S
 
     // -- FSM actions --
 
-    private void applyHistory(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+    protected void applyHistory(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                                SwitchFsmContext context) {
         HistoryFacts historyFacts = context.getHistory();
         for (Isl outgoingLink : historyFacts.getOutgoingLinks()) {
             portAdd(context, outgoingLink);
         }
     }
 
-    private void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+    protected void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         SpeakerSwitchView speakerData = context.getSpeakerData();
 
         Set<Integer> removedPorts = new HashSet<>(portByNumber.keySet());
@@ -173,12 +174,13 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsm.S
         }
     }
 
-    private void onlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+    protected void onlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         transactionManager.doInTransaction(() -> persistSwitchData(context));
         initialSwitchSetup(context);
     }
 
-    private void offlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+    protected void offlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                                SwitchFsmContext context) {
         transactionManager.doInTransaction(() -> updatePersistentStatus(SwitchStatus.INACTIVE));
 
         ISwitchCarrier output = context.getOutput();
@@ -187,17 +189,19 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsm.S
         }
     }
 
-    private void handlePortAdd(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+    protected void handlePortAdd(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                                 SwitchFsmContext context) {
         PortFacts port = new PortFacts(Endpoint.of(switchId, context.getPortNumber()));
         portAdd(context, port);
         updateOnlineStatus(context, port.getEndpoint(), true);
     }
 
-    private void handlePortDel(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+    protected void handlePortDel(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                                 SwitchFsmContext context) {
         portDel(context, context.getPortNumber());
     }
 
-    private void handlePortLinkStateChange(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+    protected void handlePortLinkStateChange(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                                            SwitchFsmContext context) {
         PortFacts port = portByNumber.get(context.getPortNumber());
         if (port == null) {

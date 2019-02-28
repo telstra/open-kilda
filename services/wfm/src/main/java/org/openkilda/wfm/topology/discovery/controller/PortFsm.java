@@ -94,31 +94,32 @@ public final class PortFsm extends AbstractStateMachine<PortFsm, PortFsm.PortFsm
         return builder.newStateMachine(PortFsmState.INIT, endpoint, history);
     }
 
-    private PortFsm(Endpoint endpoint, Isl history) {
+    public PortFsm(Endpoint endpoint, Isl history) {
         this.endpoint = endpoint;
         this.history = history;
     }
 
     // -- FSM actions --
 
-    private void setupUniIsl(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+    protected void setupUniIsl(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         context.getOutput().setupUniIslHandler(endpoint, history);
     }
 
-    private void enableDiscoveryPoll(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+    protected void enableDiscoveryPoll(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         context.getOutput().enableDiscoveryPoll(endpoint);
     }
 
-    private void disableDiscoveryPoll(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+    protected void disableDiscoveryPoll(PortFsmState from, PortFsmState to, PortFsmEvent event,
+                                        PortFsmContext context) {
         context.getOutput().disableDiscoveryPoll(endpoint);
     }
 
-    private void downEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+    protected void downEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         IPortCarrier output = context.getOutput();
         output.notifyPortPhysicalDown(endpoint);
     }
 
-    private void finish(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+    protected void finish(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         IPortCarrier output = context.getOutput();
         output.removeUniIslHandler(endpoint);
     }

@@ -157,7 +157,7 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         return builder.newStateMachine(IslFsmState.DOWN, persistenceManager, options, reference);
     }
 
-    private IslFsm(PersistenceManager persistenceManager, DiscoveryOptions options, IslReference reference) {
+    public IslFsm(PersistenceManager persistenceManager, DiscoveryOptions options, IslReference reference) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         islRepository = repositoryFactory.createIslRepository();
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
@@ -176,16 +176,17 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
     }
 
     // -- FSM actions --
-    private void updateEndpointStatus(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+
+    protected void updateEndpointStatus(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         updateEndpointStatusByEvent(event, context);
     }
 
-    private void downEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    protected void downEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
         saveStatusTransaction();
     }
 
-    private void handleUpAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    protected void handleUpAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         discoveryFacts.put(context.getEndpoint(), context.getIslData());
 
         IslFsmEvent route;
@@ -197,7 +198,7 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         fire(route, context);
     }
 
-    private void upEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    protected void upEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
 
         saveAllTransaction();
@@ -208,7 +209,7 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         }
     }
 
-    private void upExit(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    protected void upExit(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} is no more UP (physical-down:{})",
                   discoveryFacts.getReference(), to, context.getPhysicalLinkDown());
 
@@ -217,12 +218,12 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         triggerAffectedFlowReroute(context);
     }
 
-    private void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    protected void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
         saveStatusTransaction();
     }
 
-    private void handleBfdEnableDisable(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    protected void handleBfdEnableDisable(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         if (context.getBfdEnable()) {
             setupBfd(context);
         } else {

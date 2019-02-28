@@ -82,7 +82,7 @@ public final class DecisionMakerFsm extends AbstractStateMachine<DecisionMakerFs
     private final Long awaitTime;
     private Long failTime;
 
-    private DecisionMakerFsm(Endpoint endpoint, Long failTimeout, Long awaitTime) {
+    public DecisionMakerFsm(Endpoint endpoint, Long failTimeout, Long awaitTime) {
         this.endpoint = endpoint;
         this.failTimeout = failTimeout;
         this.awaitTime = awaitTime;
@@ -99,24 +99,24 @@ public final class DecisionMakerFsm extends AbstractStateMachine<DecisionMakerFs
 
     // -- FSM actions --
 
-    private void saveFailTime(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+    protected void saveFailTime(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
                               DecisionMakerFsmContext context) {
         failTime = context.getCurrentTime() - awaitTime;
     }
 
-    private void emitDiscovery(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+    protected void emitDiscovery(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
                                DecisionMakerFsmContext context) {
         context.getOutput().linkDiscovered(context.getDiscoveryEvent());
         failTime = null;
     }
 
-    private void emitFailed(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+    protected void emitFailed(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
                             DecisionMakerFsmContext context) {
         context.getOutput().linkDestroyed(endpoint);
         failTime = null;
     }
 
-    private void tick(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+    protected void tick(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
                       DecisionMakerFsmContext context) {
         if (context.getCurrentTime() >= failTime + failTimeout) {
             fire(DecisionMakerFsmEvent.FAIL_BY_TIMEOUT, context);

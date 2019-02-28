@@ -114,7 +114,7 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsm.UniIslF
 
     // -- FSM actions --
 
-    private void handleActivate(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event,
+    protected void handleActivate(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event,
                                 UniIslFsmContext contest) {
         Isl history = contest.getHistory();
         if (history != null) {
@@ -123,7 +123,7 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsm.UniIslF
         }
     }
 
-    private void makeDiscoveryChoice(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event,
+    protected void makeDiscoveryChoice(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event,
                                      UniIslFsmContext context) {
         IslReference actualReference = IslReference.of(context.getDiscoveryEvent());
         if (islReference.equals(actualReference)) {
@@ -133,7 +133,7 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsm.UniIslF
         }
     }
 
-    private void handleMoved(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
+    protected void handleMoved(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
         if (!islReference.isIncomplete()) {
             emitIslMove(context);
         } else {
@@ -141,7 +141,7 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsm.UniIslF
         }
     }
 
-    private void upEnter(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
+    protected void upEnter(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
         IslInfoData discovery = context.getDiscoveryEvent();
         if (discovery != null) {
             islReference = IslReference.of(discovery);
@@ -150,13 +150,13 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsm.UniIslF
         emitIslUp(context);
     }
 
-    private void downEnter(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
+    protected void downEnter(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
         if (!islReference.isIncomplete()) {
             emitIslDown(context, event == UniIslFsmEvent.PHYSICAL_DOWN);
         }
     }
 
-    private void bfdEnter(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
+    protected void bfdEnter(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
         emitIslUp(context);
     }
 
