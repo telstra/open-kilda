@@ -17,8 +17,7 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryWatcherService;
-import org.openkilda.wfm.topology.discovery.service.IWatcherCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.WatcherHandler;
 
 public class WatcherSpeakerDiscoveryCommand extends WatcherCommand {
     private final IslInfoData payload;
@@ -29,7 +28,7 @@ public class WatcherSpeakerDiscoveryCommand extends WatcherCommand {
     }
 
     @Override
-    public void apply(DiscoveryWatcherService service, IWatcherCarrier carrier) {
-        service.discovery(carrier, payload);
+    public void apply(WatcherHandler handler) {
+        handler.processDiscovery(payload);
     }
 }

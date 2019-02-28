@@ -17,8 +17,7 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.port.command;
 
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryPortService;
-import org.openkilda.wfm.topology.discovery.service.IPortCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.port.PortHandler;
 
 public class PortSetupCommand extends PortCommand {
     private final PortFacts facts;
@@ -31,7 +30,7 @@ public class PortSetupCommand extends PortCommand {
     }
 
     @Override
-    public void apply(DiscoveryPortService service, IPortCarrier carrier) {
-        service.setup(facts, history);
+    public void apply(PortHandler handler) {
+        handler.processSetup(facts, history);
     }
 }

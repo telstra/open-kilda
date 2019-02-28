@@ -18,9 +18,9 @@ package org.openkilda.wfm.topology.discovery.service;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.controller.PortFsm;
-import org.openkilda.wfm.topology.discovery.controller.PortFsmContext;
-import org.openkilda.wfm.topology.discovery.controller.PortFsmEvent;
-import org.openkilda.wfm.topology.discovery.controller.PortFsmState;
+import org.openkilda.wfm.topology.discovery.controller.PortFsm.PortFsmContext;
+import org.openkilda.wfm.topology.discovery.controller.PortFsm.PortFsmEvent;
+import org.openkilda.wfm.topology.discovery.controller.PortFsm.PortFsmState;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 

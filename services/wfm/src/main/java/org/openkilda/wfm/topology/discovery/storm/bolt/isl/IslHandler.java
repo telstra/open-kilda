@@ -17,14 +17,16 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.isl;
 
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.reroute.RerouteFlows;
+import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
+import org.openkilda.model.Isl;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.AbstractOutputAdapter;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.bolt.KafkaEncoder;
 import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryIslService;
 import org.openkilda.wfm.topology.discovery.service.IIslCarrier;
@@ -40,7 +42,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class IslHandler extends AbstractBolt {
+public class IslHandler extends AbstractBolt implements IIslCarrier {
     public static final String BOLT_ID = ComponentId.ISL_HANDLER.toString();
 
     public static final String FIELD_ID_DATAPATH = "datapath";
@@ -48,7 +50,7 @@ public class IslHandler extends AbstractBolt {
 
     public static final String STREAM_BFD_PORT_ID = "bfd-port";
     public static final Fields STREAM_BFD_PORT_FIELDS = new Fields(FIELD_ID_DATAPATH,
-                                                                   FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
+            FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
     public static final String STREAM_REROUTE_ID = "reroute";
     public static final Fields STREAM_REROUTE_FIELDS = new Fields(
@@ -76,7 +78,7 @@ public class IslHandler extends AbstractBolt {
 
     private void handleUniIslCommand(Tuple input) throws PipelineException {
         IslCommand command = pullValue(input, UniIslHandler.FIELD_ID_COMMAND, IslCommand.class);
-        command.apply(service, new OutputAdapter(this, input));
+        command.apply(this);
     }
 
     @Override
@@ -90,33 +92,49 @@ public class IslHandler extends AbstractBolt {
         streamManager.declareStream(STREAM_REROUTE_ID, STREAM_REROUTE_FIELDS);
     }
 
-    private static class OutputAdapter extends AbstractOutputAdapter implements IIslCarrier {
-        public OutputAdapter(AbstractBolt owner, Tuple tuple) {
-            super(owner, tuple);
-        }
+    @Override
+    public void bfdEnableRequest(Endpoint physicalEndpoint, IslReference reference) {
+        emit(STREAM_BFD_PORT_ID, getCurrentTuple(),
+                makeBfdPortTuple(new BfdPortEnableCommand(physicalEndpoint, reference)));
+    }
 
-        @Override
-        public void bfdEnableRequest(Endpoint physicalEndpoint, IslReference reference) {
-            emit(STREAM_BFD_PORT_ID, makeBfdPortTuple(new BfdPortEnableCommand(physicalEndpoint, reference)));
-        }
+    @Override
+    public void bfdDisableRequest(Endpoint physicalEndpoint, IslReference reference) {
+        emit(STREAM_BFD_PORT_ID, getCurrentTuple(),
+                makeBfdPortTuple(new BfdPortDisableCommand(physicalEndpoint, reference)));
+    }
 
-        @Override
-        public void bfdDisableRequest(Endpoint physicalEndpoint, IslReference reference) {
-            emit(STREAM_BFD_PORT_ID, makeBfdPortTuple(new BfdPortDisableCommand(physicalEndpoint, reference)));
-        }
+    @Override
+    public void triggerReroute(RerouteFlows trigger) {
+        emit(STREAM_REROUTE_ID, getCurrentTuple(), makeRerouteTuple(trigger));
+    }
 
-        @Override
-        public void triggerReroute(RerouteFlows trigger) {
-            emit(STREAM_REROUTE_ID, makeRerouteTuple(trigger));
-        }
+    private Values makeBfdPortTuple(BfdPortCommand command) {
+        Endpoint endpoint = command.getEndpoint();
+        return new Values(endpoint.getDatapath(), command, safePullContext());
+    }
 
-        private Values makeBfdPortTuple(BfdPortCommand command) {
-            Endpoint endpoint = command.getEndpoint();
-            return new Values(endpoint.getDatapath(), command, getContext());
-        }
+    private Values makeRerouteTuple(CommandData payload) {
+        return new Values(null, payload, safePullContext());
+    }
 
-        private Values makeRerouteTuple(CommandData payload) {
-            return new Values(null, payload, getContext());
-        }
+    public void processIslSetupFromHistory(Endpoint endpoint, IslReference reference, Isl history) {
+        service.islSetupFromHistory(endpoint, reference, history);
+    }
+
+    public void processIslUp(Endpoint endpoint, IslReference reference, IslDataHolder islData) {
+        service.islUp(this, endpoint, reference, islData);
+    }
+
+    public void processIslMove(Endpoint endpoint, IslReference reference) {
+        service.islMove(this, endpoint, reference);
+    }
+
+    public void processIslDown(Endpoint endpoint, IslReference reference, boolean physicalDown) {
+        service.islDown(this, endpoint, reference, physicalDown);
+    }
+
+    public void processBfdEnableDisable(IslReference reference, IslBfdFlagUpdated payload) {
+        service.bfdEnableDisable(this, reference, payload);
     }
 }

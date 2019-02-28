@@ -16,8 +16,7 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryWatcherService;
-import org.openkilda.wfm.topology.discovery.service.IWatcherCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.WatcherHandler;
 
 public class WatcherRemoveCommand extends WatcherCommand {
     public WatcherRemoveCommand(Endpoint endpoint) {
@@ -25,7 +24,7 @@ public class WatcherRemoveCommand extends WatcherCommand {
     }
 
     @Override
-    public void apply(DiscoveryWatcherService service, IWatcherCarrier carrier) {
-        service.removeWatch(carrier, getEndpoint());
+    public void apply(WatcherHandler handler) {
+        handler.processRemoveWatch(getEndpoint());
     }
 }

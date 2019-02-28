@@ -33,6 +33,8 @@ import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts.LinkStatus;
 import org.openkilda.wfm.topology.discovery.service.ISwitchCarrier;
 
+import lombok.Builder;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
@@ -46,7 +48,8 @@ import java.util.Map;
 import java.util.Set;
 
 @Slf4j
-public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> {
+public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsm.SwitchFsmState,
+        SwitchFsm.SwitchFsmEvent, SwitchFsm.SwitchFsmContext> {
     private final TransactionManager transactionManager;
     private final SwitchRepository switchRepository;
 
@@ -312,5 +315,38 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsmSt
      */
     private boolean isPhysicalPort(int portNumber) {
         return portNumber < bfdLogicalPortOffset;
+    }
+
+    @Value
+    @Builder
+    public static class SwitchFsmContext {
+        private final ISwitchCarrier output;
+
+        private SpeakerSwitchView speakerData;
+        private HistoryFacts history;
+
+        private Integer portNumber;
+
+        public static SwitchFsmContextBuilder builder(ISwitchCarrier output) {
+            return (new SwitchFsmContextBuilder()).output(output);
+        }
+    }
+
+    public enum SwitchFsmEvent {
+        NEXT,
+
+        HISTORY,
+
+        ONLINE,
+        OFFLINE,
+
+        PORT_ADD, PORT_DEL, PORT_UP, PORT_DOWN
+    }
+
+    public enum SwitchFsmState {
+        INIT,
+        OFFLINE,
+        ONLINE,
+        SETUP
     }
 }

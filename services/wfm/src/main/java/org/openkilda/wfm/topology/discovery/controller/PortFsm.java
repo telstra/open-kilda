@@ -20,11 +20,13 @@ import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.service.IPortCarrier;
 
+import lombok.Data;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
-public final class PortFsm extends AbstractStateMachine<PortFsm, PortFsmState, PortFsmEvent, PortFsmContext> {
+public final class PortFsm extends AbstractStateMachine<PortFsm, PortFsm.PortFsmState, PortFsm.PortFsmEvent,
+        PortFsm.PortFsmContext> {
     private final Endpoint endpoint;
     private final Isl history;
 
@@ -122,4 +124,31 @@ public final class PortFsm extends AbstractStateMachine<PortFsm, PortFsmState, P
     }
 
     // -- private/service methods --
+
+    @Data
+    public static class PortFsmContext {
+        private final IPortCarrier output;
+
+        private Isl history;
+
+        public PortFsmContext(IPortCarrier output) {
+            this.output = output;
+        }
+    }
+
+    public enum PortFsmEvent {
+        NEXT,
+
+        ONLINE, OFFLINE,
+        PORT_UP, PORT_DOWN, PORT_DEL
+    }
+
+    public enum PortFsmState {
+        INIT,
+
+        OPERATIONAL,
+        UNKNOWN, UP, DOWN,
+
+        FINISH, UNOPERATIONAL
+    }
 }

@@ -50,7 +50,8 @@ public class DiscoveryWatchListService {
     /**
      * Add endpoint into "watch list".
      */
-    public void addWatch(IWatchListCarrier carrier, Endpoint endpoint, long currentTime) {
+    @VisibleForTesting
+    void addWatch(IWatchListCarrier carrier, Endpoint endpoint, long currentTime) {
         if (endpoints.add(endpoint)) {
             carrier.discoveryRequest(endpoint, currentTime);
             long key = currentTime + tickPeriodMs;

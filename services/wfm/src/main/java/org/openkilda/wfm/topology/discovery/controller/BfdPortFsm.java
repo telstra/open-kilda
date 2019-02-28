@@ -24,13 +24,17 @@ import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.BfdPortRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.hubandspoke.IKeyFactory;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.error.SwitchReferenceLookupException;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
+import org.openkilda.wfm.topology.discovery.service.IBfdPortCarrier;
 
+import lombok.Builder;
 import lombok.Getter;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
@@ -43,7 +47,8 @@ import java.util.Random;
 
 @Slf4j
 public final class BfdPortFsm extends
-        AbstractStateMachine<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> {
+        AbstractStateMachine<BfdPortFsm, BfdPortFsm.BfdPortFsmState, BfdPortFsm.BfdPortFsmEvent,
+                BfdPortFsm.BfdPortFsmContext> {
     private static final int BFD_UDP_PRT = 3784;
     private static int bfdPollInterval = 350;  // TODO: use config option
     private static short bfdFailCycleLimit = 3;  // TODO: use config option
@@ -325,5 +330,51 @@ public final class BfdPortFsm extends
         }
 
         return new SwitchReference(datapath, address);
+    }
+
+    @Value
+    @Builder
+    public static class BfdPortFsmContext {
+        private final IBfdPortCarrier output;
+
+        private IKeyFactory requestKeyFactory;
+
+        private BfdPortFacts portFacts;
+
+        private IslReference islReference;
+
+        private Integer discriminator;
+
+        public static BfdPortFsmContextBuilder builder(IBfdPortCarrier outputAdapter) {
+            return (new BfdPortFsmContextBuilder()).output(outputAdapter);
+        }
+    }
+
+    public enum BfdPortFsmEvent {
+        NEXT, KILL, FAIL,
+
+        HISTORY,
+        BI_ISL_UP, BI_ISL_MOVE,
+        PORT_UP, PORT_DOWN,
+
+        SPEAKER_SUCCESS, SPEAKER_FAIL, SPEAKER_TIMEOUT,
+
+        _INIT_CHOICE_CLEAN, _INIT_CHOICE_DIRTY,
+        _CLEANING_CHOICE_READY, _CLEANING_CHOICE_HOLD
+    }
+
+    public enum BfdPortFsmState {
+        INIT,
+        INIT_CHOICE,
+        IDLE,
+
+        INSTALLING,
+        UP, DOWN,
+
+        CLEANING,
+        CLEANING_CHOICE,
+        WAIT_RELEASE,
+
+        FAIL
     }
 }

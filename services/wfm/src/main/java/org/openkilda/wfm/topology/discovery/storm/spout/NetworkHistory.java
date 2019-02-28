@@ -23,7 +23,7 @@ import org.openkilda.wfm.topology.discovery.model.facts.HistoryFacts;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryHistoryService;
 import org.openkilda.wfm.topology.discovery.service.ISwitchPrepopulateCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
-import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerMonitor;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerRouter;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchHistoryCommand;
 
 import org.apache.storm.spout.SpoutOutputCollector;
@@ -38,7 +38,7 @@ import java.util.Map;
 public class NetworkHistory extends BaseRichSpout {
     public static final String SPOUT_ID = ComponentId.NETWORK_HISTORY.toString();
 
-    public static final String FIELD_ID_DATAPATH = SpeakerMonitor.FIELD_ID_DATAPATH;
+    public static final String FIELD_ID_DATAPATH = SpeakerRouter.FIELD_ID_DATAPATH;
     public static final String FIELD_ID_PAYLOAD = "switch-init";
     public static final String FIELD_ID_CONTEXT = AbstractBolt.FIELD_ID_CONTEXT;
 

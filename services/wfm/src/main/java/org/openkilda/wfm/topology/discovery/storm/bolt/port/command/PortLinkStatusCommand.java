@@ -16,8 +16,7 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.port.command;
 
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryPortService;
-import org.openkilda.wfm.topology.discovery.service.IPortCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.port.PortHandler;
 
 public class PortLinkStatusCommand extends PortCommand {
     private final PortFacts facts;
@@ -28,7 +27,7 @@ public class PortLinkStatusCommand extends PortCommand {
     }
 
     @Override
-    public void apply(DiscoveryPortService service, IPortCarrier carrier) {
-        service.updateLinkStatus(getEndpoint(), facts.getLinkStatus());
+    public void apply(PortHandler handler) {
+        handler.processUpdateLinkStatus(getEndpoint(), facts.getLinkStatus());
     }
 }

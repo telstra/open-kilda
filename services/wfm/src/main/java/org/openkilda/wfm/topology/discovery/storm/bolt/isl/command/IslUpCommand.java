@@ -18,8 +18,7 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.isl.command;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryIslService;
-import org.openkilda.wfm.topology.discovery.service.IIslCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.isl.IslHandler;
 
 public class IslUpCommand extends IslCommand {
     private IslDataHolder islData;
@@ -30,7 +29,7 @@ public class IslUpCommand extends IslCommand {
     }
 
     @Override
-    public void apply(DiscoveryIslService service, IIslCarrier carrier) {
-        service.islUp(carrier, getEndpoint(), getReference(), islData);
+    public void apply(IslHandler handler) {
+        handler.processIslUp(getEndpoint(), getReference(), islData);
     }
 }

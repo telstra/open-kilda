@@ -40,7 +40,10 @@ import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.model.facts.DiscoveryFacts;
+import org.openkilda.wfm.topology.discovery.service.IIslCarrier;
 
+import lombok.Builder;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
@@ -51,7 +54,8 @@ import java.util.Collection;
 import java.util.Optional;
 
 @Slf4j
-public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> {
+public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmState, IslFsm.IslFsmEvent,
+        IslFsm.IslFsmContext> {
     private final IslRepository islRepository;
     private final LinkPropsRepository linkPropsRepository;
     private final FlowSegmentRepository flowSegmentRepository;
@@ -535,5 +539,44 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsmState, IslF
 
     private enum DiscoveryEndpointStatus {
         UP, DOWN, MOVED
+    }
+
+    @Value
+    @Builder
+    public static class IslFsmContext {
+        private final IIslCarrier output;
+
+        private final Endpoint endpoint;
+
+        private IslDataHolder islData;
+
+        private Boolean physicalLinkDown;
+
+        private Boolean bfdEnable;
+
+        /**
+         * .
+         */
+        public static IslFsmContextBuilder builder(IIslCarrier output, Endpoint endpoint) {
+            return new IslFsmContextBuilder()
+                    .output(output)
+                    .endpoint(endpoint);
+        }
+    }
+
+    public enum IslFsmEvent {
+        NEXT,
+
+        BFD_UPDATE,
+
+        ISL_UP, ISL_DOWN, ISL_MOVE,
+        _UP_ATTEMPT_SUCCESS, _UP_ATTEMPT_FAIL
+    }
+
+    public enum IslFsmState {
+        UP, DOWN,
+        MOVED,
+
+        UP_ATTEMPT
     }
 }

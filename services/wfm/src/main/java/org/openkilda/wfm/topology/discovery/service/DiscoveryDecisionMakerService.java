@@ -19,9 +19,9 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsm;
-import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsmContext;
-import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsmEvent;
-import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsmState;
+import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsm.DecisionMakerFsmContext;
+import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsm.DecisionMakerFsmEvent;
+import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsm.DecisionMakerFsmState;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 
 import lombok.extern.slf4j.Slf4j;

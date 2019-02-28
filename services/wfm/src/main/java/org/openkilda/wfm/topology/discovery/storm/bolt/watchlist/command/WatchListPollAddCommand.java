@@ -16,23 +16,16 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.watchlist.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryWatchListService;
-import org.openkilda.wfm.topology.discovery.service.IWatchListCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.watchlist.WatchListHandler;
 
-public class WatchListPollCommand extends WatchListCommand {
-    private final boolean enable;
+public class WatchListPollAddCommand extends WatchListCommand {
 
-    public WatchListPollCommand(Endpoint endpoint, boolean enable) {
+    public WatchListPollAddCommand(Endpoint endpoint) {
         super(endpoint);
-        this.enable = enable;
     }
 
     @Override
-    public void apply(DiscoveryWatchListService service, IWatchListCarrier carrier) {
-        if (enable) {
-            service.addWatch(carrier, getEndpoint());
-        } else {
-            service.removeWatch(carrier, getEndpoint());
-        }
+    public void apply(WatchListHandler handler) {
+        handler.processAddWatch(getEndpoint());
     }
 }

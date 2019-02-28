@@ -17,8 +17,7 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command;
 
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryWatcherService;
-import org.openkilda.wfm.topology.discovery.service.IWatcherCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.WatcherHandler;
 
 public class WatcherSpeakerSendConfirmationCommand extends WatcherCommand {
     private final DiscoPacketSendingConfirmation confirmation;
@@ -29,7 +28,7 @@ public class WatcherSpeakerSendConfirmationCommand extends WatcherCommand {
     }
 
     @Override
-    public void apply(DiscoveryWatcherService service, IWatcherCarrier carrier) {
-        service.confirmation(getEndpoint(), confirmation.getPacketId());
+    public void apply(WatcherHandler handler) {
+        handler.processConfirmation(getEndpoint(), confirmation.getPacketId());
     }
 }

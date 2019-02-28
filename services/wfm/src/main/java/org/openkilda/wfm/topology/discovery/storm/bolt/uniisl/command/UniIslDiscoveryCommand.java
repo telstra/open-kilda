@@ -17,8 +17,7 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryUniIslService;
-import org.openkilda.wfm.topology.discovery.service.IUniIslCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.UniIslHandler;
 
 public class UniIslDiscoveryCommand extends UniIslCommand {
     private final IslInfoData speakerDiscoveryEvent;
@@ -29,7 +28,7 @@ public class UniIslDiscoveryCommand extends UniIslCommand {
     }
 
     @Override
-    public void apply(DiscoveryUniIslService service, IUniIslCarrier carrier) {
-        service.uniIslDiscovery(getEndpoint(), speakerDiscoveryEvent);
+    public void apply(UniIslHandler handler) {
+        handler.processUniIslDiscovery(getEndpoint(), speakerDiscoveryEvent);
     }
 }

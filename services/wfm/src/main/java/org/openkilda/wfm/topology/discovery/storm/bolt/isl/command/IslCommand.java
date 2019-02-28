@@ -17,14 +17,13 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.isl.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryIslService;
-import org.openkilda.wfm.topology.discovery.service.IIslCarrier;
-import org.openkilda.wfm.topology.discovery.storm.ICommand;
+import org.openkilda.wfm.topology.discovery.storm.IHandlerCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.isl.IslHandler;
 
 import lombok.AccessLevel;
 import lombok.Getter;
 
-public abstract class IslCommand implements ICommand<DiscoveryIslService, IIslCarrier> {
+public abstract class IslCommand implements IHandlerCommand<IslHandler> {
     @Getter(AccessLevel.PROTECTED)
     private final Endpoint endpoint;
 

@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.AbstractOutputAdapter;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
@@ -37,7 +36,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class DecisionMakerHandler extends AbstractBolt {
+public class DecisionMakerHandler extends AbstractBolt implements IDecisionMakerCarrier {
     public static final String BOLT_ID = ComponentId.DECISION_MAKER.toString();
 
     public static final String FIELD_ID_DATAPATH = WatcherHandler.FIELD_ID_DATAPATH;
@@ -45,7 +44,7 @@ public class DecisionMakerHandler extends AbstractBolt {
     public static final String FIELD_ID_COMMAND = WatcherHandler.FIELD_ID_COMMAND;
 
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER, FIELD_ID_COMMAND,
-                                                          FIELD_ID_CONTEXT);
+            FIELD_ID_CONTEXT);
 
     private final DiscoveryOptions options;
 
@@ -70,13 +69,15 @@ public class DecisionMakerHandler extends AbstractBolt {
 
     private void handleTimer(Tuple input) {
         Long timeMs = input.getLongByField(CoordinatorSpout.FIELD_ID_TIME_MS);
-        service.tick(new DecisionMakerHandler.OutputAdapter(this, input), timeMs);
+        service.tick(this, timeMs);
     }
 
     private void handleCommand(Tuple input) throws PipelineException {
         DecisionMakerCommand command = pullValue(input, WatcherHandler.FIELD_ID_COMMAND, DecisionMakerCommand.class);
-        command.apply(service, new OutputAdapter(this, input));
+        command.apply(this);
     }
+
+    // IDecisionMakerCarrier
 
     @Override
     protected void init() {
@@ -88,24 +89,34 @@ public class DecisionMakerHandler extends AbstractBolt {
         streamManager.declare(STREAM_FIELDS);
     }
 
-    private static class OutputAdapter extends AbstractOutputAdapter implements IDecisionMakerCarrier {
-        public OutputAdapter(AbstractBolt owner, Tuple tuple) {
-            super(owner, tuple);
-        }
+    @Override
+    public void linkDiscovered(IslInfoData discoveryEvent) {
+        emit(getCurrentTuple(), makeDefaultTuple(new UniIslDiscoveryCommand(discoveryEvent)));
+    }
 
-        @Override
-        public void linkDiscovered(IslInfoData discoveryEvent) {
-            emit(makeDefaultTuple(new UniIslDiscoveryCommand(discoveryEvent)));
-        }
+    @Override
+    public void linkDestroyed(Endpoint endpoint) {
+        emit(getCurrentTuple(), makeDefaultTuple(new UniIslFailCommand(endpoint)));
+    }
 
-        @Override
-        public void linkDestroyed(Endpoint endpoint) {
-            emit(makeDefaultTuple(new UniIslFailCommand(endpoint)));
-        }
+    // DecisionMakerCommand
 
-        private Values makeDefaultTuple(UniIslCommand command) {
-            Endpoint endpoint = command.getEndpoint();
-            return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, getContext());
-        }
+    public void processClear(Endpoint endpoint) {
+        service.clear(this, endpoint);
+    }
+
+    public void processDiscovered(Endpoint endpoint, IslInfoData discoveryEvent, long timeMs) {
+        service.discovered(this, endpoint, discoveryEvent, timeMs);
+    }
+
+    public void processFailed(Endpoint endpoint, long timeMs) {
+        service.failed(this, endpoint, timeMs);
+    }
+
+    // Private
+
+    private Values makeDefaultTuple(UniIslCommand command) {
+        Endpoint endpoint = command.getEndpoint();
+        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, safePullContext());
     }
 }

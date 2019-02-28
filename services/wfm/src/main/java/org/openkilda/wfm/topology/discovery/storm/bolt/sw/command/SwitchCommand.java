@@ -16,13 +16,12 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.sw.command;
 
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.topology.discovery.service.DiscoverySwitchService;
-import org.openkilda.wfm.topology.discovery.service.ISwitchCarrier;
-import org.openkilda.wfm.topology.discovery.storm.ICommand;
+import org.openkilda.wfm.topology.discovery.storm.IHandlerCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.sw.SwitchHandler;
 
 import lombok.Getter;
 
-public abstract class SwitchCommand implements ICommand<DiscoverySwitchService, ISwitchCarrier> {
+public abstract class SwitchCommand implements IHandlerCommand<SwitchHandler> {
     @Getter
     private final SwitchId datapath;
 

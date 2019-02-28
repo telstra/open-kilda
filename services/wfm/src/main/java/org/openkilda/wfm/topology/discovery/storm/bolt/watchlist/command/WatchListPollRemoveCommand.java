@@ -13,25 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.discovery.controller;
+package org.openkilda.wfm.topology.discovery.storm.bolt.watchlist.command;
 
-import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.model.Isl;
-import org.openkilda.wfm.topology.discovery.service.IUniIslCarrier;
+import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.storm.bolt.watchlist.WatchListHandler;
 
-import lombok.Builder;
-import lombok.Value;
+public class WatchListPollRemoveCommand extends WatchListCommand {
 
-@Value
-@Builder
-public class UniIslFsmContext {
-    private final IUniIslCarrier output;
+    public WatchListPollRemoveCommand(Endpoint endpoint) {
+        super(endpoint);
+    }
 
-    private Isl history;
-    private IslInfoData discoveryEvent;
-
-    public static UniIslFsmContextBuilder builder(IUniIslCarrier carrier) {
-        return new UniIslFsmContextBuilder()
-                .output(carrier);
+    @Override
+    public void apply(WatchListHandler handler) {
+        handler.processRemoveWatch(getEndpoint());
     }
 }

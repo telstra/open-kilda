@@ -18,8 +18,7 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.isl.command;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryIslService;
-import org.openkilda.wfm.topology.discovery.service.IIslCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.isl.IslHandler;
 
 public class IslSetupFromHistoryCommand extends IslCommand {
     private final Isl history;
@@ -31,7 +30,7 @@ public class IslSetupFromHistoryCommand extends IslCommand {
     }
 
     @Override
-    public void apply(DiscoveryIslService service, IIslCarrier carrier) {
-        service.islSetupFromHistory(getEndpoint(), getReference(), history);
+    public void apply(IslHandler handler) {
+        handler.processIslSetupFromHistory(getEndpoint(), getReference(), history);
     }
 }

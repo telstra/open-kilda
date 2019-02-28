@@ -20,7 +20,6 @@ import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.AbstractOutputAdapter;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.bolt.KafkaEncoder;
@@ -34,7 +33,7 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command.Dec
 import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command.DecisionMakerCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command.DecisionMakerDiscoveryCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command.DecisionMakerFailCommand;
-import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerMonitor;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerRouter;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watchlist.WatchListHandler;
 
@@ -43,7 +42,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class WatcherHandler extends AbstractBolt {
+public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
     public static final String BOLT_ID = ComponentId.WATCHER.toString();
 
     public static final String FIELD_ID_DATAPATH = WatchListHandler.FIELD_ID_DATAPATH;
@@ -51,7 +50,7 @@ public class WatcherHandler extends AbstractBolt {
     public static final String FIELD_ID_COMMAND = WatchListHandler.FIELD_ID_COMMAND;
 
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER, FIELD_ID_COMMAND,
-                                                          FIELD_ID_CONTEXT);
+            FIELD_ID_CONTEXT);
 
     public static final String STREAM_SPEAKER_ID = "speaker";
     public static final Fields STREAM_SPEAKER_FIELDS = new Fields(
@@ -70,7 +69,7 @@ public class WatcherHandler extends AbstractBolt {
         String source = input.getSourceComponent();
         if (CoordinatorSpout.ID.equals(source)) {
             handleTimerTick(input);
-        } else if (SpeakerMonitor.BOLT_ID.equals(source)) {
+        } else if (SpeakerRouter.BOLT_ID.equals(source)) {
             handleSpeakerCommand(input);
         } else if (WatchListHandler.BOLT_ID.equals(source)) {
             handleWatchListCommand(input);
@@ -81,11 +80,11 @@ public class WatcherHandler extends AbstractBolt {
 
     private void handleTimerTick(Tuple input) {
         long timeMs = input.getLongByField(CoordinatorSpout.FIELD_ID_TIME_MS);
-        service.tick(new OutputAdapter(this, input), timeMs);
+        service.tick(this, timeMs);
     }
 
     private void handleSpeakerCommand(Tuple input) throws PipelineException {
-        handleCommand(input, SpeakerMonitor.FIELD_ID_COMMAND);
+        handleCommand(input, SpeakerRouter.FIELD_ID_COMMAND);
     }
 
     private void handleWatchListCommand(Tuple input) throws PipelineException {
@@ -94,7 +93,7 @@ public class WatcherHandler extends AbstractBolt {
 
     private void handleCommand(Tuple input, String fieldName) throws PipelineException {
         WatcherCommand command = pullValue(input, fieldName, WatcherCommand.class);
-        command.apply(service, new OutputAdapter(this, input));
+        command.apply(this);
     }
 
     @Override
@@ -108,39 +107,52 @@ public class WatcherHandler extends AbstractBolt {
         streamManager.declareStream(STREAM_SPEAKER_ID, STREAM_SPEAKER_FIELDS);
     }
 
-    private static class OutputAdapter extends AbstractOutputAdapter implements IWatcherCarrier {
-        public OutputAdapter(AbstractBolt owner, Tuple tuple) {
-            super(owner, tuple);
-        }
+    @Override
+    public void discoveryReceived(Endpoint endpoint, IslInfoData discoveryEvent, long currentTime) {
+        emit(getCurrentTuple(), makeDefaultTuple(
+                new DecisionMakerDiscoveryCommand(endpoint, discoveryEvent, currentTime)));
+    }
 
-        @Override
-        public void discoveryReceived(Endpoint endpoint, IslInfoData discoveryEvent, long currentTime) {
-            emit(makeDefaultTuple(new DecisionMakerDiscoveryCommand(endpoint, discoveryEvent, currentTime)));
-        }
+    @Override
+    public void discoveryFailed(Endpoint endpoint, long currentTime) {
+        emit(getCurrentTuple(), makeDefaultTuple(new DecisionMakerFailCommand(endpoint, currentTime)));
+    }
 
-        @Override
-        public void discoveryFailed(Endpoint endpoint, long currentTime) {
-            emit(makeDefaultTuple(new DecisionMakerFailCommand(endpoint, currentTime)));
-        }
+    @Override
+    public void sendDiscovery(DiscoverIslCommandData discoveryRequest) {
+        SwitchId switchId = discoveryRequest.getSwitchId();
+        emit(STREAM_SPEAKER_ID, getCurrentTuple(), makeSpeakerTuple(switchId.toString(), discoveryRequest));
+    }
 
-        @Override
-        public void sendDiscovery(DiscoverIslCommandData discoveryRequest) {
-            SwitchId switchId = discoveryRequest.getSwitchId();
-            emit(STREAM_SPEAKER_ID, makeSpeakerTuple(switchId.toString(), discoveryRequest));
-        }
+    @Override
+    public void clearDiscovery(Endpoint endpoint) {
+        emit(getCurrentTuple(), makeDefaultTuple(new DecisionMakerClearCommand(endpoint)));
+    }
 
-        @Override
-        public void clearDiscovery(Endpoint endpoint) {
-            emit(makeDefaultTuple(new DecisionMakerClearCommand(endpoint)));
-        }
+    private Values makeDefaultTuple(DecisionMakerCommand command) {
+        Endpoint endpoint = command.getEndpoint();
+        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, safePullContext());
+    }
 
-        private Values makeDefaultTuple(DecisionMakerCommand command) {
-            Endpoint endpoint = command.getEndpoint();
-            return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, getContext());
-        }
+    private Values makeSpeakerTuple(String key, CommandData payload) {
+        return new Values(key, payload, safePullContext());
+    }
 
-        private Values makeSpeakerTuple(String key, CommandData payload) {
-            return new Values(key, payload, getContext());
-        }
+    // WatcherCommand
+
+    public void processConfirmation(Endpoint endpoint, long packetId) {
+        service.confirmation(endpoint, packetId);
+    }
+
+    public void processAddWatch(Endpoint endpoint, long timeMs) {
+        service.addWatch(this, endpoint, timeMs);
+    }
+
+    public void processRemoveWatch(Endpoint endpoint) {
+        service.removeWatch(this, endpoint);
+    }
+
+    public void processDiscovery(IslInfoData payload) {
+        service.discovery(this, payload);
     }
 }

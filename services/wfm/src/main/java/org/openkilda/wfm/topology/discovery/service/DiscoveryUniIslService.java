@@ -19,9 +19,9 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.controller.UniIslFsm;
-import org.openkilda.wfm.topology.discovery.controller.UniIslFsmContext;
-import org.openkilda.wfm.topology.discovery.controller.UniIslFsmEvent;
-import org.openkilda.wfm.topology.discovery.controller.UniIslFsmState;
+import org.openkilda.wfm.topology.discovery.controller.UniIslFsm.UniIslFsmContext;
+import org.openkilda.wfm.topology.discovery.controller.UniIslFsm.UniIslFsmEvent;
+import org.openkilda.wfm.topology.discovery.controller.UniIslFsm.UniIslFsmState;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 
 import lombok.extern.slf4j.Slf4j;

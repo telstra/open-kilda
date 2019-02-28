@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.watchlist;
 
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.AbstractOutputAdapter;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
@@ -37,7 +36,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class WatchListHandler extends AbstractBolt {
+public class WatchListHandler extends AbstractBolt implements IWatchListCarrier {
     public static final String BOLT_ID = ComponentId.WATCH_LIST.toString();
 
     public static final String FIELD_ID_DATAPATH = PortHandler.FIELD_ID_DATAPATH;
@@ -45,7 +44,7 @@ public class WatchListHandler extends AbstractBolt {
     public static final String FIELD_ID_COMMAND = PortHandler.FIELD_ID_COMMAND;
 
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER, FIELD_ID_COMMAND,
-                                                          FIELD_ID_CONTEXT);
+            FIELD_ID_CONTEXT);
 
     private final DiscoveryOptions options;
 
@@ -69,12 +68,12 @@ public class WatchListHandler extends AbstractBolt {
 
     private void handleTimer(Tuple input) {
         Long timeMs = input.getLongByField(CoordinatorSpout.FIELD_ID_TIME_MS);
-        service.tick(new OutputAdapter(this, input), timeMs);
+        service.tick(this, timeMs);
     }
 
     private void handlePortCommand(Tuple input) throws PipelineException {
         WatchListCommand command = pullValue(input, PortHandler.FIELD_ID_COMMAND, WatchListCommand.class);
-        command.apply(service, new OutputAdapter(this, input));
+        command.apply(this);
     }
 
     @Override
@@ -87,27 +86,31 @@ public class WatchListHandler extends AbstractBolt {
         streamManager.declare(STREAM_FIELDS);
     }
 
-    private static class OutputAdapter extends AbstractOutputAdapter implements IWatchListCarrier {
-        OutputAdapter(AbstractBolt owner, Tuple tuple) {
-            super(owner, tuple);
-        }
+    @Override
+    public void watchRemoved(Endpoint endpoint) {
+        emit(getCurrentTuple(), makeDefaultTuple(new WatcherRemoveCommand(endpoint)));
+    }
 
-        @Override
-        public void watchRemoved(Endpoint endpoint) {
-            emit(makeDefaultTuple(new WatcherRemoveCommand(endpoint)));
-        }
+    @Override
+    public void discoveryRequest(Endpoint endpoint, long currentTime) {
+        emit(getCurrentTuple(), makeDefaultTuple(new WatcherAddCommand(endpoint, currentTime)));
+    }
 
-        @Override
-        public void discoveryRequest(Endpoint endpoint, long currentTime) {
-            emit(makeDefaultTuple(new WatcherAddCommand(endpoint, currentTime)));
-        }
+    private Values makeDefaultTuple(WatcherCommand command) {
+        Endpoint endpoint = command.getEndpoint();
+        CommandContext forkedContext = safePullContext()
+                .fork(endpoint.getDatapath().toString())
+                .fork(String.format("p%d", endpoint.getPortNumber()));
+        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, forkedContext);
+    }
 
-        private Values makeDefaultTuple(WatcherCommand command) {
-            Endpoint endpoint = command.getEndpoint();
-            CommandContext forkedContext = getContext()
-                    .fork(endpoint.getDatapath().toString())
-                    .fork(String.format("p%d", endpoint.getPortNumber()));
-            return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, forkedContext);
-        }
+    // WatchListCommand
+
+    public void processAddWatch(Endpoint endpoint) {
+        service.addWatch(this, endpoint);
+    }
+
+    public void processRemoveWatch(Endpoint endpoint) {
+        service.removeWatch(this, endpoint);
     }
 }

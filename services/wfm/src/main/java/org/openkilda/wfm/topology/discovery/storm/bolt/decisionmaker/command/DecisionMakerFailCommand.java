@@ -16,8 +16,7 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryDecisionMakerService;
-import org.openkilda.wfm.topology.discovery.service.IDecisionMakerCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.DecisionMakerHandler;
 
 public class DecisionMakerFailCommand extends DecisionMakerCommand {
     private final long timeMs;
@@ -28,7 +27,7 @@ public class DecisionMakerFailCommand extends DecisionMakerCommand {
     }
 
     @Override
-    public void apply(DiscoveryDecisionMakerService service, IDecisionMakerCarrier carrier) {
-        service.failed(carrier, getEndpoint(), timeMs);
+    public void apply(DecisionMakerHandler handler) {
+        handler.processFailed(getEndpoint(), timeMs);
     }
 }

@@ -15,15 +15,21 @@
 
 package org.openkilda.wfm.topology.discovery.controller;
 
+import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.service.IDecisionMakerCarrier;
 
+import lombok.Builder;
+import lombok.Data;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
-public final class DecisionMakerFsm extends AbstractStateMachine<DecisionMakerFsm, DecisionMakerFsmState,
-        DecisionMakerFsmEvent, DecisionMakerFsmContext> {
+public final class DecisionMakerFsm extends AbstractStateMachine<DecisionMakerFsm,
+        DecisionMakerFsm.DecisionMakerFsmState,
+        DecisionMakerFsm.DecisionMakerFsmEvent,
+        DecisionMakerFsm.DecisionMakerFsmContext> {
     private static final StateMachineBuilder<DecisionMakerFsm, DecisionMakerFsmState, DecisionMakerFsmEvent,
             DecisionMakerFsmContext> builder;
 
@@ -117,4 +123,25 @@ public final class DecisionMakerFsm extends AbstractStateMachine<DecisionMakerFs
         }
     }
 
+    @Data
+    @Builder
+    public static class DecisionMakerFsmContext {
+        private final IDecisionMakerCarrier output;
+        private final IslInfoData discoveryEvent;
+        private final Long currentTime;
+    }
+
+    public enum DecisionMakerFsmEvent {
+        NEXT,
+
+        DISCOVERY, FAIL, TICK,
+
+        FAIL_BY_TIMEOUT
+    }
+
+    public enum DecisionMakerFsmState {
+        INIT,
+
+        DISCOVERED, FAILED, UNSTABLE,
+    }
 }

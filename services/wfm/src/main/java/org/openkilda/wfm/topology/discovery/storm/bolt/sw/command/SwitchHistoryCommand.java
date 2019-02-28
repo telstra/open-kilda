@@ -16,8 +16,7 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.sw.command;
 
 import org.openkilda.wfm.topology.discovery.model.facts.HistoryFacts;
-import org.openkilda.wfm.topology.discovery.service.DiscoverySwitchService;
-import org.openkilda.wfm.topology.discovery.service.ISwitchCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.sw.SwitchHandler;
 
 public class SwitchHistoryCommand extends SwitchCommand {
     private final HistoryFacts history;
@@ -28,7 +27,7 @@ public class SwitchHistoryCommand extends SwitchCommand {
     }
 
     @Override
-    public void apply(DiscoverySwitchService service, ISwitchCarrier carrier) {
-        service.switchAddWithHistory(history);
+    public void apply(SwitchHandler handler) {
+        handler.processSwitchAddWithHistory(history);
     }
 }

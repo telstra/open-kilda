@@ -31,7 +31,7 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.BfdPortHandler;
 import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.DecisionMakerHandler;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.IslHandler;
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.PortHandler;
-import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerMonitor;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerRouter;
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerWorker;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.SwitchHandler;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.UniIslHandler;
@@ -74,7 +74,7 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
         coordinator(topology);
         networkHistory(topology);
 
-        speakerMonitor(topology, scaleFactor);
+        speakerRouter(topology, scaleFactor);
 
         watchList(topology, scaleFactor);
         watcher(topology, scaleFactor);
@@ -102,7 +102,7 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
         long speakerIoTimeout = TimeUnit.SECONDS.toMillis(topologyConfig.getSpeakerIoTimeoutSeconds());
         WorkerBolt.Config workerConfig = SpeakerWorker.Config.builder()
                 .hubComponent(BfdPortHandler.BOLT_ID)
-                .workerSpoutComponent(SpeakerMonitor.BOLT_ID)
+                .workerSpoutComponent(SpeakerRouter.BOLT_ID)
                 .streamToHub(SpeakerWorker.STREAM_HUB_ID)
                 .defaultTimeout((int) speakerIoTimeout)
                 .build();
@@ -111,7 +111,7 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
         topology.setBolt(SpeakerWorker.BOLT_ID, speakerWorker, scaleFactor)
                 .directGrouping(CoordinatorBolt.ID)
                 .fieldsGrouping(workerConfig.getHubComponent(), BfdPortHandler.STREAM_SPEAKER_ID, keyGrouping)
-                .fieldsGrouping(workerConfig.getWorkerSpoutComponent(), SpeakerMonitor.STREAM_WORKER_ID, keyGrouping);
+                .fieldsGrouping(workerConfig.getWorkerSpoutComponent(), SpeakerRouter.STREAM_WORKER_ID, keyGrouping);
     }
 
     private void coordinator(TopologyBuilder topology) {
@@ -123,9 +123,9 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
                 .fieldsGrouping(SpeakerWorker.BOLT_ID, CoordinatorBolt.INCOME_STREAM, keyGrouping);
     }
 
-    private void speakerMonitor(TopologyBuilder topology, int scaleFactor) {
-        SpeakerMonitor bolt = new SpeakerMonitor();
-        topology.setBolt(SpeakerMonitor.BOLT_ID, bolt, scaleFactor)
+    private void speakerRouter(TopologyBuilder topology, int scaleFactor) {
+        SpeakerRouter bolt = new SpeakerRouter();
+        topology.setBolt(SpeakerRouter.BOLT_ID, bolt, scaleFactor)
                 .shuffleGrouping(ComponentId.INPUT_SPEAKER.toString());
     }
 
@@ -146,11 +146,11 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
         WatcherHandler bolt = new WatcherHandler(options);
         Fields watchListGrouping = new Fields(WatchListHandler.FIELD_ID_DATAPATH,
                                               WatchListHandler.FIELD_ID_PORT_NUMBER);
-        Fields speakerGrouping = new Fields(SpeakerMonitor.FIELD_ID_DATAPATH, SpeakerMonitor.FIELD_ID_PORT_NUMBER);
+        Fields speakerGrouping = new Fields(SpeakerRouter.FIELD_ID_DATAPATH, SpeakerRouter.FIELD_ID_PORT_NUMBER);
         topology.setBolt(WatcherHandler.BOLT_ID, bolt, scaleFactor)
                 .allGrouping(CoordinatorSpout.ID)
                 .fieldsGrouping(WatchListHandler.BOLT_ID, watchListGrouping)
-                .fieldsGrouping(SpeakerMonitor.BOLT_ID, SpeakerMonitor.STREAM_WATCHER_ID, speakerGrouping);
+                .fieldsGrouping(SpeakerRouter.BOLT_ID, SpeakerRouter.STREAM_WATCHER_ID, speakerGrouping);
     }
 
     private void decisionMaker(TopologyBuilder topology, int scaleFactor) {
@@ -163,10 +163,10 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
 
     private void switchHandler(TopologyBuilder topology, int scaleFactor) {
         SwitchHandler bolt = new SwitchHandler(options, persistenceManager);
-        Fields grouping = new Fields(SpeakerMonitor.FIELD_ID_DATAPATH);
+        Fields grouping = new Fields(SpeakerRouter.FIELD_ID_DATAPATH);
         topology.setBolt(SwitchHandler.BOLT_ID, bolt, scaleFactor)
                 .fieldsGrouping(NetworkHistory.SPOUT_ID, grouping)
-                .fieldsGrouping(SpeakerMonitor.BOLT_ID, grouping);
+                .fieldsGrouping(SpeakerRouter.BOLT_ID, grouping);
     }
 
     private void portHandler(TopologyBuilder topology, int scaleFactor) {
@@ -201,7 +201,7 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
         Fields islGrouping = new Fields(UniIslHandler.FIELD_ID_ISL_SOURCE, UniIslHandler.FIELD_ID_ISL_DEST);
         topology.setBolt(IslHandler.BOLT_ID, bolt, scaleFactor)
                 .fieldsGrouping(UniIslHandler.BOLT_ID, islGrouping)
-                .fieldsGrouping(SpeakerMonitor.BOLT_ID, SpeakerMonitor.STREAM_ISL_ID, islGrouping);
+                .fieldsGrouping(SpeakerRouter.BOLT_ID, SpeakerRouter.STREAM_ISL_ID, islGrouping);
     }
 
     private void outputSpeaker(TopologyBuilder topology, int scaleFactor) {

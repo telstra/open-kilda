@@ -18,8 +18,7 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.isl.command;
 import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryIslService;
-import org.openkilda.wfm.topology.discovery.service.IIslCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.isl.IslHandler;
 
 public class IslBfdFlagUpdatedCommand extends IslCommand {
     private final IslBfdFlagUpdated payload;
@@ -32,7 +31,7 @@ public class IslBfdFlagUpdatedCommand extends IslCommand {
     }
 
     @Override
-    public void apply(DiscoveryIslService service, IIslCarrier carrier) {
-        service.bfdEnableDisable(carrier, getReference(), payload);
+    public void apply(IslHandler handler) {
+        handler.processBfdEnableDisable(getReference(), payload);
     }
 }

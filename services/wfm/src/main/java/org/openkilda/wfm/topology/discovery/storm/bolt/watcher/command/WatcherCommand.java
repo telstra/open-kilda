@@ -16,13 +16,12 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryWatcherService;
-import org.openkilda.wfm.topology.discovery.service.IWatcherCarrier;
-import org.openkilda.wfm.topology.discovery.storm.ICommand;
+import org.openkilda.wfm.topology.discovery.storm.IHandlerCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.WatcherHandler;
 
 import lombok.Getter;
 
-public abstract class WatcherCommand implements ICommand<DiscoveryWatcherService, IWatcherCarrier> {
+public abstract class WatcherCommand implements IHandlerCommand<WatcherHandler> {
     @Getter
     private final Endpoint endpoint;
 

@@ -17,8 +17,7 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryDecisionMakerService;
-import org.openkilda.wfm.topology.discovery.service.IDecisionMakerCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.DecisionMakerHandler;
 
 public class DecisionMakerDiscoveryCommand extends DecisionMakerCommand {
     private final IslInfoData discoveryEvent;
@@ -33,7 +32,7 @@ public class DecisionMakerDiscoveryCommand extends DecisionMakerCommand {
     }
 
     @Override
-    public void apply(DiscoveryDecisionMakerService service, IDecisionMakerCarrier carrier) {
-        service.discovered(carrier, getEndpoint(), discoveryEvent, timeMs);
+    public void apply(DecisionMakerHandler handler) {
+        handler.processDiscovered(getEndpoint(), discoveryEvent, timeMs);
     }
 }

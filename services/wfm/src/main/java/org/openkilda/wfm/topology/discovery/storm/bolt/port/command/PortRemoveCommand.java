@@ -16,8 +16,7 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.port.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryPortService;
-import org.openkilda.wfm.topology.discovery.service.IPortCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.port.PortHandler;
 
 public class PortRemoveCommand extends PortCommand {
     public PortRemoveCommand(Endpoint endpoint) {
@@ -25,7 +24,7 @@ public class PortRemoveCommand extends PortCommand {
     }
 
     @Override
-    public void apply(DiscoveryPortService service, IPortCarrier carrier) {
-        service.remove(getEndpoint());
+    public void apply(PortHandler handler) {
+        handler.processRemove(getEndpoint());
     }
 }

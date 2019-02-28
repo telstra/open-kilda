@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.topology.discovery.storm.bolt.sw;
 
+import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
 import org.openkilda.model.Isl;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
@@ -23,6 +26,7 @@ import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
+import org.openkilda.wfm.topology.discovery.model.facts.HistoryFacts;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 import org.openkilda.wfm.topology.discovery.service.DiscoverySwitchService;
 import org.openkilda.wfm.topology.discovery.service.ISwitchCarrier;
@@ -37,7 +41,7 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortLinkStat
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortOnlineModeCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortRemoveCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortSetupCommand;
-import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerMonitor;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerRouter;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchCommand;
 import org.openkilda.wfm.topology.discovery.storm.spout.NetworkHistory;
 
@@ -49,7 +53,7 @@ import org.apache.storm.tuple.Values;
 public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
     public static final String BOLT_ID = ComponentId.SWITCH_HANDLER.toString();
 
-    public static final String FIELD_ID_DATAPATH = SpeakerMonitor.FIELD_ID_DATAPATH;
+    public static final String FIELD_ID_DATAPATH = SpeakerRouter.FIELD_ID_DATAPATH;
     public static final String FIELD_ID_PORT_NUMBER = "port-number";
     public static final String FIELD_ID_COMMAND = "command";
 
@@ -75,7 +79,7 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
     protected void handleInput(Tuple input) throws PipelineException {
         String source = input.getSourceComponent();
 
-        if (SpeakerMonitor.BOLT_ID.equals(source)) {
+        if (SpeakerRouter.BOLT_ID.equals(source)) {
             handleSpeakerInput(input);
         } else if (NetworkHistory.SPOUT_ID.equals(source)) {
             handleHistoryInput(input);
@@ -86,12 +90,12 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
 
     private void handleHistoryInput(Tuple input) throws PipelineException {
         SwitchCommand command = pullValue(input, NetworkHistory.FIELD_ID_PAYLOAD, SwitchCommand.class);
-        command.apply(service, this);
+        command.apply(this);
     }
 
     private void handleSpeakerInput(Tuple input) throws PipelineException {
-        SwitchCommand command = pullValue(input, SpeakerMonitor.FIELD_ID_COMMAND, SwitchCommand.class);
-        command.apply(service, this);
+        SwitchCommand command = pullValue(input, SpeakerRouter.FIELD_ID_COMMAND, SwitchCommand.class);
+        command.apply(this);
     }
 
     @Override
@@ -166,5 +170,23 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
                                                           CommandContext.class.getName(), getClass().getName(),
                                                           input.getSourceComponent(), input.getSourceStreamId()));
         }
+    }
+
+    // SwitchCommand processing
+
+    public void processSwitchEvent(SwitchInfoData payload) {
+        service.switchEvent(payload);
+    }
+
+    public void processSwitchEvent(UnmanagedSwitchNotification payload) {
+        service.switchEvent(payload);
+    }
+
+    public void processSwitchAddWithHistory(HistoryFacts history) {
+        service.switchAddWithHistory(history);
+    }
+
+    public void processSwitchPortEvent(PortInfoData payload) {
+        service.switchPortEvent(payload);
     }
 }

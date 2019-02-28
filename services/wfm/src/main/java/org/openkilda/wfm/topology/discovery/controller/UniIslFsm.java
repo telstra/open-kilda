@@ -21,14 +21,18 @@ import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
+import org.openkilda.wfm.topology.discovery.service.IUniIslCarrier;
 
+import lombok.Builder;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 @Slf4j
-public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsmState, UniIslFsmEvent, UniIslFsmContext> {
+public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsm.UniIslFsmState,
+        UniIslFsm.UniIslFsmEvent, UniIslFsm.UniIslFsmContext> {
     private final Endpoint endpoint;
     private IslReference islReference;
     private IslDataHolder islData = null;
@@ -168,5 +172,39 @@ public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsmState, U
 
     private void emitIslMove(UniIslFsmContext context) {
         context.getOutput().notifyIslMove(endpoint, islReference);
+    }
+
+    @Value
+    @Builder
+    public static class UniIslFsmContext {
+        private final IUniIslCarrier output;
+
+        private Isl history;
+        private IslInfoData discoveryEvent;
+
+        public static UniIslFsmContextBuilder builder(IUniIslCarrier carrier) {
+            return new UniIslFsmContextBuilder()
+                    .output(carrier);
+        }
+    }
+
+    public enum UniIslFsmEvent {
+        NEXT, ACTIVATE,
+
+        PHYSICAL_DOWN,
+        DISCOVERY, FAIL,
+        BFD_UP, BFD_DOWN, BFD_KILL,
+
+        _DISCOVERY_CHOICE_SAME, _DISCOVERY_CHOICE_MOVED
+    }
+
+    public enum UniIslFsmState {
+        INIT,
+        UNKNOWN,
+
+        DISCOVERY_CHOICE,
+
+        UP, DOWN,
+        BFD
     }
 }

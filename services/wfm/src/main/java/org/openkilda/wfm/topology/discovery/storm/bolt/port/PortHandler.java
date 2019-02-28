@@ -20,6 +20,8 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
+import org.openkilda.wfm.topology.discovery.model.facts.PortFacts.LinkStatus;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryPortService;
 import org.openkilda.wfm.topology.discovery.service.IPortCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
@@ -30,7 +32,8 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslPhys
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslRemoveCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslSetupCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watchlist.command.WatchListCommand;
-import org.openkilda.wfm.topology.discovery.storm.bolt.watchlist.command.WatchListPollCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.watchlist.command.WatchListPollAddCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.watchlist.command.WatchListPollRemoveCommand;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -45,11 +48,11 @@ public class PortHandler extends AbstractBolt implements IPortCarrier {
     public static final String FIELD_ID_COMMAND = "command";
 
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER,
-                                                          FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
+            FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
     public static final String STREAM_POLL_ID = "poll";
     public static final Fields STREAM_POLL_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER,
-                                                               FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
+            FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
     private transient DiscoveryPortService service;
 
@@ -65,7 +68,7 @@ public class PortHandler extends AbstractBolt implements IPortCarrier {
 
     private void handleSwitchCommand(Tuple input) throws PipelineException {
         PortCommand command = pullValue(input, SwitchHandler.FIELD_ID_COMMAND, PortCommand.class);
-        command.apply(service, this);
+        command.apply(this);
     }
 
     @Override
@@ -79,6 +82,8 @@ public class PortHandler extends AbstractBolt implements IPortCarrier {
         streamManager.declareStream(STREAM_POLL_ID, STREAM_POLL_FIELDS);
     }
 
+    // IPortCarrier
+
     @Override
     public void setupUniIslHandler(Endpoint endpoint, Isl history) {
         emit(getCurrentTuple(), makeDefaultTuple(new UniIslSetupCommand(endpoint, history)));
@@ -86,12 +91,12 @@ public class PortHandler extends AbstractBolt implements IPortCarrier {
 
     @Override
     public void enableDiscoveryPoll(Endpoint endpoint) {
-        emit(STREAM_POLL_ID, getCurrentTuple(), makePollTuple(new WatchListPollCommand(endpoint, true)));
+        emit(STREAM_POLL_ID, getCurrentTuple(), makePollTuple(new WatchListPollAddCommand(endpoint)));
     }
 
     @Override
     public void disableDiscoveryPoll(Endpoint endpoint) {
-        emit(STREAM_POLL_ID, getCurrentTuple(), makePollTuple(new WatchListPollCommand(endpoint, false)));
+        emit(STREAM_POLL_ID, getCurrentTuple(), makePollTuple(new WatchListPollRemoveCommand(endpoint)));
     }
 
     @Override
@@ -103,6 +108,27 @@ public class PortHandler extends AbstractBolt implements IPortCarrier {
     public void removeUniIslHandler(Endpoint endpoint) {
         emit(getCurrentTuple(), makeDefaultTuple(new UniIslRemoveCommand(endpoint)));
     }
+
+
+    // PortCommand processing
+
+    public void processSetup(PortFacts facts, Isl history) {
+        service.setup(facts, history);
+    }
+
+    public void processRemove(Endpoint endpoint) {
+        service.remove(endpoint);
+    }
+
+    public void processUpdateOnlineMode(Endpoint endpoint, boolean online) {
+        service.updateOnlineMode(endpoint, online);
+    }
+
+    public void processUpdateLinkStatus(Endpoint endpoint, LinkStatus linkStatus) {
+        service.updateLinkStatus(endpoint, linkStatus);
+    }
+
+    // Private
 
     private Values makeDefaultTuple(UniIslCommand command) {
         Endpoint endpoint = command.getEndpoint();

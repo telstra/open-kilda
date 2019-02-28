@@ -17,8 +17,7 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command;
 
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryUniIslService;
-import org.openkilda.wfm.topology.discovery.service.IUniIslCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.UniIslHandler;
 
 public class UniIslSetupCommand extends UniIslCommand {
     private final Isl history;
@@ -28,8 +27,9 @@ public class UniIslSetupCommand extends UniIslCommand {
         this.history = history;
     }
 
+
     @Override
-    public void apply(DiscoveryUniIslService service, IUniIslCarrier carrier) {
-        service.uniIslSetup(getEndpoint(), history);
+    public void apply(UniIslHandler handler) {
+        handler.processUniIslSetup(getEndpoint(), history);
     }
 }

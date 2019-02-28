@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.discovery.storm.bolt.uniisl;
 
+import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.AbstractException;
@@ -32,7 +33,7 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslMoveComman
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslSetupFromHistoryCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslUpCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.PortHandler;
-import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerMonitor;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerRouter;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslCommand;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -43,11 +44,11 @@ import org.apache.storm.tuple.Values;
 public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
     public static final String BOLT_ID = ComponentId.UNI_ISL_HANDLER.toString();
 
-    public static final String FIELD_ID_ISL_SOURCE = SpeakerMonitor.FIELD_ID_ISL_SOURCE;
-    public static final String FIELD_ID_ISL_DEST = SpeakerMonitor.FIELD_ID_ISL_DEST;
-    public static final String FIELD_ID_COMMAND = SpeakerMonitor.FIELD_ID_COMMAND;
+    public static final String FIELD_ID_ISL_SOURCE = SpeakerRouter.FIELD_ID_ISL_SOURCE;
+    public static final String FIELD_ID_ISL_DEST = SpeakerRouter.FIELD_ID_ISL_DEST;
+    public static final String FIELD_ID_COMMAND = SpeakerRouter.FIELD_ID_COMMAND;
 
-    public static final Fields STREAM_FIELDS = SpeakerMonitor.STREAM_ISL_FIELDS;
+    public static final Fields STREAM_FIELDS = SpeakerRouter.STREAM_ISL_FIELDS;
 
     private transient DiscoveryUniIslService service;
 
@@ -73,7 +74,7 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
 
     private void handleCommand(Tuple input, String field) throws PipelineException {
         UniIslCommand command = pullValue(input, field, UniIslCommand.class);
-        command.apply(service, this);
+        command.apply(this);
     }
 
     @Override
@@ -110,5 +111,31 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
     private Values makeDefaultTuple(IslCommand command) {
         IslReference reference = command.getReference();
         return new Values(reference.getSource(), reference.getDest(), command, safePullContext());
+    }
+
+    // UniIslCommand
+
+    public void processUniIslBfdUpDown(Endpoint endpoint, boolean up) {
+        service.uniIslBfdUpDown(endpoint, up);
+    }
+
+    public void processUniIslRemove(Endpoint endpoint) {
+        service.uniIslRemove(endpoint);
+    }
+
+    public void processUniIslSetup(Endpoint endpoint, Isl history) {
+        service.uniIslSetup(endpoint, history);
+    }
+
+    public void processUniIslPhysicalDown(Endpoint endpoint) {
+        service.uniIslPhysicalDown(endpoint);
+    }
+
+    public void processUniIslFail(Endpoint endpoint) {
+        service.uniIslFail(endpoint);
+    }
+
+    public void processUniIslDiscovery(Endpoint endpoint, IslInfoData speakerDiscoveryEvent) {
+        service.uniIslDiscovery(endpoint, speakerDiscoveryEvent);
     }
 }

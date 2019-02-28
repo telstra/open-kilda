@@ -16,8 +16,7 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.sw.command;
 
 import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
-import org.openkilda.wfm.topology.discovery.service.DiscoverySwitchService;
-import org.openkilda.wfm.topology.discovery.service.ISwitchCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.sw.SwitchHandler;
 
 public class SwitchUnmanagedEventCommand extends SwitchCommand {
     private final UnmanagedSwitchNotification payload;
@@ -28,7 +27,7 @@ public class SwitchUnmanagedEventCommand extends SwitchCommand {
     }
 
     @Override
-    public void apply(DiscoverySwitchService service, ISwitchCarrier carrier) {
-        service.switchEvent(payload);
+    public void apply(SwitchHandler handler) {
+        handler.processSwitchEvent(payload);
     }
 }

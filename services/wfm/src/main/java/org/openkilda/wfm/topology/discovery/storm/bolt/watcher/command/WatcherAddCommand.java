@@ -16,8 +16,7 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryWatcherService;
-import org.openkilda.wfm.topology.discovery.service.IWatcherCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.WatcherHandler;
 
 public class WatcherAddCommand extends WatcherCommand {
     private final long timeMs;
@@ -28,7 +27,7 @@ public class WatcherAddCommand extends WatcherCommand {
     }
 
     @Override
-    public void apply(DiscoveryWatcherService service, IWatcherCarrier carrier) {
-        service.addWatch(carrier, getEndpoint(), timeMs);
+    public void apply(WatcherHandler handler) {
+        handler.processAddWatch(getEndpoint(), timeMs);
     }
 }

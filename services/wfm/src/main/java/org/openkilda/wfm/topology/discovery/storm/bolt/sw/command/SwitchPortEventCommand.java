@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,18 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.discovery.controller;
+package org.openkilda.wfm.topology.discovery.storm.bolt.sw.command;
 
-import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.wfm.topology.discovery.service.IDecisionMakerCarrier;
+import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.wfm.topology.discovery.storm.bolt.sw.SwitchHandler;
 
-import lombok.Builder;
-import lombok.Data;
+public class SwitchPortEventCommand extends SwitchCommand {
+    private final PortInfoData payload;
 
-@Data
-@Builder
-public class DecisionMakerFsmContext {
-    private final IDecisionMakerCarrier output;
-    private final IslInfoData discoveryEvent;
-    private final Long currentTime;
+    public SwitchPortEventCommand(PortInfoData payload) {
+        super(payload.getSwitchId());
+        this.payload = payload;
+    }
+
+    @Override
+    public void apply(SwitchHandler handler) {
+        handler.processSwitchPortEvent(payload);
+    }
 }

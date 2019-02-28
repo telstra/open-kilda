@@ -35,9 +35,9 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslBfdFlagUpd
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerBfdSessionResponseCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerWorkerCommand;
-import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.PortEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchEventCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchPortEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchUnmanagedEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherSpeakerDiscoveryCommand;
@@ -51,7 +51,7 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 @Slf4j
-public class SpeakerMonitor extends AbstractBolt {
+public class SpeakerRouter extends AbstractBolt {
     public static final String BOLT_ID = ComponentId.SPEAKER_MONITOR.toString();
 
     public static final String FIELD_ID_KEY = MessageTranslator.KEY_FIELD;
@@ -108,7 +108,7 @@ public class SpeakerMonitor extends AbstractBolt {
         } else if (payload instanceof SwitchInfoData) {
             emit(input, makeDefaultTuple(input, new SwitchEventCommand((SwitchInfoData) payload)));
         } else if (payload instanceof PortInfoData) {
-            emit(input, makeDefaultTuple(input, new PortEventCommand((PortInfoData) payload)));
+            emit(input, makeDefaultTuple(input, new SwitchPortEventCommand((PortInfoData) payload)));
         } else if (payload instanceof UnmanagedSwitchNotification) {
             emit(input, makeDefaultTuple(
                     input, new SwitchUnmanagedEventCommand((UnmanagedSwitchNotification) payload)));

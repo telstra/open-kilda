@@ -16,8 +16,7 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.port.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryPortService;
-import org.openkilda.wfm.topology.discovery.service.IPortCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.port.PortHandler;
 
 public class PortOnlineModeCommand extends PortCommand {
     private final boolean online;
@@ -28,7 +27,7 @@ public class PortOnlineModeCommand extends PortCommand {
     }
 
     @Override
-    public void apply(DiscoveryPortService service, IPortCarrier carrier) {
-        service.updateOnlineMode(getEndpoint(), online);
+    public void apply(PortHandler handler) {
+        handler.processUpdateOnlineMode(getEndpoint(), online);
     }
 }

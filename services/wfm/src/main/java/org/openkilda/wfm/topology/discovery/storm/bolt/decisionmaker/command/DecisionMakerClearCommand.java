@@ -16,8 +16,7 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryDecisionMakerService;
-import org.openkilda.wfm.topology.discovery.service.IDecisionMakerCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.DecisionMakerHandler;
 
 
 public class DecisionMakerClearCommand extends DecisionMakerCommand {
@@ -27,7 +26,7 @@ public class DecisionMakerClearCommand extends DecisionMakerCommand {
     }
 
     @Override
-    public void apply(DiscoveryDecisionMakerService service, IDecisionMakerCarrier carrier) {
-        service.clear(carrier, getEndpoint());
+    public void apply(DecisionMakerHandler handler) {
+        handler.processClear(getEndpoint());
     }
 }

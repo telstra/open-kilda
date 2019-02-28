@@ -16,8 +16,7 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryUniIslService;
-import org.openkilda.wfm.topology.discovery.service.IUniIslCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.UniIslHandler;
 
 public class UniIslBfdUpDownCommand extends UniIslCommand {
     private final boolean up;
@@ -28,7 +27,7 @@ public class UniIslBfdUpDownCommand extends UniIslCommand {
     }
 
     @Override
-    public void apply(DiscoveryUniIslService service, IUniIslCarrier carrier) {
-        service.uniIslBfdUpDown(getEndpoint(), up);
+    public void apply(UniIslHandler handler) {
+        handler.processUniIslBfdUpDown(getEndpoint(), up);
     }
 }

@@ -17,13 +17,12 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.port.command;
 
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryPortService;
-import org.openkilda.wfm.topology.discovery.service.IPortCarrier;
-import org.openkilda.wfm.topology.discovery.storm.ICommand;
+import org.openkilda.wfm.topology.discovery.storm.IHandlerCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.port.PortHandler;
 
 import lombok.Getter;
 
-public abstract class PortCommand implements ICommand<DiscoveryPortService, IPortCarrier> {
+public abstract class PortCommand implements IHandlerCommand<PortHandler> {
     @Getter
     private final Endpoint endpoint;
 
