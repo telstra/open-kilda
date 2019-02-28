@@ -75,7 +75,7 @@ public class AuthController {
     @RequestMapping(value = "/oauth-two-config", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody OauthTwoConfigDto getOauthTwoConfig() {
-        LOGGER.info("[getOauthTwoConfig] - start. get oauth two configuration: ");
+        LOGGER.info("Get oauth two configuration");
         return authService.getOauthConfig();
     }
     
@@ -90,7 +90,7 @@ public class AuthController {
     @Permissions(values = { IConstants.Permission.STORE_SETTING })
     public @ResponseBody OauthTwoConfigDto saveOrUpdateOauthTwoConfig(
             @RequestBody OauthTwoConfigDto oauthTwoConfigDto) {
-        LOGGER.info("[saveOrUpdateStoreUrls] - start. linkStoreConfigDto: " + oauthTwoConfigDto.toString());
+        LOGGER.info("Save or update store Urls. linkStoreConfigDto: " + oauthTwoConfigDto.toString());
         activityLogger.log(ActivityType.UPDATE_OAUTH_CONFIG, oauthTwoConfigDto.getUsername());
         oauthTwoConfigValidator.validate(oauthTwoConfigDto);
         return authService.saveOrUpdateOauthConfig(oauthTwoConfigDto);

@@ -112,7 +112,7 @@ public class PermissionService {
         PermissionEntity permissionEntity = permissionRepository.findByPermissionId(permissionId);
 
         if (ValidatorUtil.isNull(permissionEntity)) {
-            LOGGER.error("Permission with permissionId '" + permissionId + "' not found. Error: "
+            LOGGER.warn("Permission with permissionId '" + permissionId + "' not found. Error: "
                     + messageUtil.getAttributeInvalid("permission_id", permissionId + ""));
             throw new RequestValidationException(messageUtil.getAttributeInvalid("permission_id", permissionId + ""));
         }
@@ -138,7 +138,7 @@ public class PermissionService {
             for (RoleEntity roleEntity : roleEntityList) {
                 roles += !"".equals(roles) ? "," + roleEntity.getName() : roleEntity.getName();
             }
-            LOGGER.error("Permission with permissionId '" + permissionId + "' not allowed to delete. Error: "
+            LOGGER.warn("Permission with permissionId '" + permissionId + "' not allowed to delete. Error: "
                     + messageUtil.getAttributeDeletionNotAllowed(permissionEntity.getName(), roles));
             throw new RequestValidationException(
                     messageUtil.getAttributeDeletionNotAllowed(permissionEntity.getName(), roles));
@@ -162,7 +162,7 @@ public class PermissionService {
 
         PermissionEntity permissionEntity = permissionRepository.findByPermissionId(permissionId);
         if (ValidatorUtil.isNull(permissionEntity)) {
-            LOGGER.error("Permission with permissionId '" + permissionId + "' not found. Error: "
+            LOGGER.warn("Permission with permissionId '" + permissionId + "' not found. Error: "
                     + messageUtil.getAttributeInvalid("permission_id", permissionId + ""));
             throw new RequestValidationException(messageUtil.getAttributeInvalid("permission_id", permissionId + ""));
         }

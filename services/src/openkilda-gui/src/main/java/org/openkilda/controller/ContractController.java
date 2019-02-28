@@ -55,7 +55,7 @@ public class ContractController {
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody List<Contract> getAllContracts(
             @PathVariable(name = "linkId", required = false) String linkId) {
-        LOGGER.info("[getAllContracts] - start. Flow id: " + linkId);
+        LOGGER.info("Get all contracts. Flow id: '" + linkId + "'");
         return contractService.getContracts(linkId);
     }
 
@@ -67,7 +67,7 @@ public class ContractController {
     @ResponseBody
     public boolean deleteContract(@PathVariable(name = "flowId", required = false) String flowId,
             @PathVariable(name = "contractid", required = false) String contractid) {
-        LOGGER.info("[deleteContract] - start. Flow id: " + flowId + " Contractid id: " + contractid);
+        LOGGER.info("Delete contract. Flow id: '" + flowId + "' Contractid id: '" + contractid + "'");
         activityLogger.log(ActivityType.DELETE_CONTRACT, "flowid:" + flowId + ",\ncontractid:" + contractid);
         return contractService.deleteContract(flowId, contractid);
     }

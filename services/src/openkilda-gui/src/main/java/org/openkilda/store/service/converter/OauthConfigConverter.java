@@ -43,8 +43,7 @@ public final class OauthConfigConverter {
         try {
             oauthConfigEntity.setPassword(GeneratePassword.encrypt(oauthTwoConfigDto.getPassword()));
         } catch (Exception e) {
-            LOGGER.error(
-                    "[toOauthConfigEntity] Password encryption failed for user " + oauthTwoConfigDto.getUsername());
+            LOGGER.error("Password encryption failed for user: " + oauthTwoConfigDto.getUsername(), e);
         }
         oauthConfigEntity.setGenerateToken(UrlConverter.toUrlEntity(Url.OAUTH_GENERATE_TOKEN.getName(),
                 oauthTwoConfigDto.getOauthGenerateTokenUrl(), oauthConfigEntity.getGenerateToken()));
@@ -66,8 +65,7 @@ public final class OauthConfigConverter {
         try {
             oauthTwoConfigDto.setPassword(GeneratePassword.decrypt(oauthConfigEntity.getPassword()));
         } catch (Exception e) {
-            LOGGER.error(
-                    "[toOauthTwoConfigDto] Password decryption failed for user " + oauthConfigEntity.getUsername());
+            LOGGER.error("Password decryption failed for user: " + oauthConfigEntity.getUsername(), e);
         }
         oauthTwoConfigDto.setOauthGenerateTokenUrl(UrlConverter.toUrlDto(oauthConfigEntity.getGenerateToken()));
         oauthTwoConfigDto.setOauthRefreshTokenUrl(UrlConverter.toUrlDto(oauthConfigEntity.getRefreshToken()));
