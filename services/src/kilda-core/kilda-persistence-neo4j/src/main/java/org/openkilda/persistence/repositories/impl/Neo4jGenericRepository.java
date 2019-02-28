@@ -79,6 +79,7 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
             if (ex.code().endsWith("ConstraintValidationFailed")) {
                 throw new ConstraintViolationException(ex.getMessage(), ex);
             }
+            throw ex;
         }
     }
 
