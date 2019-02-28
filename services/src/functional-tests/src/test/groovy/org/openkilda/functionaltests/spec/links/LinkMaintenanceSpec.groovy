@@ -140,7 +140,7 @@ class LinkMaintenanceSpec extends BaseSpecification {
             broughtDownPorts.add(src)
             northbound.portDown(src.switchId, src.portNo)
         }
-        Wrappers.wait(antiflapMin * broughtDownPorts.size() + WAIT_OFFSET) {
+        Wrappers.wait(antiflapMin + WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
                 it.state == IslChangeType.FAILED
             }.size() == broughtDownPorts.size() * 2
