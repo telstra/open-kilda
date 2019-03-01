@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,10 +15,16 @@
 
 package org.openkilda.wfm.topology.reroute.service;
 
+import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
+
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -26,10 +32,13 @@ public class ReroutesThrottling {
 
     private ExtendableTimeWindow extendableTimeWindow;
 
-    private Map<String, String> reroutes = new HashMap<>();
+    private Map<String, FlowThrottlingData> reroutes = new HashMap<>();
 
-    public ReroutesThrottling(long minDelay, long maxDelay) {
+    private int defaultFlowPriority;
+
+    public ReroutesThrottling(long minDelay, long maxDelay, int defaultFlowPriority) {
         extendableTimeWindow = new ExtendableTimeWindow(minDelay, maxDelay);
+        this.defaultFlowPriority = defaultFlowPriority;
     }
 
     /**
@@ -44,14 +53,15 @@ public class ReroutesThrottling {
     /**
      * Keeps current reroute request. Only last correlationId will be saved.
      *
-     * @param flowId the flow ID
-     * @param correlationId the correlation ID
+     * @param flowId the flow ID.
+     * @param throttlingData the correlation ID and flow priority.
      */
-    public void putRequest(String flowId, String correlationId) {
-        log.info("Puts flow {} with correlationId {}", flowId, correlationId);
-        String prevCorrelationId = reroutes.put(flowId, correlationId);
-        if (prevCorrelationId != null) {
-            log.info("Previous flow {} with correlationId {} was dropped.", flowId, prevCorrelationId);
+    public void putRequest(String flowId, FlowThrottlingData throttlingData) {
+        log.info("Puts flow {} with correlationId {}", flowId, throttlingData.getCorrelationId());
+        FlowThrottlingData prevThrottlingData = reroutes.put(flowId, throttlingData);
+        if (prevThrottlingData != null) {
+            log.info("Previous flow {} with correlationId {} was dropped.",
+                    flowId, prevThrottlingData.getCorrelationId());
         }
         extendableTimeWindow.registerEvent();
     }
@@ -62,14 +72,37 @@ public class ReroutesThrottling {
      *
      * @return Map with flowId as key and correlationId as value.
      */
-    public Map<String, String> getReroutes() {
+    public List<Map.Entry<String, FlowThrottlingData>> getReroutes() {
         if (extendableTimeWindow.isTimeToFlush()) {
             extendableTimeWindow.flush();
-            Map<String, String> result = reroutes;
+            List<Map.Entry<String, FlowThrottlingData>> result = new ArrayList<>(reroutes.entrySet());
+            result.sort(Map.Entry.comparingByValue(new FlowPriorityComparator()));
             reroutes = new HashMap<>();
             return result;
         } else {
-            return Collections.emptyMap();
+            return Collections.emptyList();
+        }
+    }
+
+    private class FlowPriorityComparator implements Comparator<FlowThrottlingData> {
+        @Override
+        public int compare(FlowThrottlingData throttlingDataA, FlowThrottlingData throttlingDataB) {
+            int priorityA = throttlingDataA.getPriority() == null ? defaultFlowPriority : throttlingDataA.getPriority();
+            int priorityB = throttlingDataB.getPriority() == null ? defaultFlowPriority : throttlingDataB.getPriority();
+            Instant timeCreateA = throttlingDataA.getTimeCreate();
+            Instant timeCreateB = throttlingDataB.getTimeCreate();
+
+            if (priorityA == priorityB && (timeCreateA != null || timeCreateB != null)) {
+                if (timeCreateA == null) {
+                    return -1;
+                }
+                if (timeCreateB == null) {
+                    return 1;
+                }
+                return timeCreateA.compareTo(timeCreateB);
+            }
+
+            return Integer.compare(priorityA, priorityB);
         }
     }
 }
