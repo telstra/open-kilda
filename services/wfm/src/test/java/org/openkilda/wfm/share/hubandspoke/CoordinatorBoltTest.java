@@ -77,9 +77,4 @@ public class CoordinatorBoltTest {
         verify(collector).emitDirect(eq(firstTask), anyList());
         verify(collector).emitDirect(eq(secondTask), anyList());
     }
-
-    @Test(expected = IllegalStateException.class)
-    public void shouldThrowExceptionIfCancelNotPendingRequest() {
-        target.cancelCallback("not-pending-request");
-    }
 }
