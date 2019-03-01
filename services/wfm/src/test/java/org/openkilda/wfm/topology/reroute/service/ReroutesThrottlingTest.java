@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
+
 import com.google.common.collect.ImmutableMap;
 import org.junit.Before;
 import org.junit.Test;
@@ -28,6 +30,8 @@ import org.junit.Test;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class ReroutesThrottlingTest {
@@ -40,9 +44,9 @@ public class ReroutesThrottlingTest {
 
     private static final String FLOW_ID_2 = "flow2";
 
-    private static final String CORRELATION_ID_1 = "corrId1";
+    private static final FlowThrottlingData THROTTLING_DATA_1 = new FlowThrottlingData("corrId1", 1, null);
 
-    private static final String CORRELATION_ID_2 = "corrId2";
+    private static final FlowThrottlingData THROTTLING_DATA_2 = new FlowThrottlingData("corrId2", 1, null);
 
     @Before
     public void init() {
@@ -64,9 +68,12 @@ public class ReroutesThrottlingTest {
 
         when(clock.instant()).thenReturn(event, beforeTimeout, afterTimeout);
 
-        reroutesThrottling.putRequest(FLOW_ID_1, CORRELATION_ID_1);
+        reroutesThrottling.putRequest(FLOW_ID_1, THROTTLING_DATA_1);
         assertTrue(reroutesThrottling.getReroutes().isEmpty());
-        assertTrue(reroutesThrottling.getReroutes().containsKey(FLOW_ID_1));
+
+        List<Map.Entry<String, FlowThrottlingData>> expected = new ArrayList<>(
+                ImmutableMap.of(FLOW_ID_1, THROTTLING_DATA_1).entrySet());
+        assertEquals(expected, reroutesThrottling.getReroutes());
     }
 
     @Test
@@ -76,11 +83,12 @@ public class ReroutesThrottlingTest {
 
         when(clock.instant()).thenReturn(event, event, event, afterTimeout);
 
-        reroutesThrottling.putRequest(FLOW_ID_1, CORRELATION_ID_1);
-        reroutesThrottling.putRequest(FLOW_ID_2, CORRELATION_ID_1);
-        reroutesThrottling.putRequest(FLOW_ID_1, CORRELATION_ID_2);
+        reroutesThrottling.putRequest(FLOW_ID_1, THROTTLING_DATA_1);
+        reroutesThrottling.putRequest(FLOW_ID_2, THROTTLING_DATA_1);
+        reroutesThrottling.putRequest(FLOW_ID_1, THROTTLING_DATA_2);
 
-        Map<String, String> expected = ImmutableMap.of(FLOW_ID_1, CORRELATION_ID_2, FLOW_ID_2, CORRELATION_ID_1);
+        List<Map.Entry<String, FlowThrottlingData>> expected = new ArrayList<>(
+                ImmutableMap.of(FLOW_ID_1, THROTTLING_DATA_2, FLOW_ID_2, THROTTLING_DATA_1).entrySet());
         assertEquals(expected, reroutesThrottling.getReroutes());
     }
 
@@ -94,9 +102,9 @@ public class ReroutesThrottlingTest {
 
         when(clock.instant()).thenReturn(event, check, secondEvent, secondCheck, finalCheck);
 
-        reroutesThrottling.putRequest(FLOW_ID_1, CORRELATION_ID_1);
+        reroutesThrottling.putRequest(FLOW_ID_1, THROTTLING_DATA_1);
         assertTrue(reroutesThrottling.getReroutes().isEmpty());
-        reroutesThrottling.putRequest(FLOW_ID_2, CORRELATION_ID_1);
+        reroutesThrottling.putRequest(FLOW_ID_2, THROTTLING_DATA_1);
         assertTrue(reroutesThrottling.getReroutes().isEmpty());
         assertFalse(reroutesThrottling.getReroutes().isEmpty());
     }

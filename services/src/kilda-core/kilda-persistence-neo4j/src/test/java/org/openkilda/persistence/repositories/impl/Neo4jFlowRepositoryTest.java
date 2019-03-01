@@ -326,6 +326,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(2)
                 .destVlan(11)
                 .status(FlowStatus.UP)
+                .cookie(1 | Flow.FORWARD_FLOW_COOKIE_MASK)
                 .build();
 
         Flow reverseFlow = Flow.builder()
@@ -337,6 +338,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(1)
                 .destVlan(10)
                 .status(FlowStatus.UP)
+                .cookie(1 | Flow.REVERSE_FLOW_COOKIE_MASK)
                 .build();
 
         flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
@@ -350,8 +352,8 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .build();
         flowSegmentRepository.createOrUpdate(segment);
 
-        Collection<String> foundFlowIds = flowRepository.findActiveFlowIdsWithPortInPath(TEST_SWITCH_C_ID, 100);
-        assertThat(foundFlowIds, Matchers.hasSize(1));
+        Collection<Flow> foundFlowIds = flowRepository.findActiveFlowsWithPortInPath(TEST_SWITCH_C_ID, 100);
+        assertThat(foundFlowIds, Matchers.hasSize(2));
     }
 
 
@@ -366,6 +368,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(2)
                 .destVlan(11)
                 .status(FlowStatus.UP)
+                .cookie(1 | Flow.FORWARD_FLOW_COOKIE_MASK)
                 .build();
 
         Flow reverseFlow = Flow.builder()
@@ -377,12 +380,13 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(1)
                 .destVlan(10)
                 .status(FlowStatus.UP)
+                .cookie(1 | Flow.REVERSE_FLOW_COOKIE_MASK)
                 .build();
 
         flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
 
-        Collection<String> foundFlowIds = flowRepository.findActiveFlowIdsWithPortInPath(TEST_SWITCH_A_ID, 1);
-        assertThat(foundFlowIds, Matchers.hasSize(1));
+        Collection<Flow> foundFlowIds = flowRepository.findActiveFlowsWithPortInPath(TEST_SWITCH_A_ID, 1);
+        assertThat(foundFlowIds, Matchers.hasSize(2));
     }
 
     @Test
@@ -396,6 +400,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(2)
                 .destVlan(11)
                 .status(FlowStatus.DOWN)
+                .cookie(1 | Flow.FORWARD_FLOW_COOKIE_MASK)
                 .build();
 
         Flow reverseFlow = Flow.builder()
@@ -407,11 +412,12 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(1)
                 .destVlan(10)
                 .status(FlowStatus.DOWN)
+                .cookie(1 | Flow.REVERSE_FLOW_COOKIE_MASK)
                 .build();
 
         flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
 
-        Collection<String> foundFlowIds = flowRepository.findActiveFlowIdsWithPortInPath(TEST_SWITCH_A_ID, 1);
+        Collection<Flow> foundFlowIds = flowRepository.findActiveFlowsWithPortInPath(TEST_SWITCH_A_ID, 1);
         assertThat(foundFlowIds, Matchers.empty());
     }
 
@@ -426,6 +432,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(2)
                 .destVlan(11)
                 .status(FlowStatus.DOWN)
+                .cookie(1 | Flow.FORWARD_FLOW_COOKIE_MASK)
                 .build();
 
         Flow reverseFlow = Flow.builder()
@@ -437,13 +444,14 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(1)
                 .destVlan(10)
                 .status(FlowStatus.DOWN)
+                .cookie(1 | Flow.REVERSE_FLOW_COOKIE_MASK)
                 .build();
 
         flowRepository.createOrUpdate(forwardFlow);
         flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
 
-        Collection<String> foundFlowIds = flowRepository.findDownFlowIds();
-        assertThat(foundFlowIds, Matchers.hasSize(1));
+        Collection<Flow> foundFlowIds = flowRepository.findDownFlows();
+        assertThat(foundFlowIds, Matchers.hasSize(2));
     }
 
     @Test
