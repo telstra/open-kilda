@@ -24,7 +24,6 @@ import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.IslStatus;
-import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
@@ -36,6 +35,7 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
+import com.google.common.collect.ImmutableMap;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
@@ -186,16 +186,10 @@ public class DatabaseSupportImpl implements Database {
 
     @Override
     public boolean resetCosts() {
-        return transactionManager.doInTransaction(() -> {
-            Collection<org.openkilda.model.Isl> isls = islRepository.findAll();
-            switchRepository.lockSwitches(switchRepository.findAll().toArray(new Switch[0]));
-            isls.forEach(isl -> {
-                isl.setCost(DEFAULT_COST);
-                islRepository.createOrUpdate(isl);
-            });
-
-            return !isls.isEmpty();
-        });
+        Session session = ((Neo4jSessionFactory) transactionManager).getSession();
+        String query = "MATCH ()-[i:isl]->() SET i.cost=$cost";
+        Result result = session.query(query, ImmutableMap.of("cost", DEFAULT_COST));
+        return result.queryStatistics().getPropertiesSet() > 0;
     }
 
     /**
