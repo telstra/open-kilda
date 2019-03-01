@@ -20,6 +20,7 @@ import lombok.NonNull;
 import lombok.Value;
 
 import java.io.Serializable;
+import java.time.Instant;
 
 /**
  * A pair (forward & reverse) of flows.
@@ -38,6 +39,11 @@ public class FlowPair implements Serializable {
     public void setStatus(FlowStatus status) {
         forward.setStatus(status);
         reverse.setStatus(status);
+    }
+
+    public void setTimeCreate(Instant timeCreate) {
+        forward.setTimeCreate(timeCreate);
+        reverse.setTimeCreate(timeCreate);
     }
 
     public boolean isActive() {

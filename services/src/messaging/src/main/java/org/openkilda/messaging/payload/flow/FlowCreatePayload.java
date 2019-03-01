@@ -41,6 +41,7 @@ public class FlowCreatePayload extends FlowPayload {
      * @param ignoreBandwidth  should ignore bandwidth in path computation
      * @param periodicPings    enable periodic flow pings
      * @param description      flow description
+     * @param timeCreate       flow create timestamp
      * @param lastUpdated      flow last updated timestamp
      * @param diverseFlowId    make new flow diverse with FlowId
      * @param status           flow status
@@ -55,12 +56,13 @@ public class FlowCreatePayload extends FlowPayload {
                              @JsonProperty("ignore_bandwidth") Boolean ignoreBandwidth,
                              @JsonProperty("periodic-pings") Boolean periodicPings,
                              @JsonProperty("description") String description,
+                             @JsonProperty("time-create") String timeCreate,
                              @JsonProperty("last-updated") String lastUpdated,
                              @JsonProperty("diverse-flowid") String diverseFlowId,
                              @JsonProperty("status") String status,
                              @JsonProperty("max-latency") Integer maxLatency,
                              @JsonProperty("priority") Integer priority) {
-        super(id, source, destination, maximumBandwidth, ignoreBandwidth, periodicPings, description,
+        super(id, source, destination, maximumBandwidth, ignoreBandwidth, periodicPings, description, timeCreate,
                 lastUpdated, status, maxLatency, priority);
         this.diverseFlowId = diverseFlowId;
     }
