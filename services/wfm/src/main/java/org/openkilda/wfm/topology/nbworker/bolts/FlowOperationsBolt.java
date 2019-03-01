@@ -24,8 +24,10 @@ import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.request.RerouteFlowsForIslRequest;
+import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
@@ -68,6 +70,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
             result = processGetFlowsForLinkRequest((GetFlowsForIslRequest) request);
         } else if (request instanceof RerouteFlowsForIslRequest) {
             result = processRerouteFlowsForLinkRequest((RerouteFlowsForIslRequest) request, tuple);
+        } else if (request instanceof GetFlowPathRequest) {
+            result = processGetFlowPathRequest((GetFlowPathRequest) request, correlationId);
         } else if (request instanceof FlowPatchRequest) {
             result = processFlowPatchRequest((FlowPatchRequest) request);
         } else {
@@ -117,6 +121,23 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         });
 
         return Collections.singletonList(new FlowsResponse(flowIds));
+    }
+
+    private List<GetFlowPathResponse> processGetFlowPathRequest(GetFlowPathRequest request, String correlationId) {
+        final String errorType = "Could not get flow path";
+
+        try {
+            return flowOperationsService.getFlowPath(request.getFlowId())
+                    .stream()
+                    .map(GetFlowPathResponse::new)
+                    .collect(Collectors.toList());
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(correlationId, System.currentTimeMillis(),
+                    ErrorType.NOT_FOUND, errorType, e.getMessage());
+        } catch (Exception e) {
+            throw new MessageException(correlationId, System.currentTimeMillis(),
+                    ErrorType.INTERNAL_ERROR, errorType, e.getMessage());
+        }
     }
 
     private List<FlowResponse> processFlowPatchRequest(FlowPatchRequest request) {
