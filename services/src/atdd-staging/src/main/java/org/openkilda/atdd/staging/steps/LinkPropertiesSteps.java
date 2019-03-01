@@ -24,7 +24,6 @@ import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
-import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 import org.openkilda.testing.service.northbound.NorthboundService;
 
@@ -34,7 +33,6 @@ import cucumber.api.java.en.When;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,9 +41,6 @@ public class LinkPropertiesSteps {
 
     @Autowired
     private NorthboundService northboundService;
-
-    @Autowired
-    private TopologyDefinition topologyDefinition;
 
     @Autowired
     private TopologyUnderTest topologyUnderTest;
@@ -145,19 +140,5 @@ public class LinkPropertiesSteps {
     public void deleteAllLinkProperties() {
         List<LinkPropsDto> linkProps = northboundService.getAllLinkProps();
         changePropsResponse = northboundService.deleteLinkProps(linkProps);
-    }
-
-    @When("^set (.*) of '(.*)' ISL to (\\d+)$")
-    public void setCostOfIsl(String propName, String islAlias, int newCost) {
-        createLinkPropertiesRequest(islAlias);
-        linkPropsRequest.setProperty(propName, String.valueOf(newCost));
-        changePropsResponse = northboundService.updateLinkProps(Collections.singletonList(linkPropsRequest));
-    }
-
-    @Then("^property '(.*)' of (.*) ISL equals to '(.*)'$")
-    public void verifyIslProp(String propName, String islAlias, String expectedValue) {
-        createLinkPropertiesRequest(islAlias);
-        getLinkPropertiesForDefinedRequest();
-        assertEquals(expectedValue, getLinkPropsResponse.get(0).getProperty(propName));
     }
 }
