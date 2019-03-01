@@ -96,10 +96,9 @@ class PathHelper {
             }
             def involvedIsl = topology.isls.find(matchingIsl) ?:
                     topology.isls.collect { it.reversed }.find(matchingIsl) ?:
-                            Isl.factory(topology.switches.find { it.dpId == src.switchId },
-                                    src.portNo, topology.switches.find {
-                                it.dpId == dst.switchId
-                            }, dst.portNo, 0, null)
+                            Isl.factory(topology.switches.find { it.dpId == src.switchId }, src.portNo,
+                                    topology.switches.find { it.dpId == dst.switchId }, dst.portNo,
+                                    0, null, false)
             involvedIsls << involvedIsl
         }
         return involvedIsls

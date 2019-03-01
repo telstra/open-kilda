@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flow.service;
 import static java.util.Objects.requireNonNull;
 import static org.apache.commons.collections4.ListUtils.union;
 
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
@@ -35,6 +36,7 @@ import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.topology.flow.model.FlowPairWithSegments;
 import org.openkilda.wfm.topology.flow.model.UpdatedFlowPairWithSegments;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
@@ -96,9 +98,7 @@ public class FlowService extends BaseFlowService {
         }
 
         if (diverseFlowId != null) {
-            if (!doesFlowExist(diverseFlowId)) {
-                throw new FlowNotFoundException(diverseFlowId);
-            }
+            checkDiverseFlow(flow, diverseFlowId);
             flow.setGroupId(getOrCreateFlowGroupId(diverseFlowId));
         }
 
@@ -233,13 +233,10 @@ public class FlowService extends BaseFlowService {
             FlowPair currentFlow = getFlowPair(updatingFlow.getFlowId())
                     .orElseThrow(() -> new FlowNotFoundException(updatingFlow.getFlowId()));
 
-            if (diverseFlowId != null && !doesFlowExist(diverseFlowId)) {
-                throw new FlowNotFoundException(diverseFlowId);
-            }
-
             if (diverseFlowId == null) {
                 updatingFlow.setGroupId(null);
             } else {
+                checkDiverseFlow(updatingFlow, diverseFlowId);
                 updatingFlow.setGroupId(getOrCreateFlowGroupId(diverseFlowId));
             }
 
@@ -443,10 +440,26 @@ public class FlowService extends BaseFlowService {
         switchRepository.lockSwitches(switches.toArray(new Switch[0]));
     }
 
-    private String getOrCreateFlowGroupId(String flowId) {
+    private String getOrCreateFlowGroupId(String flowId) throws FlowNotFoundException {
         log.info("Getting flow group for flow with id ", flowId);
         return flowRepository.getOrCreateFlowGroupId(flowId)
-                .orElseThrow(() -> new IllegalArgumentException(new FlowNotFoundException(flowId)));
+                .orElseThrow(() -> new FlowNotFoundException(flowId));
+    }
+
+    private void checkDiverseFlow(Flow targetFlow, String flowId) throws FlowNotFoundException,
+            FlowValidationException {
+        if (targetFlow.isOneSwitchFlow()) {
+            throw new FlowValidationException("Couldn't add one-switch flow into diverse group",
+                    ErrorType.NOT_IMPLEMENTED);
+        }
+
+        FlowPair diverseFlow = flowRepository.findFlowPairById(flowId)
+                .orElseThrow(() -> new FlowNotFoundException(flowId));
+
+        if (diverseFlow.getForward().isOneSwitchFlow()) {
+            throw new FlowValidationException("Couldn't create diverse group with one-switch flow",
+                    ErrorType.NOT_IMPLEMENTED);
+        }
     }
 
     @Value

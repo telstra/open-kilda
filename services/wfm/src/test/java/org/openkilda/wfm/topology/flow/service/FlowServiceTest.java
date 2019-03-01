@@ -38,6 +38,7 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
+import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.cache.ResourceCache;
 import org.openkilda.wfm.topology.flow.service.FlowService.ReroutedFlow;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
