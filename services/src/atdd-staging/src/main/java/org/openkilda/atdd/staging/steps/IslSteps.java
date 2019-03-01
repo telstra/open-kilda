@@ -191,7 +191,7 @@ public class IslSteps {
     @And("^select a reverse path ISL for '(.*)' and alias it as '(.*)'$")
     public void selectAReversePathIsl(String islAlias, String newIslAlias) {
         Isl theIsl = topologyUnderTest.getAliasedObject(islAlias);
-        Isl reversedIsl = islUtils.reverseIsl(theIsl);
+        Isl reversedIsl = theIsl.getReversed();
         topologyUnderTest.addAlias(newIslAlias, reversedIsl);
     }
 

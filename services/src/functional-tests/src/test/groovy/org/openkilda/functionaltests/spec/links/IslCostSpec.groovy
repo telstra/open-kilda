@@ -6,7 +6,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.northbound.dto.links.LinkPropsDto
 
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Unroll
@@ -15,6 +14,10 @@ class IslCostSpec extends BaseSpecification {
 
     @Value('${isl.cost.when.port.down}')
     int islCostWhenPortDown
+
+    def setupOnce() {
+        database.resetCosts()  // reset cost on all links before tests
+    }
 
     @Unroll
     def "Cost of #description ISL is increased due to bringing port down on a switch \
@@ -30,7 +33,7 @@ class IslCostSpec extends BaseSpecification {
 
         and: "Cost of forward and reverse ISLs after bringing port down is increased"
         database.getIslCost(isl) == islCostWhenPortDown + islCost
-        database.getIslCost(islUtils.reverseIsl(isl)) == islCostWhenPortDown + islCost
+        database.getIslCost(isl.reversed) == islCostWhenPortDown + islCost
 
         and: "Bring port up on the source switch and reset costs"
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
@@ -49,8 +52,7 @@ class IslCostSpec extends BaseSpecification {
     def "Cost of #data.description ISL is NOT increased due to bringing port down on a switch \
 (ISL cost #data.condition isl.cost.when.port.down)"() {
         given: "An active ISL"
-        def linkProps = [new LinkPropsDto(data.isl.srcSwitch.dpId.toString(), data.isl.srcPort,
-                data.isl.dstSwitch.dpId.toString(), data.isl.dstPort, ["cost": data.cost.toString()])]
+        def linkProps = [islUtils.toLinkProps(data.isl, ["cost": data.cost.toString()])]
         northbound.updateLinkProps(linkProps)
 
         int islCost = database.getIslCost(data.isl)
@@ -64,7 +66,7 @@ class IslCostSpec extends BaseSpecification {
         and: "Cost of forward and reverse ISLs after bringing port down is NOT increased"
         database.getIslCost(data.isl) == islCost
         //TODO(ylobankov): Uncomment the check once issue #1954 is merged.
-        //database.getIslCost(islUtils.reverseIsl(data.isl)) == islCost
+        //database.getIslCost(data.isl.reversed) == islCost
 
         and: "Bring port up on the source switch, delete link props and reset costs"
         northbound.portUp(data.isl.srcSwitch.dpId, data.isl.srcPort)
@@ -112,10 +114,9 @@ class IslCostSpec extends BaseSpecification {
         def isl = topology.islsForActiveSwitches.find {
             it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd
         } ?: assumeTrue("Wasn't able to find suitable ISL", false)
-        def reverseIsl = islUtils.reverseIsl(isl)
 
         int islCost = database.getIslCost(isl)
-        assert database.getIslCost(reverseIsl) == islCost
+        assert database.getIslCost(isl.reversed) == islCost
 
         when: "Remove a-switch rules to break link between switches"
         def rulesToRemove = [isl.aswitch, isl.aswitch.reversed]
@@ -125,19 +126,19 @@ class IslCostSpec extends BaseSpecification {
         Wrappers.wait(discoveryTimeout * 1.5 + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, reverseIsl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
         }
 
         and: "Cost of forward and reverse ISLs after failing connection is not increased"
         database.getIslCost(isl) == islCost
-        database.getIslCost(reverseIsl) == islCost
+        database.getIslCost(isl.reversed) == islCost
 
         and: "Add a-switch rules to restore connection"
         lockKeeper.addFlows(rulesToRemove)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, reverseIsl).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
         }
     }
 }

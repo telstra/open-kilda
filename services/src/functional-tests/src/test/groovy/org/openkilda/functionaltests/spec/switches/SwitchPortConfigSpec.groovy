@@ -32,7 +32,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, islUtils.reverseIsl(isl)).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
         }
 
         and: "Port failure is logged in OpenTSDB"
@@ -52,7 +52,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, islUtils.reverseIsl(isl)).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
         }
 
         and: "Port UP event is logged in OpenTSDB"
@@ -96,7 +96,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
 
     List<Isl> getUniqueIsls() {
         def uniqueSwitches = getUniqueSwitches()*.dpId
-        def isls = topology.islsForActiveSwitches.collect { [it, islUtils.reverseIsl(it)] }.flatten()
+        def isls = topology.islsForActiveSwitches.collect { [it, it.reversed] }.flatten()
         return isls.unique { it.srcSwitch.dpId }.findAll { it.srcSwitch.dpId in uniqueSwitches }
     }
 

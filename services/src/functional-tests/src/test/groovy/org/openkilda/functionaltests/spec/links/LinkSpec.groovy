@@ -33,7 +33,6 @@ when connection is lost(not port down)"() {
         double waitTime = discoveryTimeout - (discoveryTimeout * 0.2)
         double interval = discoveryTimeout * 0.2
         def ruleToRemove = [isl.aswitch]
-        def reverseIsl = islUtils.reverseIsl(isl)
 
         when: "Remove a one-way flow on an a-switch for simulating lost connection(not port down)"
         lockKeeper.removeFlows(ruleToRemove)
@@ -42,7 +41,7 @@ when connection is lost(not port down)"() {
         Wrappers.timedLoop(waitTime) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, reverseIsl).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
             sleep((interval * 1000).toLong())
         }
 
@@ -59,8 +58,8 @@ when connection is lost(not port down)"() {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
             assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, reverseIsl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, reverseIsl).get().actualState == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().actualState == IslChangeType.DISCOVERED
         }
 
         when: "Add the removed one-way flow rule for restoring topology"
@@ -71,8 +70,8 @@ when connection is lost(not port down)"() {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, reverseIsl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, reverseIsl).get().actualState == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().actualState == IslChangeType.DISCOVERED
         }
     }
 
@@ -235,7 +234,7 @@ when connection is lost(not port down)"() {
         def isl = topology.getIslsForActiveSwitches()[0]
 
         when: "Try to delete the link"
-        northbound.deleteLink(islUtils.getLinkParameters(isl))
+        northbound.deleteLink(islUtils.toLinkParameters(isl))
 
         then: "Get 400 BadRequest error because the link is active"
         def exc = thrown(HttpClientErrorException)
@@ -251,14 +250,14 @@ when connection is lost(not port down)"() {
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
 
         when: "Try to delete the link"
-        def response = northbound.deleteLink(islUtils.getLinkParameters(isl))
+        def response = northbound.deleteLink(islUtils.toLinkParameters(isl))
         // TODO(rtretiak): Below line to be removed after #1977 fix
-        northbound.deleteLink(islUtils.getLinkParameters(islUtils.reverseIsl(isl)))
+        northbound.deleteLink(islUtils.toLinkParameters(isl.reversed))
 
         then: "The link is actually deleted"
         response.deleted
         !islUtils.getIslInfo(isl)
-        !islUtils.getIslInfo(islUtils.reverseIsl(isl))
+        !islUtils.getIslInfo(isl.reversed)
 
         when: "Removed link becomes active again (port brought UP)"
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
@@ -266,7 +265,7 @@ when connection is lost(not port down)"() {
         then: "The link is rediscovered in both directions"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, islUtils.reverseIsl(isl)).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
         }
         database.resetCosts()

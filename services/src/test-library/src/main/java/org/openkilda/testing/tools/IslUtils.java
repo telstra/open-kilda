@@ -105,17 +105,6 @@ public class IslUtils {
     }
 
     /**
-     * Returns 'reverse' version of the passed ISL.
-     *
-     * @param isl ISL to reverse
-     * @deprecated use isl.getReversed() instead
-     */
-    @Deprecated
-    public static Isl reverseIsl(Isl isl) {
-        return isl.getReversed();
-    }
-
-    /**
      * Converts a given Isl object to LinkPropsDto object.
      *
      * @param isl Isl object to convert
@@ -131,7 +120,7 @@ public class IslUtils {
      *
      * @param isl Isl object to convert
      */
-    public LinkParametersDto getLinkParameters(Isl isl) {
+    public LinkParametersDto toLinkParameters(Isl isl) {
         return new LinkParametersDto(isl.getSrcSwitch().getDpId().toString(), isl.getSrcPort(),
                 isl.getDstSwitch().getDpId().toString(), isl.getDstPort());
     }
@@ -141,7 +130,7 @@ public class IslUtils {
      *
      * @param isl Isl object to convert
      */
-    public LinkUnderMaintenanceDto getLinkUnderMaintenance(Isl isl, boolean underMaintenance, boolean evacuate) {
+    public LinkUnderMaintenanceDto toLinkUnderMaintenance(Isl isl, boolean underMaintenance, boolean evacuate) {
         return new LinkUnderMaintenanceDto(isl.getSrcSwitch().getDpId().toString(), isl.getSrcPort(),
                 isl.getDstSwitch().getDpId().toString(), isl.getDstPort(), underMaintenance, evacuate);
     }
@@ -151,8 +140,8 @@ public class IslUtils {
      *
      * @param isl IslInfoData object to convert
      */
-    public LinkUnderMaintenanceDto getLinkUnderMaintenance(IslInfoData isl, boolean underMaintenance,
-                                                           boolean evacuate) {
+    public LinkUnderMaintenanceDto toLinkUnderMaintenance(IslInfoData isl, boolean underMaintenance,
+                                                          boolean evacuate) {
         return new LinkUnderMaintenanceDto(isl.getSource().getSwitchId().toString(), isl.getSource().getPortNo(),
                 isl.getDestination().getSwitchId().toString(), isl.getDestination().getPortNo(), underMaintenance,
                 evacuate);

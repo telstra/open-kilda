@@ -149,8 +149,8 @@ class SwitchDeleteSpec extends BaseSpecification {
         }
 
         // delete all ISLs on switch
-        swIsls.collectMany { [it, islUtils.reverseIsl(it)] }.each {
-            northbound.deleteLink(islUtils.getLinkParameters(it))
+        swIsls.collectMany { [it, it.reversed] }.each {
+            northbound.deleteLink(islUtils.toLinkParameters(it))
         }
 
         // deactivate switch
@@ -196,7 +196,7 @@ class SwitchDeleteSpec extends BaseSpecification {
             def links = northbound.getAllLinks()
             swIsls.each {
                 assert !islUtils.getIslInfo(links, it)
-                assert !islUtils.getIslInfo(links, islUtils.reverseIsl(it))
+                assert !islUtils.getIslInfo(links, it.reversed)
             }
         }
 
@@ -207,7 +207,7 @@ class SwitchDeleteSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
         // restore ISLs
-        def allSwIsls = swIsls.collectMany { [it, islUtils.reverseIsl(it)] }
+        def allSwIsls = swIsls.collectMany { [it, it.reversed] }
         allSwIsls.each { northbound.portDown(it.srcSwitch.dpId, it.srcPort) }
         TimeUnit.SECONDS.sleep(antiflapCooldown)
         allSwIsls.each { northbound.portUp(it.srcSwitch.dpId, it.srcPort) }
