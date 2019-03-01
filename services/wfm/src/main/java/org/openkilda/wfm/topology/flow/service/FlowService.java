@@ -103,6 +103,7 @@ public class FlowService extends BaseFlowService {
 
         FlowPairWithSegments result = transactionManager.doInTransaction(() -> {
             FlowPair flowPair = flowResourcesManager.allocateFlow(buildFlowPair(flow, pathPair));
+            flowPair.setTimeCreate(Instant.now());
 
             List<FlowSegment> forwardSegments = buildFlowSegments(flowPair.getForward());
             List<FlowSegment> reverseSegments = buildFlowSegments(flowPair.getReverse());
@@ -152,6 +153,8 @@ public class FlowService extends BaseFlowService {
             forward.setDestSwitch(switchRepository.reload(forward.getDestSwitch()));
             reverse.setSrcSwitch(switchRepository.reload(reverse.getSrcSwitch()));
             reverse.setDestSwitch(switchRepository.reload(reverse.getDestSwitch()));
+
+            flowPair.setTimeCreate(Instant.now());
 
             flowRepository.createOrUpdate(flowPair);
             createFlowSegments(flowSegments);
@@ -238,6 +241,7 @@ public class FlowService extends BaseFlowService {
             log.info("Updating the flow with {} and path: {}", newFlow, pathPair);
 
             FlowPair newFlowWithResources = flowResourcesManager.allocateFlow(buildFlowPair(newFlow, pathPair));
+            newFlowWithResources.setTimeCreate(currentFlow.getForward().getTimeCreate());
 
             List<FlowSegment> newForwardSegments = buildFlowSegments(newFlowWithResources.getForward());
             List<FlowSegment> newReverseSegments = buildFlowSegments(newFlowWithResources.getReverse());
@@ -301,6 +305,7 @@ public class FlowService extends BaseFlowService {
         UpdatedFlowPairWithSegments result = transactionManager.doInTransaction(() -> {
             FlowPair newFlow = flowResourcesManager.allocateFlow(buildFlowPair(currentFlow.getForward(), pathPair));
             newFlow.setStatus(FlowStatus.IN_PROGRESS);
+            newFlow.setTimeCreate(currentFlow.getForward().getTimeCreate());
 
             List<FlowSegment> forwardSegments = getFlowSegments(currentFlow.getForward());
             List<FlowSegment> reverseSegments = getFlowSegments(currentFlow.getReverse());

@@ -45,6 +45,8 @@ import org.neo4j.ogm.response.model.RelationshipModel;
 import org.neo4j.ogm.session.Session;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -295,5 +297,15 @@ public class DatabaseSupportImpl implements Database {
         @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
         @Mapping(source = "status", target = "state")
         FlowDto map(Flow flow);
+
+        /**
+         * Convert {@link Instant} to {@link String}.
+         */
+        default String map(Instant time) {
+            if (time == null) {
+                return null;
+            }
+            return DateTimeFormatter.ISO_INSTANT.format(time);
+        }
     }
 }
