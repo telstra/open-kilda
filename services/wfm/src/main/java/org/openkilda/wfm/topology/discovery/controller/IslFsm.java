@@ -441,13 +441,16 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
     }
 
     private void applyIslAvailableBandwidth(Isl link, Endpoint source, Endpoint dest) {
-        IslDataHolder islData = discoveryFacts.get(source);
+        IslDataHolder islData = discoveryFacts.makeAggregatedData();
         long availableBandwidth = 0;
         if (islData != null) {
             long usedBandwidth = flowSegmentRepository.getUsedBandwidthBetweenEndpoints(
                     source.getDatapath(), source.getPortNumber(),
                     dest.getDatapath(), dest.getPortNumber());
             availableBandwidth = islData.getAvailableBandwidth() - usedBandwidth;
+        } else {
+            log.error("There is no ISL data available for {}, unable to set available_bandwidth",
+                      discoveryFacts.getReference());
         }
         link.setAvailableBandwidth(availableBandwidth);
     }
