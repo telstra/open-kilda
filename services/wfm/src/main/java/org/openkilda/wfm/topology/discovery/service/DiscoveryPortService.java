@@ -22,6 +22,7 @@ import org.openkilda.wfm.topology.discovery.controller.PortFsm.PortFsmContext;
 import org.openkilda.wfm.topology.discovery.controller.PortFsm.PortFsmEvent;
 import org.openkilda.wfm.topology.discovery.controller.PortFsm.PortFsmState;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.LinkStatus;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 
 import lombok.extern.slf4j.Slf4j;
@@ -82,7 +83,7 @@ public class DiscoveryPortService {
     /**
      * .
      */
-    public void updateLinkStatus(Endpoint endpoint, PortFacts.LinkStatus status) {
+    public void updateLinkStatus(Endpoint endpoint, LinkStatus status) {
         PortFsm portFsm = locateController(endpoint);
         PortFsmEvent event;
         switch (status) {
@@ -94,7 +95,7 @@ public class DiscoveryPortService {
                 break;
             default:
                 throw new IllegalArgumentException(
-                        String.format("Unsupported %s value %s", PortFacts.LinkStatus.class.getName(), status));
+                        String.format("Unsupported %s value %s", LinkStatus.class.getName(), status));
         }
         log.debug("Physical port {} become {}", endpoint, event);
         controllerExecutor.fire(portFsm, event, new PortFsmContext(carrier));

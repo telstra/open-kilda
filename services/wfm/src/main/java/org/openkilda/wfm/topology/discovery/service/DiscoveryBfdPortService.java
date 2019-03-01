@@ -25,8 +25,8 @@ import org.openkilda.wfm.topology.discovery.controller.BfdPortFsm.BfdPortFsmEven
 import org.openkilda.wfm.topology.discovery.controller.BfdPortFsm.BfdPortFsmState;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
+import org.openkilda.wfm.topology.discovery.model.LinkStatus;
 import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
-import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -86,14 +86,14 @@ public class DiscoveryBfdPortService {
     /**
      * .
      */
-    public void updateLinkStatus(IBfdPortCarrier carrier, PortFacts logicalPortFacts) {
-        log.debug("BFD status on {} become {}", logicalPortFacts.getEndpoint(), logicalPortFacts.getLinkStatus());
-        BfdPortFsm controller = controllerByLogicalPort.get(logicalPortFacts.getEndpoint());
+    public void updateLinkStatus(IBfdPortCarrier carrier, Endpoint logicaEndpoint, LinkStatus linkStatus) {
+        log.debug("BFD status on {} become {}", logicaEndpoint, linkStatus);
+        BfdPortFsm controller = controllerByLogicalPort.get(logicaEndpoint);
         if (controller != null) {
             BfdPortFsmContext context = BfdPortFsmContext.builder(carrier).build();
             BfdPortFsmEvent event;
 
-            switch (logicalPortFacts.getLinkStatus()) {
+            switch (linkStatus) {
                 case UP:
                     event = BfdPortFsmEvent.PORT_UP;
                     break;
@@ -103,14 +103,12 @@ public class DiscoveryBfdPortService {
                 default:
                     throw new IllegalArgumentException(String.format(
                             "Unsupported %s.%s link state. Can\'t handle event for %s",
-                            PortFacts.LinkStatus.class.getName(), logicalPortFacts.getLinkStatus(),
-                            logicalPortFacts.getEndpoint()));
+                            LinkStatus.class.getName(), linkStatus, logicaEndpoint));
             }
             controllerExecutor.fire(controller, event, context);
         } else {
             logMissingControllerByLogicalEndpoint(
-                    logicalPortFacts.getEndpoint(),
-                    String.format("handle link status change to %s", logicalPortFacts.getLinkStatus()));
+                    logicaEndpoint, String.format("handle link status change to %s", linkStatus));
         }
     }
 

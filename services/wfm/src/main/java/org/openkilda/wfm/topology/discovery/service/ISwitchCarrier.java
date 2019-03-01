@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.discovery.service;
 
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.LinkStatus;
 import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 
@@ -27,13 +28,13 @@ public interface ISwitchCarrier {
 
     void setOnlineMode(Endpoint endpoint, boolean mode);
 
-    void setPortLinkMode(Endpoint endpoint, PortFacts.LinkStatus linkStatus);
+    void setPortLinkMode(Endpoint endpoint, LinkStatus linkStatus);
 
     void setupBfdPortHandler(BfdPortFacts portFacts);
 
     void removeBfdPortHandler(Endpoint logicalEndpoint);
 
-    void setBfdPortLinkMode(PortFacts logicalPortFacts);
+    void setBfdPortLinkMode(Endpoint logicalEndpoint, LinkStatus linkStatus);
 
     void setBfdPortOnlineMode(Endpoint endpoint, boolean mode);
 }

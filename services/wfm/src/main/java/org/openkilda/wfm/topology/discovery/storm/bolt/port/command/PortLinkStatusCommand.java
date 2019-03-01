@@ -16,13 +16,13 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.port.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
+import org.openkilda.wfm.topology.discovery.model.LinkStatus;
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.PortHandler;
 
 public class PortLinkStatusCommand extends PortCommand {
-    private final PortFacts.LinkStatus linkStatus;
+    private final LinkStatus linkStatus;
 
-    public PortLinkStatusCommand(Endpoint endpoint, PortFacts.LinkStatus linkStatus) {
+    public PortLinkStatusCommand(Endpoint endpoint, LinkStatus linkStatus) {
         super(endpoint);
         this.linkStatus = linkStatus;
     }

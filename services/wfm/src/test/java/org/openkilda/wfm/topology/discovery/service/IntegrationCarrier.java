@@ -21,6 +21,7 @@ import org.openkilda.model.Isl;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
+import org.openkilda.wfm.topology.discovery.model.LinkStatus;
 import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 
@@ -111,7 +112,7 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
     }
 
     @Override
-    public void setPortLinkMode(Endpoint endpoint, PortFacts.LinkStatus linkStatus) {
+    public void setPortLinkMode(Endpoint endpoint, LinkStatus linkStatus) {
         portService.updateLinkStatus(endpoint, linkStatus);
     }
 
@@ -126,8 +127,8 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
     }
 
     @Override
-    public void setBfdPortLinkMode(PortFacts logicalPortFacts) {
-        bfdPortService.updateLinkStatus(bfdPortCarrier, logicalPortFacts);
+    public void setBfdPortLinkMode(Endpoint logicalEndpoint, LinkStatus linkStatus) {
+        bfdPortService.updateLinkStatus(bfdPortCarrier, logicalEndpoint, linkStatus);
     }
 
     @Override

@@ -25,6 +25,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.LinkStatus;
 import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
 import org.openkilda.wfm.topology.discovery.model.facts.HistoryFacts;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
@@ -125,7 +126,7 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
     }
 
     @Override
-    public void setPortLinkMode(Endpoint endpoint, PortFacts.LinkStatus linkStatus) {
+    public void setPortLinkMode(Endpoint endpoint, LinkStatus linkStatus) {
         emit(STREAM_PORT_ID, getCurrentTuple(), makePortTuple(new PortLinkStatusCommand(endpoint, linkStatus)));
     }
 
@@ -140,8 +141,9 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
     }
 
     @Override
-    public void setBfdPortLinkMode(PortFacts portFacts) {
-        emit(STREAM_BFD_PORT_ID, getCurrentTuple(), makeBfdPortTuple(new BfdPortLinkStatusCommand(portFacts)));
+    public void setBfdPortLinkMode(Endpoint logicalEndpoint, LinkStatus linkStatus) {
+        emit(STREAM_BFD_PORT_ID, getCurrentTuple(), makeBfdPortTuple(
+                new BfdPortLinkStatusCommand(logicalEndpoint, linkStatus)));
     }
 
     @Override

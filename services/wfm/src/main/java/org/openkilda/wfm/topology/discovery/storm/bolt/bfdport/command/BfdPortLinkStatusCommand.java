@@ -15,20 +15,21 @@
 
 package org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command;
 
-import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
+import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.LinkStatus;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryBfdPortService;
 import org.openkilda.wfm.topology.discovery.service.IBfdPortCarrier;
 
 public class BfdPortLinkStatusCommand extends BfdPortCommand {
-    private final PortFacts logicalPortFacts;
+    private final LinkStatus linkStatus;
 
-    public BfdPortLinkStatusCommand(PortFacts logicalPortFacts) {
-        super(logicalPortFacts.getEndpoint());
-        this.logicalPortFacts = logicalPortFacts;
+    public BfdPortLinkStatusCommand(Endpoint logicalEndpoint, LinkStatus linkStatus) {
+        super(logicalEndpoint);
+        this.linkStatus = linkStatus;
     }
 
     @Override
     public void apply(DiscoveryBfdPortService service, IBfdPortCarrier carrier) {
-        service.updateLinkStatus(carrier, logicalPortFacts);
+        service.updateLinkStatus(carrier, getEndpoint(), linkStatus);
     }
 }

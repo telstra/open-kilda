@@ -40,6 +40,7 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.LinkStatus;
 import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
 import org.openkilda.wfm.topology.discovery.model.facts.HistoryFacts;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
@@ -167,11 +168,13 @@ public class DiscoverySwitchServiceTest {
         verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, ports.get(3).getNumber()), true);
 
         verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()),
-                                        PortFacts.mapLinkStatus(ports.get(2).getState()));
-        verify(carrier).setBfdPortLinkMode(new PortFacts(alphaDatapath, ports.get(3)));
+                                        LinkStatus.of(ports.get(2).getState()));
+        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, ports.get(3).getNumber()),
+                                           LinkStatus.of(ports.get(3).getState()));
         verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports.get(0).getNumber()),
-                                        PortFacts.mapLinkStatus(ports.get(0).getState()));
-        verify(carrier).setBfdPortLinkMode(new PortFacts(alphaDatapath, ports.get(1)));
+                                        LinkStatus.of(ports.get(0).getState()));
+        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, ports.get(1).getNumber()),
+                                           LinkStatus.of(ports.get(0).getState()));
 
         verify(switchRepository).createOrUpdate(argThat(sw ->
                 sw.getStatus() == SwitchStatus.ACTIVE && sw.getSwitchId() == alphaDatapath));
@@ -378,11 +381,13 @@ public class DiscoverySwitchServiceTest {
         verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, ports.get(3).getNumber()), true);
 
         verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()),
-                                        PortFacts.mapLinkStatus(ports.get(2).getState()));
-        verify(carrier).setBfdPortLinkMode(new PortFacts(alphaDatapath, ports.get(3)));
+                                        LinkStatus.of(ports.get(2).getState()));
+        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, ports.get(3).getNumber()),
+                                           LinkStatus.of(ports.get(3).getState()));
         verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports.get(0).getNumber()),
-                                        PortFacts.mapLinkStatus(ports.get(0).getState()));
-        verify(carrier).setBfdPortLinkMode(new PortFacts(alphaDatapath, ports.get(1)));
+                                        LinkStatus.of(ports.get(0).getState()));
+        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, ports.get(1).getNumber()),
+                                           LinkStatus.of(ports.get(0).getState()));
     }
 
 
@@ -443,16 +448,18 @@ public class DiscoverySwitchServiceTest {
                 new SpeakerSwitchPortView(1, State.UP),
                 new SpeakerSwitchPortView(1 + BFD_LOGICAL_PORT_OFFSET, State.UP));
         verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, portsUp.get(0).getNumber()),
-                                        PortFacts.mapLinkStatus(portsUp.get(0).getState()));
-        verify(carrier).setBfdPortLinkMode(new PortFacts(alphaDatapath, portsUp.get(1)));
+                                        LinkStatus.of(portsUp.get(0).getState()));
+        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, portsUp.get(1).getNumber()),
+                                           LinkStatus.of(portsUp.get(1).getState()));
 
         resetMocks();
 
         service.switchPortEvent(new PortInfoData(alphaDatapath, 1, PortChangeType.DOWN));
         service.switchPortEvent(new PortInfoData(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET, PortChangeType.DOWN));
         verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, portsDown.get(0).getNumber()),
-                                        PortFacts.mapLinkStatus(portsDown.get(0).getState()));
-        verify(carrier).setBfdPortLinkMode(new PortFacts(alphaDatapath, portsDown.get(1)));
+                                        LinkStatus.of(portsDown.get(0).getState()));
+        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, portsDown.get(1).getNumber()),
+                                           LinkStatus.of(portsDown.get(1).getState()));
 
         //System.out.println(mockingDetails(carrier).printInvocations());
     }

@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.discovery.model.facts;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.LinkStatus;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -40,30 +41,10 @@ public class PortFacts implements Serializable {
     }
 
     public PortFacts(SwitchId switchId,  SpeakerSwitchPortView portView) {
-        this(Endpoint.of(switchId, portView.getNumber()), mapLinkStatus(portView.getState()));
+        this(Endpoint.of(switchId, portView.getNumber()), LinkStatus.of(portView.getState()));
     }
 
     public int getPortNumber() {
         return endpoint.getPortNumber();
-    }
-
-    /**
-     * Map {@link SpeakerSwitchPortView.State} into {@link LinkStatus}.
-     */
-    public static LinkStatus mapLinkStatus(SpeakerSwitchPortView.State adminStatus) {
-        switch (adminStatus) {
-            case UP:
-                return LinkStatus.UP;
-            case DOWN:
-                return LinkStatus.DOWN;
-            default:
-                throw new IllegalArgumentException(String.format(
-                        "Unsupported port's admin status value %s (%s)",
-                        adminStatus, adminStatus.getClass().getName()));
-        }
-    }
-
-    public enum LinkStatus {
-        UP, DOWN
     }
 }

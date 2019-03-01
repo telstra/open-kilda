@@ -27,10 +27,10 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.LinkStatus;
 import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
 import org.openkilda.wfm.topology.discovery.model.facts.HistoryFacts;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
-import org.openkilda.wfm.topology.discovery.model.facts.PortFacts.LinkStatus;
 import org.openkilda.wfm.topology.discovery.service.ISwitchCarrier;
 
 import lombok.Builder;
@@ -261,7 +261,7 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsm.S
         if (isPhysicalPort(portFacts.getPortNumber())) {
             context.getOutput().setPortLinkMode(portFacts.getEndpoint(), portFacts.getLinkStatus());
         } else {
-            context.getOutput().setBfdPortLinkMode(portFacts);
+            context.getOutput().setBfdPortLinkMode(portFacts.getEndpoint(), portFacts.getLinkStatus());
         }
     }
 

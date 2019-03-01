@@ -21,8 +21,8 @@ import static org.mockito.Mockito.verify;
 
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.model.LinkStatus;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
-import org.openkilda.wfm.topology.discovery.model.facts.PortFacts.LinkStatus;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -32,12 +32,10 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
 public class DiscoveryPortServiceTest {
-
     @Mock
     private IPortCarrier carrier;
 
     private final SwitchId alphaDatapath = new SwitchId(1);
-
 
     @Before
     public void setup() {
@@ -108,7 +106,6 @@ public class DiscoveryPortServiceTest {
 
         //System.out.println(mockingDetails(carrier).printInvocations());
     }
-
 
     @Test
     public void inUnOperationalUpDownPort() {
