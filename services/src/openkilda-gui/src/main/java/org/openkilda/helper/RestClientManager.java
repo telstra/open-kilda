@@ -97,8 +97,6 @@ public class RestClientManager {
      */
     public HttpResponse invoke(final String apiUrl, final HttpMethod httpMethod, final String payload,
             final String contentType, final String basicAuth) {
-        LOGGER.info("[invoke] - Start");
-
         HttpResponse httpResponse = null;
 
         try {
@@ -149,10 +147,9 @@ public class RestClientManager {
             }
 
         } catch (Exception e) {
-            LOGGER.error("[invoke] Exception: ", e);
+            LOGGER.error("Error occurred while trying to communicate third party service provider", e);
             throw new RestCallFailedException(e);
         }
-        LOGGER.info("[invoke] - End");
         return httpResponse;
     }
     
@@ -163,7 +160,6 @@ public class RestClientManager {
      * @return the http response
      */
     public HttpResponse invoke(final ApiRequestDto apiRequestDto) {
-        LOGGER.info("[invoke] - Start");
         HttpResponse httpResponse = null;
 
         String url = apiRequestDto.getUrl();
@@ -211,7 +207,7 @@ public class RestClientManager {
 
             if (HttpMethod.POST.equals(httpMethod) || HttpMethod.PUT.equals(httpMethod)) {
                 LOGGER.info("[invoke] Executing POST/ PUT request : httpEntityEnclosingRequest : "
-                        + httpEntityEnclosingRequest + " : payload : " + payload);
+                        + httpEntityEnclosingRequest);
                 if (!StringUtil.isNullOrEmpty(headers)) {
                     for (String header : headers.split("\n")) {
                         getHeaders(headersMap, header);
@@ -231,10 +227,9 @@ public class RestClientManager {
             }
 
         } catch (Exception e) {
-            LOGGER.error("[invoke] Exception: ", e);
+            LOGGER.error("Error occurred while trying to communicate third party service provider", e);
             throw new RestCallFailedException(e);
         }
-        LOGGER.info("[invoke] - End");
         return httpResponse;
     }
 
@@ -324,13 +319,14 @@ public class RestClientManager {
                             throw new UnauthorizedException(HttpError.UNAUTHORIZED.getMessage());
                         }
 
-                        LOGGER.error("[getResponse] Exception :", e);
+                        LOGGER.error("Error occurred while retriving response from third party service provider", e);
                         errorMessage = authPropertyService.getError(IAuthConstants.Code.RESPONSE_PARSING_FAIL_ERROR)
                                 .getMessage();
                         throw new RestCallFailedException(errorMessage);
                     }
 
-                    LOGGER.error("[getResponse] Exception : " + responseEntity);
+                    LOGGER.error("Error occurred while retriving response from third party service provider:"
+                            + responseEntity);
                     throw new ExternalSystemException(response.getStatusLine().getStatusCode(), errorMessage);
 
                 } else {
@@ -366,11 +362,11 @@ public class RestClientManager {
         } else {
             try {
                 String content = IoUtil.toString(response.getEntity().getContent());
-                LOGGER.error("[getResponse] Invalid Response. Status Code: " + response.getStatusLine().getStatusCode()
+                LOGGER.warn("Found invalid Response. Status Code: " + response.getStatusLine().getStatusCode()
                         + ", content: " + content);
                 throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             } catch (IOException exception) {
-                LOGGER.error("[getResponse] Exception :" + exception.getMessage(), exception);
+                LOGGER.warn("Error occurred while vaildating response", exception);
                 throw new InvalidResponseException(HttpError.INTERNAL_ERROR.getCode(),
                         HttpError.INTERNAL_ERROR.getMessage());
             }

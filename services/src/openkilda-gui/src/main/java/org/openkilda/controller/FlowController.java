@@ -110,7 +110,7 @@ public class FlowController extends BaseController {
     @RequestMapping(value = "/path/{flowId}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody FlowPayload getFlowPath(@PathVariable final String flowId) {
-        LOGGER.info("[getFlowPath] - start. Flow id: " + flowId);
+        LOGGER.info("Get flow path. Flow id: '" + flowId + "'");
         return flowService.getFlowPath(flowId);
     }
 
@@ -126,7 +126,7 @@ public class FlowController extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody FlowPath rerouteFlow(@PathVariable final String flowId) {
         activityLogger.log(ActivityType.FLOW_REROUTE, flowId);
-        LOGGER.info("[rerouteFlow] - start. Flow id: " + flowId);
+        LOGGER.info("Reroute flow. Flow id: '" + flowId + "'");
         return flowService.rerouteFlow(flowId);
     }
 
@@ -141,7 +141,7 @@ public class FlowController extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody String validateFlow(@PathVariable final String flowId) {
         activityLogger.log(ActivityType.FLOW_VALIDATE, flowId);
-        LOGGER.info("[validateFlow] - start. Flow id: " + flowId);
+        LOGGER.info("Validate flow. Flow id: '" + flowId + "'");
         return flowService.validateFlow(flowId);
     }
 
@@ -155,7 +155,7 @@ public class FlowController extends BaseController {
     @RequestMapping(value = "/{flowId}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody FlowInfo getFlowById(@PathVariable final String flowId) {
-        LOGGER.info("[getFlowById] - start. Flow id: " + flowId);
+        LOGGER.info("Get flow by id. Flow id: '" + flowId + "'");
         FlowInfo flowInfo = flowService.getFlowById(flowId);
         if (flowInfo != null && StringUtil.isNullOrEmpty(flowInfo.getFlowid())) {
             throw new NoDataFoundException("No flow found");
@@ -174,7 +174,7 @@ public class FlowController extends BaseController {
     @RequestMapping(value = "/{flowId}/status", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody FlowStatus getFlowStatusById(@PathVariable final String flowId) {
-        LOGGER.info("[getFlowStatusById] - start. Flow id: " + flowId);
+        LOGGER.info("Get flow status by id. Flow id: '" + flowId + "'");
         return flowService.getFlowStatusById(flowId);
     }
 
@@ -189,7 +189,7 @@ public class FlowController extends BaseController {
     @ResponseStatus(HttpStatus.CREATED)
     @Permissions(values = { IConstants.Permission.FW_FLOW_CREATE })
     public @ResponseBody Flow createFlow(@RequestBody final Flow flow) {
-        LOGGER.info("[createFlow] - start. Flow id: " + flow.getId());
+        LOGGER.info("Create flow. Flow id: '" + flow.getId() + "'");
         return flowService.createFlow(flow);
     }
 
@@ -206,7 +206,7 @@ public class FlowController extends BaseController {
     @ResponseStatus(HttpStatus.CREATED)
     @Permissions(values = { IConstants.Permission.FW_FLOW_UPDATE })
     public @ResponseBody Flow updateFlow(@PathVariable("flowId") final String flowId, @RequestBody final Flow flow) {
-        LOGGER.info("[updateFlow] - start. Flow id: " + flowId);
+        LOGGER.info("Update flow. Flow id: '" + flowId + "'");
         return flowService.updateFlow(flowId, flow);
     }
 
@@ -224,7 +224,7 @@ public class FlowController extends BaseController {
     @Permissions(values = { IConstants.Permission.FW_FLOW_DELETE })
     @ResponseBody
     public Flow deleteFlow(@RequestBody final UserInfo userInfo, @PathVariable("flowId") final String flowId) {
-        LOGGER.info("[deleteFlow] - start. Flow id: " + flowId);
+        LOGGER.info("Delete flow. Flow id: '" + flowId + "'");
         if (serverContext.getRequestContext() != null) {
             userInfo.setUserId(serverContext.getRequestContext().getUserId());
         }
@@ -242,7 +242,7 @@ public class FlowController extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = { IConstants.Permission.FW_FLOW_RESYNC })
     public @ResponseBody String resyncFlow(@PathVariable final String flowId) {
-        LOGGER.info("[resyncFlow] - start. Flow id: " + flowId);
+        LOGGER.info("Resync flow. Flow id: '" + flowId + "'");
         return flowService.resyncFlow(flowId);
     }
 
@@ -253,7 +253,7 @@ public class FlowController extends BaseController {
      */
     @RequestMapping(value = "/status", method = { RequestMethod.GET })
     public Set<String> getAllStatus() {
-        LOGGER.info("[getAllStatus] - start. ");
+        LOGGER.info("Get all statuses. ");
         return flowService.getAllStatus();
     }
 
@@ -263,7 +263,7 @@ public class FlowController extends BaseController {
      */
     @Scheduled(fixedDelayString = "${status.cron.time}")
     public void getAllStatusWithCron() {
-        LOGGER.info("[getAllStatusWithCron] - start. ");
+        LOGGER.info("Get all status cron. ");
         Status statuses = Status.INSTANCE;
         statuses.setStatuses(flowService.getAllStatus());
     }

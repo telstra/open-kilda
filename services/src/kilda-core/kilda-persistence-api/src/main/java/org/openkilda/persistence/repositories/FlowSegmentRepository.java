@@ -19,9 +19,12 @@ import org.openkilda.model.FlowSegment;
 import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
+import java.util.Optional;
 
 public interface FlowSegmentRepository extends Repository<FlowSegment> {
     Collection<FlowSegment> findByFlowIdAndCookie(String flowId, long flowCookie);
+
+    Optional<FlowSegment> findBySrcSwitchIdAndCookie(SwitchId switchId, long flowCookie);
 
     Collection<FlowSegment> findByDestSwitchId(SwitchId switchId);
 

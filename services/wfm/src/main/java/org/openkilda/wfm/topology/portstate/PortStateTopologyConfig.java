@@ -18,6 +18,8 @@ package org.openkilda.wfm.topology.portstate;
 import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
+import com.sabre.oss.conf4j.annotation.Default;
+import com.sabre.oss.conf4j.annotation.Key;
 
 @Configuration
 public interface PortStateTopologyConfig extends AbstractTopologyConfig {
@@ -37,4 +39,8 @@ public interface PortStateTopologyConfig extends AbstractTopologyConfig {
     default String getKafkaSpeakerTopic() {
         return getKafkaTopics().getSpeakerTopic();
     }
+
+    @Key("opentsdb.metric.prefix")
+    @Default("kilda.")
+    String getMetricPrefix();
 }

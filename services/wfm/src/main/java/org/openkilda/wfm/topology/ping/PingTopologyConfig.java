@@ -67,6 +67,10 @@ public interface PingTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getOtsdbTopic();
     }
 
+    @Key("opentsdb.metric.prefix")
+    @Default("kilda.")
+    String getMetricPrefix();
+
     @Configuration
     @Key("flow.ping")
     interface PingConfig {

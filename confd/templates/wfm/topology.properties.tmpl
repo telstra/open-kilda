@@ -32,6 +32,7 @@ opentsdb.batch.size = {{ getv "/kilda_opentsdb_batch_size" }}
 opentsdb.flush.interval = {{ getv "/kilda_opentsdb_flush_interval" }}
 opentsdb.workers = {{ getv "/kilda_opentsdb_workers" }}
 opentsdb.client.chunked-requests.enabled = true
+opentsdb.metric.prefix = {{ getv "/kilda_opentsdb_metric_prefix" }}
 
 neo4j.uri = bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
 neo4j.user = {{ getv "/kilda_neo4j_user" }}

@@ -53,7 +53,7 @@ public class RoleValidator {
     public void validateRole(final Role role) {
 
         if (ValidatorUtil.isNull(role.getName())) {
-            LOGGER.error("Validation fail for role(name: " + role.getName() + "). Error: "
+            LOGGER.warn("Validation fail for role(name: " + role.getName() + "). Error: "
                     + messageUtil.getAttributeNotNull("name"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("name"));
         }
@@ -61,7 +61,7 @@ public class RoleValidator {
         List<RoleEntity> roleEntityList = roleRepository.findAll();
         if (roleEntityList.parallelStream()
                 .anyMatch((roleEntity) -> roleEntity.getName().equalsIgnoreCase(role.getName()))) {
-            LOGGER.error("Validation fail for role(name: " + role.getName() + "). Error: "
+            LOGGER.warn("Validation fail for role(name: " + role.getName() + "). Error: "
                     + messageUtil.getAttributeUnique("name"));
             throw new RequestValidationException(messageUtil.getAttributeUnique("name"));
         }
@@ -76,12 +76,12 @@ public class RoleValidator {
     public void validateUpdateRole(final Role role, Long roleId) {
 
         if (ValidatorUtil.isNull(roleId)) {
-            LOGGER.error("Validation fail for role(role_id: " + roleId + "). Error: "
+            LOGGER.warn("Validation fail for role(role_id: " + roleId + "). Error: "
                     + messageUtil.getAttributeNotNull("role_id"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("role_id"));
         } else if (ValidatorUtil.isNull(role.getName()) && ValidatorUtil.isNull(role.getStatus())
                 && ValidatorUtil.isNull(role.getPermissionId()) && ValidatorUtil.isNull(role.getDescription())) {
-            LOGGER.error("Validation fail for role(name, status, description and permissions: " + role.getName() + ","
+            LOGGER.warn("Validation fail for role(name, status, description and permissions: " + role.getName() + ","
                     + role.getStatus() + "," + role.getDescription() + "," + role.getPermissions() + "). Error: "
                     + messageUtil.getAttributeNotNull("name, status, description and permissions"));
             throw new RequestValidationException(

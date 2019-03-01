@@ -55,26 +55,26 @@ public class UserValidator {
      */
     public void validateCreateUser(final UserInfo userInfo) {
         if (ValidatorUtil.isNull(userInfo.getName())) {
-            LOGGER.error("Validation fail for user(username: " + userInfo.getUsername() + "). Error: "
+            LOGGER.warn("Validation fail for user(username: " + userInfo.getUsername() + "). Error: "
                     + messageUtil.getAttributeNotNull("name"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("name"));
         } else if (ValidatorUtil.isNull(userInfo.getUsername())) {
-            LOGGER.error("Validation fail for user(name: " + userInfo.getName() + "). Error: "
+            LOGGER.warn("Validation fail for user(name: " + userInfo.getName() + "). Error: "
                     + messageUtil.getAttributeNotNull("username"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("username"));
         } else if (ValidatorUtil.isNull(userInfo.getEmail())) {
-            LOGGER.error("Validation fail for user(username: " + userInfo.getUsername() + "). Error: "
+            LOGGER.warn("Validation fail for user(username: " + userInfo.getUsername() + "). Error: "
                     + messageUtil.getAttributeNotNull("email"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("email"));
         } else if (ValidatorUtil.isNull(userInfo.getRoleIds())) {
-            LOGGER.error("Validation fail for user(username: " + userInfo.getUsername() + "). Error: "
+            LOGGER.warn("Validation fail for user(username: " + userInfo.getUsername() + "). Error: "
                     + messageUtil.getAttributeNotNull("role"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("role"));
         }
 
         UserEntity userEntityTemp = userRepository.findByUsernameIgnoreCase(userInfo.getUsername());
         if (userEntityTemp != null) {
-            LOGGER.error("Validation fail for user(username: " + userInfo.getUsername() + "). Error: "
+            LOGGER.warn("Validation fail for user(username: " + userInfo.getUsername() + "). Error: "
                     + messageUtil.getAttributeUnique("username"));
             throw new RequestValidationException(messageUtil.getAttributeUnique("username"));
         }
@@ -90,20 +90,20 @@ public class UserValidator {
         UserEntity userEntity = validateUserId(userInfo.getUserId());
 
         if (ValidatorUtil.isNull(userEntity)) {
-            LOGGER.error("Validation fail for update user request(id: " + userInfo.getUserId() + "). Error: "
+            LOGGER.warn("Validation fail for update user request(id: " + userInfo.getUserId() + "). Error: "
                     + messageUtil.getAttributeNotNull("user"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("user"));
         }
 
         if (ValidatorUtil.isNull(userInfo.getName()) && ValidatorUtil.isNull(userInfo.getRoleIds())
                 && ValidatorUtil.isNull(userInfo.getStatus()) && ValidatorUtil.isNull(userInfo.getIs2FaEnabled())) {
-            LOGGER.error("Validation fail for update user request(id: " + userInfo.getUserId() + "). Error: "
+            LOGGER.warn("Validation fail for update user request(id: " + userInfo.getUserId() + "). Error: "
                     + messageUtil.getAttributeNotNull("name, 2FA, status and role_id"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("name, 2FA, status and role_id"));
         }
 
         if (!ValidatorUtil.isNull(userInfo.getStatus()) && Status.getStatusByName(userInfo.getStatus()) == null) {
-            LOGGER.error("Validation fail for update user request(id: " + userInfo.getUserId() + "). Error: "
+            LOGGER.warn("Validation fail for update user request(id: " + userInfo.getUserId() + "). Error: "
                     + messageUtil.getAttributeInvalid("status", userInfo.getStatus()));
             throw new RequestValidationException(messageUtil.getAttributeInvalid("status", userInfo.getStatus()));
         }
@@ -111,7 +111,7 @@ public class UserValidator {
         if (!ValidatorUtil.isNull(userInfo.getUsername())) {
             UserEntity userEntityTemp = userRepository.findByUsernameIgnoreCase(userInfo.getUsername());
             if (userEntityTemp != null && !userEntityTemp.getUserId().equals(userInfo.getUserId())) {
-                LOGGER.error("Validation fail for update user request(id: " + userInfo.getUserId() + "). Error: "
+                LOGGER.warn("Validation fail for update user request(id: " + userInfo.getUserId() + "). Error: "
                         + messageUtil.getAttributeUnique("username"));
                 throw new RequestValidationException(messageUtil.getAttributeUnique("username"));
             }
@@ -129,7 +129,7 @@ public class UserValidator {
         UserEntity userEntity = userRepository.findByUserId(userId);
 
         if (ValidatorUtil.isNull(userEntity) || userId == 1) {
-            LOGGER.error("Validation failed for user (id: " + userId + "). Error: "
+            LOGGER.warn("Validation failed for user (id: " + userId + "). Error: "
                     + messageUtil.getAttributeInvalid("user_id", userId + ""));
             throw new RequestValidationException(messageUtil.getAttributeInvalid("user_id", userId + ""));
         }
@@ -146,33 +146,33 @@ public class UserValidator {
         String regexTwo = "[%,&,+,\\,\\s,\"]";
 
         if (ValidatorUtil.isNull(userInfo.getNewPassword())) {
-            LOGGER.error("Validation fail for change user password request (id: " + userInfo.getUserId() + "). Error: "
+            LOGGER.warn("Validation fail for change user password request (id: " + userInfo.getUserId() + "). Error: "
                     + messageUtil.getAttributeNotNull("password"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("password"));
         }
 
         Matcher matcherOne = Pattern.compile(regexOne).matcher(userInfo.getNewPassword());
         if (!matcherOne.matches()) {
-            LOGGER.error("Validation fail for change user password request (id: " + userInfo.getUserId() + "). Error: "
+            LOGGER.warn("Validation fail for change user password request (id: " + userInfo.getUserId() + "). Error: "
                     + messageUtil.getAttributePasswordMustContain());
             throw new RequestValidationException(messageUtil.getAttributePasswordMustContain());
         }
 
         Matcher matcherTwo = Pattern.compile(regexTwo).matcher(userInfo.getNewPassword());
         if (matcherTwo.find()) {
-            LOGGER.error("Validation fail for change user password request (id: " + userInfo.getUserId() + "). Error: "
+            LOGGER.warn("Validation fail for change user password request (id: " + userInfo.getUserId() + "). Error: "
                     + messageUtil.getAttributePasswordMustNotContain());
             throw new RequestValidationException(messageUtil.getAttributePasswordMustNotContain());
         }
 
         if (userInfo.getNewPassword().equals(userInfo.getPassword())) {
-            LOGGER.error("New password not valid (id: " + userInfo.getUserId() + "). Error: "
+            LOGGER.warn("New password not valid (id: " + userInfo.getUserId() + "). Error: "
                     + messageUtil.getAttributePasswordShouldNotSame());
             throw new RequestValidationException(messageUtil.getAttributePasswordShouldNotSame());
         }
 
         if (userInfo.getNewPassword().equals(userInfo.getPassword())) {
-            LOGGER.error("New password not valid (id: " + userInfo.getUserId() + "). Error: "
+            LOGGER.warn("New password not valid (id: " + userInfo.getUserId() + "). Error: "
                     + messageUtil.getAttributePasswordLength("8", "15"));
             throw new RequestValidationException(messageUtil.getAttributePasswordLength("8", "15"));
         }

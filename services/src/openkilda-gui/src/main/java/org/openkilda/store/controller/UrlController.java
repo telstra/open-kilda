@@ -53,7 +53,7 @@ public class UrlController {
     @RequestMapping(value = "/auth/{type}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody List<String> getAuthUrls(@PathVariable("type") String type) {
-        LOGGER.info("[getAuthUrls] - start. auth type: " + type);
+        LOGGER.info("Get auth Urls. auth type: " + type);
         return urlService.getAuthUrls(type);
     }
 
@@ -66,7 +66,7 @@ public class UrlController {
     @RequestMapping(value = "/store/{type}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody List<String> getStoreUrls(@PathVariable("type") String type) {
-        LOGGER.info("[getStoreUrls] - start. store type: " + type);
+        LOGGER.info("Get store Urls. store type: " + type);
         return urlService.getStoreUrls(type);
     }
 
@@ -79,7 +79,7 @@ public class UrlController {
     @RequestMapping(value = "/params/{urlName}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody List<RequestParamDto> getParams(@PathVariable("urlName") String urlName) {
-        LOGGER.info("[getParams] - start. url name: " + urlName);
+        LOGGER.info("Get params for url type. name: " + urlName);
         return urlService.getRequestUrlParams(urlName);
     }
 }

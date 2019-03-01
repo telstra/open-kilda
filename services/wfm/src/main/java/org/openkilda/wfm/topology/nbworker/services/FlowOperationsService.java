@@ -15,27 +15,33 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
+import java.util.Optional;
 import java.util.Set;
 
 @Slf4j
 public class FlowOperationsService {
 
+    private TransactionManager transactionManager;
     private IslRepository islRepository;
     private FlowRepository flowRepository;
 
-    public FlowOperationsService(RepositoryFactory repositoryFactory) {
+    public FlowOperationsService(RepositoryFactory repositoryFactory, TransactionManager transactionManager) {
         this.islRepository = repositoryFactory.createIslRepository();
         this.flowRepository = repositoryFactory.createFlowRepository();
+        this.transactionManager = transactionManager;
     }
 
     /**
@@ -67,5 +73,41 @@ public class FlowOperationsService {
      */
     public Set<String> getFlowIdsForSwitch(SwitchId switchId) {
         return flowRepository.findFlowIdsBySwitch(switchId);
+    }
+
+    /**
+     * Update flow.
+     *
+     * @param flow flow.
+     * @return updated flow.
+     */
+    public Flow updateFlow(Flow flow) throws FlowNotFoundException {
+        return transactionManager.doInTransaction(() -> {
+            Optional<FlowPair> foundFlowPair = flowRepository.findFlowPairById(flow.getFlowId());
+            if (!foundFlowPair.isPresent()) {
+                return Optional.<Flow>empty();
+            }
+            FlowPair currentFlowPair = foundFlowPair.get();
+
+            Flow forwardFlow = currentFlowPair.getForward();
+            Flow reverseFlow = currentFlowPair.getReverse();
+
+            if (flow.getMaxLatency() != null) {
+                forwardFlow.setMaxLatency(flow.getMaxLatency());
+                reverseFlow.setMaxLatency(flow.getMaxLatency());
+            }
+            if (flow.getPriority() != null) {
+                forwardFlow.setPriority(flow.getPriority());
+                reverseFlow.setPriority(flow.getPriority());
+            }
+
+            flowRepository.createOrUpdate(FlowPair.builder()
+                    .forward(forwardFlow)
+                    .reverse(reverseFlow)
+                    .build());
+
+            return Optional.of(forwardFlow);
+
+        }).orElseThrow(() -> new FlowNotFoundException(flow.getFlowId()));
     }
 }

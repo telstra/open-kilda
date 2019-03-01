@@ -23,6 +23,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PingInput;
 import org.openkilda.northbound.dto.flows.PingOutput;
@@ -135,6 +136,21 @@ public class FlowController {
     public CompletableFuture<FlowPayload> updateFlow(@PathVariable(name = "flow-id") String flowId,
                                                      @RequestBody FlowPayload flow) {
         return flowService.updateFlow(flow);
+    }
+
+    /**
+     * Updates max latency or priority of existing flow.
+     *
+     * @param flowPatchDto  flow parameters for update
+     * @param flowId        flow id
+     * @return flow
+     */
+    @ApiOperation(value = "Updates flow", response = FlowPayload.class)
+    @PatchMapping(value = "/{flow-id:.+}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowPayload> patchFlow(@PathVariable(name = "flow-id") String flowId,
+                                                    @RequestBody FlowPatchDto flowPatchDto) {
+        return flowService.patchFlow(flowId, flowPatchDto);
     }
 
     /**

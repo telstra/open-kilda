@@ -82,7 +82,7 @@ public class StoreController {
     @RequestMapping(value = "/link-store-config", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody LinkStoreConfigDto getLinkStoreConfig() {
-        LOGGER.info("[getLinkStoreConfig] - start. get link store config: ");
+        LOGGER.info("Get link store config");
         return storeService.getLinkStoreConfig();
     }
 
@@ -97,7 +97,7 @@ public class StoreController {
     @Permissions(values = { IConstants.Permission.STORE_SETTING })
     public @ResponseBody LinkStoreConfigDto saveOrUpdateLinkStoreConfig(
             @RequestBody LinkStoreConfigDto linkStoreConfigDto) {
-        LOGGER.info("[saveOrUpdateStoreUrls] - start. linkStoreConfigDto: " + linkStoreConfigDto);
+        LOGGER.info("Save or update link store configuration. linkStoreConfigDto: " + linkStoreConfigDto);
         StringBuilder key = new StringBuilder();
         for (Entry<String, UrlDto> urlEntrySet : linkStoreConfigDto.getUrls().entrySet()) {
             key = (key.length() > 0) ? key.append("\n," + urlEntrySet.getKey()) : key.append(urlEntrySet.getKey());
@@ -117,7 +117,7 @@ public class StoreController {
     @Permissions(values = { IConstants.Permission.STORE_SETTING })
     @ResponseBody
     public boolean deleteLinkStoreConfig() {
-        LOGGER.info("[deleteLinkStoreConfig] - start.");
+        LOGGER.info("Delete link store configuration");
         activityLogger.log(ActivityType.DELETE_LINK_STORE_CONFIG);
         return storeService.deleteLinkStoreConfig();
     }
@@ -133,7 +133,7 @@ public class StoreController {
     @Permissions(values = { IConstants.Permission.STORE_SETTING })
     public @ResponseBody SwitchStoreConfigDto saveOrUpdateSwitchStoreConfig(
             @RequestBody SwitchStoreConfigDto switchStoreConfigDto) {
-        LOGGER.info("[saveOrUpdateStoreUrls] - start. switchStoreConfigDto: " + switchStoreConfigDto);
+        LOGGER.info("Save or update switch store configuration. switchStoreConfigDto: " + switchStoreConfigDto);
         StringBuilder key = new StringBuilder();
         for (Entry<String, UrlDto> urlEntrySet : switchStoreConfigDto.getUrls().entrySet()) {
             key = (key.length() > 0) ? key.append("\n," + urlEntrySet.getKey()) : key.append(urlEntrySet.getKey());
@@ -153,7 +153,7 @@ public class StoreController {
     @Permissions(values = { IConstants.Permission.STORE_SETTING })
     @ResponseBody
     public boolean deleteSwitchStoreConfig() {
-        LOGGER.info("[deleteSwitchStoreConfig] - start.");
+        LOGGER.info("Delete link store configuration.");
         activityLogger.log(ActivityType.DELETE_SWITCH_STORE_CONFIG);
         return storeService.deleteSwitchStoreConfig();
     }
@@ -166,7 +166,7 @@ public class StoreController {
     @RequestMapping(value = "/switch-store-config", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody SwitchStoreConfigDto getSwitchStoreConfig() {
-        LOGGER.info("[getSwitchStoreConfig] - start. get switch store config: ");
+        LOGGER.info("Get switch store config");
         return storeService.getSwitchStoreConfig();
     }
 }

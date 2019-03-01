@@ -103,11 +103,11 @@ public class StatsIntegrationService {
                 return IoUtil.toString(response.getEntity().getContent());
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Inside getFlowStatusById  Exception :", e);
+            LOGGER.error("Error occurred while getting stats", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (IOException ex) {
-            LOGGER.error("Inside getStats Exception is: " + ex.getMessage());
-            throw new IntegrationException(ex);
+        } catch (IOException e) {
+            LOGGER.warn("Error occurred while getting stats", e);
+            throw new IntegrationException(e);
         }
         return null;
     }

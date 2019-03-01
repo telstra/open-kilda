@@ -206,7 +206,7 @@ public class FlowCrudSteps implements En {
                         flow.getDestination().getPortNumber(),
                         flow.getSource().getVlanId(),
                         flow.getDestination().getVlanId(),
-                        0, 0, null, null))
+                        0, 0, null, null, null, null))
                 .collect(toList());
 
         for (FlowDto expectedFlow : expextedFlows) {
