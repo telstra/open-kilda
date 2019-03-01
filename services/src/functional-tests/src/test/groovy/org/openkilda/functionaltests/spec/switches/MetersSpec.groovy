@@ -17,6 +17,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -356,6 +357,26 @@ class MetersSpec extends BaseSpecification {
                         dstSwitch  : nonCentecSwitches[0]
                 ]
         ]
+    }
+
+    @Ignore("https://github.com/telstra/open-kilda/issues/2043")
+    def "Try to reset meters for unmetered flow"() {
+        given: "A flow with the 'bandwidth: 0' and 'ignoreBandwidth: true' fields"
+        def availableSwitches = topology.activeSwitches
+        def src = availableSwitches[0]
+        def dst = availableSwitches[1]
+
+        def flow = flowHelper.randomFlow(src, dst)
+        flow.ignoreBandwidth = true
+        flow.maximumBandwidth = 0
+        flowHelper.addFlow(flow)
+
+        when: "Resetting meter burst and rate to default"
+        northbound.resetMeters(flow.id)
+//        TODO(andriidovhan) add then and check response: body or message
+
+        then: "Delete the created flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     /**
