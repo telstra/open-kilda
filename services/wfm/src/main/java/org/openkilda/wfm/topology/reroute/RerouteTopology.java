@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
 
         final Integer parallelism = topologyConfig.getParallelism();
 
-        KafkaSpout kafkaSpout = createKafkaSpout(topologyConfig.getKafkaTopoRerouteTopic(), SPOUT_ID_REROUTE);
+        KafkaSpout kafkaSpout = buildKafkaSpout(topologyConfig.getKafkaTopoRerouteTopic(), SPOUT_ID_REROUTE);
         topologyBuilder.setSpout(SPOUT_ID_REROUTE, kafkaSpout, parallelism);
 
         PersistenceManager persistenceManager =  PersistenceProvider.getInstance()
@@ -61,12 +61,14 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
                 .shuffleGrouping(SPOUT_ID_REROUTE);
 
         FlowThrottlingBolt flowThrottlingBolt = new FlowThrottlingBolt(
-                topologyConfig.getRerouteThrottlingMinDelay(), topologyConfig.getRerouteThrottlingMaxDelay());
+                topologyConfig.getRerouteThrottlingMinDelay(),
+                topologyConfig.getRerouteThrottlingMaxDelay(),
+                topologyConfig.getDefaultFlowPriority());
         //TODO(siakovenko): fix ThrottlingBolt with parallelism > 1 : see topologyConfig.getNewParallelism()
         topologyBuilder.setBolt(BOLT_ID_REROUTE_THROTTLING, flowThrottlingBolt, parallelism)
                 .fieldsGrouping(BOLT_ID_REROUTE, new Fields(RerouteBolt.FLOW_ID_FIELD));
 
-        KafkaBolt kafkaFlowBolt = createKafkaBolt(topologyConfig.getKafkaFlowTopic());
+        KafkaBolt kafkaFlowBolt = buildKafkaBolt(topologyConfig.getKafkaFlowTopic());
         topologyBuilder.setBolt(BOLT_ID_KAFKA_FLOW, kafkaFlowBolt, parallelism)
                 .shuffleGrouping(BOLT_ID_REROUTE_THROTTLING);
 
