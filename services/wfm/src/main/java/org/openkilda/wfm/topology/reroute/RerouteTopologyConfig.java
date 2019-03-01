@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -28,6 +28,9 @@ public interface RerouteTopologyConfig extends AbstractTopologyConfig {
 
     @Key("reroute.throttling.delay.max")
     long getRerouteThrottlingMaxDelay();
+
+    @Key("flow.default.priority")
+    int getDefaultFlowPriority();
 
     default String getKafkaTopoRerouteTopic() {
         return getKafkaTopics().getTopoRerouteTopic();

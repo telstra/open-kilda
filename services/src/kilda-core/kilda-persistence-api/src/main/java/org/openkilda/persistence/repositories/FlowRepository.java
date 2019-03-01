@@ -38,9 +38,9 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<Flow> findFlowIdsByEndpoint(SwitchId switchId, int port);
 
-    Collection<String> findActiveFlowIdsWithPortInPath(SwitchId switchId, int port);
+    Set<Flow> findActiveFlowsWithPortInPath(SwitchId switchId, int port);
 
-    Collection<String> findDownFlowIds();
+    Set<Flow> findDownFlows();
 
     Collection<Flow> findBySrcSwitchId(SwitchId switchId);
 
