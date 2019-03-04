@@ -25,9 +25,9 @@ spring.mvc.throw-exception-if-no-handler-found=true
 nb.base.url={{ getv "/kilda_northbound_endpoint" }}:{{ getv "/kilda_northbound_rest_port" }}/api/v1
 
 
-#OPEN TSDB Base URL
+#OPEN TSDB Base URL and metric prefix
 opentsdb.base.url=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
-
+opentsdb.metric.prefix = {{ getv "/kilda_opentsdb_metric_prefix" }}
 
 
 #Kilda username and password
