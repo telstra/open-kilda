@@ -72,8 +72,8 @@ public class FlowDto implements Serializable {
     @JsonProperty("description")
     private String description;
 
-    @JsonProperty("time_create")
-    private String timeCreate;
+    @JsonProperty("created_time")
+    String createdTime;
 
     /**
      * Flow last updated timestamp.
@@ -159,7 +159,7 @@ public class FlowDto implements Serializable {
      * @param ignoreBandwidth   ignore bandwidth flag
      * @param cookie            cookie
      * @param description       description
-     * @param timeCreate        flow create timestamp
+     * @param createdTime       flow created timestamp
      * @param lastUpdated       last updated timestamp
      * @param sourceSwitch      source switch
      * @param destinationSwitch destination switch
@@ -182,7 +182,7 @@ public class FlowDto implements Serializable {
                    @JsonProperty("periodic-pings") boolean periodicPings,
                    @JsonProperty("cookie") final long cookie,
                    @JsonProperty("description") final String description,
-                   @JsonProperty("time_create") String timeCreate,
+                   @JsonProperty("created_time") String createdTime,
                    @JsonProperty("last_updated") final String lastUpdated,
                    @JsonProperty("src_switch") final SwitchId sourceSwitch,
                    @JsonProperty("dst_switch") final SwitchId destinationSwitch,
@@ -202,7 +202,7 @@ public class FlowDto implements Serializable {
         this.periodicPings = periodicPings;
         this.cookie = cookie;
         this.description = description;
-        this.timeCreate = timeCreate;
+        this.createdTime = createdTime;
         this.lastUpdated = lastUpdated;
         this.sourceSwitch = sourceSwitch;
         this.destinationSwitch = destinationSwitch;
@@ -228,7 +228,7 @@ public class FlowDto implements Serializable {
                 flow.isPeriodicPings(),
                 flow.getCookie(),
                 flow.getDescription(),
-                flow.getTimeCreate(),
+                flow.getCreatedTime(),
                 flow.getLastUpdated(),
                 flow.getSourceSwitch(),
                 flow.getDestinationSwitch(),
