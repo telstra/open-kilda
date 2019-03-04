@@ -19,12 +19,14 @@ import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.TickClock;
 
 import com.google.common.annotations.VisibleForTesting;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+@Slf4j
 public class DiscoveryWatchListService {
     private final long tickPeriodMs;
 
@@ -61,10 +63,15 @@ public class DiscoveryWatchListService {
     }
 
     public void addWatch(IWatchListCarrier carrier, Endpoint endpoint) {
+        log.debug("Watch-list service receive ADD-WATCH request for {}", endpoint);
         addWatch(carrier, endpoint, clock.getCurrentTimeMs());
     }
 
+    /**
+     * Handle remove watch request.
+     */
     public void removeWatch(IWatchListCarrier carrier, Endpoint endpoint) {
+        log.debug("Watch-list service receive REMOVE-WATCH request for {}", endpoint);
         carrier.watchRemoved(endpoint);
         endpoints.remove(endpoint);
     }

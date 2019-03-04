@@ -54,10 +54,10 @@ public class DiscoveryBfdPortService {
      * .
      */
     public void setup(IBfdPortCarrier carrier, BfdPortFacts portFacts) {
-        log.debug("Setup BFD-port {}", portFacts.getEndpoint());
+        log.debug("BFD-port service receive SETUP request for {}", portFacts.getEndpoint());
         BfdPortFsm controller = BfdPortFsm.create(persistenceManager, portFacts);
 
-        // TODO load exising discrimanator for this port/session from persistent storage if any
+        // TODO load exising discriminator for this port/session from persistent storage if any
         BfdPortFsmContext context = BfdPortFsmContext.builder(carrier)
                 .portFacts(portFacts)
                 .build();
@@ -71,7 +71,7 @@ public class DiscoveryBfdPortService {
      * .
      */
     public void remove(IBfdPortCarrier carrier, Endpoint logicalEndpoint) {
-        log.debug("Remove BFD-port {}", logicalEndpoint);
+        log.debug("BFD-port service receive REMOVE request for {}", logicalEndpoint);
         BfdPortFsmContext context = BfdPortFsmContext.builder(carrier).build();
 
         BfdPortFsm controller = controllerByLogicalPort.remove(logicalEndpoint);
@@ -87,7 +87,7 @@ public class DiscoveryBfdPortService {
      * .
      */
     public void updateLinkStatus(IBfdPortCarrier carrier, Endpoint logicaEndpoint, LinkStatus linkStatus) {
-        log.debug("BFD status on {} become {}", logicaEndpoint, linkStatus);
+        log.debug("BFD-port service receive logical port status update for {} status:{}", logicaEndpoint, linkStatus);
         BfdPortFsm controller = controllerByLogicalPort.get(logicaEndpoint);
         if (controller != null) {
             BfdPortFsmContext context = BfdPortFsmContext.builder(carrier).build();
@@ -112,8 +112,12 @@ public class DiscoveryBfdPortService {
         }
     }
 
+    /**
+     * Handle change in ONLINE status of switch that own logical-BFD port.
+     */
     public void updateOnlineMode(IBfdPortCarrier carrier, Endpoint endpoint, boolean mode) {
-        log.debug("BFD port {} become {} (due to switch availability change)", endpoint, mode ? "ONLINE" : "OFFLINE");
+        log.debug("BFD-port service receive online mode change notification for {} mode:{}",
+                  endpoint, mode ? "ONLINE" : "OFFLINE");
         // Current implementation do not take into account switch's online status
     }
 
@@ -121,6 +125,7 @@ public class DiscoveryBfdPortService {
      * .
      */
     public void handleEnableRequest(IBfdPortCarrier carrier, Endpoint physicalEndpoint, IslReference reference) {
+        log.debug("BFD-port service receive ENABLE request for {}(physical port)", physicalEndpoint);
         BfdPortFsm controller = controllerByPhysicalPort.get(physicalEndpoint);
         if (controller != null) {
             log.debug("BFD port {} => {} receive ISL discovery confirmation",

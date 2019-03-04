@@ -22,8 +22,8 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.UniIslHandler;
 public class UniIslDiscoveryCommand extends UniIslCommand {
     private final IslInfoData speakerDiscoveryEvent;
 
-    public UniIslDiscoveryCommand(IslInfoData discoveryEvent) {
-        super(new Endpoint(discoveryEvent.getSource()));
+    public UniIslDiscoveryCommand(Endpoint endpoint, IslInfoData discoveryEvent) {
+        super(endpoint);
         this.speakerDiscoveryEvent = discoveryEvent;
     }
 

@@ -172,8 +172,11 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
     private void portHandler(TopologyBuilder topology, int scaleFactor) {
         PortHandler bolt = new PortHandler();
         Fields endpointGrouping = new Fields(SwitchHandler.FIELD_ID_DATAPATH, SwitchHandler.FIELD_ID_PORT_NUMBER);
+        Fields decisionMakerGrouping = new Fields(DecisionMakerHandler.FIELD_ID_DATAPATH,
+                                                  DecisionMakerHandler.FIELD_ID_PORT_NUMBER);
         topology.setBolt(PortHandler.BOLT_ID, bolt, scaleFactor)
-                .fieldsGrouping(SwitchHandler.BOLT_ID, SwitchHandler.STREAM_PORT_ID, endpointGrouping);
+                .fieldsGrouping(SwitchHandler.BOLT_ID, SwitchHandler.STREAM_PORT_ID, endpointGrouping)
+                .fieldsGrouping(DecisionMakerHandler.BOLT_ID, decisionMakerGrouping);
     }
 
     private void bfdPortHandler(TopologyBuilder topology, int scaleFactor) {
@@ -189,11 +192,8 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
     private void uniIslHandler(TopologyBuilder topology, int scaleFactor) {
         UniIslHandler bolt = new UniIslHandler();
         Fields portGrouping = new Fields(PortHandler.FIELD_ID_DATAPATH, PortHandler.FIELD_ID_PORT_NUMBER);
-        Fields decisionMakerGrouping = new Fields(DecisionMakerHandler.FIELD_ID_DATAPATH,
-                                                  DecisionMakerHandler.FIELD_ID_PORT_NUMBER);
         topology.setBolt(UniIslHandler.BOLT_ID, bolt, scaleFactor)
-                .fieldsGrouping(PortHandler.BOLT_ID, portGrouping)
-                .fieldsGrouping(DecisionMakerHandler.BOLT_ID, decisionMakerGrouping);
+                .fieldsGrouping(PortHandler.BOLT_ID, portGrouping);
     }
 
     private void islHandler(TopologyBuilder topology, int scaleFactor) {

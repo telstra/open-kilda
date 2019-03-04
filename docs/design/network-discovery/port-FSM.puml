@@ -2,14 +2,18 @@ Internal state:
 * history data (constructor)
 
 Input signals:
-* port-up
-* port-down
-* online
-* offline
+* port-up (switch)
+* port-down (switch)
+* online (switch)
+* offline (switch)
+* poll-discovery (poll)
+* poll-fail (poll)
 
 Output signals:
-* physical-down
-* uni-isl-setup
+* physical-down (isl/2)
+* uni-isl-setup (isl/2)
+* discovery (isl/2)
+* fail (isl/2)
 
 @startuml
 title Port FSM
@@ -28,10 +32,13 @@ state OPERATIONAL {
 
     DOWN --> UP : port-up
     DOWN : enter / emit physical-down
+    DOWN : poll-fail / emit fail
 
     UP --> DOWN : port-down
     UP : enter / issue addWatch
     UP : exit / issue delWatch
+    UP : poll-discovery / emit discovery
+    UP : poll-fail / emit fail
 }
 
 OPERATIONAL --> UNOPERATIONAL : offline
@@ -39,6 +46,7 @@ OPERATIONAL -r-> FINISH : port-del
 
 UNOPERATIONAL --> OPERATIONAL : online
 UNOPERATIONAL --> FINISH : port-del
+UNOPERATIONAL : poll-fail / emit fail
 
 FINISH: enter / emit uni-isl-del
 FINISH -d-> [*]

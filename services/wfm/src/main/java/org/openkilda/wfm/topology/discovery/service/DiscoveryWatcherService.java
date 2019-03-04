@@ -52,8 +52,9 @@ public class DiscoveryWatcherService {
      */
     public void addWatch(IWatcherCarrier carrier, Endpoint endpoint, long currentTime) {
         Packet packet = Packet.of(endpoint, packetNo);
+        log.debug("Watcher service receive ADD-watch request for {} and produce packet id:{} task:{}",
+                  endpoint, packet.packetNo, taskId);
 
-        log.debug("Produce discovery PUSH request for {} id:{} task:{}", endpoint, packet.packetNo, taskId);
         producedPackets.add(packet);
         timeouts.computeIfAbsent(currentTime + awaitTime, key -> new HashSet<>())
                 .add(packet);
@@ -69,7 +70,7 @@ public class DiscoveryWatcherService {
      * Remove endpoint from discovery process.
      */
     public void removeWatch(IWatcherCarrier carrier, Endpoint endpoint) {
-        log.debug("Remove discovery poll endpoint {}", endpoint);
+        log.debug("Watcher service receive REMOVE-watch request for {}", endpoint);
         carrier.clearDiscovery(endpoint);
         producedPackets.removeIf(packet -> packet.endpoint.equals(endpoint));
         confirmedPackets.removeIf(packet -> packet.endpoint.equals(endpoint));
@@ -96,7 +97,7 @@ public class DiscoveryWatcherService {
      * .
      */
     public void confirmation(Endpoint endpoint, long packetNo) {
-        log.debug("Receive confirmation on discovery PUSH request for {} id:{} task:{}", endpoint, packetNo, taskId);
+        log.debug("Watcher service receive SEND-confirmation for {} id:{} task:{}", endpoint, packetNo, taskId);
         Packet packet = Packet.of(endpoint, packetNo);
         if (producedPackets.remove(packet)) {
             confirmedPackets.add(packet);
@@ -121,7 +122,7 @@ public class DiscoveryWatcherService {
     private void discovery(IWatcherCarrier carrier, IslInfoData discoveryEvent, Packet packet) {
         if (log.isDebugEnabled()) {
             IslReference ref = IslReference.of(discoveryEvent);
-            log.debug("Receive ISL discovery event for {} id:{} task:{} - {}",
+            log.debug("Watcher service receive DISCOVERY event for {} id:{} task:{} - {}",
                       packet.endpoint, packet.packetNo, taskId, ref);
         }
 

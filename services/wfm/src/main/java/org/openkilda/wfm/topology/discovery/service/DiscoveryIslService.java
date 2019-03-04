@@ -52,12 +52,13 @@ public class DiscoveryIslService {
      * Create ISL handler and use "history" data to initialize it's state.
      */
     public void islSetupFromHistory(Endpoint endpoint, IslReference reference, Isl history) {
-        log.debug("ISL {} setup from history (on {})", reference, endpoint);
+        log.debug("ISL service receive SETUP request from history data for {} (on {})", reference, endpoint);
         if (!controller.containsKey(reference)) {
             ensureControllerIsMissing(reference);
             controller.put(reference, IslFsm.createFromHistory(persistenceManager, options, reference, history));
         } else {
-            log.error("Receive \"history\" data for already created ISL - ignore history (start-up race condition)");
+            log.error("Receive HISTORY data for already created ISL - ignore history "
+                              + "(possible start-up race condition)");
         }
     }
 
@@ -65,7 +66,7 @@ public class DiscoveryIslService {
      * .
      */
     public void islUp(IIslCarrier carrier, Endpoint endpoint, IslReference reference, IslDataHolder islData) {
-        log.debug("ISL discovery {} (on {})", reference, endpoint);
+        log.debug("ISL service receive DISCOVERY notification for {} (on {})", reference, endpoint);
         IslFsm islFsm = locateControllerCreateIfAbsent(reference);
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint)
                 .islData(islData)
@@ -77,7 +78,7 @@ public class DiscoveryIslService {
      * .
      */
     public void islDown(IIslCarrier carrier, Endpoint endpoint, IslReference reference, boolean isPhysicalDown) {
-        log.debug("ISL fail {} (on {})", reference, endpoint);
+        log.debug("ISL service receive FAIL notification for {} (on {})", reference, endpoint);
         IslFsm islFsm = locateController(reference);
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint)
                 .physicalLinkDown(isPhysicalDown)
@@ -89,7 +90,7 @@ public class DiscoveryIslService {
      * .
      */
     public void islMove(IIslCarrier carrier, Endpoint endpoint, IslReference reference) {
-        log.debug("ISL fail(moved) {} (on {})", reference, endpoint);
+        log.debug("ISL service receive MOVED(FAIL) notification for {} (on {})", reference, endpoint);
         IslFsm islFsm = locateController(reference);
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint).build();
         controllerExecutor.fire(islFsm, IslFsmEvent.ISL_MOVE, context);
@@ -99,7 +100,8 @@ public class DiscoveryIslService {
      * Process enable/disable BFD requests.
      */
     public void bfdEnableDisable(IIslCarrier carrier, IslReference reference, IslBfdFlagUpdated payload) {
-        log.debug("ISL got allow-BFD update for {} new-status:{}", reference, payload.isEnableBfd());
+        log.debug("ISL service receive allow-BFD switch update notification for {} new-status:{}",
+                  reference, payload.isEnableBfd());
         IslFsm islFsm = locateController(reference);
         IslFsmContext context = IslFsmContext.builder(carrier, reference.getSource())
                 .bfdEnable(payload.isEnableBfd())

@@ -51,7 +51,7 @@ public class DiscoveryDecisionMakerService {
      */
     public void discovered(IDecisionMakerCarrier carrier, Endpoint endpoint, IslInfoData discoveryEvent,
                            long currentTime) {
-        log.debug("Discovery poll DISCOVERED notification on {}", endpoint);
+        log.debug("Decision-maker service receive DISCOVERY event for {}", endpoint);
 
         DecisionMakerFsm decisionMakerFsm = locateControllerCreateIfAbsent(endpoint);
 
@@ -69,7 +69,7 @@ public class DiscoveryDecisionMakerService {
      * Process "failed" event from {@link DiscoveryWatcherService}.
      */
     public void failed(IDecisionMakerCarrier carrier, Endpoint endpoint, long currentTime) {
-        log.debug("Discovery poll FAIL notification on {}", endpoint);
+        log.debug("Decision-maker service receive FAIL notification for {}", endpoint);
         DecisionMakerFsm decisionMakerFsm = locateControllerCreateIfAbsent(endpoint);
 
         DecisionMakerFsmContext context = DecisionMakerFsmContext.builder()

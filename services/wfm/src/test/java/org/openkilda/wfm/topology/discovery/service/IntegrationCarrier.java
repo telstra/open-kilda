@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.discovery.service;
 
 import org.openkilda.messaging.command.reroute.RerouteFlows;
+import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
@@ -80,6 +81,16 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
     @Override
     public void disableDiscoveryPoll(Endpoint endpoint) {
         // WatchList service is not covered by this test
+    }
+
+    @Override
+    public void notifyPortDiscovered(Endpoint endpoint, IslInfoData speakerDiscoveryEvent) {
+        uniIslService.uniIslDiscovery(endpoint, speakerDiscoveryEvent);
+    }
+
+    @Override
+    public void notifyPortDiscoveryFailed(Endpoint endpoint) {
+        uniIslService.uniIslFail(endpoint);
     }
 
     @Override

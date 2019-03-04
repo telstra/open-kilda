@@ -55,7 +55,7 @@ public class DiscoverySwitchService {
      * .
      */
     public void switchAddWithHistory(HistoryFacts history) {
-        log.debug("Switch ADD with history (sw: {})", history.getSwitchId());
+        log.debug("Switch service receive switch ADD from history request for {}", history.getSwitchId());
         SwitchFsm switchFsm = SwitchFsm.create(persistenceManager, history.getSwitchId(), bfdLogicalPortOffset);
 
         SwitchFsmContext fsmContext = SwitchFsmContext.builder(carrier)
@@ -69,7 +69,7 @@ public class DiscoverySwitchService {
      * .
      */
     public void switchEvent(SwitchInfoData payload) {
-        log.debug("Switch event (sw: {}, become: {})", payload.getSwitchId(), payload.getState());
+        log.debug("Switch service receive SWITCH event for {} status:{}", payload.getSwitchId(), payload.getState());
         SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder = SwitchFsmContext.builder(carrier);
         SwitchFsmEvent event = null;
 
@@ -98,7 +98,7 @@ public class DiscoverySwitchService {
      * .
      */
     public void switchEvent(UnmanagedSwitchNotification payload) {
-        log.debug("Switch become unmanaged (sw: {})", payload.getSwitchId());
+        log.debug("Switch service receive unmanaged notification for {}", payload.getSwitchId());
         SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder = SwitchFsmContext.builder(carrier);
         SwitchFsm fsm = locateControllerCreateIfAbsent(payload.getSwitchId());
         controllerExecutor.fire(fsm, SwitchFsmEvent.OFFLINE, fsmContextBuilder.build());
@@ -108,7 +108,8 @@ public class DiscoverySwitchService {
      * .
      */
     public void switchPortEvent(PortInfoData payload) {
-        log.debug("Port event (sw: {}, port: {})", payload.getSwitchId(), payload.getPortNo());
+        log.debug("Switch service receive PORT event for {} port:{}, status:{}",
+                  payload.getSwitchId(), payload.getPortNo(), payload.getState());
         SwitchFsmContext fsmContext = SwitchFsmContext.builder(carrier)
                 .portNumber(payload.getPortNo())
                 .build();

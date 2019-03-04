@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.discovery.storm.bolt.port;
 
+import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.AbstractException;
@@ -25,9 +26,12 @@ import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryPortService;
 import org.openkilda.wfm.topology.discovery.service.IPortCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
+import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.DecisionMakerHandler;
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.SwitchHandler;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslDiscoveryCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslFailCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslPhysicalDownCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslRemoveCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslSetupCommand;
@@ -59,15 +63,25 @@ public class PortHandler extends AbstractBolt implements IPortCarrier {
     @Override
     protected void handleInput(Tuple input) throws AbstractException {
         String source = input.getSourceComponent();
-        if (SwitchHandler.BOLT_ID.equals(source)) {
+        if (DecisionMakerHandler.BOLT_ID.equals(source)) {
+            handleDecisionMakerCommand(input);
+        } else if (SwitchHandler.BOLT_ID.equals(source)) {
             handleSwitchCommand(input);
         } else {
             unhandledInput(input);
         }
     }
 
+    private void handleDecisionMakerCommand(Tuple input) throws PipelineException {
+        handleCommand(input, DecisionMakerHandler.FIELD_ID_COMMAND);
+    }
+
     private void handleSwitchCommand(Tuple input) throws PipelineException {
-        PortCommand command = pullValue(input, SwitchHandler.FIELD_ID_COMMAND, PortCommand.class);
+        handleCommand(input, SwitchHandler.FIELD_ID_COMMAND);
+    }
+
+    private void handleCommand(Tuple input, String field) throws PipelineException {
+        PortCommand command = pullValue(input, field, PortCommand.class);
         command.apply(this);
     }
 
@@ -100,6 +114,16 @@ public class PortHandler extends AbstractBolt implements IPortCarrier {
     }
 
     @Override
+    public void notifyPortDiscovered(Endpoint endpoint, IslInfoData speakerDiscoveryEvent) {
+        emit(getCurrentTuple(), makeDefaultTuple(new UniIslDiscoveryCommand(endpoint, speakerDiscoveryEvent)));
+    }
+
+    @Override
+    public void notifyPortDiscoveryFailed(Endpoint endpoint) {
+        emit(getCurrentTuple(), makeDefaultTuple(new UniIslFailCommand(endpoint)));
+    }
+
+    @Override
     public void notifyPortPhysicalDown(Endpoint endpoint) {
         emit(getCurrentTuple(), makeDefaultTuple(new UniIslPhysicalDownCommand(endpoint)));
     }
@@ -126,6 +150,14 @@ public class PortHandler extends AbstractBolt implements IPortCarrier {
 
     public void processUpdateLinkStatus(Endpoint endpoint, LinkStatus linkStatus) {
         service.updateLinkStatus(endpoint, linkStatus);
+    }
+
+    public void processDiscovery(Endpoint endpoint, IslInfoData speakerDiscoveryEvent) {
+        service.discovery(endpoint, speakerDiscoveryEvent);
+    }
+
+    public void processFail(Endpoint endpoint) {
+        service.fail(endpoint);
     }
 
     // Private

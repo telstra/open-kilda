@@ -20,6 +20,7 @@ import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.bolt.KafkaEncoder;
@@ -131,7 +132,7 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
 
     private Values makeDefaultTuple(DecisionMakerCommand command) {
         Endpoint endpoint = command.getEndpoint();
-        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, safePullContext());
+        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, forkContextByEndpoint(endpoint));
     }
 
     private Values makeSpeakerTuple(String key, CommandData payload) {
@@ -154,5 +155,11 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
 
     public void processDiscovery(IslInfoData payload) {
         service.discovery(this, payload);
+    }
+
+    // -- private/service methods --
+
+    private CommandContext forkContextByEndpoint(Endpoint endpoint) {
+        return safeForkContext("W", endpoint.toString());
     }
 }

@@ -15,12 +15,14 @@
 
 package org.openkilda.wfm.topology.discovery.controller;
 
+import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.service.IPortCarrier;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
@@ -59,6 +61,8 @@ public final class PortFsm extends AbstractStateMachine<PortFsm, PortFsm.PortFsm
                 .from(PortFsmState.UNOPERATIONAL).to(PortFsmState.OPERATIONAL).on(PortFsmEvent.ONLINE);
         builder.transition()
                 .from(PortFsmState.UNOPERATIONAL).to(PortFsmState.FINISH).on(PortFsmEvent.PORT_DEL);
+        builder.internalTransition().within(PortFsmState.UNOPERATIONAL).on(PortFsmEvent.FAIL)
+                .callMethod("proxyFail");
 
         // UNKNOWN
         builder.transition()
@@ -69,6 +73,10 @@ public final class PortFsm extends AbstractStateMachine<PortFsm, PortFsm.PortFsm
         // UP
         builder.transition()
                 .from(PortFsmState.UP).to(PortFsmState.DOWN).on(PortFsmEvent.PORT_DOWN);
+        builder.internalTransition().within(PortFsmState.UP).on(PortFsmEvent.DISCOVERY)
+                .callMethod("proxyDiscovery");
+        builder.internalTransition().within(PortFsmState.UP).on(PortFsmEvent.FAIL)
+                .callMethod("proxyFail");
         builder.onEntry(PortFsmState.UP)
                 .callMethod("enableDiscoveryPoll");
         builder.onExit(PortFsmState.UP)
@@ -77,6 +85,8 @@ public final class PortFsm extends AbstractStateMachine<PortFsm, PortFsm.PortFsm
         // DOWN
         builder.transition()
                 .from(PortFsmState.DOWN).to(PortFsmState.UP).on(PortFsmEvent.PORT_UP);
+        builder.internalTransition().within(PortFsmState.DOWN).on(PortFsmEvent.FAIL)
+                .callMethod("proxyFail");
         builder.onEntry(PortFsmState.DOWN)
                 .callMethod("downEnter");
 
@@ -114,6 +124,14 @@ public final class PortFsm extends AbstractStateMachine<PortFsm, PortFsm.PortFsm
         context.getOutput().disableDiscoveryPoll(endpoint);
     }
 
+    protected void proxyDiscovery(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+        context.getOutput().notifyPortDiscovered(endpoint, context.getSpeakerDiscoveryEvent());
+    }
+
+    protected void proxyFail(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+        context.getOutput().notifyPortDiscoveryFailed(endpoint);
+    }
+
     protected void downEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         IPortCarrier output = context.getOutput();
         output.notifyPortPhysicalDown(endpoint);
@@ -126,14 +144,17 @@ public final class PortFsm extends AbstractStateMachine<PortFsm, PortFsm.PortFsm
 
     // -- private/service methods --
 
-    @Data
+    @Value
+    @Builder
     public static class PortFsmContext {
         private final IPortCarrier output;
 
         private Isl history;
+        private IslInfoData speakerDiscoveryEvent;
 
-        public PortFsmContext(IPortCarrier output) {
-            this.output = output;
+        public static PortFsmContextBuilder builder(IPortCarrier output) {
+            return new PortFsmContextBuilder()
+                .output(output);
         }
     }
 
@@ -141,7 +162,8 @@ public final class PortFsm extends AbstractStateMachine<PortFsm, PortFsm.PortFsm
         NEXT,
 
         ONLINE, OFFLINE,
-        PORT_UP, PORT_DOWN, PORT_DEL
+        PORT_UP, PORT_DOWN, PORT_DEL,
+        DISCOVERY, FAIL
     }
 
     public enum PortFsmState {

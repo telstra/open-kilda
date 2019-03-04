@@ -46,7 +46,7 @@ public class DiscoveryUniIslService {
      * .
      */
     public void uniIslSetup(Endpoint endpoint, Isl history) {
-        log.debug("Setup uni-ISL on {}", endpoint);
+        log.debug("Uni-ISL service receive SETUP request for {}", endpoint);
         UniIslFsm fsm = UniIslFsm.create(endpoint);
         UniIslFsmContext context = UniIslFsmContext.builder(carrier)
                 .history(history)
@@ -59,7 +59,7 @@ public class DiscoveryUniIslService {
      * .
      */
     public void uniIslDiscovery(Endpoint endpoint, IslInfoData speakerDiscoveryEvent) {
-        log.debug("ISL on {} become discovered (uni-ISL view)", endpoint);
+        log.debug("Uni-ISL service receive DISCOVERED notification for {}", endpoint);
         UniIslFsmContext context = UniIslFsmContext.builder(carrier)
                 .discoveryEvent(speakerDiscoveryEvent)
                 .build();
@@ -70,7 +70,7 @@ public class DiscoveryUniIslService {
      * .
      */
     public void uniIslFail(Endpoint endpoint) {
-        log.debug("ISL on {} become failed (uni-ISL view)", endpoint);
+        log.debug("Uni-ISL service receive FAILED notification for {}", endpoint);
         UniIslFsmContext context = UniIslFsmContext.builder(carrier).build();
         controllerExecutor.fire(locateController(endpoint), UniIslFsmEvent.FAIL, context);
     }
@@ -79,7 +79,7 @@ public class DiscoveryUniIslService {
      * .
      */
     public void uniIslPhysicalDown(Endpoint endpoint) {
-        log.debug("ISL on {} become failed (link DOWN) (uni-ISL view)", endpoint);
+        log.debug("Uni-ISL service receive PHYSICAL-DOWN notification for {}", endpoint);
         UniIslFsmContext context = UniIslFsmContext.builder(carrier).build();
         controllerExecutor.fire(locateController(endpoint), UniIslFsmEvent.PHYSICAL_DOWN, context);
     }
@@ -90,7 +90,7 @@ public class DiscoveryUniIslService {
     public void uniIslBfdUpDown(Endpoint endpoint, boolean isUp) {
         UniIslFsmContext context = UniIslFsmContext.builder(carrier).build();
         UniIslFsmEvent event = isUp ? UniIslFsmEvent.BFD_UP : UniIslFsmEvent.BFD_DOWN;
-        log.debug("Receive BFD link update {} on {} (uni-ISL view)", event, endpoint);
+        log.debug("Uni-ISL service receive BFD status update for {} - status:{}", endpoint, event);
         controllerExecutor.fire(locateController(endpoint), event, context);
     }
 
@@ -98,7 +98,7 @@ public class DiscoveryUniIslService {
      * .
      */
     public void uniIslRemove(Endpoint endpoint) {
-        log.debug("Receive UniIsl kill request for {}", endpoint);
+        log.debug("Uni-ISL service receive KILL request for {}", endpoint);
         controller.remove(endpoint);
     }
 
@@ -106,12 +106,10 @@ public class DiscoveryUniIslService {
      * .
      */
     public void uniIslBfdKill(Endpoint endpoint) {
-        log.debug("Receive UniIsl bfd-kill request for {}", endpoint);
+        log.debug("Uni-ISL service receive BFD-KILL notification for {}", endpoint);
         UniIslFsmContext context = UniIslFsmContext.builder(carrier).build();
         controllerExecutor.fire(locateController(endpoint), UniIslFsmEvent.BFD_KILL, context);
     }
-
-
 
     // -- private --
 

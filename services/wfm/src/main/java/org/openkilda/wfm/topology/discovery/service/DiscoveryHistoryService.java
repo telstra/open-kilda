@@ -41,6 +41,7 @@ public class DiscoveryHistoryService {
      * .
      */
     public void applyHistory(ISwitchPrepopulateCarrier carrier) {
+        log.debug("History service receive history lookup request");
         for (HistoryFacts history : loadNetworkHistory()) {
             carrier.switchAddWithHistory(history);
         }

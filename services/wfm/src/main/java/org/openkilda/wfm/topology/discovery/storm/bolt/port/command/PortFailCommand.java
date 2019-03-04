@@ -13,24 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.discovery.service;
+package org.openkilda.wfm.topology.discovery.storm.bolt.port.command;
 
-import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.model.Isl;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.storm.bolt.port.PortHandler;
 
-public interface IPortCarrier {
-    void setupUniIslHandler(Endpoint endpoint, Isl history);
+public class PortFailCommand extends PortCommand {
+    public PortFailCommand(Endpoint endpoint) {
+        super(endpoint);
+    }
 
-    void enableDiscoveryPoll(Endpoint endpoint);
-
-    void disableDiscoveryPoll(Endpoint endpoint);
-
-    void notifyPortDiscovered(Endpoint endpoint, IslInfoData speakerDiscoveryEvent);
-
-    void notifyPortDiscoveryFailed(Endpoint endpoint);
-
-    void notifyPortPhysicalDown(Endpoint endpoint);
-
-    void removeUniIslHandler(Endpoint endpoint);
+    @Override
+    public void apply(PortHandler handler) {
+        handler.processFail(getEndpoint());
+    }
 }

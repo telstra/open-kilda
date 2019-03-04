@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.discovery.service;
 
+import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.controller.PortFsm;
@@ -46,7 +47,9 @@ public class DiscoveryPortService {
      * .
      */
     public void setup(PortFacts portFacts, Isl history) {
-        log.debug("Setup port {}", portFacts.getEndpoint());
+        log.debug("Port service receive setup request for {}", portFacts.getEndpoint());
+        // TODO: do not use PortFacts here
+        // TODO: try to switch on atomic action i.e. port-setup + online|offline action in one event
         Endpoint endpoint = portFacts.getEndpoint();
         PortFsm portFsm = PortFsm.create(endpoint, history);
         controller.put(endpoint, portFsm);
@@ -56,12 +59,12 @@ public class DiscoveryPortService {
      * .
      */
     public void remove(Endpoint endpoint) {
-        log.debug("Remove port {}", endpoint);
+        log.debug("Port service receive remove request for {}", endpoint);
         PortFsm portFsm = controller.remove(endpoint);
         if (portFsm == null) {
             throw new IllegalStateException(String.format("Port FSM not found (%s).", endpoint));
         }
-        PortFsmContext context = new PortFsmContext(carrier);
+        PortFsmContext context = PortFsmContext.builder(carrier).build();
         controllerExecutor.fire(portFsm, PortFsmEvent.PORT_DEL, context);
     }
 
@@ -76,14 +79,15 @@ public class DiscoveryPortService {
         } else {
             event = PortFsmEvent.OFFLINE;
         }
-        log.debug("Set port {} online mode to {}", endpoint, event);
-        controllerExecutor.fire(portFsm, event, new PortFsmContext(carrier));
+        log.debug("Port service receive online status change for {}, new status is {}", endpoint, event);
+        controllerExecutor.fire(portFsm, event, PortFsmContext.builder(carrier).build());
     }
 
     /**
      * .
      */
     public void updateLinkStatus(Endpoint endpoint, LinkStatus status) {
+        log.debug("Port service receive link status update for {} new status is {}", endpoint, status);
         PortFsm portFsm = locateController(endpoint);
         PortFsmEvent event;
         switch (status) {
@@ -97,8 +101,32 @@ public class DiscoveryPortService {
                 throw new IllegalArgumentException(
                         String.format("Unsupported %s value %s", LinkStatus.class.getName(), status));
         }
-        log.debug("Physical port {} become {}", endpoint, event);
-        controllerExecutor.fire(portFsm, event, new PortFsmContext(carrier));
+        controllerExecutor.fire(portFsm, event, PortFsmContext.builder(carrier).build());
+    }
+
+    /**
+     * Feed port FSM with discovery event from discovery poll subsystem.
+     */
+    public void discovery(Endpoint endpoint, IslInfoData speakerDiscoveryEvent) {
+        log.debug("Port service receive discovery for {}: {}", endpoint, speakerDiscoveryEvent);
+
+        PortFsm portFsm = locateController(endpoint);
+        PortFsmContext context = PortFsmContext.builder(carrier)
+                .speakerDiscoveryEvent(speakerDiscoveryEvent)
+                .build();
+        controllerExecutor.fire(portFsm, PortFsmEvent.DISCOVERY, context);
+    }
+
+    /**
+     * Feed port FSM with fail event from discovery poll subsystem.
+     */
+    public void fail(Endpoint endpoint) {
+        log.debug("Port service receive fail for {}", endpoint);
+
+        PortFsm portFsm = locateController(endpoint);
+        PortFsmContext context = PortFsmContext.builder(carrier).build();
+
+        controllerExecutor.fire(portFsm, PortFsmEvent.FAIL, context);
     }
 
     // -- private --

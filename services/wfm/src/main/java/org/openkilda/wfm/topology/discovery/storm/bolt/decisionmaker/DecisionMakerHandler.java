@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
@@ -26,9 +27,9 @@ import org.openkilda.wfm.topology.discovery.service.DiscoveryDecisionMakerServic
 import org.openkilda.wfm.topology.discovery.service.IDecisionMakerCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
 import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command.DecisionMakerCommand;
-import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslCommand;
-import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslDiscoveryCommand;
-import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslFailCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortDiscoveryCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortFailCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.WatcherHandler;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -77,8 +78,6 @@ public class DecisionMakerHandler extends AbstractBolt implements IDecisionMaker
         command.apply(this);
     }
 
-    // IDecisionMakerCarrier
-
     @Override
     protected void init() {
         service = new DiscoveryDecisionMakerService(options.getDiscoveryTimeout(), options.getDiscoveryPacketTtl());
@@ -89,14 +88,16 @@ public class DecisionMakerHandler extends AbstractBolt implements IDecisionMaker
         streamManager.declare(STREAM_FIELDS);
     }
 
+    // IDecisionMakerCarrier
+
     @Override
     public void linkDiscovered(IslInfoData discoveryEvent) {
-        emit(getCurrentTuple(), makeDefaultTuple(new UniIslDiscoveryCommand(discoveryEvent)));
+        emit(getCurrentTuple(), makeDefaultTuple(new PortDiscoveryCommand(discoveryEvent)));
     }
 
     @Override
     public void linkDestroyed(Endpoint endpoint) {
-        emit(getCurrentTuple(), makeDefaultTuple(new UniIslFailCommand(endpoint)));
+        emit(getCurrentTuple(), makeDefaultTuple(new PortFailCommand(endpoint)));
     }
 
     // DecisionMakerCommand
@@ -115,8 +116,9 @@ public class DecisionMakerHandler extends AbstractBolt implements IDecisionMaker
 
     // Private
 
-    private Values makeDefaultTuple(UniIslCommand command) {
+    private Values makeDefaultTuple(PortCommand command) {
         Endpoint endpoint = command.getEndpoint();
-        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, safePullContext());
+        CommandContext context = safeForkContext("DM", endpoint.toString());
+        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, context);
     }
 }

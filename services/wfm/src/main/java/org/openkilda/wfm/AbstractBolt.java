@@ -125,9 +125,25 @@ public abstract class AbstractBolt extends BaseRichBolt {
         return pullContext(currentTuple);
     }
 
+    protected CommandContext forkContext(String... fork) throws PipelineException {
+        CommandContext context = pullContext();
+        for (int idx = 0; idx < fork.length; idx++) {
+            context = context.fork(fork[idx]);
+        }
+        return context;
+    }
+
     protected CommandContext safePullContext() {
         try {
             return pullContext(currentTuple);
+        } catch (PipelineException e) {
+            return null;
+        }
+    }
+
+    protected CommandContext safeForkContext(String... fork) {
+        try {
+            return forkContext(fork);
         } catch (PipelineException e) {
             return null;
         }
