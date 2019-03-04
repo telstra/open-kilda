@@ -67,6 +67,8 @@ public final class DecisionMakerFsm extends AbstractStateMachine<DecisionMakerFs
         builder.transition()
                 .from(DecisionMakerFsmState.DISCOVERED).to(DecisionMakerFsmState.UNSTABLE)
                 .on(DecisionMakerFsmEvent.FAIL);
+        builder.internalTransition().within(DecisionMakerFsmState.DISCOVERED).on(DecisionMakerFsmEvent.DISCOVERY)
+                .callMethod("emitDiscovery");
 
         // FAILED
         builder.onEntry(DecisionMakerFsmState.FAILED)
