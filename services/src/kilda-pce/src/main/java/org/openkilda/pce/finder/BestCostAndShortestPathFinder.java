@@ -354,8 +354,7 @@ public class BestCostAndShortestPathFinder implements PathFinder {
             newParentPath.add(nextIsl);
 
             long weight = parentCost
-                    + nextIsl.getStaticWeight()
-                    + weightFunction.apply(nextIsl)
+                    + nextIsl.getFullWeight(weightFunction)
                     + nextIsl.getDestSwitch().getStaticWeight();
             if (this.parentPath.isEmpty()) {
                 weight += nextIsl.getSrcSwitch().getStaticWeight();

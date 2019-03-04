@@ -53,6 +53,15 @@ public class Edge {
     }
 
     /**
+     * Gets edge full weight. Sum of {@link WeightFunction} result and getStaticWeight().
+     *
+     * @return the edge full weight.
+     */
+    public long getFullWeight(WeightFunction weightFunction) {
+        return weightFunction.apply(this) + getStaticWeight();
+    }
+
+    /**
      * Swap edge source and destination.
      *
      * @return new {@link Edge} instance, with swapped source and destination.
