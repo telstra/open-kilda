@@ -38,6 +38,9 @@ public class ApplicationProperties {
     @Value("${opentsdb.base.url}")
     private String openTsdbBaseUrl;
 
+    @Value("${opentsdb.metric.prefix}")
+    private String openTsdbMetricPrefix;
+
     @Value("${kilda.username}")
     private String kildaUsername;
 

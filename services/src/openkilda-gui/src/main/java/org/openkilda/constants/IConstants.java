@@ -269,53 +269,53 @@ public abstract class IConstants {
 
     public enum Metrics {
 
-        PEN_FLOW_BITS("Flow_bits", "pen.flow.bits"),
+        PEN_FLOW_BITS("Flow_bits", "flow.bits"),
 
-        PEN_FLOW_BYTES("Flow_bytes", "pen.flow.bytes"),
+        PEN_FLOW_BYTES("Flow_bytes", "flow.bytes"),
 
-        PEN_FLOW_PACKETS("Flow_packets", "pen.flow.packets"),
+        PEN_FLOW_PACKETS("Flow_packets", "flow.packets"),
 
-        PEN_FLOW_INGRESS_PACKETS("Flow_ingress_packets", "pen.flow.ingress.packets"),
+        PEN_FLOW_INGRESS_PACKETS("Flow_ingress_packets", "flow.ingress.packets"),
 
-        PEN_FLOW_RAW_PACKETS("Flow_raw_packets", "pen.flow.raw.packets"),
+        PEN_FLOW_RAW_PACKETS("Flow_raw_packets", "flow.raw.packets"),
         
-        PEN_FLOW_RAW_BITS("Flow_raw_bits", "pen.flow.raw.bits"),
+        PEN_FLOW_RAW_BITS("Flow_raw_bits", "flow.raw.bits"),
         
-        PEN_FLOW_RAW_BYTES("Flow_raw_bytes", "pen.flow.raw.bytes"),
+        PEN_FLOW_RAW_BYTES("Flow_raw_bytes", "flow.raw.bytes"),
 
-        PEN_FLOW_TABLEID("Flow_tableid", "pen.flow.tableid"),
+        PEN_FLOW_TABLEID("Flow_tableid", "flow.tableid"),
 
-        PEN_ISL_LATENCY("Isl_latency", "pen.isl.latency"),
+        PEN_ISL_LATENCY("Isl_latency", "isl.latency"),
 
-        PEN_SWITCH_COLLISIONS("Switch_collisions", "pen.switch.collisions"),
+        PEN_SWITCH_COLLISIONS("Switch_collisions", "switch.collisions"),
 
-        PEN_SWITCH_RX_CRC_ERROR("Switch_crcerror", "pen.switch.rx-crc-error"),
+        PEN_SWITCH_RX_CRC_ERROR("Switch_crcerror", "switch.rx-crc-error"),
 
-        PEN_SWITCH_RX_FRAME_ERROR("Switch_frameerror", "pen.switch.rx-frame-error"),
+        PEN_SWITCH_RX_FRAME_ERROR("Switch_frameerror", "switch.rx-frame-error"),
 
-        PEN_SWITCH_RX_OVER_ERROR("Switch_overerror", "pen.switch.rx-over-error"),
+        PEN_SWITCH_RX_OVER_ERROR("Switch_overerror", "switch.rx-over-error"),
 
-        PEN_SWITCH_RX_BITS("Switch_bits", "pen.switch.rx-bits"),
+        PEN_SWITCH_RX_BITS("Switch_bits", "switch.rx-bits"),
 
-        PEN_SWITCH_TX_BITS("Switch_bits", "pen.switch.tx-bits"),
+        PEN_SWITCH_TX_BITS("Switch_bits", "switch.tx-bits"),
 
-        PEN_SWITCH_RX_BYTES("Switch_bytes", "pen.switch.rx-bytes"),
+        PEN_SWITCH_RX_BYTES("Switch_bytes", "switch.rx-bytes"),
 
-        PEN_SWITCH_TX_BYTES("Switch_bytes", "pen.switch.tx-bytes"),
+        PEN_SWITCH_TX_BYTES("Switch_bytes", "switch.tx-bytes"),
 
-        PEN_SWITCH_RX_DROPPED("Switch_drops", "pen.switch.rx-dropped"),
+        PEN_SWITCH_RX_DROPPED("Switch_drops", "switch.rx-dropped"),
 
-        PEN_SWITCH_TX_DROPPED("Switch_drops", "pen.switch.tx-dropped"),
+        PEN_SWITCH_TX_DROPPED("Switch_drops", "switch.tx-dropped"),
 
-        PEN_SWITCH_RX_ERRORS("Switch_errors", "pen.switch.rx-errors"),
+        PEN_SWITCH_RX_ERRORS("Switch_errors", "switch.rx-errors"),
 
-        PEN_SWITCH_TX_ERRORS("Switch_errors", "pen.switch.tx-errors"),
+        PEN_SWITCH_TX_ERRORS("Switch_errors", "switch.tx-errors"),
 
-        PEN_SWITCH_TX_PACKETS("Switch_packets", "pen.switch.tx-packets"),
+        PEN_SWITCH_TX_PACKETS("Switch_packets", "switch.tx-packets"),
 
-        PEN_SWITCH_RX_PACKETS("Switch_packets", "pen.switch.rx-packets"),
+        PEN_SWITCH_RX_PACKETS("Switch_packets", "switch.rx-packets"),
 
-        PEN_SWITCH_STATE("Switch_state", "pen.switch.state");
+        PEN_SWITCH_STATE("Switch_state", "switch.state");
 
         private String tag;
         
