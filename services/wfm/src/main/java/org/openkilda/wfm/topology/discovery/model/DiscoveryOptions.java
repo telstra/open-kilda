@@ -40,6 +40,12 @@ public class DiscoveryOptions implements Serializable {
 
     private boolean bfdEnabled;
 
+    private long delayWarmUp;
+
+    private long delayCoolingDown;
+
+    private long delayMin;
+
     public DiscoveryOptions(DiscoveryTopologyConfig topologyConfig) {
         discoveryIntervalMs = TimeUnit.SECONDS.toMillis(topologyConfig.getDiscoveryInterval());
         discoveryPacketTtl = TimeUnit.SECONDS.toMillis(topologyConfig.getDiscoveryPacketTtl());
@@ -49,5 +55,9 @@ public class DiscoveryOptions implements Serializable {
 
         bfdLogicalPortOffset = topologyConfig.getBfdPortOffset();
         bfdEnabled = topologyConfig.isBfdEnabled();
+
+        delayWarmUp = TimeUnit.SECONDS.toNanos(topologyConfig.getPortUpDownThrottlingDelaySecondsWarmUp());
+        delayCoolingDown = TimeUnit.SECONDS.toNanos(topologyConfig.getPortUpDownThrottlingDelaySecondsCoolDown());
+        delayMin = TimeUnit.SECONDS.toNanos(topologyConfig.getPortUpDownThrottlingDelaySecondsMin());
     }
 }

@@ -124,9 +124,10 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
     }
 
     private void speakerRouter(TopologyBuilder topology, int scaleFactor) {
+        Fields keyGrouping = new Fields(MessageTranslator.KEY_FIELD);
         SpeakerRouter bolt = new SpeakerRouter();
         topology.setBolt(SpeakerRouter.BOLT_ID, bolt, scaleFactor)
-                .shuffleGrouping(ComponentId.INPUT_SPEAKER.toString());
+                .fieldsGrouping(ComponentId.INPUT_SPEAKER.toString(), keyGrouping);
     }
 
     private void networkHistory(TopologyBuilder topology) {
@@ -170,11 +171,12 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
     }
 
     private void portHandler(TopologyBuilder topology, int scaleFactor) {
-        PortHandler bolt = new PortHandler();
+        PortHandler bolt = new PortHandler(options);
         Fields endpointGrouping = new Fields(SwitchHandler.FIELD_ID_DATAPATH, SwitchHandler.FIELD_ID_PORT_NUMBER);
         Fields decisionMakerGrouping = new Fields(DecisionMakerHandler.FIELD_ID_DATAPATH,
                                                   DecisionMakerHandler.FIELD_ID_PORT_NUMBER);
         topology.setBolt(PortHandler.BOLT_ID, bolt, scaleFactor)
+                .allGrouping(CoordinatorSpout.ID)
                 .fieldsGrouping(SwitchHandler.BOLT_ID, SwitchHandler.STREAM_PORT_ID, endpointGrouping)
                 .fieldsGrouping(DecisionMakerHandler.BOLT_ID, decisionMakerGrouping);
     }

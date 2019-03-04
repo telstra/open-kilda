@@ -1,9 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
-import spock.lang.Ignore
-
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.rerun.Rerun
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -11,8 +8,6 @@ import org.openkilda.functionaltests.helpers.thread.PortBlinker
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PortChangeType
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
@@ -20,6 +15,8 @@ import spock.lang.Issue
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
+
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Slf4j
 @Narrative("""
@@ -32,7 +29,7 @@ Initially, port is considered 'flapping' if it changes status quicker than once 
 change status from UP to DOWN only after 'antiflap.min' in case of a single-time change of status)
 """)
 @Issue("https://github.com/telstra/open-kilda/issues/1729")
-@Ignore("New discovery-topology incompatibility.")
+//@Ignore("New discovery-topology incompatibility.")
 class PortAntiflapSpec extends BaseSpecification {
 
     @Value('${antiflap.min}')
