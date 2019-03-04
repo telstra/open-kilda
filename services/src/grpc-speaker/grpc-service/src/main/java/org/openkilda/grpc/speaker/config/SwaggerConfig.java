@@ -48,7 +48,6 @@ public class SwaggerConfig {
         return new ApiInfoBuilder()
                 .title("GRPC Speaker")
                 .description("GRPC Speaker for work with switches")
-                //.contact(new Contact("name", "url", "email"))
                 .version("1.0")
                 .build();
     }

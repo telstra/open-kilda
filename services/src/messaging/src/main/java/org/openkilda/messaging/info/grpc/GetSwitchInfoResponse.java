@@ -18,19 +18,21 @@ package org.openkilda.messaging.info.grpc;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.model.grpc.SwitchInfoStatus;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
 
 @Value
 public class GetSwitchInfoResponse extends InfoData {
 
-    @JsonProperty("switch address")
+    @JsonProperty("switch_address")
     private String switchAddress;
 
     @JsonProperty("switch_info")
     private SwitchInfoStatus switchInfoStatus;
 
-    public GetSwitchInfoResponse(@JsonProperty("switch") String switchAddress,
+    @JsonCreator
+    public GetSwitchInfoResponse(@JsonProperty("switch_address") String switchAddress,
                                  @JsonProperty("switch_info") SwitchInfoStatus switchInfoStatus) {
         this.switchAddress = switchAddress;
         this.switchInfoStatus = switchInfoStatus;

@@ -42,13 +42,13 @@ public class MessageConsumerConfig {
     /**
      * Kafka queue poll timeout.
      */
-    @Value("${grpc.speaker.kafka.session.timeout}")
+    @Value("${grpc.speaker.kafka.session.timeout:30000}")
     private int pollTimeout;
 
     /**
      * Kafka bootstrap servers.
      */
-    @Value("${kafka.hosts}")
+    @Value("${kafka.hosts:'kafka.pendev:9092'}")
     private String kafkaHosts;
 
     /**
@@ -60,13 +60,13 @@ public class MessageConsumerConfig {
     /**
      * Kafka group id.
      */
-    @Value("${grpc.speaker.kafka.listener.threads}")
+    @Value("${grpc.speaker.kafka.listener.threads:10}")
     private int kafkaListeners;
 
     /**
      * Kafka group id.
      */
-    @Value("${grpc.speaker.kafka.session.timeout}")
+    @Value("${grpc.speaker.kafka.session.timeout:30000}")
     private int kafkaSessionTimeout;
 
     /**

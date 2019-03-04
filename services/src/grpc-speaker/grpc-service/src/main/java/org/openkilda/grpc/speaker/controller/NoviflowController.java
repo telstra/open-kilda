@@ -84,7 +84,7 @@ public class NoviflowController {
         return grpcService.dumpLogicalPorts(switchAddress);
     }
 
-    @ApiOperation(value = "Create logical port", response = LogicalPortDto.class)
+    @ApiOperation(value = "Create a logical port", response = LogicalPortDto.class)
     @PutMapping(path = "/{switch_address}/logicalports")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<LogicalPort> createLogicalPort(
@@ -93,7 +93,7 @@ public class NoviflowController {
         return grpcService.createLogicalPort(switchAddress, logicalPortDto);
     }
 
-    @ApiOperation(value = "Get switch logical port config", response = LogicalPort.class)
+    @ApiOperation(value = "Get switch logical port configuration", response = LogicalPort.class)
     @GetMapping(path = "/{switch_address}/logicalports/{logical_port_number}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<LogicalPort> getSwitchLogicalPortConfig(
@@ -111,7 +111,8 @@ public class NoviflowController {
         return grpcService.deleteConfigLogicalPort(switchAddress, logicalPortNumber);
     }
 
-    @ApiOperation(value = "Enable log messages on switch", response = EnableLogMessagesResponse.class)
+    @ApiOperation(value = "Set configuration for logging \"messages\" on the switch",
+            response = EnableLogMessagesResponse.class)
     @PutMapping(path = "/{switch_address}/logmessages")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<EnableLogMessagesResponse> enableLogMessages(
@@ -120,7 +121,8 @@ public class NoviflowController {
         return grpcService.enableLogMessages(switchAddress, logMessagesDto);
     }
 
-    @ApiOperation(value = "Enable log OF errors on switch", response = EnableLogMessagesResponse.class)
+    @ApiOperation(value = "Set configuration for logging OF Errors on the switch",
+            response = EnableLogMessagesResponse.class)
     @PutMapping(path = "/{switch_address}/logoferrors")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<EnableLogMessagesResponse> enableLogOferrors(
@@ -129,7 +131,7 @@ public class NoviflowController {
         return grpcService.enableLogOferror(switchAddress, logOferrors);
     }
 
-    @ApiOperation(value = "Get a remote log server for switch", response = RemoteLogServer.class)
+    @ApiOperation(value = "Get a remote log server configuration for the switch", response = RemoteLogServer.class)
     @GetMapping(path = "/{switch_address}/remotelogserver")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<RemoteLogServer> showConfigRemoteLogServer(
@@ -137,7 +139,7 @@ public class NoviflowController {
         return grpcService.showConfigRemoteLogServer(switchAddress);
     }
 
-    @ApiOperation(value = "Set a remote log server for switch", response = RemoteLogServer.class)
+    @ApiOperation(value = "Set a remote log server configuration for switch", response = RemoteLogServer.class)
     @PutMapping(path = "/{switch_address}/remotelogserver")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<RemoteLogServer> setConfigRemoteLogServer(
@@ -146,7 +148,8 @@ public class NoviflowController {
         return grpcService.setConfigRemoteLogServer(switchAddress, remoteLogServerDto);
     }
 
-    @ApiOperation(value = "Delete remote log server for switch", response = GrpcDeleteOperationResponse.class)
+    @ApiOperation(value = "Delete a remote log server configuration for switch",
+            response = GrpcDeleteOperationResponse.class)
     @DeleteMapping(path = "/{switch_address}/remotelogserver")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<GrpcDeleteOperationResponse> deleteConfigRemoteLogServer(
@@ -164,7 +167,7 @@ public class NoviflowController {
         return grpcService.setPortConfig(switchAddress, portNumber, portConfigDto);
     }
 
-    @ApiOperation(value = "Set license for switch", response = LicenseResponse.class)
+    @ApiOperation(value = "Set a license configuration for switch", response = LicenseResponse.class)
     @PutMapping(path = "{switch_address}/license")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<LicenseResponse> setConfigLicense(
