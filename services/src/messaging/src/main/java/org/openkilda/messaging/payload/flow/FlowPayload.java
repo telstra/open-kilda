@@ -61,8 +61,8 @@ public class FlowPayload implements Serializable {
     @JsonProperty("description")
     private String description;
 
-    @JsonProperty("time-create")
-    private String timeCreate;
+    @JsonProperty("created")
+    private String created;
 
     @JsonProperty("last-updated")
     private String lastUpdated;
@@ -86,7 +86,7 @@ public class FlowPayload implements Serializable {
      * @param ignoreBandwidth  should ignore bandwidth in path computation
      * @param periodicPings    enable periodic flow pings
      * @param description      flow description
-     * @param timeCreate       flow create timestamp
+     * @param created          flow created timestamp
      * @param lastUpdated      flow last updated timestamp
      * @param status           flow status
      * @param maxLatency       max latency
@@ -101,7 +101,7 @@ public class FlowPayload implements Serializable {
                        @JsonProperty("ignore_bandwidth") Boolean ignoreBandwidth,
                        @JsonProperty("periodic-pings") Boolean periodicPings,
                        @JsonProperty("description") String description,
-                       @JsonProperty("time-create") String timeCreate,
+                       @JsonProperty("created") String created,
                        @JsonProperty("last-updated") String lastUpdated,
                        @JsonProperty("status") String status,
                        @JsonProperty("max-latency") Integer maxLatency,
@@ -119,7 +119,7 @@ public class FlowPayload implements Serializable {
         }
 
         this.description = description;
-        this.timeCreate = timeCreate;
+        this.created = created;
         this.lastUpdated = lastUpdated;
         this.status = status;
         this.maxLatency = maxLatency;
