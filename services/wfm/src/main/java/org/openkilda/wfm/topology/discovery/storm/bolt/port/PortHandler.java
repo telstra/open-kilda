@@ -19,10 +19,16 @@ import org.openkilda.model.Isl;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
+import org.openkilda.wfm.topology.discovery.controller.AntiFlapFsm.Config;
+import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.LinkStatus;
 import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
+import org.openkilda.wfm.topology.discovery.model.facts.PortFacts.LinkStatus;
+import org.openkilda.wfm.topology.discovery.service.DiscoveryAntiFlapService;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryPortService;
+import org.openkilda.wfm.topology.discovery.service.IAntiFlapCarrier;
 import org.openkilda.wfm.topology.discovery.service.IPortCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.command.PortCommand;
@@ -40,7 +46,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class PortHandler extends AbstractBolt implements IPortCarrier {
+public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlapCarrier {
     public static final String BOLT_ID = ComponentId.PORT_HANDLER.toString();
 
     public static final String FIELD_ID_DATAPATH = SwitchHandler.FIELD_ID_DATAPATH;
@@ -54,26 +60,45 @@ public class PortHandler extends AbstractBolt implements IPortCarrier {
     public static final Fields STREAM_POLL_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER,
             FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
-    private transient DiscoveryPortService service;
+    private transient DiscoveryPortService portService;
+    private transient DiscoveryAntiFlapService antiFlapService;
+
+    private Config antiFlapConfig;
+
+    public PortHandler(DiscoveryOptions options) {
+        this.antiFlapConfig = Config.builder()
+                .delayCoolingDown(options.getDelayCoolingDown())
+                .delayWarmUp(options.getDelayWarmUp())
+                .delayMin(options.getDelayMin())
+                .build();
+    }
 
     @Override
     protected void handleInput(Tuple input) throws AbstractException {
         String source = input.getSourceComponent();
-        if (SwitchHandler.BOLT_ID.equals(source)) {
+        if (CoordinatorSpout.ID.equals(source)) {
+            handleTimer();
+        } else if (SwitchHandler.BOLT_ID.equals(source)) {
             handleSwitchCommand(input);
         } else {
             unhandledInput(input);
         }
     }
 
+
     private void handleSwitchCommand(Tuple input) throws PipelineException {
         PortCommand command = pullValue(input, SwitchHandler.FIELD_ID_COMMAND, PortCommand.class);
         command.apply(this);
     }
 
+    private void handleTimer() {
+        antiFlapService.tick();
+    }
+
     @Override
     protected void init() {
-        service = new DiscoveryPortService(this);
+        portService = new DiscoveryPortService(this);
+        antiFlapService = new DiscoveryAntiFlapService(this, antiFlapConfig);
     }
 
     @Override
@@ -104,28 +129,35 @@ public class PortHandler extends AbstractBolt implements IPortCarrier {
         emit(getCurrentTuple(), makeDefaultTuple(new UniIslPhysicalDownCommand(endpoint)));
     }
 
+
     @Override
     public void removeUniIslHandler(Endpoint endpoint) {
         emit(getCurrentTuple(), makeDefaultTuple(new UniIslRemoveCommand(endpoint)));
     }
 
+    // IAntiFlapCarrier
+
+    @Override
+    public void filteredLinkStatus(Endpoint endpoint, LinkStatus status) {
+        portService.updateLinkStatus(endpoint, status);
+    }
 
     // PortCommand processing
 
     public void processSetup(PortFacts facts, Isl history) {
-        service.setup(facts, history);
+        portService.setup(facts, history);
     }
 
     public void processRemove(Endpoint endpoint) {
-        service.remove(endpoint);
+        portService.remove(endpoint);
     }
 
     public void processUpdateOnlineMode(Endpoint endpoint, boolean online) {
-        service.updateOnlineMode(endpoint, online);
+        portService.updateOnlineMode(endpoint, online);
     }
 
     public void processUpdateLinkStatus(Endpoint endpoint, LinkStatus linkStatus) {
-        service.updateLinkStatus(endpoint, linkStatus);
+        antiFlapService.filterLinkStatus(endpoint, linkStatus);
     }
 
     // Private

@@ -68,6 +68,15 @@ public interface DiscoveryTopologyConfig extends AbstractTopologyConfig {
     @Key("speaker.io.timeout.seconds")
     int getSpeakerIoTimeoutSeconds();
 
+    @Key("port.up.down.throttling.delay.seconds.min")
+    int getPortUpDownThrottlingDelaySecondsMin();
+
+    @Key("port.up.down.throttling.delay.seconds.warm.up")
+    int getPortUpDownThrottlingDelaySecondsWarmUp();
+
+    @Key("port.up.down.throttling.delay.seconds.cool.down")
+    int getPortUpDownThrottlingDelaySecondsCoolDown();
+
     @Configuration
     @Key("discovery")
     interface DiscoveryConfig {

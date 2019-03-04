@@ -170,9 +170,10 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
     }
 
     private void portHandler(TopologyBuilder topology, int scaleFactor) {
-        PortHandler bolt = new PortHandler();
+        PortHandler bolt = new PortHandler(options);
         Fields endpointGrouping = new Fields(SwitchHandler.FIELD_ID_DATAPATH, SwitchHandler.FIELD_ID_PORT_NUMBER);
         topology.setBolt(PortHandler.BOLT_ID, bolt, scaleFactor)
+                .allGrouping(CoordinatorSpout.ID)
                 .fieldsGrouping(SwitchHandler.BOLT_ID, SwitchHandler.STREAM_PORT_ID, endpointGrouping);
     }
 

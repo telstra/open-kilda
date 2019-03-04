@@ -1,0 +1,35 @@
+* Timeouts
+- delay_warmup
+- delay_min
+- delay_cooldown
+
+@startuml
+
+[*] -> Nothing
+
+Nothing : port-up / emit port-up
+Nothing -> WarmingUp : port-down
+
+WarmingUp: enter / save start-time
+WarmingUp: enter / save port-down and port-down-time
+WarmingUp: port-up / save port-up and port-up-time
+WarmingUp: port-down / save port-down and port-down-time
+WarmingUp -> CoolingDown : tick [last-port-status-down &&\nnow() - port-down-time > delay_min]
+WarmingUp -d-> WarmingUpEnded : tick [now() - start-time > delay_warm_up]
+
+
+WarmingUpEnded -d-> CoolingDown : next [last-port-status-down \n|| last-event > start_time + delay_warmup - delay_min]
+WarmingUpEnded -> Nothing : next [default]
+
+
+
+CoolingDown: enter / emit port-down
+CoolingDown: port-up / save port-up and port-up-time
+CoolingDown: port-down / save port-down and port-down-time
+CoolingDown -d-> CoolingDownEnded : tick [now() - last-event > delay_cooldown]
+
+CoolingDownEnded -> Nothing : next
+CoolingDownEnded : enter [last-port-status-up] / emit port-up
+
+
+@enduml
