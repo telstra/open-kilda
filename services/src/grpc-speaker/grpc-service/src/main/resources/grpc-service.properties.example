@@ -10,15 +10,10 @@ service.description=@project.description@
 kafka.hosts=kafka.pendev:9092
 server.port=8091
 
-northbound.messages.expiration.minutes=15
-northbound.kafka.listener.threads=10
-northbound.kafka.session.timeout=30000
 grpc.speaker.kafka.listener.threads=10
 grpc.speaker.kafka.session.timeout=30000
 grpc.speaker.kafka.messages.expiration.minutes=15
 
 server.contextPath=/api/v1
-security.rest.username.env=REST_USERNAME
-security.rest.password.env=REST_PASSWORD
 security.rest.username.default=kilda
 security.rest.password.default=kilda

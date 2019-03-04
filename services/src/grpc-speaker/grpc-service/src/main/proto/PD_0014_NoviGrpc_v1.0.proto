@@ -1,4 +1,3 @@
-
 /* Copyright (C) 2017 NoviFlow Inc.
 
  This software was developed at NoviFlow Inc (www.noviflow.com).
@@ -38,182 +37,305 @@ option objc_class_prefix = "NF";
 
 
 service NoviFlowGrpc {
-    rpc SetConfigController(Controller) returns (CliReply) {}
-    rpc DelConfigController(Controller) returns (CliReply) {}
-    rpc ShowConfigController(Controller) returns (stream Controller) {}
-    rpc ShowStatusOfChannel(Controller) returns (stream Controller) {}
+    rpc SetConfigController (Controller) returns (CliReply) {
+    }
+    rpc DelConfigController (Controller) returns (CliReply) {
+    }
+    rpc ShowConfigController (Controller) returns (stream Controller) {
+    }
+    rpc ShowStatusOfChannel (Controller) returns (stream Controller) {
+    }
 
-    rpc SetConfigAuxiliary(Controller) returns (CliReply) {}
-    rpc DelConfigAuxiliary(Controller) returns (CliReply) {}
-    rpc ShowConfigAuxiliary(Controller) returns (stream Controller) {}
+    rpc SetConfigAuxiliary (Controller) returns (CliReply) {
+    }
+    rpc DelConfigAuxiliary (Controller) returns (CliReply) {
+    }
+    rpc ShowConfigAuxiliary (Controller) returns (stream Controller) {
+    }
 
-    rpc SetConfigSecurity(Security) returns (CliReply) {}
-    rpc DelConfigSecurity(Security) returns (CliReply) {}
-    rpc ShowConfigSecurity(ShowSecurity) returns (stream Security) {}
+    rpc SetConfigSecurity (Security) returns (CliReply) {
+    }
+    rpc DelConfigSecurity (Security) returns (CliReply) {
+    }
+    rpc ShowConfigSecurity (ShowSecurity) returns (stream Security) {
+    }
 
-    rpc SetConfigDns(Dns) returns (CliReply) {}
-    rpc ShowConfigDns(ShowDns) returns (stream Dns) {}
-
-
-    rpc SetConfigOfClient(OfClient) returns (CliReply) {}
-    rpc DelConfigOfClient(OfClient) returns (CliReply) {}
-    rpc ShowConfigOfClient(ShowOfClient) returns (stream OfClient) {}
-
-
-    rpc SetConfigOfServer(OfServer) returns (CliReply) {}
-    rpc DelConfigOfServer(OfServer) returns (CliReply) {}
-    rpc ShowConfigOfServer(ShowOfServer) returns (stream OfServer) {}
-
-    rpc SetConfigNtpServer(Ntp) returns (CliReply) {}
-    rpc SetConfigNtpStatus(Ntp) returns (CliReply) {}
-    rpc ShowConfigNtp(ShowNtp) returns (stream Ntp) {}
-
-    rpc SetConfigAaaServer(AaaServer) returns (CliReply) {}
-    rpc DelConfigAaaServer(AaaServer) returns (CliReply) {}
-    rpc ShowConfigAaaServer(ShowAaaServer) returns (stream AaaServer) {}
+    rpc SetConfigDns (Dns) returns (CliReply) {
+    }
+    rpc ShowConfigDns (ShowDns) returns (stream Dns) {
+    }
 
 
-    rpc SetConfigAcl(Acl) returns (CliReply) {}
-    rpc DelConfigAcl(Acl) returns (CliReply) {}
-    rpc ShowConfigAcl(ShowAcl) returns (stream Acl) {}
-
-    rpc SetConfigSnmp(Snmp) returns (CliReply) {}
-    rpc DelConfigSnmp(Snmp) returns (CliReply) {}
-    rpc ShowConfigSnmp(Snmp) returns (stream ShowSnmp) {}
-
-    rpc SetConfigRemoteLogServer(RemoteLogServer) returns (CliReply) {}
-    rpc DelConfigRemoteLogServer(RemoteLogServer) returns (CliReply) {}
-    rpc ShowConfigRemoteLogServer(ShowRemoteLogServer) returns (stream RemoteLogServer) {}
-
-    rpc SetConfigCookie(Cookie) returns (CliReply) {}
-    rpc ShowConfigCookie(ShowCookie) returns (stream Cookie) {}
-
-    rpc SetConfigLogicalPort(LogicalPort) returns (CliReply) {}
-    rpc ShowConfigLogicalPort(LogicalPort) returns (stream LogicalPort) {}
-    rpc DelConfigLogicalPort(LogicalPort) returns (CliReply) {}
-
-    rpc SetConfigRemoteCfgServer(RemoteCfgServer) returns (CliReply) {}
-    rpc DelConfigRemoteCfgServer(RemoteCfgServer) returns (CliReply) {}
-    rpc ShowConfigRemoteCfgServer(ShowRemoteCfgServer) returns (stream RemoteCfgServer) {}
+    rpc SetConfigOfClient (OfClient) returns (CliReply) {
+    }
+    rpc DelConfigOfClient (OfClient) returns (CliReply) {
+    }
+    rpc ShowConfigOfClient (ShowOfClient) returns (stream OfClient) {
+    }
 
 
-    rpc SetConfigUser(UserInfo) returns (CliReply) {}
-    rpc DelConfigUser(UserInfo) returns (CliReply) {}
-    rpc ShowConfigUser(ShowUser) returns (stream UserInfo) {}
+    rpc SetConfigOfServer (OfServer) returns (CliReply) {
+    }
+    rpc DelConfigOfServer (OfServer) returns (CliReply) {
+    }
+    rpc ShowConfigOfServer (ShowOfServer) returns (stream OfServer) {
+    }
 
-    rpc SetConfigPipelineTable(PipelineTable) returns (CliReply) {}
-    rpc SetConfigPipelineTablesizes(PipelineTablesizes) returns (CliReply) {}
-    rpc SetConfigPipelineTableMatchfields(PipelineTableMatchfields) returns (CliReply) {}
-    rpc SetConfigPipelineApply(PipelineApply) returns (CliReply) {}
-    rpc SetConfigPipelineDefault(PipelineDefault) returns (CliReply) {}
-    rpc SetConfigPipelineLoadProfile(PipelineLoadProfile) returns (CliReply) {}
-    rpc SetConfigPipelineHashAlgorithm(PipelineHashAlgorithm) returns (CliReply) {}
-    rpc SetConfigPipelineGroups(PipelineGroups) returns (CliReply) {}
-    rpc SetConfigPipelineGroupStats(PipelineGroupStats) returns (CliReply) {}
-    rpc SetConfigPipelineMeters(PipelineMeters) returns (CliReply) {}
-    rpc SetConfigPipelineMeterStats(PipelineMeterStats) returns (CliReply) {}
-    rpc SetConfigPipelineExpMatchField(ExpMatchField) returns (CliReply) {}
-    rpc SetConfigPipelineActions(PipelineActions) returns (CliReply) {}
-    rpc SetConfigPipelineActionsSetField(PipelineActionsSetField) returns (CliReply) {}
-    rpc SetConfigPipelineCopyProfile(PipelineCopyProfile) returns (CliReply) {}
-    rpc SetConfigPipelineSwapProfile(PipelineSwapProfile) returns (CliReply) {}
-    rpc SetConfigPipelineHashProfile(PipelineHashProfile) returns (CliReply) {}
-    rpc SetConfigPipelineHashMatchFields(PipelineHashMatchFields) returns (CliReply) {}
-    rpc SetConfigPipelineActionChains(PipelineActionChains) returns (CliReply) {}
-    rpc SetConfigPipelineActionChainsFactor(PipelineActionChainsFactor) returns (CliReply) {}
-    rpc DelConfigPipeline(PipelineTable) returns (CliReply) {}
-    rpc DelConfigPipelineOption(PipelineDelOption) returns (CliReply) {}
-    rpc DelConfigPipelineTableMatchFields(PipelineTable) returns (CliReply) {}
-    rpc ShowConfigPipeline(ShowPipeline) returns (stream PipelineTable) {}
-    rpc ShowConfigPipelineInfo(ShowPipelineInfo) returns (stream PipelineInfo) {}
+    rpc SetConfigNtpServer (Ntp) returns (CliReply) {
+    }
+    rpc SetConfigNtpStatus (Ntp) returns (CliReply) {
+    }
+    rpc ShowConfigNtp (ShowNtp) returns (stream Ntp) {
+    }
 
-    rpc SetConfigMeter(Meter) returns (CliReply) {}
-    rpc ShowConfigMeter(Meter) returns (stream Meter) {}
-    rpc DelConfigMeter(Meter) returns (CliReply) {}
-    rpc SetConfigMeterProfile(MeterProfile) returns (CliReply) {}
-    rpc ShowConfigMeterProfile(ShowMeterProfile) returns (stream MeterProfile) {}
-    rpc DelConfigMeterProfile(MeterProfile) returns (CliReply) {}
+    rpc SetConfigAaaServer (AaaServer) returns (CliReply) {
+    }
+    rpc DelConfigAaaServer (AaaServer) returns (CliReply) {
+    }
+    rpc ShowConfigAaaServer (ShowAaaServer) returns (stream AaaServer) {
+    }
 
-    rpc SetConfigPort(PortConfig) returns (CliReply) {}
 
-    rpc SetConfigSwitchDateTime(SwitchDateTime) returns (CliReply) {}
-    rpc SetConfigSwitchHostname(SwitchHostname) returns (CliReply) {}
-    rpc SetConfigSwitchSessionIdleTimeout(SwitchSessionIdleTimeout) returns (CliReply) {}
+    rpc SetConfigAcl (Acl) returns (CliReply) {
+    }
+    rpc DelConfigAcl (Acl) returns (CliReply) {
+    }
+    rpc ShowConfigAcl (ShowAcl) returns (stream Acl) {
+    }
 
-    rpc SetLogMessages(LogMessages) returns (CliReply) {}
-    rpc SetLogOferrors(LogOferrors) returns (CliReply) {}
+    rpc SetConfigSnmp (Snmp) returns (CliReply) {
+    }
+    rpc DelConfigSnmp (Snmp) returns (CliReply) {
+    }
+    rpc ShowConfigSnmp (Snmp) returns (stream ShowSnmp) {
+    }
 
-    rpc ShowStatusSwitch(StatusSwitch) returns(stream StatusSwitch) {}
+    rpc SetConfigRemoteLogServer (RemoteLogServer) returns (CliReply) {
+    }
+    rpc DelConfigRemoteLogServer (RemoteLogServer) returns (CliReply) {
+    }
+    rpc ShowConfigRemoteLogServer (ShowRemoteLogServer) returns (stream RemoteLogServer) {
+    }
 
-    rpc SetConfigClass(Class) returns (CliReply) {}
-    rpc DelConfigClass(Class) returns (CliReply) {}
-    rpc ShowConfigClass(Class) returns (stream Class) {}
-    rpc ShowConfigClassNotDefined(Class) returns (stream ClassNotDefined) {}
+    rpc SetConfigCookie (Cookie) returns (CliReply) {
+    }
+    rpc ShowConfigCookie (ShowCookie) returns (stream Cookie) {
+    }
 
-    rpc SetConfigClassProfile(ClassProfile) returns (CliReply) {}
-    rpc DelConfigClassProfile(ClassProfile) returns (CliReply) {}
-    rpc ShowConfigClassProfile(ClassProfile) returns (stream ShowClassProfile) {}
+    rpc SetConfigLogicalPort (LogicalPort) returns (CliReply) {
+    }
+    rpc ShowConfigLogicalPort (LogicalPort) returns (stream LogicalPort) {
+    }
+    rpc DelConfigLogicalPort (LogicalPort) returns (CliReply) {
+    }
 
-    rpc SetConfigServiceProfile(ServiceProfile) returns (CliReply) {}
-    rpc DelConfigServiceProfile(ServiceProfile) returns (CliReply) {}
-    rpc ShowConfigServiceProfile(ServiceProfile) returns (stream ShowServiceProfile) {}
+    rpc SetConfigRemoteCfgServer (RemoteCfgServer) returns (CliReply) {
+    }
+    rpc DelConfigRemoteCfgServer (RemoteCfgServer) returns (CliReply) {
+    }
+    rpc ShowConfigRemoteCfgServer (ShowRemoteCfgServer) returns (stream RemoteCfgServer) {
+    }
 
-    rpc SetConfigSubport(Subport) returns (CliReply) {}
-    rpc DelConfigSubport(Subport) returns (CliReply) {}
-    rpc ShowConfigSubport(Subport) returns (stream Subport) {}
-    rpc ShowConfigSubportNotDefined(Subport) returns (stream SubportNotDefined) {}
 
-    rpc SetConfigPtp(Ptp) returns (CliReply) {}
-    rpc DelConfigPtp(Ptp) returns (CliReply) {}
-    rpc ShowConfigPtp(ShowPtp) returns (stream Ptp) {}
+    rpc SetConfigUser (UserInfo) returns (CliReply) {
+    }
+    rpc DelConfigUser (UserInfo) returns (CliReply) {
+    }
+    rpc ShowConfigUser (ShowUser) returns (stream UserInfo) {
+    }
 
-    rpc SaveConfig(SaveConfigParameters) returns(CliReply) {}
+    rpc SetConfigPipelineTable (PipelineTable) returns (CliReply) {
+    }
+    rpc SetConfigPipelineTablesizes (PipelineTablesizes) returns (CliReply) {
+    }
+    rpc SetConfigPipelineTableMatchfields (PipelineTableMatchfields) returns (CliReply) {
+    }
+    rpc SetConfigPipelineApply (PipelineApply) returns (CliReply) {
+    }
+    rpc SetConfigPipelineDefault (PipelineDefault) returns (CliReply) {
+    }
+    rpc SetConfigPipelineLoadProfile (PipelineLoadProfile) returns (CliReply) {
+    }
+    rpc SetConfigPipelineHashAlgorithm (PipelineHashAlgorithm) returns (CliReply) {
+    }
+    rpc SetConfigPipelineGroups (PipelineGroups) returns (CliReply) {
+    }
+    rpc SetConfigPipelineGroupStats (PipelineGroupStats) returns (CliReply) {
+    }
+    rpc SetConfigPipelineMeters (PipelineMeters) returns (CliReply) {
+    }
+    rpc SetConfigPipelineMeterStats (PipelineMeterStats) returns (CliReply) {
+    }
+    rpc SetConfigPipelineExpMatchField (ExpMatchField) returns (CliReply) {
+    }
+    rpc SetConfigPipelineActions (PipelineActions) returns (CliReply) {
+    }
+    rpc SetConfigPipelineActionsSetField (PipelineActionsSetField) returns (CliReply) {
+    }
+    rpc SetConfigPipelineCopyProfile (PipelineCopyProfile) returns (CliReply) {
+    }
+    rpc SetConfigPipelineSwapProfile (PipelineSwapProfile) returns (CliReply) {
+    }
+    rpc SetConfigPipelineHashProfile (PipelineHashProfile) returns (CliReply) {
+    }
+    rpc SetConfigPipelineHashMatchFields (PipelineHashMatchFields) returns (CliReply) {
+    }
+    rpc SetConfigPipelineActionChains (PipelineActionChains) returns (CliReply) {
+    }
+    rpc SetConfigPipelineActionChainsFactor (PipelineActionChainsFactor) returns (CliReply) {
+    }
+    rpc DelConfigPipeline (PipelineTable) returns (CliReply) {
+    }
+    rpc DelConfigPipelineOption (PipelineDelOption) returns (CliReply) {
+    }
+    rpc DelConfigPipelineTableMatchFields (PipelineTable) returns (CliReply) {
+    }
+    rpc ShowConfigPipeline (ShowPipeline) returns (stream PipelineTable) {
+    }
+    rpc ShowConfigPipelineInfo (ShowPipelineInfo) returns (stream PipelineInfo) {
+    }
 
-    rpc SetStatusSwitchReboot(RebootShutdown) returns(CliReply) {}
-    rpc SetStatusSwitchShutdown(RebootShutdown) returns(CliReply) {}
-    rpc SetStatusSwitchUpgrade(RebootShutdown) returns(CliReply) {}
-    rpc SetLoginDetails(AuthenticateUser) returns (CliReply) {}
+    rpc SetConfigMeter (Meter) returns (CliReply) {
+    }
+    rpc ShowConfigMeter (Meter) returns (stream Meter) {
+    }
+    rpc DelConfigMeter (Meter) returns (CliReply) {
+    }
+    rpc SetConfigMeterProfile (MeterProfile) returns (CliReply) {
+    }
+    rpc ShowConfigMeterProfile (ShowMeterProfile) returns (stream MeterProfile) {
+    }
+    rpc DelConfigMeterProfile (MeterProfile) returns (CliReply) {
+    }
 
-    rpc DelStatsTable(ShowTableStats) returns (CliReply) {}
-    rpc DelStatsPort(ShowPortStats) returns (CliReply) {}
-    rpc DelStatsLogicalPort(ShowLogicalPortStats) returns (CliReply) {}
-    rpc DelStatsMeter(ShowMeterStats) returns (CliReply) {}
-    rpc DelStatsFlow(ShowFlowStats) returns (CliReply) {}
-    rpc DelStatsClass(ShowClassStats) returns (CliReply) {}
-    rpc DelStatsGroup(ShowGroupStats) returns (CliReply) {}
-    rpc DelStatsPacketInOut(ShowPacketInOutStats) returns (CliReply) {}
+    rpc SetConfigPort (PortConfig) returns (CliReply) {
+    }
 
-    rpc SetConfigTable(Table) returns (CliReply) {}
-    rpc ShowConfigTable(ShowTable) returns (stream Table) {}
+    rpc SetConfigSwitchDateTime (SwitchDateTime) returns (CliReply) {
+    }
+    rpc SetConfigSwitchHostname (SwitchHostname) returns (CliReply) {
+    }
+    rpc SetConfigSwitchSessionIdleTimeout (SwitchSessionIdleTimeout) returns (CliReply) {
+    }
 
-    rpc ShowStatsTable(ShowTableStats) returns (stream TableStats) {}
-    rpc ShowStatsLogicalPort(ShowLogicalPortStats) returns (stream LogicalPortStats) {}
-    rpc ShowStatsPort(ShowPortStats) returns (stream PortStats) {}
-    rpc ShowStatsMeter(ShowMeterStats) returns (stream MeterStats) {}
-    rpc ShowStatsClass(ShowClassStats) returns (stream ClassStats) {}
-    rpc ShowStatsPacketInOut(ShowPacketInOutStats) returns (stream PacketInOutStats) {}
-    rpc ShowStatsGroup(ShowGroupStats) returns (stream GroupStats) {}
+    rpc SetLogMessages (LogMessages) returns (CliReply) {
+    }
+    rpc SetLogOferrors (LogOferrors) returns (CliReply) {
+    }
 
-    rpc DelConfigGroup(Group) returns (CliReply) {}
-    rpc DelConfigFlowId(FlowId) returns (CliReply) {}
-    rpc DelConfigFlow(Flow) returns (CliReply) {}
-    rpc DelConfigBfd(Bfd) returns (CliReply) {}
+    rpc ShowStatusSwitch (StatusSwitch) returns (stream StatusSwitch) {
+    }
 
-    rpc SetConfigLicense(License) returns (CliReply) {}
+    rpc SetConfigClass (Class) returns (CliReply) {
+    }
+    rpc DelConfigClass (Class) returns (CliReply) {
+    }
+    rpc ShowConfigClass (Class) returns (stream Class) {
+    }
+    rpc ShowConfigClassNotDefined (Class) returns (stream ClassNotDefined) {
+    }
+
+    rpc SetConfigClassProfile (ClassProfile) returns (CliReply) {
+    }
+    rpc DelConfigClassProfile (ClassProfile) returns (CliReply) {
+    }
+    rpc ShowConfigClassProfile (ClassProfile) returns (stream ShowClassProfile) {
+    }
+
+    rpc SetConfigServiceProfile (ServiceProfile) returns (CliReply) {
+    }
+    rpc DelConfigServiceProfile (ServiceProfile) returns (CliReply) {
+    }
+    rpc ShowConfigServiceProfile (ServiceProfile) returns (stream ShowServiceProfile) {
+    }
+
+    rpc SetConfigSubport (Subport) returns (CliReply) {
+    }
+    rpc DelConfigSubport (Subport) returns (CliReply) {
+    }
+    rpc ShowConfigSubport (Subport) returns (stream Subport) {
+    }
+    rpc ShowConfigSubportNotDefined (Subport) returns (stream SubportNotDefined) {
+    }
+
+    rpc SetConfigPtp (Ptp) returns (CliReply) {
+    }
+    rpc DelConfigPtp (Ptp) returns (CliReply) {
+    }
+    rpc ShowConfigPtp (ShowPtp) returns (stream Ptp) {
+    }
+
+    rpc SaveConfig (SaveConfigParameters) returns (CliReply) {
+    }
+
+    rpc SetStatusSwitchReboot (RebootShutdown) returns (CliReply) {
+    }
+    rpc SetStatusSwitchShutdown (RebootShutdown) returns (CliReply) {
+    }
+    rpc SetStatusSwitchUpgrade (RebootShutdown) returns (CliReply) {
+    }
+    rpc SetLoginDetails (AuthenticateUser) returns (CliReply) {
+    }
+
+    rpc DelStatsTable (ShowTableStats) returns (CliReply) {
+    }
+    rpc DelStatsPort (ShowPortStats) returns (CliReply) {
+    }
+    rpc DelStatsLogicalPort (ShowLogicalPortStats) returns (CliReply) {
+    }
+    rpc DelStatsMeter (ShowMeterStats) returns (CliReply) {
+    }
+    rpc DelStatsFlow (ShowFlowStats) returns (CliReply) {
+    }
+    rpc DelStatsClass (ShowClassStats) returns (CliReply) {
+    }
+    rpc DelStatsGroup (ShowGroupStats) returns (CliReply) {
+    }
+    rpc DelStatsPacketInOut (ShowPacketInOutStats) returns (CliReply) {
+    }
+
+    rpc SetConfigTable (Table) returns (CliReply) {
+    }
+    rpc ShowConfigTable (ShowTable) returns (stream Table) {
+    }
+
+    rpc ShowStatsTable (ShowTableStats) returns (stream TableStats) {
+    }
+    rpc ShowStatsLogicalPort (ShowLogicalPortStats) returns (stream LogicalPortStats) {
+    }
+    rpc ShowStatsPort (ShowPortStats) returns (stream PortStats) {
+    }
+    rpc ShowStatsMeter (ShowMeterStats) returns (stream MeterStats) {
+    }
+    rpc ShowStatsClass (ShowClassStats) returns (stream ClassStats) {
+    }
+    rpc ShowStatsPacketInOut (ShowPacketInOutStats) returns (stream PacketInOutStats) {
+    }
+    rpc ShowStatsGroup (ShowGroupStats) returns (stream GroupStats) {
+    }
+
+    rpc DelConfigGroup (Group) returns (CliReply) {
+    }
+    rpc DelConfigFlowId (FlowId) returns (CliReply) {
+    }
+    rpc DelConfigFlow (Flow) returns (CliReply) {
+    }
+    rpc DelConfigBfd (Bfd) returns (CliReply) {
+    }
+
+    rpc SetConfigLicense (License) returns (CliReply) {
+    }
 }
 
-
 // Enums
-enum ReservedIds
-{
+enum ReservedIds {
     RESERVED = 0;
     ALL = 1;
     CONTROLLER = 2;
     LOCAL = 3;
 }
 
-enum SecurityModuleType
-{
+enum SecurityModuleType {
     SECURITY_MODULE_TYPE_RESERVED = 0;
     SECURITY_MODULE_TYPE_GRPC = 1;
     SECURITY_MODULE_TYPE_OFCHANNEL = 2;
@@ -221,12 +343,11 @@ enum SecurityModuleType
 
 //Values of enum respects the Openflow and Noviswitch specifications
 // *** denotes expmatchfields that can be configured via set config table tableid <tableid> expmatchfield <expmatchfield> size <size> offset <offset>
-enum ExpMatchFieldType
-{
+enum ExpMatchFieldType {
     EXP_MATCH_FIELD_TYPE_RESERVED = 0;
-    EXP_MATCH_FIELD_TYPE_UDP_PAYLOAD = 1;// ***
-    EXP_MATCH_FIELD_TYPE_IP_PAYLOAD = 2;// ***
-    EXP_MATCH_FIELD_TYPE_MPLS_PAYLOAD = 3;// ***
+    EXP_MATCH_FIELD_TYPE_UDP_PAYLOAD = 1; // ***
+    EXP_MATCH_FIELD_TYPE_IP_PAYLOAD = 2; // ***
+    EXP_MATCH_FIELD_TYPE_MPLS_PAYLOAD = 3; // ***
     EXP_MATCH_FIELD_TYPE_HASH_RESULT = 4;
     EXP_MATCH_FIELD_TYPE_ETH_PAYLOAD = 5; // ***
     EXP_MATCH_FIELD_TYPE_RX_TIMESTAMP = 6;
@@ -240,8 +361,7 @@ enum ExpMatchFieldType
     EXP_MATCH_FIELD_TYPE_L2TP_SESSIONID = 14;
 }
 
-enum MatchFieldType
-{
+enum MatchFieldType {
     MATCH_FIELD_TYPE_IN_PORT = 0;
     MATCH_FIELD_TYPE_IN_PHY_PORT = 1;
     MATCH_FIELD_TYPE_METADATA = 2;
@@ -300,18 +420,18 @@ enum OfVersion {
 
 enum OnOff {
     ONOFF_RESERVED = 0;
-    OFF=1;
-    ON=2;
+    OFF = 1;
+    ON = 2;
 }
 
 enum YesNo {
     YESNO_RESERVED = 0;
-    YES=1;
-    NO=2;
+    YES = 1;
+    NO = 2;
 }
 
 enum SecurityType {
-    SECURITY_TYPE_RESERVED=0;
+    SECURITY_TYPE_RESERVED = 0;
     SECURITY_TYPE_TLS = 1;
     SECURITY_TYPE_NONE = 2;
 }
@@ -333,36 +453,32 @@ enum SaveConfigType {
 }
 
 enum AaaType {
-    AAA_TYPE_RESERVED=0;
-    AAA_TYPE_RADIUS=1;
-    AAA_TYPE_TACACSPLUS=2;
+    AAA_TYPE_RESERVED = 0;
+    AAA_TYPE_RADIUS = 1;
+    AAA_TYPE_TACACSPLUS = 2;
 }
 
-enum SnmpType
-{
+enum SnmpType {
     SNMP_TYPE_RESERVED = 0;
     SNMP_TYPE_TRAP = 1;
     SNMP_TYPE_GET = 2;
 }
 
-enum SnmpVersion
-{
+enum SnmpVersion {
     SNMP_VERSION_RESERVED = 0;
     SNMP_VERSION_V2C = 1;
     SNMP_VERSION_V3 = 2;
     SNMP_VERSION_ALL = 3;
 }
 
-enum SnmpAuth
-{
+enum SnmpAuth {
     SNMP_AUTH_RESERVED = 0;
     SNMP_AUTH_NONE = 1;
     SNMP_AUTH_MD5 = 2;
     SNMP_AUTH_SHA = 3;
 }
 
-enum SnmpPriv
-{
+enum SnmpPriv {
     SNMP_PRIV_RESERVED = 0;
     SNMP_PRIV_NONE = 1;
     SNMP_PRIV_DES = 2;
@@ -626,21 +742,19 @@ enum LfaType {
 }
 
 
-enum MeterFlagsType
-{
-    METER_FLAG_TYPE_RESERVED=0;
-    METER_FLAG_TYPE_KBPS=1;
-    METER_FLAG_TYPE_MBPS=2;
-    METER_FLAG_TYPE_PKTPS=3;
-    METER_FLAG_TYPE_BURST=4;
-    METER_FLAG_TYPE_STATS=5;
+enum MeterFlagsType {
+    METER_FLAG_TYPE_RESERVED = 0;
+    METER_FLAG_TYPE_KBPS = 1;
+    METER_FLAG_TYPE_MBPS = 2;
+    METER_FLAG_TYPE_PKTPS = 3;
+    METER_FLAG_TYPE_BURST = 4;
+    METER_FLAG_TYPE_STATS = 5;
 }
 
-enum MeterBandType
-{
-    METER_BAND_TYPE_RESERVED=0;
-    METER_BAND_TYPE_DROP=1;
-    METER_BAND_TYPE_DSCPREMARK=2;
+enum MeterBandType {
+    METER_BAND_TYPE_RESERVED = 0;
+    METER_BAND_TYPE_DROP = 1;
+    METER_BAND_TYPE_DSCPREMARK = 2;
 }
 
 enum DeviceProtocolType {
@@ -665,7 +779,7 @@ enum AclProtocolType {
     ACL_PROTOCOL_TYPE_RESERVED = 0;
     ACL_PROTOCOL_TYPE_SSH = 1;
     ACL_PROTOCOL_TYPE_GRPC = 2;
-    ACL_PROTOCOL_TYPE_NETCONF = 3;    // OBSOLETE
+    ACL_PROTOCOL_TYPE_NETCONF = 3; // OBSOLETE
     ACL_PROTOCOL_TYPE_ALL = 4;
 }
 
@@ -683,7 +797,7 @@ message Flow {
         uint32 tableid = 1;
         ReservedIds reservedid = 2;
     }
-    YesNo strict = 3;// either strict or haspriority must be set to yes for priority to be considered
+    YesNo strict = 3; // either strict or haspriority must be set to yes for priority to be considered
     repeated ExpMatchFieldType expmatchfields = 4; // size must be the same as expvaluesmasks
     repeated MatchFieldType matchfields = 5; // size must be the same as valuesmasks
     repeated uint64 expvaluesmasks = 6; // size must be the same as expmatchfields
@@ -740,20 +854,20 @@ message ShowGroupStats {
 }
 
 message ShowClassStats {
-     oneof ShowClassStatsOneOf {
+    oneof ShowClassStatsOneOf {
         uint32 classno = 1;
         ReservedIds reservedid = 2;
     }
 }
 message ShowFlowStats {
-     oneof ShowFlowStatsOneOf {
+    oneof ShowFlowStatsOneOf {
         uint32 tableid = 1;
         ReservedIds reservedid = 2;
     }
 }
 
 message ShowMeterStats {
-     oneof ShowMeterStatsOneOf {
+    oneof ShowMeterStatsOneOf {
         uint32 meterid = 1;
         ReservedIds reservedid = 2;
     }
@@ -931,22 +1045,21 @@ message Table {
 }
 
 
-
 message CliReply {
-    uint32 reply_status = 1;   // != 0 when an error occurs
-                               // It's included in all messages which can be used in replies coming from the switch
+    uint32 reply_status = 1; // != 0 when an error occurs
+    // It's included in all messages which can be used in replies coming from the switch
 }
 
 message Controller {
     string controllergroup = 1;
     string controllerid = 2;
-    uint32 priority = 3;      // Used as auxpriority when using SetConfigAuxiliary
+    uint32 priority = 3; // Used as auxpriority when using SetConfigAuxiliary
     string ipaddr = 4;
-    uint32 port = 5 ;
+    uint32 port = 5;
     SecurityType security = 6;
-    OfVersion version = 7;     // optional (default: ANY)
-    OnOff inband = 8;          // optional (default: OFF)
-    uint32 auxiliaryid = 9;    // Considered only in SetConfigAuxiliary, where it must be != 0
+    OfVersion version = 7; // optional (default: ANY)
+    OnOff inband = 8; // optional (default: OFF)
+    uint32 auxiliaryid = 9; // Considered only in SetConfigAuxiliary, where it must be != 0
     uint32 con_status = 10;
     uint32 inbandport = 11;
     int32 reply_status = 12;
@@ -958,7 +1071,7 @@ message ShowSecurity {
 
 message Security {
     string profile = 1;
-    string type = 2;    // only tls is acceptable here, using string because it's planned to have it configurable by user
+    string type = 2; // only tls is acceptable here, using string because it's planned to have it configurable by user
     string certificates = 3;
     SecurityModuleType module = 4;
     int32 reply_status = 5;
@@ -975,7 +1088,7 @@ message ShowDns {
 }
 
 message OfServer {
-    uint32 port = 1;  // switch returns 0 when ofserver is not enabled
+    uint32 port = 1; // switch returns 0 when ofserver is not enabled
     int32 reply_status = 2;
 }
 
@@ -986,9 +1099,9 @@ message OfClient {
 }
 
 message Ntp {
-    OnOff status = 1;    // used only in SetConfigNtpStatus
-    string server1 = 2;  // used only in SetConfigNtpServer
-    string server2 = 3;  // used only in SetConfigNtpServer
+    OnOff status = 1; // used only in SetConfigNtpStatus
+    string server1 = 2; // used only in SetConfigNtpServer
+    string server2 = 3; // used only in SetConfigNtpServer
     int32 reply_status = 4;
 }
 
@@ -1008,8 +1121,7 @@ message Acl {
     int32 reply_status = 6;
 }
 
-message Snmp
-{
+message Snmp {
     SnmpType type = 1;
     string ipaddr = 2;
     SnmpVersion version = 3;
@@ -1023,8 +1135,7 @@ message Snmp
     int32 reply_status = 11;
 }
 
-message SnmpHost
-{
+message SnmpHost {
     SnmpType type = 1;
     string ipaddr = 2;
     SnmpVersion version = 3;
@@ -1032,22 +1143,19 @@ message SnmpHost
     string remoteengineid = 5;
 }
 
-message SnmpUser
-{
+message SnmpUser {
     string username = 1;
     SnmpAuth auth = 2;
     SnmpPriv priv = 3;
 }
 
-message ShowSnmp
-{
+message ShowSnmp {
     repeated SnmpHost hosts = 1;
     repeated SnmpUser users = 2;
     int32 reply_status = 3;
 }
 
-message RemoteCfgServer
-{
+message RemoteCfgServer {
     string ipaddr = 1;
     string username = 2;
     string password = 3;
@@ -1060,19 +1168,17 @@ message ShowRemoteCfgServer {
     // empty
 }
 
-message RemoteLogServer
-{
+message RemoteLogServer {
     string ipaddr = 1;
     uint32 port = 2;
     int32 reply_status = 3;
 }
 
-message Cookie
-{
+message Cookie {
     uint64 tablemiss = 1;
     uint64 mirror = 2;
     uint64 controller = 3;
-    CookieType type = 4;     // only used in ShowConfigCookie reply from switch
+    CookieType type = 4; // only used in ShowConfigCookie reply from switch
     int32 reply_status = 5;
 }
 
@@ -1143,16 +1249,14 @@ message SaveConfigParameters {
     SaveConfigType save = 1;
 }
 
-message Meter
-{
+message Meter {
     uint32 meterid = 1;
     repeated MeterFlagsType flags = 2;
     repeated MeterBand bands = 3;
     int32 reply_status = 4;
 }
 
-message MeterBand
-{
+message MeterBand {
     MeterBandType type = 1;
     uint32 rate = 2;
     uint32 burstsize = 3;
@@ -1176,7 +1280,7 @@ message MeterProfile {
 }
 
 message DeviceIpaddr {
-    string device = 1;  // Device name: of, of1, of2, cli, mgt, inband
+    string device = 1; // Device name: of, of1, of2, cli, mgt, inband
     string ipaddr = 2;
     string netmask = 3;
     repeated DeviceProtocolType protocols = 4;
@@ -1184,7 +1288,7 @@ message DeviceIpaddr {
 }
 
 message DeviceNetipaddr {
-    string device = 1;  // Device name: of, of1, of2, cli, mgt, inband
+    string device = 1; // Device name: of, of1, of2, cli, mgt, inband
     string netipaddr = 2;
     string netmask = 3;
     string gateway = 4;
@@ -1199,7 +1303,7 @@ message DeviceDhcp {
 }
 
 message DeviceVlanIpaddr {
-    string device = 1;  // Device name: of, of1, of2, cli
+    string device = 1; // Device name: of, of1, of2, cli
     uint32 vlan = 2;
     string ipaddr = 3;
     string netmask = 4;
@@ -1208,7 +1312,7 @@ message DeviceVlanIpaddr {
 }
 
 message DeviceVlanNetipaddr {
-    string device = 1;  // Device name: of, of1, of2, cli, mgt, inband
+    string device = 1; // Device name: of, of1, of2, cli, mgt, inband
     uint32 vlan = 2;
     string netipaddr = 3;
     string netmask = 4;
@@ -1219,9 +1323,9 @@ message DeviceVlanNetipaddr {
 
 message DateTime {
     // One or more of the following
-    string date = 1;        // DD[/MM/[YYYY]]
-    string time = 2;        // HH[:MM[:SS]]
-    string timezone = 3;    // UTC+/-HH[:MM]
+    string date = 1; // DD[/MM/[YYYY]]
+    string time = 2; // HH[:MM[:SS]]
+    string timezone = 3; // UTC+/-HH[:MM]
     int32 reply_status = 4;
 }
 
@@ -1293,9 +1397,9 @@ message SwitchConfigAll {
 
 message SwitchDateTime {
     // One or more of the following
-    string date = 1;        // DD[/MM/[YYYY]]
-    string time = 2;        // HH[:MM[:SS]]
-    string timezone = 3;    // UTC+/-HH[:MM]
+    string date = 1; // DD[/MM/[YYYY]]
+    string time = 2; // HH[:MM[:SS]]
+    string timezone = 3; // UTC+/-HH[:MM]
     int32 reply_status = 4;
 }
 
@@ -1669,7 +1773,7 @@ message ShowPtp {
 
 message License {
     oneof LicenseOneOf {
-        string licensefile = 1;  // Name of the license file in novisftp/configs
-        string licensedata = 2;  // Content of the license file
+        string licensefile = 1; // Name of the license file in novisftp/configs
+        string licensedata = 2; // Content of the license file
     }
 }

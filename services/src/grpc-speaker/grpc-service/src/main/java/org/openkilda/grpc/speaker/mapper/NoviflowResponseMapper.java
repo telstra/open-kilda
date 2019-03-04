@@ -41,7 +41,7 @@ public interface NoviflowResponseMapper {
     @Mapping(source = "ipaddr", target = "ipAddress")
     org.openkilda.messaging.model.grpc.RemoteLogServer toRemoteLogServer(RemoteLogServer remoteLogServer);
 
-    SwitchEthLinkInfoStatus toSwithcEthLink(StatusSwitchEthLink statusSwitchEthLink);
+    SwitchEthLinkInfoStatus toSwitchEthLink(StatusSwitchEthLink statusSwitchEthLink);
 
     SwitchBuildInfoStatus toSwitchBuildInfo(StatusSwitchBuild statusSwitchBuild);
 }

@@ -18,6 +18,7 @@ package org.openkilda.messaging.info.grpc;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
 
@@ -26,13 +27,14 @@ import java.util.List;
 @Value
 public class DumpLogicalPortsResponse extends InfoData {
 
-    @JsonProperty("switch address")
+    @JsonProperty("switch_address")
     private String switchAddress;
 
     @JsonProperty("logical_ports")
     private List<LogicalPort> logicalPorts;
 
-    public DumpLogicalPortsResponse(@JsonProperty("switch") String switchAddress,
+    @JsonCreator
+    public DumpLogicalPortsResponse(@JsonProperty("switch_address") String switchAddress,
                                     @JsonProperty("logical_ports") List<LogicalPort> logicalPorts) {
         this.switchAddress = switchAddress;
         this.logicalPorts = logicalPorts;

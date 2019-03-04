@@ -20,18 +20,17 @@ import static org.openkilda.messaging.Utils.TIMESTAMP;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
-import java.util.Objects;
 
 /**
  * The class represents error response.
  */
-@JsonSerialize
-@JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@EqualsAndHashCode(exclude = "errorType")
 public class GrpcMessageError implements Serializable {
     /**
      * The Constant serialVersionUID.
@@ -86,41 +85,10 @@ public class GrpcMessageError implements Serializable {
      * @param errorMessage the error message.
      * @param errorType the error type.
      */
-    @JsonCreator
-    public GrpcMessageError(
-            @JsonProperty(TIMESTAMP) long timestamp,
-            @JsonProperty("error-code") long errorCode,
-            @JsonProperty("error-message") String errorMessage,
-            String errorType) {
+    public GrpcMessageError(long timestamp, long errorCode, String errorMessage, String errorType) {
         this.timestamp = timestamp;
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;
         this.errorType = errorType;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        GrpcMessageError error = (GrpcMessageError) o;
-        return timestamp == error.timestamp
-                && errorCode == error.errorCode
-                && Objects.equals(errorMessage, error.errorMessage)
-                && Objects.equals(errorType, error.errorType);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return Objects.hash(timestamp, errorCode, errorMessage, errorType);
     }
 }
