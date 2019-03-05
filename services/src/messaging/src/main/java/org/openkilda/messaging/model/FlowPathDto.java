@@ -13,10 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.payload.flow;
+package org.openkilda.messaging.model;
+
+import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
@@ -26,46 +28,44 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * Represents flow path in diverse flow group.
+ * Represents the flow paths response item.
  */
 @Data
 @NoArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class GroupFlowPathPayload implements Serializable {
+public class FlowPathDto implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    /**
-     * The id of the flow.
-     */
     @JsonProperty("flowid")
-    protected String id;
+    private String id;
 
     /**
-     * The forward path of the flow.
+     * Indicates that stats in current DTO corresponds with primary asked flow path.
      */
-    @JsonProperty("flowpath_forward")
-    protected List<PathNodePayload> forwardPath;
+    @JsonProperty("primary_path_stat")
+    private boolean primaryPathCorrespondStat = true;
 
-    /**
-     * The reverse path of the flow.
-     */
-    @JsonProperty("flowpath_reverse")
-    protected List<PathNodePayload> reversePath;
+    @JsonProperty("forward_path")
+    private List<PathNodePayload> forwardPath;
+
+    @JsonProperty("reverse_path")
+    private List<PathNodePayload> reversePath;
 
     @JsonProperty("overlapping_segments")
-    protected OverlappingSegmentsStats segmentsStats;
+    private OverlappingSegmentsStats segmentsStats;
 
     @JsonProperty("protected_path")
-    private FlowProtectedPathPayload protectedPath;
+    private FlowProtectedPathDto protectedPath;
 
     @Builder
     @JsonCreator
-    public GroupFlowPathPayload(@JsonProperty("flowid") String id,
-                                @JsonProperty("flowpath_forward") List<PathNodePayload> forwardPath,
-                                @JsonProperty("flowpath_reverse") List<PathNodePayload> reversePath,
-                                @JsonProperty("overlapping_segments") OverlappingSegmentsStats segmentsStats,
-                                @JsonProperty("protected_path") FlowProtectedPathPayload protectedPath) {
+    public FlowPathDto(@JsonProperty("flowid") String id,
+                       @JsonProperty("primary_path_stat") boolean primaryPathCorrespondStat,
+                       @JsonProperty("forward_path") List<PathNodePayload> forwardPath,
+                       @JsonProperty("reverse_path") List<PathNodePayload> reversePath,
+                       @JsonProperty("overlapping_segments") OverlappingSegmentsStats segmentsStats,
+                       @JsonProperty("protected_path") FlowProtectedPathDto protectedPath) {
         this.id = id;
+        this.primaryPathCorrespondStat = primaryPathCorrespondStat;
         this.forwardPath = forwardPath;
         this.reversePath = reversePath;
         this.segmentsStats = segmentsStats;
@@ -74,13 +74,13 @@ public class GroupFlowPathPayload implements Serializable {
 
     @Data
     @NoArgsConstructor
-    public static class FlowProtectedPathPayload implements Serializable {
+    public static class FlowProtectedPathDto implements Serializable {
         private static final long serialVersionUID = 1L;
 
-        @JsonProperty("flowpath_forward")
+        @JsonProperty("forward_path")
         private List<PathNodePayload> forwardPath;
 
-        @JsonProperty("flowpath_reverse")
+        @JsonProperty("reverse_path")
         private List<PathNodePayload> reversePath;
 
         @JsonProperty("overlapping_segments")
@@ -88,9 +88,9 @@ public class GroupFlowPathPayload implements Serializable {
 
         @Builder
         @JsonCreator
-        public FlowProtectedPathPayload(@JsonProperty("flowpath_forward") List<PathNodePayload> forwardPath,
-                                        @JsonProperty("flowpath_reverse") List<PathNodePayload> reversePath,
-                                        @JsonProperty("overlapping_segments") OverlappingSegmentsStats segmentsStats) {
+        public FlowProtectedPathDto(@JsonProperty("forward_path") List<PathNodePayload> forwardPath,
+                            @JsonProperty("reverse_path") List<PathNodePayload> reversePath,
+                            @JsonProperty("overlapping_segments") OverlappingSegmentsStats segmentsStats) {
             this.forwardPath = forwardPath;
             this.reversePath = reversePath;
             this.segmentsStats = segmentsStats;

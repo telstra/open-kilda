@@ -15,7 +15,7 @@
 
 package org.openkilda.model;
 
-import static java.lang.String.format;
+import lombok.ToString;
 
 import java.io.Serializable;
 import java.time.Instant;
@@ -28,6 +28,7 @@ import java.util.Optional;
  * {@link org.openkilda.model.FlowPath}
  */
 @Deprecated
+@ToString
 public class UnidirectionalFlow implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -215,6 +216,14 @@ public class UnidirectionalFlow implements Serializable {
         flow.setPeriodicPings(periodicPings);
     }
 
+    public boolean isAllocateProtectedPath() {
+        return flow.isAllocateProtectedPath();
+    }
+
+    public void setAllocateProtectedPath(boolean allocateProtectedPath) {
+        flow.setAllocateProtectedPath(allocateProtectedPath);
+    }
+
     public FlowStatus getStatus() {
         return flow.getStatus();
     }
@@ -224,20 +233,7 @@ public class UnidirectionalFlow implements Serializable {
      */
     public void setStatus(FlowStatus status) {
         flow.setStatus(status);
-
-        switch (status) {
-            case UP:
-                flowPath.setStatus(FlowPathStatus.ACTIVE);
-                break;
-            case DOWN:
-                flowPath.setStatus(FlowPathStatus.INACTIVE);
-                break;
-            case IN_PROGRESS:
-                flowPath.setStatus(FlowPathStatus.IN_PROGRESS);
-                break;
-            default:
-                throw new IllegalArgumentException(format("Unsupported status value: %s", status));
-        }
+        flowPath.setStatusLikeFlow(status);
     }
 
     public Instant getTimeModify() {

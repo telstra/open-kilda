@@ -15,29 +15,44 @@
 
 package org.openkilda.wfm.topology.flow.service;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.PathId;
+import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPairRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
-import org.openkilda.wfm.topology.flow.model.FlowPathPairWithEncapsulation;
+import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Stream;
 
 @Slf4j
 public class BaseFlowService {
     protected TransactionManager transactionManager;
     private FlowPairRepository flowPairRepository;
+    private FlowRepository flowRepository;
+    private FlowPathRepository flowPathRepository;
+    private TransitVlanRepository transitVlanRepository;
 
     public BaseFlowService(PersistenceManager persistenceManager) {
         transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowPairRepository = repositoryFactory.createFlowPairRepository();
+        flowRepository = repositoryFactory.createFlowRepository();
+        flowPathRepository = repositoryFactory.createFlowPathRepository();
+        transitVlanRepository = repositoryFactory.createTransitVlanRepository();
     }
 
     public boolean doesFlowExist(String flowId) {
@@ -52,20 +67,36 @@ public class BaseFlowService {
         return flowPairRepository.findAll();
     }
 
-    protected Optional<FlowPathPairWithEncapsulation> getFlowPathPairWithEncapsulation(String flowId) {
+    protected Optional<FlowPathsWithEncapsulation> getFlowPathPairWithEncapsulation(String flowId) {
         return flowPairRepository.findById(flowId)
-                .map(flowPair -> FlowPathPairWithEncapsulation.builder()
-                        .flow(flowPair.getFlowEntity())
-                        .forwardPath(flowPair.getForward().getFlowPath())
-                        .reversePath(flowPair.getReverse().getFlowPath())
-                        //TODO: hard-coded encapsulation will be removed in Flow H&S
-                        .forwardEncapsulation(TransitVlanEncapsulation.builder()
-                                .transitVlan(flowPair.getForwardTransitVlanEntity())
+                .map(flowPair -> {
+                    Flow flow = flowPair.getFlowEntity();
+                    return FlowPathsWithEncapsulation.builder()
+                            .flow(flow)
+                            .forwardPath(flow.getForwardPath())
+                            .reversePath(flow.getReversePath())
+                            //TODO: hard-coded encapsulation will be removed in Flow H&S
+                            .forwardEncapsulation(TransitVlanEncapsulation.builder()
+                                    .transitVlan(flowPair.getForwardTransitVlanEntity())
                                 .build())
-                        .reverseEncapsulation(TransitVlanEncapsulation.builder()
-                                .transitVlan(flowPair.getReverseTransitVlanEntity())
-                                .build())
-                        .build());
+                            .reverseEncapsulation(TransitVlanEncapsulation.builder()
+                                    .transitVlan(flowPair.getReverseTransitVlanEntity())
+                                    .build())
+                            .protectedForwardPath(flow.getProtectedForwardPath())
+                            .protectedReversePath(flow.getProtectedReversePath())
+                            .protectedForwardEncapsulation(TransitVlanEncapsulation.builder()
+                                    .transitVlan(findTransitVlan(flow.getProtectedForwardPathId()))
+                                    .build())
+                            .protectedReverseEncapsulation(TransitVlanEncapsulation.builder()
+                                    .transitVlan(findTransitVlan(flow.getProtectedReversePathId()))
+                                    .build())
+                            .build();
+                });
+    }
+
+    protected TransitVlan findTransitVlan(PathId pathId) {
+        return transitVlanRepository.findByPathId(pathId).stream()
+                .findAny().orElse(null);
     }
 
     /**
@@ -74,12 +105,22 @@ public class BaseFlowService {
      * @param flowId a flow ID used to locate the flow(s).
      * @param status the status to set.
      */
-    public void updateFlowStatus(String flowId, FlowStatus status) {
-        transactionManager.doInTransaction(() ->
-                flowPairRepository.findById(flowId)
-                        .ifPresent(flow -> {
-                            flow.setStatus(status);
-                            flowPairRepository.createOrUpdate(flow);
-                        }));
+    public void updateFlowStatus(String flowId, FlowStatus status, Set<PathId> pathIdSet) {
+        transactionManager.doInTransaction(() -> {
+            flowRepository.findById(flowId)
+                    .ifPresent(flow -> {
+                        flow.setStatus(status);
+                        flowRepository.createOrUpdate(flow);
+                    });
+
+            Stream<FlowPath> pathsStream = flowPathRepository.findByFlowId(flowId).stream();
+            if (!pathIdSet.isEmpty()) {
+                pathsStream = pathsStream.filter(path -> pathIdSet.contains(path.getPathId()));
+            }
+            pathsStream.forEach(path -> {
+                path.setStatusLikeFlow(status);
+                flowPathRepository.createOrUpdate(path);
+            });
+        });
     }
 }

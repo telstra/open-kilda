@@ -15,14 +15,38 @@
 
 package org.openkilda.wfm.topology.flow.model;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.UnidirectionalFlow;
+import org.openkilda.wfm.share.mappers.FlowPathMapper;
 
 import lombok.AllArgsConstructor;
 import lombok.Value;
+
+import java.util.Objects;
 
 @Value
 @AllArgsConstructor
 public class ReroutedFlow {
     private final UnidirectionalFlow oldFlow;
     private final UnidirectionalFlow newFlow;
+
+    /**
+     * Returns is flow has been efficient rerouted flag.
+     *
+     * @return is rerouted flag.
+     */
+    public boolean isRerouted() {
+        Flow old = oldFlow.getFlowEntity();
+        Flow rerouted = newFlow.getFlowEntity();
+
+        boolean isPrimaryRerouted = !Objects.equals(
+                FlowPathMapper.INSTANCE.map(rerouted.getForwardPath()),
+                FlowPathMapper.INSTANCE.map(old.getForwardPath()));
+        boolean isProtectedRerouted = rerouted.isAllocateProtectedPath() && old.isAllocateProtectedPath()
+                && !Objects.equals(
+                FlowPathMapper.INSTANCE.map(rerouted.getProtectedForwardPath()),
+                FlowPathMapper.INSTANCE.map(old.getProtectedForwardPath()));
+
+        return isPrimaryRerouted || isProtectedRerouted;
+    }
 }

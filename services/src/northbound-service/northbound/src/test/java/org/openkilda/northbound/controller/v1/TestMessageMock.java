@@ -40,6 +40,7 @@ import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
@@ -47,7 +48,6 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.messaging.MessagingChannel;
@@ -83,16 +83,27 @@ public class TestMessageMock implements MessagingChannel {
     static final FlowIdStatusPayload flowStatus = new FlowIdStatusPayload(FLOW_ID, FlowState.UP);
     static final PathInfoData path = new PathInfoData(0L, Collections.emptyList());
     static final List<PathNodePayload> pathPayloadsList = singletonList(new PathNodePayload(SWITCH_ID, 1, 1));
-    static final FlowPathPayload flowPath = new FlowPathPayload(FLOW_ID, pathPayloadsList, pathPayloadsList, null);
-    static final FlowDto flowModel = new FlowDto(FLOW_ID, 10000, false, false, 0L, FLOW_ID, null, null, SWITCH_ID,
-            SWITCH_ID, 1, 1, 1, 1, 1, 1, path, FlowState.UP, null, null);
+    static final FlowPathPayload flowPath = FlowPathPayload.builder()
+            .id(FLOW_ID)
+            .forwardPath(pathPayloadsList)
+            .reversePath(pathPayloadsList)
+            .build();
+    static final FlowDto flowModel = FlowDto.builder()
+            .flowId(FLOW_ID).bandwidth(10000).description(FLOW_ID)
+            .sourceSwitch(SWITCH_ID).destinationSwitch(SWITCH_ID)
+            .sourcePort(1).destinationPort(1).sourceVlan(1).destinationVlan(1).meterId(1)
+            .flowPath(path).state(FlowState.UP)
+            .build();
 
     private static final FlowResponse flowResponse = new FlowResponse(flowModel);
     static final FlowReadResponse FLOW_RESPONSE =
             new FlowReadResponse(new BidirectionalFlowDto(flowModel, flowModel));
     static final GetFlowPathResponse FLOW_PATH_RESPONSE =
-            new GetFlowPathResponse(
-                    new GroupFlowPathPayload(FLOW_ID, pathPayloadsList, pathPayloadsList, null));
+            new GetFlowPathResponse(FlowPathDto.builder()
+                    .id(FLOW_ID)
+                    .forwardPath(pathPayloadsList)
+                    .reversePath(pathPayloadsList)
+                    .build());
     private static final SwitchRulesResponse switchRulesResponse =
             new SwitchRulesResponse(singletonList(TEST_SWITCH_RULE_COOKIE));
     private static final Map<String, CommandData> messages = new ConcurrentHashMap<>();
