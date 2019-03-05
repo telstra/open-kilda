@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import spock.lang.Ignore
-
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -18,6 +16,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 
 class SwitchMaintenance extends BaseSpecification {
 
@@ -124,7 +123,6 @@ class SwitchMaintenance extends BaseSpecification {
         northbound.setSwitchMaintenance(sw.dpId, false, false)
     }
 
-    @Ignore("Not implemented in new discovery-topology")
     def "Link discovered by a switch under maintenance is marked as maintained"() {
         given: "An active link"
         //TODO(ylobankov): Remove avoiding of links with a-switch once issue #2038 is merged.
@@ -170,6 +168,8 @@ class SwitchMaintenance extends BaseSpecification {
         database.resetCosts()
     }
 
+    // That logic will be reworked to fit new use cases
+    @Ignore("Not implemented in new discovery-topology")
     def "System is correctly handling actions performing on a maintained switch disconnected from the controller"() {
         requireProfiles("virtual")
 

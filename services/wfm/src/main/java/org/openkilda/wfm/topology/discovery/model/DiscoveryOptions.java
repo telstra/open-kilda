@@ -36,6 +36,8 @@ public class DiscoveryOptions implements Serializable {
 
     private Integer islCostRaiseOnPhysicalDown;
 
+    private Integer islCostWhenUnderMaintenance;
+
     private Integer bfdLogicalPortOffset;
 
     private boolean bfdEnabled;
@@ -52,6 +54,7 @@ public class DiscoveryOptions implements Serializable {
         discoveryTimeout = TimeUnit.SECONDS.toMillis(topologyConfig.getDiscoveryTimeout());
 
         islCostRaiseOnPhysicalDown = topologyConfig.getIslCostWhenPortDown();
+        islCostWhenUnderMaintenance = topologyConfig.getIslCostWhenUnderMaintenance();
 
         bfdLogicalPortOffset = topologyConfig.getBfdPortOffset();
         bfdEnabled = topologyConfig.isBfdEnabled();

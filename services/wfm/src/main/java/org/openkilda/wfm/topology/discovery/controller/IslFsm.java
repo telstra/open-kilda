@@ -64,7 +64,7 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
     private final FeatureTogglesRepository featureTogglesRepository;
 
     private final int costRaiseOnPhysicalDown;
-
+    private final int islCostWhenUnderMaintenance;
     private final BiIslDataHolder<DiscoveryEndpointStatus> endpointStatus;
 
     private final DiscoveryFacts discoveryFacts;
@@ -168,7 +168,7 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         transactionManager = persistenceManager.getTransactionManager();
 
         costRaiseOnPhysicalDown = options.getIslCostRaiseOnPhysicalDown();
-
+        islCostWhenUnderMaintenance = options.getIslCostWhenUnderMaintenance();
         endpointStatus = new BiIslDataHolder<>(reference);
         endpointStatus.putBoth(DiscoveryEndpointStatus.DOWN);
 
@@ -406,9 +406,15 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
                 .srcSwitch(sourceSwitch)
                 .srcPort(source.getPortNumber())
                 .destSwitch(destSwitch)
-                .destPort(dest.getPortNumber());
+                .destPort(dest.getPortNumber())
+                .underMaintenance(sourceSwitch.isUnderMaintenance() || destSwitch.isUnderMaintenance());
         applyIslLinkProps(source, dest, islBuilder);
         Isl link = islBuilder.build();
+
+        if (link.isUnderMaintenance()) {
+            link.setCost(link.getCost() + islCostWhenUnderMaintenance);
+        }
+
         log.debug("Create new DB object (prefilled): {}", link);
         return link;
     }

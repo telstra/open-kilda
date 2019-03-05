@@ -65,6 +65,9 @@ public interface DiscoveryTopologyConfig extends AbstractTopologyConfig {
     @Key("isl.cost.when.port.down")
     int getIslCostWhenPortDown();
 
+    @Key("isl.cost.when.under.maintenance")
+    int getIslCostWhenUnderMaintenance();
+
     @Key("speaker.io.timeout.seconds")
     int getSpeakerIoTimeoutSeconds();
 
