@@ -115,8 +115,10 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         }
 
         if (underMaintenance && evacuate) {
-            flowOperationsService.getFlowIdsForSwitch(switchId).forEach(flowId -> {
-                FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId);
+            flowOperationsService.groupFlowIdWithPathIdsForRerouting(
+                    flowOperationsService.getFlowIdsForSwitch(switchId)
+            ).forEach((flowId, pathIds) -> {
+                FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds);
                 getOutput().emit(StreamType.REROUTE.toString(), tuple, new Values(rerouteRequest, correlationId));
             });
         }

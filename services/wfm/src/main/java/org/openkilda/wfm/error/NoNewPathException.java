@@ -13,27 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.nbtopology.response;
+package org.openkilda.wfm.error;
 
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.model.FlowPathDto;
+import org.openkilda.model.UnidirectionalFlow;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+import lombok.Getter;
 
 /**
- * Represents a flow path northbound response.
+ * {@code NoNewPathException} indicates that there is no required new path to allocate.
  */
-@Value
-public class GetFlowPathResponse extends InfoData {
-    private static final long serialVersionUID = 1L;
+@Getter
+public class NoNewPathException extends AbstractException {
 
-    @JsonProperty("payload")
-    protected FlowPathDto payload;
+    private final UnidirectionalFlow flow;
 
-    @JsonCreator
-    public GetFlowPathResponse(@JsonProperty("payload") FlowPathDto payload) {
-        this.payload = payload;
+    public NoNewPathException(UnidirectionalFlow flow) {
+        super(flow.getFlowId());
+        this.flow = flow;
     }
 }

@@ -31,7 +31,6 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.messaging.payload.flow.FlowPayloadToFlowConverter;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
@@ -280,16 +279,17 @@ public class StubServiceFactory {
     private void putFlow(String flowId, FlowPayload flowPayload) {
         flowPayloads.put(flowId, flowPayload);
 
-        FlowDto forwardFlow = FlowPayloadToFlowConverter.buildFlowByFlowPayload(flowPayload);
+        FlowDto forwardFlow = new FlowDto(flowPayload);
         forwardFlow.setMeterId(meterCounter++);
 
-        FlowDto reverseFlow = new FlowDto(forwardFlow);
-        reverseFlow.setSourceSwitch(forwardFlow.getDestinationSwitch());
-        reverseFlow.setSourcePort(forwardFlow.getDestinationPort());
-        reverseFlow.setSourceVlan(forwardFlow.getDestinationVlan());
-        reverseFlow.setDestinationSwitch(forwardFlow.getSourceSwitch());
-        reverseFlow.setDestinationPort(forwardFlow.getSourcePort());
-        reverseFlow.setDestinationVlan(forwardFlow.getSourceVlan());
+        FlowDto reverseFlow = forwardFlow.toBuilder()
+                .sourceSwitch(forwardFlow.getDestinationSwitch())
+                .sourcePort(forwardFlow.getDestinationPort())
+                .sourceVlan(forwardFlow.getDestinationVlan())
+                .destinationSwitch(forwardFlow.getSourceSwitch())
+                .destinationPort(forwardFlow.getSourcePort())
+                .destinationVlan(forwardFlow.getSourceVlan())
+                .build();
 
         flows.put(flowId, new FlowPairDto<>(forwardFlow, reverseFlow));
     }

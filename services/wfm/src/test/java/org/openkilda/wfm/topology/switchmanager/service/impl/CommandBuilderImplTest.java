@@ -141,7 +141,7 @@ public class CommandBuilderImplTest {
 
             when(flowPathRepository.findBySegmentDestSwitch(eq(SWITCH_ID_B)))
                     .thenReturn(Arrays.asList(flowPathA, flowPathB));
-            when(flowPathRepository.findByEndpointSwitch(eq(SWITCH_ID_B)))
+            when(flowPathRepository.findByEndpointSwitchForRules(eq(SWITCH_ID_B)))
                     .thenReturn(Arrays.asList(flowPathC, flowPathD));
 
             RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);

@@ -28,6 +28,7 @@ import org.openkilda.wfm.Neo4jBasedTest;
 
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.Optional;
 
 public class BaseFlowServiceTest extends Neo4jBasedTest {
@@ -49,7 +50,7 @@ public class BaseFlowServiceTest extends Neo4jBasedTest {
 
         flowPairRepository.createOrUpdate(flowPair);
 
-        flowService.updateFlowStatus(flowId, FlowStatus.UP);
+        flowService.updateFlowStatus(flowId, FlowStatus.UP, Collections.emptySet());
 
         Optional<FlowPair> foundFlow = flowPairRepository.findById(flowId);
         assertEquals(FlowStatus.UP, foundFlow.get().getForward().getStatus());

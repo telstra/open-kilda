@@ -75,7 +75,7 @@ public class CommandBuilderImpl implements CommandBuilder {
                     }
                 });
 
-        flowPathRepository.findByEndpointSwitch(switchId)
+        flowPathRepository.findByEndpointSwitchForRules(switchId)
                 .forEach(flowPath -> {
                     if (switchRules.contains(flowPath.getCookie().getValue())) {
                         Flow flow = flowRepository.findById(flowPath.getFlowId())
@@ -200,7 +200,8 @@ public class CommandBuilderImpl implements CommandBuilder {
             throw new IllegalArgumentException(format(
                     "Flow path %s doesn't correspond to the given flow %s.", flowPath.getPathId(), flow.getFlowId()));
         }
-        return flowPath.getPathId().equals(flow.getForwardPathId());
+        return flowPath.getPathId().equals(flow.getForwardPathId())
+                || flowPath.getPathId().equals(flow.getProtectedForwardPathId());
     }
 
     private OutputVlanType getOutputVlanType(int sourceVlanId, int destinationVlanId) {
