@@ -69,6 +69,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId SWITCH_ID_2 = new SwitchId("00:00:00:00:00:00:00:02");
     private static final SwitchId SWITCH_ID_3 = new SwitchId("00:00:00:00:00:00:00:03");
+    private static final SwitchId SWITCH_ID_4 = new SwitchId("00:00:00:00:00:00:00:04");
     private static final PathPair PATH_DIRECT_1_TO_3 = PathPair.builder()
             .forward(Path.builder().srcSwitchId(SWITCH_ID_1).destSwitchId(SWITCH_ID_3).latency(1).segments(asList(
                     Path.Segment.builder().srcSwitchId(SWITCH_ID_1).srcPort(11).latency(1L)
@@ -100,8 +101,9 @@ public class FlowServiceTest extends Neo4jBasedTest {
     private FlowRepository flowRepository;
     private FlowPathRepository flowPathRepository;
 
-    private PathComputer pathComputer;
     private FlowService flowService;
+    private PathComputer pathComputer;
+
 
     @Before
     public void setUp() {
@@ -142,6 +144,63 @@ public class FlowServiceTest extends Neo4jBasedTest {
 
         Optional<Flow> foundFlow = flowRepository.findById(flowId);
         assertEquals(FlowStatus.UP, foundFlow.get().getStatus());
+    }
+
+    @Test
+    public void shouldSwapEndpointsForFlow() throws FlowNotFoundException, FlowValidationException {
+
+        FlowService flowServiceSpy = Mockito.spy(flowService);
+        Mockito.doThrow(FlowNotFoundException.class).doCallRealMethod()
+                .when(flowServiceSpy).swapFlowEnpoints(any(), any(), any());
+
+        String firstFlowId = "flow1";
+        String secondFlowId = "flow2";
+
+        Flow firstFlow = new TestFlowBuilder(firstFlowId)
+                .srcSwitch(getOrCreateSwitch(SWITCH_ID_1))
+                .srcPort(1)
+                .srcVlan(101)
+                .destSwitch(getOrCreateSwitch(SWITCH_ID_2))
+                .destPort(2)
+                .destVlan(102)
+                .build();
+
+        Flow secondFlow = new TestFlowBuilder(secondFlowId)
+                .srcSwitch(getOrCreateSwitch(SWITCH_ID_3))
+                .srcPort(3)
+                .srcVlan(103)
+                .destSwitch(getOrCreateSwitch(SWITCH_ID_4))
+                .destPort(4)
+                .destVlan(104)
+                .build();
+        flowRepository.createOrUpdate(firstFlow);
+        flowRepository.createOrUpdate(secondFlow);
+
+        Flow updFirstFlow = new TestFlowBuilder(secondFlowId)
+                .srcSwitch(getOrCreateSwitch(SWITCH_ID_3))
+                .srcPort(3)
+                .srcVlan(103)
+                .destSwitch(getOrCreateSwitch(SWITCH_ID_4))
+                .destPort(4)
+                .destVlan(104)
+                .build();
+
+        Flow updSecondFlow = new TestFlowBuilder(firstFlowId)
+                .srcSwitch(getOrCreateSwitch(SWITCH_ID_1))
+                .srcPort(1)
+                .srcVlan(101)
+                .destSwitch(getOrCreateSwitch(SWITCH_ID_2))
+                .destPort(2)
+                .destVlan(102)
+                .build();
+
+        flowService.swapFlowEnpoints(updFirstFlow, updSecondFlow, mock(FlowCommandSender.class));
+
+        Optional<Flow> resultFirstFlow = flowRepository.findById(firstFlowId);
+        Optional<Flow> resultSecondFlow = flowRepository.findById(secondFlowId);
+
+        assertEquals(firstFlow.getSrcSwitch().getSwitchId(), resultSecondFlow.get().getDestSwitch().getSwitchId());
+
     }
 
     @Test
