@@ -23,29 +23,9 @@ public class UpdatedFlowPathPair extends FlowPathPairWithEncapsulation {
 
     public UpdatedFlowPathPair(FlowPathPairWithEncapsulation oldFlowPair, FlowPathPairWithEncapsulation newFlowPair) {
         super(newFlowPair.getFlow(), newFlowPair.getForwardPath(), newFlowPair.getReversePath(),
-                newFlowPair.getForwardEncapsulation(), newFlowPair.getReverseEncapsulation());
+                newFlowPair.getProtectedForwardPath(), newFlowPair.getProtectedReversePath(),
+                newFlowPair.getForwardEncapsulation(), newFlowPair.getReverseEncapsulation(),
+                newFlowPair.getProtectedForwardEncapsulation(), newFlowPair.getProtectedReverseEncapsulation());
         this.oldFlowPair = oldFlowPair;
-    }
-
-    /**
-     * Returns the forward path of the old flow.
-     */
-    public FlowPathWithEncapsulation getOldForward() {
-        return FlowPathWithEncapsulation.builder()
-                .flow(oldFlowPair.getFlow())
-                .flowPath(oldFlowPair.getForwardPath())
-                .encapsulation(oldFlowPair.getForwardEncapsulation())
-                .build();
-    }
-
-    /**
-     * Returns the reverse path of the old flow.
-     */
-    public FlowPathWithEncapsulation getOldReverse() {
-        return FlowPathWithEncapsulation.builder()
-                .flow(oldFlowPair.getFlow())
-                .flowPath(oldFlowPair.getReversePath())
-                .encapsulation(oldFlowPair.getReverseEncapsulation())
-                .build();
     }
 }

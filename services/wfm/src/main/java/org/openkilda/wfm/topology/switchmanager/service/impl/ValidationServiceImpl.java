@@ -59,7 +59,7 @@ public class ValidationServiceImpl implements ValidationService {
                 .map(Cookie::getValue)
                 .collect(Collectors.toSet());
 
-        flowPathRepository.findByEndpointSwitch(switchId).stream()
+        flowPathRepository.findByEndpointSwitchForRules(switchId).stream()
                 .map(FlowPath::getCookie)
                 .map(Cookie::getValue)
                 .forEach(expectedCookies::add);
