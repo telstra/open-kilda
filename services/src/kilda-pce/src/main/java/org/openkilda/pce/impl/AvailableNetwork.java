@@ -77,6 +77,12 @@ public class AvailableNetwork {
         for (PathSegment segment : segments) {
             Node srcNode = getSwitch(segment.getSrcSwitch().getSwitchId());
             Node dstNode = getSwitch(segment.getDestSwitch().getSwitchId());
+
+            if (srcNode == null || dstNode == null) {
+                log.debug("Diversity segment {} don't present in AvailableNetwork", segment);
+                continue;
+            }
+
             Edge segmentEdge = Edge.builder()
                     .srcSwitch(srcNode)
                     .srcPort(segment.getSrcPort())

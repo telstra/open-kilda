@@ -18,6 +18,7 @@ package org.openkilda.wfm.share.mappers;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.UnidirectionalFlow;
@@ -85,5 +86,44 @@ public abstract class FlowPathMapper {
         }
 
         return resultList;
+    }
+
+    /**
+     * Convert {@link FlowPath} to {@link PathNodePayload}.
+     */
+    public List<PathNodePayload> mapToPathNodes(Flow flow, FlowPath flowPath) {
+        List<PathNodePayload> resultList = new ArrayList<>();
+
+        boolean forward = isForward(flow, flowPath);
+        int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
+        int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
+
+        if (flowPath.getSegments().isEmpty()) {
+            resultList.add(
+                    new PathNodePayload(flowPath.getSrcSwitch().getSwitchId(), inPort, outPort));
+        } else {
+            List<PathSegment> pathSegments = flowPath.getSegments();
+
+            resultList.add(new PathNodePayload(flowPath.getSrcSwitch().getSwitchId(), inPort,
+                    pathSegments.get(0).getSrcPort()));
+
+            for (int i = 1; i < pathSegments.size(); i++) {
+                PathSegment inputNode = pathSegments.get(i - 1);
+                PathSegment outputNode = pathSegments.get(i);
+
+                resultList.add(new PathNodePayload(inputNode.getDestSwitch().getSwitchId(), inputNode.getDestPort(),
+                        outputNode.getSrcPort()));
+            }
+
+            resultList.add(new PathNodePayload(flowPath.getDestSwitch().getSwitchId(),
+                    pathSegments.get(pathSegments.size() - 1).getDestPort(), outPort));
+        }
+
+        return resultList;
+    }
+
+    private static boolean isForward(Flow flow, FlowPath flowPath) {
+        return flowPath.getPathId().equals(flow.getForwardPathId())
+                || flowPath.getPathId().equals(flow.getProtectedForwardPathId());
     }
 }

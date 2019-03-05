@@ -15,6 +15,8 @@
 
 package org.openkilda.model;
 
+import static java.lang.String.format;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -146,6 +148,25 @@ public class FlowPath implements Serializable {
 
         if (pathId != null) {
             segments.forEach(pathSegment -> pathSegment.setPathId(pathId));
+        }
+    }
+
+    /**
+     * Sets the current flow path status corresponds with passed {@link FlowStatus} .
+     */
+    public void setStatusLikeFlow(FlowStatus flowStatus) {
+        switch (flowStatus) {
+            case UP:
+                setStatus(FlowPathStatus.ACTIVE);
+                break;
+            case DOWN:
+                setStatus(FlowPathStatus.INACTIVE);
+                break;
+            case IN_PROGRESS:
+                setStatus(FlowPathStatus.IN_PROGRESS);
+                break;
+            default:
+                throw new IllegalArgumentException(format("Unsupported status value: %s", status));
         }
     }
 
