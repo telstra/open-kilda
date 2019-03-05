@@ -8,13 +8,12 @@ Internal signals
 Input signals
 * port-up
 * port-down
-* bisl-bfd-enable [ISL-FSM]
-* bisl-bfd-disable [ISL-FSM]
-* FL-ok
-* FL-fail
-* FL-timeout
-* isl-move [ISL-FSM]
-
+* enable (ISL-FSM)
+* disable (ISL-FSM)
+* FL-ok (worker)
+* FL-fail (worker)
+* FL-timeout (worker)
+* isl-move (ISL-FSM)
 
 Output signals
 * bfd-up
@@ -27,17 +26,18 @@ title BFD port FSM
 [*] --> INIT
 
 state initChoice <<choice>>
-INIT --> initChoice : history
+INIT --> initChoice : history / load persistence-data
 
 initChoice --> IDLE : [BFD-discriminator is empty]
 initChoice --> CLEANING : [BFD-discriminator is set]
 
-IDLE --> INSTALLING : bisl-bfd-enable
+IDLE --> INSTALLING : enable
 IDLE -l-> FAIL : port-up
 
-INSTALLING --> UP : port-up
-INSTALLING --> CLEANING : FL-fail
+INSTALLING --> ACTIVE : port-up
+INSTALLING --> CLEANING : FL-fail [match reuest-key] /\nreport error
 INSTALLING --> CLEANING : isl-move
+INSTALLING --> CLEANING : disable
 INSTALLING --> FAIL : fail
 INSTALLING : enter / allocate BFD-discriminator
 INSTALLING : enter / emit BFD-session setup
@@ -45,8 +45,8 @@ INSTALLING : enter / emit BFD-session setup
 state cleaningChoice <<choice>>
 
 CLEANING --> cleaningChoice : FL-ok / release BFD-discriminator
-CLEANING --> FAIL : FL-fail
-CLEANING --> FAIL : FL-timeout
+CLEANING --> FAIL : FL-fail [match reuest-key] /\nreport error
+CLEANING --> FAIL : fail
 CLEANING : enter / emit BFD-session remove
 CLEANING : port-up / set isUp = true
 CLEANING : port-down / set isUp = false
@@ -57,16 +57,20 @@ cleaningChoice --> WAIT_RELEASE : [isUp]
 WAIT_RELEASE --> IDLE : port-down
 WAIT_RELEASE : exit : set isUp = false
 
-UP --> DOWN : port-down
-UP --> CLEANING : isl-move
-UP -> [*] : bisl-bfd-disable / emit bfd-kill
-UP : enter / emit bfd-up
-UP : enter / set isUp = true
+state ACTIVE {
+    [*] --> UP
 
-DOWN --> UP : port-up
-DOWN --> CLEANING : isl-move
-DOWN : enter / emit bfd-down
-DOWN : enter / set isUp = false
+    UP --> DOWN : port-down
+    UP : enter / emit bfd-up
+    UP : enter / set isUp = true
+
+    DOWN --> UP : port-up
+    DOWN : enter / emit bfd-down
+    DOWN : enter / set isUp = false
+}
+ACTIVE --> CLEANING : isl-move
+ACTIVE --> CLEANING : disable
+ACTIVE --> [*] : kill / emit bfd-kill
 
 FAIL -r-> IDLE : port-down
 

@@ -32,6 +32,7 @@ import org.neo4j.ogm.annotation.typeconversion.Convert;
 public class BfdPort {
 
     public static final String SWITCH_PROPERTY_NAME = "switch";
+    public static final String REMOTE_SWITCH_PROPERTY_NAME = "remote_switch";
     public static final String PORT_PROPERTY_NAME = "port";
     public static final String DISCRIMINATOR_PROPERTY_NAME = "discriminator";
 
@@ -45,11 +46,14 @@ public class BfdPort {
     @Convert(graphPropertyType = String.class)
     private SwitchId switchId;
 
+    @Property(name = REMOTE_SWITCH_PROPERTY_NAME)
+    @Convert(graphPropertyType = String.class)
+    private SwitchId remoteSwitchId;
+
     @Property(name = PORT_PROPERTY_NAME)
     Integer port;
 
     @Property(name = DISCRIMINATOR_PROPERTY_NAME)
     @Index(unique = true)
     Integer discriminator;
-
 }

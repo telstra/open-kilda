@@ -15,19 +15,24 @@
 
 package org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command;
 
-import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
+import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerWorker;
 
-public class SpeakerBfdSessionResponseCommand extends SpeakerWorkerCommand {
-    private final BfdSessionResponse response;
+public class SpeakerBfdSessionRemoveCommand extends SpeakerWorkerCommand {
+    private final NoviBfdSession bfdSession;
 
-    public SpeakerBfdSessionResponseCommand(String key, BfdSessionResponse response) {
+    public SpeakerBfdSessionRemoveCommand(String key, NoviBfdSession bfdSession) {
         super(key);
-        this.response = response;
+        this.bfdSession = bfdSession;
     }
 
     @Override
     public void apply(SpeakerWorker handler) {
-        handler.processBfdSessionResponse(response);
+        handler.processBfdRemoveRequest(getKey(), bfdSession);
+    }
+
+    @Override
+    public void timeout(SpeakerWorker handler) {
+        handler.timeoutBfdRequest(getKey(), bfdSession);
     }
 }

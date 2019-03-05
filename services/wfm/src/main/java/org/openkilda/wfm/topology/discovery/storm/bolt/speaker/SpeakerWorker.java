@@ -23,6 +23,9 @@ import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
 import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.BfdPortHandler;
+import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdPortCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdPortSpeakerBfdSessionResponseCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdPortSpeakerTimeoutCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerWorkerCommand;
 
 import lombok.extern.slf4j.Slf4j;
@@ -35,9 +38,11 @@ import org.apache.storm.tuple.Values;
 public class SpeakerWorker extends WorkerBolt {
     public static final String BOLT_ID = WorkerBolt.ID + ".speaker";
 
+    public static final String FIELD_ID_COMMAND = BfdPortHandler.FIELD_ID_COMMAND;
+
     public static final String STREAM_HUB_ID = "hub";
 
-    public static final Fields STREAM_FIELDS = new Fields();
+    public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
     public SpeakerWorker(Config config) {
         super(config);
@@ -45,6 +50,9 @@ public class SpeakerWorker extends WorkerBolt {
 
     @Override
     protected void onHubRequest(Tuple input) throws PipelineException {
+        // At this moment only one bolt(BfdPortHandler) can write into this worker so can rely on routing performed
+        // in our superclass. Once this situation changed we will need to make our own request routing or extend
+        // routing in superclass.
         handleCommand(input, BfdPortHandler.FIELD_ID_COMMAND);
     }
 
@@ -55,31 +63,33 @@ public class SpeakerWorker extends WorkerBolt {
 
     @Override
     public void onTimeout(String key) {
-        // TODO
+        Tuple request = pendingTasks.get(key);
+
+        try {
+            handleTimeout(request, BfdPortHandler.FIELD_ID_COMMAND);
+        } catch (PipelineException e) {
+            log.error("Unable to unpack original tuple in timeout processing - {}", e.getMessage());
+        }
     }
 
-    // -- HUB --> speaker --
-    public void setupBfdSession(String key, NoviBfdSession bfdSession) {
+    // -- commands processing --
+
+    public void processBfdSetupRequest(String key, NoviBfdSession bfdSession) {
         SetupBfdSession payload = new SetupBfdSession(bfdSession);
-        speakerRequest(key, payload);
+        emitSpeakerRequest(key, payload);
     }
 
-    public void removeBfdSession(String key, NoviBfdSession bfdSession) {
+    public void processBfdRemoveRequest(String key, NoviBfdSession bfdSession) {
         RemoveBfdSession payload = new RemoveBfdSession(bfdSession);
-        speakerRequest(key, payload);
+        emitSpeakerRequest(key, payload);
     }
 
-    // -- speaker --> HUB --
-
-    public void bfdSessionResponse(String key, BfdSessionResponse response) {
-        // TODO
+    public void processBfdSessionResponse(BfdSessionResponse response) {
+        emitResponseToHub(getCurrentTuple(), makeBfdPortTuple(new BfdPortSpeakerBfdSessionResponseCommand(response)));
     }
 
-    // -- private/service methods --
-
-    private void handleCommand(Tuple input, String field) throws PipelineException {
-        SpeakerWorkerCommand command = pullValue(input, field, SpeakerWorkerCommand.class);
-        command.apply(this);
+    public void timeoutBfdRequest(String key, NoviBfdSession bfdSession) {
+        emitResponseToHub(getCurrentTuple(), makeBfdPortTuple(new BfdPortSpeakerTimeoutCommand(key, bfdSession)));
     }
 
     // -- setup --
@@ -89,11 +99,27 @@ public class SpeakerWorker extends WorkerBolt {
         streamManager.declare(STREAM_FIELDS);
     }
 
-    public void speakerRequest(String key, CommandData payload) {
+    // -- private/service methods --
+
+    private void handleCommand(Tuple input, String field) throws PipelineException {
+        SpeakerWorkerCommand command = pullValue(input, field, SpeakerWorkerCommand.class);
+        command.apply(this);
+    }
+
+    private void handleTimeout(Tuple input, String field) throws PipelineException {
+        SpeakerWorkerCommand command = pullValue(input, field, SpeakerWorkerCommand.class);
+        command.timeout(this);
+    }
+
+    public void emitSpeakerRequest(String key, CommandData payload) {
         emit(getCurrentTuple(), makeSpeakerTuple(key, payload));
     }
 
     private Values makeSpeakerTuple(String key, CommandData payload) {
         return new Values(key, payload, getCommandContext());
+    }
+
+    private Values makeBfdPortTuple(BfdPortCommand command) {
+        return new Values(command, getCommandContext());
     }
 }

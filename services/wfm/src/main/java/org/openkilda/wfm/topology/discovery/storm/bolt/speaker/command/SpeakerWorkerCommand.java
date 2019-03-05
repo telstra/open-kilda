@@ -15,13 +15,12 @@
 
 package org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command;
 
-import org.openkilda.wfm.topology.discovery.service.ISpeakerWorkerCarrier;
-import org.openkilda.wfm.topology.discovery.storm.ICommand;
+import org.openkilda.wfm.topology.discovery.storm.IHandlerCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerWorker;
 
 import lombok.Getter;
 
-public abstract class SpeakerWorkerCommand implements ICommand<SpeakerWorker, ISpeakerWorkerCarrier> {
+public abstract class SpeakerWorkerCommand implements IHandlerCommand<SpeakerWorker> {
     @Getter
     private final String key;
 
@@ -29,10 +28,7 @@ public abstract class SpeakerWorkerCommand implements ICommand<SpeakerWorker, IS
         this.key = key;
     }
 
-    @Override
-    public void apply(SpeakerWorker service, ISpeakerWorkerCarrier carrier) {
-        this.apply(service);
+    public void timeout(SpeakerWorker handler) {
+        // command that can produce timeout response should implement this method
     }
-
-    public abstract void apply(SpeakerWorker service);
 }

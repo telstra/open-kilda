@@ -194,8 +194,10 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
     private void uniIslHandler(TopologyBuilder topology, int scaleFactor) {
         UniIslHandler bolt = new UniIslHandler();
         Fields portGrouping = new Fields(PortHandler.FIELD_ID_DATAPATH, PortHandler.FIELD_ID_PORT_NUMBER);
+        Fields bfdPortGrouping = new Fields(BfdPortHandler.FIELD_ID_DATAPATH, BfdPortHandler.FIELD_ID_PORT_NUMBER);
         topology.setBolt(UniIslHandler.BOLT_ID, bolt, scaleFactor)
-                .fieldsGrouping(PortHandler.BOLT_ID, portGrouping);
+                .fieldsGrouping(PortHandler.BOLT_ID, portGrouping)
+                .fieldsGrouping(BfdPortHandler.BOLT_ID, BfdPortHandler.STREAM_UNIISL_ID, bfdPortGrouping);
     }
 
     private void islHandler(TopologyBuilder topology, int scaleFactor) {

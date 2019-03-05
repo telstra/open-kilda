@@ -27,7 +27,11 @@ public class SpeakerBfdSessionSetupCommand extends SpeakerWorkerCommand {
     }
 
     @Override
-    public void apply(SpeakerWorker service) {
-        service.setupBfdSession(getKey(), bfdSession);
+    public void apply(SpeakerWorker handler) {
+        handler.processBfdSetupRequest(getKey(), bfdSession);
+    }
+
+    public void timeout(SpeakerWorker handler) {
+        handler.timeoutBfdRequest(getKey(), bfdSession);
     }
 }

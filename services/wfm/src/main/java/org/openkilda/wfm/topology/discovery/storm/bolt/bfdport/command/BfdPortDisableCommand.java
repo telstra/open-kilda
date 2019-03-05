@@ -17,8 +17,7 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryBfdPortService;
-import org.openkilda.wfm.topology.discovery.service.IBfdPortCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.BfdPortHandler;
 
 public class BfdPortDisableCommand extends BfdPortCommand {
     private final IslReference reference;
@@ -29,7 +28,7 @@ public class BfdPortDisableCommand extends BfdPortCommand {
     }
 
     @Override
-    public void apply(DiscoveryBfdPortService service, IBfdPortCarrier carrier) {
-        service.handleDisableRequest(carrier, getEndpoint(), reference);
+    public void apply(BfdPortHandler handler) {
+        handler.processDisable(getEndpoint(), reference);
     }
 }

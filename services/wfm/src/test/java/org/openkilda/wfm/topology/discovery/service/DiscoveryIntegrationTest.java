@@ -25,7 +25,6 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
-import org.openkilda.wfm.share.hubandspoke.TaskIdBasedKeyFactory;
 import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 
 import com.google.common.collect.ImmutableList;
@@ -133,7 +132,7 @@ public class DiscoveryIntegrationTest {
     public void setUp() throws Exception {
         switchService = new DiscoverySwitchService(null, persistenceManager, options.getBfdLogicalPortOffset());
         portService = new DiscoveryPortService(null);
-        bfdPortService = new DiscoveryBfdPortService(persistenceManager, new TaskIdBasedKeyFactory(0));
+        bfdPortService = new DiscoveryBfdPortService(integrationCarrier, persistenceManager);
         uniIslService = new DiscoveryUniIslService(null);
         islService = new DiscoveryIslService(persistenceManager, options);
 

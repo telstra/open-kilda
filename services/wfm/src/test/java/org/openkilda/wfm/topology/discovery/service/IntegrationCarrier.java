@@ -60,12 +60,12 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
 
     @Override
     public void bfdEnableRequest(Endpoint physicalEndpoint, IslReference reference) {
-        bfdPortService.handleEnableRequest(bfdPortCarrier, physicalEndpoint, reference);
+        bfdPortService.enable(physicalEndpoint, reference);
     }
 
     @Override
     public void bfdDisableRequest(Endpoint physicalEndpoint, IslReference reference) {
-        bfdPortService.handleDisableRequest(bfdPortCarrier, physicalEndpoint, reference);
+        bfdPortService.disable(physicalEndpoint, reference);
     }
 
     @Override
@@ -103,8 +103,26 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
         uniIslService.uniIslRemove(endpoint);
     }
 
-    public void setupBfdSession(String requestKey, NoviBfdSession bfdSession) {
+    @Override
+    public String setupBfdSession(NoviBfdSession bfdSession) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
+        return "dummy";
+    }
+
+    @Override
+    public String removeBfdSession(NoviBfdSession bfdSession) {
+        // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
+        return "dummy";
+    }
+
+    @Override
+    public void bfdUpNotification(Endpoint physicalEndpoint) {
+        uniIslService.uniIslBfdUpDown(physicalEndpoint, true);
+    }
+
+    @Override
+    public void bfdDownNotification(Endpoint physicalEndpoint) {
+        uniIslService.uniIslBfdUpDown(physicalEndpoint, false);
     }
 
     @Override
@@ -129,22 +147,22 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
 
     @Override
     public void setupBfdPortHandler(BfdPortFacts portFacts) {
-        bfdPortService.setup(bfdPortCarrier, portFacts);
+        bfdPortService.setup(portFacts);
     }
 
     @Override
     public void removeBfdPortHandler(Endpoint logicalEndpoint) {
-        bfdPortService.remove(bfdPortCarrier, logicalEndpoint);
+        bfdPortService.remove(logicalEndpoint);
     }
 
     @Override
     public void setBfdPortLinkMode(Endpoint logicalEndpoint, LinkStatus linkStatus) {
-        bfdPortService.updateLinkStatus(bfdPortCarrier, logicalEndpoint, linkStatus);
+        bfdPortService.updateLinkStatus(logicalEndpoint, linkStatus);
     }
 
     @Override
     public void setBfdPortOnlineMode(Endpoint endpoint, boolean mode) {
-        bfdPortService.updateOnlineMode(bfdPortCarrier, endpoint, mode);
+        bfdPortService.updateOnlineMode(endpoint, mode);
     }
 
     @Override

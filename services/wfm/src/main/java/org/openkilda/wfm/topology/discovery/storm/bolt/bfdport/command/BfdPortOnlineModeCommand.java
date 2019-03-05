@@ -16,8 +16,7 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryBfdPortService;
-import org.openkilda.wfm.topology.discovery.service.IBfdPortCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.BfdPortHandler;
 
 public class BfdPortOnlineModeCommand extends BfdPortCommand {
     private final boolean mode;
@@ -28,7 +27,7 @@ public class BfdPortOnlineModeCommand extends BfdPortCommand {
     }
 
     @Override
-    public void apply(DiscoveryBfdPortService service, IBfdPortCarrier carrier) {
-        service.updateOnlineMode(carrier, getEndpoint(), mode);
+    public void apply(BfdPortHandler handler) {
+        handler.processOnlineModeUpdate(getEndpoint(), mode);
     }
 }

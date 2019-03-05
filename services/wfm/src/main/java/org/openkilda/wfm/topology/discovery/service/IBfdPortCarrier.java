@@ -16,7 +16,14 @@
 package org.openkilda.wfm.topology.discovery.service;
 
 import org.openkilda.messaging.model.NoviBfdSession;
+import org.openkilda.wfm.topology.discovery.model.Endpoint;
 
 public interface IBfdPortCarrier {
-    void setupBfdSession(String requestKey, NoviBfdSession bfdSession);
+    String setupBfdSession(NoviBfdSession bfdSession);
+
+    String removeBfdSession(NoviBfdSession bfdSession);
+
+    void bfdUpNotification(Endpoint physicalEndpoint);
+
+    void bfdDownNotification(Endpoint physicalEndpoint);
 }

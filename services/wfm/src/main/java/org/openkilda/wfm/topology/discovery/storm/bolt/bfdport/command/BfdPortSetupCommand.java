@@ -16,8 +16,7 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command;
 
 import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryBfdPortService;
-import org.openkilda.wfm.topology.discovery.service.IBfdPortCarrier;
+import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.BfdPortHandler;
 
 public class BfdPortSetupCommand extends BfdPortCommand {
     private final BfdPortFacts portFacts;
@@ -28,7 +27,7 @@ public class BfdPortSetupCommand extends BfdPortCommand {
     }
 
     @Override
-    public void apply(DiscoveryBfdPortService service, IBfdPortCarrier carrier) {
-        service.setup(carrier, portFacts);
+    public void apply(BfdPortHandler handler) {
+        handler.processSetup(portFacts);
     }
 }

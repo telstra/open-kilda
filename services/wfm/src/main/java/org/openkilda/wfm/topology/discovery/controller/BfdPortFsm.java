@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.discovery.controller;
 
+import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.messaging.model.SwitchReference;
 import org.openkilda.model.BfdPort;
@@ -23,12 +24,13 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.BfdPortRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.wfm.share.hubandspoke.IKeyFactory;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.error.SwitchReferenceLookupException;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
+import org.openkilda.wfm.topology.discovery.model.LinkStatus;
 import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
 import org.openkilda.wfm.topology.discovery.service.IBfdPortCarrier;
 
@@ -36,6 +38,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.squirrelframework.foundation.fsm.Condition;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
@@ -49,20 +52,23 @@ import java.util.Random;
 public final class BfdPortFsm extends
         AbstractStateMachine<BfdPortFsm, BfdPortFsm.BfdPortFsmState, BfdPortFsm.BfdPortFsmEvent,
                 BfdPortFsm.BfdPortFsmContext> {
-    private static final int BFD_UDP_PRT = 3784;
+    private static final int BFD_UDP_PORT = 3784;
     private static int bfdPollInterval = 350;  // TODO: use config option
     private static short bfdFailCycleLimit = 3;  // TODO: use config option
 
-    private final PersistenceManager persistenceManager;
-    private final BfdPortFacts portFacts;
+    private final SwitchRepository switchRepository;
+    private final BfdPortRepository bfdPortRepository;
 
     @Getter
     private final Endpoint physicalEndpoint;
     @Getter
     private final Endpoint logicalEndpoint;
 
+    private LinkStatus linkStatus;
+
+    private String pendingRequestKey;
+    private SwitchId remoteDatapath = null;
     private Integer discriminator = null;
-    private boolean upStatus = false;
 
     private static final StateMachineBuilder<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> builder;
 
@@ -87,34 +93,43 @@ public final class BfdPortFsm extends
 
         // IDLE
         builder.transition()
-                .from(BfdPortFsmState.INIT).to(BfdPortFsmState.INSTALLING).on(BfdPortFsmEvent.BI_ISL_UP);
+                .from(BfdPortFsmState.INIT).to(BfdPortFsmState.INSTALLING).on(BfdPortFsmEvent.ENABLE);
         builder.transition()
                 .from(BfdPortFsmState.INIT).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.PORT_UP);
+        builder.onEntry(BfdPortFsmState.INIT)
+                .callMethod("initEnter");
 
         // INSTALLING
         builder.transition()
-                .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.UP).on(BfdPortFsmEvent.PORT_UP);
+                .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.ACTIVE).on(BfdPortFsmEvent.PORT_UP);
         builder.transition()
-                .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.SPEAKER_FAIL);
+                .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.SPEAKER_FAIL)
+                .when(new ResponseKeyValidator())
+                .callMethod("reportSpeakerFailure");
         builder.transition()
-                .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.SPEAKER_TIMEOUT);
+                .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.DISABLE);
+        builder.transition()
+                .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.BI_ISL_MOVE);
+        builder.transition()
+                .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.FAIL);
         builder.onEntry(BfdPortFsmState.INSTALLING)
                 .callMethod("installingEnter");
 
         // CLEANING
         builder.transition()
                 .from(BfdPortFsmState.CLEANING).to(BfdPortFsmState.CLEANING_CHOICE).on(BfdPortFsmEvent.SPEAKER_SUCCESS)
+                .when(new ResponseKeyValidator())
                 .callMethod("releaseResources");
         builder.transition()
-                .from(BfdPortFsmState.CLEANING).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.SPEAKER_FAIL);
-        builder.transition()
-                .from(BfdPortFsmState.CLEANING).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.SPEAKER_TIMEOUT);
+                .from(BfdPortFsmState.CLEANING).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.SPEAKER_FAIL)
+                .when(new ResponseKeyValidator())
+                .callMethod("reportSpeakerFailure");
         builder.internalTransition().within(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.PORT_UP)
-                .callMethod("cleaningUpdateUpStatus");
+                .callMethod("cleaningUpdateLinkStatus");
         builder.internalTransition().within(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.PORT_DOWN)
-                .callMethod("cleaningUpdateUpStatus");
+                .callMethod("cleaningUpdateLinkStatus");
         builder.onEntry(BfdPortFsmState.CLEANING)
-                .callMethod("handleCleaning");
+                .callMethod("cleaningEnter");
 
         // CLEANING_CHOICE
         builder.transition()
@@ -132,25 +147,39 @@ public final class BfdPortFsm extends
         builder.onExit(BfdPortFsmState.WAIT_RELEASE)
                 .callMethod("waitReleaseExit");
 
+        // ACTIVE
+        builder.transition()
+                .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.DISABLE);
+        builder.transition()
+                .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.BI_ISL_MOVE);
+        builder.transition()
+                .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.KILL).on(BfdPortFsmEvent.KILL);
+        builder.defineSequentialStatesOn(
+                BfdPortFsmState.ACTIVE,
+                BfdPortFsmState.UP, BfdPortFsmState.DOWN);
+
         // UP
         builder.transition()
                 .from(BfdPortFsmState.UP).to(BfdPortFsmState.DOWN).on(BfdPortFsmEvent.PORT_DOWN);
-        builder.transition()
-                .from(BfdPortFsmState.UP).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.BI_ISL_MOVE);
         builder.onEntry(BfdPortFsmState.UP)
                 .callMethod("upEnter");
 
         // DOWN
         builder.transition()
                 .from(BfdPortFsmState.DOWN).to(BfdPortFsmState.UP).on(BfdPortFsmEvent.PORT_UP);
-        builder.transition()
-                .from(BfdPortFsmState.DOWN).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.BI_ISL_MOVE);
         builder.onEntry(BfdPortFsmState.DOWN)
                 .callMethod("downEnter");
 
         // FAIL
         builder.transition()
-                .from(BfdPortFsmState.FAIL).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.PORT_DOWN);
+                .from(BfdPortFsmState.FAIL).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.PORT_DOWN)
+                .callMethod("failEnter");
+
+        // STOP
+        builder.onEntry(BfdPortFsmState.KILL)
+                .callMethod("stopEnter");
+
+        builder.defineFinalState(BfdPortFsmState.KILL);
     }
 
     public static FsmExecutor<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> makeExecutor() {
@@ -162,21 +191,28 @@ public final class BfdPortFsm extends
     }
 
     public BfdPortFsm(PersistenceManager persistenceManager, BfdPortFacts portFacts) {
-        this.persistenceManager = persistenceManager;
-        this.portFacts = portFacts;
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        this.switchRepository = repositoryFactory.createSwitchRepository();
+        this.bfdPortRepository = repositoryFactory.createBfdPortRepository();
+
         this.logicalEndpoint = portFacts.getEndpoint();
         this.physicalEndpoint = Endpoint.of(logicalEndpoint.getDatapath(), portFacts.getPhysicalPortNumber());
+        this.linkStatus = portFacts.getLinkStatus();
     }
 
     // -- FSM actions --
 
     protected void consumeHistory(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                BfdPortFsmContext context) {
-        this.discriminator = context.getDiscriminator();
+                                  BfdPortFsmContext context) {
+        Optional<BfdPort> port = loadBfdPort();
+        port.ifPresent(bfdPort -> {
+            remoteDatapath = bfdPort.getRemoteSwitchId();
+            discriminator = bfdPort.getDiscriminator();
+        });
     }
 
     protected void handleInitChoice(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                  BfdPortFsmContext context) {
+                                    BfdPortFsmContext context) {
         if (discriminator == null) {
             fire(BfdPortFsmEvent._INIT_CHOICE_CLEAN, context);
         } else {
@@ -184,56 +220,51 @@ public final class BfdPortFsm extends
         }
     }
 
+    protected void initEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                             BfdPortFsmContext context) {
+        log.info("BFD port {}(physical-port:{}) is for setup requests",
+                 logicalEndpoint, physicalEndpoint.getPortNumber());
+    }
+
     protected void installingEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                 BfdPortFsmContext context) {
+                                   BfdPortFsmContext context) {
+        Endpoint remoteEndpoint = context.getIslReference().getOpposite(getPhysicalEndpoint());
+        remoteDatapath = remoteEndpoint.getDatapath();
+
         allocateDiscriminator();
-
-        Endpoint remoteEndpoint = locateRemoteEndpoint(context.getIslReference());
         try {
-            SwitchReference localSwitchReference = makeSwitchReference(physicalEndpoint.getDatapath());
-            SwitchReference remoteSwitchReference = makeSwitchReference(remoteEndpoint.getDatapath());
-
-            NoviBfdSession bfdSession = NoviBfdSession.builder()
-                    .target(localSwitchReference)
-                    .remote(remoteSwitchReference)
-                    .physicalPortNumber(physicalEndpoint.getPortNumber())
-                    .logicalPortNumber(logicalEndpoint.getPortNumber())
-                    .udpPortNumber(BFD_UDP_PRT)
-                    .discriminator(discriminator)
-                    .intervalMs(bfdPollInterval)
-                    .multiplier(bfdFailCycleLimit)
-                    .keepOverDisconnect(true)
-                    .build();
-            String requestKey = context.getRequestKeyFactory().next();
-            context.getOutput().setupBfdSession(requestKey, bfdSession);
+            pendingRequestKey = context.getOutput().setupBfdSession(makeBfdSessionRecord());
         } catch (SwitchReferenceLookupException e) {
-            log.error("{}", e.getMessage());
+            log.error("Can't make BFD-session setup request - {}", e.getMessage());
             fire(BfdPortFsmEvent.FAIL, context);
         }
     }
 
     protected void releaseResources(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                  BfdPortFsmContext context) {
-        BfdPortRepository repository = persistenceManager.getRepositoryFactory()
-                .createBfdPortRepository();
-        repository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber())
-                .ifPresent(repository::delete);
+                                    BfdPortFsmContext context) {
+        bfdPortRepository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber())
+                .ifPresent(bfdPortRepository::delete);
         discriminator = null;
     }
 
-    protected void handleCleaning(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                BfdPortFsmContext context) {
-        // TODO emit FL-BFD-producer remove
+    protected void cleaningEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                  BfdPortFsmContext context) {
+        try {
+            pendingRequestKey = context.getOutput().removeBfdSession(makeBfdSessionRecord());
+        } catch (SwitchReferenceLookupException e) {
+            log.error("Can't make BFD-session remove request - {}", e.getMessage());
+            fire(BfdPortFsmEvent.FAIL, context);
+        }
     }
 
-    protected void cleaningUpdateUpStatus(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                        BfdPortFsmContext context) {
+    protected void cleaningUpdateLinkStatus(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                          BfdPortFsmContext context) {
         switch (event) {
             case PORT_UP:
-                upStatus = true;
+                linkStatus = LinkStatus.UP;
                 break;
             case PORT_DOWN:
-                upStatus = false;
+                linkStatus = LinkStatus.DOWN;
                 break;
             default:
                 throw new IllegalStateException(String.format("Unable to handle event %s into %s",
@@ -242,39 +273,85 @@ public final class BfdPortFsm extends
     }
 
     protected void handleCleaningChoice(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                      BfdPortFsmContext context) {
-        if (upStatus) {
+                                        BfdPortFsmContext context) {
+        if (linkStatus == LinkStatus.UP) {
             fire(BfdPortFsmEvent._CLEANING_CHOICE_HOLD, context);
         } else {
             fire(BfdPortFsmEvent._CLEANING_CHOICE_READY, context);
         }
     }
 
-    protected void waitReleaseExit(BfdPortFsmState from,  BfdPortFsmState to, BfdPortFsmEvent event,
-                                 BfdPortFsmContext context) {
-        upStatus = false;
+    protected void waitReleaseExit(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                   BfdPortFsmContext context) {
+        linkStatus = LinkStatus.DOWN;
     }
 
     protected void upEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
-        // TODO emit bfd-up
-        upStatus = true;
+        linkStatus = LinkStatus.UP;
+        context.getOutput().bfdUpNotification(physicalEndpoint);
     }
 
     protected void downEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                              BfdPortFsmContext context) {
-        // TODO emit bfd-down
-        upStatus = false;
+        linkStatus = LinkStatus.DOWN;
+        context.getOutput().bfdDownNotification(physicalEndpoint);
+    }
+
+    protected void failEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                             BfdPortFsmContext context) {
+        log.error("BFD port {}(physical-port:{}) is marked as FAILED, it can't process any request at this moment",
+                  logicalEndpoint, physicalEndpoint.getPortNumber());
+    }
+
+    protected void stopEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                             BfdPortFsmContext context) {
+        // TODO
+    }
+
+    protected void reportSpeakerFailure(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                        BfdPortFsmContext context) {
+
+        String prefix;
+        if (from == BfdPortFsmState.INSTALLING) {
+            prefix = "Got speaker error for BFD-session setup request";
+        } else if (from == BfdPortFsmState.CLEANING) {
+            prefix = "Got speaker error for BFD-session remove request";
+        } else {
+            prefix = "Got speaker error";
+        }
+
+        BfdSessionResponse response = context.getBfdSessionResponse();
+        if (response == null) {
+            log.error("{} - no response (timeout)", prefix);
+        } else if (response.getErrorCode() != null) {
+            log.error("{} - error {}", prefix, response.getErrorCode());
+        } else {
+            log.error("{} - there is no error code in speaker response, can't provide any details regarding happen"
+                              + " error", prefix);
+        }
     }
 
     // -- private/service methods --
 
+    private NoviBfdSession makeBfdSessionRecord() throws SwitchReferenceLookupException {
+        SwitchReference localSwitchReference = makeSwitchReference(physicalEndpoint.getDatapath());
+        SwitchReference remoteSwitchReference = makeSwitchReference(remoteDatapath);
+
+        return NoviBfdSession.builder()
+                .target(localSwitchReference)
+                .remote(remoteSwitchReference)
+                .physicalPortNumber(physicalEndpoint.getPortNumber())
+                .logicalPortNumber(logicalEndpoint.getPortNumber())
+                .udpPortNumber(BFD_UDP_PORT)
+                .discriminator(discriminator)
+                .intervalMs(bfdPollInterval)
+                .multiplier(bfdFailCycleLimit)
+                .keepOverDisconnect(true)
+                .build();
+    }
+
     private void allocateDiscriminator() {
-
-        BfdPortRepository bfdPortRepository = persistenceManager.getRepositoryFactory()
-                .createBfdPortRepository();
-
-        Optional<BfdPort> foundPort = bfdPortRepository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(),
-                logicalEndpoint.getPortNumber());
+        Optional<BfdPort> foundPort = loadBfdPort();
 
         if (foundPort.isPresent()) {
             this.discriminator = foundPort.get().getDiscriminator();
@@ -282,6 +359,7 @@ public final class BfdPortFsm extends
             Random random = new Random();
             BfdPort bfdPort = new BfdPort();
             bfdPort.setSwitchId(logicalEndpoint.getDatapath());
+            bfdPort.setRemoteSwitchId(remoteDatapath);
             bfdPort.setPort(logicalEndpoint.getPortNumber());
             boolean success = false;
             while (!success) {
@@ -297,27 +375,13 @@ public final class BfdPortFsm extends
         }
     }
 
-    private Endpoint locateRemoteEndpoint(IslReference islReference) {
-        Endpoint remote;
-
-        if (physicalEndpoint.equals(islReference.getSource())) {
-            remote = islReference.getDest();
-        } else if (physicalEndpoint.equals(islReference.getDest())) {
-            remote = islReference.getSource();
-        } else {
-            throw new IllegalArgumentException(String.format(
-                    "Isl reference %s does not refer for physical endpoint %s", islReference, physicalEndpoint));
-        }
-
-        return remote;
+    private Optional<BfdPort> loadBfdPort() {
+        return bfdPortRepository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber());
     }
 
     private SwitchReference makeSwitchReference(SwitchId datapath) throws SwitchReferenceLookupException {
-        SwitchRepository switchRepository = persistenceManager.getRepositoryFactory()
-                .createSwitchRepository();
-
         Optional<Switch> potentialSw = switchRepository.findById(datapath);
-        if (! potentialSw.isPresent()) {
+        if (!potentialSw.isPresent()) {
             throw new SwitchReferenceLookupException(datapath, "persistent record is missing");
         }
         Switch sw = potentialSw.get();
@@ -333,21 +397,41 @@ public final class BfdPortFsm extends
         return new SwitchReference(datapath, address);
     }
 
+    private static class ResponseKeyValidator implements Condition<BfdPortFsmContext> {
+        @Override
+        public boolean isSatisfied(BfdPortFsmContext context) {
+            BfdPortFsm fsm = context.getFsm();
+            String requestKey = context.getRequestKey();
+            if (requestKey != null) {
+                return requestKey.equals(fsm.pendingRequestKey);
+            }
+            return false;
+        }
+
+        @Override
+        public String name() {
+            return "ensureResponseIsActual";
+        }
+    }
+
     @Value
     @Builder
     public static class BfdPortFsmContext {
+        private final BfdPortFsm fsm;  // required for conditions to access FSM fields
         private final IBfdPortCarrier output;
-
-        private IKeyFactory requestKeyFactory;
-
-        private BfdPortFacts portFacts;
 
         private IslReference islReference;
 
-        private Integer discriminator;
+        private String requestKey;
+        private BfdSessionResponse bfdSessionResponse;
 
-        public static BfdPortFsmContextBuilder builder(IBfdPortCarrier outputAdapter) {
-            return (new BfdPortFsmContextBuilder()).output(outputAdapter);
+        /**
+         * Builder.
+         */
+        public static BfdPortFsmContextBuilder builder(BfdPortFsm fsm, IBfdPortCarrier outputAdapter) {
+            return (new BfdPortFsmContextBuilder())
+                    .fsm(fsm)
+                    .output(outputAdapter);
         }
     }
 
@@ -355,10 +439,11 @@ public final class BfdPortFsm extends
         NEXT, KILL, FAIL,
 
         HISTORY,
-        BI_ISL_UP, BI_ISL_MOVE,
+        ENABLE, DISABLE,
+        BI_ISL_MOVE,
         PORT_UP, PORT_DOWN,
 
-        SPEAKER_SUCCESS, SPEAKER_FAIL, SPEAKER_TIMEOUT,
+        SPEAKER_SUCCESS, SPEAKER_FAIL,
 
         _INIT_CHOICE_CLEAN, _INIT_CHOICE_DIRTY,
         _CLEANING_CHOICE_READY, _CLEANING_CHOICE_HOLD
@@ -370,12 +455,13 @@ public final class BfdPortFsm extends
         IDLE,
 
         INSTALLING,
-        UP, DOWN,
+        ACTIVE, UP, DOWN,
 
         CLEANING,
         CLEANING_CHOICE,
         WAIT_RELEASE,
 
-        FAIL
+        FAIL,
+        KILL
     }
 }

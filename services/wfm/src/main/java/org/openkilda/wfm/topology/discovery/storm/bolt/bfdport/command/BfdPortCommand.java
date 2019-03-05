@@ -15,18 +15,27 @@
 
 package org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command;
 
+import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
+import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.service.DiscoveryBfdPortService;
-import org.openkilda.wfm.topology.discovery.service.IBfdPortCarrier;
-import org.openkilda.wfm.topology.discovery.storm.ICommand;
+import org.openkilda.wfm.topology.discovery.storm.IHandlerCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.BfdPortHandler;
 
 import lombok.Getter;
 
-public abstract class BfdPortCommand implements ICommand<DiscoveryBfdPortService, IBfdPortCarrier> {
+public abstract class BfdPortCommand implements IHandlerCommand<BfdPortHandler> {
     @Getter
     private final Endpoint endpoint;
 
     public BfdPortCommand(Endpoint endpoint) {
         this.endpoint = endpoint;
+    }
+
+    protected static Endpoint extractEndpoint(BfdSessionResponse response) {
+        return extractEndpoint(response.getBfdSession());
+    }
+
+    protected static Endpoint extractEndpoint(NoviBfdSession session) {
+        return Endpoint.of(session.getTarget().getDatapath(), session.getLogicalPortNumber());
     }
 }

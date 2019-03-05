@@ -20,6 +20,6 @@ import org.openkilda.wfm.error.SwitchNotFoundException;
 
 public class SwitchReferenceLookupException extends SwitchNotFoundException {
     public SwitchReferenceLookupException(SwitchId switchId, String reason) {
-        super(String.format("Unable to make reference for switch %s - %s", switchId, reason));
+        super(String.format("Unable to make switch reference for %s - %s", switchId, reason));
     }
 }
