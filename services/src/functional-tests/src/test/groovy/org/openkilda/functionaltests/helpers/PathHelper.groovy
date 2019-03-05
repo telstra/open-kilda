@@ -119,23 +119,25 @@ class PathHelper {
             pathNodes << new PathNode(pathEntry.switchId, pathEntry.outputPort, 0)
         }
         def seqId = 0
-        pathNodes = pathNodes.dropRight(1).tail() //remove first and last elements (not used in PathNode view)
+        if (pathNodes.size() > 2) {
+            pathNodes = pathNodes.dropRight(1).tail() //remove first and last elements (not used in PathNode view)
+        }
         pathNodes.each { it.seqId = seqId++ } //set valid seqId indexes
         return pathNodes
     }
 
     /**
-     * Get list of Switches involved in given path.
+     * Get list of switches involved in a given path.
      */
     List<Switch> getInvolvedSwitches(List<PathNode> path) {
         return (List<Switch>) getInvolvedIsls(path).collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique()
     }
 
     /**
-     * Get list of Switches involved in an existing/UP flow
+     * Get list of switches involved in an existing flow.
      */
     List<Switch> getInvolvedSwitches(String flowId) {
-        return topology.switches.findAll { it.dpId in northbound.getFlowPath(flowId).forwardPath*.switchId }
+        return getInvolvedSwitches(convert(northbound.getFlowPath(flowId)))
     }
 
     /**

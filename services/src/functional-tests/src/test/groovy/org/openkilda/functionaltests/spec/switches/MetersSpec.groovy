@@ -8,6 +8,7 @@ import static spock.util.matcher.HamcrestSupport.expect
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.meter.MeterEntry
+import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.info.rule.SwitchFlowEntries
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.Constants
@@ -109,7 +110,7 @@ class MetersSpec extends BaseSpecification {
             assert meters.meterEntries.every { Math.abs(it.rate - (DISCO_PKT_RATE * DISCO_PKT_SIZE) / 1024L) <= 1 }
             //unable to use #getExpectedBurst. For Centects there's special burst due to KBPS
             assert meters.meterEntries.every { it.burstSize == (long) ((DISCO_PKT_BURST * DISCO_PKT_SIZE) / 1024) }
-            assert meters.meterEntries.every { it.meterId <= MAX_SYSTEM_RULE_METER_ID }
+            assert meters.meterEntries.every(defaultMeters)
             assert meters.meterEntries.every { ["KBPS", "BURST", "STATS"].containsAll(it.flags) }
             assert meters.meterEntries.every { it.flags.size() == 3 }
 
@@ -129,7 +130,7 @@ class MetersSpec extends BaseSpecification {
             assert meters.meterEntries.size() == 2
             assert meters.meterEntries.every { it.rate == DISCO_PKT_RATE }
             assert meters.meterEntries.every { it.burstSize == getExpectedBurst(sw.dpId, DISCO_PKT_RATE) }
-            assert meters.meterEntries.every { it.meterId <= MAX_SYSTEM_RULE_METER_ID }
+            assert meters.meterEntries.every(defaultMeters)
             assert meters.meterEntries.every { ["PKTPS", "BURST", "STATS"].containsAll(it.flags) }
             assert meters.meterEntries.every { it.flags.size() == 3 }
         }
@@ -208,6 +209,64 @@ on a #switchType switch"() {
         switchType   | switches
         "Centec"     | getCentecSwitches()
         "non-Centec" | getNonCentecSwitches()
+    }
+
+    @Unroll
+    def "Source/destination switches have meters only in flow ingress rule and intermediate switches don't have \
+meters in flow rules at all (#flowType flow)"() {
+        assumeTrue("Unable to find required switches in topology", switches.size() > 1)
+
+        given: "Two active not neighboring switches (#flowType)"
+        def allLinks = northbound.getAllLinks()
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            allLinks.every { link -> !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId) } &&
+                    (flowType == "Centec-nonCentec" ? (src.centec && !dst.centec) || (!src.centec && dst.centec) : true)
+        } ?: assumeTrue("No suiting switch pair with intermediate switch found", false)
+
+        when: "Create a flow between these switches"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flowHelper.addFlow(flow)
+
+        then: "The source and destination switches have only one meter in the flow's ingress rule"
+        def srcSwFlowMeters = northbound.getAllMeters(srcSwitch.dpId).meterEntries.findAll(flowMeters)
+        def dstSwFlowMeters = northbound.getAllMeters(dstSwitch.dpId).meterEntries.findAll(flowMeters)
+
+        srcSwFlowMeters.size() == 1
+        dstSwFlowMeters.size() == 1
+
+        def srcSwitchRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries
+        def dstSwitchRules = northbound.getSwitchRules(dstSwitch.dpId).flowEntries
+        def srcSwFlowIngressRule = filterRules(srcSwitchRules, flow.source.portNumber, flow.source.vlanId, null)[0]
+        def dstSwFlowIngressRule = filterRules(dstSwitchRules, flow.destination.portNumber, flow.destination.vlanId,
+                null)[0]
+
+        srcSwFlowMeters[0].meterId == srcSwFlowIngressRule.instructions.goToMeter
+        dstSwFlowMeters[0].meterId == dstSwFlowIngressRule.instructions.goToMeter
+
+        and: "The source and destination switches have no meters in the flow's egress rule"
+        def srcSwFlowEgressRule = filterRules(srcSwitchRules, null, null, flow.source.portNumber)[0]
+        def dstSwFlowEgressRule = filterRules(dstSwitchRules, null, null, flow.destination.portNumber)[0]
+
+        !srcSwFlowEgressRule.instructions.goToMeter
+        !dstSwFlowEgressRule.instructions.goToMeter
+
+        and: "Intermediate switches don't have meters in flow rules at all"
+        pathHelper.getInvolvedSwitches(flow.id)[1..-2].each { sw ->
+            assert northbound.getAllMeters(sw.dpId).meterEntries.findAll(flowMeters).empty
+
+            def flowRules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll { !(it.cookie in sw.defaultCookies) }
+            flowRules.each { assert !it.instructions.goToMeter }
+        }
+
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+
+        where:
+        flowType              | switches
+        "Centec-Centec"       | getCentecSwitches()
+        "nonCentec-nonCentec" | getNonCentecSwitches()
+        "Centec-nonCentec"    | getCentecSwitches() + getNonCentecSwitches()
     }
 
     @Unroll
@@ -325,8 +384,6 @@ on a #switchType switch"() {
         Map<SwitchId, List<MeterEntry>> originalMeters = [src.dpId, dst.dpId].collectEntries {
             [(it): northbound.getAllMeters(it).meterEntries]
         }
-        def defaultMeters = { it.meterId < MAX_SYSTEM_RULE_METER_ID }
-        def flowMeters = { it.meterId >= MAX_SYSTEM_RULE_METER_ID }
 
         when: "Ask system to reset meters for the flow"
         def response = northbound.resetMeters(flow.id)
@@ -375,11 +432,11 @@ on a #switchType switch"() {
                         switches   : nonCentecSwitches
                 ],
                 [
-                        description: "centec-centec",
+                        description: "Centec-Centec",
                         switches   : centecSwitches
                 ],
                 [
-                        description: "centec-nonCentec",
+                        description: "Centec-nonCentec",
                         switches   : !centecSwitches.empty && !nonCentecSwitches.empty ?
                                 [centecSwitches[0], nonCentecSwitches[0]] : []
                 ]
@@ -439,7 +496,7 @@ on a #switchType switch"() {
     }
 
     @Memoized
-    def getSwitchDescription(SwitchId sw) {
+    String getSwitchDescription(SwitchId sw) {
         northbound.activeSwitches.find { it.switchId == sw }.description
     }
 
@@ -452,4 +509,22 @@ on a #switchType switch"() {
     List<Switch> getCentecSwitches() {
         topology.getActiveSwitches().findAll { it.centec }
     }
+
+    List<FlowEntry> filterRules(List<FlowEntry> rules, inPort, inVlan, outPort) {
+        if (inPort) {
+            rules = rules.findAll { it.match.inPort == inPort.toString() }
+        }
+        if (inVlan) {
+            rules = rules.findAll { it.match.vlanVid == inVlan.toString() }
+        }
+        if (outPort) {
+            rules = rules.findAll { it.instructions?.applyActions?.flowOutput == outPort.toString() }
+        }
+
+        return rules
+    }
+
+    def defaultMeters = { it.meterId <= MAX_SYSTEM_RULE_METER_ID }
+
+    def flowMeters = { it.meterId > MAX_SYSTEM_RULE_METER_ID }
 }
