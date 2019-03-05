@@ -1077,6 +1077,7 @@ public class FlowService extends BaseFlowService {
 
     private List<CommandGroup> createInstallRulesGroups(FlowPathsWithEncapsulation pathsToInstall) {
         List<CommandGroup> commandGroups = new ArrayList<>();
+        Flow flow = pathsToInstall.getFlow();
 
         //TODO: hard-coded encapsulation will be removed in Flow H&S
         TransitVlan forwardTransitVlan = mapTransitVlan(pathsToInstall.getForwardEncapsulation());
