@@ -101,6 +101,27 @@ public class Flow implements Serializable {
     @Transient
     private FlowPath reversePath;
 
+    @Property(name = "allocate_protected_path")
+    private boolean allocateProtectedPath;
+
+    // No setter as protectedForwardPath must be used for this.
+    @Property(name = "protected_forward_path_id")
+    @Convert(graphPropertyType = String.class)
+    @Setter(AccessLevel.NONE)
+    private PathId protectedForwardPathId;
+
+    // No setter as protectedReversePath must be used for this.
+    @Property(name = "protected_reverse_path_id")
+    @Convert(graphPropertyType = String.class)
+    @Setter(AccessLevel.NONE)
+    private PathId protectedReversePathId;
+
+    @Transient
+    private FlowPath protectedForwardPath;
+
+    @Transient
+    private FlowPath protectedReversePath;
+
     @Property(name = "group_id")
     private String groupId;
 
@@ -140,10 +161,10 @@ public class Flow implements Serializable {
 
     @Builder(toBuilder = true)
     public Flow(@NonNull String flowId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
-                int srcPort, int srcVlan, int destPort, int destVlan,
-                FlowPath forwardPath, FlowPath reversePath,
+                int srcPort, int srcVlan, int destPort, int destVlan, FlowPath forwardPath, FlowPath reversePath,
+                FlowPath protectedForwardPath, FlowPath protectedReversePath,
                 String groupId, long bandwidth, boolean ignoreBandwidth, String description, boolean periodicPings,
-                FlowEncapsulationType encapsulationType, FlowStatus status,
+                boolean allocateProtectedPath, FlowEncapsulationType encapsulationType, FlowStatus status,
                 Integer maxLatency, Integer priority,
                 Instant timeCreate, Instant timeModify) {
         this.flowId = flowId;
@@ -155,11 +176,14 @@ public class Flow implements Serializable {
         this.destVlan = destVlan;
         setForwardPath(forwardPath);
         setReversePath(reversePath);
+        setProtectedForwardPath(protectedForwardPath);
+        setProtectedReversePath(protectedReversePath);
         this.groupId = groupId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
         this.description = description;
         this.periodicPings = periodicPings;
+        this.allocateProtectedPath = allocateProtectedPath;
         this.encapsulationType = encapsulationType;
         this.status = status;
         this.maxLatency = maxLatency;
@@ -195,6 +219,19 @@ public class Flow implements Serializable {
         }
     }
 
+    /**
+     * Set the protected forward path.
+     */
+    public final void setProtectedForwardPath(FlowPath forwardPath) {
+        if (forwardPath != null) {
+            this.protectedForwardPath = validateForwardPath(forwardPath);
+            this.protectedForwardPathId = forwardPath.getPathId();
+        } else {
+            this.protectedForwardPath = null;
+            this.protectedForwardPathId = null;
+        }
+    }
+
     private FlowPath validateForwardPath(FlowPath path) {
         validatePath(path);
 
@@ -219,6 +256,19 @@ public class Flow implements Serializable {
         } else {
             this.reversePath = null;
             this.reversePathId = null;
+        }
+    }
+
+    /**
+     * Set the protected reverse path.
+     */
+    public final void setProtectedReversePath(FlowPath reversePath) {
+        if (reversePath != null) {
+            this.protectedReversePath = validateReversePath(reversePath);
+            this.protectedReversePathId = reversePath.getPathId();
+        } else {
+            this.protectedReversePath = null;
+            this.protectedReversePathId = null;
         }
     }
 

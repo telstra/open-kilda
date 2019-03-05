@@ -56,13 +56,6 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
     }
 
     @Override
-    public Collection<FlowPair> findByGroupId(String flowGroupId) {
-        return flowRepository.findByGroupId(flowGroupId).stream()
-                .map(this::toFlowPair)
-                .collect(Collectors.toList());
-    }
-
-    @Override
     public Collection<FlowPair> findWithPeriodicPingsEnabled() {
         return flowRepository.findWithPeriodicPingsEnabled().stream()
                 .map(this::toFlowPair)

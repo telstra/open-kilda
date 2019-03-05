@@ -173,13 +173,21 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
             requireManagedEntity(flow.getSrcSwitch());
             requireManagedEntity(flow.getDestSwitch());
 
-            flowPathRepository.lockInvolvedSwitches(flow.getForwardPath(), flow.getReversePath());
+            flowPathRepository.lockInvolvedSwitches(flow.getForwardPath(), flow.getReversePath(),
+                    flow.getProtectedForwardPath(), flow.getProtectedReversePath());
 
             if (flow.getForwardPath() != null) {
                 flowPathRepository.createOrUpdate(flow.getForwardPath());
             }
             if (flow.getReversePath() != null) {
                 flowPathRepository.createOrUpdate(flow.getReversePath());
+            }
+
+            if (flow.getProtectedForwardPath() != null) {
+                flowPathRepository.createOrUpdate(flow.getProtectedForwardPath());
+            }
+            if (flow.getProtectedReversePath() != null) {
+                flowPathRepository.createOrUpdate(flow.getProtectedReversePath());
             }
 
             super.createOrUpdate(flow);
@@ -253,6 +261,8 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     private Flow completeWithPaths(Flow flow) {
         flow.setForwardPath(flowPathRepository.findById(flow.getForwardPathId()).orElse(null));
         flow.setReversePath(flowPathRepository.findById(flow.getReversePathId()).orElse(null));
+        flow.setProtectedForwardPath(flowPathRepository.findById(flow.getProtectedForwardPathId()).orElse(null));
+        flow.setProtectedReversePath(flowPathRepository.findById(flow.getProtectedReversePathId()).orElse(null));
         return flow;
     }
 

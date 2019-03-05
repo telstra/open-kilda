@@ -120,10 +120,14 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     }
 
     @Override
-    public Collection<FlowPath> findByEndpointSwitch(SwitchId switchId) {
+    public Collection<FlowPath> findByEndpointSwitchForRules(SwitchId switchId) {
         Map<String, Object> parameters = ImmutableMap.of("switch_id", switchId.toString());
         String query = "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
-                + "WHERE src.name = $switch_id or dst.name = $switch_id "
+                + "MATCH (:switch)-[f:flow]->(:switch) "
+                + "WHERE ((src.name = $switch_id and "
+                // ingress only for primary path
+                + "(f.forward_path_id = fp.path_id or f.reverse_path_id = fp.path_id)) "
+                + "or dst.name = $switch_id) "
                 + "RETURN src, fp, dst";
 
         Collection<FlowPath> paths = Lists.newArrayList(getSession().query(FlowPath.class, query, parameters));

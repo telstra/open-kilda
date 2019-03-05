@@ -13,27 +13,28 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.nbtopology.response;
-
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.model.FlowPathDto;
+package org.openkilda.messaging.payload.flow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
 
-/**
- * Represents a flow path northbound response.
- */
-@Value
-public class GetFlowPathResponse extends InfoData {
-    private static final long serialVersionUID = 1L;
+@Data
+@EqualsAndHashCode(callSuper = false)
+public class FlowPathSwapPayload {
 
-    @JsonProperty("payload")
-    protected FlowPathDto payload;
+    @JsonProperty("flow_id")
+    protected String flowId;
+
+    @JsonProperty("path_id")
+    protected String pathId;
 
     @JsonCreator
-    public GetFlowPathResponse(@JsonProperty("payload") FlowPathDto payload) {
-        this.payload = payload;
+    public FlowPathSwapPayload(@NonNull @JsonProperty("flow_id") String flowId,
+                               @JsonProperty("path_id") String pathId) {
+        this.flowId = flowId;
+        this.pathId = pathId;
     }
 }

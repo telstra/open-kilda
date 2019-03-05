@@ -104,6 +104,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.PUSH.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.UNPUSH.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.REROUTE.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.PATH_SWAP.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.METER_MODE.toString(), fieldFlowId)
                 // TODO: this CACHE_SYNC shouldn't be fields-grouping - there is no field - it should be all - but
                 // tackle during multi instance testing

@@ -33,8 +33,6 @@ public interface FlowPairRepository extends Repository<FlowPair> {
 
     Optional<FlowPair> findById(String flowId);
 
-    Collection<FlowPair> findByGroupId(String flowGroupId);
-
     Collection<FlowPair> findWithPeriodicPingsEnabled();
 
     Collection<FlowPair> findByEndpoint(SwitchId switchId, int port);

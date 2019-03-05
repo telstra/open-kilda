@@ -24,6 +24,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
+import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
@@ -47,6 +48,8 @@ import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.FlowPathDto;
+import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
@@ -54,6 +57,8 @@ import org.openkilda.messaging.payload.flow.DiverseGroupPayload;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
+import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath;
+import org.openkilda.messaging.payload.flow.FlowPathSwapPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -64,6 +69,7 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.northbound.converter.FlowMapper;
+import org.openkilda.northbound.converter.PathMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
@@ -97,6 +103,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 
@@ -143,6 +150,9 @@ public class FlowServiceImpl implements FlowService {
 
     @Autowired
     private FlowMapper flowMapper;
+
+    @Autowired
+    private PathMapper pathMapper;
 
     /**
      * Used to get switch rules.
@@ -366,24 +376,47 @@ public class FlowServiceImpl implements FlowService {
                 .thenApply(respList -> buildFlowPathPayload(respList, id));
     }
 
-    private FlowPathPayload buildFlowPathPayload(List<GroupFlowPathPayload> paths, String flowId) {
-        GroupFlowPathPayload flowPathPayload = paths.stream().filter(e -> e.getId().equals(flowId)).findAny().get();
-        // fill main flow path
+    private FlowPathPayload buildFlowPathPayload(List<FlowPathDto> paths, String flowId) {
+        FlowPathDto askedPathDto = paths.stream().filter(e -> e.getId().equals(flowId)).findAny().get();
+        // fill primary flow path
         FlowPathPayload payload = new FlowPathPayload();
-        payload.setId(flowPathPayload.getId());
-        payload.setForwardPath(flowPathPayload.getForwardPath());
-        payload.setReversePath(flowPathPayload.getReversePath());
+        payload.setId(askedPathDto.getId());
+        payload.setForwardPath(askedPathDto.getForwardPath());
+        payload.setReversePath(askedPathDto.getReversePath());
+
+        if (askedPathDto.getProtectedPath() != null) {
+            FlowProtectedPathDto protectedPath = askedPathDto.getProtectedPath();
+
+            payload.setProtectedPath(FlowProtectedPath.builder()
+                    .forwardPath(protectedPath.getForwardPath())
+                    .reversePath(protectedPath.getReversePath())
+                    .build());
+        }
 
         // fill group paths
         if (paths.size() > 1) {
-            DiverseGroupPayload groupPayload = new DiverseGroupPayload();
-            groupPayload.setOverlappingSegments(flowPathPayload.getSegmentsStats());
-            groupPayload.setOtherFlows(
-                    paths.stream().filter(e -> !e.getId().equals(flowId)).collect(Collectors.toList()));
+            payload.setDiverseGroupPayload(DiverseGroupPayload.builder()
+                    .overlappingSegments(askedPathDto.getSegmentsStats())
+                    .otherFlows(mapGroupPaths(paths, flowId, FlowPathDto::isPrimaryPathCorrespondStat))
+                    .build());
 
-            payload.setDiverseGroupPayload(groupPayload);
+            if (askedPathDto.getProtectedPath() != null) {
+                payload.setDiverseGroupProtectedPayload(DiverseGroupPayload.builder()
+                        .overlappingSegments(askedPathDto.getProtectedPath().getSegmentsStats())
+                        .otherFlows(mapGroupPaths(paths, flowId, e -> !e.isPrimaryPathCorrespondStat()))
+                        .build());
+            }
         }
         return payload;
+    }
+
+    private List<GroupFlowPathPayload> mapGroupPaths(
+            List<FlowPathDto> paths, String flowId, Predicate<FlowPathDto> predicate) {
+        return paths.stream()
+                .filter(e -> !e.getId().equals(flowId))
+                .filter(predicate)
+                .map(pathMapper::mapGroupFlowPathPayload)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -470,6 +503,24 @@ public class FlowServiceImpl implements FlowService {
             logger.debug("Returned: {}", batchResults);
             return batchResults;
         });
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<FlowPayload> swapFlowPaths(FlowPathSwapPayload input) {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.info("Swapping paths for flow : {}", input.getFlowId());
+
+        FlowPathSwapRequest payload = new FlowPathSwapRequest(input.getFlowId(), input.getPathId());
+        CommandMessage request = new CommandMessage(
+                payload, System.currentTimeMillis(), correlationId, Destination.WFM);
+
+        return messagingChannel.sendAndGet(topic, request)
+                .thenApply(FlowResponse.class::cast)
+                .thenApply(FlowResponse::getPayload)
+                .thenApply(flowMapper::toFlowOutput);
     }
 
     /**

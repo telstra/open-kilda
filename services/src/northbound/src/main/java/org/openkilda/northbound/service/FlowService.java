@@ -20,6 +20,7 @@ import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
+import org.openkilda.messaging.payload.flow.FlowPathSwapPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
@@ -138,6 +139,14 @@ public interface FlowService {
      * @return updated flow path information with the result whether or not path was changed.
      */
     CompletableFuture<FlowReroutePayload> rerouteFlow(final String flowId);
+
+    /**
+     * Performs flow paths swapping for flow with protected path.
+     *
+     * @param payload payload of flow to swap paths.
+     * @return flow payload.
+     */
+    CompletableFuture<FlowPayload> swapFlowPaths(final FlowPathSwapPayload payload);
 
     /**
      * Performs synchronization (reinstalling) of specific flow.

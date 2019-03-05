@@ -15,18 +15,24 @@
 
 package org.openkilda.persistence.repositories.impl;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.Cookie;
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import org.junit.Before;
@@ -37,6 +43,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.UUID;
 
 public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
@@ -44,6 +51,7 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
 
     static FlowPathRepository flowPathRepository;
+    static FlowRepository flowRepository;
     static SwitchRepository switchRepository;
 
     private Switch switchA;
@@ -52,6 +60,7 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
     @BeforeClass
     public static void setUp() {
         flowPathRepository = new Neo4jFlowPathRepository(neo4jSessionFactory, txManager);
+        flowRepository = new Neo4jFlowRepository(neo4jSessionFactory, txManager);
         switchRepository = new Neo4jSwitchRepository(neo4jSessionFactory, txManager);
     }
 
@@ -109,9 +118,38 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
         assertTrue(foundPath.isPresent());
     }
 
+    @Test
+    public void shouldFindByEndpointSwitchForRules() {
+        FlowPath primaryForward = buildTestFlowPath(TEST_FLOW_ID, switchA, switchB);
+        FlowPath primaryReverse = buildTestFlowPath(TEST_FLOW_ID, switchB, switchA);
+
+        flowPathRepository.createOrUpdate(primaryForward);
+        flowPathRepository.createOrUpdate(primaryReverse);
+        flowRepository.createOrUpdate(buildFlow(TEST_FLOW_ID, switchA, switchB, primaryForward, primaryReverse, null));
+
+        Collection<FlowPath> paths = flowPathRepository.findByEndpointSwitchForRules(switchA.getSwitchId());
+        assertThat(paths, containsInAnyOrder(primaryForward, primaryReverse));
+    }
+
+    @Test
+    public void shouldNotFindProtectedIngressByEndpointSwitchForRules() {
+        FlowPath primaryForward = buildTestFlowPath(TEST_FLOW_ID, switchA, switchB);
+        FlowPath primaryReverse = buildTestFlowPath(TEST_FLOW_ID, switchB, switchA);
+        FlowPath protect = buildTestFlowPath(TEST_FLOW_ID, switchA, switchB);
+
+        flowPathRepository.createOrUpdate(primaryForward);
+        flowPathRepository.createOrUpdate(primaryReverse);
+        flowPathRepository.createOrUpdate(protect);
+        flowRepository.createOrUpdate(
+                buildFlow(TEST_FLOW_ID, switchA, switchB, primaryForward, primaryReverse, protect));
+
+        Collection<FlowPath> paths = flowPathRepository.findByEndpointSwitchForRules(switchA.getSwitchId());
+        assertThat(paths, containsInAnyOrder(primaryForward, primaryReverse));
+    }
+
     private FlowPath buildTestFlowPath(String flowId, Switch srcSwitch, Switch destSwitch) {
         return FlowPath.builder()
-                .pathId(new PathId(flowId + "_path"))
+                .pathId(new PathId(UUID.randomUUID().toString()))
                 .flowId(flowId)
                 .cookie(new Cookie(1))
                 .meterId(new MeterId(1))
@@ -119,6 +157,24 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
                 .destSwitch(destSwitch)
                 .status(FlowPathStatus.ACTIVE)
                 .segments(Collections.emptyList())
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
+    }
+
+    private Flow buildFlow(String flowId, Switch srcSwitch, Switch destSwitch, FlowPath primaryForward,
+                           FlowPath primaryReverse, FlowPath protect) {
+        return Flow.builder()
+                .flowId(flowId)
+                .srcSwitch(srcSwitch)
+                .srcPort(1)
+                .destSwitch(destSwitch)
+                .destPort(2)
+                .forwardPath(primaryForward)
+                .reversePath(primaryReverse)
+                .protectedForwardPath(protect)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .status(FlowStatus.UP)
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
                 .build();

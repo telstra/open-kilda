@@ -16,6 +16,8 @@
 package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.info.network.Path;
+import org.openkilda.messaging.model.FlowPathDto;
+import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.northbound.dto.network.PathDto;
 
 import org.mapstruct.Mapper;
@@ -26,4 +28,8 @@ public interface PathMapper {
     default PathDto mapToPath(Path data) {
         return new PathDto(data.getBandwidth(), data.getLatency(), data.getEdges());
     }
+
+    GroupFlowPathPayload mapGroupFlowPathPayload(FlowPathDto data);
+
+    GroupFlowPathPayload.FlowProtectedPathPayload mapFlowProtectedPathPayload(FlowPathDto.FlowProtectedPathDto data);
 }

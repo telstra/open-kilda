@@ -222,6 +222,7 @@ public abstract class FlowMapper {
                 .bandwidth(flow.getBandwidth())
                 .ignoreBandwidth(flow.isIgnoreBandwidth())
                 .periodicPings(flow.isPeriodicPings())
+                .allocateProtectedPath(flow.isAllocateProtectedPath())
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .maxLatency(flow.getMaxLatency())
                 .priority(flow.getPriority())

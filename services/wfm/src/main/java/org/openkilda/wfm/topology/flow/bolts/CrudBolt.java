@@ -26,6 +26,7 @@ import org.openkilda.messaging.command.flow.BatchFlowCommandsRequest;
 import org.openkilda.messaging.command.flow.FlowCommandGroup;
 import org.openkilda.messaging.command.flow.FlowCommandGroup.FailureReaction;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
+import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
@@ -54,9 +55,10 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.pce.AvailableNetworkFactory;
@@ -77,21 +79,21 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
-import org.openkilda.wfm.topology.flow.model.FlowPairWithSegments;
-import org.openkilda.wfm.topology.flow.model.UpdatedFlowPairWithSegments;
+import org.openkilda.wfm.topology.flow.model.UpdatedFlow;
+import org.openkilda.wfm.topology.flow.model.UpdatedFlowPair;
 import org.openkilda.wfm.topology.flow.service.FeatureToggle;
 import org.openkilda.wfm.topology.flow.service.FeatureTogglesService;
 import org.openkilda.wfm.topology.flow.service.FlowAlreadyExistException;
 import org.openkilda.wfm.topology.flow.service.FlowCommandFactory;
 import org.openkilda.wfm.topology.flow.service.FlowCommandSender;
 import org.openkilda.wfm.topology.flow.service.FlowService;
-import org.openkilda.wfm.topology.flow.service.FlowService.ReroutedFlow;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -172,7 +174,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         AvailableNetworkFactory availableNetworkFactory =
                 new AvailableNetworkFactory(pathComputerConfig, repositoryFactory);
         pathComputerFactory = new PathComputerFactory(pathComputerConfig, availableNetworkFactory);
-        commandFactory = new FlowCommandFactory();
+        commandFactory = new FlowCommandFactory(repositoryFactory);
 
         flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         flowService = new FlowService(persistenceManager, pathComputerFactory, flowResourcesManager, flowValidator);
@@ -227,6 +229,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                             break;
                         case REROUTE:
                             handleRerouteRequest(cmsg, tuple);
+                            break;
+                        case PATH_SWAP:
+                            handlePathSwapRequest(cmsg, tuple);
                             break;
                         case CACHE_SYNC:
                             handleCacheSyncRequest(cmsg, tuple);
@@ -315,9 +320,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             flowService.saveFlow(flow,
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.CREATE) {
                         @Override
-                        public void sendInstallRulesCommand(FlowPairWithSegments flowWithSegments) {
+                        public void sendInstallRulesCommand(Flow flow) {
                             if (fid.getOperation() == FlowOperation.PUSH_PROPAGATE) {
-                                super.sendInstallRulesCommand(flowWithSegments);
+                                super.sendInstallRulesCommand(flow);
                             }
                         }
                     });
@@ -350,9 +355,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             FlowPair deletedFlow = flowService.deleteFlow(flowId,
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.DELETE) {
                         @Override
-                        public void sendRemoveRulesCommand(FlowPairWithSegments flowWithSegments) {
+                        public void sendRemoveRulesCommand(Flow flow) {
                             if (fid.getOperation() == FlowOperation.UNPUSH_PROPAGATE) {
-                                super.sendRemoveRulesCommand(flowWithSegments);
+                                super.sendRemoveRulesCommand(flow);
                             }
                         }
                     });
@@ -442,7 +447,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         final String errorType = "Could not reroute flow";
 
         try {
-            ReroutedFlow reroutedFlow = flowService.rerouteFlow(flowId, request.isForce(),
+            UpdatedFlowPair reroutedFlow = flowService.rerouteFlow(flowId, request.isForce(),
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             if (reroutedFlow.getNewFlow() != null) {
@@ -472,6 +477,28 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                     ErrorType.NOT_FOUND, errorType, "Path was not found");
         } catch (Exception e) {
             logger.error("Unexpected error", e);
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
+        }
+    }
+
+    private void handlePathSwapRequest(CommandMessage message, Tuple tuple) {
+        final String errorType = "Could not swap paths";
+
+        FlowPathSwapRequest request = (FlowPathSwapRequest) message.getData();
+        final String flowId = request.getFlowId();
+
+        try {
+            FlowPair flowPair = flowService.pathSwap(flowId, request.getPathId(),
+                    new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.UPDATE));
+
+            Values values = new Values(new InfoMessage(buildFlowResponse(flowPair.getForward()),
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
+            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_FOUND, errorType, e.getMessage());
+        } catch (Exception e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
         }
@@ -644,85 +671,106 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         }
 
         @Override
-        public void sendInstallRulesCommand(FlowPairWithSegments flowWithSegments) {
-            List<FlowCommandGroup> commandGroups = createInstallGroups(flowWithSegments.getFlowPair(),
-                    flowWithSegments.getForwardSegments(), flowWithSegments.getReverseSegments());
-            sendRulesCommand(flowWithSegments.getFlowPair().getForward().getFlowId(), commandGroups);
+        public void sendSwapIngressCommand(Flow flow) {
+            Preconditions.checkArgument(flow.isAllocateProtectedPath());
+            List<FlowCommandGroup> commandGroups = new ArrayList<>();
+
+            // new primary path
+            commandGroups.add(createInstallIngressRules(flow, flow.getForwardPath()));
+            commandGroups.add(createInstallIngressRules(flow, flow.getReversePath()));
+
+            // old primary became protected
+            commandGroups.add(createRemoveIngressRules(flow, flow.getProtectedForwardPath()));
+            commandGroups.add(createRemoveIngressRules(flow, flow.getProtectedReversePath()));
+
+            sendRulesCommand(flow.getFlowId(), commandGroups);
         }
 
         @Override
-        public void sendUpdateRulesCommand(UpdatedFlowPairWithSegments flowWithSegments) {
-            List<FlowCommandGroup> commandGroups = new ArrayList<>();
-
-            commandGroups.addAll(createInstallGroups(flowWithSegments.getFlowPair(),
-                    flowWithSegments.getForwardSegments(), flowWithSegments.getReverseSegments()));
-
-            commandGroups.addAll(createRemoveGroups(flowWithSegments.getOldFlowPair(),
-                    flowWithSegments.getOldForwardSegments(), flowWithSegments.getOldReverseSegments()));
-
-            sendRulesCommand(flowWithSegments.getFlowPair().getForward().getFlowId(), commandGroups);
+        public void sendInstallRulesCommand(Flow flow) {
+            List<FlowCommandGroup> commandGroups = createInstallGroups(flow);
+            sendRulesCommand(flow.getFlowId(), commandGroups);
         }
 
         @Override
-        public void sendRemoveRulesCommand(FlowPairWithSegments flowWithSegments) {
-            List<FlowCommandGroup> commandGroups = createRemoveGroups(flowWithSegments.getFlowPair(),
-                    flowWithSegments.getForwardSegments(), flowWithSegments.getReverseSegments());
-            sendRulesCommand(flowWithSegments.getFlowPair().getForward().getFlowId(), commandGroups);
-        }
-
-        private List<FlowCommandGroup> createInstallGroups(FlowPair flow,
-                                                           List<PathSegment> forwardSegments,
-                                                           List<PathSegment> reverseSegments) {
+        public void sendUpdateRulesCommand(UpdatedFlow updatedFlow) {
             List<FlowCommandGroup> commandGroups = new ArrayList<>();
 
-            createInstallTransitAndEgressRules(flow.getForward(), forwardSegments)
+            commandGroups.addAll(createInstallGroups(updatedFlow.getNewFlow()));
+
+            commandGroups.addAll(createRemoveGroups(updatedFlow.getOldFlow()));
+
+            sendRulesCommand(updatedFlow.getNewFlow().getFlowId(), commandGroups);
+        }
+
+        @Override
+        public void sendRemoveRulesCommand(Flow flow) {
+            List<FlowCommandGroup> commandGroups = createRemoveGroups(flow);
+            sendRulesCommand(flow.getFlowId(), commandGroups);
+        }
+
+        private List<FlowCommandGroup> createInstallGroups(Flow flow) {
+            List<FlowCommandGroup> commandGroups = new ArrayList<>();
+
+            createInstallTransitAndEgressRules(flow, flow.getForwardPath())
                     .ifPresent(commandGroups::add);
-            createInstallTransitAndEgressRules(flow.getReverse(), reverseSegments)
+            createInstallTransitAndEgressRules(flow, flow.getReversePath())
                     .ifPresent(commandGroups::add);
+
+            if (flow.isAllocateProtectedPath()) {
+                createInstallTransitAndEgressRules(flow, flow.getProtectedForwardPath())
+                        .ifPresent(commandGroups::add);
+                createInstallTransitAndEgressRules(flow, flow.getProtectedReversePath())
+                        .ifPresent(commandGroups::add);
+            }
+
             // The ingress rule must be installed after the egress and transit ones.
-            commandGroups.add(createInstallIngressRules(flow.getForward(), forwardSegments));
-            commandGroups.add(createInstallIngressRules(flow.getReverse(), reverseSegments));
+            commandGroups.add(createInstallIngressRules(flow, flow.getForwardPath()));
+            commandGroups.add(createInstallIngressRules(flow, flow.getReversePath()));
 
             return commandGroups;
         }
 
-        private Optional<FlowCommandGroup> createInstallTransitAndEgressRules(UnidirectionalFlow flow,
-                                                                              List<PathSegment> segments) {
-            List<InstallTransitFlow> rules = commandFactory.createInstallTransitAndEgressRulesForFlow(flow, segments);
+        private Optional<FlowCommandGroup> createInstallTransitAndEgressRules(Flow flow, FlowPath path) {
+            List<InstallTransitFlow> rules = commandFactory.createInstallTransitAndEgressRulesForFlow(flow, path);
             return !rules.isEmpty() ? Optional.of(new FlowCommandGroup(rules, FailureReaction.ABORT_FLOW))
                     : Optional.empty();
         }
 
-        private FlowCommandGroup createInstallIngressRules(UnidirectionalFlow flow, List<PathSegment> segments) {
+        private FlowCommandGroup createInstallIngressRules(Flow flow, FlowPath path) {
             return new FlowCommandGroup(Collections.singletonList(
-                    commandFactory.createInstallIngressRulesForFlow(flow, segments)), FailureReaction.ABORT_FLOW);
+                    commandFactory.createInstallIngressRulesForFlow(flow, path)), FailureReaction.ABORT_FLOW);
         }
 
-        private List<FlowCommandGroup> createRemoveGroups(FlowPair flow,
-                                                          List<PathSegment> forwardSegments,
-                                                          List<PathSegment> reverseSegments) {
+        private List<FlowCommandGroup> createRemoveGroups(Flow flow) {
             List<FlowCommandGroup> commandGroups = new ArrayList<>();
 
-            commandGroups.add(createRemoveIngressRules(flow.getForward(), forwardSegments));
-            commandGroups.add(createRemoveIngressRules(flow.getReverse(), reverseSegments));
-            createRemoveTransitAndEgressRules(flow.getForward(), forwardSegments)
+            commandGroups.add(createRemoveIngressRules(flow, flow.getForwardPath()));
+            commandGroups.add(createRemoveIngressRules(flow, flow.getReversePath()));
+            createRemoveTransitAndEgressRules(flow, flow.getForwardPath())
                     .ifPresent(commandGroups::add);
-            createRemoveTransitAndEgressRules(flow.getReverse(), reverseSegments)
+            createRemoveTransitAndEgressRules(flow, flow.getReversePath())
                     .ifPresent(commandGroups::add);
+
+            if (flow.isAllocateProtectedPath()) {
+                createRemoveTransitAndEgressRules(flow, flow.getProtectedForwardPath())
+                        .ifPresent(commandGroups::add);
+                createRemoveTransitAndEgressRules(flow, flow.getProtectedReversePath())
+                        .ifPresent(commandGroups::add);
+            }
 
             return commandGroups;
         }
 
-        private Optional<FlowCommandGroup> createRemoveTransitAndEgressRules(UnidirectionalFlow flow,
-                                                                             List<PathSegment> segments) {
-            List<RemoveFlow> rules = commandFactory.createRemoveTransitAndEgressRulesForFlow(flow, segments);
+        private Optional<FlowCommandGroup> createRemoveTransitAndEgressRules(Flow flow, FlowPath path) {
+            List<RemoveFlow> rules = commandFactory.createRemoveTransitAndEgressRulesForFlow(flow, path);
             return !rules.isEmpty() ? Optional.of(new FlowCommandGroup(rules, FailureReaction.IGNORE))
                     : Optional.empty();
         }
 
-        private FlowCommandGroup createRemoveIngressRules(UnidirectionalFlow flow, List<PathSegment> segments) {
+        private FlowCommandGroup createRemoveIngressRules(Flow flow, FlowPath path) {
             return new FlowCommandGroup(Collections.singletonList(
-                    commandFactory.createRemoveIngressRulesForFlow(flow, segments)), FailureReaction.IGNORE);
+                    commandFactory.createRemoveIngressRulesForFlow(flow, path)), FailureReaction.IGNORE);
         }
 
         private void sendRulesCommand(String flowId, List<FlowCommandGroup> commandGroups) {

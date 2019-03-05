@@ -15,22 +15,27 @@
 
 package org.openkilda.wfm.topology.flow.service;
 
-import org.openkilda.wfm.topology.flow.model.FlowPairWithSegments;
-import org.openkilda.wfm.topology.flow.model.UpdatedFlowPairWithSegments;
+import org.openkilda.model.Flow;
+import org.openkilda.wfm.topology.flow.model.UpdatedFlow;
 
 public interface FlowCommandSender {
     /**
-     * Constructs and sends the install rule commands for the given flow pair.
+     * Constructs and sends the install rule commands for the given flow.
      */
-    void sendInstallRulesCommand(FlowPairWithSegments flowPair);
+    void sendInstallRulesCommand(Flow flow);
 
     /**
-     * Constructs and sends the update (or install + delete) rule commands for the given flow pair.
+     * Constructs and sends the update (or install + delete) rule commands for the given flow.
      */
-    void sendUpdateRulesCommand(UpdatedFlowPairWithSegments flowPair);
+    void sendUpdateRulesCommand(UpdatedFlow updatedFlow);
 
     /**
-     * Constructs and sends the remove rule commands for the given flow pair.
+     * Constructs and sends the remove rule commands for the given flow.
      */
-    void sendRemoveRulesCommand(FlowPairWithSegments flowPair);
+    void sendRemoveRulesCommand(Flow flow);
+
+    /**
+     * Constructs and sends commands for swapping ingress to protected flow path.
+     */
+    void sendSwapIngressCommand(Flow flow);
 }

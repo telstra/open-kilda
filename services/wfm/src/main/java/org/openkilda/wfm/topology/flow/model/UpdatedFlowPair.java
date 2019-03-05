@@ -16,17 +16,12 @@
 package org.openkilda.wfm.topology.flow.model;
 
 import org.openkilda.model.FlowPair;
-import org.openkilda.model.PathSegment;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Value;
 
-import java.util.List;
-
-@Getter
-@AllArgsConstructor
-public class FlowPairWithSegments {
-    FlowPair flowPair;
-    List<PathSegment> forwardSegments;
-    List<PathSegment> reverseSegments;
+@Value
+@Deprecated
+public class UpdatedFlowPair {
+    FlowPair oldFlow;
+    FlowPair newFlow;
 }

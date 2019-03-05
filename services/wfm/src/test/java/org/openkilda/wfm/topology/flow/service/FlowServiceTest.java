@@ -45,7 +45,7 @@ import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
-import org.openkilda.wfm.topology.flow.service.FlowService.ReroutedFlow;
+import org.openkilda.wfm.topology.flow.model.UpdatedFlowPair;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
@@ -165,7 +165,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
 
         when(pathComputer.getPath(any(), eq(true))).thenReturn(PATH_1_TO_3_VIA_2);
 
-        ReroutedFlow reroutedFlow = flowService.rerouteFlow(flowId, true, mock(FlowCommandSender.class));
+        UpdatedFlowPair reroutedFlow = flowService.rerouteFlow(flowId, true, mock(FlowCommandSender.class));
         assertNotNull(reroutedFlow);
         checkSamePaths(PATH_1_TO_3_VIA_2.getForward(), reroutedFlow.getNewFlow().getForward().getFlowPath());
 
