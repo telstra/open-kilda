@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flow.service;
 import static java.util.Objects.requireNonNull;
 import static org.apache.commons.collections4.ListUtils.union;
 
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
@@ -35,6 +36,7 @@ import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.topology.flow.model.FlowPairWithSegments;
 import org.openkilda.wfm.topology.flow.model.UpdatedFlowPairWithSegments;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
@@ -82,15 +84,22 @@ public class FlowService extends BaseFlowService {
      * The flow is created with IN_PROGRESS status.
      *
      * @param flow   the flow to be created.
+     * @param diverseFlowId the flow id to build diverse group.
      * @param sender the command sender for flow rules installation.
      * @return the created flow with the path and resources set.
      */
-    public FlowPair createFlow(Flow flow, FlowCommandSender sender) throws RecoverableException,
-            UnroutableFlowException, FlowAlreadyExistException, FlowValidationException, SwitchValidationException {
+    public FlowPair createFlow(Flow flow, String diverseFlowId, FlowCommandSender sender) throws RecoverableException,
+            UnroutableFlowException, FlowAlreadyExistException, FlowValidationException, SwitchValidationException,
+            FlowNotFoundException {
         flowValidator.validate(flow);
 
         if (doesFlowExist(flow.getFlowId())) {
             throw new FlowAlreadyExistException(flow.getFlowId());
+        }
+
+        if (diverseFlowId != null) {
+            checkDiverseFlow(flow, diverseFlowId);
+            flow.setGroupId(getOrCreateFlowGroupId(diverseFlowId));
         }
 
         // TODO: the strategy is defined either per flow or system-wide.
@@ -103,6 +112,7 @@ public class FlowService extends BaseFlowService {
 
         FlowPairWithSegments result = transactionManager.doInTransaction(() -> {
             FlowPair flowPair = flowResourcesManager.allocateFlow(buildFlowPair(flow, pathPair));
+            flowPair.setTimeCreate(Instant.now());
 
             List<FlowSegment> forwardSegments = buildFlowSegments(flowPair.getForward());
             List<FlowSegment> reverseSegments = buildFlowSegments(flowPair.getReverse());
@@ -152,6 +162,8 @@ public class FlowService extends BaseFlowService {
             forward.setDestSwitch(switchRepository.reload(forward.getDestSwitch()));
             reverse.setSrcSwitch(switchRepository.reload(reverse.getSrcSwitch()));
             reverse.setDestSwitch(switchRepository.reload(reverse.getDestSwitch()));
+
+            flowPair.setTimeCreate(Instant.now());
 
             flowRepository.createOrUpdate(flowPair);
             createFlowSegments(flowSegments);
@@ -208,36 +220,40 @@ public class FlowService extends BaseFlowService {
      * <p/>
      * The updated flow has IN_PROGRESS status.
      *
-     * @param flowId  the flow to be replaced.
-     * @param newFlow the flow to be applied.
-     * @param sender  the command sender for flow rules installation and deletion.
+     * @param updatingFlow  the flow to be updated.
+     * @param diverseFlowId the flow id to build diverse group.
+     * @param sender        the command sender for flow rules installation and deletion.
      * @return the updated flow with the path and resources set.
      */
-    public FlowPair updateFlow(String flowId, Flow newFlow, FlowCommandSender sender) throws RecoverableException,
-            UnroutableFlowException, FlowNotFoundException, FlowValidationException, SwitchValidationException {
-        flowValidator.validate(newFlow);
+    public FlowPair updateFlow(Flow updatingFlow, String diverseFlowId, FlowCommandSender sender)
+            throws RecoverableException, UnroutableFlowException, FlowNotFoundException, FlowValidationException,
+            SwitchValidationException {
+        flowValidator.validate(updatingFlow);
 
-        // TODO: the strategy is defined either per flow or system-wide.
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair pathPair = pathComputer.getPath(newFlow, true);
-
-        newFlow.setStatus(FlowStatus.IN_PROGRESS);
+        updatingFlow.setStatus(FlowStatus.IN_PROGRESS);
 
         UpdatedFlowPairWithSegments result = transactionManager.doInTransaction(() -> {
-            Optional<FlowPair> foundFlowPair = getFlowPair(flowId);
-            if (!foundFlowPair.isPresent()) {
-                return Optional.<UpdatedFlowPairWithSegments>empty();
+            FlowPair currentFlow = getFlowPair(updatingFlow.getFlowId())
+                    .orElseThrow(() -> new FlowNotFoundException(updatingFlow.getFlowId()));
+
+            if (diverseFlowId == null) {
+                updatingFlow.setGroupId(null);
+            } else {
+                checkDiverseFlow(updatingFlow, diverseFlowId);
+                updatingFlow.setGroupId(getOrCreateFlowGroupId(diverseFlowId));
             }
 
-            FlowPair currentFlow = foundFlowPair.get();
+            PathComputer pathComputer = pathComputerFactory.getPathComputer();
+            PathPair pathPair = pathComputer.getPath(updatingFlow, true);
 
             List<FlowSegment> forwardSegments = getFlowSegments(currentFlow.getForward());
             List<FlowSegment> reverseSegments = getFlowSegments(currentFlow.getReverse());
             List<FlowSegment> flowSegments = union(forwardSegments, reverseSegments);
 
-            log.info("Updating the flow with {} and path: {}", newFlow, pathPair);
+            log.info("Updating the flow with {} and path: {}", updatingFlow, pathPair);
 
-            FlowPair newFlowWithResources = flowResourcesManager.allocateFlow(buildFlowPair(newFlow, pathPair));
+            FlowPair newFlowWithResources = flowResourcesManager.allocateFlow(buildFlowPair(updatingFlow, pathPair));
+            newFlowWithResources.setTimeCreate(currentFlow.getForward().getTimeCreate());
 
             List<FlowSegment> newForwardSegments = buildFlowSegments(newFlowWithResources.getForward());
             List<FlowSegment> newReverseSegments = buildFlowSegments(newFlowWithResources.getReverse());
@@ -253,11 +269,11 @@ public class FlowService extends BaseFlowService {
 
             flowResourcesManager.deallocateFlow(currentFlow);
 
-            return Optional.of(UpdatedFlowPairWithSegments.builder()
+            return UpdatedFlowPairWithSegments.builder()
                     .oldFlowPair(currentFlow).oldForwardSegments(forwardSegments).oldReverseSegments(reverseSegments)
                     .flowPair(newFlowWithResources).forwardSegments(newForwardSegments)
-                    .reverseSegments(newReverseSegments).build());
-        }).orElseThrow(() -> new FlowNotFoundException(flowId));
+                    .reverseSegments(newReverseSegments).build();
+        });
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
         sender.sendUpdateRulesCommand(result);
@@ -301,6 +317,7 @@ public class FlowService extends BaseFlowService {
         UpdatedFlowPairWithSegments result = transactionManager.doInTransaction(() -> {
             FlowPair newFlow = flowResourcesManager.allocateFlow(buildFlowPair(currentFlow.getForward(), pathPair));
             newFlow.setStatus(FlowStatus.IN_PROGRESS);
+            newFlow.setTimeCreate(currentFlow.getForward().getTimeCreate());
 
             List<FlowSegment> forwardSegments = getFlowSegments(currentFlow.getForward());
             List<FlowSegment> reverseSegments = getFlowSegments(currentFlow.getReverse());
@@ -426,6 +443,28 @@ public class FlowService extends BaseFlowService {
         Set<Switch> switches = new HashSet<>();
         flowSegments.forEach(flowSegment -> switches.add(flowSegment.getSrcSwitch()));
         switchRepository.lockSwitches(switches.toArray(new Switch[0]));
+    }
+
+    private String getOrCreateFlowGroupId(String flowId) throws FlowNotFoundException {
+        log.info("Getting flow group for flow with id ", flowId);
+        return flowRepository.getOrCreateFlowGroupId(flowId)
+                .orElseThrow(() -> new FlowNotFoundException(flowId));
+    }
+
+    private void checkDiverseFlow(Flow targetFlow, String flowId) throws FlowNotFoundException,
+            FlowValidationException {
+        if (targetFlow.isOneSwitchFlow()) {
+            throw new FlowValidationException("Couldn't add one-switch flow into diverse group",
+                    ErrorType.NOT_IMPLEMENTED);
+        }
+
+        FlowPair diverseFlow = flowRepository.findFlowPairById(flowId)
+                .orElseThrow(() -> new FlowNotFoundException(flowId));
+
+        if (diverseFlow.getForward().isOneSwitchFlow()) {
+            throw new FlowValidationException("Couldn't create diverse group with one-switch flow",
+                    ErrorType.NOT_IMPLEMENTED);
+        }
     }
 
     @Value

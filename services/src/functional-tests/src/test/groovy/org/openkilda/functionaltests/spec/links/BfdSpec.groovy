@@ -17,13 +17,12 @@ class BfdSpec extends BaseSpecification {
         lockKeeper.removeFlows([isl.aswitch])
 
         then: "ISL immediately gets FAILED"
-        def reverseIsl = islUtils.reverseIsl(isl)
         Wrappers.wait(WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
             assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, reverseIsl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, reverseIsl).get().actualState == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().actualState == IslChangeType.FAILED
         }
 
         when: "Restore connection"
@@ -34,8 +33,8 @@ class BfdSpec extends BaseSpecification {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, reverseIsl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, reverseIsl).get().actualState == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().actualState == IslChangeType.DISCOVERED
         }
         database.resetCosts()
     }

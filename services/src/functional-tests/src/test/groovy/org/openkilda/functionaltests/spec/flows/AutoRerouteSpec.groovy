@@ -31,7 +31,7 @@ class AutoRerouteSpec extends BaseSpecification {
         Set<Isl> altFlowIsls = []
         def flowIsls = pathHelper.getInvolvedIsls(flowPath)
         allFlowPaths.findAll { it != flowPath }.each { altFlowIsls.addAll(pathHelper.getInvolvedIsls(it)) }
-        def islToFail = flowIsls.find { !(it in altFlowIsls) && !(islUtils.reverseIsl(it) in altFlowIsls) }
+        def islToFail = flowIsls.find { !(it in altFlowIsls) && !(it.reversed in altFlowIsls) }
         northbound.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "The flow was rerouted after reroute timeout"
@@ -330,7 +330,7 @@ class AutoRerouteSpec extends BaseSpecification {
         when: "One of the links not used by flow goes down"
         def involvedIsls = pathHelper.getInvolvedIsls(flowPath)
         def islToFail = topology.islsForActiveSwitches.find {
-            !involvedIsls.contains(it) && !involvedIsls.contains(islUtils.reverseIsl(it))
+            !involvedIsls.contains(it) && !involvedIsls.contains(it.reversed)
         }
         northbound.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 

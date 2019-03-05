@@ -24,7 +24,6 @@ import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.IslStatus;
-import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
@@ -36,6 +35,7 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
+import com.google.common.collect.ImmutableMap;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
@@ -45,6 +45,8 @@ import org.neo4j.ogm.response.model.RelationshipModel;
 import org.neo4j.ogm.session.Session;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -186,16 +188,10 @@ public class DatabaseSupportImpl implements Database {
 
     @Override
     public boolean resetCosts() {
-        return transactionManager.doInTransaction(() -> {
-            Collection<org.openkilda.model.Isl> isls = islRepository.findAll();
-            switchRepository.lockSwitches(switchRepository.findAll().toArray(new Switch[0]));
-            isls.forEach(isl -> {
-                isl.setCost(DEFAULT_COST);
-                islRepository.createOrUpdate(isl);
-            });
-
-            return !isls.isEmpty();
-        });
+        Session session = ((Neo4jSessionFactory) transactionManager).getSession();
+        String query = "MATCH ()-[i:isl]->() SET i.cost=$cost";
+        Result result = session.query(query, ImmutableMap.of("cost", DEFAULT_COST));
+        return result.queryStatistics().getPropertiesSet() > 0;
     }
 
     /**
@@ -295,5 +291,15 @@ public class DatabaseSupportImpl implements Database {
         @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
         @Mapping(source = "status", target = "state")
         FlowDto map(Flow flow);
+
+        /**
+         * Convert {@link Instant} to {@link String}.
+         */
+        default String map(Instant time) {
+            if (time == null) {
+                return null;
+            }
+            return DateTimeFormatter.ISO_INSTANT.format(time);
+        }
     }
 }

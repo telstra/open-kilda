@@ -89,6 +89,9 @@ kilda_production_fileserver: "http://127.0.0.1"
 kilda_reroute_throttling_delay_min: 3
 kilda_reroute_throttling_delay_max: 15
 
+kilda_diversity_isl_weight: 1000
+kilda_diversity_switch_weight: 100
+
 kilda_isl_cost_when_port_down: 10000
 kilda_isl_cost_when_under_maintenance: 10000
 
@@ -115,3 +118,5 @@ kilda_logging_port_floodlight: 5002
 kilda_logging_port_topology_engine_rest: 5003
 kilda_logging_port_mininet: 5004
 kilda_logging_port_northbound: 5005
+
+kilda_gui_application_name_prefix: "Dev"

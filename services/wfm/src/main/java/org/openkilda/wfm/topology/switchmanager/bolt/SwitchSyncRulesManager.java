@@ -79,12 +79,10 @@ public class SwitchSyncRulesManager extends HubBolt implements SwitchSyncRulesCa
             if (data instanceof SwitchFlowEntries) {
                 service.handleFlowEntriesResponse(key, (SwitchFlowEntries) data);
             } else if (data instanceof BatchInstallResponse) {
-                cancelCallback(key, input);
                 service.handleInstallRulesResponse(key);
             }
 
         } else if (message instanceof ErrorMessage) {
-            cancelCallback(key, input);
             service.handleTaskError(key, (ErrorMessage) message);
         }
     }

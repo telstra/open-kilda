@@ -46,11 +46,17 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
+import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
+import org.openkilda.messaging.payload.flow.DiverseGroupPayload;
+import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
+import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
@@ -115,14 +121,14 @@ public class FlowServiceImpl implements FlowService {
     @Value("#{kafkaTopicsConfig.getFlowTopic()}")
     private String topic;
 
+    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
+    private String nbworkerTopic;
+
     /**
      * The kafka topic for `ping` topology.
      */
     @Value("#{kafkaTopicsConfig.getPingTopic()}")
     private String pingTopic;
-
-    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
-    private String nbworkerTopic;
 
     @Value("${neo4j.uri}")
     private String neoUri;
@@ -190,11 +196,11 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowPayload> createFlow(final FlowPayload input) {
+    public CompletableFuture<FlowPayload> createFlow(final FlowCreatePayload input) {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Create flow: {}", input);
 
-        FlowCreateRequest payload = new FlowCreateRequest(new FlowDto(input));
+        FlowCreateRequest payload = new FlowCreateRequest(new FlowDto(input), input.getDiverseFlowId());
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
@@ -220,11 +226,11 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowPayload> updateFlow(final FlowPayload input) {
+    public CompletableFuture<FlowPayload> updateFlow(final FlowUpdatePayload input) {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Update flow request for flow {}", input.getId());
 
-        FlowUpdateRequest payload = new FlowUpdateRequest(new FlowDto(input));
+        FlowUpdateRequest payload = new FlowUpdateRequest(new FlowDto(input), input.getDiverseFlowId());
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
@@ -340,8 +346,37 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<FlowPathPayload> pathFlow(final String id) {
         logger.debug("Flow path request for flow {}", id);
-        return getBidirectionalFlow(id, RequestCorrelationId.getId())
-                .thenApply(flowMapper::toFlowPathPayload);
+        final String correlationId = RequestCorrelationId.getId();
+
+        GetFlowPathRequest data = new GetFlowPathRequest(id);
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
+                .thenApply(result -> result.stream()
+                        .map(GetFlowPathResponse.class::cast)
+                        .map(GetFlowPathResponse::getPayload)
+                        .collect(Collectors.toList()))
+                .thenApply(respList -> buildFlowPathPayload(respList, id));
+    }
+
+    private FlowPathPayload buildFlowPathPayload(List<GroupFlowPathPayload> paths, String flowId) {
+        GroupFlowPathPayload flowPathPayload = paths.stream().filter(e -> e.getId().equals(flowId)).findAny().get();
+        // fill main flow path
+        FlowPathPayload payload = new FlowPathPayload();
+        payload.setId(flowPathPayload.getId());
+        payload.setForwardPath(flowPathPayload.getForwardPath());
+        payload.setReversePath(flowPathPayload.getReversePath());
+
+        // fill group paths
+        if (paths.size() > 1) {
+            DiverseGroupPayload groupPayload = new DiverseGroupPayload();
+            groupPayload.setOverlappingSegments(flowPathPayload.getSegmentsStats());
+            groupPayload.setOtherFlows(
+                    paths.stream().filter(e -> !e.getId().equals(flowId)).collect(Collectors.toList()));
+
+            payload.setDiverseGroupPayload(groupPayload);
+        }
+        return payload;
     }
 
     /**
