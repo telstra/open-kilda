@@ -194,11 +194,11 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
 
     private Values makeDefaultTuple(UniIslCommand command) {
         Endpoint endpoint = command.getEndpoint();
-        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, safePullContext());
+        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, getCommandContext());
     }
 
     private Values makePollTuple(WatchListCommand command) {
         Endpoint endpoint = command.getEndpoint();
-        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, safePullContext());
+        return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, getCommandContext());
     }
 }

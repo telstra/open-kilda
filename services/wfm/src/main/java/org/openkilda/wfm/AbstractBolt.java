@@ -41,11 +41,15 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     @Getter(AccessLevel.PROTECTED)
     private transient OutputCollector output;
+
     @Getter(AccessLevel.PROTECTED)
     private transient Integer taskId;
 
     @Getter(AccessLevel.PROTECTED)
     private transient Tuple currentTuple;
+
+    @Getter(AccessLevel.PROTECTED)
+    private transient CommandContext commandContext;
 
     @Override
     public void execute(Tuple input) {
@@ -57,12 +61,15 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
         try {
             currentTuple = input;
+
+            setupCommandContext();
             handleInput(input);
         } catch (Exception e) {
             log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
             ack(input);
             currentTuple = null;
+            commandContext = null;
         }
     }
 
@@ -106,6 +113,20 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     protected void init() { }
 
+    protected void setupCommandContext() {
+        Tuple input = getCurrentTuple();
+        try {
+            commandContext = pullContext(input);
+        } catch (PipelineException e) {
+            commandContext = new CommandContext().fork("trace-fail");
+
+            log.warn("The command context is missing in input tuple received by {} on stream {}, execution context"
+                             + " can't  be traced. Create new command context for possible tracking of following"
+                             + " processing [{}].",
+                     getClass().getName(), formatTuplePayload(input));
+        }
+    }
+
     protected CommandContext pullContext(Tuple input) throws PipelineException {
         CommandContext value;
         try {
@@ -115,38 +136,18 @@ public abstract class AbstractBolt extends BaseRichBolt {
             } else {
                 value = (CommandContext) raw;
             }
-        } catch (ClassCastException e) {
+        } catch (IllegalArgumentException | ClassCastException e) {
             throw new PipelineException(this, input, FIELD_ID_CONTEXT, e.toString());
         }
         return value;
     }
 
-    protected CommandContext pullContext() throws PipelineException {
-        return pullContext(currentTuple);
-    }
-
-    protected CommandContext forkContext(String... fork) throws PipelineException {
-        CommandContext context = pullContext();
+    protected CommandContext forkContext(String... fork) {
+        CommandContext context = commandContext;
         for (int idx = 0; idx < fork.length; idx++) {
             context = context.fork(fork[idx]);
         }
         return context;
-    }
-
-    protected CommandContext safePullContext() {
-        try {
-            return pullContext(currentTuple);
-        } catch (PipelineException e) {
-            return null;
-        }
-    }
-
-    protected CommandContext safeForkContext(String... fork) {
-        try {
-            return forkContext(fork);
-        } catch (PipelineException e) {
-            return null;
-        }
     }
 
     protected <T> T pullValue(Tuple input, String field, Class<T> klass) throws PipelineException {

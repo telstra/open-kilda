@@ -154,25 +154,14 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
 
     private Values makePortTuple(PortCommand command) {
         Endpoint endpoint = command.getEndpoint();
-        CommandContext context = makeContextFork(endpoint.getPortNumber());
+        CommandContext context = forkContext(endpoint.toString());
         return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, context);
     }
 
     private Values makeBfdPortTuple(BfdPortCommand command) {
         Endpoint endpoint = command.getEndpoint();
-        CommandContext context = makeContextFork(endpoint.getPortNumber());
+        CommandContext context = forkContext(endpoint.toString());
         return new Values(endpoint.getDatapath(), command, context);
-    }
-
-    private CommandContext makeContextFork(int portNumber) {
-        try {
-            return pullContext().fork(String.format("p%d", portNumber));
-        } catch (PipelineException e) {
-            final Tuple input = getCurrentTuple();
-            throw new IllegalStateException(String.format("Missing %s into %s in tuple from %s(%s)",
-                                                          CommandContext.class.getName(), getClass().getName(),
-                                                          input.getSourceComponent(), input.getSourceStreamId()));
-        }
     }
 
     // SwitchCommand processing

@@ -136,7 +136,7 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
     }
 
     private Values makeSpeakerTuple(String key, CommandData payload) {
-        return new Values(key, payload, safePullContext());
+        return new Values(key, payload, getCommandContext());
     }
 
     // WatcherCommand
@@ -160,6 +160,6 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
     // -- private/service methods --
 
     private CommandContext forkContextByEndpoint(Endpoint endpoint) {
-        return safeForkContext("W", endpoint.toString());
+        return forkContext("W", endpoint.toString());
     }
 }

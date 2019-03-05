@@ -99,7 +99,7 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
 
     private Values makeDefaultTuple(IslCommand command) {
         IslReference reference = command.getReference();
-        return new Values(reference.getSource(), reference.getDest(), command, safePullContext());
+        return new Values(reference.getSource(), reference.getDest(), command, getCommandContext());
     }
 
     // UniIslCommand

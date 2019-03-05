@@ -118,7 +118,7 @@ public class DecisionMakerHandler extends AbstractBolt implements IDecisionMaker
 
     private Values makeDefaultTuple(PortCommand command) {
         Endpoint endpoint = command.getEndpoint();
-        CommandContext context = safeForkContext("DM", endpoint.toString());
+        CommandContext context = forkContext("DM", endpoint.toString());
         return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, context);
     }
 }

@@ -94,6 +94,6 @@ public class SpeakerWorker extends WorkerBolt {
     }
 
     private Values makeSpeakerTuple(String key, CommandData payload) {
-        return new Values(key, payload, safePullContext());
+        return new Values(key, payload, getCommandContext());
     }
 }

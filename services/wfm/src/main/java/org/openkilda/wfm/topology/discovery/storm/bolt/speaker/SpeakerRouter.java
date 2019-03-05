@@ -156,6 +156,6 @@ public class SpeakerRouter extends AbstractBolt {
     }
 
     private Values makeWorkerTuple(SpeakerWorkerCommand command) throws PipelineException {
-        return new Values(command.getKey(), command, pullContext());
+        return new Values(command.getKey(), command, getCommandContext());
     }
 }

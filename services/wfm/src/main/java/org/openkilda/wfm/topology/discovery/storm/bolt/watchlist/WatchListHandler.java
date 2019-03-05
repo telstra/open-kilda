@@ -98,7 +98,7 @@ public class WatchListHandler extends AbstractBolt implements IWatchListCarrier 
 
     private Values makeDefaultTuple(WatcherCommand command) {
         Endpoint endpoint = command.getEndpoint();
-        CommandContext forkedContext = safePullContext()
+        CommandContext forkedContext = getCommandContext()
                 .fork(endpoint.getDatapath().toString())
                 .fork(String.format("p%d", endpoint.getPortNumber()));
         return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, forkedContext);
