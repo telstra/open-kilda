@@ -85,13 +85,14 @@ public abstract class OfCommand {
             return writeCommand(sw, sessionService, moduleContext)
                     .handle((result, error) -> {
                         if (error != null) {
-                            getLogger().error("Failed to execute of command", error);
+                            getLogger().error("Failed to execute OF command", error);
                             return buildError(error);
                         } else {
                             return buildResponse();
                         }
                     });
         } catch (SwitchOperationException e) {
+            getLogger().error("Failed to execute OF command", e);
             return CompletableFuture.completedFuture(buildError(e));
         }
     }
@@ -123,6 +124,5 @@ public abstract class OfCommand {
     protected final Logger getLogger() {
         return LoggerFactory.getLogger(this.getClass());
     }
-
 
 }

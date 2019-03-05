@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.flow.request;
 
+import static java.util.Objects.requireNonNull;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 
 import org.openkilda.messaging.AbstractMessage;
@@ -28,21 +29,31 @@ import lombok.ToString;
 @Getter
 @ToString
 public abstract class FlowRequest extends AbstractMessage {
+
+    /**
+     * Unique identifier for the command.
+     */
+    @JsonProperty("command_id")
+    final String commandId;
+
     /**
      * The flow id.
      */
     @JsonProperty(FLOW_ID)
-    protected String flowId;
+    final String flowId;
 
     /**
      * The switch id to manage flow on. It is a mandatory parameter.
      */
     @JsonProperty("switch_id")
-    protected SwitchId switchId;
+    final SwitchId switchId;
 
-    public FlowRequest(MessageContext context, String flowId, SwitchId switchId) {
+    public FlowRequest(MessageContext context, String commandId, String flowId, SwitchId switchId) {
         super(context);
 
+        requireNonNull(commandId, "Message id should be not null");
+        requireNonNull(flowId, "Flow id should be not null");
+        this.commandId = commandId;
         this.flowId = flowId;
         this.switchId = switchId;
     }

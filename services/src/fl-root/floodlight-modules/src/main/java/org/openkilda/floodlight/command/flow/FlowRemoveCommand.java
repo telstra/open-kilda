@@ -21,7 +21,6 @@ import org.openkilda.floodlight.command.OfCommand;
 import org.openkilda.floodlight.command.meter.RemoveMeterCommand;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.messaging.MessageContext;
@@ -52,31 +51,27 @@ public class FlowRemoveCommand extends FlowCommand {
     private final Long meterId;
     private final DeleteRulesCriteria criteria;
 
-    public FlowRemoveCommand(@JsonProperty("flowid") String flowId,
+    public FlowRemoveCommand(@JsonProperty("command_id") String commandId,
+                             @JsonProperty("flowid") String flowId,
                              @JsonProperty("message_context") MessageContext messageContext,
                              @JsonProperty("cookie") Long cookie,
                              @JsonProperty("switch_id") SwitchId switchId,
                              @JsonProperty("meter_id") Long meterId,
                              @JsonProperty("criteria") DeleteRulesCriteria criteria) {
-        super(flowId, messageContext, cookie, switchId);
+        super(commandId, flowId, messageContext, cookie, switchId);
         this.meterId = meterId;
         this.criteria = criteria;
     }
 
     @Override
-    protected FloodlightResponse buildError(Throwable error) {
-        return FlowErrorResponse.errorBuilder()
-                .flowId(flowId)
-                .switchId(switchId)
-                .description(error.getMessage())
-                .success(false)
-                .messageContext(messageContext)
-                .build();
-    }
-
-    @Override
     protected FloodlightResponse buildResponse() {
-        return new FlowResponse(true, messageContext, flowId, switchId);
+        return FlowResponse.builder()
+                .commandId(commandId)
+                .flowId(flowId)
+                .messageContext(messageContext)
+                .success(true)
+                .switchId(switchId)
+                .build();
     }
 
     @Override

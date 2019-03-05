@@ -44,14 +44,15 @@ public class InstallTransitRuleCommand extends FlowInstallCommand {
     final Integer transitVlanId;
 
     @JsonCreator
-    public InstallTransitRuleCommand(@JsonProperty("flowid") String flowId,
+    public InstallTransitRuleCommand(@JsonProperty("command_id") String commandId,
+                                     @JsonProperty("flowid") String flowId,
                                      @JsonProperty("message_context") MessageContext messageContext,
                                      @JsonProperty("cookie") Long cookie,
                                      @JsonProperty("switch_id") SwitchId switchId,
                                      @JsonProperty("input_port") Integer inputPort,
                                      @JsonProperty("output_port") Integer outputPort,
                                      @JsonProperty("transit_vlan_id") Integer transitVlanId) {
-        super(flowId, messageContext, cookie, switchId, inputPort, outputPort);
+        super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort);
         this.transitVlanId = transitVlanId;
     }
 

@@ -34,23 +34,28 @@ import lombok.ToString;
 @ToString(callSuper = true)
 public class FlowResponse extends FloodlightResponse {
 
+    @JsonProperty("command_id")
+    private final String commandId;
+
     @JsonProperty(FLOW_ID)
-    protected String flowId;
+    private final String flowId;
 
     @JsonProperty("switch_id")
-    protected SwitchId switchId;
+    private final SwitchId switchId;
 
     @JsonProperty
-    private boolean success;
+    private final boolean success;
 
     @JsonCreator
     @Builder
     public FlowResponse(@JsonProperty("success") boolean success,
                         @JsonProperty("command_context") MessageContext messageContext,
+                        @JsonProperty("command_id") String commandId,
                         @JsonProperty(FLOW_ID) String flowId,
                         @JsonProperty("switch_id") SwitchId switchId) {
         super(messageContext);
 
+        this.commandId = commandId;
         this.flowId = flowId;
         this.switchId = switchId;
         this.success = success;
@@ -59,6 +64,7 @@ public class FlowResponse extends FloodlightResponse {
     public FlowResponse(FlowRequest request, boolean success) {
         super(request.getMessageContext());
 
+        this.commandId = request.getCommandId();
         this.flowId = request.getFlowId();
         this.switchId = request.getSwitchId();
         this.success = success;
