@@ -215,6 +215,14 @@ public class UnidirectionalFlow implements Serializable {
         flow.setPeriodicPings(periodicPings);
     }
 
+    public boolean isAllocateProtectedPath() {
+        return flow.isAllocateProtectedPath();
+    }
+
+    public void setAllocateProtectedPath(boolean allocateProtectedPath) {
+        flow.setAllocateProtectedPath(allocateProtectedPath);
+    }
+
     public FlowStatus getStatus() {
         return flow.getStatus();
     }

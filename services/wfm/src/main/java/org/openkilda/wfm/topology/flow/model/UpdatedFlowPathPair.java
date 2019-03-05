@@ -23,29 +23,9 @@ public class UpdatedFlowPathPair extends FlowPathPairWithEncapsulation {
 
     public UpdatedFlowPathPair(FlowPathPairWithEncapsulation oldFlowPair, FlowPathPairWithEncapsulation newFlowPair) {
         super(newFlowPair.getFlow(), newFlowPair.getForwardPath(), newFlowPair.getReversePath(),
-                newFlowPair.getForwardTransitVlan(), newFlowPair.getReverseTransitVlan());
+                newFlowPair.getProtectedForwardPath(), newFlowPair.getProtectedReversePath(),
+                newFlowPair.getForwardTransitVlan(), newFlowPair.getReverseTransitVlan(),
+                newFlowPair.getProtectedForwardTransitVlan(), newFlowPair.getProtectedReverseTransitVlan());
         this.oldFlowPair = oldFlowPair;
-    }
-
-    /**
-     * Returns the forward path of the old flow.
-     */
-    public FlowPathWithEncapsulation getOldForward() {
-        return FlowPathWithEncapsulation.builder()
-                .flow(oldFlowPair.getFlow())
-                .flowPath(oldFlowPair.getForwardPath())
-                .transitVlan(oldFlowPair.getForwardTransitVlan())
-                .build();
-    }
-
-    /**
-     * Returns the reverse path of the old flow.
-     */
-    public FlowPathWithEncapsulation getOldReverse() {
-        return FlowPathWithEncapsulation.builder()
-                .flow(oldFlowPair.getFlow())
-                .flowPath(oldFlowPair.getReversePath())
-                .transitVlan(oldFlowPair.getReverseTransitVlan())
-                .build();
     }
 }

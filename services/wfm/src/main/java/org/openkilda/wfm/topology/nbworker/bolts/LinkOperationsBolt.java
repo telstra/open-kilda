@@ -31,11 +31,9 @@ import org.openkilda.messaging.nbtopology.request.UpdateLinkUnderMaintenanceRequ
 import org.openkilda.messaging.nbtopology.response.DeleteIslResponse;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
-import org.openkilda.model.FlowPair;
 import org.openkilda.model.Isl;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
@@ -258,13 +256,13 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
                     dstSwitch, dstPort, underMaintenance);
 
             if (underMaintenance && evacuate) {
-                flowOperationsService.getFlowIdsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
-                        .map(FlowPair::getForward)
-                        .map(UnidirectionalFlow::getFlowId).forEach(flowId -> {
-                            FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId);
-                            getOutput().emit(StreamType.REROUTE.toString(), tuple, new Values(rerouteRequest,
-                                    correlationId));
-                        });
+                flowOperationsService.groupFlowIdWithPathIdsForRerouting(
+                        flowOperationsService.getFlowIdsForLink(srcSwitch, srcPort, dstSwitch, dstPort)
+                ).forEach((flowId, pathIds) -> {
+                    FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds);
+                    getOutput().emit(StreamType.REROUTE.toString(), tuple, new Values(rerouteRequest,
+                            correlationId));
+                });
             }
 
         } catch (IslNotFoundException e) {

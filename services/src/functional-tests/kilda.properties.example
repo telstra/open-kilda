@@ -45,5 +45,5 @@ bfd.offset=200
 
 env.hardware.cleanup=false
 
-diversity.isl.weight=1000
-diversity.switch.weight=100
+diversity.isl.weight=100000
+diversity.switch.weight=1000

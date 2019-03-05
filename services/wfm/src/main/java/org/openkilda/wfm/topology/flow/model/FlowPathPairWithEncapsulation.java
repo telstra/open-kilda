@@ -30,8 +30,13 @@ public class FlowPathPairWithEncapsulation {
     private Flow flow;
     private FlowPath forwardPath;
     private FlowPath reversePath;
+    private FlowPath protectedForwardPath;
+    private FlowPath protectedReversePath;
+
     private TransitVlan forwardTransitVlan;
     private TransitVlan reverseTransitVlan;
+    private TransitVlan protectedForwardTransitVlan;
+    private TransitVlan protectedReverseTransitVlan;
 
     /**
      * Returns the forward path of the flow.
@@ -45,6 +50,17 @@ public class FlowPathPairWithEncapsulation {
     }
 
     /**
+     * Returns the protected forward path of the flow.
+     */
+    public FlowPathWithEncapsulation getProtectedForward() {
+        return FlowPathWithEncapsulation.builder()
+                .flow(flow)
+                .flowPath(protectedForwardPath)
+                .transitVlan(protectedForwardTransitVlan)
+                .build();
+    }
+
+    /**
      * Returns the reverse path of the flow.
      */
     public FlowPathWithEncapsulation getReverse() {
@@ -52,6 +68,17 @@ public class FlowPathPairWithEncapsulation {
                 .flow(flow)
                 .flowPath(reversePath)
                 .transitVlan(reverseTransitVlan)
+                .build();
+    }
+
+    /**
+     * Returns the protected reverse path of the flow.
+     */
+    public FlowPathWithEncapsulation getProtectedReverse() {
+        return FlowPathWithEncapsulation.builder()
+                .flow(flow)
+                .flowPath(protectedReversePath)
+                .transitVlan(protectedReverseTransitVlan)
                 .build();
     }
 }

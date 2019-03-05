@@ -27,6 +27,7 @@ import org.openkilda.messaging.command.CommandGroup;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.DeallocateFlowResourcesRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
+import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
@@ -70,6 +71,7 @@ import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.error.ClientException;
 import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.error.NoNewPathException;
 import org.openkilda.wfm.share.bolt.HistoryBolt;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -230,6 +232,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                             break;
                         case REROUTE:
                             handleRerouteRequest(cmsg, tuple);
+                            break;
+                        case PATH_SWAP:
+                            handlePathSwapRequest(cmsg, tuple);
                             break;
                         case READ:
                             handleReadRequest(flowId, cmsg, tuple);
@@ -507,25 +512,15 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         final String errorType = "Could not reroute flow";
 
         try {
-            ReroutedFlow reroutedFlow = flowService.rerouteFlow(flowId, request.isForce(),
+            ReroutedFlow reroutedFlow = flowService.rerouteFlow(flowId, request.isForce(), request.getPathIds(),
                     new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
-            if (reroutedFlow.getNewFlow() != null) {
-                logger.warn("Rerouted flow: {}", reroutedFlow);
-            } else {
-                // There's no new path found, but the current flow may still be active.
-                logger.warn("Reroute {} is unsuccessful: can't find new path.", flowId);
-            }
+            logger.warn("Rerouted flow: {}", reroutedFlow);
+            handleReroute(message, tuple, reroutedFlow);
+        } catch (NoNewPathException e) {
+            logger.warn("Reroute {} is unsuccessful: can't find new path.", request.getFlowId());
 
-            PathInfoData currentPath = FlowPathMapper.INSTANCE.map(reroutedFlow.getOldFlow().getFlowPath());
-            PathInfoData resultPath = Optional.ofNullable(reroutedFlow.getNewFlow())
-                    .map(flow -> FlowPathMapper.INSTANCE.map(flow.getFlowPath()))
-                    .orElse(currentPath);
-
-            FlowRerouteResponse response = new FlowRerouteResponse(resultPath, !resultPath.equals(currentPath));
-            Values values = new Values(new InfoMessage(response, message.getTimestamp(),
-                    message.getCorrelationId(), Destination.NORTHBOUND, null));
-            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+            handleReroute(message, tuple, new ReroutedFlow(e.getFlow(), null));
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
@@ -536,6 +531,45 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                     ErrorType.NOT_FOUND, errorType, "Path was not found");
         } catch (Exception e) {
             logger.error("Unexpected error", e);
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
+        }
+    }
+
+    private void handleReroute(CommandMessage message, Tuple tuple, ReroutedFlow reroutedFlow) {
+        PathInfoData currentPath = FlowPathMapper.INSTANCE.map(reroutedFlow.getOldFlow()
+                .getFlowPath());
+        PathInfoData resultPath = Optional.ofNullable(reroutedFlow.getNewFlow())
+                .map(flow -> FlowPathMapper.INSTANCE.map(flow.getFlowPath()))
+                .orElse(currentPath);
+
+        FlowRerouteResponse response = new FlowRerouteResponse(resultPath, !resultPath.equals(currentPath));
+        Values values = new Values(new InfoMessage(response, message.getTimestamp(),
+                message.getCorrelationId(), Destination.NORTHBOUND, null));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+    }
+
+    private void handlePathSwapRequest(CommandMessage message, Tuple tuple) {
+        final String errorType = "Could not swap paths";
+
+        FlowPathSwapRequest request = (FlowPathSwapRequest) message.getData();
+        final String flowId = request.getFlowId();
+
+        try {
+            UnidirectionalFlow flow = flowService.pathSwap(flowId, request.getPathId(),
+                    new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.UPDATE));
+
+            Values values = new Values(new InfoMessage(buildFlowResponse(flow),
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
+            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_FOUND, errorType, e.getMessage());
+        } catch (FlowValidationException e) {
+            logger.warn("Flow path swap failure with reason: ", e.getMessage());
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
+        } catch (Exception e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
         }
