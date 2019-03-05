@@ -29,6 +29,7 @@ import org.openkilda.wfm.share.history.bolt.HistoryBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.bolts.CrudBolt;
 import org.openkilda.wfm.topology.flow.bolts.ErrorBolt;
+import org.openkilda.wfm.topology.flow.bolts.FlowOperationsBolt;
 import org.openkilda.wfm.topology.flow.bolts.NorthboundReplyBolt;
 import org.openkilda.wfm.topology.flow.bolts.SpeakerBolt;
 import org.openkilda.wfm.topology.flow.bolts.SplitterBolt;
@@ -113,6 +114,13 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
 
+
+        FlowOperationsBolt flowOperationsBolt = new FlowOperationsBolt(persistenceManager, pathComputerConfig,
+                flowResourcesConfig);
+        boltSetup = builder.setBolt(ComponentType.FLOW_OPERATION_BOLT.toString(), flowOperationsBolt, parallelism)
+                .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.SWAP_ENDPOINT.toString());
+        ctrlTargets.add(new CtrlBoltRef(ComponentType.FLOW_OPERATION_BOLT.toString(), flowOperationsBolt, boltSetup));
+
         /*
          * Spout receives Speaker responses
          */
@@ -135,6 +143,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         builder.setBolt(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, parallelism)
                 .fieldsGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.UPDATE.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.FLOW_OPERATION_BOLT.toString(), StreamType.UPDATE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), fieldFlowId);
 
@@ -160,7 +169,8 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         ErrorBolt errorProcessingBolt = new ErrorBolt();
         builder.setBolt(ComponentType.ERROR_BOLT.toString(), errorProcessingBolt, parallelism)
                 .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.ERROR.toString())
-                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.ERROR.toString());
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.ERROR.toString())
+                .shuffleGrouping(ComponentType.FLOW_OPERATION_BOLT.toString(), StreamType.ERROR.toString());
 
         /*
          * Bolt forms Northbound responses
@@ -168,6 +178,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         NorthboundReplyBolt northboundReplyBolt = new NorthboundReplyBolt();
         builder.setBolt(ComponentType.NORTHBOUND_REPLY_BOLT.toString(), northboundReplyBolt, parallelism)
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.RESPONSE.toString())
+                .shuffleGrouping(ComponentType.FLOW_OPERATION_BOLT.toString(), StreamType.RESPONSE.toString())
                 .shuffleGrouping(ComponentType.ERROR_BOLT.toString(), StreamType.RESPONSE.toString());
 
         /*
