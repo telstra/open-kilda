@@ -121,8 +121,7 @@ class SwitchDeleteSpec extends BaseSpecification {
         then: "Got 400 BadRequest error because the switch has the flow assigned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        //TODO(ylobankov): Verify the certain number of flows assigned once the issue #2045 is resolved.
-        exc.responseBodyAsString.matches(".*Switch '${flow.source.datapath}' has \\d+ assigned flows.*")
+        exc.responseBodyAsString.matches(".*Switch '${flow.source.datapath}' has 1 assigned flows: \\[${flow.id}\\].*")
 
         and: "Cleanup: activate the switch back and remove the flow"
         lockKeeper.reviveSwitch(flow.source.datapath)
