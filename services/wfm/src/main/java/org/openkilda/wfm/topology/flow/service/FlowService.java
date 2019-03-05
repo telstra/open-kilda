@@ -1276,6 +1276,153 @@ public class FlowService extends BaseFlowService {
         }
     }
 
+    /**
+     * Swap a two flows endpoints.
+     *
+     * @param firstFlow a first flow.
+     * @param secondFlow a second flow.
+     * @param sender a command sender for flow rules installation and deletion.
+     * @return the flows with swapped endpoints.
+     */
+    public List<FlowPair> swapFlowEnpoints(Flow firstFlow, Flow secondFlow, FlowCommandSender sender)
+            throws FlowNotFoundException, FlowValidationException, ResourceAllocationException,
+            UnroutableFlowException {
+        String firstFlowId = firstFlow.getFlowId();
+        String secondFlowId = secondFlow.getFlowId();
+
+        Flow existingFirstFlow = flowRepository.findById(firstFlowId).orElseThrow(
+                () -> new FlowNotFoundException(firstFlowId));
+        Flow existingSecondFlow = flowRepository.findById(secondFlowId).orElseThrow(
+                () -> new FlowNotFoundException(secondFlowId));
+
+        flowValidator.validateFowSwap(firstFlow, secondFlow);
+
+        existingFirstFlow = existingFirstFlow.toBuilder()
+                .srcSwitch(Switch.builder().switchId(firstFlow.getSrcSwitch().getSwitchId()).build())
+                .srcPort(firstFlow.getSrcPort())
+                .srcVlan(firstFlow.getSrcVlan())
+                .destSwitch(Switch.builder().switchId(firstFlow.getDestSwitch().getSwitchId()).build())
+                .destPort(firstFlow.getDestPort())
+                .destVlan(firstFlow.getDestVlan())
+                .build();
+
+        existingSecondFlow = existingSecondFlow.toBuilder()
+                .srcSwitch(Switch.builder().switchId(secondFlow.getSrcSwitch().getSwitchId()).build())
+                .srcPort(secondFlow.getSrcPort())
+                .srcVlan(secondFlow.getSrcVlan())
+                .destSwitch(Switch.builder().switchId(secondFlow.getDestSwitch().getSwitchId()).build())
+                .destPort(secondFlow.getDestPort())
+                .destVlan(secondFlow.getDestVlan())
+                .build();
+
+
+        FlowPathsWithEncapsulation currentFirstFlow =
+                getFlowPathPairWithEncapsulation(firstFlowId).orElseThrow(() ->
+                        new FlowNotFoundException(firstFlowId));
+        FlowPathsWithEncapsulation currentSecondFlow =
+                getFlowPathPairWithEncapsulation(secondFlowId).orElseThrow(() ->
+                        new FlowNotFoundException(firstFlowId));
+        return swapFlows(currentFirstFlow, existingFirstFlow, currentSecondFlow, existingSecondFlow, sender);
+    }
+
+    private UpdatedFlowPathsWithEncapsulation processUpdateFlow(FlowPathsWithEncapsulation currentFlow,
+                                                                Flow updatingFlow)
+            throws ResourceAllocationException, RecoverableException, FlowValidationException, UnroutableFlowException,
+            FlowNotFoundException {
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
+        PathPair newPathPair = pathComputer.getPath(updatingFlow, currentFlow.getFlow().getFlowPathIds());
+
+        log.info("Updating the flow with {} and path: {}", updatingFlow, newPathPair);
+
+        //TODO: hard-coded encapsulation will be removed in Flow H&S
+        updatingFlow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
+
+        FlowResources flowResources = flowResourcesManager.allocateFlowResources(updatingFlow);
+
+        // Recreate the flow, use allocated resources for new paths.
+        Instant timestamp = Instant.now();
+        FlowPathPair newFlowPathPair = buildFlowPathPair(updatingFlow, newPathPair, flowResources,
+                FlowPathStatus.IN_PROGRESS, timestamp);
+
+        Flow newFlowWithPaths = buildFlowWithPaths(updatingFlow, newFlowPathPair, FlowStatus.IN_PROGRESS, timestamp);
+
+        FlowPath currentForwardPath = currentFlow.getForwardPath();
+        FlowPath currentReversePath = currentFlow.getReversePath();
+        FlowPath newForwardPath = newFlowWithPaths.getForwardPath();
+        FlowPath newReversePath = newFlowWithPaths.getReversePath();
+
+        flowPathRepository.lockInvolvedSwitches(currentForwardPath, currentReversePath, newForwardPath, newReversePath);
+
+        flowRepository.delete(currentFlow.getFlow());
+
+        updateIslsForFlowPath(currentForwardPath);
+        updateIslsForFlowPath(currentReversePath);
+        if (currentFlow.getProtectedForwardPath() != null) {
+            updateIslsForFlowPath(currentFlow.getProtectedForwardPath());
+        }
+        if (currentFlow.getProtectedReversePath() != null) {
+            updateIslsForFlowPath(currentFlow.getProtectedReversePath());
+        }
+
+        flowRepository.createOrUpdate(newFlowWithPaths);
+
+        updateIslsForFlowPath(newForwardPath);
+        updateIslsForFlowPath(newReversePath);
+
+        FlowResources protectedResources = null;
+        if (newFlowWithPaths.isAllocateProtectedPath()) {
+            protectedResources = createProtectedPath(newFlowWithPaths, timestamp);
+        }
+
+        return new UpdatedFlowPathsWithEncapsulation(currentFlow,
+                buildFlowPathsWithEncapsulation(newFlowWithPaths, flowResources, protectedResources));
+    }
+
+    // todo: replace VOID to type
+    private List<FlowPair> swapFlows(FlowPathsWithEncapsulation currentFirstFlow,
+                                                              Flow updatingFirstFlow,
+                                                              FlowPathsWithEncapsulation currentSecondFlow,
+                                                              Flow updatingSecondFlow, FlowCommandSender sender)
+            throws ResourceAllocationException, FlowValidationException, UnroutableFlowException,
+            FlowNotFoundException {
+        List<UpdatedFlowPathsWithEncapsulation> flows = null;
+        try {
+            flows = (List<UpdatedFlowPathsWithEncapsulation>) getFailsafe().get(
+                    () -> transactionManager.doInTransaction(() -> {
+                        UpdatedFlowPathsWithEncapsulation firstUpdatedFlow =
+                                processUpdateFlow(currentFirstFlow, updatingFirstFlow);
+                        UpdatedFlowPathsWithEncapsulation secondUpdatedFlow =
+                                processUpdateFlow(currentSecondFlow, updatingSecondFlow);
+                        return Arrays.asList(firstUpdatedFlow, secondUpdatedFlow);
+                    }));
+        } catch (FailsafeException e) {
+            unwrapCrudFaisafeException(e);
+        }
+
+
+        List<CommandGroup> firstCommandGroup = new ArrayList<>();
+        firstCommandGroup.addAll(createInstallRulesGroups(flows.get(0)));
+        firstCommandGroup.addAll(createRemoveRulesGroups(flows.get(0).getOldFlowPair()));
+        firstCommandGroup.addAll(createDeallocateResourcesGroups(flows.get(0).getOldFlowPair()));
+
+        // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
+        sender.sendFlowCommands(currentFirstFlow.getFlow().getFlowId(),
+                firstCommandGroup,
+                createFlowPathStatusRequests(flows.get(0), FlowPathStatus.ACTIVE),
+                createFlowPathStatusRequests(flows.get(0), FlowPathStatus.INACTIVE));
+
+        List<CommandGroup> secondCommandGroup = new ArrayList<>();
+        secondCommandGroup.addAll(createInstallRulesGroups(flows.get(1)));
+        secondCommandGroup.addAll(createRemoveRulesGroups(flows.get(1).getOldFlowPair()));
+        secondCommandGroup.addAll(createDeallocateResourcesGroups(flows.get(1).getOldFlowPair()));
+
+        sender.sendFlowCommands(currentSecondFlow.getFlow().getFlowId(),
+                secondCommandGroup,
+                createFlowPathStatusRequests(flows.get(1), FlowPathStatus.ACTIVE),
+                createFlowPathStatusRequests(flows.get(1), FlowPathStatus.INACTIVE));
+        return flows.stream().map(this::buildFlowPair).collect(Collectors.toList());
+    }
+
     @Value
     private class RerouteResult {
         FlowPathsWithEncapsulation initialFlow;

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
 import org.openkilda.messaging.command.flow.MeterModifyRequest;
+import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoMessage;
@@ -43,6 +44,7 @@ import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
+import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
@@ -52,6 +54,7 @@ import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
+import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
@@ -66,6 +69,7 @@ import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
+import org.openkilda.messaging.payload.flow.SwapFlowEndpointPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
@@ -1017,6 +1021,28 @@ public class FlowServiceImpl implements FlowService {
         return messagingChannel.sendAndGet(nbWorkerTopic, command)
                 .thenApply(FlowHistoryData.class::cast)
                 .thenApply(FlowHistoryData::getPayload);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<SwapFlowEndpointPayload> swapFlowEndpoint(SwapFlowEndpointPayload input) {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.info("Swap endpoints for flow {} and {}", input.getFirstFlow().getFlowId(),
+                input.getSecondFlow().getFlowId());
+
+        SwapFlowEndpointRequest payload = new SwapFlowEndpointRequest(new SwapFlowDto(input.getFirstFlow()),
+                new SwapFlowDto(input.getSecondFlow()));
+
+        CommandMessage request = new CommandMessage(
+                payload, System.currentTimeMillis(), correlationId, Destination.WFM);
+
+        return messagingChannel.sendAndGet(topic, request)
+                .thenApply(SwapFlowResponse.class::cast)
+                .thenApply(response -> new SwapFlowEndpointPayload(
+                        flowMapper.toSwapOutput(response.getFirstFlow().getPayload()),
+                        flowMapper.toSwapOutput(response.getSecondFlow().getPayload())));
     }
 
 }

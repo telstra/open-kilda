@@ -103,6 +103,7 @@ public class TransactionBolt extends AbstractTickStatefulBolt<InMemoryKeyValueSt
         try {
             switch (componentId) {
                 case CRUD_BOLT:
+                case FLOW_OPERATION_BOLT:
                     if (message instanceof CommandMessage) {
                         CommandData data = ((CommandMessage) message).getData();
                         if (data instanceof BatchCommandsRequest) {

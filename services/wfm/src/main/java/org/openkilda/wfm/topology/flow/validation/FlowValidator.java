@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flow.validation;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -27,9 +28,13 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * {@code FlowValidator} performs checks against the flow validation rules.
@@ -58,6 +63,19 @@ public class FlowValidator {
         checkFlowForEndpointConflicts(flow);
         checkOneSwitchFlowHasNoConflicts(flow);
         checkSwitchesExists(flow);
+    }
+
+    /**
+     * Validates flows for swap.
+     * @param firstFlow a first flow.
+     * @param secondFlow a second flow.
+     * @throws FlowValidationException is thrown if a violation is found.
+     */
+    public void validateFowSwap(Flow firstFlow, Flow secondFlow) throws FlowValidationException {
+        checkFlowForIslConflicts(firstFlow);
+        checkFlowForIslConflicts(secondFlow);
+        checkFlowForEndpointConflicts(firstFlow, secondFlow);
+        checkForEqualsEndpoints(firstFlow, secondFlow);
     }
 
     @VisibleForTesting
@@ -200,6 +218,201 @@ public class FlowValidator {
                     conflictDstDst.get().getDestSwitch().getSwitchId().toString(),
                     conflictDstDst.get().getDestPort(), conflictDstDst.get().getDestVlan());
             throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
+        }
+    }
+
+    /**
+     * Checks a flow for endpoints' conflicts.
+     *
+     * @param firstFlow a flow to be validated.
+     * @throws FlowValidationException is thrown in a case when flow endpoints conflict with existing flows.
+     */
+    @VisibleForTesting
+    public void checkFlowForEndpointConflicts(Flow firstFlow, Flow secondFlow) throws FlowValidationException {
+        // Check the source
+        Collection<Flow> conflictsOnSource = flowRepository.findByEndpoint(firstFlow.getSrcSwitch().getSwitchId(),
+                firstFlow.getSrcPort());
+
+        Optional<Flow> conflictSrcSrc = conflictsOnSource.stream()
+                .filter(flow -> !firstFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> !secondFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> flow.getSrcSwitch().getSwitchId().equals(firstFlow.getSrcSwitch().getSwitchId())
+                        && flow.getSrcPort() == firstFlow.getSrcPort()
+                        && (flow.getSrcVlan() == firstFlow.getSrcVlan()
+                        || flow.getSrcVlan() == 0 || firstFlow.getSrcVlan() == 0))
+                .findAny();
+
+        if (conflictSrcSrc.isPresent()) {
+            String errorMessage = format("Requested source endpoint for flow '%s' conflicts with "
+                            + "existing source endpoint for flow '%s'.",
+                    firstFlow.getFlowId(), conflictSrcSrc.get().getFlowId());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
+        }
+
+        Optional<Flow> conflictDstSrc = conflictsOnSource.stream()
+                .filter(flow -> !firstFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> !secondFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> flow.getDestSwitch().getSwitchId().equals(firstFlow.getSrcSwitch().getSwitchId())
+                        && flow.getDestPort() == firstFlow.getSrcPort()
+                        && (flow.getDestVlan() == firstFlow.getSrcVlan()
+                        || flow.getDestVlan() == 0 || firstFlow.getSrcVlan() == 0))
+                .findAny();
+
+        if (conflictDstSrc.isPresent()) {
+            String errorMessage = format("Requested source endpoint for flow '%s' conflicts with "
+                            + "existing destination endpoint for flow '%s'.",
+                    firstFlow.getFlowId(), conflictDstSrc.get().getFlowId());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
+        }
+
+        // Check the destination
+        Collection<Flow> conflictsOnDest = flowRepository.findByEndpoint(
+                firstFlow.getDestSwitch().getSwitchId(),
+                firstFlow.getDestPort());
+
+
+        Optional<Flow> conflictSrcDst = conflictsOnDest.stream()
+                .filter(flow -> !firstFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> !secondFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> flow.getSrcSwitch().getSwitchId().equals(firstFlow.getDestSwitch().getSwitchId())
+                        && flow.getSrcPort() == firstFlow.getDestPort()
+                        && (flow.getSrcVlan() == firstFlow.getDestVlan()
+                        || flow.getSrcVlan() == 0 || firstFlow.getDestVlan() == 0))
+                .findAny();
+
+        if (conflictSrcDst.isPresent()) {
+            String errorMessage = format("Requested destination endpoint for flow '%s' conflicts with "
+                            + "existing source endpoint for flow '%s'.",
+                    firstFlow.getFlowId(), conflictSrcDst.get().getFlowId());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
+        }
+
+        Optional<Flow> conflictDstDst = conflictsOnDest.stream()
+                .filter(flow -> !firstFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> !secondFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> flow.getDestSwitch().getSwitchId().equals(firstFlow.getDestSwitch().getSwitchId())
+                        && flow.getDestPort() == firstFlow.getDestPort()
+                        && (flow.getDestVlan() == firstFlow.getDestVlan()
+                        || flow.getDestVlan() == 0 || firstFlow.getDestVlan() == 0))
+                .findAny();
+
+        if (conflictDstDst.isPresent()) {
+            String errorMessage = format("Requested destination endpoint for flow '%s' conflicts "
+                            + "with existing destination endpoint for flow '%s'.",
+                    firstFlow.getFlowId(), conflictDstDst.get().getFlowId());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
+        }
+        
+        
+        // Check the source second flow
+        Collection<Flow> secondConflictsOnSource =
+                flowRepository.findByEndpoint(secondFlow.getSrcSwitch().getSwitchId(), secondFlow.getSrcPort());
+
+        Optional<Flow> secondConflictSrcSrc = secondConflictsOnSource.stream()
+                .filter(flow -> !firstFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> !secondFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> flow.getSrcSwitch().getSwitchId().equals(secondFlow.getSrcSwitch().getSwitchId())
+                        && flow.getSrcPort() == secondFlow.getSrcPort()
+                        && (flow.getSrcVlan() == secondFlow.getSrcVlan()
+                        || flow.getSrcVlan() == 0 || secondFlow.getSrcVlan() == 0))
+                .findAny();
+
+        if (secondConflictSrcSrc.isPresent()) {
+            String errorMessage = format("Requested source endpoint for flow '%s' conflicts with "
+                            + "existing source endpoint for flow '%s'.",
+                    secondFlow.getFlowId(), secondConflictSrcSrc.get().getFlowId());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
+        }
+
+        Optional<Flow> secondConflictDstSrc = secondConflictsOnSource.stream()
+                .filter(flow -> !firstFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> !secondFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> flow.getDestSwitch().getSwitchId().equals(secondFlow.getSrcSwitch().getSwitchId())
+                        && flow.getDestPort() == secondFlow.getSrcPort()
+                        && (flow.getDestVlan() == secondFlow.getSrcVlan()
+                        || flow.getDestVlan() == 0 || secondFlow.getSrcVlan() == 0))
+                .findAny();
+
+        if (secondConflictDstSrc.isPresent()) {
+            String errorMessage = format("Requested source endpoint for flow '%s' conflicts with "
+                            + "existing destination endpoint for flow '%s'.",
+                    secondFlow.getFlowId(), secondConflictDstSrc.get().getFlowId());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
+        }
+
+        // Check the destination
+        Collection<Flow> secondConflictsOnDest = flowRepository.findByEndpoint(
+                secondFlow.getDestSwitch().getSwitchId(),
+                secondFlow.getDestPort());
+
+
+        Optional<Flow> secondConflictSrcDst = secondConflictsOnDest.stream()
+                .filter(flow -> !firstFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> !secondFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> flow.getSrcSwitch().getSwitchId().equals(secondFlow.getDestSwitch().getSwitchId())
+                        && flow.getSrcPort() == secondFlow.getDestPort()
+                        && (flow.getSrcVlan() == secondFlow.getDestVlan()
+                        || flow.getSrcVlan() == 0 || secondFlow.getDestVlan() == 0))
+                .findAny();
+
+        if (secondConflictSrcDst.isPresent()) {
+            String errorMessage = format("Requested destination endpoint for flow '%s' conflicts with "
+                            + "existing source endpoint for flow '%s'.",
+                    secondFlow.getFlowId(), secondConflictSrcDst.get().getFlowId());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
+        }
+
+        Optional<Flow> secondConflictDstDst = secondConflictsOnDest.stream()
+                .filter(flow -> !firstFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> !secondFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> flow.getDestSwitch().getSwitchId().equals(secondFlow.getDestSwitch().getSwitchId())
+                        && flow.getDestPort() == secondFlow.getDestPort()
+                        && (flow.getDestVlan() == secondFlow.getDestVlan()
+                        || flow.getDestVlan() == 0 || secondFlow.getDestVlan() == 0))
+                .findAny();
+
+        if (secondConflictDstDst.isPresent()) {
+            String errorMessage = format("Requested destination endpoint for flow '%s' conflicts "
+                            + "with existing destination endpoint for flow '%s'.",
+                    secondFlow.getFlowId(), secondConflictDstDst.get().getFlowId());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
+        }
+    }
+
+    /**
+     * Check for equals endpoints.
+     *
+     * @param firstFlow a first flow.
+     * @param secondFlow a second flow.
+     */
+    void checkForEqualsEndpoints(Flow firstFlow, Flow secondFlow) throws FlowValidationException {
+        List<FlowEndpointPayload> endpoints = new ArrayList<>();
+        endpoints.add(new FlowEndpointPayload(firstFlow.getSrcSwitch().getSwitchId(),
+                firstFlow.getSrcPort(), firstFlow.getSrcVlan()));
+        endpoints.add(new FlowEndpointPayload(firstFlow.getDestSwitch().getSwitchId(),
+                firstFlow.getDestPort(), firstFlow.getDestVlan()));
+        endpoints.add(new FlowEndpointPayload(secondFlow.getSrcSwitch().getSwitchId(),
+                secondFlow.getSrcPort(), secondFlow.getSrcVlan()));
+        endpoints.add(new FlowEndpointPayload(secondFlow.getDestSwitch().getSwitchId(),
+                secondFlow.getDestPort(), secondFlow.getDestVlan()));
+
+        Set<FlowEndpointPayload> checkSet = new HashSet<>();
+        for (FlowEndpointPayload endpoint : endpoints) {
+            if (!checkSet.contains(endpoint)) {
+                checkSet.add(endpoint);
+            } else {
+                String message = "new requested endpoint for '%s' conflicts with existing endpoint for '%s'";
+                if (checkSet.size() <= 1) {
+                    message = String.format(message, firstFlow.getFlowId(), firstFlow.getFlowId());
+                } else {
+                    if (endpoints.indexOf(endpoint) <= 1) {
+                        message = String.format(message, secondFlow.getFlowId(), firstFlow.getFlowId());
+                    } else {
+                        message = String.format(message, secondFlow.getFlowId(), secondFlow.getFlowId());
+                    }
+                }
+                throw new FlowValidationException(message, ErrorType.REQUEST_INVALID);
+            }
         }
     }
 
