@@ -372,22 +372,22 @@ public class DiscoverySwitchServiceTest {
 
         service.switchEvent(switchAddEvent2);
 
-        //System.out.println(mockingDetails(carrier).printInvocations());
+        // System.out.println(mockingDetails(carrier).printInvocations());
         //System.out.println(mockingDetails(switchRepository).printInvocations());
 
-        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports2.get(0).getNumber()), true);
-        verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, ports2.get(1).getNumber()), true);
-        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports2.get(2).getNumber()), true);
+        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(0).getNumber()), true);
+        verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, ports.get(1).getNumber()), true);
+        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()), true);
         verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, ports.get(3).getNumber()), true);
 
-        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()),
-                                        LinkStatus.of(ports.get(2).getState()));
-        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, ports.get(3).getNumber()),
-                                           LinkStatus.of(ports.get(3).getState()));
-        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports.get(0).getNumber()),
-                                        LinkStatus.of(ports.get(0).getState()));
-        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, ports.get(1).getNumber()),
-                                           LinkStatus.of(ports.get(0).getState()));
+        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports2.get(2).getNumber()),
+                                        LinkStatus.of(ports2.get(2).getState()));
+        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, ports2.get(3).getNumber()),
+                                           LinkStatus.of(ports2.get(3).getState()));
+        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports2.get(0).getNumber()),
+                                        LinkStatus.of(ports2.get(0).getState()));
+        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, ports2.get(1).getNumber()),
+                                           LinkStatus.of(ports2.get(0).getState()));
     }
 
 

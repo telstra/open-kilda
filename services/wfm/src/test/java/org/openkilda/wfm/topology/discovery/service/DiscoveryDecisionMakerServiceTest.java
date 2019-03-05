@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.only;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import org.openkilda.messaging.info.event.IslChangeType;
@@ -115,7 +116,7 @@ public class DiscoveryDecisionMakerServiceTest {
 
         w.discovered(carrier, endpointAlpha, islBetaAlpha, 0);
         w.discovered(carrier, endpointAlpha, islBetaAlpha, 0);
-        verify(carrier, only()).linkDiscovered(islBetaAlpha);
+        verify(carrier, times(2)).linkDiscovered(islBetaAlpha);
 
         reset(carrier);
         w.clear(carrier, endpointAlpha);
