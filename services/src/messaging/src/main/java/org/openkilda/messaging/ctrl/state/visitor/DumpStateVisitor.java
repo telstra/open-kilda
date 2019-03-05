@@ -18,6 +18,7 @@ package org.openkilda.messaging.ctrl.state.visitor;
 import org.openkilda.messaging.ctrl.state.CacheBoltState;
 import org.openkilda.messaging.ctrl.state.CrudBoltState;
 import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
+import org.openkilda.messaging.ctrl.state.OperationsBoltState;
 import org.openkilda.messaging.ctrl.state.ResorceCacheBoltState;
 import org.openkilda.messaging.ctrl.state.TransactionBoltState;
 
@@ -47,5 +48,9 @@ public class DumpStateVisitor {
 
     public void visit(ResorceCacheBoltState state) {
         manager.setResorceCacheBoltState(state);
+    }
+
+    public void visit(OperationsBoltState state) {
+        manager.setOperationsBoltState(state);
     }
 }
