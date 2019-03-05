@@ -120,7 +120,7 @@ public class ValidationServiceTest {
                 flowPaths.add(flowPath);
             }
             when(flowPathRepository.findBySegmentDestSwitch(any())).thenReturn(pathsBySegment);
-            when(flowPathRepository.findByEndpointSwitch(any())).thenReturn(flowPaths);
+            when(flowPathRepository.findByEndpointSwitchForRules(any())).thenReturn(flowPaths);
 
             RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
             when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);

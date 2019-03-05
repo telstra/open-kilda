@@ -106,6 +106,14 @@ public class UnidirectionalFlow implements Serializable {
         getFlow().setAllocateProtectedPath(allocateProtectedPath);
     }
 
+    public boolean isAllocateProtectedPath() {
+        return flow.isAllocateProtectedPath();
+    }
+
+    public void setAllocateProtectedPath(boolean allocateProtectedPath) {
+        flow.setAllocateProtectedPath(allocateProtectedPath);
+    }
+
     public FlowStatus getStatus() {
         return getFlow().getStatus();
     }
