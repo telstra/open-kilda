@@ -18,6 +18,7 @@ package org.openkilda.messaging.payload.flow;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -52,20 +53,54 @@ public class FlowPathPayload implements Serializable {
     @JsonProperty("flowpath_reverse")
     protected List<PathNodePayload> reversePath;
 
+    @JsonProperty("protected_path")
+    protected FlowProtectedPath protectedPath;
+
     /**
-     * The information about other flows in diversity group.
+     * The information about other flows in diversity group and intersection stats with primary flow.
      */
     @JsonProperty("diverse_group")
     protected DiverseGroupPayload diverseGroupPayload;
 
+    /**
+     * The information about other flows in diversity group and intersection stats with protected flow.
+     */
+    @JsonProperty("diverse_group_protected")
+    protected DiverseGroupPayload diverseGroupProtectedPayload;
+
+    @Builder
     @JsonCreator
     public FlowPathPayload(@JsonProperty("flowid") String id,
                            @JsonProperty("flowpath_forward") List<PathNodePayload> forwardPath,
                            @JsonProperty("flowpath_reverse") List<PathNodePayload> reversePath,
-                           @JsonProperty("diverse_group")  DiverseGroupPayload diverseGroupPayload) {
+                           @JsonProperty("protected_path") FlowProtectedPath protectedPath,
+                           @JsonProperty("diverse_group") DiverseGroupPayload diverseGroupPayload,
+                           @JsonProperty("diverse_group_protected") DiverseGroupPayload diverseGroupProtectedPayload) {
         this.id = id;
         this.forwardPath = forwardPath;
         this.reversePath = reversePath;
+        this.protectedPath = protectedPath;
         this.diverseGroupPayload = diverseGroupPayload;
+        this.diverseGroupProtectedPayload = diverseGroupProtectedPayload;
+    }
+
+    @Data
+    @NoArgsConstructor
+    public static class FlowProtectedPath implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        @JsonProperty("flowpath_forward")
+        private List<PathNodePayload> forwardPath;
+
+        @JsonProperty("flowpath_reverse")
+        private List<PathNodePayload> reversePath;
+
+        @Builder
+        @JsonCreator
+        public FlowProtectedPath(@JsonProperty("flowpath_forward") List<PathNodePayload> forwardPath,
+                                 @JsonProperty("flowpath_reverse") List<PathNodePayload> reversePath) {
+            this.forwardPath = forwardPath;
+            this.reversePath = reversePath;
+        }
     }
 }

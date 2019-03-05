@@ -226,18 +226,6 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldFindFlowForIsl() {
-        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
-        flowRepository.createOrUpdate(flow);
-
-        Collection<Flow> foundFlow = flowRepository.findWithPathSegment(switchA.getSwitchId(), 1,
-                switchB.getSwitchId(), 2);
-        assertThat(foundFlow, Matchers.hasSize(1));
-        assertThat(foundFlow.iterator().next().getForwardPathId(), Matchers.equalTo(flow.getForwardPathId()));
-        assertThat(foundFlow.iterator().next().getReversePathId(), Matchers.equalTo(flow.getReversePathId()));
-    }
-
-    @Test
     public void shouldCreateFlowGroupIdForFlow() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flow.setGroupId(TEST_GROUP_ID);

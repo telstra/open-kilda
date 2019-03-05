@@ -30,8 +30,13 @@ public class FlowPathPairWithEncapsulation {
     private final Flow flow;
     private final FlowPath forwardPath;
     private final FlowPath reversePath;
+    private final FlowPath protectedForwardPath;
+    private final FlowPath protectedReversePath;
+
     private final EncapsulationResources forwardEncapsulation;
     private final EncapsulationResources reverseEncapsulation;
+    private final EncapsulationResources protectedForwardEncapsulation;
+    private final EncapsulationResources protectedReverseEncapsulation;
 
     /**
      * Returns the forward path of the flow.
@@ -45,6 +50,17 @@ public class FlowPathPairWithEncapsulation {
     }
 
     /**
+     * Returns the protected forward path of the flow.
+     */
+    public FlowPathWithEncapsulation getProtectedForward() {
+        return FlowPathWithEncapsulation.builder()
+                .flow(flow)
+                .flowPath(protectedForwardPath)
+                .encapsulation(protectedForwardEncapsulation)
+                .build();
+    }
+
+    /**
      * Returns the reverse path of the flow.
      */
     public FlowPathWithEncapsulation getReverse() {
@@ -52,6 +68,17 @@ public class FlowPathPairWithEncapsulation {
                 .flow(flow)
                 .flowPath(reversePath)
                 .encapsulation(reverseEncapsulation)
+                .build();
+    }
+
+    /**
+     * Returns the protected reverse path of the flow.
+     */
+    public FlowPathWithEncapsulation getProtectedReverse() {
+        return FlowPathWithEncapsulation.builder()
+                .flow(flow)
+                .flowPath(protectedReversePath)
+                .encapsulation(protectedReverseEncapsulation)
                 .build();
     }
 }
