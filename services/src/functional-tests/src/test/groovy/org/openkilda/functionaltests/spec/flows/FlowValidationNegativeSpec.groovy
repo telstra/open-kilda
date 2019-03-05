@@ -169,7 +169,6 @@ class FlowValidationNegativeSpec extends BaseSpecification {
 
     @Unroll
     def "Unable to #action a non-existent flow"() {
-        Assume.assumeFalse("Ignored due to issue #2027", action == "validate")
         when: "Trying to #action a non-existent flow"
         northbound."${action}Flow"(NON_EXISTENT_FLOW_ID)
 
@@ -183,6 +182,6 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         "synchronize" | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
         "reroute"     | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
         "get"         | "Can not get flow: Flow $NON_EXISTENT_FLOW_ID not found"
-        "validate"    | "Can not validate flow: Flow $NON_EXISTENT_FLOW_ID not found"
+        "validate"    | "Could not validate flow: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 }
