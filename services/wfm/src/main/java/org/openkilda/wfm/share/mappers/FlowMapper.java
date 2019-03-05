@@ -47,7 +47,7 @@ public abstract class FlowMapper {
     public static final FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
 
     /**
-     * Convert {@link Flow} to {@link FlowDto}.
+     * Convert {@link UnidirectionalFlow} to {@link FlowDto}.
      */
     @Mapping(source = "srcPort", target = "sourcePort")
     @Mapping(source = "srcVlan", target = "sourceVlan")
@@ -223,6 +223,7 @@ public abstract class FlowMapper {
                 .bandwidth(flow.getBandwidth())
                 .ignoreBandwidth(flow.isIgnoreBandwidth())
                 .periodicPings(flow.isPeriodicPings())
+                .allocateProtectedPath(flow.isAllocateProtectedPath())
                 //TODO: hard-coded encapsulation will be removed in Flow H&S
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .maxLatency(flow.getMaxLatency())

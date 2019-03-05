@@ -382,7 +382,7 @@ class FlowCrudSpec extends BaseSpecification {
         def error = thrown(HttpClientErrorException)
         error.statusCode == HttpStatus.NOT_FOUND
         error.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found : Failed to find path with " +
+                "Could not create flow: Not enough bandwidth found or path not found. Failed to find path with " +
                 "requested bandwidth=$flow.maximumBandwidth: Switch ${isolatedSwitch.dpId.toString()} doesn't have " +
                 "links with enough bandwidth"
 

@@ -15,10 +15,17 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import static org.apache.commons.collections4.ListUtils.union;
+
 import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
+import org.openkilda.messaging.model.FlowPathDto;
+import org.openkilda.messaging.model.FlowPathDto.FlowPathDtoBuilder;
+import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.TransactionManager;
@@ -37,6 +44,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -59,34 +67,50 @@ public class FlowOperationsService {
     }
 
     /**
-     * Return all flows for a particular link.
+     * Return all paths for a particular link.
      *
      * @param srcSwitchId source switch id.
      * @param srcPort     source port.
      * @param dstSwitchId destination switch id.
      * @param dstPort     destination port.
-     * @return all flows for a particular link.
+     * @return all paths for a particular link.
      * @throws IslNotFoundException if there is no link with these parameters.
      */
-    public Collection<FlowPair> getFlowsForLink(SwitchId srcSwitchId, Integer srcPort,
-                                                SwitchId dstSwitchId, Integer dstPort)
+    public Collection<FlowPath> getFlowPathsForLink(SwitchId srcSwitchId, Integer srcPort,
+                                                    SwitchId dstSwitchId, Integer dstPort)
             throws IslNotFoundException {
 
         if (!islRepository.findByEndpoints(srcSwitchId, srcPort, dstSwitchId, dstPort).isPresent()) {
             throw new IslNotFoundException(srcSwitchId, srcPort, dstSwitchId, dstPort);
         }
 
-        return flowPairRepository.findWithSegmentInPath(srcSwitchId, srcPort, dstSwitchId, dstPort);
+        return flowPathRepository.findWithPathSegment(srcSwitchId, srcPort, dstSwitchId, dstPort);
     }
 
     /**
-     * Return flows for a switch.
+     * Groups passed flow paths by flow id.
+     *
+     * @param paths the flow paths for grouping.
+     * @return map with grouped grouped flow paths.
+     */
+    public Map<String, Set<PathId>> groupFlowIdWithPathIdsForRerouting(Collection<FlowPath> paths) {
+        return paths.stream()
+                .collect(Collectors.groupingBy(path -> path.getFlow().getFlowId(),
+                        Collectors.mapping(FlowPath::getPathId, Collectors.toSet())));
+    }
+
+    public Optional<FlowPair> getFlowPairById(String flowId) {
+        return flowPairRepository.findById(flowId);
+    }
+
+    /**
+     * Return flow paths for a switch.
      *
      * @param switchId switch id.
-     * @return all flows for a switch.
+     * @return all flow paths for a switch.
      */
-    public Set<String> getFlowIdsForSwitch(SwitchId switchId) {
-        return flowRepository.findFlowIdsWithSwitchInPath(switchId);
+    public Collection<FlowPath> getFlowPathsForSwitch(SwitchId switchId) {
+        return flowPathRepository.findBySegmentSwitch(switchId);
     }
 
     /**
@@ -94,40 +118,85 @@ public class FlowOperationsService {
      *
      * @param flowId the flow to get a path.
      */
-    public List<GroupFlowPathPayload> getFlowPath(String flowId) throws FlowNotFoundException {
-        Flow currentFlow = flowRepository.findById(flowId)
+    public List<FlowPathDto> getFlowPath(String flowId) throws FlowNotFoundException {
+        Flow flow = flowRepository.findById(flowId)
                 .orElseThrow(() -> new FlowNotFoundException(flowId));
 
-        String groupId = currentFlow.getGroupId();
+        String groupId = flow.getGroupId();
         if (groupId == null) {
             return Collections.singletonList(
-                    toGroupFlowPathPayloadBuilder(currentFlow).build());
+                    toFlowPathDtoBuilder(flow).build());
         } else {
             Collection<Flow> flowsInGroup = flowRepository.findByGroupId(groupId);
-            IntersectionComputer intersectionComputer =
-                    new IntersectionComputer(flowId, flowPathRepository.findByFlowGroupId(groupId));
+            Collection<FlowPath> flowPathsInGroup = flowPathRepository.findByFlowGroupId(groupId);
 
-            // other flows in group
-            List<GroupFlowPathPayload> payloads = flowsInGroup.stream()
+            IntersectionComputer primaryIntersectionComputer = new IntersectionComputer(
+                    flow.getFlowId(), flow.getForwardPathId(), flow.getReversePathId(), flowPathsInGroup);
+
+            // target flow primary path
+            FlowPathDtoBuilder targetFlowDtoBuilder = this.toFlowPathDtoBuilder(flow)
+                    .segmentsStats(primaryIntersectionComputer.getOverlappingStats());
+
+            // other flows in the the group
+            List<FlowPathDto> payloads = flowsInGroup.stream()
                     .filter(e -> !e.getFlowId().equals(flowId))
-                    .map(e -> this.toGroupFlowPathPayloadBuilder(e)
-                            .segmentsStats(intersectionComputer.getOverlappingStats(e.getFlowId()))
-                            .build())
+                    .map(e -> this.mapGroupPathFlowDto(e, true, primaryIntersectionComputer))
                     .collect(Collectors.toList());
-            // current flow
-            payloads.add(this.toGroupFlowPathPayloadBuilder(currentFlow)
-                    .segmentsStats(intersectionComputer.getOverlappingStats())
-                    .build());
+
+            if (flow.isAllocateProtectedPath()) {
+                IntersectionComputer protectedIntersectionComputer = new IntersectionComputer(
+                        flow.getFlowId(), flow.getProtectedForwardPathId(), flow.getProtectedReversePathId(),
+                        flowPathsInGroup);
+
+                // target flow protected path
+                targetFlowDtoBuilder.protectedPath(FlowProtectedPathDto.builder()
+                        .forwardPath(buildPathFromFlow(flow, flow.getProtectedForwardPath()))
+                        .reversePath(buildPathFromFlow(flow, flow.getProtectedReversePath()))
+                        .segmentsStats(
+                                protectedIntersectionComputer.getOverlappingStats())
+                        .build());
+
+                // other flows in the the group
+                List<FlowPathDto> protectedPathPayloads = flowsInGroup.stream()
+                        .filter(e -> !e.getFlowId().equals(flowId))
+                        .map(e -> this.mapGroupPathFlowDto(e, false, protectedIntersectionComputer))
+                        .collect(Collectors.toList());
+                payloads = union(payloads, protectedPathPayloads);
+            }
+
+            payloads.add(targetFlowDtoBuilder.build());
 
             return payloads;
         }
     }
 
-    private GroupFlowPathPayload.GroupFlowPathPayloadBuilder toGroupFlowPathPayloadBuilder(Flow flow) {
-        return GroupFlowPathPayload.builder()
+    private FlowPathDto mapGroupPathFlowDto(Flow flow, boolean primaryPathCorrespondStat,
+                                            IntersectionComputer intersectionComputer) {
+        FlowPathDtoBuilder builder = this.toFlowPathDtoBuilder(flow)
+                .primaryPathCorrespondStat(primaryPathCorrespondStat)
+                .segmentsStats(
+                        intersectionComputer.getOverlappingStats(flow.getForwardPathId(), flow.getReversePathId()));
+        if (flow.isAllocateProtectedPath()) {
+            builder.protectedPath(FlowProtectedPathDto.builder()
+                    .forwardPath(buildPathFromFlow(flow, flow.getProtectedForwardPath()))
+                    .reversePath(buildPathFromFlow(flow, flow.getProtectedReversePath()))
+                    .segmentsStats(
+                            intersectionComputer.getOverlappingStats(
+                                    flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()))
+                    .build());
+        }
+        return builder.build();
+    }
+
+    private FlowPathDtoBuilder toFlowPathDtoBuilder(Flow flow) {
+        return FlowPathDto.builder()
                 .id(flow.getFlowId())
-                .forwardPath(FlowPathMapper.INSTANCE.mapToPathNodes(flow.getForwardPath()))
-                .reversePath(FlowPathMapper.INSTANCE.mapToPathNodes(flow.getReversePath()));
+                .forwardPath(buildPathFromFlow(flow, flow.getForwardPath()))
+                .reversePath(buildPathFromFlow(flow, flow.getReversePath()));
+    }
+
+    private List<PathNodePayload> buildPathFromFlow(Flow flow, FlowPath flowPath) {
+        return FlowPathMapper.INSTANCE.mapToPathNodes(flow, flowPath);
     }
 
     /**

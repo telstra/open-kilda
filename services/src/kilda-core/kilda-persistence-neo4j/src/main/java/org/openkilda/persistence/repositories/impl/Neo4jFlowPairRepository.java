@@ -17,7 +17,6 @@ package org.openkilda.persistence.repositories.impl;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
-import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPairRepository;
@@ -52,14 +51,6 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
     @Override
     public Collection<FlowPair> findWithPeriodicPingsEnabled() {
         return flowRepository.findWithPeriodicPingsEnabled().stream()
-                .map(this::toFlowPair)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public Collection<FlowPair> findWithSegmentInPath(SwitchId srcSwitchId, int srcPort,
-                                                      SwitchId dstSwitchId, int dstPort) {
-        return flowRepository.findWithPathSegment(srcSwitchId, srcPort, dstSwitchId, dstPort).stream()
                 .map(this::toFlowPair)
                 .collect(Collectors.toList());
     }

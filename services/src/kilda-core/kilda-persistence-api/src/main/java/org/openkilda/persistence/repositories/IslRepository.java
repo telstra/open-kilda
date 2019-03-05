@@ -16,9 +16,11 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.Isl;
+import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface IslRepository extends Repository<Isl> {
@@ -46,16 +48,16 @@ public interface IslRepository extends Repository<Isl> {
                                            SwitchId dstSwitchId, Integer dstPort);
 
     /**
-     * Finds active ISLs for the path occupied by the flow, filtering out ISLs that don't have enough available
+     * Finds active ISLs for the path occupied by the flow paths, filtering out ISLs that don't have enough available
      * bandwidth.
      * <p/>
      * ISLs must have available bandwidth to satisfy the difference between newly requested and already taken by the
      * same flow.
      *
-     * @param flowId            the flow ID.
+     * @param pathIds           list of the pathId.
      * @param requiredBandwidth required bandwidth amount that should be available on ISLs.
      */
-    Collection<Isl> findActiveAndOccupiedByFlowWithAvailableBandwidth(String flowId, long requiredBandwidth);
+    Collection<Isl> findActiveAndOccupiedByFlowPathWithAvailableBandwidth(List<PathId> pathIds, long requiredBandwidth);
 
     /**
      * Finds all active ISLs.

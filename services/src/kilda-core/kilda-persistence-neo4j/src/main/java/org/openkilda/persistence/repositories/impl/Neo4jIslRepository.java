@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceException;
@@ -34,8 +35,10 @@ import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.cypher.Filters;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Neo4j OGM implementation of {@link IslRepository}.
@@ -129,14 +132,16 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     }
 
     @Override
-    public Collection<Isl> findActiveAndOccupiedByFlowWithAvailableBandwidth(String flowId, long requiredBandwidth) {
+    public Collection<Isl> findActiveAndOccupiedByFlowPathWithAvailableBandwidth(List<PathId> pathIds,
+                                                                                 long requiredBandwidth) {
         Map<String, Object> parameters = ImmutableMap.of(
-                "flow_id", flowId,
+                "path_ids", pathIds.stream().map(PathId::getId).collect(Collectors.toList()),
                 "requested_bandwidth", requiredBandwidth,
                 "switch_status", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
                 "isl_status", islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
 
-        String query = "MATCH (:flow {flow_id: $flow_id})-[:owns]-(fp:flow_path)-[:owns]-(ps:path_segment) "
+        String query = "MATCH (fp:flow_path)-[:owns]-(ps:path_segment) "
+                + "WHERE fp.path_id IN $path_ids "
                 + "MATCH (src:switch)-[:source]-(ps)-[:destination]-(dst:switch) "
                 + "MATCH (src)-[link:isl]->(dst) "
                 + "WHERE src.state = $switch_status AND dst.state = $switch_status AND link.status = $isl_status "
