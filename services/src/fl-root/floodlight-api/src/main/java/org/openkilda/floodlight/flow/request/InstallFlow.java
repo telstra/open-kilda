@@ -32,23 +32,23 @@ public class InstallFlow extends FlowRequest {
      * Cookie allocated for flow.
      */
     @JsonProperty("cookie")
-    protected Long cookie;
+    private final Long cookie;
 
     /**
      * Input port for flow action.
      */
     @JsonProperty("input_port")
-    protected Integer inputPort;
+    private final Integer inputPort;
 
     /**
      * Output port for flow action.
      */
     @JsonProperty("output_port")
-    protected Integer outputPort;
+    private Integer outputPort;
 
-    public InstallFlow(MessageContext context, String id, Long cookie, SwitchId switchId, Integer inputPort,
-                       Integer outputPort) {
-        super(context, id, switchId);
+    public InstallFlow(MessageContext context, String commandId, String id, Long cookie, SwitchId switchId,
+                       Integer inputPort, Integer outputPort) {
+        super(context, commandId, id, switchId);
 
         this.cookie = cookie;
         this.inputPort = inputPort;

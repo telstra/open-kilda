@@ -17,7 +17,12 @@ package org.openkilda.floodlight.command.flow;
 
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 
+import org.openkilda.floodlight.FloodlightResponse;
 import org.openkilda.floodlight.command.OfCommand;
+import org.openkilda.floodlight.error.SessionErrorResponseException;
+import org.openkilda.floodlight.error.SwitchNotFoundException;
+import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.floodlight.utils.CompletableFutureAdapter;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
@@ -25,10 +30,12 @@ import org.openkilda.model.SwitchId;
 import lombok.Getter;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.util.FlowModUtils;
+import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
+import org.projectfloodlight.openflow.protocol.errormsg.OFFlowModFailedErrorMsg;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.OFGroup;
@@ -48,13 +55,39 @@ public abstract class FlowCommand extends OfCommand {
     protected static final long FLOW_COOKIE_MASK = 0x7FFFFFFFFFFFFFFFL;
     protected static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
 
-    String flowId;
-    Long cookie;
+    final String commandId;
+    final String flowId;
+    final Long cookie;
 
-    FlowCommand(String flowId, MessageContext messageContext, Long cookie, SwitchId switchId) {
+    FlowCommand(String commandId, String flowId, MessageContext messageContext, Long cookie, SwitchId switchId) {
         super(switchId, messageContext);
+        this.commandId = commandId;
         this.flowId = flowId;
         this.cookie = cookie;
+    }
+
+    @Override
+    protected FloodlightResponse buildError(Throwable error) {
+        ErrorCode code;
+        if (error instanceof SwitchNotFoundException) {
+            code = ErrorCode.SWITCH_UNAVAILABLE;
+        } else if (error instanceof SessionErrorResponseException) {
+            SessionErrorResponseException sessionException = (SessionErrorResponseException) error;
+            OFErrorMsg errorMsg = sessionException.getErrorResponse();
+            OFFlowModFailedErrorMsg modFailedError = (OFFlowModFailedErrorMsg) errorMsg;
+            code = getCode(modFailedError);
+        } else {
+            code = ErrorCode.UNKNOWN;
+        }
+
+        return FlowErrorResponse.errorBuilder()
+                .errorCode(code)
+                .description(error.getMessage())
+                .messageContext(messageContext)
+                .switchId(switchId)
+                .commandId(commandId)
+                .flowId(flowId)
+                .build();
     }
 
     final Match matchFlow(Integer inputPort, Integer transitVlanId, OFFactory ofFactory) {
@@ -91,5 +124,18 @@ public abstract class FlowCommand extends OfCommand {
                         .flatMap(List::stream)
                         .collect(Collectors.toList())
         );
+    }
+
+    private ErrorCode getCode(OFFlowModFailedErrorMsg error) {
+        switch (error.getCode()) {
+            case UNSUPPORTED:
+                return ErrorCode.UNSUPPORTED;
+            case BAD_COMMAND:
+                return ErrorCode.BAD_COMMAND;
+            case BAD_FLAGS:
+                return ErrorCode.BAD_FLAGS;
+            default:
+                return ErrorCode.UNKNOWN;
+        }
     }
 }

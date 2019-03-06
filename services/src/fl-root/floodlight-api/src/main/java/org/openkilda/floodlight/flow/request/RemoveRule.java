@@ -44,12 +44,13 @@ public class RemoveRule extends FlowRequest {
     @JsonCreator
     @Builder
     public RemoveRule(@JsonProperty("message_context") MessageContext messageContext,
+                      @JsonProperty("command_id") String commandId,
                       @JsonProperty(FLOW_ID) final String flowId,
                       @JsonProperty("switch_id") final SwitchId switchId,
                       @JsonProperty("cookie") final Long cookie,
                       @JsonProperty("criteria") DeleteRulesCriteria criteria,
                       @JsonProperty("meter_id") Long meterId) {
-        super(messageContext, flowId, switchId);
+        super(messageContext, commandId, flowId, switchId);
         this.criteria = criteria;
         this.cookie = cookie;
         this.meterId = meterId;

@@ -30,19 +30,33 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 public class FlowErrorResponse extends FlowResponse {
 
+    @JsonProperty("error_code")
+    private ErrorCode errorCode;
+
     @JsonProperty
     private String description;
 
     @JsonCreator
     @Builder(builderMethodName = "errorBuilder")
     public FlowErrorResponse(@JsonProperty("success") boolean success,
-                             @JsonProperty("error") String description,
+                             @JsonProperty("error_code") ErrorCode errorCode,
+                             @JsonProperty("description") String description,
                              @JsonProperty("command_context") MessageContext messageContext,
+                             @JsonProperty("command_id") String commandId,
                              @JsonProperty(FLOW_ID) String flowId,
                              @JsonProperty("switch_id") SwitchId switchId) {
-        super(success, messageContext, flowId, switchId);
+        super(success, messageContext, commandId, flowId, switchId);
 
         this.description = description;
+        this.errorCode = errorCode;
+    }
+
+    public enum ErrorCode {
+        SWITCH_UNAVAILABLE,
+        UNSUPPORTED,
+        BAD_FLAGS,
+        BAD_COMMAND,
+        UNKNOWN
     }
 
 }

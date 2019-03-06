@@ -32,24 +32,25 @@ public class InstallSingleSwitchRule extends InstallMeteredRule {
      * Output action on the vlan tag.
      */
     @JsonProperty("output_vlan_type")
-    private OutputVlanType outputVlanType;
+    private final OutputVlanType outputVlanType;
 
     /**
      * Optional input vlan id value.
      */
     @JsonProperty("input_vlan_id")
-    private Integer inputVlanId;
+    private final Integer inputVlanId;
 
     /**
      * Optional output vlan id value.
      */
     @JsonProperty("output_vlan_id")
-    private Integer outputVlanId;
+    private final Integer outputVlanId;
 
     @JsonCreator
     @Builder
     public InstallSingleSwitchRule(@JsonProperty("message_context") MessageContext messageContext,
-                                   @JsonProperty(FLOW_ID) final String id,
+                                   @JsonProperty("command_id") String commandId,
+                                   @JsonProperty(FLOW_ID) final String flowId,
                                    @JsonProperty("cookie") final Long cookie,
                                    @JsonProperty("switch_id") final SwitchId switchId,
                                    @JsonProperty("input_port") final Integer inputPort,
@@ -59,7 +60,7 @@ public class InstallSingleSwitchRule extends InstallMeteredRule {
                                    @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                                    @JsonProperty("input_vlan_id") final Integer inputVlanId,
                                    @JsonProperty("output_vlan_id") final Integer outputVlanId) {
-        super(messageContext, id, cookie, switchId, inputPort, outputPort, meterId, bandwidth);
+        super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort, meterId, bandwidth);
 
         this.outputVlanType = outputVlanType;
         this.inputVlanId = inputVlanId;

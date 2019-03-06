@@ -60,7 +60,8 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
     final Long meterId;
 
     @JsonCreator
-    public InstallIngressRuleCommand(@JsonProperty("flowid") String flowId,
+    public InstallIngressRuleCommand(@JsonProperty("command_id") String commandId,
+                                     @JsonProperty("flowid") String flowId,
                                      @JsonProperty("message_context") MessageContext messageContext,
                                      @JsonProperty("cookie") Long cookie,
                                      @JsonProperty("switch_id") SwitchId switchId,
@@ -71,7 +72,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
                                      @JsonProperty("input_vlan_id") Integer inputVlanId,
                                      @JsonProperty("output_vlan_type") OutputVlanType outputVlanType,
                                      @JsonProperty("meter_id") Long meterId) {
-        super(flowId, messageContext, cookie, switchId, inputPort, outputPort, transitVlanId);
+        super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort, transitVlanId);
         this.bandwidth = bandwidth;
         this.inputVlanId = inputVlanId;
         this.outputVlanType = outputVlanType;

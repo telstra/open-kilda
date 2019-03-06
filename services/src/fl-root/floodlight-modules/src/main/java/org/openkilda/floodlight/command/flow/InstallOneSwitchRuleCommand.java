@@ -36,7 +36,8 @@ public class InstallOneSwitchRuleCommand extends InstallIngressRuleCommand {
     private final Integer outputVlanId;
 
     @JsonCreator
-    public InstallOneSwitchRuleCommand(@JsonProperty("flowid") String flowid,
+    public InstallOneSwitchRuleCommand(@JsonProperty("command_id") String commandId,
+                                       @JsonProperty("flowid") String flowid,
                                        @JsonProperty("message_context") MessageContext messageContext,
                                        @JsonProperty("cookie") Long cookie,
                                        @JsonProperty("switch_id") SwitchId switchId,
@@ -48,8 +49,8 @@ public class InstallOneSwitchRuleCommand extends InstallIngressRuleCommand {
                                        @JsonProperty("output_vlan_type") OutputVlanType outputVlanType,
                                        @JsonProperty("meter_id") Long meterId,
                                        @JsonProperty("output_vlan_id") Integer outputVlanId) {
-        super(flowid, messageContext, cookie, switchId, inputPort, outputPort, transitVlanId, bandwidth, inputVlanId,
-                outputVlanType, meterId);
+        super(commandId, flowid, messageContext, cookie, switchId, inputPort, outputPort, transitVlanId, bandwidth,
+                inputVlanId, outputVlanType, meterId);
         this.outputVlanId = outputVlanId;
     }
 

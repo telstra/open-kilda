@@ -32,17 +32,17 @@ class InstallMeteredRule extends InstallFlow {
      * Allocated meter id.
      */
     @JsonProperty("meter_id")
-    protected Long meterId;
+    private final Long meterId;
 
     /**
      * Flow bandwidth value.
      */
     @JsonProperty("bandwidth")
-    protected Long bandwidth;
+    private final Long bandwidth;
 
-    public InstallMeteredRule(MessageContext messageContext, String id, Long cookie, SwitchId switchId,
-                              Integer inputPort, Integer outputPort, Long meterId, Long bandwidth) {
-        super(messageContext, id, cookie, switchId, inputPort, outputPort);
+    public InstallMeteredRule(MessageContext messageContext, String commandId, String flowId, Long cookie,
+                              SwitchId switchId, Integer inputPort, Integer outputPort, Long meterId, Long bandwidth) {
+        super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort);
         this.meterId = meterId;
         this.bandwidth = bandwidth;
     }
