@@ -17,6 +17,14 @@ package org.openkilda.wfm.topology.floodlightrouter;
 
 public final class ComponentType {
 
+    public static final String KILDA_FLOW_REPLY_BOLT = "KILDA_FLOW_REPLY_BOLT";
+    public static final String KILDA_PING_REPLY_BOLT = "KILDA_PING_REPLY_BOLT";
+    public static final String NORTHBOUND_REPLY_BOLT = "NORTHBOUND_REPLY_BOLT";
+    public static final String KILDA_SWITCH_MANAGER_REPLY_BOLT = "KILDA_SWITCH_MANAGER_REPLY_BOLT";
+    public static final String KILDA_STATS_REPLY_BOLT = "KILDA_STATS_REPLY_BOLT";
+    public static final String KILDA_TOPO_DISCO_BOLT = "KILDA_TOPO_DISCO_BOLT";
+
+
     public static final String ROUTER_SPEAKER_FLOW_KAFKA_SPOUT = "ROUTER_SPEAKER_FLOW_KAFKA_SPOUT";
     public static final String ROUTER_SPEAKER_KAFKA_SPOUT = "ROUTER_SPEAKER_KAFKA_SPOUT";
     public static final String SPEAKER_KAFKA_BOLT = "SPEAKER_KAFKA_BOLT";
@@ -27,12 +35,18 @@ public final class ComponentType {
     public static final String SPEAKER_PING_KAFKA_BOLT = "SPEAKER_PING_KAFKA_BOLT";
     public static final String KILDA_PING_KAFKA_SPOUT = "KILDA_PING_KAFKA_SPOUT";
     public static final String KILDA_PING_KAFKA_BOLT = "KILDA_PING_KAFKA_BOLT";
+    public static final String KILDA_STATS_KAFKA_SPOUT = "KILDA_STATS_KAFKA_SPOUT";
+    public static final String KILDA_STATS_KAFKA_BOLT = "KILDA_STATS_KAFKA_BOLT";
+    public static final String KILDA_SWITCH_MANAGER_KAFKA_BOLT = "KILDA_SWITCH_MANAGER_KAFKA_BOLT";
+    public static final String KILDA_SWITCH_MANAGER_KAFKA_SPOUT = "KILDA_SWITCH_MANAGER_KAFKA_SPOUT";
     public static final String SPEAKER_DISCO_KAFKA_SPOUT = "SPEAKER_DISCO_KAFKA_SPOUT";
     public static final String SPEAKER_DISCO_KAFKA_BOLT = "SPEAKER_DISCO_KAFKA_BOLT";
     public static final String ROUTER_TOPO_DISCO_SPOUT = "ROUTER_TOPO_DISCO_SPOUT";
-    public static final String TOPO_DISCO_KAFKA_BOLT = "TOPO_DISCO_KAFKA_BOLT";
+    public static final String KILDA_TOPO_DISCO_KAFKA_SPOUT = "KILDA_TOPO_DISCO_KAFKA_SPOUT";
+    public static final String KILDA_TOPO_DISCO_KAFKA_BOLT = "KILDA_TOPO_DISCO_KAFKA_BOLT";
     public static final String ROUTER_BOLT = "ROUTER_BOLT";
-    public static final String NORTHBOND_REPLY_KAFKA_BOLT = "NORTHBOND_REPLY_KAFKA_BOLT";
+    public static final String NORTHBOUND_REPLY_KAFKA_BOLT = "NORTHBOUND_REPLY_KAFKA_BOLT";
+    public static final String NORTHBOUND_REPLY_KAFKA_SPOUT = "NORTHBOUND_REPLY_KAFKA_SPOUT";
 
     private ComponentType() {}
 }

@@ -29,6 +29,8 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.discovery.NetworkDumpBeginMarker;
+import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
@@ -162,16 +164,26 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     private void dumpAllSwitchesAction(String correlationId) {
         producerService.enableGuaranteedOrder(discoveryTopic);
         try {
+            producerService.sendMessageAndTrack(
+                    discoveryTopic,
+                    new InfoMessage(new NetworkDumpBeginMarker(), System.currentTimeMillis(), correlationId));
             Collection<IOFSwitch> iofSwitches = switchManager.getAllSwitchMap().values();
             int switchCounter = 0;
             for (IOFSwitch sw : iofSwitches) {
-                NetworkDumpSwitchData swData = new NetworkDumpSwitchData(buildSwitch(sw));
-                producerService.sendMessageAndTrack(discoveryTopic,
+                try {
+                    NetworkDumpSwitchData swData = new NetworkDumpSwitchData(buildSwitch(sw));
+                    producerService.sendMessageAndTrack(discoveryTopic,
                                                     new ChunkedInfoMessage(swData, System.currentTimeMillis(),
                                                             correlationId, switchCounter, iofSwitches.size(), region));
+                } catch (Exception e) {
+                    logger.error("Failed to send network dump for {}", sw.getId());
+                }
                 switchCounter++;
             }
 
+            producerService.sendMessageAndTrack(
+                    discoveryTopic,
+                    new InfoMessage(new NetworkDumpEndMarker(), System.currentTimeMillis(), correlationId));
         } finally {
             producerService.disableGuaranteedOrder(discoveryTopic);
         }
@@ -289,7 +301,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
                                             port.isEnabled() ? SwitchPort.State.UP : SwitchPort.State.DOWN))
                 .collect(Collectors.toList());
         Set<Switch.Feature> features = featureDetector.detectSwitch(sw);
-        return new Switch(new SwitchId(sw.getId().getLong()), switchManager.getSwitchIpAddress(sw).toString(), features,
+        return new Switch(new SwitchId(sw.getId().getLong()), switchManager.getSwitchIpAddress(sw), features,
                 ports);
     }
 

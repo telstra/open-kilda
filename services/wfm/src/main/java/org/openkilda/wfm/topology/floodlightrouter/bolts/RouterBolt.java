@@ -54,7 +54,6 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.floodlightrouter.ComponentType;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.service.FloodlightTracker;
-import org.openkilda.wfm.topology.floodlightrouter.service.RequestTracker;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -84,7 +83,6 @@ public class RouterBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<S
     private final long floodlightRequestTimeout;
     private final long messageBlacklistTimeout;
 
-    private transient RequestTracker requestTracker;
     private transient FloodlightTracker floodlightTracker;
 
     protected OutputCollector outputCollector;
@@ -107,16 +105,14 @@ public class RouterBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<S
                 message = new CommandMessage(request, System.currentTimeMillis(), UUID.randomUUID()
                         .toString());
                 String json = MAPPER.writeValueAsString(message);
-                requestTracker.trackMessage(message.getCorrelationId());
                 dispatchToSpeaker(tuple, json, region);
             }
         } catch (JsonProcessingException e) {
             logger.error("Unable to serialize {}", message);
         }
-        requestTracker.cleanupOldMessages();
         floodlightTracker.checkTimeouts();
         floodlightTracker.handleUnmanagedSwitches(new RouterMessageSender(tuple,
-                Stream.TOPO_DISCO));
+                Stream.KILDA_TOPO_DISCO));
     }
 
     @Override
@@ -157,9 +153,8 @@ public class RouterBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<S
     private void dispatchToSpeakerFlow(Tuple input, String json, Message message) {
         SwitchId switchId = lookupSwitchIdInCommandMessage(message);
         if (switchId != null) {
-            requestTracker.trackMessage(message.getCorrelationId());
             String region = floodlightTracker.lookupRegion(switchId);
-            String stream = formatWithRegion(Stream.SPEAKER_FLOW, region);
+            String stream = Stream.formatWithRegion(Stream.SPEAKER_FLOW, region);
             Values values =  new Values(json);
             outputCollector.emit(stream, input, values);
         } else {
@@ -171,7 +166,7 @@ public class RouterBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<S
         SwitchId switchId = lookupSwitchIdInCommandMessage(message);
         if (switchId != null) {
             String region = floodlightTracker.lookupRegion(switchId);
-            String stream = formatWithRegion(Stream.SPEAKER_PING, region);
+            String stream = Stream.formatWithRegion(Stream.SPEAKER_PING, region);
             Values values =  new Values(json);
             outputCollector.emit(stream, input, values);
         } else {
@@ -187,10 +182,6 @@ public class RouterBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<S
             SwitchId switchId;
             String region = ((InfoMessage) message).getRegion();
             if (infoData instanceof NetworkDumpSwitchData) {
-                if (!requestTracker.checkReplyMessage(message.getCorrelationId())) {
-                    logger.debug("Received outdated message {}", json);
-                    return;
-                }
                 switchId = ((NetworkDumpSwitchData) infoData).getSwitchRecord().getDatapath();
                 floodlightTracker.updateSwitchRegion(switchId, region);
             } else if (infoData instanceof SwitchInfoData) {
@@ -200,22 +191,15 @@ public class RouterBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<S
                 switchId = ((PortInfoData) infoData).getSwitchId();
                 floodlightTracker.updateSwitchRegion(switchId, region);
             } else if (infoData instanceof AliveResponse) {
-                if (!requestTracker.checkReplyMessage(message.getCorrelationId())) {
-                    logger.debug("Received outdated message {}", json);
-                    return;
-                }
                 handleAliveResponse(input, (AliveResponse) infoData, message.getTimestamp());
                 return;
             }
         }
         Values values = new Values(json);
-        outputCollector.emit(Stream.TOPO_DISCO, input, values);
+        outputCollector.emit(Stream.KILDA_TOPO_DISCO, input, values);
     }
 
     private void dispatchToKildaFlow(Tuple input, String json, Message message) {
-        if (!requestTracker.checkReplyMessage(message.getCorrelationId())) {
-            return;
-        }
         Values values = new Values(json);
         outputCollector.emit(Stream.KILDA_FLOW, input, values);
     }
@@ -271,12 +255,11 @@ public class RouterBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<S
 
     private void dispatchToSpeaker(Tuple input, String json, Message message) {
         SwitchId switchid = lookupSwitchIdInCommandMessage(message);
-        requestTracker.trackMessage(message.getCorrelationId());
         if (switchid == null) {
             logger.debug("No target switch found, processing to all regions: {}", json);
             Values values = new Values(json);
             for (String region: floodlights) {
-                String formattedStream = formatWithRegion(Stream.SPEAKER, region);
+                String formattedStream = Stream.formatWithRegion(Stream.SPEAKER, region);
                 outputCollector.emit(formattedStream, input, values);
             }
         } else {
@@ -304,7 +287,7 @@ public class RouterBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<S
     }
 
     private void dispatchToSpeaker(Tuple input, String json, String region) {
-        String stream = formatWithRegion(Stream.SPEAKER, region);
+        String stream = Stream.formatWithRegion(Stream.SPEAKER, region);
         Values values =  new Values(json);
         outputCollector.emit(stream, input, values);
     }
@@ -319,19 +302,14 @@ public class RouterBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<S
         }
     }
 
-    private String formatWithRegion(String stream, String region) {
-        return String.format("%s_%s", stream, region);
-    }
-
     private void dispatchToDiscoSpeaker(Tuple input, String json, Message message) {
-        requestTracker.trackMessage(message.getCorrelationId());
         if (message instanceof CommandMessage) {
             CommandMessage commandMessage = (CommandMessage) message;
             CommandData commandData = commandMessage.getData();
             if (commandData instanceof DiscoverIslCommandData) {
                 DiscoverIslCommandData data = (DiscoverIslCommandData) commandData;
                 String region = floodlightTracker.lookupRegion(data.getSwitchId());
-                String stream = formatWithRegion(Stream.SPEAKER_DISCO, region);
+                String stream = Stream.formatWithRegion(Stream.SPEAKER_DISCO, region);
                 Values values = new Values(json);
                 outputCollector.emit(stream, input, values);
             }
@@ -340,12 +318,6 @@ public class RouterBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<S
 
     @Override
     public void initState(InMemoryKeyValueState<String, Object> state) {
-        requestTracker = (RequestTracker) state.get(REQUEST_TRACKER);
-        if (requestTracker == null) {
-            requestTracker = new RequestTracker(floodlightRequestTimeout, messageBlacklistTimeout);
-            state.put(REQUEST_TRACKER, requestTracker);
-        }
-
         floodlightTracker = (FloodlightTracker) state.get(FLOODLIGHT_TRACKER);
         if (floodlightTracker == null) {
             floodlightTracker = new FloodlightTracker(floodlights, floodlightAliveTimeout);
@@ -355,7 +327,7 @@ public class RouterBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<S
 
     private String sendNetworkRequest(Tuple tuple, String region) {
         String correlationId = UUID.randomUUID().toString();
-        requestTracker.trackMessage(correlationId);
+
         CommandMessage command = new CommandMessage(new NetworkCommandData(),
                 System.currentTimeMillis(), correlationId,
                 Destination.CONTROLLER);
@@ -366,7 +338,7 @@ public class RouterBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<S
 
         try {
             String json = Utils.MAPPER.writeValueAsString(command);
-            outputCollector.emit(formatWithRegion(Stream.SPEAKER, region), tuple, new Values(json));
+            outputCollector.emit(Stream.formatWithRegion(Stream.SPEAKER, region), tuple, new Values(json));
         } catch (JsonProcessingException exception) {
             logger.error("Could not serialize network dump request", exception);
         }
@@ -385,16 +357,16 @@ public class RouterBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<S
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         for (String region : floodlights) {
-            outputFieldsDeclarer.declareStream(formatWithRegion(Stream.SPEAKER, region),
+            outputFieldsDeclarer.declareStream(Stream.formatWithRegion(Stream.SPEAKER, region),
                     new Fields(AbstractTopology.MESSAGE_FIELD));
-            outputFieldsDeclarer.declareStream(formatWithRegion(Stream.SPEAKER_DISCO, region),
+            outputFieldsDeclarer.declareStream(Stream.formatWithRegion(Stream.SPEAKER_DISCO, region),
                     new Fields(AbstractTopology.MESSAGE_FIELD));
-            outputFieldsDeclarer.declareStream(formatWithRegion(Stream.SPEAKER_FLOW, region),
+            outputFieldsDeclarer.declareStream(Stream.formatWithRegion(Stream.SPEAKER_FLOW, region),
                     new Fields(AbstractTopology.MESSAGE_FIELD));
-            outputFieldsDeclarer.declareStream(formatWithRegion(Stream.SPEAKER_PING, region),
+            outputFieldsDeclarer.declareStream(Stream.formatWithRegion(Stream.SPEAKER_PING, region),
                     new Fields(AbstractTopology.MESSAGE_FIELD));
         }
-        outputFieldsDeclarer.declareStream(Stream.TOPO_DISCO, new Fields(AbstractTopology.MESSAGE_FIELD));
+        outputFieldsDeclarer.declareStream(Stream.KILDA_TOPO_DISCO, new Fields(AbstractTopology.MESSAGE_FIELD));
         outputFieldsDeclarer.declareStream(Stream.KILDA_FLOW, new Fields(AbstractTopology.MESSAGE_FIELD));
         outputFieldsDeclarer.declareStream(Stream.NORTHBOUND_REPLY, new Fields(AbstractTopology.MESSAGE_FIELD));
     }

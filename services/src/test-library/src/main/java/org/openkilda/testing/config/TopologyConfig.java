@@ -51,6 +51,8 @@ public class TopologyConfig {
 
         topologyDefinition.setBfdOffset(bfdOffset);
         topologyDefinition.setControllers(controllerHosts);
+        // TODO(tdurakov): it should be possible to reproduce env by dumping existing topology or changing this random
+        // pick
         for (TopologyDefinition.Switch sw : topologyDefinition.getSwitches()) {
             int pick = new Random().nextInt(controllerHosts.size());
             sw.setController(controllerHosts.get(pick));

@@ -56,6 +56,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.net.Inet4Address;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -479,7 +480,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void eventSwitchInfoTest() throws IOException, ClassNotFoundException {
-        Switch switchRecord = new Switch(SWITCH_ID, "127.0.2.2",
+        Switch switchRecord = new Switch(SWITCH_ID, Inet4Address.getByName("127.0.2.2"),
                                          Collections.emptySet(), Collections.emptyList());
         SwitchInfoData data = new SwitchInfoData(
                 SWITCH_ID, SWITCH_EVENT, "127.0.0.1", "localhost", "sw", "controller", false, switchRecord);
