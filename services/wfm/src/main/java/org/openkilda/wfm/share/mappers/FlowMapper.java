@@ -50,6 +50,7 @@ public abstract class FlowMapper {
     @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
     @Mapping(source = "status", target = "state")
     @Mapping(source = "timeModify", target = "lastUpdated")
+    @Mapping(source = "timeCreate", target = "createdTime")
     public abstract FlowDto map(Flow flow);
 
     /**
@@ -68,6 +69,7 @@ public abstract class FlowMapper {
             expression = "java(org.openkilda.model.Switch.builder().switchId(flow.getDestinationSwitch()).build())")
     @Mapping(source = "state", target = "status")
     @Mapping(source = "lastUpdated", target = "timeModify")
+    @Mapping(source = "createdTime", target = "timeCreate")
     public abstract Flow map(FlowDto flow);
 
     /**
