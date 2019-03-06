@@ -91,7 +91,7 @@ public class LinkController {
     @ApiOperation(value = "Delete link.", response = DeleteLinkResult.class)
     @DeleteMapping(path = "/links")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<DeleteLinkResult> deleteLink(@RequestBody LinkParametersDto linkParameters) {
+    public CompletableFuture<List<LinkDto>> deleteLink(@RequestBody LinkParametersDto linkParameters) {
         return linkService.deleteLink(linkParameters);
     }
 

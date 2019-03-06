@@ -109,6 +109,24 @@ public class DiscoveryIslService {
         controllerExecutor.fire(islFsm, IslFsmEvent.BFD_UPDATE, context);
     }
 
+    /**
+     * Remove isl by request.
+     */
+    public void remove(IIslCarrier carrier, IslReference reference) {
+        IslFsm fsm = controller.get(reference);
+        if (fsm != null) {
+            IslFsmContext context = IslFsmContext.builder(carrier, reference.getSource())
+                    .build();
+            controllerExecutor.fire(fsm, IslFsmEvent.ISL_REMOVE, context);
+            if (fsm.getCurrentState() == IslFsmState.DELETED) {
+                controller.remove(reference);
+                log.debug("ISL service removed FSM {}", reference);
+            } else {
+                log.error("ISL service remove failed for FSM {}, state: {}", reference, fsm.getCurrentState());
+            }
+        }
+    }
+
     // -- private --
 
     private void ensureControllerIsMissing(IslReference reference) {

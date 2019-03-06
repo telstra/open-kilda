@@ -35,6 +35,7 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdPortCo
 import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdPortDisableCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdPortEnableCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerRouter;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.UniIslHandler;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -71,6 +72,8 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
         String source = input.getSourceComponent();
         if (UniIslHandler.BOLT_ID.equals(source)) {
             handleUniIslCommand(input);
+        } else if (SpeakerRouter.BOLT_ID.equals(source)) {
+            handleSpeakerInput(input);
         } else {
             unhandledInput(input);
         }
@@ -78,6 +81,11 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
 
     private void handleUniIslCommand(Tuple input) throws PipelineException {
         IslCommand command = pullValue(input, UniIslHandler.FIELD_ID_COMMAND, IslCommand.class);
+        command.apply(this);
+    }
+
+    private void handleSpeakerInput(Tuple input) throws PipelineException {
+        IslCommand command = pullValue(input, SpeakerRouter.FIELD_ID_COMMAND, IslCommand.class);
         command.apply(this);
     }
 
@@ -136,5 +144,9 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
 
     public void processBfdEnableDisable(IslReference reference, IslBfdFlagUpdated payload) {
         service.bfdEnableDisable(this, reference, payload);
+    }
+
+    public void processIslRemove(IslReference reference) {
+        service.remove(this, reference);
     }
 }

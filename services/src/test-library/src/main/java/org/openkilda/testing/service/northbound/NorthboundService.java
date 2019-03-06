@@ -39,7 +39,6 @@ import org.openkilda.northbound.dto.links.LinkDto;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
-import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 import org.openkilda.northbound.dto.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.switches.DeleteSwitchResult;
 import org.openkilda.northbound.dto.switches.PortDto;
@@ -140,7 +139,7 @@ public interface NorthboundService {
 
     List<String> rerouteLinkFlows(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
 
-    DeleteLinkResult deleteLink(LinkParametersDto linkParameters);
+    List<LinkDto> deleteLink(LinkParametersDto linkParameters);
 
     List<LinkDto> setLinkMaintenance(LinkUnderMaintenanceDto link);
 

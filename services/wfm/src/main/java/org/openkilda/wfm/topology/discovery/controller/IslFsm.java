@@ -86,8 +86,14 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         builder.transition()
                 .from(IslFsmState.DOWN).to(IslFsmState.MOVED).on(IslFsmEvent.ISL_MOVE)
                 .callMethod(updateEndpointStatusMethod);
-        builder.internalTransition().within(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN)
+        builder.internalTransition()
+                .within(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN)
                 .callMethod(updateEndpointStatusMethod);
+        builder.internalTransition()
+                .within(IslFsmState.DOWN).on(IslFsmEvent.ISL_REMOVE)
+                .callMethod("removeAttempt");
+        builder.transition()
+                .from(IslFsmState.DOWN).to(IslFsmState.DELETED).on(IslFsmEvent._ISL_REMOVE_SUCESS);
         builder.onEntry(IslFsmState.DOWN)
                 .callMethod("downEnter");
 
@@ -118,6 +124,11 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         builder.internalTransition()
                 .within(IslFsmState.MOVED).on(IslFsmEvent.ISL_DOWN)
                 .callMethod(updateEndpointStatusMethod);
+        builder.internalTransition()
+                .within(IslFsmState.MOVED).on(IslFsmEvent.ISL_REMOVE)
+                .callMethod("removeAttempt");
+        builder.transition()
+                .from(IslFsmState.MOVED).to(IslFsmState.DELETED).on(IslFsmEvent._ISL_REMOVE_SUCESS);
         builder.onEntry(IslFsmState.MOVED)
                 .callMethod("movedEnter");
     }
@@ -231,6 +242,12 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         }
     }
 
+    protected void removeAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        if (getAggregatedStatus() != DiscoveryEndpointStatus.UP) {
+            fire(IslFsmEvent._ISL_REMOVE_SUCESS);
+        }
+    }
+
     // -- private/service methods --
 
     private void applyHistory(Isl history) {
@@ -282,7 +299,7 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         IslStatus status = mapStatus(getAggregatedStatus());
         IslReference reference = discoveryFacts.getReference();
         String reason;
-        if (context.getPhysicalLinkDown()) {
+        if (context.getPhysicalLinkDown() != null && context.getPhysicalLinkDown()) {
             reason = String.format("ISL %s become %s due to physical link DOWN event on %s",
                                    reference, status, context.getEndpoint());
         } else {
@@ -331,7 +348,7 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
             Instant timeNow = Instant.now();
 
             saveStatus(timeNow);
-            if (context.getPhysicalLinkDown()) {
+            if (context.getPhysicalLinkDown() != null && context.getPhysicalLinkDown()) {
                 raiseCostOnPhysicalDown(timeNow);
             }
         });
@@ -581,13 +598,13 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         BFD_UPDATE,
 
         ISL_UP, ISL_DOWN, ISL_MOVE,
-        _UP_ATTEMPT_SUCCESS, _UP_ATTEMPT_FAIL
+        _UP_ATTEMPT_SUCCESS, ISL_REMOVE, _ISL_REMOVE_SUCESS, _UP_ATTEMPT_FAIL
     }
 
     public enum IslFsmState {
         UP, DOWN,
         MOVED,
 
-        UP_ATTEMPT
+        DELETED, UP_ATTEMPT
     }
 }

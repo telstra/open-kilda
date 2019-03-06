@@ -20,6 +20,7 @@ import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
+import org.openkilda.messaging.info.event.DeactivateIslInfoData;
 import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PortInfoData;
@@ -33,6 +34,7 @@ import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslBfdFlagUpdatedCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslDeleteCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerBfdSessionResponseCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerWorkerCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchCommand;
@@ -99,6 +101,7 @@ public class SpeakerRouter extends AbstractBolt {
     }
 
     private void proxySpeaker(Tuple input, InfoData payload) throws PipelineException {
+
         if (payload instanceof IslInfoData) {
             emit(STREAM_WATCHER_ID, input, makeWatcherTuple(
                     input, new WatcherSpeakerDiscoveryCommand((IslInfoData) payload)));
@@ -118,6 +121,8 @@ public class SpeakerRouter extends AbstractBolt {
         } else if (payload instanceof IslBfdFlagUpdated) {
             // FIXME(surabujin): is it ok to consume this "event" from speaker stream?
             emit(STREAM_ISL_ID, input, makeIslTuple(input, new IslBfdFlagUpdatedCommand((IslBfdFlagUpdated) payload)));
+        } else if (payload instanceof DeactivateIslInfoData) {
+            emit(STREAM_ISL_ID, input, makeIslTuple(input, new IslDeleteCommand((DeactivateIslInfoData) payload)));
         } else {
             log.error("Do not proxy speaker message - unexpected message payload \"{}\"", payload.getClass());
         }

@@ -307,7 +307,8 @@ public class OfeLinkBolt
         InfoData data = message.getData();
         if (data instanceof DeactivateIslInfoData) {
             DeactivateIslInfoData deactivateIslInfoData = (DeactivateIslInfoData) data;
-            discovery.handleFailed(deactivateIslInfoData.getSrcSwitchId(), deactivateIslInfoData.getSrcPort());
+            discovery.handleFailed(deactivateIslInfoData.getSource().getSwitchId(),
+                    deactivateIslInfoData.getSource().getPortNo());
         }
     }
 
@@ -365,8 +366,9 @@ public class OfeLinkBolt
             handleSentDiscoPacket(confirmation);
         } else if (data instanceof DeactivateIslInfoData) {
             DeactivateIslInfoData deactivateIslInfoData = (DeactivateIslInfoData) data;
-            unmanagedSwitches.remove(((DeactivateIslInfoData) data).getSrcSwitchId());
-            discovery.handleFailed(deactivateIslInfoData.getSrcSwitchId(), deactivateIslInfoData.getSrcPort());
+            unmanagedSwitches.remove(((DeactivateIslInfoData) data).getDestination().getSwitchId());
+            discovery.handleFailed(deactivateIslInfoData.getSource().getSwitchId(),
+                    deactivateIslInfoData.getSource().getPortNo());
         } else {
             reportInvalidEvent(data);
         }

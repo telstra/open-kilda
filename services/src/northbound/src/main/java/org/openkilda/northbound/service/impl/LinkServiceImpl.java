@@ -37,7 +37,6 @@ import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
 import org.openkilda.messaging.nbtopology.request.RerouteFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateLinkEnableBfdRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateLinkUnderMaintenanceRequest;
-import org.openkilda.messaging.nbtopology.response.DeleteIslResponse;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -51,7 +50,6 @@ import org.openkilda.northbound.dto.links.LinkEnableBfdDto;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
-import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.LinkService;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
@@ -238,7 +236,7 @@ public class LinkServiceImpl implements LinkService {
     }
 
     @Override
-    public CompletableFuture<DeleteLinkResult> deleteLink(LinkParametersDto linkParameters) {
+    public CompletableFuture<List<LinkDto>> deleteLink(LinkParametersDto linkParameters) {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Delete link request received: {}", linkParameters);
 
@@ -254,12 +252,10 @@ public class LinkServiceImpl implements LinkService {
 
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
         return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
-                .thenApply(response -> new DeleteLinkResult(
-                        response.stream()
-                                .map(DeleteIslResponse.class::cast)
-                                .findFirst()
-                                .get()
-                                .isDeleted()));
+                .thenApply(response -> response.stream()
+                        .map(IslInfoData.class::cast)
+                        .map(linkMapper::toLinkDto)
+                        .collect(Collectors.toList()));
     }
 
     @Override

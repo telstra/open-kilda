@@ -30,7 +30,6 @@ import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
 import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
 import org.openkilda.messaging.nbtopology.request.UpdateLinkEnableBfdRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateLinkUnderMaintenanceRequest;
-import org.openkilda.messaging.nbtopology.response.DeleteIslResponse;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.model.Flow;
@@ -96,7 +95,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
         } else if (request instanceof LinkPropsDrop) {
             result = Collections.singletonList(dropLinkProps((LinkPropsDrop) request));
         } else if (request instanceof DeleteLinkRequest) {
-            result = Collections.singletonList(deleteLink((DeleteLinkRequest) request));
+            result = deleteLink((DeleteLinkRequest) request);
         } else if (request instanceof UpdateLinkUnderMaintenanceRequest) {
             result = updateLinkUnderMaintenanceFlag((UpdateLinkUnderMaintenanceRequest) request);
         } else if (request instanceof UpdateLinkEnableBfdRequest) {
@@ -230,21 +229,25 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
         }
     }
 
-    private DeleteIslResponse deleteLink(DeleteLinkRequest request) {
-        boolean deleted;
+    private List<IslInfoData> deleteLink(DeleteLinkRequest request) {
         try {
-            deleted = linkOperationsService.deleteIsl(request.getSrcSwitch(), request.getSrcPort(),
-                                                      request.getDstSwitch(), request.getDstPort());
+            Collection<Isl> operationsResult = linkOperationsService.deleteIsl(request.getSrcSwitch(),
+                    request.getSrcPort(), request.getDstSwitch(), request.getDstPort());
+            List<IslInfoData> responseResult = operationsResult.stream()
+                    .map(IslMapper.INSTANCE::map)
+                    .collect(Collectors.toList());
+
+            for (IslInfoData isl: responseResult) {
+                DeactivateIslInfoData data = new DeactivateIslInfoData(isl.getSource(), isl.getDestination());
+                getOutput().emit(StreamType.DISCO.toString(), getTuple(), new Values(data, getCorrelationId()));
+            }
+
+            return responseResult;
         } catch (IslNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
         } catch (IllegalIslStateException e) {
             throw new MessageException(ErrorType.REQUEST_INVALID, e.getMessage(), "ISL is in illegal state.");
         }
-
-        DeactivateIslInfoData data = new DeactivateIslInfoData(request.getSrcSwitch(), request.getSrcPort());
-        getOutput().emit(StreamType.DISCO.toString(), getTuple(), new Values(data, getCorrelationId()));
-
-        return new DeleteIslResponse(deleted);
     }
 
     private List<IslInfoData> updateLinkUnderMaintenanceFlag(UpdateLinkUnderMaintenanceRequest request) {

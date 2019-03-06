@@ -25,14 +25,17 @@ title ISL FSM
 [*] --> MOVED : history [history-moved]
 
 state upAttempt <<choice>>
+state deleteAttempt <<choice>>
+deleteAttempt --> DELETED : [endpoint-(A&B)-down]
 
-DOWN --> upAttempt : isl-up / set endpoint-(A|B)-up = true
+DOWN --> upAttempt : isl-up / set endpoint-(A||B)-up = true
 DOWN --> MOVED : isl-move
 DOWN : enter / persist DB state
-DOWN : isl-down / set endpoint-(A|B)-up = false
+DOWN : isl-down / set endpoint-(A||B)-up = false
+DOWN -> deleteAttempt : isl-remove
 
-upAttempt --> UP : [endpoint-A-up && endpoint-B-up]
-upAttempt --> DOWN : [!endpoint-A-up || !endpoint-B-up]
+upAttempt --> UP : [endpoint-(A&&B)-up]
+upAttempt --> DOWN : [endpoint-(A||B)-down]
 
 UP --> DOWN : isl-down
 UP --> MOVED : isl-move
@@ -47,9 +50,11 @@ UP : bfd-update [bfd-up] / emit bisl-bfd-enable
 UP : bfd-update [bfd-down] / emit bisl-bfd-disable
 
 MOVED --> upAttempt : isl-up / set endpoint-(A|B)-up = true
+MOVED --> deleteAttempt : isl-remove
 MOVED : enter / persist DB state
 MOVED : enter / emit isl-move
 MOVED : enter / set endpoint-(A|B)-up = false
 MOVED : isl-down / set endpoint-(A|B)-up = false
 
+DELETED -> [*]
 @enduml

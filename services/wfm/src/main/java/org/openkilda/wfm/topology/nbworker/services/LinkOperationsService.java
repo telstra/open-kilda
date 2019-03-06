@@ -26,6 +26,7 @@ import org.openkilda.wfm.error.IslNotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -118,26 +119,32 @@ public class LinkOperationsService {
      * @throws IslNotFoundException if ISL is not found
      * @throws IllegalIslStateException if ISL is in 'active' state
      */
-    public boolean deleteIsl(SwitchId sourceSwitch, int sourcePort, SwitchId destinationSwitch, int destinationPort)
+    public Collection<Isl> deleteIsl(SwitchId sourceSwitch, int sourcePort, SwitchId destinationSwitch,
+                                     int destinationPort)
             throws IllegalIslStateException, IslNotFoundException {
         log.info("Delete ISL with following parameters: "
                         + "source switch '%s', source port '%d', destination switch '%s', destination port '%d'",
                 sourceSwitch, sourcePort, destinationSwitch, destinationPort);
 
-        Optional<Isl> isl = islRepository.findByEndpoints(sourceSwitch, sourcePort, destinationSwitch, destinationPort);
+        List<Isl> isls = new ArrayList<>();
 
-        if (!isl.isPresent()) {
+        islRepository.findByEndpoints(sourceSwitch, sourcePort,
+                destinationSwitch, destinationPort).ifPresent(isls::add);
+        islRepository.findByEndpoints(destinationSwitch, destinationPort,
+                sourceSwitch, sourcePort).ifPresent(isls::add);
+
+        if (isls.isEmpty()) {
             throw new IslNotFoundException(sourceSwitch, sourcePort, destinationSwitch, destinationPort);
         }
 
-        if (isl.get().getStatus() == IslStatus.ACTIVE) {
+        if (isls.stream().anyMatch(x -> x.getStatus() == IslStatus.ACTIVE)) {
             throw new IllegalIslStateException(sourceSwitch, sourcePort, destinationSwitch, destinationPort,
                     "ISL must NOT be in active state.");
         }
 
-        islRepository.delete(isl.get());
+        isls.forEach(islRepository::delete);
 
-        return !islRepository.findByEndpoints(sourceSwitch, sourcePort, destinationSwitch, destinationPort).isPresent();
+        return isls;
     }
 
     /**

@@ -101,24 +101,27 @@ public final class DecisionMakerFsm extends AbstractStateMachine<DecisionMakerFs
 
     // -- FSM actions --
 
-    protected void saveFailTime(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+    public void saveFailTime(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
                               DecisionMakerFsmContext context) {
         failTime = context.getCurrentTime() - awaitTime;
     }
 
-    protected void emitDiscovery(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+    public void emitDiscovery(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
                                DecisionMakerFsmContext context) {
         context.getOutput().linkDiscovered(context.getDiscoveryEvent());
         failTime = null;
     }
 
-    protected void emitFailed(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+    public void emitFailed(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
                             DecisionMakerFsmContext context) {
         context.getOutput().linkDestroyed(endpoint);
         failTime = null;
     }
 
-    protected void tick(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+    /**
+     * Tick event process.
+     */
+    public void tick(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
                       DecisionMakerFsmContext context) {
         if (context.getCurrentTime() >= failTime + failTimeout) {
             fire(DecisionMakerFsmEvent.FAIL_BY_TIMEOUT, context);

@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.spec.links
 
-import spock.lang.Ignore
-
 import static org.junit.Assume.assumeNotNull
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
@@ -14,7 +12,6 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import spock.lang.Narrative
 
@@ -23,7 +20,6 @@ import java.util.concurrent.TimeUnit
 @Narrative("Verify scenarios around replugging ISLs between different switches/ports.")
 class IslReplugSpec extends BaseSpecification {
 
-    @Ignore("Not implemented in new discovery-topology")
     def "ISL status changes to MOVED when replugging ISL into another switch"() {
         given: "A connected a-switch link"
         def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
@@ -54,10 +50,10 @@ class IslReplugSpec extends BaseSpecification {
         islUtils.waitForIslStatus([newIsl, islUtils.reverseIsl(newIsl)], MOVED)
 
         and: "MOVED ISL can be deleted"
-        [newIsl, islUtils.reverseIsl(newIsl)].each { Isl islToRemove ->
-            assert northbound.deleteLink(islUtils.getLinkParameters(islToRemove)).deleted
-            assert Wrappers.wait(WAIT_OFFSET) { !islUtils.getIslInfo(islToRemove).isPresent() }
-
+        assert northbound.deleteLink(islUtils.getLinkParameters(newIsl)).size() == 2
+        Wrappers.wait(WAIT_OFFSET) {
+            assert !islUtils.getIslInfo(newIsl).isPresent()
+            assert !islUtils.getIslInfo(islUtils.reverseIsl(newIsl)).isPresent()
         }
     }
 

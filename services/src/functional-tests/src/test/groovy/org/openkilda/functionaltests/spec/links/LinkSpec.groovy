@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.spec.links
 
-import spock.lang.Ignore
-
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -165,7 +163,6 @@ class LinkSpec extends BaseSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
     }
 
-    @Ignore("Not implemented in new discovery-topology")
     def "Unable to delete a nonexistent link"() {
         given: "Parameters of nonexistent link"
         def parameters = new LinkParametersDto(new SwitchId(1).toString(), 100, new SwitchId(2).toString(), 100)
@@ -192,7 +189,6 @@ class LinkSpec extends BaseSpecification {
         exc.responseBodyAsString.contains("ISL must NOT be in active state")
     }
 
-    @Ignore("Not implemented in new discovery-topology")
     def "Able to delete an inactive link"() {
         given: "An inactive link"
         def isl = topology.getIslsForActiveSwitches()[0]
@@ -203,10 +199,9 @@ class LinkSpec extends BaseSpecification {
         def response = northbound.deleteLink(islUtils.getLinkParameters(isl))
 
         then: "The link is actually deleted"
-        response.deleted
+        response.size() == 2
         !islUtils.getIslInfo(isl)
-        // TODO(ylobankov): Uncomment the check when the issue #1977 is resolved.
-        //!islUtils.getIslInfo(islUtils.reverseIsl(isl))
+        !islUtils.getIslInfo(islUtils.reverseIsl(isl))
 
         and: "Cleanup: restore the link"
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
