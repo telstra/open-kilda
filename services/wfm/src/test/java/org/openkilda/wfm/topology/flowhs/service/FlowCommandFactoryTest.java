@@ -37,6 +37,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.Neo4jBasedTest;
 
 import com.google.common.collect.ImmutableList;
@@ -50,6 +51,7 @@ import java.util.Random;
 import java.util.UUID;
 
 public class FlowCommandFactoryTest extends Neo4jBasedTest {
+    private static final CommandContext COMMAND_CONTEXT = new CommandContext();
     private static final SwitchId SWITCH_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId SWITCH_2 = new SwitchId("00:00:00:00:00:00:00:02");
     private static final SwitchId SWITCH_3 = new SwitchId("00:00:00:00:00:00:00:03");
@@ -73,7 +75,7 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
                 buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
 
         Flow flow = buildFlow(srcSwitch, 1, 0, destSwitch, 2, 0, 0, segments);
-        List<InstallTransitRule> commands = target.createInstallNonIngressRules(flow);
+        List<InstallTransitRule> commands = target.createInstallNonIngressRules(COMMAND_CONTEXT, flow);
         assertEquals(2, commands.size());
         InstallTransitRule command = commands.get(0);
         assertThat("Should be command for egress rule", command, instanceOf(InstallEgressRule.class));
@@ -99,7 +101,7 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
                 buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
 
         Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 0, 0, segments);
-        List<InstallTransitRule> commands = target.createInstallNonIngressRules(flow);
+        List<InstallTransitRule> commands = target.createInstallNonIngressRules(COMMAND_CONTEXT, flow);
         assertEquals(2, commands.size());
         InstallTransitRule command = commands.get(0);
         assertThat("Should be command for egress rule", command, instanceOf(InstallEgressRule.class));
@@ -139,7 +141,7 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         Pair<List<PathSegment>, List<PathSegment>> segments =
                 buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
         Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 0, segments);
-        List<InstallTransitRule> commands = target.createInstallNonIngressRules(flow);
+        List<InstallTransitRule> commands = target.createInstallNonIngressRules(COMMAND_CONTEXT, flow);
         assertEquals(2, commands.size());
         InstallTransitRule command = commands.get(0);
         assertThat("Should be command for egress rule", command, instanceOf(InstallEgressRule.class));
@@ -165,7 +167,7 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
 
         Pair<List<PathSegment>, List<PathSegment>> segments = buildSegmentsWithTransitSwitches(srcSwitch, destSwitch);
         Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 0, segments);
-        List<InstallTransitRule> commands = target.createInstallNonIngressRules(flow);
+        List<InstallTransitRule> commands = target.createInstallNonIngressRules(COMMAND_CONTEXT, flow);
         assertEquals(4, commands.size());
 
         InstallTransitRule commandForTransitSwitch = commands.get(0);
@@ -203,7 +205,7 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         Pair<List<PathSegment>, List<PathSegment>> segments =
                 buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
         Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 0, segments);
-        List<InstallIngressRule> commands = target.createInstallIngressRules(flow);
+        List<InstallIngressRule> commands = target.createInstallIngressRules(COMMAND_CONTEXT, flow);
         assertEquals(2, commands.size());
 
         InstallIngressRule sourceSwitchRule = commands.get(0);
@@ -236,8 +238,8 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
 
         Pair<List<PathSegment>, List<PathSegment>> segments =
                 buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
-        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102,1000, segments);
-        List<InstallIngressRule> commands = target.createInstallIngressRules(flow);
+        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 1000, segments);
+        List<InstallIngressRule> commands = target.createInstallIngressRules(COMMAND_CONTEXT, flow);
         assertEquals(2, commands.size());
         InstallIngressRule sourceSwitchRule = commands.get(0);
         assertEquals(srcSwitch.getSwitchId(), sourceSwitchRule.getSwitchId());
@@ -269,8 +271,8 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
 
         Pair<List<PathSegment>, List<PathSegment>> segments =
                 buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
-        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102,0, segments);
-        List<RemoveRule> commands = target.createRemoveIngressRules(flow);
+        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 0, segments);
+        List<RemoveRule> commands = target.createRemoveIngressRules(COMMAND_CONTEXT, flow);
         assertEquals("2 commands for ingress rules should be created", 2, commands.size());
 
         RemoveRule srcSwitchCommand = commands.get(0);
@@ -305,8 +307,8 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
 
         Pair<List<PathSegment>, List<PathSegment>> segments =
                 buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
-        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102,1000, segments);
-        List<RemoveRule> commands = target.createRemoveIngressRules(flow);
+        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 1000, segments);
+        List<RemoveRule> commands = target.createRemoveIngressRules(COMMAND_CONTEXT, flow);
         assertEquals("2 commands for ingress rules should be created", 2, commands.size());
 
         RemoveRule srcSwitchCommand = commands.get(0);
@@ -340,8 +342,8 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         Switch destSwitch = Switch.builder().switchId(SWITCH_3).build();
 
         Pair<List<PathSegment>, List<PathSegment>> segments = buildSegmentsWithTransitSwitches(srcSwitch, destSwitch);
-        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102,1000, segments);
-        List<RemoveRule> commands = target.createRemoveNonIngressRules(flow);
+        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 1000, segments);
+        List<RemoveRule> commands = target.createRemoveNonIngressRules(COMMAND_CONTEXT, flow);
         assertEquals("4 commands for ingress rules should be created", 4, commands.size());
 
         RemoveRule forwardTransitRule = commands.get(0);
@@ -384,8 +386,8 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
 
         Pair<List<PathSegment>, List<PathSegment>> segments =
                 buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
-        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102,1000, segments);
-        List<RemoveRule> commands = target.createRemoveNonIngressRules(flow);
+        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 1000, segments);
+        List<RemoveRule> commands = target.createRemoveNonIngressRules(COMMAND_CONTEXT, flow);
         assertEquals("2 commands for ingress rules should be created", 2, commands.size());
 
         RemoveRule forwardEgressRule = commands.get(0);
