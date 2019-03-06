@@ -19,7 +19,7 @@ class MultiRerouteSpec extends BaseSpecification {
         def switches = topology.activeSwitches
         List<List<PathNode>> allPaths = []
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll {src, dst -> src != dst}.unique {it.sort()}.find {Switch src, Switch dst ->
+                .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
             allPaths = database.getPaths(src.dpId, dst.dpId)*.path
             allPaths.size() > 2
         }
@@ -42,8 +42,8 @@ class MultiRerouteSpec extends BaseSpecification {
         def newIsls = pathHelper.getInvolvedIsls(newPath)
         def thinIsl = newIsls.find { !currentIsls.contains(it) }
         long newBw = flows.sum { it.maximumBandwidth } - 1
-        [thinIsl, thinIsl.reversed].each { database.updateLinkMaxBandwidth(it, newBw) }
-        [thinIsl, thinIsl.reversed].each { database.updateLinkAvailableBandwidth(it, newBw) }
+        [thinIsl, thinIsl.reversed].each { database.updateIslMaxBandwidth(it, newBw) }
+        [thinIsl, thinIsl.reversed].each { database.updateIslAvailableBandwidth(it, newBw) }
 
         and: "Init simultaneous reroute of both flows by bringing current path's ISL down"
         def islToBreak = currentIsls.find { !newIsls.contains(it) }
@@ -67,7 +67,7 @@ class MultiRerouteSpec extends BaseSpecification {
         and: "Cleanup: revert system to original state"
         northbound.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         flows.each { flowHelper.deleteFlow(it.id) }
-        [thinIsl, thinIsl.reversed].each { database.revertIslBandwidth(it) }
+        [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {

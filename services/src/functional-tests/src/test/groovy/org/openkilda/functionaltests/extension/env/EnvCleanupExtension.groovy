@@ -98,11 +98,11 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
                     it.srcSwitch.dpId == link.source.switchId && it.srcPort == link.source.portNo &&
                             it.dstSwitch.dpId == link.destination.switchId && it.dstPort == link.destination.portNo
                 }
-                if(!isl) {
+                if (!isl) {
                     throw new IslNotFoundException("Wasn't able to find isl: $link")
                 }
                 log.info("Resetting available bandwidth on ISL: $isl")
-                database.revertIslBandwidth(isl)
+                database.resetIslBandwidth(isl)
             }
         }
     }

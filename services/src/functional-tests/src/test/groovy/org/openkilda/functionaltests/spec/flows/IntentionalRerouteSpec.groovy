@@ -50,8 +50,8 @@ class IntentionalRerouteSpec extends BaseSpecification {
             }
             def newBw = flow.maximumBandwidth - 1
             [thinIsl, thinIsl.reversed].each {
-                database.updateLinkMaxBandwidth(it, newBw)
-                database.updateLinkAvailableBandwidth(it, newBw)
+                database.updateIslMaxBandwidth(it, newBw)
+                database.updateIslAvailableBandwidth(it, newBw)
             }
             thinIsl
         }
@@ -72,8 +72,8 @@ class IntentionalRerouteSpec extends BaseSpecification {
         and: "Remove the flow, restore the bandwidth on ISLs, reset costs"
         flowHelper.deleteFlow(flow.id)
         changedIsls.each {
-            database.revertIslBandwidth(it)
-            database.revertIslBandwidth(it.reversed)
+            database.resetIslBandwidth(it)
+            database.resetIslBandwidth(it.reversed)
         }
     }
 
@@ -101,8 +101,8 @@ class IntentionalRerouteSpec extends BaseSpecification {
             !currentIsls.contains(it) && !currentIsls.contains(it.reversed)
         }
         [thinIsl, thinIsl.reversed].each {
-            database.updateLinkMaxBandwidth(it, flow.maximumBandwidth)
-            database.updateLinkAvailableBandwidth(it, flow.maximumBandwidth)
+            database.updateIslMaxBandwidth(it, flow.maximumBandwidth)
+            database.updateIslAvailableBandwidth(it, flow.maximumBandwidth)
         }
 
         and: "Init a reroute of the flow"
@@ -126,7 +126,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         and: "Remove the flow, restore bandwidths on ISLs, reset costs"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         flowHelper.deleteFlow(flow.id)
-        [thinIsl, thinIsl.reversed].each { database.revertIslBandwidth(it) }
+        [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
     }
 
     /**
@@ -143,7 +143,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         List<List<PathNode>> allPaths = database.getPaths(src.dpId, dst.dpId)*.path
         def longestPath = allPaths.max { it.size() }
         def changedIsls = allPaths.findAll { it != longestPath }
-                                  .collect { pathHelper.makePathMorePreferable(longestPath, it) }
+                .collect { pathHelper.makePathMorePreferable(longestPath, it) }
         //and create the flow that uses the long path
         def flow = flowHelper.randomFlow(src, dst)
         flow.maximumBandwidth = 0
