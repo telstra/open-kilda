@@ -134,7 +134,6 @@ class SwitchDeleteSpec extends BaseSpecification {
         "casual"        | getFlowHelper().randomFlow(*getTopology().getActiveSwitches()[0..1])
     }
 
-    //@Ignore("Not implemented in new discovery-topology")
     def "Able to delete an inactive switch without any ISLs"() {
         requireProfiles("virtual")
 
@@ -149,7 +148,7 @@ class SwitchDeleteSpec extends BaseSpecification {
         }
 
         // delete all ISLs on switch
-        swIsls.collectMany { [it, islUtils.reverseIsl(it)] }.each {
+        swIsls.each {
             northbound.deleteLink(islUtils.getLinkParameters(it))
         }
 

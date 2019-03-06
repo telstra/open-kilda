@@ -144,6 +144,24 @@ public class DiscoverySwitchService {
         }
     }
 
+    /**
+     * Remove isl by request.
+     */
+    public void remove(SwitchId datapath) {
+        log.debug("Switch service receive remove request for {}", datapath);
+        SwitchFsm fsm = controller.get(datapath);
+        if (fsm != null) {
+            SwitchFsmContext context = SwitchFsmContext.builder(carrier).build();
+            controllerExecutor.fire(fsm, SwitchFsmEvent.SWITCH_REMOVE, context);
+            if (fsm.getCurrentState() == SwitchFsmState.DELETED) {
+                controller.remove(datapath);
+                log.debug("Switch service removed FSM {}", datapath);
+            } else {
+                log.error("Switch service remove failed for FSM {}, state: {}", datapath, fsm.getCurrentState());
+            }
+        }
+    }
+
     // -- private --
 
     private SwitchFsm locateController(SwitchId datapath) {

@@ -19,6 +19,7 @@ import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
 import org.openkilda.model.Isl;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
@@ -190,5 +191,9 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
 
     public void processSwitchPortEvent(PortInfoData payload) {
         service.switchPortEvent(payload);
+    }
+
+    public void processRemoveSwitch(SwitchId datapath) {
+        service.remove(datapath);
     }
 }

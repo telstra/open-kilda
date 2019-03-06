@@ -19,6 +19,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
@@ -146,6 +147,11 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
             }
         });
 
+        if (deleted) {
+            DeactivateSwitchInfoData data = new DeactivateSwitchInfoData(switchId);
+            getOutput().emit(StreamType.DISCO.toString(), getTuple(), new Values(data, getCorrelationId()));
+        }
+
         log.info("{} deletion of switch '{}'", deleted ? "Successful" : "Unsuccessful", switchId);
         return new DeleteSwitchResponse(deleted);
     }
@@ -155,6 +161,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         super.declareOutputFields(declarer);
         declarer.declare(new Fields("response", "correlationId"));
         declarer.declareStream(StreamType.REROUTE.toString(),
+                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
+        declarer.declareStream(StreamType.DISCO.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
     }
 }

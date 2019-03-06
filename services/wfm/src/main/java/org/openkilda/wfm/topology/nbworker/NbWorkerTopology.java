@@ -133,6 +133,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.REROUTE.toString())
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.REROUTE.toString())
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.DISCO.toString())
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(PATHS_BOLT_NAME, StreamType.ERROR.toString());

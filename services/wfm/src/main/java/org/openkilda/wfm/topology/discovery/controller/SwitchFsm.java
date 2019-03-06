@@ -94,6 +94,8 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsm.S
 
         // OFFLINE
         builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.ONLINE);
+        builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.DELETED).on(SwitchFsmEvent.SWITCH_REMOVE)
+                .callMethod("removePortsFsm");
         builder.onEntry(SwitchFsmState.OFFLINE)
                 .callMethod("offlineEnter");
     }
@@ -224,6 +226,19 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsm.S
         updatePortLinkMode(context, port);
     }
 
+    /**
+     * Removed ports FSM on SWITCH_REMOVE event.
+     */
+    public void removePortsFsm(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                                             SwitchFsmContext context) {
+        Set<Integer> ports = new HashSet<>(portByNumber.keySet());
+        for (Integer port: ports) {
+            SwitchFsmContext portContext = context.toBuilder().portNumber(port).build();
+            portDel(portContext, portContext.getPortNumber());
+        }
+    }
+
+
     // -- private/service methods --
 
     private void portAdd(SwitchFsmContext context, PortFacts portFacts) {
@@ -322,7 +337,7 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsm.S
     }
 
     @Value
-    @Builder
+    @Builder(toBuilder = true)
     public static class SwitchFsmContext {
         private final ISwitchCarrier output;
 
@@ -344,13 +359,14 @@ public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsm.S
         ONLINE,
         OFFLINE,
 
-        PORT_ADD, PORT_DEL, PORT_UP, PORT_DOWN
+        PORT_ADD, PORT_DEL, PORT_UP, SWITCH_REMOVE, PORT_DOWN
     }
 
     public enum SwitchFsmState {
         INIT,
         OFFLINE,
         ONLINE,
-        SETUP
+        SETUP,
+        DELETED
     }
 }

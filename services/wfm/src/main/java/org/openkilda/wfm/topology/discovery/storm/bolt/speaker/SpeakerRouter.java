@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
 import org.openkilda.messaging.info.event.DeactivateIslInfoData;
+import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
 import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PortInfoData;
@@ -40,6 +41,7 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerWo
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchPortEventCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchRemoveEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchUnmanagedEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.command.WatcherSpeakerDiscoveryCommand;
@@ -115,6 +117,9 @@ public class SpeakerRouter extends AbstractBolt {
         } else if (payload instanceof UnmanagedSwitchNotification) {
             emit(input, makeDefaultTuple(
                     input, new SwitchUnmanagedEventCommand((UnmanagedSwitchNotification) payload)));
+        } else if (payload instanceof DeactivateSwitchInfoData) {
+            emit(input, makeDefaultTuple(
+                    input, new SwitchRemoveEventCommand((DeactivateSwitchInfoData) payload)));
         } else if (payload instanceof BfdSessionResponse) {
             emit(STREAM_WORKER_ID, input, makeWorkerTuple(new SpeakerBfdSessionResponseCommand(
                     input.getStringByField(FIELD_ID_KEY), (BfdSessionResponse) payload)));

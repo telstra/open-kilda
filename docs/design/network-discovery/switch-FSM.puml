@@ -45,4 +45,7 @@ ONLINE --> OFFLINE : offline
 OFFLINE : enter / update status in DB
 OFFLINE : enter / emit offline for portAll()
 OFFLINE --> SETUP : online
+OFFLINE --> DELETED: switch-remove / kill ports FSM
+DELETED -> [*]
+
 @enduml
