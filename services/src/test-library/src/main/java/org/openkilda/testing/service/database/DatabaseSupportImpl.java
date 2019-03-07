@@ -80,7 +80,7 @@ public class DatabaseSupportImpl implements Database {
      * @return true if at least 1 ISL was affected.
      */
     @Override
-    public boolean updateLinkMaxBandwidth(Isl islToUpdate, long value) {
+    public boolean updateIslMaxBandwidth(Isl islToUpdate, long value) {
         return transactionManager.doInTransaction(() -> {
             Optional<org.openkilda.model.Isl> isl = islRepository.findByEndpoints(
                     islToUpdate.getSrcSwitch().getDpId(), islToUpdate.getSrcPort(),
@@ -98,11 +98,11 @@ public class DatabaseSupportImpl implements Database {
      * Updates available_bandwidth property on a certain ISL.
      *
      * @param islToUpdate ISL to be changed
-     * @param value max bandwidth to set
+     * @param value available bandwidth to set
      * @return true if at least 1 ISL was affected.
      */
     @Override
-    public boolean updateLinkAvailableBandwidth(Isl islToUpdate, long value) {
+    public boolean updateIslAvailableBandwidth(Isl islToUpdate, long value) {
         return transactionManager.doInTransaction(() -> {
             Optional<org.openkilda.model.Isl> isl = islRepository.findByEndpoints(
                     islToUpdate.getSrcSwitch().getDpId(), islToUpdate.getSrcPort(),
@@ -124,7 +124,7 @@ public class DatabaseSupportImpl implements Database {
      * @return true if at least 1 ISL was affected.
      */
     @Override
-    public boolean updateLinkCost(Isl islToUpdate, int value) {
+    public boolean updateIslCost(Isl islToUpdate, int value) {
         return transactionManager.doInTransaction(() -> {
             Optional<org.openkilda.model.Isl> isl = islRepository.findByEndpoints(
                     islToUpdate.getSrcSwitch().getDpId(), islToUpdate.getSrcPort(),
@@ -145,7 +145,7 @@ public class DatabaseSupportImpl implements Database {
      * @return true if at least 1 ISL was affected
      */
     @Override
-    public boolean revertIslBandwidth(Isl islToUpdate) {
+    public boolean resetIslBandwidth(Isl islToUpdate) {
         return transactionManager.doInTransaction(() -> {
             Optional<org.openkilda.model.Isl> isl = islRepository.findByEndpoints(
                     islToUpdate.getSrcSwitch().getDpId(), islToUpdate.getSrcPort(),
@@ -160,6 +160,11 @@ public class DatabaseSupportImpl implements Database {
         });
     }
 
+    /**
+     * Remove all inactive ISLs.
+     *
+     * @return true if at least 1 ISL was deleted
+     */
     @Override
     public boolean removeInactiveIsls() {
         return transactionManager.doInTransaction(() -> {
@@ -173,6 +178,11 @@ public class DatabaseSupportImpl implements Database {
         });
     }
 
+    /**
+     * Remove all inactive switches.
+     *
+     * @return true if at least 1 switch was deleted
+     */
     @Override
     public boolean removeInactiveSwitches() {
         return transactionManager.doInTransaction(() -> {
@@ -186,6 +196,11 @@ public class DatabaseSupportImpl implements Database {
         });
     }
 
+    /**
+     * Set cost for all ISLs to be equal to DEFAULT_COST value.
+     *
+     * @return true if at least 1 ISL was affected
+     */
     @Override
     public boolean resetCosts() {
         Session session = ((Neo4jSessionFactory) transactionManager).getSession();
@@ -210,12 +225,24 @@ public class DatabaseSupportImpl implements Database {
                 .orElse(DEFAULT_COST);
     }
 
+    /**
+     * Count all flow records.
+     *
+     * @return the number of flow records
+     */
     @Override
     public int countFlows() {
         //TODO(siakovenko): non optimal and a dedicated method for counting must be introduced.
         return flowRepository.findAll().size();
     }
 
+    /**
+     * Get all possible paths between source and destination switches.
+     *
+     * @param src source switch ID
+     * @param dst destination switch ID
+     * @return list of PathInfoData objects
+     */
     @Override
     @SuppressWarnings("unchecked")
     public List<PathInfoData> getPaths(SwitchId src, SwitchId dst) {
@@ -259,6 +286,12 @@ public class DatabaseSupportImpl implements Database {
                 .orElse(null);
     }
 
+    /**
+     * Get flow.
+     *
+     * @param flowId flow ID
+     * @return FlowPair object
+     */
     @Override
     public FlowPairDto<FlowDto, FlowDto> getFlow(String flowId) {
         Optional<FlowPair> flowPair = flowRepository.findFlowPairById(flowId);
@@ -267,6 +300,12 @@ public class DatabaseSupportImpl implements Database {
                 .orElse(null);
     }
 
+    /**
+     * Update flow bandwidth.
+     *
+     * @param flowId flow ID
+     * @param newBw new bandwidth to be set
+     */
     @Override
     public void updateFlowBandwidth(String flowId, long newBw) {
         FlowPair flowPair = flowRepository.findFlowPairById(flowId).get();
