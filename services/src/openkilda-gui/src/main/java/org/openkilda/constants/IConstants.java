@@ -311,9 +311,9 @@ public abstract class IConstants {
 
         PEN_SWITCH_TX_ERRORS("Switch_errors", "pen.switch.tx-errors"),
 
-        PEN_SWITCH_TX_PACKETS("Switch_packets", "pen.switch.tx-packets"),
+        PEN_SWITCH_TX_PACKETS("Switch_packets", "pen.switch.rx-packets"),
 
-        PEN_SWITCH_RX_PACKETS("Switch_packets", "pen.switch.rx-packets"),
+        PEN_SWITCH_RX_PACKETS("Switch_packets", "pen.switch.tx-packets"),
 
         PEN_SWITCH_STATE("Switch_state", "pen.switch.state");
 
