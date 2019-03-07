@@ -21,21 +21,15 @@ import static java.util.stream.Collectors.toList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasProperty;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.isIn;
-import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID;
 
 import org.openkilda.atdd.staging.helpers.FlowSet;
@@ -58,14 +52,6 @@ import org.openkilda.testing.service.floodlight.FloodlightService;
 import org.openkilda.testing.service.floodlight.model.MeterEntry;
 import org.openkilda.testing.service.floodlight.model.MetersEntriesMap;
 import org.openkilda.testing.service.northbound.NorthboundService;
-import org.openkilda.testing.service.traffexam.FlowNotApplicableException;
-import org.openkilda.testing.service.traffexam.OperationalException;
-import org.openkilda.testing.service.traffexam.TraffExamService;
-import org.openkilda.testing.service.traffexam.model.Exam;
-import org.openkilda.testing.service.traffexam.model.ExamReport;
-import org.openkilda.testing.service.traffexam.model.ExamResources;
-import org.openkilda.testing.tools.FlowTrafficExamBuilder;
-import org.openkilda.testing.tools.SoftAssertions;
 
 import com.google.common.collect.ContiguousSet;
 import com.google.common.collect.DiscreteDomain;
@@ -84,25 +70,22 @@ import org.apache.commons.collections4.ListValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 @Slf4j
-public class FlowCrudSteps implements En {
+public class FlowSteps implements En {
 
     @Autowired
     private NorthboundService northboundService;
@@ -117,10 +100,6 @@ public class FlowCrudSteps implements En {
     private TopologyDefinition topologyDefinition;
 
     @Autowired
-    @Lazy
-    private TraffExamService traffExam;
-
-    @Autowired
     private FlowManager flowManager;
 
     @Autowired
@@ -128,45 +107,11 @@ public class FlowCrudSteps implements En {
     private TopologyUnderTest topologyUnderTest;
 
     private Set<FlowPayload> flows;
-    private Set<FlowPathPayload> flowPaths = new HashSet<>();
     private FlowPayload flowResponse;
 
     @Given("^flows defined over active switches in the reference topology$")
     public void defineFlowsOverActiveSwitches() {
         flows = flowManager.allActiveSwitchesFlows();
-    }
-
-    @Given("Create (\\d+) flows? with A Switch used and at least (\\d+) alternate paths? between source and "
-            + "destination switch and (\\d+) bandwidth")
-    public void flowsWithAlternatePaths(int flowsAmount, int alternatePaths, int bw) {
-        Map<FlowPayload, List<TopologyDefinition.Isl>> flowIsls = topologyUnderTest.getFlowIsls();
-        flowIsls.putAll(flowManager.createFlowsWithASwitch(flowsAmount, alternatePaths, bw));
-        //temporary resaving flows before refactoring all methods to work with topologyUnderTest
-        flows = flowIsls.keySet();
-        flows.forEach(flow -> flowPaths.add(northboundService.getFlowPath(flow.getId())));
-    }
-
-    @And("^flow paths? (?:is|are) changed")
-    public void flowPathIsChanged() {
-        Set<FlowPathPayload> actualFlowPaths = new HashSet<>();
-        flows.forEach(flow -> actualFlowPaths.add(northboundService.getFlowPath(flow.getId())));
-        assertThat(actualFlowPaths, everyItem(not(isIn(flowPaths))));
-
-        // Save actual flow paths
-        flowPaths = actualFlowPaths;
-    }
-
-    @And("^flow paths? (?:is|are) unchanged")
-    public void flowPathIsUnchanged() {
-        Set<FlowPathPayload> actualFlowPaths = new HashSet<>();
-        flows.forEach(flow -> actualFlowPaths.add(northboundService.getFlowPath(flow.getId())));
-        assertThat(actualFlowPaths, everyItem(isIn(flowPaths)));
-    }
-
-    @And("Create defined flows?")
-    public void createFlows() {
-        eachFlowIsCreatedAndStoredInTopologyEngine();
-        eachFlowIsInUpState();
     }
 
     @And("^each flow has unique flow_id$")
@@ -193,50 +138,9 @@ public class FlowCrudSteps implements En {
         }
     }
 
-    @Then("^each flow is created and stored in TopologyEngine$")
-    public void eachFlowIsCreatedAndStoredInTopologyEngine() {
-        List<FlowDto> expextedFlows = flows.stream()
-                .map(flow -> new FlowDto(flow.getId(),
-                        flow.getMaximumBandwidth(),
-                        flow.isIgnoreBandwidth(), flow.isPeriodicPings(), 0,
-                        flow.getDescription(), null, null,
-                        flow.getSource().getDatapath(),
-                        flow.getDestination().getDatapath(),
-                        flow.getSource().getPortNumber(),
-                        flow.getDestination().getPortNumber(),
-                        flow.getSource().getVlanId(),
-                        flow.getDestination().getVlanId(),
-                        0, 0, null, null, null, null))
-                .collect(toList());
-
-        for (FlowDto expectedFlow : expextedFlows) {
-            FlowPairDto<FlowDto, FlowDto> flowPair = Failsafe.with(retryPolicy()
-                    .retryWhen(null))
-                    .get(() -> db.getFlow(expectedFlow.getFlowId()));
-
-            assertNotNull(format("The flow '%s' is missing in TopologyEngine.", expectedFlow.getFlowId()), flowPair);
-            assertThat(format("The flow '%s' in TopologyEngine is different from defined.", expectedFlow.getFlowId()),
-                    flowPair.getLeft(), is(equalTo(expectedFlow)));
-        }
-    }
-
     @And("^(?:each )?flow is in UP state$")
     public void eachFlowIsInUpState() {
         eachFlowIsUp(flows);
-    }
-
-    private void eachFlowIsUp(Set<FlowPayload> flows) {
-        for (FlowPayload flow : flows) {
-            FlowIdStatusPayload status = Failsafe.with(retryPolicy()
-                    .retryIf(p -> p == null || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
-                    .get(() -> northboundService.getFlowStatus(flow.getId()));
-
-            assertNotNull(format("The flow status for '%s' can't be retrived from Northbound.", flow.getId()), status);
-            assertThat(format("The flow '%s' in Northbound is different from defined.", flow.getId()),
-                    status, hasProperty("id", equalTo(flow.getId())));
-            assertThat(format("The flow '%s' has wrong status in Northbound.", flow.getId()),
-                    status, hasProperty("status", equalTo(FlowState.UP)));
-        }
     }
 
     @And("^each flow can be read from Northbound$")
@@ -265,70 +169,6 @@ public class FlowCrudSteps implements En {
         });
     }
 
-    @And("^(?:each )?flow has traffic going with bandwidth not less than (\\d+) and not greater than (\\d+)$")
-    public void eachFlowHasTrafficGoingWithBandwidthNotLessThan(int bandwidthLowLimit, int bandwidthHighLimit)
-            throws Throwable {
-        List<Exam> examsInProgress = buildAndStartTraffExams();
-        SoftAssertions softAssertions = new SoftAssertions();
-        List<String> issues = new ArrayList<>();
-
-        for (Exam exam : examsInProgress) {
-            String flowId = exam.getFlow().getId();
-
-            ExamReport report = traffExam.waitExam(exam);
-            softAssertions.checkThat(format("The flow %s had errors: %s",
-                    flowId, report.getErrors()), report.hasError(), is(false));
-            softAssertions.checkThat(format("The flow %s had no traffic.", flowId),
-                    report.hasTraffic(), is(true));
-            softAssertions.checkThat(format("The flow %s had unexpected bandwidth: %s", flowId, report.getBandwidth()),
-                    report.getBandwidth().getKbps() > bandwidthLowLimit
-                            && report.getBandwidth().getKbps() < bandwidthHighLimit, is(true));
-        }
-        softAssertions.verify();
-    }
-
-    @And("^each flow has no traffic$")
-    public void eachFlowHasNoTraffic() {
-        List<Exam> examsInProgress = buildAndStartTraffExams();
-
-        List<ExamReport> hasTraffic = examsInProgress.stream()
-                .map(exam -> traffExam.waitExam(exam))
-                .filter(ExamReport::hasTraffic)
-                .collect(toList());
-
-        assertThat("Detected unexpected traffic.", hasTraffic, empty());
-    }
-
-    private List<Exam> buildAndStartTraffExams() {
-        FlowTrafficExamBuilder examBuilder = new FlowTrafficExamBuilder(topologyDefinition, traffExam);
-
-        List<Exam> result = flows.stream()
-                .flatMap(flow -> {
-                    try {
-                        // Instruct TraffGen to produce traffic with maximum bandwidth.
-                        return Stream.of(examBuilder.buildExam(flow, 0));
-                    } catch (FlowNotApplicableException ex) {
-                        log.info("Skip traffic exam. {}", ex.getMessage());
-                        return Stream.empty();
-                    }
-                })
-                .peek(exam -> {
-                    try {
-                        ExamResources resources = traffExam.startExam(exam);
-                        exam.setResources(resources);
-                    } catch (OperationalException ex) {
-                        log.error("Unable to start traffic exam for {}.", exam.getFlow(), ex);
-                        fail(ex.getMessage());
-                    }
-                })
-                .collect(toList());
-
-        log.info("{} of {} flow's traffic examination have been started", result.size(),
-                flows.size());
-
-        return result;
-    }
-
     @Then("^each flow can be updated with (\\d+) max bandwidth( and new vlan)?$")
     public void eachFlowCanBeUpdatedWithBandwidth(int bandwidth, String newVlanStr) {
         final boolean newVlan = newVlanStr != null;
@@ -342,22 +182,6 @@ public class FlowCrudSteps implements En {
             assertThat(format("A flow update request for '%s' failed.", flow.getId()), result,
                     reflectEquals(flow, "lastUpdated", "status"));
         }
-    }
-
-    private int getAllowedVlan(Set<FlowPayload> flows, SwitchId switchDpId) {
-        RangeSet<Integer> allocatedVlans = TreeRangeSet.create();
-        flows.forEach(f -> {
-            allocatedVlans.add(Range.singleton(f.getSource().getVlanId()));
-            allocatedVlans.add(Range.singleton(f.getDestination().getVlanId()));
-        });
-        RangeSet<Integer> availableVlansRange = TreeRangeSet.create();
-        Switch theSwitch = topologyDefinition.getSwitches().stream()
-                .filter(sw -> sw.getDpId().equals(switchDpId)).findFirst().get();
-        theSwitch.getOutPorts().forEach(port -> availableVlansRange.addAll(port.getVlanRange()));
-        availableVlansRange.removeAll(allocatedVlans);
-        return availableVlansRange.asRanges().stream()
-                .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
-                .findFirst().get();
     }
 
     @And("^each flow has meters installed with (\\d+) max bandwidth$")
@@ -436,22 +260,15 @@ public class FlowCrudSteps implements En {
     @And("^each flow can not be read from Northbound$")
     public void eachFlowCanNotBeReadFromNorthbound() {
         for (FlowPayload flow : flows) {
-            FlowPayload result = Failsafe.with(retryPolicy()
-                    .abortWhen(null)
-                    .retryIf(Objects::nonNull))
-                    .get(() -> northboundService.getFlow(flow.getId()));
-
-            assertNull(format("The flow '%s' exists.", flow.getId()), result);
-        }
-    }
-
-    @And("^each flow can not be read from TopologyEngine$")
-    public void eachFlowCanNotBeReadFromTopologyEngine() {
-        for (FlowPayload flow : flows) {
-            FlowPairDto<FlowDto, FlowDto> result = Failsafe.with(retryPolicy()
-                    .abortWhen(null)
-                    .retryIf(Objects::nonNull))
-                    .get(() -> db.getFlow(flow.getId()));
+            FlowPayload result = null;
+            try {
+                result = Failsafe.with(retryPolicy()
+                        .abortWhen(null)
+                        .retryIf(Objects::nonNull))
+                        .get(() -> northboundService.getFlow(flow.getId()));
+            } catch (HttpClientErrorException ex) {
+                log.info(format("The flow '%s' doesn't exist. It is expected.", flow.getId()));
+            }
 
             assertNull(format("The flow '%s' exists.", flow.getId()), result);
         }
@@ -492,12 +309,6 @@ public class FlowCrudSteps implements En {
         MetersEntriesMap meters = topologyUnderTest.getAliasedObject(metersAlias);
         Entry<Integer, MeterEntry> meter = topologyUnderTest.getAliasedObject(meterAlias);
         assertFalse(meters.containsKey(meter.getKey()));
-    }
-
-    private RetryPolicy retryPolicy() {
-        return new RetryPolicy()
-                .withDelay(2, TimeUnit.SECONDS)
-                .withMaxRetries(10);
     }
 
     @Given("^random flow aliased as '(.*)'$")
@@ -593,6 +404,42 @@ public class FlowCrudSteps implements En {
         FlowPathPayload expectedPath = topologyUnderTest.getAliasedObject(pathAlias);
         FlowPathPayload actualPath = northboundService.getFlowPath(flow.getId());
         assertThat(actualPath, equalTo(expectedPath));
+    }
+
+    private int getAllowedVlan(Set<FlowPayload> flows, SwitchId switchDpId) {
+        RangeSet<Integer> allocatedVlans = TreeRangeSet.create();
+        flows.forEach(f -> {
+            allocatedVlans.add(Range.singleton(f.getSource().getVlanId()));
+            allocatedVlans.add(Range.singleton(f.getDestination().getVlanId()));
+        });
+        RangeSet<Integer> availableVlansRange = TreeRangeSet.create();
+        Switch theSwitch = topologyDefinition.getSwitches().stream()
+                .filter(sw -> sw.getDpId().equals(switchDpId)).findFirst().get();
+        theSwitch.getOutPorts().forEach(port -> availableVlansRange.addAll(port.getVlanRange()));
+        availableVlansRange.removeAll(allocatedVlans);
+        return availableVlansRange.asRanges().stream()
+                .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
+                .findFirst().get();
+    }
+
+    private void eachFlowIsUp(Set<FlowPayload> flows) {
+        for (FlowPayload flow : flows) {
+            FlowIdStatusPayload status = Failsafe.with(retryPolicy()
+                    .retryIf(p -> p == null || ((FlowIdStatusPayload) p).getStatus() != FlowState.UP))
+                    .get(() -> northboundService.getFlowStatus(flow.getId()));
+
+            assertNotNull(format("The flow status for '%s' can't be retrived from Northbound.", flow.getId()), status);
+            assertThat(format("The flow '%s' in Northbound is different from defined.", flow.getId()),
+                    status, hasProperty("id", equalTo(flow.getId())));
+            assertThat(format("The flow '%s' has wrong status in Northbound.", flow.getId()),
+                    status, hasProperty("status", equalTo(FlowState.UP)));
+        }
+    }
+
+    private RetryPolicy retryPolicy() {
+        return new RetryPolicy()
+                .withDelay(2, TimeUnit.SECONDS)
+                .withMaxRetries(10);
     }
 
     private String getTimestamp() {
