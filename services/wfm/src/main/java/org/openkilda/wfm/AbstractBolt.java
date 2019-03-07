@@ -83,8 +83,8 @@ public abstract class AbstractBolt extends BaseRichBolt {
         output.emit(stream, anchor, payload);
     }
 
-    protected void emitWithContext(String stream, Tuple input, Values payload) throws PipelineException {
-        payload.add(pullContext(input));
+    protected void emitWithContext(String stream, Tuple input, Values payload) {
+        payload.add(getCommandContext());
         log.debug("emit tuple into {} stream: {}", stream, payload);
         getOutput().emit(stream, input, payload);
     }
