@@ -350,13 +350,13 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .build();
         flowSegmentRepository.createOrUpdate(segment);
 
-        Collection<String> foundFlowIds = flowRepository.findActiveFlowIdsWithPortInPath(TEST_SWITCH_C_ID, 100);
+        Collection<String> foundFlowIds = flowRepository
+                .findActiveFlowIdsWithPortInPathOverSegments(TEST_SWITCH_C_ID, 100);
         assertThat(foundFlowIds, Matchers.hasSize(1));
     }
 
-
     @Test
-    public void shouldFindActiveFlowIdsByEndpoint() {
+    public void shouldNotFindActiveFlowIdsByFlowEndpoint() {
         Flow forwardFlow = Flow.builder()
                 .flowId(TEST_FLOW_ID)
                 .srcSwitch(switchA)
@@ -381,12 +381,16 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
 
         flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
 
-        Collection<String> foundFlowIds = flowRepository.findActiveFlowIdsWithPortInPath(TEST_SWITCH_A_ID, 1);
-        assertThat(foundFlowIds, Matchers.hasSize(1));
+        Collection<String> foundFlowIds =
+                flowRepository.findActiveFlowIdsWithPortInPathOverSegments(TEST_SWITCH_A_ID, 1);
+        assertThat(foundFlowIds, Matchers.hasSize(0));
     }
 
     @Test
     public void shouldNotFindInactiveFlowIdsByEndpoint() {
+        Switch switchC = Switch.builder().switchId(TEST_SWITCH_C_ID).build();
+        switchRepository.createOrUpdate(switchC);
+
         Flow forwardFlow = Flow.builder()
                 .flowId(TEST_FLOW_ID)
                 .srcSwitch(switchA)
@@ -411,7 +415,17 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
 
         flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
 
-        Collection<String> foundFlowIds = flowRepository.findActiveFlowIdsWithPortInPath(TEST_SWITCH_A_ID, 1);
+        FlowSegment segment = FlowSegment.builder()
+                .flowId(TEST_FLOW_ID)
+                .srcSwitch(switchB)
+                .srcPort(1)
+                .destSwitch(switchC)
+                .destPort(100)
+                .build();
+        flowSegmentRepository.createOrUpdate(segment);
+
+        Collection<String> foundFlowIds = flowRepository
+                .findActiveFlowIdsWithPortInPathOverSegments(TEST_SWITCH_C_ID, 1);
         assertThat(foundFlowIds, Matchers.empty());
     }
 
