@@ -15,6 +15,7 @@
 
 package org.openkilda.pce.impl;
 
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -27,6 +28,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.model.Edge;
 import org.openkilda.pce.model.Node;
+import org.openkilda.pce.model.WeightFunction;
 
 import org.hamcrest.Matchers;
 import org.junit.Test;
@@ -118,6 +120,39 @@ public class AvailableNetworkTest {
         assertEquals(
                 network.getSwitch(DST_SWITCH).getIncomingLinks().iterator().next().getDestPort(),
                 network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next().getDestPort());
+    }
+
+    @Test
+    public void shouldReduceWithDiversity() {
+        int cost = 700;
+        final WeightFunction weightFunction = edge -> (long) edge.getCost();
+
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SRC_SWITCH, DST_SWITCH, 1, 2, cost, 5);
+        addLink(network, SRC_SWITCH, DST_SWITCH, 3, 1, cost, 5);
+        addLink(network, DST_SWITCH, SRC_SWITCH, 2, 1, cost, 5);
+        addLink(network, DST_SWITCH, SRC_SWITCH, 1, 3, cost, 5);
+
+        network.processDiversitySegments(
+                asList(buildFlowSegment(SRC_SWITCH, DST_SWITCH, 3, 1, 0),
+                        buildFlowSegment(DST_SWITCH, SRC_SWITCH, 1, 3, 0)),
+                config);
+        network.reduceByWeight(weightFunction);
+
+        assertThat(network.getSwitch(SRC_SWITCH).getOutgoingLinks(), Matchers.hasSize(1));
+        assertThat(network.getSwitch(SRC_SWITCH).getIncomingLinks(), Matchers.hasSize(1));
+        assertThat(network.getSwitch(DST_SWITCH).getOutgoingLinks(), Matchers.hasSize(1));
+        assertThat(network.getSwitch(DST_SWITCH).getIncomingLinks(), Matchers.hasSize(1));
+
+        assertEquals(cost,
+                network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next().getFullWeight(weightFunction));
+        assertEquals(cost,
+                network.getSwitch(DST_SWITCH).getOutgoingLinks().iterator().next().getFullWeight(weightFunction));
+
+        assertEquals(cost,
+                network.getSwitch(DST_SWITCH).getOutgoingLinks().iterator().next().getFullWeight(weightFunction));
+        assertEquals(cost,
+                network.getSwitch(DST_SWITCH).getIncomingLinks().iterator().next().getFullWeight(weightFunction));
     }
 
     @Test
