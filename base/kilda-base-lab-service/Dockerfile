@@ -13,7 +13,7 @@
 #   limitations under the License.
 #
 
-FROM ubuntu:xenial
+FROM ubuntu:cosmic
 
 ENV DEBIAN_FRONTEND noninteractive
 
