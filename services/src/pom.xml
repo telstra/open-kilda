@@ -15,6 +15,7 @@
         <module>messaging</module>
         <module>api</module>
         <module>configuration</module>
+        <module>grpc-speaker</module>
         <module>test-library</module>
         <module>floodlight-modules</module>
         <module>northbound</module>
@@ -22,7 +23,6 @@
         <module>atdd-staging</module>
         <module>kilda-pce</module>
         <module>kilda-utils</module>
-        <module>grpc-speaker</module>
     </modules>
 
     <properties>

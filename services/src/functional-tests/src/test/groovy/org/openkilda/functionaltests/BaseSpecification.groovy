@@ -14,6 +14,7 @@ import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightService
+import org.openkilda.testing.service.grpc.GrpcService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.otsdb.OtsdbQueryService
@@ -52,6 +53,9 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
 
     @Autowired
     PathHelper pathHelper
+
+    @Autowired
+    GrpcService grpc
 
     @Value('${spring.profiles.active}')
     String profile

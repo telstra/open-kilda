@@ -13,19 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.grpc.speaker.model;
+package org.openkilda.testing;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import org.openkilda.messaging.model.grpc.OnOffState;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@JsonNaming(SnakeCaseStrategy.class)
-public class GrpcDeleteOperationResponse {
+public final class ConstantsGrpc {
+    public static final String REMOTE_LOG_IP = "1.1.11.111";
+    public static final Integer REMOTE_LOG_PORT = 10514;
+    public static final OnOffState DEFAULT_LOG_MESSAGES_STATE = OnOffState.OFF;
+    public static final OnOffState DEFAULT_LOG_OF_MESSAGES_STATE = OnOffState.OFF;
 
-    private Boolean deleted;
+    private ConstantsGrpc() {
+        throw new UnsupportedOperationException();
+    }
 }
