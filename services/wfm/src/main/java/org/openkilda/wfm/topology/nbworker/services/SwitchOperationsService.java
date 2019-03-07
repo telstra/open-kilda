@@ -39,6 +39,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -180,9 +181,9 @@ public class SwitchOperationsService {
         Collection<Flow> ingoingFlows = flowRepository.findByDstSwitchId(switchId);
 
         if (!outgoingFlows.isEmpty() || !ingoingFlows.isEmpty()) {
-            List<String> flowIds = Stream.concat(ingoingFlows.stream(), outgoingFlows.stream())
+            Set<String> flowIds = Stream.concat(ingoingFlows.stream(), outgoingFlows.stream())
                     .map(Flow::getFlowId)
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toSet());
 
             String message = String.format("Switch '%s' has %d assigned flows: %s.",
                     switchId, flowIds.size(), flowIds);
