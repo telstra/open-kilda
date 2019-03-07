@@ -9,7 +9,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
-import org.openkilda.northbound.dto.links.LinkPropsDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Value
@@ -186,28 +185,18 @@ class FlowDiversitySpec extends BaseSpecification {
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
-        and: "Make cost of the first flow path and min alternative paths equal to each other (if it is needed)"
+        and: "Make each alternative path less preferable than the first flow path"
         def altPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         altPaths.remove(flow1Path)
 
         def flow1PathCost = pathHelper.getCost(flow1Path) + diversityIslWeight + diversitySwitchWeight * 2
-        def minAltPathCost = pathHelper.getCost(altPaths.min { it.size() }) + diversitySwitchWeight * 2
-        int difference = flow1PathCost - minAltPathCost
-
-        if (difference < 0) {
-            def isl = pathHelper.getInvolvedIsls(flow1Path)[0]
-            northbound.updateLinkProps([new LinkPropsDto(isl.srcSwitch.dpId.toString(), isl.srcPort,
-                    isl.dstSwitch.dpId.toString(), isl.dstPort, ["cost": (flow1PathCost - difference).toString()])])
-        }
-
-        if (difference > 0) {
-            int minAltPathNodeCount = altPaths.min { it.size() }.size()
-            altPaths.findAll { it.size() == minAltPathNodeCount }.each {
-                def isl = pathHelper.getInvolvedIsls(it)[0]
-                int islCost = database.getIslCost(isl)
-                northbound.updateLinkProps([new LinkPropsDto(isl.srcSwitch.dpId.toString(), isl.srcPort,
-                        isl.dstSwitch.dpId.toString(), isl.dstPort, ["cost": (islCost + difference).toString()])])
-            }
+        altPaths.each { altPath ->
+            def altPathCost = pathHelper.getCost(altPath) + diversitySwitchWeight * 2
+            int difference = flow1PathCost - altPathCost
+            def firstAltPathIsl = pathHelper.getInvolvedIsls(altPath)[0]
+            int firstAltPathIslCost = database.getIslCost(firstAltPathIsl)
+            northbound.updateLinkProps([islUtils.toLinkProps(firstAltPathIsl,
+                    ["cost": (firstAltPathIslCost + Math.abs(difference) + 1).toString()])])
         }
 
         when: "Create the second flow with diversity enabled"
@@ -218,23 +207,14 @@ class FlowDiversitySpec extends BaseSpecification {
         then: "The flow is built through the most preferable path (path of the first flow)"
         flow2Path == flow1Path
 
-        when: "Make the first flow path less preferable by 1 than min alternative paths (if it is needed)"
-        flow1PathCost = pathHelper.getCost(flow1Path) + (diversityIslWeight + diversitySwitchWeight * 2) * 2
-        difference = flow1PathCost - minAltPathCost
-        if (difference <= 0) {
-            def isl = pathHelper.getInvolvedIsls(flow1Path)[0]
-            northbound.updateLinkProps([new LinkPropsDto(isl.srcSwitch.dpId.toString(), isl.srcPort,
-                    isl.dstSwitch.dpId.toString(), isl.dstPort, ["cost": (flow1PathCost - difference + 1).toString()])])
-        }
-
-        and: "Create the third flow with diversity enabled"
+        when: "Create the third flow with diversity enabled"
         def flow3 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1, flow2]).tap {
             it.diverseFlowId = flow2.id
         }
         flowHelper.addFlow(flow3)
         def flow3Path = PathHelper.convert(northbound.getFlowPath(flow3.id))
 
-        then: "The flow is built through one of min alternative paths because they are preferable already"
+        then: "The flow is built through one of alternative paths because they are preferable already"
         def involvedIsls = [flow2Path, flow3Path].collectMany { pathHelper.getInvolvedIsls(it) }
         flow3Path != flow2Path
         involvedIsls.unique(false) == involvedIsls
