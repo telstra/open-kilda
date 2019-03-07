@@ -47,7 +47,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * The Class StatsIntegrationService.
@@ -163,7 +162,7 @@ public class StatsIntegrationService {
         if (!statsType.equals(StatsType.ISL)) {
             query.setRate(Boolean.valueOf(OpenTsDb.RATE));
         }
-        if (statsType.equals(StatsType.SWITCH_PORT) && Metrics.PEN_SWITCH_STATE.getDisplayTag().equals(metric)) {
+        if (statsType.equals(StatsType.SWITCH_PORT) && Metrics.SWITCH_STATE.getDisplayTag().equals(metric)) {
             query.setRate(false);
         } else {
             if (validateDownSample(paramDownSample, query)) {
@@ -248,9 +247,7 @@ public class StatsIntegrationService {
             metricList = Metrics.getStartsWith("Switch_");
         }
 
-        return metricList.stream()
-                .map(metricName -> applicationProperties.getOpenTsdbMetricPrefix() + metricName)
-                .collect(Collectors.toList());
+        return metricList;
     }
 
     /**

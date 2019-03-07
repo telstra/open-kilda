@@ -207,7 +207,7 @@ public class StatsService {
     public String getFlowLossPacketStats(String startDate, String endDate, String downsample, String flowId,
             String direction) throws IntegrationException {
         return statsIntegrationService.getStats(startDate, endDate, downsample, null, null, flowId, null, null, null,
-                null, StatsType.FLOW_LOSS_PACKET, Metrics.PEN_FLOW_INGRESS_PACKETS.getTag().replace("Flow_", ""),
+                null, StatsType.FLOW_LOSS_PACKET, Metrics.FLOW_INGRESS_PACKETS.getTag().replace("Flow_", ""),
                 direction);
     }
 
