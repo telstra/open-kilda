@@ -31,6 +31,7 @@ import org.openkilda.model.PortDiscrepancy;
 import org.openkilda.model.PortInfo;
 import org.openkilda.model.SwitchPortStats;
 import org.openkilda.store.service.StoreService;
+import org.openkilda.utility.ApplicationProperties;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.IoUtil;
 
@@ -76,6 +77,9 @@ public class StatsService {
     
     @Autowired
     private PortConverter portConverter;
+
+    @Autowired
+    private ApplicationProperties applicationProperties;
 
     /**
      * Gets the stats.
@@ -203,7 +207,7 @@ public class StatsService {
     public String getFlowLossPacketStats(String startDate, String endDate, String downsample, String flowId,
             String direction) throws IntegrationException {
         return statsIntegrationService.getStats(startDate, endDate, downsample, null, null, flowId, null, null, null,
-                null, StatsType.FLOW_LOSS_PACKET, Metrics.PEN_FLOW_INGRESS_PACKETS.getTag().replace("Flow_", ""),
+                null, StatsType.FLOW_LOSS_PACKET, Metrics.FLOW_INGRESS_PACKETS.getTag().replace("Flow_", ""),
                 direction);
     }
 
@@ -328,7 +332,8 @@ public class StatsService {
                 if (!portStatsByPortNo.containsKey(port)) {
                     portStatsByPortNo.put(port, new HashMap<String, Double>());
                 }
-                portStatsByPortNo.get(port).put(stats.getMetric().replace("pen.switch.", ""),
+                portStatsByPortNo.get(port).put(
+                        stats.getMetric().replace(applicationProperties.getOpenTsdbMetricPrefix() + "switch.", ""),
                         calculateHighestValue(stats.getDps()));
             }
         }

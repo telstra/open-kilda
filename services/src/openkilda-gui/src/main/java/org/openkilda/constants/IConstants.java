@@ -15,8 +15,16 @@
 
 package org.openkilda.constants;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -28,7 +36,24 @@ import java.util.TreeSet;
 
 public abstract class IConstants {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(IConstants.class);
+
     public static final String SESSION_OBJECT = "sessionObject";
+
+    public static final String APPLICATION_PROPERTIES_FILE = "application.properties";
+
+    private static String prefix;
+
+    static {
+        Properties p = new Properties();
+        try {
+            Resource resource = new ClassPathResource(APPLICATION_PROPERTIES_FILE);
+            p.load(new FileReader(resource.getFile()));
+            prefix = p.getProperty("opentsdb.metric.prefix");
+        } catch (IOException e) {
+            LOGGER.error("Error occurred while metric prefix getting propetry", e);
+        }
+    }
 
     private IConstants() {
 
@@ -205,7 +230,7 @@ public abstract class IConstants {
         public static final String SW_PORT_CONFIG = "sw_port_config";
         
         public static final String STORE_SETTING = "store_setting";
-        
+
         public static final String APPLICATION_SETTING = "application_setting";
         
         public static final String SW_SWITCH_UPDATE_NAME = "sw_switch_update_name";
@@ -269,53 +294,53 @@ public abstract class IConstants {
 
     public enum Metrics {
 
-        PEN_FLOW_BITS("Flow_bits", "pen.flow.bits"),
+        FLOW_BITS("Flow_bits", "flow.bits"),
 
-        PEN_FLOW_BYTES("Flow_bytes", "pen.flow.bytes"),
+        FLOW_BYTES("Flow_bytes", "flow.bytes"),
 
-        PEN_FLOW_PACKETS("Flow_packets", "pen.flow.packets"),
+        FLOW_PACKETS("Flow_packets", "flow.packets"),
 
-        PEN_FLOW_INGRESS_PACKETS("Flow_ingress_packets", "pen.flow.ingress.packets"),
+        FLOW_INGRESS_PACKETS("Flow_ingress_packets", "flow.ingress.packets"),
 
-        PEN_FLOW_RAW_PACKETS("Flow_raw_packets", "pen.flow.raw.packets"),
+        FLOW_RAW_PACKETS("Flow_raw_packets", "flow.raw.packets"),
         
-        PEN_FLOW_RAW_BITS("Flow_raw_bits", "pen.flow.raw.bits"),
+        FLOW_RAW_BITS("Flow_raw_bits", "flow.raw.bits"),
         
-        PEN_FLOW_RAW_BYTES("Flow_raw_bytes", "pen.flow.raw.bytes"),
+        FLOW_RAW_BYTES("Flow_raw_bytes", "flow.raw.bytes"),
 
-        PEN_FLOW_TABLEID("Flow_tableid", "pen.flow.tableid"),
+        FLOW_TABLEID("Flow_tableid", "flow.tableid"),
 
-        PEN_ISL_LATENCY("Isl_latency", "pen.isl.latency"),
+        ISL_LATENCY("Isl_latency", "isl.latency"),
 
-        PEN_SWITCH_COLLISIONS("Switch_collisions", "pen.switch.collisions"),
+        SWITCH_COLLISIONS("Switch_collisions", "switch.collisions"),
 
-        PEN_SWITCH_RX_CRC_ERROR("Switch_crcerror", "pen.switch.rx-crc-error"),
+        SWITCH_RX_CRC_ERROR("Switch_crcerror", "switch.rx-crc-error"),
 
-        PEN_SWITCH_RX_FRAME_ERROR("Switch_frameerror", "pen.switch.rx-frame-error"),
+        SWITCH_RX_FRAME_ERROR("Switch_frameerror", "switch.rx-frame-error"),
 
-        PEN_SWITCH_RX_OVER_ERROR("Switch_overerror", "pen.switch.rx-over-error"),
+        SWITCH_RX_OVER_ERROR("Switch_overerror", "switch.rx-over-error"),
 
-        PEN_SWITCH_RX_BITS("Switch_bits", "pen.switch.rx-bits"),
+        SWITCH_RX_BITS("Switch_bits", "switch.rx-bits"),
 
-        PEN_SWITCH_TX_BITS("Switch_bits", "pen.switch.tx-bits"),
+        SWITCH_TX_BITS("Switch_bits", "switch.tx-bits"),
 
-        PEN_SWITCH_RX_BYTES("Switch_bytes", "pen.switch.rx-bytes"),
+        SWITCH_RX_BYTES("Switch_bytes", "switch.rx-bytes"),
 
-        PEN_SWITCH_TX_BYTES("Switch_bytes", "pen.switch.tx-bytes"),
+        SWITCH_TX_BYTES("Switch_bytes", "switch.tx-bytes"),
 
-        PEN_SWITCH_RX_DROPPED("Switch_drops", "pen.switch.rx-dropped"),
+        SWITCH_RX_DROPPED("Switch_drops", "switch.rx-dropped"),
 
-        PEN_SWITCH_TX_DROPPED("Switch_drops", "pen.switch.tx-dropped"),
+        SWITCH_TX_DROPPED("Switch_drops", "switch.tx-dropped"),
 
-        PEN_SWITCH_RX_ERRORS("Switch_errors", "pen.switch.rx-errors"),
+        SWITCH_RX_ERRORS("Switch_errors", "switch.rx-errors"),
 
-        PEN_SWITCH_TX_ERRORS("Switch_errors", "pen.switch.tx-errors"),
+        SWITCH_TX_ERRORS("Switch_errors", "switch.tx-errors"),
 
-        PEN_SWITCH_TX_PACKETS("Switch_packets", "pen.switch.rx-packets"),
+        SWITCH_TX_PACKETS("Switch_packets", "switch.rx-packets"),
 
-        PEN_SWITCH_RX_PACKETS("Switch_packets", "pen.switch.tx-packets"),
+        SWITCH_RX_PACKETS("Switch_packets", "switch.tx-packets"),
 
-        PEN_SWITCH_STATE("Switch_state", "pen.switch.state");
+        SWITCH_STATE("Switch_state", "switch.state");
 
         private String tag;
         
@@ -329,7 +354,7 @@ public abstract class IConstants {
          */
         private Metrics(final String tag, final String displayTag) {
             setTag(tag);
-            setDisplayTag(displayTag);
+            setDisplayTag(prefix + displayTag);
         }
 
         /**

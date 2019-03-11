@@ -162,7 +162,7 @@ public class StatsIntegrationService {
         if (!statsType.equals(StatsType.ISL)) {
             query.setRate(Boolean.valueOf(OpenTsDb.RATE));
         }
-        if (statsType.equals(StatsType.SWITCH_PORT) && Metrics.PEN_SWITCH_STATE.getDisplayTag().equals(metric)) {
+        if (statsType.equals(StatsType.SWITCH_PORT) && Metrics.SWITCH_STATE.getDisplayTag().equals(metric)) {
             query.setRate(false);
         } else {
             if (validateDownSample(paramDownSample, query)) {
@@ -246,6 +246,7 @@ public class StatsIntegrationService {
         } else if (statsType.equals(StatsType.SWITCH_PORT)) {
             metricList = Metrics.getStartsWith("Switch_");
         }
+
         return metricList;
     }
 
