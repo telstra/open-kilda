@@ -7,11 +7,9 @@ floodlight.modules=\
   net.floodlightcontroller.staticentry.StaticEntryPusher,\
   net.floodlightcontroller.restserver.RestApiServer,\
   net.floodlightcontroller.ui.web.StaticWebRoutable,\
-  net.floodlightcontroller.statistics.StatisticsCollector,\
   org.openkilda.floodlight.kafka.KafkaMessageCollector,\
   org.openkilda.floodlight.switchmanager.SwitchManager,\
-  org.openkilda.floodlight.pathverification.PathVerificationService,\
-  org.openkilda.floodlight.statistics.StatisticsService
+  org.openkilda.floodlight.pathverification.PathVerificationService
 org.sdnplatform.sync.internal.SyncManager.authScheme=CHALLENGE_RESPONSE
 org.sdnplatform.sync.internal.SyncManager.keyStorePath=/etc/floodlight/key2.jceks
 org.sdnplatform.sync.internal.SyncManager.dbPath=/var/lib/floodlight/

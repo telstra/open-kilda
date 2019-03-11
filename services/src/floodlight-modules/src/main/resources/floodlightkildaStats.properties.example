@@ -7,15 +7,15 @@ floodlight.modules=\
   net.floodlightcontroller.staticentry.StaticEntryPusher,\
   net.floodlightcontroller.restserver.RestApiServer,\
   net.floodlightcontroller.ui.web.StaticWebRoutable,\
-  org.openkilda.floodlight.kafka.KafkaMessageCollector,\
-  org.openkilda.floodlight.switchmanager.SwitchManager,\
-  org.openkilda.floodlight.pathverification.PathVerificationService
+  net.floodlightcontroller.statistics.StatisticsCollector,\
+  org.openkilda.floodlight.statistics.StatisticsService,\
+  net.floodlightcontroller.core.internal.DefaultSwitchRoleService
 org.sdnplatform.sync.internal.SyncManager.authScheme=CHALLENGE_RESPONSE
 org.sdnplatform.sync.internal.SyncManager.keyStorePath=/etc/floodlight/key2.jceks
 org.sdnplatform.sync.internal.SyncManager.dbPath=/var/lib/floodlight/
 org.sdnplatform.sync.internal.SyncManager.keyStorePassword=PassWord
 org.sdnplatform.sync.internal.SyncManager.port=6009
-org.sdnplatform.sync.internal.SyncManager.thisNodeId=1
+org.sdnplatform.sync.internal.SyncManager.thisNodeId=2
 org.sdnplatform.sync.internal.SyncManager.persistenceEnabled=FALSE
 org.sdnplatform.sync.internal.SyncManager.nodes=[\
 {"nodeId": 1, "domainId": 1, "hostname": "192.168.1.100", "port": 6642},\
@@ -28,7 +28,7 @@ net.floodlightcontroller.forwarding.Forwarding.idle-timeout=5
 net.floodlightcontroller.forwarding.Forwarding.set-send-flow-rem-flag=FALSE
 net.floodlightcontroller.forwarding.Forwarding.remove-flows-on-link-or-port-down=TRUE
 net.floodlightcontroller.core.internal.FloodlightProvider.role=ACTIVE
-net.floodlightcontroller.core.internal.FloodlightProvider.controllerId=1
+net.floodlightcontroller.core.internal.FloodlightProvider.controllerId=2
 net.floodlightcontroller.core.internal.FloodlightProvider.shutdownOnTransitionToStandby=true
 net.floodlightcontroller.core.internal.OFSwitchManager.openFlowPort=6653
 net.floodlightcontroller.core.internal.OFSwitchManager.openFlowAddresses=0.0.0.0
@@ -44,7 +44,7 @@ net.floodlightcontroller.core.internal.OFSwitchManager.keyStorePath=/path/to.jec
 net.floodlightcontroller.core.internal.OFSwitchManager.keyStorePassword=PassFL
 net.floodlightcontroller.core.internal.OFSwitchManager.useSsl=NO
 net.floodlightcontroller.core.internal.OFSwitchManager.supportedOpenFlowVersions=1.2, 1.3
-net.floodlightcontroller.core.internal.OFSwitchManager.switchesInitialState={"00:00:00:00:00:00:00:01":"ROLE_MASTER","00:00:00:00:00:00:00:02":"ROLE_MASTER", "00:00:00:00:00:00:00:03":"ROLE_MASTER", "00:00:00:00:00:00:00:04":"ROLE_MASTER","00:00:00:00:00:00:00:05":"ROLE_MASTER"}
+net.floodlightcontroller.core.internal.OFSwitchManager.switchesInitialState={"00:00:00:00:00:00:00:01":"ROLE_SLAVE","00:00:00:00:00:00:00:02":"ROLE_SLAVE", "00:00:00:00:00:00:00:03":"ROLE_SLAVE", "00:00:00:00:00:00:00:04":"ROLE_SLAVE","00:00:00:00:00:00:00:05":"ROLE_SLAVE"}
 net.floodlightcontroller.restserver.RestApiServer.keyStorePath=/path/to.jceks
 net.floodlightcontroller.restserver.RestApiServer.keyStorePassword=Password
 net.floodlightcontroller.restserver.RestApiServer.httpsNeedClientAuthentication=NO
@@ -53,33 +53,32 @@ net.floodlightcontroller.restserver.RestApiServer.useHttp=YES
 net.floodlightcontroller.restserver.RestApiServer.httpsPort=8081
 net.floodlightcontroller.restserver.RestApiServer.httpPort=8080
 net.floodlightcontroller.restserver.RestApiServer.accessControlAllowAllOrigins=TRUE
-net.floodlightcontroller.statistics.StatisticsCollector.enable=FALSE
+net.floodlightcontroller.statistics.StatisticsCollector.enable=TRUE
 net.floodlightcontroller.statistics.StatisticsCollector.collectionIntervalPortStatsSeconds=60
 net.floodlightcontroller.topology.TopologyManager.pathMetric=latency
 net.floodlightcontroller.topology.TopologyManager.maxPathsToCompute=3
 #org.openkilda.floodlight.KildaCore.command-processor-workers-count = 4
 #org.openkilda.floodlight.KildaCore.command-processor-workers-limit = 32
-org.openkilda.floodlight.KildaCore.command-processor-deferred-requests-limit = {{ getv "/kilda_floodlight_command_processor_deferred_requests_limit" }}
+org.openkilda.floodlight.KildaCore.command-processor-deferred-requests-limit = 8
 #org.openkilda.floodlight.KildaCore.command-processor-idle-workers-keep-alive-seconds = 300
-org.openkilda.floodlight.KafkaChannel.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
-org.openkilda.floodlight.KafkaChannel.bootstrap-servers={{ getv "/kilda_kafka_hosts" }}
+org.openkilda.floodlight.KafkaChannel.environment-naming-prefix=
+org.openkilda.floodlight.KafkaChannel.bootstrap-servers=kafka.pendev:9092
 #org.openkilda.floodlight.KafkaChannel.heart-beat-interval=1
-{{ if eq (getv "/kilda_environment_role") "devel" "test" }}
+
 org.openkilda.floodlight.KafkaChannel.testing-mode=YES
-{{ end }}
-org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-executors={{ getv "/kilda_floodlight_consumer_executors" }}
-org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-disco-executors={{ getv "/kilda_floodlight_consumer_disco_executors" }}
+
+org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-executors=20
+org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-disco-executors=20
 #org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-auto-commit-interval=1000
-org.openkilda.floodlight.pathverification.PathVerificationService.isl_bandwidth_quotient=1.0
-org.openkilda.floodlight.pathverification.PathVerificationService.hmac256-secret=secret
 org.openkilda.floodlight.statistics.StatisticsService.interval=60
-org.openkilda.floodlight.switchmanager.SwitchManager.environment-naming-prefix={{ getv "/kilda_environment_naming_prefix" }}
+org.openkilda.floodlight.switchmanager.SwitchManager.environment-naming-prefix=
 org.openkilda.floodlight.switchmanager.SwitchManager.connect-mode=AUTO
 org.openkilda.floodlight.switchmanager.SwitchManager.broadcast-rate-limit=200
 org.openkilda.floodlight.switchmanager.SwitchManager.unicast-rate-limit=200
 org.openkilda.floodlight.switchmanager.SwitchManager.disco-packet-size=250
-org.openkilda.floodlight.switchmanager.SwitchManager.flow-meter-burst-coefficient={{ getv "/kilda_floodlight_flow_meter_burst_coefficient" }}
+org.openkilda.floodlight.switchmanager.SwitchManager.flow-meter-burst-coefficient=1.05
 org.openkilda.floodlight.switchmanager.SwitchManager.flow-meter-min-burst-size-in-kbits=1024
 org.openkilda.floodlight.switchmanager.SwitchManager.system-meter-burst-size-in-packets=4096
-org.openkilda.floodlight.switchmanager.SwitchManager.ovs-meters-enabled=false
 org.openkilda.floodlight.KafkaChannel.floodlight-region=
+
+net.floodlightcontroller.core.internal.DefaultSwitchRoleService.defaultRole=ROLE_SLAVE

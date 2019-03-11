@@ -29,7 +29,7 @@ kilda_floodlight_endpoint: "http://127.0.0.1"
 kilda_floodlight_rest_port: "8081"
 kilda_floodlight_username: "kilda"
 kilda_floodlight_password: "kilda"
-kilda_floodlight_controller_uri: "tcp:kilda:6653"
+kilda_floodlight_controller_uri: "tcp:floodlight_one:6653 tcp:floodlight_second:6653"
 kilda_floodlight_command_processor_deferred_requests_limit: 8
 kilda_floodlight_flow_meter_burst_coefficient: 1.05
 kilda_floodlight_consumer_executors: 20
