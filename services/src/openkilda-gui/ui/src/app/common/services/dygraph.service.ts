@@ -182,10 +182,13 @@ export class DygraphService {
     }
 
     if (!jsonResponse) {
-      var getValue = typeof data[0] !== "undefined" ? data[0].dps : 0;
+      var fDpsObject = typeof data[0] !== "undefined" ? data[0].dps : {};
+      var fDps = [];
+      var rDps = [];
       metric1 = typeof data[0] !== "undefined" ? data[0].metric : "";
       if (data.length == 2) {
-        var getVal = data[1].dps;
+        var rDpsObject = typeof data[1] !== "undefined" ? data[1].dps : {};
+        rDps = Object.keys(rDpsObject);
         metric2 = data[1].metric;
 
         if (data[1].tags.direction) {
@@ -195,26 +198,36 @@ export class DygraphService {
           metric1 = data[0].metric + "(" + data[0].tags.direction + ")";
         }
       }
-      if (!getValue) {
+
+      fDps = Object.keys(fDpsObject);
+      var graphDps = fDps.concat(rDps);
+      graphDps.sort();
+      graphDps = graphDps.filter((v, i, a) => a.indexOf(v) === i);
+      
+      if (graphDps.length <= 0 ) {
         metric1 = "F";
         metric2 = "R";
       } else {
-        for (let i in getValue) {
+
+        for(var index=0;index < graphDps.length; index++){
+          let i = graphDps[index];
           this.numOperator = parseInt(i);
-          if (getValue[i] < 0 || getValue[i] == null) {
-            continue;
+          if (fDpsObject[i] == null || typeof fDpsObject[i] == 'undefined') {
+            fDpsObject[i] = null;
+          }else if(fDpsObject[i] < 0){
+            fDpsObject[i]=0;
           }
-          if ( data.length == 2 &&
-            typeof getVal[i] !== "undefined" &&
-            (getVal[i] < 0 || getVal[i] == null)
-          ) {
-            continue;
-          }
+        
           var temparr = [];
           temparr[0] = new Date(Number(this.numOperator * 1000));
-          temparr[1] = getValue[i];
+          temparr[1] = fDpsObject[i];
           if (data.length == 2) {
-            temparr[2] = getVal[i];
+            if (rDpsObject[i] == null || typeof rDpsObject[i] == 'undefined') {
+              rDpsObject[i]= null;
+            }else if(rDpsObject[i] < 0){
+              rDpsObject[i]=0;
+            }
+            temparr[2] = rDpsObject[i];
           }
           graphData.push(temparr);
           this.numOperator++;
@@ -232,6 +245,7 @@ export class DygraphService {
       metric2 = "R";
       labels = ["Time", metric1, metric2];
     }
+
     if (typeof endDate !== "undefined" && endDate != null) {
       var dat = new Date(endDate);
       var lastTime = dat.getTime();
@@ -307,7 +321,7 @@ export class DygraphService {
      return constructedData;
   }
   computeFlowPathGraphData(data, startDate, endDate, type, timezone,loadfromcookie) {
-    let newMainArray = [];
+    let maxtrixArray = [];
     var labels =["Date"];
     var color = [];
     let cookiesChecked = {};
@@ -324,16 +338,19 @@ export class DygraphService {
           arr.push(null);
         }
       }
-       newMainArray.push(arr);
+      maxtrixArray.push(arr);
     }
-    let lastHighestMetricLength = 0;
+ 
     if (data) {
       if (data.length > 0) {
-        let mainArray = [];
+
+        /**getting all unique dps timestamps */
+        let timestampArray = []; 
+        let dpsArray= [];
         for (let j = 0; j < data.length; j++) {
           var dataValues = typeof data[j] !== "undefined" ? data[j].dps : null;
+          
           var metric = typeof data[j] !== "undefined" ? data[j].metric : "";
-
             metric = metric + "(switchid=" + data[j].tags.switchid + ", cookie="+data[j].tags['cookie']+")";
             labels.push(metric);
             var colorCode = this.getColorCode(j, color);
@@ -352,30 +369,26 @@ export class DygraphService {
               
             }
             if(dataValues){
-              for(let timestamp in dataValues){
-                if(mainArray[timestamp]){
-                  mainArray[timestamp][j]=dataValues[timestamp];
-                }else{
-                  mainArray[timestamp] = [];
-                  mainArray[timestamp][j]=dataValues[timestamp];
-                }
-                if(lastHighestMetricLength < mainArray[timestamp].length){
-                  lastHighestMetricLength =  mainArray[timestamp].length;
-                }
-              }
+              timestampArray = timestampArray.concat(Object.keys(dataValues));
+              dpsArray.push(dataValues);
             }
+          
         }
 
-        let index=0;
-        for(let timestamp in mainArray){
-          let tempArray = mainArray[timestamp];
-          tempArray.unshift(new Date(Number(parseInt(timestamp) * 1000)));
-          if(tempArray.length < (lastHighestMetricLength+1)){
-            for(let j= tempArray.length; j < lastHighestMetricLength+1; j++){
-              tempArray.push(null);
+        timestampArray = Array.from(new Set(timestampArray)); /**Extracting unique timestamps */
+        timestampArray.sort();
+
+        for(let m=0;m<timestampArray.length; m++){
+          let row=[];
+          for(let n=0;n<dpsArray.length;n++){
+            if(typeof dpsArray[n][timestampArray[m]] != 'undefined'){
+              row.push(dpsArray[n][timestampArray[m]]);
+            }else{
+              row.push(null);
             }
           }
-          newMainArray.push(tempArray);
+          row.unshift(new Date(Number(parseInt(timestampArray[m]) * 1000)));
+          maxtrixArray.push(row);
         }
       }
     }
@@ -383,8 +396,8 @@ export class DygraphService {
       var dat = new Date(endDate);
       var lastTime = dat.getTime();
       var usedDate =
-      newMainArray && newMainArray.length
-          ? new Date(newMainArray[newMainArray.length - 1][0])
+      maxtrixArray && maxtrixArray.length
+          ? new Date(maxtrixArray[maxtrixArray.length - 1][0])
           : new Date();
       if (typeof timezone !== "undefined" && timezone == "UTC") {
         lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
@@ -396,9 +409,9 @@ export class DygraphService {
         }
       }
      
-      newMainArray.push(arr);
+      maxtrixArray.push(arr);
     }
-    return { labels: labels, data: newMainArray, color: color };
+    return { labels: labels, data: maxtrixArray, color: color };
   }
 
   legendFormatter(data) {
@@ -409,11 +422,17 @@ export class DygraphService {
     var html = data.xHTML;
     data.series.forEach(function(series) {
       if (!series.isVisible) return;
-      var labeledData ="<span style='color:"+series.color+"'>"+series.labelHTML + ': ' + series.yHTML+"</span>";
-      if (series.isHighlighted) {
-        labeledData = '<b>' + labeledData + '</b>';
+      var labeledData = '';
+      if(series.yHTML && series.yHTML != 'undefined' && series.yHTML != null){
+        labeledData ="<span style='color:"+series.color+"'>"+series.labelHTML + ': ' + series.yHTML+"</span>";
       }
-       html += '<br>' + labeledData;
+      if(labeledData.trim() != ''){
+        if (series.isHighlighted) {
+          labeledData = '<b>' + labeledData + '</b>';
+        }
+         html += '<br>' + labeledData;
+      }
+      
     });
     return html;
   }
