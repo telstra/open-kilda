@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<changelog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:noNamespaceSchemaLocation="http://www.liquigraph.org/schema/1.0/liquigraph.xsd">
+
+    <!-- Cleanup after migration: copies of forward / reverse flows, flow segments. -->
+    <changeset id="1.0-remove-cloned-flows" author="Sergii Iakovenko">
+        <precondition if-not-met="FAIL">
+            <query><![CDATA[
+                   MATCH (src:switch)-[forward:flow]->(dst:switch)
+                   MATCH (dst)-[reverse:flow {
+                           flowid: forward.flowid
+                       }]->(src)
+                   WITH forward, reverse
+                   RETURN count(forward) = 0 AND count(reverse) = 0 as result
+            ]]></query>
+        </precondition>
+
+        <query><![CDATA[
+            MATCH (dst)-[of:old_flow]->(src)
+            DELETE of
+        ]]></query>
+    </changeset>
+
+    <changeset id="1.0-remove-flow-segments" author="Sergii Iakovenko">
+        <query><![CDATA[
+            MATCH ()-[fs:flow_segment]->()
+            DELETE fs
+        ]]></query>
+    </changeset>
+</changelog>
