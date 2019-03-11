@@ -126,19 +126,31 @@ public class DiscoveryBfdPortService {
         log.debug("BFD-port service receive ENABLE request for physical-port {}", physicalEndpoint);
         BfdPortFsm controller = controllerByPhysicalPort.get(physicalEndpoint);
         if (controller != null) {
-            log.info("Setup BFD session request for %s (logical-port:{})",
+            log.info("Setup BFD session request for {} (logical-port:{})",
                      controller.getPhysicalEndpoint(), controller.getLogicalEndpoint().getPortNumber());
             BfdPortFsmContext context = BfdPortFsmContext.builder(controller, carrier)
                     .islReference(reference)
                     .build();
             controllerExecutor.fire(controller, BfdPortFsmEvent.ENABLE, context);
         } else {
-            logMissingControllerByPhysicalEndpoint(physicalEndpoint, "handle ISL up notification");
+            logMissingControllerByPhysicalEndpoint(physicalEndpoint, "handle ENABLE request");
         }
     }
 
-    public void disable(Endpoint physicalEndpoint, IslReference reference) {
-        // TODO
+    /**
+     * .
+     */
+    public void disable(Endpoint physicalEndpoint) {
+        log.debug("BFD-port service receive DISABLE request for physical-port {}", physicalEndpoint);
+        BfdPortFsm controller = controllerByPhysicalPort.get(physicalEndpoint);
+        if (controller != null) {
+            log.info("Remove BFD session request for {} (logical-port:{})",
+                     controller.getPhysicalEndpoint(), controller.getLogicalEndpoint().getPortNumber());
+            BfdPortFsmContext context = BfdPortFsmContext.builder(controller, carrier).build();
+            controllerExecutor.fire(controller, BfdPortFsmEvent.DISABLE, context);
+        } else {
+            logMissingControllerByPhysicalEndpoint(physicalEndpoint, "handle DISABLE request");
+        }
     }
 
     /**

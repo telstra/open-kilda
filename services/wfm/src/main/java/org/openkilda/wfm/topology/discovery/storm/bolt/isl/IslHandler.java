@@ -107,9 +107,9 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     }
 
     @Override
-    public void bfdDisableRequest(Endpoint physicalEndpoint, IslReference reference) {
+    public void bfdDisableRequest(Endpoint physicalEndpoint) {
         emit(STREAM_BFD_PORT_ID, getCurrentTuple(),
-                makeBfdPortTuple(new BfdPortDisableCommand(physicalEndpoint, reference)));
+                makeBfdPortTuple(new BfdPortDisableCommand(physicalEndpoint)));
     }
 
     @Override

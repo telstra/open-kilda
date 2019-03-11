@@ -22,7 +22,7 @@ import org.openkilda.wfm.topology.discovery.model.IslReference;
 public interface IIslCarrier {
     void bfdEnableRequest(Endpoint physicalEndpoint, IslReference reference);
 
-    void bfdDisableRequest(Endpoint physicalEndpoint, IslReference reference);
+    void bfdDisableRequest(Endpoint physicalEndpoint);
 
     void triggerReroute(RerouteFlows trigger);
 }

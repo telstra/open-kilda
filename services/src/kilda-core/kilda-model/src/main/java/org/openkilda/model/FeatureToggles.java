@@ -16,6 +16,7 @@
 package org.openkilda.model;
 
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -29,9 +30,22 @@ import org.neo4j.ogm.annotation.Property;
 
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder(toBuilder = true)
 @EqualsAndHashCode(exclude = "entityId")
 @NodeEntity(label = "config")
 public class FeatureToggles {
+
+    public static final FeatureToggles DEFAULTS = new FeatureToggles(
+            null,  // ID
+            false, // flows_reroute_on_isl_discovery
+            false, // create_flow
+            false, // update_flow
+            false, // delete_flow
+            false, // push_flow
+            false, // unpush_flow
+            true // use_bfd_for_isl_integrity_check
+    );
 
     // Hidden as needed for OGM only.
     @Id
@@ -58,22 +72,22 @@ public class FeatureToggles {
     @Property(name = "unpush_flow")
     private Boolean unpushFlowEnabled;
 
-    @Property(name = "bfd_events")
-    private Boolean bfdEventsEnabled;
+    @Property(name = "use_bfd_for_isl_integrity_check")
+    private Boolean useBfdForIslIntegrityCheck;
 
     /**
-     * Constructor used by the builder only.
+     * Constructor prevents initialization of entityId field.
      */
     @Builder(toBuilder = true)
     FeatureToggles(Boolean flowsRerouteOnIslDiscoveryEnabled, Boolean createFlowEnabled, Boolean updateFlowEnabled,
                    Boolean deleteFlowEnabled, Boolean pushFlowEnabled, Boolean unpushFlowEnabled,
-                   Boolean bfdEventsEnabled) {
+                   Boolean useBfdForIslIntegrityCheck) {
         this.flowsRerouteOnIslDiscoveryEnabled = flowsRerouteOnIslDiscoveryEnabled;
         this.createFlowEnabled = createFlowEnabled;
         this.updateFlowEnabled = updateFlowEnabled;
         this.deleteFlowEnabled = deleteFlowEnabled;
         this.pushFlowEnabled = pushFlowEnabled;
         this.unpushFlowEnabled = unpushFlowEnabled;
-        this.bfdEventsEnabled = bfdEventsEnabled;
+        this.useBfdForIslIntegrityCheck = useBfdForIslIntegrityCheck;
     }
 }

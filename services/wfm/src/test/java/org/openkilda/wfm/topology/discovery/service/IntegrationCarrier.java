@@ -64,8 +64,8 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
     }
 
     @Override
-    public void bfdDisableRequest(Endpoint physicalEndpoint, IslReference reference) {
-        bfdPortService.disable(physicalEndpoint, reference);
+    public void bfdDisableRequest(Endpoint physicalEndpoint) {
+        bfdPortService.disable(physicalEndpoint);
     }
 
     @Override

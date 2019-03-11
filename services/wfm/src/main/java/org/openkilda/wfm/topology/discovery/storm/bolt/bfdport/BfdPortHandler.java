@@ -136,8 +136,8 @@ public class BfdPortHandler extends AbstractBolt implements IBfdPortCarrier {
         service.enable(endpoint, reference);
     }
 
-    public void processDisable(Endpoint endpoint, IslReference reference) {
-        service.disable(endpoint, reference);
+    public void processDisable(Endpoint endpoint) {
+        service.disable(endpoint);
     }
 
     public void processLinkStatusUpdate(Endpoint endpoint, LinkStatus status) {

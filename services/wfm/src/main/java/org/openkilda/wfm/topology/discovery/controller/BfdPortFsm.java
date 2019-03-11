@@ -245,6 +245,7 @@ public final class BfdPortFsm extends
         bfdPortRepository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber())
                 .ifPresent(bfdPortRepository::delete);
         discriminator = null;
+        remoteDatapath = null;
     }
 
     protected void cleaningEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,

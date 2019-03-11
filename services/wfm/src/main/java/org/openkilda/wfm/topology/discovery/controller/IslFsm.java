@@ -216,7 +216,7 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         triggerDownFlowReroute(context);
 
         if (shouldUseBfd()) {
-            setupBfd(context);
+            emitBfdEnableRequest(context);
         }
     }
 
@@ -236,13 +236,14 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
 
     protected void handleBfdEnableDisable(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         if (context.getBfdEnable()) {
-            setupBfd(context);
+            emitBfdEnableRequest(context);
         } else {
-            killBfd(context);
+            emitBfdDisableRequest(context);
         }
     }
 
     protected void removeAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        // FIXME(surabujin): this check is always true, because it is called from DOWN or MOVED state
         if (getAggregatedStatus() != DiscoveryEndpointStatus.UP) {
             fire(IslFsmEvent._ISL_REMOVE_SUCESS);
         }
@@ -320,19 +321,16 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         }
     }
 
-    private boolean shouldUseBfd() {
-        // TODO(surabujin): ensure BFD enabled
-        return true;
-    }
-
-    private void setupBfd(IslFsmContext context) {
+    private void emitBfdEnableRequest(IslFsmContext context) {
         IslReference reference = discoveryFacts.getReference();
         context.getOutput().bfdEnableRequest(reference.getSource(), reference);
         context.getOutput().bfdEnableRequest(reference.getDest(), reference);
     }
 
-    private void killBfd(IslFsmContext context) {
-        // TODO
+    private void emitBfdDisableRequest(IslFsmContext context) {
+        IslReference reference = discoveryFacts.getReference();
+        context.getOutput().bfdDisableRequest(reference.getSource());
+        context.getOutput().bfdDisableRequest(reference.getDest());
     }
 
     private void saveAllTransaction() {
@@ -355,30 +353,30 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
     }
 
     private void saveAll(Instant timeNow) {
-        IslReference reference = discoveryFacts.getReference();
-        saveAll(reference.getSource(), reference.getDest(), timeNow, endpointStatus.getForward());
-        saveAll(reference.getDest(), reference.getSource(), timeNow, endpointStatus.getReverse());
+        Socket socket = prepareSocket();
+        saveAll(socket.getSource(), socket.getDest(), timeNow, endpointStatus.getForward());
+        saveAll(socket.getDest(), socket.getSource(), timeNow, endpointStatus.getReverse());
     }
 
-    private void saveAll(Endpoint source, Endpoint dest, Instant timeNow, DiscoveryEndpointStatus uniStatus) {
+    private void saveAll(Anchor source, Anchor dest, Instant timeNow, DiscoveryEndpointStatus uniStatus) {
         Isl link = loadOrCreateIsl(source, dest, timeNow);
 
         link.setTimeModify(timeNow);
 
         applyIslGenericData(link);
-        applyIslAvailableBandwidth(link, source, dest);
+        applyIslAvailableBandwidth(link, source.getEndpoint(), dest.getEndpoint());
         applyIslStatus(link, uniStatus, timeNow);
 
         pushIslChanges(link);
     }
 
     private void saveStatus(Instant timeNow) {
-        IslReference reference = discoveryFacts.getReference();
-        saveStatus(reference.getSource(), reference.getDest(), timeNow, endpointStatus.getForward());
-        saveStatus(reference.getDest(), reference.getSource(), timeNow, endpointStatus.getReverse());
+        Socket socket = prepareSocket();
+        saveStatus(socket.getSource(), socket.getDest(), timeNow, endpointStatus.getForward());
+        saveStatus(socket.getDest(), socket.getSource(), timeNow, endpointStatus.getReverse());
     }
 
-    private void saveStatus(Endpoint source, Endpoint dest, Instant timeNow, DiscoveryEndpointStatus uniStatus) {
+    private void saveStatus(Anchor source, Anchor dest, Instant timeNow, DiscoveryEndpointStatus uniStatus) {
         Isl link = loadOrCreateIsl(source, dest, timeNow);
 
         applyIslStatus(link, uniStatus, timeNow);
@@ -386,13 +384,12 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
     }
 
     private void raiseCostOnPhysicalDown(Instant timeNow) {
-        IslReference reference = discoveryFacts.getReference();
-
-        raiseCostOnPhysicalDown(timeNow, reference.getSource(), reference.getDest());
-        raiseCostOnPhysicalDown(timeNow, reference.getDest(), reference.getSource());
+        Socket socket = prepareSocket();
+        raiseCostOnPhysicalDown(socket.getSource(), socket.getDest(), timeNow);
+        raiseCostOnPhysicalDown(socket.getDest(), socket.getSource(), timeNow);
     }
 
-    private void raiseCostOnPhysicalDown(Instant timeNow, Endpoint source, Endpoint dest) {
+    private void raiseCostOnPhysicalDown(Anchor source, Anchor dest, Instant timeNow) {
         Isl link = loadOrCreateIsl(source, dest, timeNow);
 
         log.debug("Raise ISL {} ===> {} cost due to physical down (cost-now:{}, raise:{})",
@@ -401,31 +398,32 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         pushIslChanges(link);
     }
 
-    private Isl loadOrCreateIsl(Endpoint source, Endpoint dest, Instant timeNow) {
-        return islRepository.findByEndpoints(
-                source.getDatapath(), source.getPortNumber(), dest.getDatapath(), dest.getPortNumber())
-                .map(link -> {
-                    log.debug("Read ISL object: {}", link);
-                    switchRepository.lockSwitches(link.getSrcSwitch(), link.getDestSwitch());
-                    return link;
-                })
+    private Socket prepareSocket() {
+        IslReference reference = discoveryFacts.getReference();
+        Anchor source = loadSwitch(reference.getSource());
+        Anchor dest = loadSwitch(reference.getDest());
+        switchRepository.lockSwitches(source.getSw(), dest.getSw());
+
+        return new Socket(source, dest);
+    }
+
+    private Isl loadOrCreateIsl(Anchor source, Anchor dest, Instant timeNow) {
+        return loadIsl(source.getEndpoint(), dest.getEndpoint())
                 .orElseGet(() -> createIsl(source, dest, timeNow));
     }
 
-    private Isl createIsl(Endpoint source, Endpoint dest, Instant timeNow) {
-        Switch sourceSwitch = loadSwitch(source);
-        Switch destSwitch = loadSwitch(dest);
-        switchRepository.lockSwitches(sourceSwitch, destSwitch);
-
+    private Isl createIsl(Anchor source, Anchor dest, Instant timeNow) {
+        final Endpoint sourceEndpoint = source.getEndpoint();
+        final Endpoint destEndpoint = dest.getEndpoint();
         IslBuilder islBuilder = Isl.builder()
                 .timeCreate(timeNow)
                 .timeModify(timeNow)
-                .srcSwitch(sourceSwitch)
-                .srcPort(source.getPortNumber())
-                .destSwitch(destSwitch)
-                .destPort(dest.getPortNumber())
-                .underMaintenance(sourceSwitch.isUnderMaintenance() || destSwitch.isUnderMaintenance());
-        applyIslLinkProps(source, dest, islBuilder);
+                .srcSwitch(source.getSw())
+                .srcPort(sourceEndpoint.getPortNumber())
+                .destSwitch(dest.getSw())
+                .destPort(destEndpoint.getPortNumber())
+                .underMaintenance(source.getSw().isUnderMaintenance() || dest.getSw().isUnderMaintenance());
+        applyIslLinkProps(sourceEndpoint, destEndpoint, islBuilder);
         Isl link = islBuilder.build();
 
         if (link.isUnderMaintenance()) {
@@ -436,10 +434,21 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         return link;
     }
 
-    private Switch loadSwitch(Endpoint endpoint) {
-        return switchRepository.findById(endpoint.getDatapath())
+    private Anchor loadSwitch(Endpoint endpoint) {
+        Switch sw = switchRepository.findById(endpoint.getDatapath())
                 .orElseThrow(() -> new PersistenceException(
                         String.format("Switch %s not found in DB", endpoint.getDatapath())));
+        return new Anchor(endpoint, sw);
+    }
+
+    private Optional<Isl> loadIsl(Endpoint source, Endpoint dest) {
+        return islRepository.findByEndpoints(
+                source.getDatapath(), source.getPortNumber(),
+                dest.getDatapath(), dest.getPortNumber())
+                .map(link -> {
+                    log.debug("Read ISL object: {}", link);
+                    return link;
+                });
     }
 
     private void applyIslGenericData(Isl link) {
@@ -524,12 +533,36 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
         return DiscoveryEndpointStatus.DOWN;
     }
 
-    // TODO(surabujin): move this check into reroute topology
+    private boolean shouldUseBfd() {
+        // TODO(surabujin): ensure the switch is BFD cappable
+
+        if (!isGlobalBfdToggleEnabled()) {
+            return false;
+        }
+
+        IslReference reference = discoveryFacts.getReference();
+        return isPerIslBfdToggleEnabled(reference.getSource(), reference.getDest())
+                && isPerIslBfdToggleEnabled(reference.getDest(), reference.getSource());
+    }
+
+    private boolean isGlobalBfdToggleEnabled() {
+        return featureTogglesRepository.find()
+                .map(FeatureToggles::getUseBfdForIslIntegrityCheck)
+                .orElse(FeatureToggles.DEFAULTS.getUseBfdForIslIntegrityCheck());
+    }
+
+    private boolean isPerIslBfdToggleEnabled(Endpoint source, Endpoint dest) {
+        return loadIsl(source, dest)
+                .map(Isl::isEnableBfd)
+                .orElseThrow(() -> new PersistenceException(
+                        String.format("Isl %s ===> %s record not found in DB", source, dest)));
+    }
+
+    // TODO(surabujin): should this check been moved into reroute topology?
     private boolean shouldEmitDownFlowReroute() {
-        Optional<FeatureToggles> featureToggles = featureTogglesRepository.find();
-        return featureToggles.isPresent()
-                && featureToggles.get().getFlowsRerouteOnIslDiscoveryEnabled() != null
-                && featureToggles.get().getFlowsRerouteOnIslDiscoveryEnabled();
+        return featureTogglesRepository.find()
+                .map(FeatureToggles::getFlowsRerouteOnIslDiscoveryEnabled)
+                .orElse(FeatureToggles.DEFAULTS.getFlowsRerouteOnIslDiscoveryEnabled());
     }
 
     private static IslStatus mapStatus(DiscoveryEndpointStatus status) {
@@ -567,6 +600,18 @@ public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmStat
 
     private enum DiscoveryEndpointStatus {
         UP, DOWN, MOVED
+    }
+
+    @Value
+    private static class Anchor {
+        Endpoint endpoint;
+        Switch sw;
+    }
+
+    @Value
+    private static class Socket {
+        Anchor source;
+        Anchor dest;
     }
 
     @Value

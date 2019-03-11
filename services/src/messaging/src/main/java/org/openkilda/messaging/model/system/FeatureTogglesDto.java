@@ -15,13 +15,16 @@
 
 package org.openkilda.messaging.model.system;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @Builder
+@NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class FeatureTogglesDto {
     @JsonProperty("flows_reroute_on_isl_discovery")
@@ -42,25 +45,23 @@ public class FeatureTogglesDto {
     @JsonProperty("unpush_flow")
     private Boolean unpushFlowEnabled;
 
-    @JsonProperty("bfd_events")
-    private Boolean bfdEventsEnabled;
+    @JsonProperty("use_bfd_for_isl_integrity_check")
+    private Boolean useBfdForIslIntegrityCheck;
 
-    public FeatureTogglesDto() {
-    }
-
+    @JsonCreator
     public FeatureTogglesDto(@JsonProperty("flows_reroute_on_isl_discovery") Boolean flowsRerouteOnIslDiscoveryEnabled,
                              @JsonProperty("create_flow") Boolean createFlowEnabled,
                              @JsonProperty("update_flow") Boolean updateFlowEnabled,
                              @JsonProperty("delete_flow") Boolean deleteFlowEnabled,
                              @JsonProperty("push_flow") Boolean pushFlowEnabled,
                              @JsonProperty("unpush_flow") Boolean unpushFlowEnabled,
-                             @JsonProperty("bfd_events") Boolean bfdEventsEnabled) {
+                             @JsonProperty("use_bfd_for_isl_integrity_check") Boolean useBfdForIslIntegrityCheck) {
         this.flowsRerouteOnIslDiscoveryEnabled = flowsRerouteOnIslDiscoveryEnabled;
         this.createFlowEnabled = createFlowEnabled;
         this.updateFlowEnabled = updateFlowEnabled;
         this.deleteFlowEnabled = deleteFlowEnabled;
         this.pushFlowEnabled = pushFlowEnabled;
         this.unpushFlowEnabled = unpushFlowEnabled;
-        this.bfdEventsEnabled = bfdEventsEnabled;
+        this.useBfdForIslIntegrityCheck = useBfdForIslIntegrityCheck;
     }
 }
