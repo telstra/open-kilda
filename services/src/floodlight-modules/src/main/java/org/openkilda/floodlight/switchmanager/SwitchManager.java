@@ -1692,6 +1692,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         return new ArrayList<>(sw.getPorts());
     }
 
+    @Override
+    public boolean isTrackingEnabled() {
+        return config.isTrackingEnabled();
+    }
+
     private void updatePortStatus(IOFSwitch sw, int portNumber, boolean isAdminDown) throws SwitchOperationException {
         Set<OFPortConfig> config = new HashSet<>(1);
         if (isAdminDown) {

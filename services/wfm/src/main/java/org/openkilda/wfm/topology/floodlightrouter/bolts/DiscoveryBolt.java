@@ -106,7 +106,7 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
                     break;
             }
         } catch (Exception e) {
-            logger.error("Failed to process message {}", message);
+            logger.error("Failed to process message {}", message, e);
         } finally {
             outputCollector.ack(input);
         }
@@ -165,7 +165,12 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
     public void send(String key, Message message, String outputStream) {
         try {
             String json = MAPPER.writeValueAsString(message);
-            Values values = new Values(key, json);
+            Values values;
+            if (key == null) {
+                values = new Values(json);
+            } else {
+                values = new Values(key, json);
+            }
             outputCollector.emit(outputStream, currentTuple, values);
         } catch (JsonProcessingException e) {
             logger.error("failed to serialize message {}", message);

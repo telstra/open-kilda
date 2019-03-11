@@ -22,6 +22,7 @@ import org.openkilda.messaging.command.stats.StatsRequest;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.utils.AbstractTickRichBolt;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -37,7 +38,7 @@ public class StatsRequesterBolt  extends AbstractTickRichBolt {
 
     @Override
     protected void doTick(Tuple tuple) {
-        StatsRequest statsRequestData = new StatsRequest();
+        StatsRequest statsRequestData = new StatsRequest(ImmutableList.of());
         CommandMessage statsRequest = new CommandMessage(statsRequestData,
                 System.currentTimeMillis(), UUID.randomUUID().toString());
         Values values = new Values(statsRequest);

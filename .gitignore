@@ -31,6 +31,7 @@ services/src/api/target/
 /services/src/atdd-staging/kilda.properties
 /services/src/atdd-staging/log4j2.xml
 /services/src/floodlight-modules/src/main/resources/floodlightkilda.properties
+/services/src/floodlight-modules/src/main/resources/floodlightkildaStats.properties
 /services/src/floodlight-modules/src/main/resources/logback.xml
 /services/src/northbound/src/main/resources/log4j2.xml
 /services/src/northbound/src/main/resources/northbound.properties

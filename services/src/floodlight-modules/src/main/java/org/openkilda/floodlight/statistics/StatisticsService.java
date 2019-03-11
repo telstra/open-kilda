@@ -44,6 +44,7 @@ import org.projectfloodlight.openflow.protocol.OFMeterStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFPortStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
 import org.projectfloodlight.openflow.protocol.OFVersion;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
@@ -53,6 +54,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -105,34 +107,37 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
      * execute stats requests handling.
      * @param context module context
      */
-    public void processStatistics(FloodlightModuleContext context) {
+    public void processStatistics(FloodlightModuleContext context, Set<DatapathId> excludeSwitches) {
         statisticsTopic = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getStatsTopic();
         region = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getRegion();
 
         //TODO(tdurakov): get rid of thread pool here
         threadPoolService.getScheduledExecutor().submit(
-                () -> switchService.getAllSwitchMap().values().forEach(iofSwitch -> {
-                    try {
-                        gatherPortStats(iofSwitch);
-                    } catch (Exception e) {
-                        logger.error(String.format("Failed to gather stats for ports on switch %s.",
-                                iofSwitch.getId()), e);
-                    }
+                () -> switchService.getAllSwitchMap().values()
+                        .stream()
+                        .filter(it -> !excludeSwitches.contains(it.getId()))
+                        .forEach(iofSwitch -> {
+                            try {
+                                gatherPortStats(iofSwitch);
+                            } catch (Exception e) {
+                                logger.error(String.format("Failed to gather stats for ports on switch %s.",
+                                        iofSwitch.getId()), e);
+                            }
 
-                    try {
-                        gatherFlowStats(iofSwitch);
-                    } catch (Exception e) {
-                        logger.error(String.format("Failed to gather stats for flows on switch %s.",
-                                iofSwitch.getId()), e);
-                    }
+                            try {
+                                gatherFlowStats(iofSwitch);
+                            } catch (Exception e) {
+                                logger.error(String.format("Failed to gather stats for flows on switch %s.",
+                                        iofSwitch.getId()), e);
+                            }
 
-                    try {
-                        gatherMeterStats(iofSwitch);
-                    } catch (Exception e) {
-                        logger.error(String.format("Failed to gather stats for meters on switch %s.",
-                                iofSwitch.getId()), e);
-                    }
-                }));
+                            try {
+                                gatherMeterStats(iofSwitch);
+                            } catch (Exception e) {
+                                logger.error(String.format("Failed to gather stats for meters on switch %s.",
+                                        iofSwitch.getId()), e);
+                            }
+                        }));
     }
 
     @NewCorrelationContextRequired

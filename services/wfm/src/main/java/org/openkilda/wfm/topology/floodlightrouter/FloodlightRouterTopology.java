@@ -20,6 +20,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.floodlightrouter.bolts.BroadcastRequestBolt;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.DiscoveryBolt;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.ReplyBolt;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.RequestBolt;
@@ -33,6 +34,7 @@ import org.apache.storm.topology.TopologyBuilder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 
 /**
@@ -256,6 +258,8 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
             builder.setBolt(Stream.formatWithRegion(ComponentType.SPEAKER_KAFKA_BOLT, region),
                     speakerKafkaBolt, parallelism)
                     .shuffleGrouping(ComponentType.SPEAKER_REQUEST_BOLT,
+                            Stream.formatWithRegion(Stream.SPEAKER, region))
+                    .shuffleGrouping(ComponentType.KILDA_TOPO_DISCO_BOLT,
                             Stream.formatWithRegion(Stream.SPEAKER, region));
         }
 
@@ -332,6 +336,43 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                 .shuffleGrouping(ComponentType.SPEAKER_DISCO_KAFKA_SPOUT);
     }
 
+    private void createStatsStatsRequestStream(TopologyBuilder builder, int parallelism,
+                                            KafkaTopicsConfig topicsConfig) {
+        KafkaSpout statsStatsRequestKafkaSpout = createKafkaSpout(topicsConfig.getStatsStatsRequestPrivTopic(),
+                ComponentType.STATS_STATS_REQUEST_KAFKA_SPOUT);
+        builder.setSpout(ComponentType.STATS_STATS_REQUEST_KAFKA_SPOUT, statsStatsRequestKafkaSpout);
+
+        for (String region: topologyConfig.getFloodlightRegions()) {
+            KafkaBolt statsStatsRequestKafkaBolt = createKafkaBolt(
+                    Stream.formatWithRegion(topicsConfig.getStatsStatsRequestPrivRegionTopic(), region));
+            builder.setBolt(Stream.formatWithRegion(ComponentType.STATS_STATS_REQUEST_KAFKA_BOLT, region),
+                    statsStatsRequestKafkaBolt, parallelism)
+                    .shuffleGrouping(ComponentType.STATS_STATS_REQUEST_BOLT,
+                            Stream.formatWithRegion(Stream.STATS_STATS_REQUEST_PRIV, region));
+        }
+
+        BroadcastRequestBolt speakerRequestBolt = new BroadcastRequestBolt(Stream.STATS_STATS_REQUEST_PRIV,
+                topologyConfig.getFloodlightRegions());
+        builder.setBolt(ComponentType.STATS_STATS_REQUEST_BOLT, speakerRequestBolt, parallelism)
+                .shuffleGrouping(ComponentType.STATS_STATS_REQUEST_KAFKA_SPOUT);
+    }
+
+    private void createFlStatsSwitchesStream(TopologyBuilder builder,
+                                             int parallelism,
+                                             KafkaTopicsConfig topicsConfig,
+                                             List<String> kildaFlStatsSwitchesTopics) {
+        KafkaSpout flStatsSwitchesSpout = createKafkaSpout(kildaFlStatsSwitchesTopics,
+                ComponentType.FL_STATS_SWITCHES_SPOUT);
+        builder.setSpout(ComponentType.FL_STATS_SWITCHES_SPOUT, flStatsSwitchesSpout);
+
+        ReplyBolt replyBolt = new ReplyBolt(Stream.FL_STATS_SWITCHES);
+        builder.setBolt(ComponentType.FL_STATS_SWITCHES_REPLY_BOLT, replyBolt, parallelism)
+                .shuffleGrouping(ComponentType.FL_STATS_SWITCHES_SPOUT);
+
+        KafkaBolt kildaFlStatsSwtichesKafkaBolt = createKafkaBolt(topicsConfig.getFlStatsSwitchesPrivTopic());
+        builder.setBolt(ComponentType.FL_STATS_SWITCHES_KAFKA_BOLT, kildaFlStatsSwtichesKafkaBolt, parallelism)
+                .shuffleGrouping(ComponentType.FL_STATS_SWITCHES_REPLY_BOLT, Stream.FL_STATS_SWITCHES);
+    }
 
     @Override
     public StormTopology createTopology() {
@@ -398,6 +439,15 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
         // Storm -- kilda.speaker.disco --> Floodlight
         // Storm <-- kilda.topo.disco -- Floodlight
         createDiscoveryPipelines(builder, parallelism, topicsConfig);
+
+        // Storm -- kilda.stats.stats-request.priv --> Floodlight
+        createStatsStatsRequestStream(builder, parallelism, topicsConfig);
+
+        // Storm <-- kilda.fl-stats.switches.priv -- Floodlight
+        List<String> kildaFlStatsSwitchesTopics = regions.stream()
+                .map(region -> Stream.formatWithRegion(topicsConfig.getFlStatsSwitchesPrivRegionTopic(), region))
+                .collect(Collectors.toList());
+        createFlStatsSwitchesStream(builder, parallelism, topicsConfig, kildaFlStatsSwitchesTopics);
 
         // Part3 Request to Floodlights
         // Storm -- kilda.speaker.flow --> Floodlight

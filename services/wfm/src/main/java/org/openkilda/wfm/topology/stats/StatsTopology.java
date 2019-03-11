@@ -126,7 +126,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         builder.setBolt(STATS_REQUESTER_BOLT.name(),
                 new StatsRequesterBolt(topologyConfig.getStatisticsRequestInterval()), parallelism);
 
-        builder.setBolt(STATS_KILDA_SPEAKER_BOLT.name(), buildKafkaBolt(topologyConfig.getSpeakerTopic()))
+        builder.setBolt(STATS_KILDA_SPEAKER_BOLT.name(), buildKafkaBolt(topologyConfig.getStatsRequestPrivTopic()))
                 .shuffleGrouping(STATS_REQUESTER_BOLT.name(), STATS_REQUEST.name());
 
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();

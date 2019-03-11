@@ -18,20 +18,34 @@ package org.openkilda.floodlight.command.statistics;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.statistics.IStatisticsService;
+import org.openkilda.messaging.command.stats.StatsRequest;
 
+import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import org.projectfloodlight.openflow.types.DatapathId;
+
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class StatsCommand extends Command {
+    private final StatsRequest data;
 
-    public StatsCommand(CommandContext context) {
+    public StatsCommand(CommandContext context, StatsRequest data) {
         super(context);
+        this.data = data;
     }
 
     @Override
     public Command call() throws Exception {
+        Set<DatapathId> excludedSwitches = Optional.ofNullable(data.getExcludeSwitchIds())
+                .orElse(ImmutableList.of())
+                .stream()
+                .map(it -> DatapathId.of(it.toLong()))
+                .collect(Collectors.toSet());
         FloodlightModuleContext moduleContext = getContext().getModuleContext();
         IStatisticsService statsService = moduleContext.getServiceImpl(IStatisticsService.class);
-        statsService.processStatistics(moduleContext);
+        statsService.processStatistics(moduleContext, excludedSwitches);
         return null;
     }
 }
