@@ -28,6 +28,6 @@ public class SpeakerBfdSessionResponseCommand extends SpeakerWorkerCommand {
 
     @Override
     public void apply(SpeakerWorker handler) {
-        handler.processBfdSessionResponse(response);
+        handler.processBfdSessionResponse(getKey(), response);
     }
 }

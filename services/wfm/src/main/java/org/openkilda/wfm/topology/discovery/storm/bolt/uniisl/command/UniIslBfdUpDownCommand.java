@@ -28,6 +28,6 @@ public class UniIslBfdUpDownCommand extends UniIslCommand {
 
     @Override
     public void apply(UniIslHandler handler) {
-        handler.processUniIslBfdUpDown(getEndpoint(), up);
+        handler.processBfdUpDown(getEndpoint(), up);
     }
 }

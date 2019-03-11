@@ -124,12 +124,16 @@ public final class BfdPortFsm extends
                 .from(BfdPortFsmState.CLEANING).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.SPEAKER_FAIL)
                 .when(new ResponseKeyValidator())
                 .callMethod("reportSpeakerFailure");
+        builder.transition()
+                .from(BfdPortFsmState.CLEANING).to(BfdPortFsmState.HOUSEKEEPING).on(BfdPortFsmEvent.KILL);
         builder.internalTransition().within(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.PORT_UP)
                 .callMethod("cleaningUpdateLinkStatus");
         builder.internalTransition().within(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.PORT_DOWN)
                 .callMethod("cleaningUpdateLinkStatus");
         builder.onEntry(BfdPortFsmState.CLEANING)
                 .callMethod("cleaningEnter");
+        builder.onExit(BfdPortFsmState.CLEANING)
+                .callMethod("cleaningExit");
 
         // CLEANING_CHOICE
         builder.transition()
@@ -153,7 +157,7 @@ public final class BfdPortFsm extends
         builder.transition()
                 .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.BI_ISL_MOVE);
         builder.transition()
-                .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.KILL).on(BfdPortFsmEvent.KILL);
+                .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.HOUSEKEEPING).on(BfdPortFsmEvent.KILL);
         builder.defineSequentialStatesOn(
                 BfdPortFsmState.ACTIVE,
                 BfdPortFsmState.UP, BfdPortFsmState.DOWN);
@@ -175,11 +179,19 @@ public final class BfdPortFsm extends
                 .from(BfdPortFsmState.FAIL).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.PORT_DOWN)
                 .callMethod("failEnter");
 
-        // STOP
-        builder.onEntry(BfdPortFsmState.KILL)
-                .callMethod("stopEnter");
+        // HOUSEKEEPING
+        builder.transition()
+                .from(BfdPortFsmState.HOUSEKEEPING).to(BfdPortFsmState.STOP).on(BfdPortFsmEvent.SPEAKER_SUCCESS)
+                .callMethod("releaseResources");
+        builder.transition()
+                .from(BfdPortFsmState.HOUSEKEEPING).to(BfdPortFsmState.STOP).on(BfdPortFsmEvent.SPEAKER_FAIL)
+                .callMethod("reportSpeakerFailure");
+        builder.transition()
+                .from(BfdPortFsmState.HOUSEKEEPING).to(BfdPortFsmState.STOP).on(BfdPortFsmEvent.FAIL);
+        builder.onEntry(BfdPortFsmState.HOUSEKEEPING)
+                .callMethod("housekeepingEnter");
 
-        builder.defineFinalState(BfdPortFsmState.KILL);
+        builder.defineFinalState(BfdPortFsmState.STOP);
     }
 
     public static FsmExecutor<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> makeExecutor() {
@@ -198,6 +210,12 @@ public final class BfdPortFsm extends
         this.logicalEndpoint = portFacts.getEndpoint();
         this.physicalEndpoint = Endpoint.of(logicalEndpoint.getDatapath(), portFacts.getPhysicalPortNumber());
         this.linkStatus = portFacts.getLinkStatus();
+    }
+
+    // -- external API --
+
+    public boolean isHousekeeping() {
+        return BfdPortFsmState.HOUSEKEEPING == getCurrentState();
     }
 
     // -- FSM actions --
@@ -245,17 +263,16 @@ public final class BfdPortFsm extends
         bfdPortRepository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber())
                 .ifPresent(bfdPortRepository::delete);
         discriminator = null;
-        remoteDatapath = null;
     }
 
     protected void cleaningEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                   BfdPortFsmContext context) {
-        try {
-            pendingRequestKey = context.getOutput().removeBfdSession(makeBfdSessionRecord());
-        } catch (SwitchReferenceLookupException e) {
-            log.error("Can't make BFD-session remove request - {}", e.getMessage());
-            fire(BfdPortFsmEvent.FAIL, context);
-        }
+        doBfdSetup(context);
+    }
+
+    protected void cleaningExit(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                BfdPortFsmContext context) {
+        remoteDatapath = null;
     }
 
     protected void cleaningUpdateLinkStatus(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
@@ -304,9 +321,13 @@ public final class BfdPortFsm extends
                   logicalEndpoint, physicalEndpoint.getPortNumber());
     }
 
-    protected void stopEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+    protected void housekeepingEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                              BfdPortFsmContext context) {
-        // TODO
+        context.getOutput().bfdKillNotification(physicalEndpoint);
+
+        if (remoteDatapath != null) {
+            doBfdSetup(context);
+        }
     }
 
     protected void reportSpeakerFailure(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
@@ -333,6 +354,15 @@ public final class BfdPortFsm extends
     }
 
     // -- private/service methods --
+
+    private void doBfdSetup(BfdPortFsmContext context) {
+        try {
+            pendingRequestKey = context.getOutput().removeBfdSession(makeBfdSessionRecord());
+        } catch (SwitchReferenceLookupException e) {
+            log.error("Can't make BFD-session remove request - {}", e.getMessage());
+            fire(BfdPortFsmEvent.FAIL, context);
+        }
+    }
 
     private NoviBfdSession makeBfdSessionRecord() throws SwitchReferenceLookupException {
         SwitchReference localSwitchReference = makeSwitchReference(physicalEndpoint.getDatapath());
@@ -429,10 +459,14 @@ public final class BfdPortFsm extends
         /**
          * Builder.
          */
-        public static BfdPortFsmContextBuilder builder(BfdPortFsm fsm, IBfdPortCarrier outputAdapter) {
+        public static BfdPortFsmContextBuilder builder(BfdPortFsm fsm, IBfdPortCarrier carrier) {
+            return builder(carrier)
+                    .fsm(fsm);
+        }
+
+        public static BfdPortFsmContextBuilder builder(IBfdPortCarrier carrier) {
             return (new BfdPortFsmContextBuilder())
-                    .fsm(fsm)
-                    .output(outputAdapter);
+                    .output(carrier);
         }
     }
 
@@ -461,8 +495,9 @@ public final class BfdPortFsm extends
         CLEANING,
         CLEANING_CHOICE,
         WAIT_RELEASE,
+        HOUSEKEEPING,
 
         FAIL,
-        KILL
+        STOP
     }
 }

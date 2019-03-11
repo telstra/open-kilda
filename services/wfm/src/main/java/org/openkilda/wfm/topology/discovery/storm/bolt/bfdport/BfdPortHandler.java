@@ -35,6 +35,7 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerBf
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerBfdSessionSetupCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerWorkerCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.SwitchHandler;
+import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslBfdKillCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslBfdUpDownCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command.UniIslCommand;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
@@ -122,6 +123,11 @@ public class BfdPortHandler extends AbstractBolt implements IBfdPortCarrier {
         emit(STREAM_UNIISL_ID, getCurrentTuple(), makeUniIslTuple(new UniIslBfdUpDownCommand(physicalEndpoint, false)));
     }
 
+    @Override
+    public void bfdKillNotification(Endpoint physicalEndpoint) {
+        emit(STREAM_UNIISL_ID, getCurrentTuple(), makeUniIslTuple(new UniIslBfdKillCommand(physicalEndpoint)));
+    }
+
     // -- commands processing --
 
     public void processSetup(BfdPortFacts portFacts) {
@@ -148,8 +154,8 @@ public class BfdPortHandler extends AbstractBolt implements IBfdPortCarrier {
         service.updateOnlineMode(endpoint, mode);
     }
 
-    public void processSpeakerSetupResponse(Endpoint endpoint, BfdSessionResponse response) {
-        service.speakerResponse(endpoint, response);
+    public void processSpeakerSetupResponse(String key, Endpoint endpoint, BfdSessionResponse response) {
+        service.speakerResponse(key, endpoint, response);
     }
 
     public void processSpeakerTimeout(String key, Endpoint endpoint) {

@@ -126,6 +126,11 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
     }
 
     @Override
+    public void bfdKillNotification(Endpoint physicalEndpoint) {
+        uniIslService.uniIslBfdKill(physicalEndpoint);
+    }
+
+    @Override
     public void setupPortHandler(PortFacts portFacts, Isl history) {
         portService.setup(portFacts, history);
     }

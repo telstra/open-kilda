@@ -19,15 +19,17 @@ import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.BfdPortHandler;
 
 public class BfdPortSpeakerBfdSessionResponseCommand extends BfdPortCommand {
+    private final String key;
     private final BfdSessionResponse response;
 
-    public BfdPortSpeakerBfdSessionResponseCommand(BfdSessionResponse response) {
+    public BfdPortSpeakerBfdSessionResponseCommand(String key, BfdSessionResponse response) {
         super(extractEndpoint(response));
+        this.key = key;
         this.response = response;
     }
 
     @Override
     public void apply(BfdPortHandler handler) {
-        handler.processSpeakerSetupResponse(getEndpoint(), response);
+        handler.processSpeakerSetupResponse(key, getEndpoint(), response);
     }
 }

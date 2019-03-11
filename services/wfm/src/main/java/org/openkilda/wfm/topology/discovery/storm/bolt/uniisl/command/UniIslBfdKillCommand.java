@@ -13,19 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.discovery.service;
+package org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command;
 
-import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
+import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.UniIslHandler;
 
-public interface IBfdPortCarrier {
-    String setupBfdSession(NoviBfdSession bfdSession);
+public class UniIslBfdKillCommand extends UniIslCommand {
+    public UniIslBfdKillCommand(Endpoint endpoint) {
+        super(endpoint);
+    }
 
-    String removeBfdSession(NoviBfdSession bfdSession);
-
-    void bfdUpNotification(Endpoint physicalEndpoint);
-
-    void bfdDownNotification(Endpoint physicalEndpoint);
-
-    void bfdKillNotification(Endpoint physicalEndpoint);
+    @Override
+    public void apply(UniIslHandler handler) {
+        handler.processBfdKill(getEndpoint());
+    }
 }

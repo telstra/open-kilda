@@ -104,8 +104,12 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
 
     // UniIslCommand
 
-    public void processUniIslBfdUpDown(Endpoint endpoint, boolean up) {
+    public void processBfdUpDown(Endpoint endpoint, boolean up) {
         service.uniIslBfdUpDown(endpoint, up);
+    }
+
+    public void processBfdKill(Endpoint endpoint) {
+        service.uniIslBfdKill(endpoint);
     }
 
     public void processUniIslRemove(Endpoint endpoint) {

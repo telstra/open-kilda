@@ -84,8 +84,9 @@ public class SpeakerWorker extends WorkerBolt {
         emitSpeakerRequest(key, payload);
     }
 
-    public void processBfdSessionResponse(BfdSessionResponse response) {
-        emitResponseToHub(getCurrentTuple(), makeBfdPortTuple(new BfdPortSpeakerBfdSessionResponseCommand(response)));
+    public void processBfdSessionResponse(String key, BfdSessionResponse response) {
+        emitResponseToHub(getCurrentTuple(), makeBfdPortTuple(
+                new BfdPortSpeakerBfdSessionResponseCommand(key, response)));
     }
 
     public void timeoutBfdRequest(String key, NoviBfdSession bfdSession) {

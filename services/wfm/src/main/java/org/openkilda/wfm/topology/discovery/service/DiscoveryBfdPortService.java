@@ -30,6 +30,9 @@ import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -39,6 +42,7 @@ public class DiscoveryBfdPortService {
 
     private final Map<Endpoint, BfdPortFsm> controllerByPhysicalPort = new HashMap<>();
     private final Map<Endpoint, BfdPortFsm> controllerByLogicalPort = new HashMap<>();
+    private final List<BfdPortFsm> doHousekeeping = new LinkedList<>();
 
     private final FsmExecutor<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> controllerExecutor
             = BfdPortFsm.makeExecutor();
@@ -71,11 +75,22 @@ public class DiscoveryBfdPortService {
 
         BfdPortFsm controller = controllerByLogicalPort.remove(logicalEndpoint);
         if (controller != null) {
-            BfdPortFsmContext context = BfdPortFsmContext.builder(controller, carrier).build();
-            controllerExecutor.fire(controller, BfdPortFsmEvent.KILL, context);
-            controllerByPhysicalPort.remove(controller.getPhysicalEndpoint());
+            remove(controller);
         } else {
             logMissingControllerByLogicalEndpoint(logicalEndpoint, "remove handler");
+        }
+    }
+
+    private void remove(BfdPortFsm controller) {
+        BfdPortFsmContext context = BfdPortFsmContext.builder(controller, carrier).build();
+        controllerExecutor.fire(controller, BfdPortFsmEvent.KILL, context);
+        controllerByPhysicalPort.remove(controller.getPhysicalEndpoint());
+
+        if (controller.isHousekeeping()) {
+            log.info("BFD-port {} (physical-port:{}) have switched into housekeeping mode");
+            doHousekeeping.add(controller);
+        } else {
+            log.debug("BFD-port {} (physical-port:{}) do not require housekeeping, remove it immediately");
         }
     }
 
@@ -156,17 +171,10 @@ public class DiscoveryBfdPortService {
     /**
      * Handle speaker response.
      */
-    public void speakerResponse(Endpoint logicalEndpoint, BfdSessionResponse response) {
-        log.debug("BFD-port service receive speaker response on BFD-session-setup request for {}", logicalEndpoint);
-        BfdPortFsm controller = controllerByLogicalPort.get(logicalEndpoint);
-        if (controller != null) {
-            speakerResponse(controller, response);
-        } else {
-            logMissingControllerByLogicalEndpoint(logicalEndpoint, "handle speaker response");
-        }
-    }
+    public void speakerResponse(String key, Endpoint logicalEndpoint, BfdSessionResponse response) {
+        log.debug("BFD-port service receive speaker response on BFD-session-setup request for {} key:{}",
+                  logicalEndpoint, key);
 
-    private void speakerResponse(BfdPortFsm controller, BfdSessionResponse response) {
         BfdPortFsmEvent event;
         if (response.getErrorCode() == null) {
             event = BfdPortFsmEvent.SPEAKER_SUCCESS;
@@ -174,30 +182,49 @@ public class DiscoveryBfdPortService {
             event = BfdPortFsmEvent.SPEAKER_FAIL;
         }
 
-        BfdPortFsmContext context = BfdPortFsmContext.builder(controller, carrier)
-                .bfdSessionResponse(response)
-                .build();
-        controllerExecutor.fire(controller, event, context);
+        BfdPortFsmContext.BfdPortFsmContextBuilder contextBuilder = BfdPortFsmContext.builder(carrier)
+                .requestKey(key)
+                .bfdSessionResponse(response);
+        handleSpeakerResponse(logicalEndpoint, contextBuilder, event);
     }
 
     /**
      * Handle speaker timeout response.
      */
     public void speakerTimeout(String key, Endpoint logicalEndpoint) {
-        log.debug("BFD-port service receive speaker timeout response for {}", logicalEndpoint);
-        BfdPortFsm controller = controllerByLogicalPort.get(logicalEndpoint);
-        if (controller != null) {
-            speakerTimeout(controller, key);
-        } else {
-            logMissingControllerByLogicalEndpoint(logicalEndpoint, "handle speaker timeout");
-        }
+        log.debug("BFD-port service receive speaker timeout response for {} key:{}", logicalEndpoint, key);
+
+        BfdPortFsmContext.BfdPortFsmContextBuilder contextBuilder = BfdPortFsmContext.builder(carrier)
+                .requestKey(key);
+        handleSpeakerResponse(logicalEndpoint, contextBuilder, BfdPortFsmEvent.SPEAKER_FAIL);
     }
 
-    private void speakerTimeout(BfdPortFsm controller, String key) {
-        BfdPortFsmContext context = BfdPortFsmContext.builder(controller, carrier)
-                .requestKey(key)
-                .build();
-        controllerExecutor.fire(controller, BfdPortFsmEvent.SPEAKER_FAIL, context);
+    private void handleSpeakerResponse(Endpoint logicalEndpoint,
+                                       BfdPortFsmContext.BfdPortFsmContextBuilder contextBuilder,
+                                       BfdPortFsmEvent event) {
+        BfdPortFsm controller = controllerByLogicalPort.get(logicalEndpoint);
+        if (controller != null) {
+            BfdPortFsmContext context = contextBuilder.fsm(controller).build();
+            controllerExecutor.fire(controller, event, context);
+        }
+
+        handleSpeakerResponse(contextBuilder, event);
+    }
+
+    private void handleSpeakerResponse(BfdPortFsmContext.BfdPortFsmContextBuilder contextBuilder,
+                                       BfdPortFsmEvent event) {
+        Iterator<BfdPortFsm> iter;
+        for (iter = doHousekeeping.iterator(); iter.hasNext(); ) {
+            BfdPortFsm controller = iter.next();
+            BfdPortFsmContext context = contextBuilder.fsm(controller).build();
+            controllerExecutor.fire(controller, event, context);
+
+            if (!controller.isHousekeeping()) {
+                log.info("BFD-port {} (physical-port:{}) have done with housekeeping, remove it",
+                         controller.getLogicalEndpoint(), controller.getPhysicalEndpoint().getPortNumber());
+                iter.remove();
+            }
+        }
     }
 
     // -- private --
