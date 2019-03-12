@@ -1,12 +1,16 @@
 package org.openkilda.functionaltests.helpers
 
 import org.openkilda.model.Cookie
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundService
 
 import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
+
+import java.math.RoundingMode
 
 /**
  * Provides helper operations for some Switch-related content.
@@ -22,6 +26,14 @@ import org.springframework.stereotype.Component
 @Component
 class SwitchHelper {
     static NorthboundService northbound
+
+    static NOVIFLOW_BURST_COEFFICIENT = 1.005 // Driven by the Noviflow specification
+    static CENTEC_MIN_BURST = 1024 // Driven by the Centec specification
+    static CENTEC_MAX_BURST = 32000 // Driven by the Centec specification
+
+    @Value('${burst.coefficient}')
+    double burstCoefficient
+
 
     @Autowired
     SwitchHelper(NorthboundService northbound) {
@@ -56,5 +68,28 @@ class SwitchHelper {
 
     static boolean isVirtual(Switch sw) {
         sw.description.toLowerCase().contains("nicira")
+    }
+
+    @Memoized
+    String getDescription(SwitchId sw) {
+        northbound.activeSwitches.find { it.switchId == sw }.description
+    }
+
+    def getExpectedBurst(SwitchId sw, long rate) {
+        def descr = getDescription(sw).toLowerCase()
+        if (descr.contains("noviflow")) {
+            return (rate * NOVIFLOW_BURST_COEFFICIENT - 1).setScale(0, RoundingMode.CEILING)
+        } else if (descr.contains("centec")) {
+            def burst = (rate * burstCoefficient).toBigDecimal().setScale(0, RoundingMode.FLOOR)
+            if (burst <= CENTEC_MIN_BURST) {
+                return CENTEC_MIN_BURST
+            } else if (burst > CENTEC_MIN_BURST && burst <= CENTEC_MAX_BURST) {
+                return burst
+            } else {
+                return CENTEC_MAX_BURST
+            }
+        } else {
+            return (rate * burstCoefficient).round(0)
+        }
     }
 }
