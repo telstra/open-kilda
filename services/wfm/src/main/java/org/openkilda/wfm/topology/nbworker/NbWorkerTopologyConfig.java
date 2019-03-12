@@ -43,6 +43,10 @@ public interface NbWorkerTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoDiscoTopic();
     }
 
+    default String getKafkaSpeakerTopic() {
+        return getKafkaTopics().getSpeakerTopic();
+    }
+
     @Key("isl.cost.when.under.maintenance")
     int getIslCostWhenUnderMaintenance();
 }
