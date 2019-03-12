@@ -25,7 +25,6 @@ import org.openkilda.wfm.topology.discovery.controller.AntiFlapFsm.Config;
 import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.LinkStatus;
-import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryAntiFlapService;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryPortService;
 import org.openkilda.wfm.topology.discovery.service.IAntiFlapCarrier;
@@ -166,8 +165,8 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
 
     // PortCommand processing
 
-    public void processSetup(PortFacts facts, Isl history) {
-        portService.setup(facts, history);
+    public void processSetup(Endpoint endpoint, Isl history) {
+        portService.setup(endpoint, history);
     }
 
     public void processRemove(Endpoint endpoint) {

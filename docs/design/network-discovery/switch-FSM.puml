@@ -27,6 +27,7 @@ title Switch FSM
 INIT --> OFFLINE : history / setup port workers
 INIT --> SETUP : online
 
+SETUP : enter / save features
 SETUP : enter / setup port FSM for NEW ports
 SETUP : enter / emit online for ALL ports
 SETUP : enter / emit port-del for REMOVED ports

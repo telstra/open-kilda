@@ -41,9 +41,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.LinkStatus;
-import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
 import org.openkilda.wfm.topology.discovery.model.facts.HistoryFacts;
-import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Before;
@@ -157,10 +155,10 @@ public class DiscoverySwitchServiceTest {
         //System.out.println(mockingDetails(carrier).printInvocations());
         //System.out.println(mockingDetails(switchRepository).printInvocations());
 
-        verify(carrier).setupPortHandler(new PortFacts(alphaDatapath, ports.get(0)), null);
-        verify(carrier).setupBfdPortHandler(new BfdPortFacts(new PortFacts(alphaDatapath, ports.get(1)), 1));
-        verify(carrier).setupPortHandler(new PortFacts(alphaDatapath, ports.get(2)), null);
-        verify(carrier).setupBfdPortHandler(new BfdPortFacts(new PortFacts(alphaDatapath, ports.get(3)), 2));
+        verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, ports.get(0).getNumber()), null);
+        verify(carrier).setupBfdPortHandler(Endpoint.of(alphaDatapath, ports.get(1).getNumber()), 1);
+        verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, ports.get(2).getNumber()), null);
+        verify(carrier).setupBfdPortHandler(Endpoint.of(alphaDatapath, ports.get(3).getNumber()), 2);
 
         verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(0).getNumber()), true);
         verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, ports.get(1).getNumber()), true);
@@ -257,8 +255,8 @@ public class DiscoverySwitchServiceTest {
         //System.out.println(mockingDetails(carrier).printInvocations());
         //System.out.println(mockingDetails(switchRepository).printInvocations());
 
-        verify(carrier).setupPortHandler(new PortFacts(Endpoint.of(alphaDatapath, 1)), islAtoB);
-        verify(carrier).setupPortHandler(new PortFacts(Endpoint.of(alphaDatapath, 2)), islAtoB2);
+        verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, 1), islAtoB);
+        verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, 2), islAtoB2);
         verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, 1), false);
         verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, 2), false);
 
@@ -409,9 +407,8 @@ public class DiscoverySwitchServiceTest {
 
         //System.out.println(mockingDetails(carrier).printInvocations());
 
-        verify(carrier).setupPortHandler(new PortFacts(Endpoint.of(alphaDatapath, 1)), null);
-        verify(carrier).setupBfdPortHandler(
-                new BfdPortFacts(new PortFacts(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET)), 1));
+        verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, 1), null);
+        verify(carrier).setupBfdPortHandler(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), 1);
 
         verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, 1), true);
         verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), true);
@@ -497,6 +494,48 @@ public class DiscoverySwitchServiceTest {
         //System.out.println(mockingDetails(carrier).printInvocations());
     }
 
+    @Test
+    public void switchWithNoBfdSupport() {
+        List<SpeakerSwitchPortView> ports = getSpeakerSwitchPortViews();
+
+        SpeakerSwitchView speakerSwitchView = getSpeakerSwitchView().toBuilder()
+                .ports(ports)
+                .features(Collections.emptySet())
+                .build();
+
+        SwitchInfoData switchAddEvent = new SwitchInfoData(
+                alphaDatapath, SwitchChangeType.ACTIVATED,
+                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                speakerInetAddress.toString(),
+                false,
+                speakerSwitchView);
+
+        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager,
+                                                                    BFD_LOGICAL_PORT_OFFSET);
+        service.switchEvent(switchAddEvent);
+
+        // System.out.println(mockingDetails(carrier).printInvocations());
+        // System.out.println(mockingDetails(switchRepository).printInvocations());
+
+        verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, ports.get(0).getNumber()), null);
+        verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, ports.get(1).getNumber()), null);
+        verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, ports.get(2).getNumber()), null);
+        verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, ports.get(3).getNumber()), null);
+
+        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(0).getNumber()), true);
+        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(1).getNumber()), true);
+        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()), true);
+        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, ports.get(3).getNumber()), true);
+
+        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports.get(2).getNumber()),
+                                        LinkStatus.of(ports.get(2).getState()));
+        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports.get(3).getNumber()),
+                                        LinkStatus.of(ports.get(3).getState()));
+        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports.get(0).getNumber()),
+                                        LinkStatus.of(ports.get(0).getState()));
+        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, ports.get(1).getNumber()),
+                                        LinkStatus.of(ports.get(0).getState()));
+    }
 
     private SpeakerSwitchView getSpeakerSwitchView() {
         return SpeakerSwitchView.builder()

@@ -21,10 +21,10 @@ import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
-import org.openkilda.wfm.topology.discovery.controller.SwitchFsm;
-import org.openkilda.wfm.topology.discovery.controller.SwitchFsm.SwitchFsmContext;
-import org.openkilda.wfm.topology.discovery.controller.SwitchFsm.SwitchFsmEvent;
-import org.openkilda.wfm.topology.discovery.controller.SwitchFsm.SwitchFsmState;
+import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm;
+import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm.SwitchFsmContext;
+import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm.SwitchFsmEvent;
+import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm.SwitchFsmState;
 import org.openkilda.wfm.topology.discovery.model.facts.HistoryFacts;
 
 import lombok.extern.slf4j.Slf4j;

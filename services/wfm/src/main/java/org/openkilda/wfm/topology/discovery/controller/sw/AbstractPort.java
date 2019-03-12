@@ -13,12 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.discovery.model.facts;
+package org.openkilda.wfm.topology.discovery.controller.sw;
 
-import org.openkilda.messaging.model.SpeakerSwitchPortView;
-import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.LinkStatus;
+import org.openkilda.wfm.topology.discovery.service.ISwitchCarrier;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -27,21 +26,25 @@ import java.io.Serializable;
 
 @Data
 @AllArgsConstructor
-public class PortFacts implements Serializable {
+public abstract class AbstractPort implements Serializable {
     private final Endpoint endpoint;
 
     private LinkStatus linkStatus;
 
-    protected PortFacts(PortFacts that) {
-        this(that.getEndpoint(), that.getLinkStatus());
-    }
-
-    public PortFacts(Endpoint endpoint) {
+    public AbstractPort(Endpoint endpoint) {
         this(endpoint, null);
     }
 
-    public PortFacts(SwitchId switchId,  SpeakerSwitchPortView portView) {
-        this(Endpoint.of(switchId, portView.getNumber()), LinkStatus.of(portView.getState()));
+    public abstract void portAdd(ISwitchCarrier carrier);
+
+    public abstract void portDel(ISwitchCarrier carrier);
+
+    public abstract void updateOnlineStatus(ISwitchCarrier carrier, boolean mode);
+
+    public abstract void updatePortLinkMode(ISwitchCarrier carrier);
+
+    public boolean isSameKind(AbstractPort other) {
+        return getClass() == other.getClass();
     }
 
     public int getPortNumber() {

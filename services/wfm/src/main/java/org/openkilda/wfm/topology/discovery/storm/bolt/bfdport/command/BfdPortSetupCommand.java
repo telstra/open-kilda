@@ -15,19 +15,19 @@
 
 package org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command;
 
-import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
+import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.BfdPortHandler;
 
 public class BfdPortSetupCommand extends BfdPortCommand {
-    private final BfdPortFacts portFacts;
+    private final int physicalPortNumber;
 
-    public BfdPortSetupCommand(BfdPortFacts portFacts) {
-        super(portFacts.getEndpoint());
-        this.portFacts = portFacts;
+    public BfdPortSetupCommand(Endpoint endpoint, int physicalPortNumber) {
+        super(endpoint);
+        this.physicalPortNumber = physicalPortNumber;
     }
 
     @Override
     public void apply(BfdPortHandler handler) {
-        handler.processSetup(portFacts);
+        handler.processSetup(getEndpoint(), physicalPortNumber);
     }
 }

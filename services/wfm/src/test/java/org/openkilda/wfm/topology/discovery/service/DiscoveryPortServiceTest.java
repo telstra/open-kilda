@@ -22,7 +22,6 @@ import static org.mockito.Mockito.verify;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.LinkStatus;
-import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -49,16 +48,16 @@ public class DiscoveryPortServiceTest {
     @Test
     public void newPort() {
         DiscoveryPortService service = new DiscoveryPortService(carrier);
-        PortFacts port1 = new PortFacts(Endpoint.of(alphaDatapath, 1));
-        PortFacts port2 = new PortFacts(Endpoint.of(alphaDatapath, 2));
+        Endpoint port1 = Endpoint.of(alphaDatapath, 1);
+        Endpoint port2 = Endpoint.of(alphaDatapath, 2);
 
         service.setup(port1, null);
-        service.updateOnlineMode(port1.getEndpoint(), false);
+        service.updateOnlineMode(port1, false);
         service.setup(port2, null);
-        service.updateOnlineMode(port2.getEndpoint(), false);
+        service.updateOnlineMode(port2, false);
 
-        service.remove(port1.getEndpoint());
-        service.remove(port2.getEndpoint());
+        service.remove(port1);
+        service.remove(port2);
 
         verify(carrier).setupUniIslHandler(Endpoint.of(alphaDatapath, 1), null);
         verify(carrier).removeUniIslHandler(Endpoint.of(alphaDatapath, 1));
@@ -72,13 +71,13 @@ public class DiscoveryPortServiceTest {
     @Test
     public void inOperationalUpDownPort() {
         DiscoveryPortService service = new DiscoveryPortService(carrier);
-        PortFacts port1 = new PortFacts(Endpoint.of(alphaDatapath, 1));
-        PortFacts port2 = new PortFacts(Endpoint.of(alphaDatapath, 2));
+        Endpoint port1 = Endpoint.of(alphaDatapath, 1);
+        Endpoint port2 = Endpoint.of(alphaDatapath, 2);
 
         service.setup(port1, null);
-        service.updateOnlineMode(port1.getEndpoint(), true);
+        service.updateOnlineMode(port1, true);
         service.setup(port2, null);
-        service.updateOnlineMode(port2.getEndpoint(), true);
+        service.updateOnlineMode(port2, true);
 
         verify(carrier).setupUniIslHandler(Endpoint.of(alphaDatapath, 2), null);
 
@@ -86,9 +85,8 @@ public class DiscoveryPortServiceTest {
 
         // Port 1 from Unknown to UP then DOWN
 
-        service.updateLinkStatus(port1.getEndpoint(), LinkStatus.UP);
-        service.updateLinkStatus(port1.getEndpoint(), LinkStatus.DOWN);
-
+        service.updateLinkStatus(port1, LinkStatus.UP);
+        service.updateLinkStatus(port1, LinkStatus.DOWN);
 
         verify(carrier).enableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
         verify(carrier).disableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
@@ -98,8 +96,8 @@ public class DiscoveryPortServiceTest {
 
         // Port 2 from Unknown to DOWN then UP
 
-        service.updateLinkStatus(port2.getEndpoint(), LinkStatus.DOWN);
-        service.updateLinkStatus(port2.getEndpoint(), LinkStatus.UP);
+        service.updateLinkStatus(port2, LinkStatus.DOWN);
+        service.updateLinkStatus(port2, LinkStatus.UP);
 
         verify(carrier).notifyPortPhysicalDown(Endpoint.of(alphaDatapath, 2));
         verify(carrier).enableDiscoveryPoll(Endpoint.of(alphaDatapath, 2));
@@ -110,19 +108,19 @@ public class DiscoveryPortServiceTest {
     @Test
     public void inUnOperationalUpDownPort() {
         DiscoveryPortService service = new DiscoveryPortService(carrier);
-        PortFacts port1 = new PortFacts(Endpoint.of(alphaDatapath, 1));
+        Endpoint port1 = Endpoint.of(alphaDatapath, 1);
 
         service.setup(port1, null);
-        service.updateOnlineMode(port1.getEndpoint(), true);
+        service.updateOnlineMode(port1, true);
 
         resetMocks();
 
-        service.updateOnlineMode(port1.getEndpoint(), false);
+        service.updateOnlineMode(port1, false);
 
         // Port 1 from Unknown to UP then DOWN
 
-        service.updateLinkStatus(port1.getEndpoint(), LinkStatus.UP);
-        service.updateLinkStatus(port1.getEndpoint(), LinkStatus.DOWN);
+        service.updateLinkStatus(port1, LinkStatus.UP);
+        service.updateLinkStatus(port1, LinkStatus.DOWN);
 
         verify(carrier, never()).enableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
         verify(carrier, never()).disableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
@@ -130,10 +128,10 @@ public class DiscoveryPortServiceTest {
 
         resetMocks();
 
-        service.updateOnlineMode(port1.getEndpoint(), true);
+        service.updateOnlineMode(port1, true);
 
-        service.updateLinkStatus(port1.getEndpoint(), LinkStatus.UP);
-        service.updateLinkStatus(port1.getEndpoint(), LinkStatus.DOWN);
+        service.updateLinkStatus(port1, LinkStatus.UP);
+        service.updateLinkStatus(port1, LinkStatus.DOWN);
 
         verify(carrier).enableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
         verify(carrier).disableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));

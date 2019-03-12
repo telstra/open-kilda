@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.discovery.controller;
+package org.openkilda.wfm.topology.discovery.controller.sw;
 
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
@@ -27,14 +27,12 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
-import org.openkilda.wfm.topology.discovery.controller.SwitchFsm.SwitchFsmContext;
-import org.openkilda.wfm.topology.discovery.controller.SwitchFsm.SwitchFsmEvent;
-import org.openkilda.wfm.topology.discovery.controller.SwitchFsm.SwitchFsmState;
+import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm.SwitchFsmContext;
+import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm.SwitchFsmEvent;
+import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm.SwitchFsmState;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.LinkStatus;
-import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
 import org.openkilda.wfm.topology.discovery.model.facts.HistoryFacts;
-import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 import org.openkilda.wfm.topology.discovery.service.ISwitchCarrier;
 
 import lombok.Builder;
@@ -51,15 +49,15 @@ import java.util.Map;
 import java.util.Set;
 
 @Slf4j
-public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState,
-        SwitchFsmEvent, SwitchFsmContext> {
+public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> {
     private final TransactionManager transactionManager;
     private final SwitchRepository switchRepository;
 
     private final SwitchId switchId;
     private final Integer bfdLogicalPortOffset;
 
-    private final Map<Integer, PortFacts> portByNumber = new HashMap<>();
+    private final Set<SpeakerSwitchView.Feature> features = new HashSet<>();
+    private final Map<Integer, AbstractPort> portByNumber = new HashMap<>();
 
     private static final StateMachineBuilder<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> builder;
 
@@ -126,31 +124,42 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState,
                                 SwitchFsmContext context) {
         HistoryFacts historyFacts = context.getHistory();
         for (Isl outgoingLink : historyFacts.getOutgoingLinks()) {
-            portAdd(context, outgoingLink);
+            PhysicalPort port = new PhysicalPort(Endpoint.of(switchId, outgoingLink.getSrcPort()));
+            port.setHistory(outgoingLink);
+            portAdd(port, context);
         }
     }
 
     protected void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         SpeakerSwitchView speakerData = context.getSpeakerData();
 
-        Set<Integer> removedPorts = new HashSet<>(portByNumber.keySet());
-        List<PortFacts> becomeUpPorts = new ArrayList<>();
-        List<PortFacts> becomeDownPorts = new ArrayList<>();
-        for (SpeakerSwitchPortView port : speakerData.getPorts()) {
-            removedPorts.remove(port.getNumber());
+        // set features for correct port (re)identification
+        features.clear();
+        features.addAll(speakerData.getFeatures());
 
-            PortFacts actualPort = new PortFacts(switchId, port);
-            if (!portByNumber.containsKey(port.getNumber())) {
-                // port added
-                portAdd(context, actualPort);
+        // locate changes
+        Map<Integer, AbstractPort> removedPorts = new HashMap<>(portByNumber);
+        List<AbstractPort> addedPorts = new ArrayList<>();
+        List<AbstractPort> upPorts = new ArrayList<>();
+        List<AbstractPort> downPorts = new ArrayList<>();
+        for (SpeakerSwitchPortView speakerPort : speakerData.getPorts()) {
+            AbstractPort actualPort = makePortRecord(speakerPort);
+            AbstractPort storedPort = portByNumber.get(speakerPort.getNumber());
+            if (storedPort == null) {
+                addedPorts.add(actualPort);
+            } else if (!storedPort.isSameKind(actualPort)) {
+                // port kind have been changed, we must recreate port handler
+                addedPorts.add(actualPort);
+            } else {
+                removedPorts.remove(speakerPort.getNumber());
             }
 
             switch (actualPort.getLinkStatus()) {
                 case UP:
-                    becomeUpPorts.add(actualPort);
+                    upPorts.add(actualPort);
                     break;
                 case DOWN:
-                    becomeDownPorts.add(actualPort);
+                    downPorts.add(actualPort);
                     break;
                 default:
                     throw new IllegalArgumentException(String.format(
@@ -159,23 +168,29 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState,
             }
         }
 
-        for (Integer portNumber : removedPorts) {
-            portDel(context, portNumber);
+        // apply changes
+        for (AbstractPort port : removedPorts.values()) {
+            portDel(port, context);
+        }
+
+        for (AbstractPort port : addedPorts) {
+            portAdd(port, context);
         }
 
         // emit "online" status for all ports
-        for (PortFacts port : portByNumber.values()) {
-            updateOnlineStatus(context, port.getEndpoint(), true);
+        for (AbstractPort port : portByNumber.values()) {
+            updateOnlineStatus(port, context, true);
         }
 
-        for (PortFacts port : becomeDownPorts) {
+        // emit ports up/down
+        for (AbstractPort port : downPorts) {
             port.setLinkStatus(LinkStatus.DOWN);
-            updatePortLinkMode(context, port);
+            updatePortLinkMode(port, context);
         }
 
-        for (PortFacts port : becomeUpPorts) {
+        for (AbstractPort port : upPorts) {
             port.setLinkStatus(LinkStatus.UP);
-            updatePortLinkMode(context, port);
+            updatePortLinkMode(port, context);
         }
     }
 
@@ -188,27 +203,32 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState,
                                 SwitchFsmContext context) {
         transactionManager.doInTransaction(() -> updatePersistentStatus(SwitchStatus.INACTIVE));
 
-        ISwitchCarrier output = context.getOutput();
-        for (PortFacts port : portByNumber.values()) {
-            updateOnlineStatus(context, port.getEndpoint(), false);
+        for (AbstractPort port : portByNumber.values()) {
+            updateOnlineStatus(port, context, false);
         }
     }
 
     protected void handlePortAdd(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                                  SwitchFsmContext context) {
-        PortFacts port = new PortFacts(Endpoint.of(switchId, context.getPortNumber()));
-        portAdd(context, port);
-        updateOnlineStatus(context, port.getEndpoint(), true);
+        AbstractPort port = makePortRecord(Endpoint.of(switchId, context.getPortNumber()));
+        portAdd(port, context);
+        updateOnlineStatus(port, context, true);
     }
 
     protected void handlePortDel(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                                  SwitchFsmContext context) {
-        portDel(context, context.getPortNumber());
+        AbstractPort port = portByNumber.get(context.getPortNumber());
+        if (port != null) {
+            portDel(port, context);
+        } else {
+            log.error("Receive port del request for {}, but this port is missing",
+                      Endpoint.of(switchId, context.getPortNumber()));
+        }
     }
 
     protected void handlePortLinkStateChange(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                                            SwitchFsmContext context) {
-        PortFacts port = portByNumber.get(context.getPortNumber());
+        AbstractPort port = portByNumber.get(context.getPortNumber());
         if (port == null) {
             log.error("Port {} is not listed into {}", context.getPortNumber(), switchId);
             return;
@@ -226,7 +246,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState,
                                                                  event, to, getClass().getName()));
         }
 
-        updatePortLinkMode(context, port);
+        updatePortLinkMode(port, context);
     }
 
     /**
@@ -234,61 +254,30 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState,
      */
     public void removePortsFsm(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                                              SwitchFsmContext context) {
-        Set<Integer> ports = new HashSet<>(portByNumber.keySet());
-        for (Integer port: ports) {
-            SwitchFsmContext portContext = context.toBuilder().portNumber(port).build();
-            portDel(portContext, portContext.getPortNumber());
+        List<AbstractPort> ports = new ArrayList<>(portByNumber.values());
+        for (AbstractPort port: ports) {
+            portDel(port, context);
         }
     }
-
 
     // -- private/service methods --
 
-    private void portAdd(SwitchFsmContext context, PortFacts portFacts) {
-        portAdd(context, portFacts, null);
+    private void portAdd(AbstractPort port, SwitchFsmContext context) {
+        portByNumber.put(port.getPortNumber(), port);
+        port.portAdd(context.getOutput());
     }
 
-    private void portAdd(SwitchFsmContext context, Isl history) {
-        Endpoint endpoint = Endpoint.of(switchId, history.getSrcPort());
-        PortFacts portFacts = new PortFacts(endpoint);
-        portAdd(context, portFacts, history);
+    private void portDel(AbstractPort port, SwitchFsmContext context) {
+        portByNumber.remove(port.getPortNumber());
+        port.portDel(context.getOutput());
     }
 
-    private void portAdd(SwitchFsmContext context, PortFacts portFacts, Isl history) {
-        portByNumber.put(portFacts.getPortNumber(), portFacts);
-
-        if (isPhysicalPort(portFacts.getPortNumber())) {
-            context.getOutput().setupPortHandler(portFacts, history);
-        } else {
-            context.getOutput().setupBfdPortHandler(
-                    new BfdPortFacts(portFacts, portFacts.getPortNumber() - bfdLogicalPortOffset));
-        }
+    private void updatePortLinkMode(AbstractPort port, SwitchFsmContext context) {
+        port.updatePortLinkMode(context.getOutput());
     }
 
-    private void portDel(SwitchFsmContext context, int portNumber) {
-        portByNumber.remove(portNumber);
-        Endpoint endpoint = Endpoint.of(switchId, portNumber);
-        if (isPhysicalPort(portNumber)) {
-            context.getOutput().removePortHandler(endpoint);
-        } else {
-            context.getOutput().removeBfdPortHandler(endpoint);
-        }
-    }
-
-    private void updatePortLinkMode(SwitchFsmContext context, PortFacts portFacts) {
-        if (isPhysicalPort(portFacts.getPortNumber())) {
-            context.getOutput().setPortLinkMode(portFacts.getEndpoint(), portFacts.getLinkStatus());
-        } else {
-            context.getOutput().setBfdPortLinkMode(portFacts.getEndpoint(), portFacts.getLinkStatus());
-        }
-    }
-
-    private void updateOnlineStatus(SwitchFsmContext context, Endpoint endpoint, boolean mode) {
-        if (isPhysicalPort(endpoint.getPortNumber())) {
-            context.getOutput().setOnlineMode(endpoint, mode);
-        } else {
-            context.getOutput().setBfdPortOnlineMode(endpoint, mode);
-        }
+    private void updateOnlineStatus(AbstractPort port, SwitchFsmContext context, boolean mode) {
+        port.updateOnlineStatus(context.getOutput(), mode);
     }
 
     private void persistSwitchData(SwitchFsmContext context) {
@@ -329,6 +318,24 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState,
         // FIXME(surabujin): move initial switch setup here (from FL)
     }
 
+    private AbstractPort makePortRecord(SpeakerSwitchPortView speakerPort) {
+        AbstractPort port = makePortRecord(Endpoint.of(switchId, speakerPort.getNumber()));
+        port.setLinkStatus(LinkStatus.of(speakerPort.getState()));
+        return port;
+    }
+
+    private AbstractPort makePortRecord(Endpoint endpoint) {
+        AbstractPort record;
+        if (isPhysicalPort(endpoint.getPortNumber())) {
+            record = new PhysicalPort(endpoint);
+        } else {
+            // at this moment we know only 2 kind of ports - physical and logical-BFD
+            record = new LogicalBfdPort(endpoint, endpoint.getPortNumber() - bfdLogicalPortOffset);
+        }
+
+        return record;
+    }
+
     /**
      * Distinguish physical ports from other port types.
      *
@@ -336,8 +343,13 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState,
      * wee have a deal with logical-BFD port.
      */
     private boolean isPhysicalPort(int portNumber) {
-        return portNumber < bfdLogicalPortOffset;
+        if (features.contains(SpeakerSwitchView.Feature.BFD)) {
+            return portNumber < bfdLogicalPortOffset;
+        }
+        return true;
     }
+
+    // -- service data types --
 
     @Value
     @Builder(toBuilder = true)

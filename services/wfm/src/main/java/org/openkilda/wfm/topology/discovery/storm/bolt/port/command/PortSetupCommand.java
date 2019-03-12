@@ -16,21 +16,19 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.port.command;
 
 import org.openkilda.model.Isl;
-import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
+import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.storm.bolt.port.PortHandler;
 
 public class PortSetupCommand extends PortCommand {
-    private final PortFacts facts;
     private final Isl history;
 
-    public PortSetupCommand(PortFacts facts, Isl history) {
-        super(facts.getEndpoint());
-        this.facts = facts;
+    public PortSetupCommand(Endpoint endpoint, Isl history) {
+        super(endpoint);
         this.history = history;
     }
 
     @Override
     public void apply(PortHandler handler) {
-        handler.processSetup(facts, history);
+        handler.processSetup(getEndpoint(), history);
     }
 }

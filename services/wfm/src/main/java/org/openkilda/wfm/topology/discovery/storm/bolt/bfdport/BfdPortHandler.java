@@ -25,7 +25,6 @@ import org.openkilda.wfm.share.hubandspoke.TaskIdBasedKeyFactory;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.model.LinkStatus;
-import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryBfdPortService;
 import org.openkilda.wfm.topology.discovery.service.IBfdPortCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
@@ -130,8 +129,8 @@ public class BfdPortHandler extends AbstractBolt implements IBfdPortCarrier {
 
     // -- commands processing --
 
-    public void processSetup(BfdPortFacts portFacts) {
-        service.setup(portFacts);
+    public void processSetup(Endpoint endpoint, int physicalPortNumber) {
+        service.setup(endpoint, physicalPortNumber);
     }
 
     public void processRemove(Endpoint endpoint) {

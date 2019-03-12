@@ -24,7 +24,6 @@ import org.openkilda.wfm.topology.discovery.controller.PortFsm.PortFsmEvent;
 import org.openkilda.wfm.topology.discovery.controller.PortFsm.PortFsmState;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.LinkStatus;
-import org.openkilda.wfm.topology.discovery.model.facts.PortFacts;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -46,11 +45,9 @@ public class DiscoveryPortService {
     /**
      * .
      */
-    public void setup(PortFacts portFacts, Isl history) {
-        log.debug("Port service receive setup request for {}", portFacts.getEndpoint());
-        // TODO: do not use PortFacts here
+    public void setup(Endpoint endpoint, Isl history) {
+        log.debug("Port service receive setup request for {}", endpoint);
         // TODO: try to switch on atomic action i.e. port-setup + online|offline action in one event
-        Endpoint endpoint = portFacts.getEndpoint();
         PortFsm portFsm = PortFsm.create(endpoint, history);
         controller.put(endpoint, portFsm);
     }

@@ -25,7 +25,6 @@ import org.openkilda.wfm.topology.discovery.controller.BfdPortFsm.BfdPortFsmStat
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.model.LinkStatus;
-import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -55,10 +54,10 @@ public class DiscoveryBfdPortService {
     /**
      * .
      */
-    public void setup(BfdPortFacts portFacts) {
+    public void setup(Endpoint endpoint, int physicalPortNumber) {
         log.debug("BFD-port service receive SETUP request for logical-port {} (physical-port:{})",
-                  portFacts.getEndpoint(), portFacts.getPhysicalPortNumber());
-        BfdPortFsm controller = BfdPortFsm.create(persistenceManager, portFacts);
+                  endpoint, physicalPortNumber);
+        BfdPortFsm controller = BfdPortFsm.create(persistenceManager, endpoint, physicalPortNumber);
 
         BfdPortFsmContext context = BfdPortFsmContext.builder(controller, carrier).build();
         controllerExecutor.fire(controller, BfdPortFsmEvent.HISTORY, context);

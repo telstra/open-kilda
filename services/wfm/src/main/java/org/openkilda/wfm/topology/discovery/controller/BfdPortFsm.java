@@ -35,7 +35,6 @@ import org.openkilda.wfm.topology.discovery.error.SwitchReferenceLookupException
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.model.LinkStatus;
-import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
 import org.openkilda.wfm.topology.discovery.service.IBfdPortCarrier;
 
 import lombok.Builder;
@@ -67,7 +66,7 @@ public final class BfdPortFsm extends
     @Getter
     private final Endpoint logicalEndpoint;
 
-    private LinkStatus linkStatus;
+    private LinkStatus linkStatus = null;
 
     private String pendingRequestKey;
     private SwitchId remoteDatapath = null;
@@ -79,7 +78,7 @@ public final class BfdPortFsm extends
         builder = StateMachineBuilderFactory.create(
                 BfdPortFsm.class, BfdPortFsmState.class, BfdPortFsmEvent.class, BfdPortFsmContext.class,
                 // extra parameters
-                PersistenceManager.class, BfdPortFacts.class);
+                PersistenceManager.class, Endpoint.class, Integer.class);
 
         // INIT
         builder.transition()
@@ -201,18 +200,18 @@ public final class BfdPortFsm extends
         return new FsmExecutor<>(BfdPortFsmEvent.NEXT);
     }
 
-    public static BfdPortFsm create(PersistenceManager persistenceManager, BfdPortFacts portFacts) {
-        return builder.newStateMachine(BfdPortFsmState.INIT, persistenceManager, portFacts);
+    public static BfdPortFsm create(PersistenceManager persistenceManager, Endpoint endpoint,
+                                    Integer physicalPortNumber) {
+        return builder.newStateMachine(BfdPortFsmState.INIT, persistenceManager, endpoint, physicalPortNumber);
     }
 
-    public BfdPortFsm(PersistenceManager persistenceManager, BfdPortFacts portFacts) {
+    public BfdPortFsm(PersistenceManager persistenceManager, Endpoint endpoint, Integer physicalPortNumber) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.bfdPortRepository = repositoryFactory.createBfdPortRepository();
 
-        this.logicalEndpoint = portFacts.getEndpoint();
-        this.physicalEndpoint = Endpoint.of(logicalEndpoint.getDatapath(), portFacts.getPhysicalPortNumber());
-        this.linkStatus = portFacts.getLinkStatus();
+        this.logicalEndpoint = endpoint;
+        this.physicalEndpoint = Endpoint.of(logicalEndpoint.getDatapath(), physicalPortNumber);
     }
 
     // -- external API --
@@ -295,7 +294,7 @@ public final class BfdPortFsm extends
 
     protected void handleCleaningChoice(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                         BfdPortFsmContext context) {
-        if (linkStatus == LinkStatus.UP) {
+        if (linkStatus != LinkStatus.DOWN) {
             fire(BfdPortFsmEvent._CLEANING_CHOICE_HOLD, context);
         } else {
             fire(BfdPortFsmEvent._CLEANING_CHOICE_READY, context);
