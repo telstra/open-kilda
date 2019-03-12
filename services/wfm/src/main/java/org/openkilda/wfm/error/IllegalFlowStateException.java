@@ -13,21 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.wfm.error;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    FLOWHS,
-    REROUTE,
-    FEATURE_TOGGLES,
-    KILDA_CONFIG,
-    NOTIFICATION,
-    TO_SPEAKER,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR,
-    HISTORY
+/**
+ * Exception which indicates that some flow operation couldn't be completed because the flow is in illegal state.
+ */
+public class IllegalFlowStateException extends Exception {
+    public IllegalFlowStateException(String flowId) {
+        super(String.format("Flow '%s' is in illegal state.", flowId));
+    }
 }
