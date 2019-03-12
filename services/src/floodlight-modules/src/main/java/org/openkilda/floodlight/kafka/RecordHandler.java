@@ -69,6 +69,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
 import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
+import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
@@ -76,7 +77,6 @@ import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
-import org.openkilda.messaging.command.switches.ValidateRulesRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
@@ -187,8 +187,8 @@ class RecordHandler implements Runnable {
             doInstallSwitchRules(message);
         } else if (data instanceof ConnectModeRequest) {
             doConnectMode(message);
-        } else if (data instanceof ValidateRulesRequest) {
-            doValidateRulesRequest(message);
+        } else if (data instanceof DumpRulesForNbworkerRequest) {
+            doDumpRulesForNbworkerRequest(message);
         } else if (data instanceof DumpRulesRequest) {
             doDumpRulesRequest(message);
         } else if (data instanceof DumpRulesForSwitchManagerRequest) {
@@ -656,8 +656,8 @@ class RecordHandler implements Runnable {
                 context.getKafkaSwitchManagerTopic(), message.getCorrelationId(), message.getTimestamp());
     }
 
-    private void doValidateRulesRequest(final CommandMessage message) {
-        processDumpRulesRequest(((ValidateRulesRequest) message.getData()).getSwitchId(),
+    private void doDumpRulesForNbworkerRequest(final CommandMessage message) {
+        processDumpRulesRequest(((DumpRulesForNbworkerRequest) message.getData()).getSwitchId(),
                 context.getKafkaNbWorkerTopic(), message.getCorrelationId(), message.getTimestamp());
     }
 
