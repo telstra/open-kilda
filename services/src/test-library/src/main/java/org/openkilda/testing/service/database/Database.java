@@ -54,4 +54,10 @@ public interface Database {
     FlowPairDto<FlowDto, FlowDto> getFlow(String flowId);
 
     void updateFlowBandwidth(String flowId, long newBw);
+
+    void updateFlowMeterId(String flowId, int newMeterId);
+
+    void updateFlowCookie(String flowId, long newFlowForwardCookie, long newFlowReverseCookie);
+
+    void updateFlowSegmentCookie(String flowId, long origCookie);
 }

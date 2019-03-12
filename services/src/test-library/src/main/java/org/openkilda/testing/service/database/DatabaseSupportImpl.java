@@ -23,12 +23,14 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
+import org.openkilda.model.FlowSegment;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -63,6 +65,7 @@ public class DatabaseSupportImpl implements Database {
     private final IslRepository islRepository;
     private final SwitchRepository switchRepository;
     private final FlowRepository flowRepository;
+    private final FlowSegmentRepository flowSegmentRepository;
 
     public DatabaseSupportImpl(PersistenceManager persistenceManager) {
         this.transactionManager = persistenceManager.getTransactionManager();
@@ -70,6 +73,7 @@ public class DatabaseSupportImpl implements Database {
         islRepository = repositoryFactory.createIslRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
         flowRepository = repositoryFactory.createFlowRepository();
+        flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
     }
 
     /**
@@ -312,6 +316,30 @@ public class DatabaseSupportImpl implements Database {
         flowPair.getForward().setBandwidth(newBw);
         flowPair.getReverse().setBandwidth(newBw);
         flowRepository.createOrUpdate(flowPair);
+    }
+
+    @Override
+    public void updateFlowMeterId(String flowId, int newMeterId) {
+        FlowPair flowPair = flowRepository.findFlowPairById(flowId).get();
+        flowPair.getForward().setMeterId(newMeterId);
+        flowPair.getReverse().setMeterId(newMeterId);
+        flowRepository.createOrUpdate(flowPair);
+    }
+
+    @Override
+    public void updateFlowCookie(String flowId, long newFlowForwardCookie, long newFlowReverseCookie) {
+        FlowPair flowPair = flowRepository.findFlowPairById(flowId).get();
+        flowPair.getForward().setCookie(newFlowForwardCookie);
+        flowPair.getReverse().setCookie(newFlowReverseCookie);
+        flowRepository.createOrUpdate(flowPair);
+    }
+
+    @Override
+    public void updateFlowSegmentCookie(String flowId, long origCookie) {
+        FlowSegment flowSegment = flowSegmentRepository.findByFlowIdAndCookie(flowId, origCookie).iterator().next();
+        Long newCookie = origCookie + 1;
+        flowSegment.setCookie(newCookie);
+        flowSegmentRepository.createOrUpdate(flowSegment);
     }
 
     private FlowDto convert(Flow flow) {
