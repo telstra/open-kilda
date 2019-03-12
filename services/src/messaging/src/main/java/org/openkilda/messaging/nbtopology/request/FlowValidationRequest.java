@@ -13,19 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.messaging.nbtopology.request;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    REROUTE,
-    FEATURE_TOGGLES,
-    NOTIFICATION,
-    TO_SPEAKER,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR,
-    HISTORY
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
+
+@Value
+public class FlowValidationRequest extends BaseRequest {
+
+    @JsonProperty("flow_id")
+    private String flowId;
+
+    public FlowValidationRequest(@JsonProperty("flow_id") String flowId) {
+        this.flowId = flowId;
+    }
 }

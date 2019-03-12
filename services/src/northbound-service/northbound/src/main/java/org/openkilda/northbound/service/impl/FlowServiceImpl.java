@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package org.openkilda.northbound.service.impl;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.northbound.utils.async.AsyncUtils.collectResponses;
 
-import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
@@ -29,8 +28,6 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
 import org.openkilda.messaging.command.flow.MeterModifyRequest;
-import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowHistoryData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
@@ -41,15 +38,13 @@ import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
-import org.openkilda.messaging.info.rule.FlowApplyActions;
-import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.messaging.info.rule.FlowSetFieldAction;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
+import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
+import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.payload.flow.DiverseGroupPayload;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
@@ -61,46 +56,27 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
-import org.openkilda.model.FlowPair;
-import org.openkilda.model.PathSegment;
-import org.openkilda.model.SwitchId;
-import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
-import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.FlowService;
-import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
-import org.openkilda.persistence.Neo4jConfig;
-import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowPairRepository;
-import org.openkilda.persistence.spi.PersistenceProvider;
 
-import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.nio.file.InvalidPathException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
 
 /**
  * Manages operations with flows.
@@ -111,13 +87,6 @@ public class FlowServiceImpl implements FlowService {
      * The logger.
      */
     private static final Logger logger = LoggerFactory.getLogger(FlowServiceImpl.class);
-
-    /**
-     * when getting the switch rules, we'll ignore cookie filter.
-     */
-    private static final Long IGNORE_COOKIE_FILTER = 0L;
-
-    private FlowPairRepository flowPairRepository;
 
     /**
      * The kafka topic for the flow topology.
@@ -134,12 +103,6 @@ public class FlowServiceImpl implements FlowService {
     @Value("#{kafkaTopicsConfig.getPingTopic()}")
     private String pingTopic;
 
-    /**
-     * The kafka topic for `nbWorker` topology.
-     */
-    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
-    private String nbWorkerTopic;
-
     @Value("${neo4j.uri}")
     private String neoUri;
 
@@ -152,60 +115,11 @@ public class FlowServiceImpl implements FlowService {
     @Autowired
     private FlowMapper flowMapper;
 
-    /**
-     * Used to get switch rules.
-     */
-    @Autowired
-    private SwitchService switchService;
-
     @Autowired
     private MessagingChannel messagingChannel;
 
     @Autowired
     private CorrelationIdFactory idFactory;
-
-    @PostConstruct
-    void init() {
-        PersistenceManager persistenceManager = PersistenceProvider.getInstance().createPersistenceManager(
-                new ConfigurationProvider() {
-                    @SuppressWarnings("unchecked")
-                    @Override
-                    public <T> T getConfiguration(Class<T> configurationType) {
-                        if (configurationType.equals(Neo4jConfig.class)) {
-                            return (T) new Neo4jConfig() {
-                                @Override
-                                public String getUri() {
-                                    return neoUri;
-                                }
-
-                                @Override
-                                public String getLogin() {
-                                    return neoUser;
-                                }
-
-                                @Override
-                                public String getPassword() {
-                                    return neoPswd;
-                                }
-
-                                @Override
-                                public int getConnectionPoolSize() {
-                                    return 50;
-                                }
-
-                                @Override
-                                public String getIndexesAuto() {
-                                    return "none";
-                                }
-                            };
-                        } else {
-                            throw new UnsupportedOperationException("Unsupported configurationType "
-                                    + configurationType);
-                        }
-                    }
-                });
-        flowPairRepository = persistenceManager.getRepositoryFactory().createFlowPairRepository();
-    }
 
     /**
      * {@inheritDoc}
@@ -495,351 +409,20 @@ public class FlowServiceImpl implements FlowService {
         return reroute(flowId, true);
     }
 
-    private static final class SimpleSwitchRule {
-        private SwitchId switchId; // so we don't get lost
-        private long cookie;
-        private int inPort;
-        private int outPort;
-        private int inVlan;
-        private int outVlan;
-        private Integer meterId;
-        private long pktCount;   // only set from switch rules, not flow rules
-        private long byteCount;  // only set from switch rules, not flow rules
-        private String version;
-
-        @Override
-        public String toString() {
-            return "{sw:" + switchId
-                    + ", ck:" + cookie
-                    + ", in:" + inPort + "-" + inVlan
-                    + ", out:" + outPort + "-" + outVlan
-                    + '}';
-        }
-
-        /**
-         * Will convert from the Flow .. FlowPath format to a series of SimpleSwitchRules,
-         */
-        private static final List<SimpleSwitchRule> convertFlow(UnidirectionalFlow flow) {
-            /*
-             * Start with Ingress
-             */
-            SimpleSwitchRule rule = new SimpleSwitchRule();
-            rule.switchId = flow.getSrcSwitch().getSwitchId();
-            rule.cookie = flow.getCookie();
-            rule.inPort = flow.getSrcPort();
-            rule.inVlan = flow.getSrcVlan();
-            rule.meterId = Optional.ofNullable(flow.getMeterId()).map(Long::intValue).orElse(null);
-            List<PathSegment> pathSegments = flow.getFlowPath().getSegments();
-            // TODO: ensure path is sorted by sequence
-            if (pathSegments.isEmpty()) {
-                // single switch rule.
-                rule.outPort = flow.getDestPort();
-                rule.outVlan = flow.getDestVlan();
-            } else {
-                // flows with two switches or more will have at least 2 in getPath()
-                rule.outPort = pathSegments.get(0).getSrcPort();
-                rule.outVlan = flow.getTransitVlan();
-                // OPTIONAL - for sanity check, we should confirm switch ID and cookie match.
-            }
-
-            List<SimpleSwitchRule> result = new ArrayList<>();
-            result.add(rule);
-
-            /*
-             * Now Transits
-             *
-             * .. only if path is greater than 2. If it is 2, then there are just
-             * two switches (no transits).
-             */
-            if (!pathSegments.isEmpty()) {
-                for (int i = 1; i < pathSegments.size(); i++) {
-                    // eg .. size 4, means 1 transit .. start at 1,2 .. don't process 3
-                    PathSegment inSegment = pathSegments.get(i - 1);
-
-                    rule = new SimpleSwitchRule();
-                    rule.switchId = inSegment.getDestSwitch().getSwitchId();
-                    rule.inPort = inSegment.getDestPort();
-
-                    rule.cookie = Optional.ofNullable(flow.getCookie())
-                            .filter(cookie -> !cookie.equals(NumberUtils.LONG_ZERO))
-                            .orElse(flow.getCookie());
-                    rule.inVlan = flow.getTransitVlan();
-                    //TODO: out vlan is not set for transit flows. Is it correct behavior?
-                    //rule.outVlan = flow.getTransitVlan();
-
-                    PathSegment outSegment = pathSegments.get(i);
-                    rule.outPort = outSegment.getSrcPort();
-                    result.add(rule);
-                }
-
-                /*
-                 * Now Egress .. only if we have a path. Otherwise it is one switch.
-                 */
-                rule = new SimpleSwitchRule();
-                rule.switchId = flow.getDestSwitch().getSwitchId();
-                rule.outPort = flow.getDestPort();
-                rule.outVlan = flow.getDestVlan();
-                rule.inVlan = flow.getTransitVlan();
-                rule.inPort = pathSegments.get(pathSegments.size() - 1).getDestPort();
-                rule.cookie = Optional.ofNullable(flow.getCookie())
-                        .filter(cookie -> !cookie.equals(NumberUtils.LONG_ZERO))
-                        .orElse(flow.getCookie());
-                result.add(rule);
-            }
-
-            return result;
-        }
-
-        /**
-         * Convert switch rules to simple rules, as much as we can.
-         */
-        public static final List<SimpleSwitchRule> convertSwitchRules(SwitchFlowEntries rules) {
-            List<SimpleSwitchRule> result = new ArrayList<>();
-            if (rules == null || rules.getFlowEntries() == null) {
-                return result;
-            }
-
-            for (FlowEntry switchRule : rules.getFlowEntries()) {
-                logger.debug("FlowEntry: {}", switchRule);
-                SimpleSwitchRule rule = new SimpleSwitchRule();
-                rule.switchId = rules.getSwitchId();
-                rule.cookie = switchRule.getCookie();
-                rule.inPort = NumberUtils.toInt(switchRule.getMatch().getInPort());
-                rule.inVlan = NumberUtils.toInt(switchRule.getMatch().getVlanVid());
-                if (switchRule.getInstructions() != null) {
-                    // TODO: What is the right way to get OUT VLAN and OUT PORT?  How does it vary?
-                    if (switchRule.getInstructions().getApplyActions() != null) {
-                        // The outVlan could be empty. If it is, then pop is?
-                        FlowApplyActions applyActions = switchRule.getInstructions().getApplyActions();
-                        rule.outVlan = Optional.ofNullable(applyActions.getFieldAction())
-                                .filter(action -> "vlan_vid".equals(action.getFieldName()))
-                                .map(FlowSetFieldAction::getFieldValue)
-                                .map(NumberUtils::toInt)
-                                .orElse(NumberUtils.INTEGER_ZERO);
-                        rule.outPort = NumberUtils.toInt(applyActions.getFlowOutput());
-                    }
-
-                    rule.meterId = Optional.ofNullable(switchRule.getInstructions().getGoToMeter())
-                            .map(Long::intValue)
-                            .orElse(null);
-                }
-                rule.pktCount = switchRule.getPacketCount();
-                rule.byteCount = switchRule.getByteCount();
-                rule.version = switchRule.getVersion();
-                result.add(rule);
-            }
-            return result;
-        }
-
-        /**
-         * Finds discrepancy between list of expected and actual rules.
-         *
-         * @param pktCounts  If we find the rule, add its pktCounts. Otherwise, add -1.
-         * @param byteCounts If we find the rule, add its pktCounts. Otherwise, add -1.
-         */
-        static List<PathDiscrepancyDto> findDiscrepancy(
-                SimpleSwitchRule expected, List<SimpleSwitchRule> possibleActual,
-                List<Long> pktCounts, List<Long> byteCounts) {
-            List<PathDiscrepancyDto> result = new ArrayList<>();
-            SimpleSwitchRule matched = findMatched(expected, possibleActual);
-
-            /*
-             * If we haven't matched anything .. then file discrepancy for each field used in match.
-             */
-            if (matched == null) {
-                result.add(new PathDiscrepancyDto(String.valueOf(expected), "all", String.valueOf(expected), ""));
-                pktCounts.add(-1L);
-                byteCounts.add(-1L);
-            } else {
-                doMatchCompare(expected, result, matched);
-                pktCounts.add(matched.pktCount);
-                byteCounts.add(matched.byteCount);
-            }
-
-            return result;
-        }
-
-        private static void doMatchCompare(SimpleSwitchRule expected, List<PathDiscrepancyDto> result,
-                                           SimpleSwitchRule matched) {
-            if (matched.cookie != expected.cookie) {
-                result.add(new PathDiscrepancyDto(expected.toString(), "cookie",
-                        String.valueOf(expected.cookie), String.valueOf(matched.cookie)));
-            }
-            if (matched.inPort != expected.inPort) {
-                result.add(new PathDiscrepancyDto(expected.toString(), "inPort",
-                        String.valueOf(expected.inPort), String.valueOf(matched.inPort)));
-            }
-            if (matched.inVlan != expected.inVlan) {
-                result.add(new PathDiscrepancyDto(expected.toString(), "inVlan",
-                        String.valueOf(expected.inVlan), String.valueOf(matched.inVlan)));
-            }
-            // FIXME: let's validate in_port output correctly in case of one-switch-port flow.
-            // currently for such flow we get 0 after convertion, but the rule has "output: in_port" value.
-            if (matched.outPort != expected.outPort
-                    && (expected.inPort != expected.outPort || matched.outPort != 0)) {
-                result.add(new PathDiscrepancyDto(expected.toString(), "outPort",
-                        String.valueOf(expected.outPort), String.valueOf(matched.outPort)));
-            }
-            if (matched.outVlan != expected.outVlan) {
-                result.add(new PathDiscrepancyDto(expected.toString(), "outVlan",
-                        String.valueOf(expected.outVlan), String.valueOf(matched.outVlan)));
-            }
-
-            //TODO: dumping of meters on OF_12 switches (and earlier) is not implemented yet, so skip them.
-            if ((matched.version == null || matched.version.compareTo("OF_12") > 0)
-                    && !Objects.equals(matched.meterId, expected.meterId)) {
-                result.add(new PathDiscrepancyDto(expected.toString(), "meterId",
-                        String.valueOf(expected.meterId), String.valueOf(matched.meterId)));
-            }
-        }
-
-        private static SimpleSwitchRule findMatched(SimpleSwitchRule expected, List<SimpleSwitchRule> possibleActual) {
-            /*
-             * Start with trying to match on the cookie.
-             */
-            SimpleSwitchRule matched = possibleActual.stream()
-                    .filter(rule -> rule.cookie != 0 && rule.cookie == expected.cookie)
-                    .findFirst()
-                    .orElse(null);
-            /*
-             * If no cookie match, then try inport and invlan
-             */
-            if (matched == null) {
-                matched = possibleActual.stream()
-                        .filter(rule -> rule.inPort == expected.inPort && rule.inVlan == expected.inVlan)
-                        .findFirst()
-                        .orElse(null);
-            }
-            /*
-             * Lastly, if cookie doesn't match, and inport / invlan doesn't, try outport/outvlan
-             */
-            if (matched == null) {
-                matched = possibleActual.stream()
-                        .filter(rule -> rule.outPort == expected.outPort && rule.outVlan == expected.outVlan)
-                        .findFirst()
-                        .orElse(null);
-            }
-            return matched;
-        }
-    }
-
     /**
      * {@inheritDoc}
      */
     @Override
     public CompletableFuture<List<FlowValidationDto>> validateFlow(final String flowId) {
-        /*
-         * Algorithm:
-         * 1) Grab the flow from the database
-         * 2) Grab the information off of each switch
-         * 3) Do the comparison
-         */
+        logger.debug("Validate flow request for flow {}", flowId);
+        CommandMessage message = new CommandMessage(new FlowValidationRequest(flowId),
+                System.currentTimeMillis(), RequestCorrelationId.getId());
 
-        Optional<FlowPair> flow = flowPairRepository.findById(flowId);
-        if (!flow.isPresent()) {
-            final String correlationId = RequestCorrelationId.getId();
-            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.NOT_FOUND,
-                    String.format("Could not validate flow: Flow %s not found", flowId), "Flow not found");
-        }
-        logger.debug("VALIDATE FLOW: Found Flows: {}", flow);
-
-        /*
-         * Since we are getting switch rules, we can use a set.
-         */
-        List<List<SimpleSwitchRule>> simpleFlowRules = new ArrayList<>();
-        Set<SwitchId> switches = new HashSet<>();
-
-        UnidirectionalFlow forward = flow.get().getForward();
-        if (forward.getFlowPath() != null) {
-            simpleFlowRules.add(SimpleSwitchRule.convertFlow(forward));
-            switches.add(forward.getSrcSwitch().getSwitchId());
-            switches.add(forward.getDestSwitch().getSwitchId());
-            forward.getFlowPath().getSegments()
-                    .forEach(pathSegment -> switches.add(pathSegment.getDestSwitch().getSwitchId()));
-        } else {
-            throw new InvalidPathException(flowId, "Forward path was not returned.");
-        }
-
-        UnidirectionalFlow reverse = flow.get().getReverse();
-        if (reverse.getFlowPath() != null) {
-            simpleFlowRules.add(SimpleSwitchRule.convertFlow(reverse));
-            switches.add(reverse.getSrcSwitch().getSwitchId());
-            switches.add(reverse.getDestSwitch().getSwitchId());
-            reverse.getFlowPath().getSegments()
-                    .forEach(pathSegment -> switches.add(pathSegment.getDestSwitch().getSwitchId()));
-        } else {
-            throw new InvalidPathException(flowId, "Reverse path was not returned.");
-        }
-
-        /*
-         * Reality check: we have the flow, and the switch rules. But they are in different formats.
-         * *AND* there are a couple of different ways that one may create a switch rule .. so that
-         * part needs to be flexible.
-         *
-         * Given the above, we'll use a flattened / simple mechanism to represent a switch rule.
-         * With that class, we can then:
-         * 1) use the flow to created the series of expected rules.
-         * 2) either convert all switch rules to the flattened structure, or we try to find the
-         *    candidate rule, convert it, and then find discrepancies.
-         */
-
-        /*
-         * Now Walk the list, getting the switch rules, so we can process the comparisons.
-         */
-        final Map<SwitchId, List<SimpleSwitchRule>> switchRules = new HashMap<>();
-
-        int index = 1;
-        List<CompletableFuture<?>> rulesRequests = new ArrayList<>();
-        for (SwitchId switchId : switches) {
-            String requestId = idFactory.produceChained(String.valueOf(index++));
-            rulesRequests.add(switchService.getRules(switchId, IGNORE_COOKIE_FILTER, requestId));
-        }
-
-        return collectResponses(rulesRequests, SwitchFlowEntries.class)
-                .thenApply(allEntries -> {
-                    int rulesAmount = 0;
-
-                    for (SwitchFlowEntries switchEntries : allEntries) {
-                        switchRules.put(switchEntries.getSwitchId(),
-                                SimpleSwitchRule.convertSwitchRules(switchEntries));
-                        rulesAmount += Optional.ofNullable(switchEntries.getFlowEntries())
-                                .map(List::size)
-                                .orElse(0);
-                    }
-                    return rulesAmount;
-                })
-                .thenApply(totalRules -> compareRules(switchRules, simpleFlowRules, flowId, totalRules));
-    }
-
-    private List<FlowValidationDto> compareRules(
-            Map<SwitchId, List<SimpleSwitchRule>> rulesPerSwitch, List<List<SimpleSwitchRule>> rulesFromDb,
-            String flowId, int totalSwitchRules) {
-
-        List<FlowValidationDto> results = new ArrayList<>();
-        for (List<SimpleSwitchRule> oneDirection : rulesFromDb) {
-            List<PathDiscrepancyDto> discrepancies = new ArrayList<>();
-            List<Long> pktCounts = new ArrayList<>();
-            List<Long> byteCounts = new ArrayList<>();
-            for (SimpleSwitchRule simpleRule : oneDirection) {
-                // This is where the comparisons happen.
-                discrepancies.addAll(
-                        SimpleSwitchRule.findDiscrepancy(simpleRule,
-                                rulesPerSwitch.get(simpleRule.switchId),
-                                pktCounts, byteCounts
-                        ));
-            }
-
-            FlowValidationDto result = new FlowValidationDto();
-            result.setFlowId(flowId);
-            result.setDiscrepancies(discrepancies);
-            result.setAsExpected(discrepancies.isEmpty());
-            result.setPktCounts(pktCounts);
-            result.setByteCounts(byteCounts);
-            result.setFlowRulesTotal(oneDirection.size());
-            result.setSwitchRulesTotal(totalSwitchRules);
-            results.add(result);
-        }
-        return results;
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
+                .thenApply(response -> response.stream()
+                        .map(FlowValidationResponse.class::cast)
+                        .map(flowMapper::toFlowValidationDto)
+                        .collect(Collectors.toList()));
     }
 
     @Override
@@ -893,7 +476,7 @@ public class FlowServiceImpl implements FlowService {
                 .timestampTo(timestampTo)
                 .build();
         CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);
-        return messagingChannel.sendAndGet(nbWorkerTopic, command)
+        return messagingChannel.sendAndGet(nbworkerTopic, command)
                 .thenApply(FlowHistoryData.class::cast)
                 .thenApply(FlowHistoryData::getPayload);
     }

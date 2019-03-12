@@ -13,19 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.wfm.topology.nbworker.bolts;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    REROUTE,
-    FEATURE_TOGGLES,
-    NOTIFICATION,
-    TO_SPEAKER,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR,
-    HISTORY
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.CommandMessage;
+
+public interface SpeakerWorkerCarrier {
+    void sendCommand(String key, CommandMessage command);
+
+    void sendResponse(String key, Message message);
 }

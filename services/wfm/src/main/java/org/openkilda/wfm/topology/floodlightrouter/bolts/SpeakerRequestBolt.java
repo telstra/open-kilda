@@ -19,8 +19,8 @@ import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
-import org.openkilda.messaging.command.switches.ValidateRulesRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
@@ -90,18 +90,16 @@ public class SpeakerRequestBolt extends RequestBolt {
 
     private void processNotFoundError(CommandMessage message, SwitchId switchId, Tuple input,
                                       String json) throws JsonProcessingException {
-        CommandMessage commandMessage = (CommandMessage) message;
-
         String errorDetails = String.format("Switch %s was not found", switchId.toString());
         ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, errorDetails, errorDetails);
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(),
                 message.getCorrelationId(), null);
         String errorJson = MAPPER.writeValueAsString(errorMessage);
-        Values values = new Values(errorJson);
-        if (commandMessage.getData() instanceof ValidateRulesRequest) {
-            outputCollector.emit(Stream.NORTHBOUND_REPLY, input, values);
-        } else if (commandMessage.getData() instanceof DumpRulesForSwitchManagerRequest) {
+        Values values = new Values(message.getCorrelationId(), errorJson);
+        if (message.getData() instanceof DumpRulesForNbworkerRequest) {
             outputCollector.emit(Stream.NB_WORKER, input, values);
+        } else if (message.getData() instanceof DumpRulesForSwitchManagerRequest) {
+            outputCollector.emit(Stream.KILDA_SWITCH_MANAGER, input, values);
         } else {
             log.error("Unable to lookup region for message: {}. switch is not tracked.", json);
         }
@@ -110,8 +108,8 @@ public class SpeakerRequestBolt extends RequestBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         super.declareOutputFields(outputFieldsDeclarer);
-        Fields fields = new Fields(AbstractTopology.MESSAGE_FIELD);
-        outputFieldsDeclarer.declareStream(Stream.NORTHBOUND_REPLY, fields);
+        Fields fields = new Fields(AbstractTopology.KEY_FIELD, AbstractTopology.MESSAGE_FIELD);
+        outputFieldsDeclarer.declareStream(Stream.KILDA_SWITCH_MANAGER, fields);
         outputFieldsDeclarer.declareStream(Stream.NB_WORKER, fields);
     }
 }

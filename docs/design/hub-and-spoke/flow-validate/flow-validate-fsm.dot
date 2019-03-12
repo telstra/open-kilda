@@ -1,0 +1,17 @@
+digraph {
+    compound=true;
+    subgraph cluster_StateMachine {
+    label="org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm";
+    RECEIVE_RULES [label="RECEIVE_RULES"];
+    INITIALIZED [label="INITIALIZED"];
+    VALIDATE_FLOW [label="VALIDATE_FLOW"];
+    FINISHED_WITH_ERROR [label="FINISHED_WITH_ERROR"];
+    FINISHED [label="FINISHED"];
+
+    RECEIVE_RULES -> RECEIVE_RULES [ label="RULES_RECEIVED"];
+    RECEIVE_RULES -> FINISHED_WITH_ERROR [ label="ERROR"];
+    RECEIVE_RULES -> FINISHED_WITH_ERROR [ label="TIMEOUT"];
+    RECEIVE_RULES -> VALIDATE_FLOW [ label="NEXT"];
+    INITIALIZED -> RECEIVE_RULES [ label="NEXT"];
+    VALIDATE_FLOW -> FINISHED_WITH_ERROR [ label="ERROR"];
+    VALIDATE_FLOW -> FINISHED [ label="NEXT"];}}
