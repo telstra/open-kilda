@@ -17,7 +17,11 @@ package org.openkilda.wfm.topology.discovery.controller;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
+import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.discovery.controller.PortFsm.PortFsmContext;
+import org.openkilda.wfm.topology.discovery.controller.PortFsm.PortFsmEvent;
+import org.openkilda.wfm.topology.discovery.controller.PortFsm.PortFsmState;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.service.IPortCarrier;
 
@@ -25,10 +29,9 @@ import lombok.Builder;
 import lombok.Value;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
-import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
-public final class PortFsm extends AbstractStateMachine<PortFsm, PortFsm.PortFsmState, PortFsm.PortFsmEvent,
-        PortFsm.PortFsmContext> {
+public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFsmEvent,
+        PortFsmContext> {
     private final Endpoint endpoint;
     private final Isl history;
 

@@ -33,7 +33,11 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.discovery.controller.IslFsm.IslFsmContext;
+import org.openkilda.wfm.topology.discovery.controller.IslFsm.IslFsmEvent;
+import org.openkilda.wfm.topology.discovery.controller.IslFsm.IslFsmState;
 import org.openkilda.wfm.topology.discovery.model.BiIslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.DiscoveryOptions;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
@@ -47,15 +51,14 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
-import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Optional;
 
 @Slf4j
-public final class IslFsm extends AbstractStateMachine<IslFsm, IslFsm.IslFsmState, IslFsm.IslFsmEvent,
-        IslFsm.IslFsmContext> {
+public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEvent,
+        IslFsmContext> {
     private final IslRepository islRepository;
     private final LinkPropsRepository linkPropsRepository;
     private final FlowSegmentRepository flowSegmentRepository;

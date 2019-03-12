@@ -16,7 +16,11 @@
 package org.openkilda.wfm.topology.discovery.controller;
 
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsm.DecisionMakerFsmContext;
+import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsm.DecisionMakerFsmEvent;
+import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsm.DecisionMakerFsmState;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.service.IDecisionMakerCarrier;
 
@@ -24,12 +28,11 @@ import lombok.Builder;
 import lombok.Data;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
-import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
-public final class DecisionMakerFsm extends AbstractStateMachine<DecisionMakerFsm,
-        DecisionMakerFsm.DecisionMakerFsmState,
-        DecisionMakerFsm.DecisionMakerFsmEvent,
-        DecisionMakerFsm.DecisionMakerFsmContext> {
+public final class DecisionMakerFsm extends AbstractBaseFsm<DecisionMakerFsm,
+        DecisionMakerFsmState,
+        DecisionMakerFsmEvent,
+        DecisionMakerFsmContext> {
     private static final StateMachineBuilder<DecisionMakerFsm, DecisionMakerFsmState, DecisionMakerFsmEvent,
             DecisionMakerFsmContext> builder;
 

@@ -25,7 +25,11 @@ import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.discovery.controller.SwitchFsm.SwitchFsmContext;
+import org.openkilda.wfm.topology.discovery.controller.SwitchFsm.SwitchFsmEvent;
+import org.openkilda.wfm.topology.discovery.controller.SwitchFsm.SwitchFsmState;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.LinkStatus;
 import org.openkilda.wfm.topology.discovery.model.facts.BfdPortFacts;
@@ -38,7 +42,6 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
-import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -48,8 +51,8 @@ import java.util.Map;
 import java.util.Set;
 
 @Slf4j
-public final class SwitchFsm extends AbstractStateMachine<SwitchFsm, SwitchFsm.SwitchFsmState,
-        SwitchFsm.SwitchFsmEvent, SwitchFsm.SwitchFsmContext> {
+public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState,
+        SwitchFsmEvent, SwitchFsmContext> {
     private final TransactionManager transactionManager;
     private final SwitchRepository switchRepository;
 

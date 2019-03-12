@@ -17,7 +17,11 @@ package org.openkilda.wfm.topology.discovery.controller;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
+import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.discovery.controller.UniIslFsm.UniIslFsmContext;
+import org.openkilda.wfm.topology.discovery.controller.UniIslFsm.UniIslFsmEvent;
+import org.openkilda.wfm.topology.discovery.controller.UniIslFsm.UniIslFsmState;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
@@ -28,11 +32,10 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
-import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 @Slf4j
-public class UniIslFsm extends AbstractStateMachine<UniIslFsm, UniIslFsm.UniIslFsmState,
-        UniIslFsm.UniIslFsmEvent, UniIslFsm.UniIslFsmContext> {
+public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
+        UniIslFsmEvent, UniIslFsmContext> {
     private final Endpoint endpoint;
     private IslReference islReference;
     private IslDataHolder islData = null;

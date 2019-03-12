@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.discovery.controller;
 
+import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.controller.AntiFlapFsm.Context;
 import org.openkilda.wfm.topology.discovery.controller.AntiFlapFsm.Event;
@@ -28,12 +29,11 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
-import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.io.Serializable;
 
 @Slf4j
-public final class AntiFlapFsm extends AbstractStateMachine<AntiFlapFsm, State, Event, Context> {
+public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event, Context>  {
 
     private static final StateMachineBuilder<AntiFlapFsm, State, Event, Context> builder;
 

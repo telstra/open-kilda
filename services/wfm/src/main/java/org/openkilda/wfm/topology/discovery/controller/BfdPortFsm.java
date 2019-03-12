@@ -26,7 +26,11 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.BfdPortRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.discovery.controller.BfdPortFsm.BfdPortFsmContext;
+import org.openkilda.wfm.topology.discovery.controller.BfdPortFsm.BfdPortFsmEvent;
+import org.openkilda.wfm.topology.discovery.controller.BfdPortFsm.BfdPortFsmState;
 import org.openkilda.wfm.topology.discovery.error.SwitchReferenceLookupException;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
@@ -41,7 +45,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.Condition;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
-import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -50,8 +53,8 @@ import java.util.Random;
 
 @Slf4j
 public final class BfdPortFsm extends
-        AbstractStateMachine<BfdPortFsm, BfdPortFsm.BfdPortFsmState, BfdPortFsm.BfdPortFsmEvent,
-                BfdPortFsm.BfdPortFsmContext> {
+        AbstractBaseFsm<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent,
+                        BfdPortFsmContext> {
     private static final int BFD_UDP_PORT = 3784;
     private static int bfdPollInterval = 350;  // TODO: use config option
     private static short bfdFailCycleLimit = 3;  // TODO: use config option
