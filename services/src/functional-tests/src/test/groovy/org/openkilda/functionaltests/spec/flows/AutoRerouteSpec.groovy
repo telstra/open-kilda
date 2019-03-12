@@ -388,6 +388,36 @@ class AutoRerouteSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    def "Flow is not rerouted when one of the flow ports goes down"() {
+        requireProfiles("hardware")
+
+        given: "An intermediate-switch flow with one alternative path at least"
+        def (flow, allFlowPaths) = intermediateSwitchFlow(true, true)
+        flowHelper.addFlow(flow)
+        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
+
+        and: "Make the current flow path less preferable than others"
+        allFlowPaths.findAll { it != flowPath }.each { pathHelper.makePathMorePreferable(it, flowPath) }
+
+        when: "Bring the flow port down on the source switch"
+        northbound.portDown(flow.source.datapath, flow.source.portNumber)
+
+        then: "The flow is not rerouted"
+        TimeUnit.SECONDS.sleep(rerouteDelay)
+        PathHelper.convert(northbound.getFlowPath(flow.id)) == flowPath
+
+        when: "Bring the flow port down on the destination switch"
+        northbound.portDown(flow.destination.datapath, flow.destination.portNumber)
+
+        then: "The flow is not rerouted"
+        TimeUnit.SECONDS.sleep(rerouteDelay)
+        PathHelper.convert(northbound.getFlowPath(flow.id)) == flowPath
+
+        and: "Bring flow ports up and delete the flow"
+        ["source", "destination"].each { northbound.portUp(flow."$it".datapath, flow."$it".portNumber) }
+        flowHelper.deleteFlow(flow.id)
+    }
+
     def singleSwitchFlow() {
         flowHelper.singleSwitchFlow(topology.getActiveSwitches().first())
     }
