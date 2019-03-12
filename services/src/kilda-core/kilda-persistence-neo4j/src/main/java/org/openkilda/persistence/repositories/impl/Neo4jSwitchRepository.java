@@ -25,6 +25,7 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Neo4jSession;
@@ -32,7 +33,9 @@ import org.neo4j.ogm.session.Session;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Neo4J OGM implementation of {@link SwitchRepository}.
@@ -64,6 +67,22 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
             throw new PersistenceException(format("Found more that 1 Switch entity by %s as name", switchId));
         }
         return switches.isEmpty() ? Optional.empty() : Optional.of(switches.iterator().next());
+    }
+
+    @Override
+    public Collection<Switch> findSwitchesInFlowPathByFlowId(String flowId) {
+        Map<String, Object> parameters = ImmutableMap.of("flow_id", flowId);
+
+        Set<Switch> switches = Sets.newHashSet(getSession().query(getEntityType(),
+                "MATCH ()-[fp:flow_path {flow_id: $flow_id}]->() "
+                        + "MATCH (n:switch)-[ps:path_segment]->() "
+                        + "WHERE fp.path_id = ps.path_id "
+                        + "RETURN n", parameters));
+
+        getSession().query(getEntityType(),
+                "MATCH (n:switch)-[f:flow {flowid: $flow_id}]-(:switch) RETURN n", parameters).forEach(switches::add);
+
+        return switches;
     }
 
     @Override
