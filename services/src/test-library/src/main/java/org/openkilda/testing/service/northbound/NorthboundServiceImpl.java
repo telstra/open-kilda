@@ -51,6 +51,7 @@ import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.switches.UnderMaintenanceDto;
 
 import com.google.common.collect.ImmutableMap;
@@ -444,6 +445,12 @@ public class NorthboundServiceImpl implements NorthboundService {
     public SwitchMeterEntries getAllMeters(SwitchId switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/meters", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchMeterEntries.class, switchId).getBody();
+    }
+
+    @Override
+    public SwitchValidationResult validateMeters(SwitchId switchId) {
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/validate", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResult.class, switchId).getBody();
     }
 
     @Override
