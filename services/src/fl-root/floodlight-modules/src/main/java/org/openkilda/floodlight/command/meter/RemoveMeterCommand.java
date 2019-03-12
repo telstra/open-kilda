@@ -41,12 +41,12 @@ public class RemoveMeterCommand extends MeterCommand {
 
     @Override
     protected FloodlightResponse buildError(Throwable error) {
-        return null;
+        throw new UnsupportedOperationException("Meter's deletion is not supported");
     }
 
     @Override
     protected FloodlightResponse buildResponse() {
-        return null;
+        throw new UnsupportedOperationException("Meter's deletion is not supported");
     }
 
     @Override

@@ -67,7 +67,7 @@ public class InstallOneSwitchRuleCommand extends InstallIngressRuleCommand {
     private List<OFAction> pushSchemeOutputVlanTypeToOfActionList(OFFactory ofFactory) {
         List<OFAction> actionList = new ArrayList<>(2);
 
-        switch (outputVlanType) {
+        switch (getOutputVlanType()) {
             case PUSH:      // No VLAN on packet so push a new one
                 actionList.add(actionPushVlan(ofFactory, ETH_TYPE));
                 actionList.add(actionReplaceVlan(ofFactory, outputVlanId));
@@ -82,7 +82,7 @@ public class InstallOneSwitchRuleCommand extends InstallIngressRuleCommand {
                 break;
             default:
                 throw new UnsupportedOperationException(String.format("Incorrect output vlan type: %s",
-                        outputVlanType));
+                        getOutputVlanType()));
         }
 
         return actionList;

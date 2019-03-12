@@ -1033,9 +1033,16 @@ class RecordHandler implements Runnable {
             try (CorrelationContextClosable closable =
                          CorrelationContext.create(ofCommand.getMessageContext().getCorrelationId())) {
                 KafkaTopicFactory kafkaTopicFactory = new KafkaTopicFactory(context);
+
                 ofCommand.execute(context.getModuleContext())
-                        .thenAccept(response -> getKafkaProducer()
-                                .sendMessageAndTrack(kafkaTopicFactory.getTopic(response), record.key(), response));
+                        .whenComplete((response, error) -> {
+                            if (error != null) {
+                                logger.error("Error occurred while trying to execute OF command", error);
+                            } else {
+                                getKafkaProducer().sendMessageAndTrack(kafkaTopicFactory.getTopic(response),
+                                        record.key(), response);
+                            }
+                        });
             }
         } catch (JsonMappingException e) {
             logger.trace("Received deprecated command message");

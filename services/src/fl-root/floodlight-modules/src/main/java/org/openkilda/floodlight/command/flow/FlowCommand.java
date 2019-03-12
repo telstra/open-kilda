@@ -90,11 +90,11 @@ public abstract class FlowCommand extends OfCommand {
                 .build();
     }
 
-    final Match matchFlow(Integer inputPort, Integer transitVlanId, OFFactory ofFactory) {
+    final Match matchFlow(Integer inputPort, Integer inputVlan, OFFactory ofFactory) {
         Match.Builder mb = ofFactory.buildMatch();
         mb.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
-        if (transitVlanId > 0) {
-            matchVlan(ofFactory, mb, transitVlanId);
+        if (inputVlan > 0) {
+            matchVlan(ofFactory, mb, inputVlan);
         }
 
         return mb.build();

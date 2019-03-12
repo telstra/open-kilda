@@ -55,16 +55,16 @@ public class InstallIngressRule extends InstallMeteredRule {
     @Builder
     public InstallIngressRule(@JsonProperty("message_context") MessageContext messageContext,
                               @JsonProperty("command_id") String commandId,
-                              @JsonProperty(FLOW_ID) final String flowId,
-                              @JsonProperty("cookie") final Long cookie,
-                              @JsonProperty("switch_id") final SwitchId switchId,
-                              @JsonProperty("input_port") final Integer inputPort,
-                              @JsonProperty("output_port") final Integer outputPort,
-                              @JsonProperty("bandwidth") final Long bandwidth,
-                              @JsonProperty("meter_id") final Long meterId,
-                              @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
-                              @JsonProperty("input_vlan_id") final Integer inputVlanId,
-                              @JsonProperty("transit_vlan_id") final Integer transitVlanId) {
+                              @JsonProperty(FLOW_ID) String flowId,
+                              @JsonProperty("cookie") Long cookie,
+                              @JsonProperty("switch_id") SwitchId switchId,
+                              @JsonProperty("input_port") Integer inputPort,
+                              @JsonProperty("output_port") Integer outputPort,
+                              @JsonProperty("bandwidth") Long bandwidth,
+                              @JsonProperty("meter_id") Long meterId,
+                              @JsonProperty("output_vlan_type") OutputVlanType outputVlanType,
+                              @JsonProperty("input_vlan_id") Integer inputVlanId,
+                              @JsonProperty("transit_vlan_id") Integer transitVlanId) {
         super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort, meterId, bandwidth);
         this.inputVlanId = inputVlanId;
         this.outputVlanType = outputVlanType;

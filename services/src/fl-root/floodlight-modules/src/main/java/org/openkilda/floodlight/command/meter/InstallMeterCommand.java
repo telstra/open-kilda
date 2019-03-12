@@ -88,7 +88,7 @@ public class InstallMeterCommand extends MeterCommand {
 
         return Collections.singletonList(IdempotentMessageWriter.<OFMeterConfigStatsReply>builder()
                 .message(meterInstallCommand)
-                .request(getMeterRequest(sw.getOFFactory()))
+                .readRequest(getMeterRequest(sw.getOFFactory()))
                 .ofEntryChecker(new MeterChecker(meterInstallCommand))
                 .errorTypeHelper(new MeterInstallOfErrorHelper())
                 .build());
@@ -140,7 +140,7 @@ public class InstallMeterCommand extends MeterCommand {
 
     class MeterInstallOfErrorHelper implements ErrorTypeHelper {
         @Override
-        public boolean isConflict(OFErrorMsg errorMsg) {
+        public boolean alreadyExists(OFErrorMsg errorMsg) {
             OFMeterModFailedErrorMsg meterModError = (OFMeterModFailedErrorMsg) errorMsg;
             return meterModError.getCode() == OFMeterModFailedCode.METER_EXISTS;
         }

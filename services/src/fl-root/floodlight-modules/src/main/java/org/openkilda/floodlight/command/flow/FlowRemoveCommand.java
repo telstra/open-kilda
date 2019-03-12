@@ -64,7 +64,7 @@ public class FlowRemoveCommand extends FlowCommand {
     }
 
     @Override
-    protected FloodlightResponse buildResponse() {
+    protected FloodlightResponse buildResponse(OFMessage response) {
         return FlowResponse.builder()
                 .commandId(commandId)
                 .flowId(flowId)

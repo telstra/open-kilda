@@ -17,6 +17,7 @@ package org.openkilda.floodlight.command;
 
 import org.openkilda.floodlight.FloodlightResponse;
 import org.openkilda.floodlight.command.flow.FlowRemoveCommand;
+import org.openkilda.floodlight.command.flow.GetRuleCommand;
 import org.openkilda.floodlight.command.flow.InstallEgressRuleCommand;
 import org.openkilda.floodlight.command.flow.InstallIngressRuleCommand;
 import org.openkilda.floodlight.command.flow.InstallOneSwitchRuleCommand;
@@ -56,7 +57,9 @@ import java.util.concurrent.CompletionException;
         @Type(value = InstallEgressRuleCommand.class,
                 name = "org.openkilda.floodlight.flow.request.InstallEgressRule"),
         @Type(value = FlowRemoveCommand.class,
-                name = "org.openkilda.floodlight.flow.request.RemoveRule")
+                name = "org.openkilda.floodlight.flow.request.RemoveRule"),
+        @Type(value = GetRuleCommand.class,
+                name = "org.openkilda.floodlight.flow.request.GetInstalledRule")
 })
 @Getter
 public abstract class OfCommand {
@@ -70,7 +73,7 @@ public abstract class OfCommand {
     }
 
     /**
-     * Helps to execute OF command.
+     * Helps to execute OF command and handle successful and error responses.
      * @param moduleContext floodlight context.
      * @return response wrapped into completable future.
      */
@@ -85,18 +88,21 @@ public abstract class OfCommand {
             return writeCommand(sw, sessionService, moduleContext)
                     .handle((result, error) -> {
                         if (error != null) {
-                            getLogger().error("Failed to execute OF command", error);
+                            getLogger().error("Error occurred while processing OF command", error);
                             return buildError(error);
                         } else {
-                            return buildResponse();
+                            return result.isPresent() ? buildResponse(result.get()) : buildResponse();
                         }
                     });
-        } catch (SwitchOperationException e) {
+        } catch (Exception e) {
             getLogger().error("Failed to execute OF command", e);
             return CompletableFuture.completedFuture(buildError(e));
         }
     }
 
+    /**
+     * Writes command to a switch.
+     */
     protected CompletableFuture<Optional<OFMessage>> writeCommand(IOFSwitch sw, SessionService sessionService,
                                                                   FloodlightModuleContext moduleContext)
             throws SwitchOperationException {
@@ -110,13 +116,18 @@ public abstract class OfCommand {
                 }
             });
         }
-
         return chain;
     }
 
     protected abstract FloodlightResponse buildError(Throwable error);
 
-    protected abstract FloodlightResponse buildResponse();
+    protected FloodlightResponse buildResponse() {
+        throw new UnsupportedOperationException("No response received from the switch while processing command");
+    }
+
+    protected FloodlightResponse buildResponse(OFMessage response) {
+        throw new UnsupportedOperationException("Received unexpected message from switch while processing command");
+    }
 
     public abstract List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
             throws SwitchOperationException;

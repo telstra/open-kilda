@@ -15,47 +15,32 @@
 
 package org.openkilda.floodlight.flow.request;
 
-import static java.util.Objects.requireNonNull;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 
-import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 
 @Getter
-@ToString
-public abstract class FlowRequest extends AbstractMessage {
+@ToString(callSuper = true)
+public class GetInstalledRule extends FlowRequest {
 
-    /**
-     * Unique identifier for the command.
-     */
-    @JsonProperty("command_id")
-    private final String commandId;
+    private Long cookie;
 
-    /**
-     * The flow id.
-     */
-    @JsonProperty(FLOW_ID)
-    private final String flowId;
+    @JsonCreator
+    @Builder
+    public GetInstalledRule(@JsonProperty("message_context") MessageContext messageContext,
+                            @JsonProperty("command_id") String commandId,
+                            @JsonProperty(FLOW_ID) String flowId,
+                            @JsonProperty("switch_id") SwitchId switchId,
+                            @JsonProperty("cookie") Long cookie) {
+        super(messageContext, commandId, flowId, switchId);
 
-    /**
-     * The switch id to manage flow on. It is a mandatory parameter.
-     */
-    @JsonProperty("switch_id")
-    final SwitchId switchId;
-
-    public FlowRequest(MessageContext context, String commandId, String flowId, SwitchId switchId) {
-        super(context);
-
-        requireNonNull(commandId, "Message id should be not null");
-        requireNonNull(flowId, "Flow id should be not null");
-        this.commandId = commandId;
-        this.flowId = flowId;
-        this.switchId = switchId;
+        this.cookie = cookie;
     }
-
 }
