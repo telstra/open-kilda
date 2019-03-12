@@ -146,39 +146,29 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     }
 
     @Override
-    public Collection<String> findActiveFlowIdsWithPortInPath(SwitchId switchId, int port) {
+    public Collection<Flow> findActiveFlowIdsWithPortInPathOverSegments(SwitchId switchId, int port) {
         Map<String, Object> parameters = ImmutableMap.of(
                 "switch_id", switchId.toString(),
                 "port", port,
                 "flow_status", flowStatusConverter.toGraphProperty(FlowStatus.UP));
 
-        Set<String> flowIds = new HashSet<>();
-        // Treat empty status as UP to support old storage schema.
-        getSession().query(String.class, "MATCH (src:switch)-[f:flow]->(dst:switch) "
-                + "WHERE (src.name=$switch_id AND f.src_port=$port "
-                + " OR dst.name=$switch_id AND f.dst_port=$port) "
-                + " AND (f.status=$flow_status OR f.status IS NULL)"
-                + "RETURN f.flowid", parameters).forEach(flowIds::add);
-
-        getSession().query(String.class, "MATCH (src:switch)-[fs:flow_segment]->(dst:switch) "
-                + "WHERE (src.name=$switch_id AND fs.src_port=$port "
-                + " OR dst.name=$switch_id AND fs.dst_port=$port) "
+        return Sets.newHashSet(
+                getSession().query(getEntityType(), "MATCH (src:switch)-[fs:flow_segment]->(dst:switch) "
+                + "WHERE (src.name = $switch_id AND fs.src_port = $port "
+                + " OR dst.name = $switch_id AND fs.dst_port = $port) "
                 + "WITH fs "
-                + "MATCH ()-[f:flow]->() "
-                + "WHERE fs.flowid = f.flowid AND (f.status=$flow_status OR f.status IS NULL)"
-                + "RETURN f.flowid", parameters).forEach(flowIds::add);
-        return flowIds;
+                + "MATCH (s:switch)-[f:flow]->(d:switch) "
+                + "WHERE fs.flowid = f.flowid AND (f.status = $flow_status OR f.status IS NULL) "
+                + "RETURN s, f, d", parameters));
     }
 
     @Override
-    public Collection<String> findDownFlowIds() {
+    public Collection<Flow> findDownFlows() {
         Map<String, Object> parameters = ImmutableMap.of(
                 "flow_status", flowStatusConverter.toGraphProperty(FlowStatus.DOWN));
 
-        Set<String> flowIds = new HashSet<>();
-        getSession().query(String.class,
-                "MATCH ()-[f:flow{status: {flow_status}}]->() RETURN f.flowid", parameters).forEach(flowIds::add);
-        return flowIds;
+        return Sets.newHashSet(getSession().query(Flow.class,
+                "MATCH (src:switch)-[f:flow{status: {flow_status}}]->(dst:switch) RETURN src, f, dst", parameters));
     }
 
     @Override

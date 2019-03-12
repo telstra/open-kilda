@@ -22,7 +22,6 @@ import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.testing.model.topology.TopologyDefinition;
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.northbound.NorthboundService;
 
@@ -71,20 +70,6 @@ public class SwitchSteps {
         topologyUnderTest.addAlias(switchAlias, theSwitch);
     }
 
-    @Given("^select a switch with Openflow version '(.*)' and alias it as '(.*)'$")
-    public void selectARandomSwitchWithSpecificOfVersion(String ofVersion, String switchAlias) {
-        List<Switch> switches = getUnaliasedSwitches();
-
-        for (Switch s: switches) {
-            if (ofVersion.equalsIgnoreCase(s.getOfVersion())) {
-                log.info("Selected switch with id: {}", s.getDpId());
-                topologyUnderTest.addAlias(switchAlias, s);
-                return;
-            }
-        }
-        Assume.assumeTrue("No switches found with OpenFlow version " + ofVersion, false);
-    }
-
     @When("^request all switch rules for switch '(.*)'$")
     public void requestAllSwitchRulesForSwitch(String switchAlias) {
         switchRulesResponse = northboundService.getSwitchRules(
@@ -97,20 +82,9 @@ public class SwitchSteps {
                 switchRulesResponse.getSwitchId());
     }
 
-    @Then("^response has at least (\\d+) rules? installed$")
+    @And("^response has at least (\\d+) rules? installed$")
     public void responseHasAtLeastRulesInstalled(int rulesAmount) {
         assertTrue(switchRulesResponse.getFlowEntries().size() >= rulesAmount);
-    }
-
-    @And("^select a switch with direct link to '(.*)' and alias it as '(.*)'$")
-    public void selectSwitchWithDirectLink(String nearSwitchAlias, String newSwitchAlias) {
-        Switch nearSwitch = topologyUnderTest.getAliasedObject(nearSwitchAlias);
-        Isl link = topologyDefinition.getIslsForActiveSwitches().stream().filter(isl ->
-                isl.getSrcSwitch().getDpId().equals(nearSwitch.getDpId())
-                        || isl.getDstSwitch().getDpId().equals(nearSwitch.getDpId())).findAny().get();
-        Switch newSwitch = link.getSrcSwitch().getDpId().equals(nearSwitch.getDpId())
-                ? link.getDstSwitch() : link.getDstSwitch();
-        topologyUnderTest.addAlias(newSwitchAlias, newSwitch);
     }
 
     private List<Switch> getUnaliasedSwitches() {

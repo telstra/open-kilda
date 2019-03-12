@@ -76,6 +76,10 @@ public interface KafkaTopicsConfig {
     @Default("kilda.speaker.flow.ping")
     String getSpeakerFlowPingTopic();
 
+    @Key("grpc.speaker")
+    @Default("kilda.grpc.speaker")
+    String getGrpcSpeakerTopic();
+
     @Key("ping")
     @Default("kilda.ping")
     String getPingTopic();

@@ -31,6 +31,7 @@ import lombok.NonNull;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -103,11 +104,11 @@ public class Node {
         if (edges.isEmpty()) {
             return edges;
         }
+
+        Comparator<Edge> comparator = comparingLong(e -> e.getFullWeight(weightFunction));
+        comparator = comparator.thenComparing(resolvePortCollisionsFn);
         return edges.stream()
-                .collect(groupingBy(groupingFunction, minBy(
-                        comparingLong(weightFunction::apply)
-                                .thenComparing(resolvePortCollisionsFn)
-                )))
+                .collect(groupingBy(groupingFunction, minBy(comparator)))
                 .values().stream()
                 .filter(Optional::isPresent)
                 .map(Optional::get)

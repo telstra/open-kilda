@@ -33,6 +33,7 @@
         <commons-lang.version>2.6</commons-lang.version>
         <hibernate-validator.version>6.0.10.Final</hibernate-validator.version>
         <glassfish-el.version>3.0.1-b09</glassfish-el.version>
+
         <mapstruct.version>1.2.0.Final</mapstruct.version>
         <jetty.version>9.2.22.v20170606</jetty.version>
         <neo4j.version>3.3.3</neo4j.version>
@@ -260,7 +261,6 @@
         <!-- ~~~~~~~ -->
         <!-- TESTING -->
         <!-- ~~~~~~~ -->
-
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>

@@ -333,7 +333,7 @@ export class DygraphService {
         for (let j = 0; j < data.length; j++) {
           var dataValues = typeof data[j] !== "undefined" ? data[j].dps : null;
           var metric = typeof data[j] !== "undefined" ? data[j].metric : "";
-          if (metric !== "pen.flow.packets") {
+
             metric = metric + "(switchid=" + data[j].tags.switchid + ", cookie="+data[j].tags['cookie']+")";
             labels.push(metric);
             var colorCode = this.getColorCode(j, color);
@@ -364,7 +364,6 @@ export class DygraphService {
                 }
               }
             }
-          }
         }
 
         let index=0;

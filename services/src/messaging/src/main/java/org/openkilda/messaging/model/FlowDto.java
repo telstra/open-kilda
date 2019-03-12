@@ -73,7 +73,7 @@ public class FlowDto implements Serializable {
     private String description;
 
     @JsonProperty("created_time")
-    String createdTime;
+    private String createdTime;
 
     /**
      * Flow last updated timestamp.

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,13 +15,15 @@
 
 package org.openkilda.wfm.topology.reroute.service;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Collection;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class RerouteService {
@@ -33,22 +35,26 @@ public class RerouteService {
     }
 
     /**
-     * Get set of active flow ids with affected path.
+     * Get set of active flows with affected path.
      *
      * @param switchId switch id.
      * @param port     port.
-     * @return set of active flow ids with affected path.
+     * @return set of active flows with affected path.
      */
-    public Collection<String> getAffectedFlowIds(SwitchId switchId, int port) {
-        log.info("Get affected flow ids by node {}_{}", switchId, port);
-        return flowRepository.findActiveFlowIdsWithPortInPath(switchId, port);
+    public Set<Flow> getAffectedFlows(SwitchId switchId, int port) {
+        log.info("Get affected flows by node {}_{}", switchId, port);
+        return flowRepository.findActiveFlowIdsWithPortInPathOverSegments(switchId, port).stream()
+                .filter(Flow::isForward)
+                .collect(Collectors.toSet());
     }
 
     /**
-     * Get set of inactive flow ids.
+     * Get set of inactive flows.
      */
-    public Collection<String> getInactiveFlows() {
-        log.info("Get inactive flow ids");
-        return flowRepository.findDownFlowIds();
+    public Set<Flow> getInactiveFlows() {
+        log.info("Get inactive flows");
+        return flowRepository.findDownFlows().stream()
+                .filter(Flow::isForward)
+                .collect(Collectors.toSet());
     }
 }

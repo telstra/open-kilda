@@ -339,7 +339,7 @@ class FlowCrudSpec extends BaseSpecification {
 
         and: "Make all shorter forward paths not preferable. Shorter reverse paths are still preferable"
         possibleFlowPaths.findAll { it.size() == pathNodeCount }.each {
-            pathHelper.getInvolvedIsls(it).each { database.updateLinkCost(it, Integer.MAX_VALUE) }
+            pathHelper.getInvolvedIsls(it).each { database.updateIslCost(it, Integer.MAX_VALUE) }
         }
 
         when: "Create a flow"

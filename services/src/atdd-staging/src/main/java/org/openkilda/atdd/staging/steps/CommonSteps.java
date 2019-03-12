@@ -21,11 +21,8 @@ import org.openkilda.testing.service.labservice.LabService;
 import cucumber.api.Scenario;
 import cucumber.api.java.After;
 import cucumber.api.java.Before;
-import cucumber.api.java.en.And;
 import org.junit.Assume;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import java.util.concurrent.TimeUnit;
 
 public class CommonSteps {
 
@@ -53,10 +50,5 @@ public class CommonSteps {
         if (scenario.isFailed()) {
             skipScenario = true;
         }
-    }
-
-    @And("(?:remains? in this state|wait) for (\\d+) seconds")
-    public void delay(int seconds) throws InterruptedException {
-        TimeUnit.SECONDS.sleep(seconds);
     }
 }
