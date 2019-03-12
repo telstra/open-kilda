@@ -31,6 +31,7 @@ public final class Stream {
     public static final String KILDA_SWITCH_MANAGER = "KILDA_SWITCH_MANAGER";
     public static final String SPEAKER_DISCO = "SPEAKER_DISCO";
     public static final String NORTHBOUND_REPLY = "NORTHBOUND_REPLY";
+    public static final String REGION_NOTIFICATION = "REGION_NOTIFICATION";
 
     public static final String STORM_SUFFIX = "storm";
 

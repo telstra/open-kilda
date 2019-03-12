@@ -88,6 +88,10 @@ public interface KafkaTopicsConfig {
     @Default("kilda.stats")
     String getStatsTopic();
 
+    @Key("stats")
+    @Default("kilda.stats.storm")
+    String getStatsStormTopic();
+
     @Key("topo.disco")
     @Default("kilda.topo.disco")
     String getTopoDiscoTopic();

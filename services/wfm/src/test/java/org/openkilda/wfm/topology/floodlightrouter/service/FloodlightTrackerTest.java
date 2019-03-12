@@ -25,7 +25,6 @@ import static org.mockito.Mockito.verify;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.topology.floodlightrouter.bolts.RouterBolt;
 
 import org.junit.Test;
 
@@ -36,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 
 public class FloodlightTrackerTest {
     private static long DEFAULT_ALIVE_TIMEOUT = 5L;
+    private static long DEFAULT_RESPONSE_TIMEOUT = 1L;
     private static String REGION_ONE = "1";
     private static String REGION_TWO = "2";
 
@@ -51,7 +51,8 @@ public class FloodlightTrackerTest {
 
     @Test
     public void testUpdateSwitchRegion() {
-        FloodlightTracker floodlightTracker = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT);
+        FloodlightTracker floodlightTracker = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT,
+                DEFAULT_RESPONSE_TIMEOUT);
         floodlightTracker.updateSwitchRegion(SWITCH_ID_ONE, REGION_ONE);
         assertTrue(floodlightTracker.switchRegionMap.containsKey(SWITCH_ID_ONE));
 
@@ -59,7 +60,8 @@ public class FloodlightTrackerTest {
 
     @Test
     public void testLookupRegion() {
-        FloodlightTracker floodlightTracker = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT);
+        FloodlightTracker floodlightTracker = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT,
+                DEFAULT_RESPONSE_TIMEOUT);
         floodlightTracker.switchRegionMap.putIfAbsent(SWITCH_ID_ONE, REGION_ONE);
         String actualRegion = floodlightTracker.lookupRegion(SWITCH_ID_ONE);
         assertEquals(REGION_ONE, actualRegion);
@@ -67,7 +69,8 @@ public class FloodlightTrackerTest {
 
     @Test
     public void testGetActiveRegions() {
-        FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT);
+        FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT,
+                DEFAULT_RESPONSE_TIMEOUT);
         FloodlightInstance floodlightInstance = new FloodlightInstance(REGION_ONE);
         floodlightInstance.setAlive(true);
 
@@ -81,7 +84,8 @@ public class FloodlightTrackerTest {
 
     @Test
     public void testInActiveRegions() {
-        FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT);
+        FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT,
+                DEFAULT_RESPONSE_TIMEOUT);
         Set<String> actualInActiveRegions = floodlightTracker.getInActiveRegions();
         assertTrue(actualInActiveRegions.contains(REGION_ONE));
         assertTrue(actualInActiveRegions.contains(REGION_TWO));
@@ -90,7 +94,8 @@ public class FloodlightTrackerTest {
 
     @Test
     public void testGetUnmanageableSwitches() {
-        FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT);
+        FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT,
+                DEFAULT_RESPONSE_TIMEOUT);
         floodlightTracker.switchRegionMap.put(SWITCH_ID_ONE, REGION_ONE);
         floodlightTracker.switchRegionMap.put(SWITCH_ID_TWO, REGION_TWO);
         List<SwitchId> unmanagedSwitches = floodlightTracker.getUnmanageableSwitches();
@@ -101,14 +106,16 @@ public class FloodlightTrackerTest {
 
     @Test
     public void testHandleAliveResponseNeedDiscovery() {
-        FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT);
+        FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT,
+                DEFAULT_RESPONSE_TIMEOUT);
         long responseTime = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(2);
         assertTrue(floodlightTracker.handleAliveResponse(REGION_ONE, responseTime));
     }
 
     @Test
     public void testHandleAliveResponseNoNeedDiscovery() {
-        FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT);
+        FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT,
+                DEFAULT_RESPONSE_TIMEOUT);
         floodlightTracker.floodlightStatus.get(REGION_ONE).setAlive(true);
         long responseTime = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(2);
         assertFalse(floodlightTracker.handleAliveResponse(REGION_ONE, responseTime));
@@ -116,7 +123,8 @@ public class FloodlightTrackerTest {
 
     @Test
     public void testHandleAliveResponseNoNeedDiscoveryOffline() {
-        FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT);
+        FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT,
+                DEFAULT_RESPONSE_TIMEOUT);
         floodlightTracker.floodlightStatus.get(REGION_ONE).setAlive(true);
         long responseTime = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(20);
         assertFalse(floodlightTracker.handleAliveResponse(REGION_ONE, responseTime));
@@ -124,11 +132,12 @@ public class FloodlightTrackerTest {
 
     @Test
     public void testHandleUnmanagedSwitches() {
-        FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT);
+        FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT,
+                DEFAULT_RESPONSE_TIMEOUT);
         floodlightTracker.switchRegionMap.put(SWITCH_ID_ONE, REGION_ONE);
         floodlightTracker.switchRegionMap.put(SWITCH_ID_TWO, REGION_TWO);
-        RouterBolt.RouterMessageSender sender = mock(RouterBolt.RouterMessageSender.class);
+        MessageSender sender = mock(MessageSender.class);
         floodlightTracker.handleUnmanagedSwitches(sender);
-        verify(sender, times(2)).send((Message) any());
+        verify(sender, times(2)).send((Message) any(), any());
     }
 }

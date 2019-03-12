@@ -18,7 +18,9 @@ package org.openkilda.wfm.topology.floodlightrouter;
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.floodlightrouter.bolts.DiscoveryBolt;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.ReplyBolt;
+import org.openkilda.wfm.topology.floodlightrouter.bolts.RequestBolt;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -166,15 +168,85 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                 .shuffleGrouping(ComponentType.NORTHBOUND_REPLY_KAFKA_SPOUT);
     }
 
+
+    private void createSpeakerFlowRequestStream(TopologyBuilder builder, int parallelism,
+                                                KafkaTopicsConfig topicsConfig) {
+        KafkaSpout speakerFlowKafkaSpout = createKafkaSpout(topicsConfig.getSpeakerFlowTopic(),
+                ComponentType.SPEAKER_FLOW_KAFKA_SPOUT);
+        builder.setSpout(ComponentType.SPEAKER_FLOW_KAFKA_SPOUT, speakerFlowKafkaSpout);
+
+        for (String region: topologyConfig.getFloodlightRegions()) {
+            KafkaBolt speakerFlowKafkaBolt = createKafkaBolt(
+                    Stream.formatWithRegion(topicsConfig.getSpeakerFlowTopic(), region));
+            builder.setBolt(Stream.formatWithRegion(ComponentType.SPEAKER_FLOW_KAFKA_BOLT, region),
+                    speakerFlowKafkaBolt, parallelism)
+                    .shuffleGrouping(ComponentType.SPEAKER_FLOW_REQUEST_BOLT,
+                            Stream.formatWithRegion(Stream.SPEAKER_FLOW, region));
+        }
+
+        RequestBolt speakerFlowRequestBolt = new RequestBolt(Stream.SPEAKER_FLOW,
+                topologyConfig.getFloodlightRegions());
+        builder.setBolt(ComponentType.SPEAKER_FLOW_REQUEST_BOLT, speakerFlowRequestBolt, parallelism)
+                .shuffleGrouping(ComponentType.SPEAKER_FLOW_KAFKA_SPOUT)
+                .shuffleGrouping(ComponentType.KILDA_TOPO_DISCO_BOLT, Stream.REGION_NOTIFICATION);
+    }
+
+    private void createSpeakerFlowPingRequestStream(TopologyBuilder builder, int parallelism,
+                                                KafkaTopicsConfig topicsConfig) {
+        KafkaSpout speakerPingKafkaSpout = createKafkaSpout(topicsConfig.getSpeakerFlowPingTopic(),
+                ComponentType.SPEAKER_PING_KAFKA_SPOUT);
+        builder.setSpout(ComponentType.SPEAKER_PING_KAFKA_SPOUT, speakerPingKafkaSpout);
+
+        for (String region: topologyConfig.getFloodlightRegions()) {
+            KafkaBolt speakerPingKafkaBolt = createKafkaBolt(
+                    Stream.formatWithRegion(topicsConfig.getSpeakerFlowPingTopic(), region));
+            builder.setBolt(Stream.formatWithRegion(ComponentType.SPEAKER_PING_KAFKA_BOLT, region),
+                    speakerPingKafkaBolt, parallelism)
+                    .shuffleGrouping(ComponentType.SPEAKER_PING_REQUEST_BOLT,
+                            Stream.formatWithRegion(Stream.SPEAKER_PING, region));
+        }
+
+        RequestBolt speakerPingRequestBolt = new RequestBolt(Stream.SPEAKER_PING,
+                topologyConfig.getFloodlightRegions());
+        builder.setBolt(ComponentType.SPEAKER_PING_REQUEST_BOLT, speakerPingRequestBolt, parallelism)
+                .shuffleGrouping(ComponentType.SPEAKER_PING_KAFKA_SPOUT)
+                .shuffleGrouping(ComponentType.KILDA_TOPO_DISCO_BOLT, Stream.REGION_NOTIFICATION);
+    }
+
+    private void createSpeakerRequestStream(TopologyBuilder builder, int parallelism,
+                                                    KafkaTopicsConfig topicsConfig) {
+        KafkaSpout speakerKafkaSpout = createKafkaSpout(topicsConfig.getSpeakerTopic(),
+                ComponentType.SPEAKER_KAFKA_SPOUT);
+        builder.setSpout(ComponentType.SPEAKER_KAFKA_SPOUT, speakerKafkaSpout);
+
+        for (String region: topologyConfig.getFloodlightRegions()) {
+            KafkaBolt speakerKafkaBolt = createKafkaBolt(
+                    Stream.formatWithRegion(topicsConfig.getSpeakerTopic(), region));
+            builder.setBolt(Stream.formatWithRegion(ComponentType.SPEAKER_KAFKA_BOLT, region),
+                    speakerKafkaBolt, parallelism)
+                    .shuffleGrouping(ComponentType.SPEAKER_REQUEST_BOLT,
+                            Stream.formatWithRegion(Stream.SPEAKER, region))
+                    .shuffleGrouping(ComponentType.KILDA_TOPO_DISCO_BOLT,
+                            Stream.formatWithRegion(Stream.SPEAKER, region));
+        }
+
+        RequestBolt speakerRequestBolt = new RequestBolt(Stream.SPEAKER,
+                topologyConfig.getFloodlightRegions());
+        builder.setBolt(ComponentType.SPEAKER_REQUEST_BOLT, speakerRequestBolt, parallelism)
+                .shuffleGrouping(ComponentType.SPEAKER_KAFKA_SPOUT)
+                .shuffleGrouping(ComponentType.KILDA_TOPO_DISCO_BOLT, Stream.REGION_NOTIFICATION);
+    }
+
+
     private void createKildaTopoDiscoSpout(TopologyBuilder builder, int parallelism,
-                                            List<String> kildaTopoDiscoTopics) {
+                                           List<String> kildaTopoDiscoTopics) {
         KafkaSpout kildaTopoDiscoSpout = createKafkaSpout(kildaTopoDiscoTopics,
                 ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT);
         builder.setSpout(ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT, kildaTopoDiscoSpout, parallelism);
     }
 
     private void createKildaTopoDiscoKafkaBolt(TopologyBuilder builder, int parallelism,
-                                                KafkaTopicsConfig topicsConfig) {
+                                               KafkaTopicsConfig topicsConfig) {
         KafkaBolt kildaTopoDiscoKafkaBolt = createKafkaBolt(
                 Stream.formatWithRegion(topicsConfig.getTopoDiscoTopic(), Stream.STORM_SUFFIX));
         builder.setBolt(ComponentType.KILDA_TOPO_DISCO_KAFKA_BOLT, kildaTopoDiscoKafkaBolt, parallelism)
@@ -183,14 +255,51 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
 
 
     private void createKildaTopoDiscoReplyStream(TopologyBuilder builder, int parallelism,
-                                                  KafkaTopicsConfig topicsConfig,
-                                                  List<String> kildaTopoDiscoTopics) {
+                                                 KafkaTopicsConfig topicsConfig,
+                                                 List<String> kildaTopoDiscoTopics) {
         createKildaTopoDiscoSpout(builder, parallelism, kildaTopoDiscoTopics);
         createKildaTopoDiscoKafkaBolt(builder, parallelism, topicsConfig);
 
         ReplyBolt replyBolt = new ReplyBolt(Stream.KILDA_TOPO_DISCO);
         builder.setBolt(ComponentType.KILDA_TOPO_DISCO_BOLT, replyBolt, parallelism)
                 .shuffleGrouping(ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT);
+    }
+
+    private void createSpeakerDiscoSpout(TopologyBuilder builder, int parallelism,
+                                         String kildaTopoDiscoTopic) {
+        KafkaSpout speakerDiscoSpout = createKafkaSpout(kildaTopoDiscoTopic,
+                ComponentType.SPEAKER_DISCO_KAFKA_SPOUT);
+        builder.setSpout(ComponentType.SPEAKER_DISCO_KAFKA_SPOUT, speakerDiscoSpout, parallelism);
+    }
+
+    private void createSpeakerDiscoKafkaBolt(TopologyBuilder builder, int parallelism,
+                                               KafkaTopicsConfig topicsConfig) {
+        for (String region: topologyConfig.getFloodlightRegions()) {
+            KafkaBolt speakerDiscoKafkaBolt = createKafkaBolt(
+                    Stream.formatWithRegion(topicsConfig.getSpeakerDiscoTopic(), region));
+            builder.setBolt(Stream.formatWithRegion(ComponentType.SPEAKER_DISCO_KAFKA_BOLT, region),
+                    speakerDiscoKafkaBolt, parallelism)
+                    .shuffleGrouping(ComponentType.KILDA_TOPO_DISCO_BOLT,
+                            Stream.formatWithRegion(Stream.SPEAKER_DISCO, region));
+        }
+    }
+
+    private void createDiscoveryPipelines(TopologyBuilder builder, int parallelism, KafkaTopicsConfig topicsConfig) {
+
+        List<String> kildaTopoDiscoTopics = new ArrayList<>();
+        for (String region : topologyConfig.getFloodlightRegions()) {
+            kildaTopoDiscoTopics.add(Stream.formatWithRegion(topicsConfig.getTopoDiscoTopic(), region));
+
+        }
+        createKildaTopoDiscoSpout(builder, parallelism, kildaTopoDiscoTopics);
+        createKildaTopoDiscoKafkaBolt(builder, parallelism, topicsConfig);
+        createSpeakerDiscoSpout(builder, parallelism, topicsConfig.getSpeakerDiscoTopic());
+        createSpeakerDiscoKafkaBolt(builder, parallelism, topicsConfig);
+        DiscoveryBolt discoveryBolt = new DiscoveryBolt(topologyConfig.getFloodlightRegions(),
+                topologyConfig.getFloodligthAliveTimeout(), topologyConfig.getFloodlightAliveInterval());
+        builder.setBolt(ComponentType.KILDA_TOPO_DISCO_BOLT, discoveryBolt, parallelism)
+                .shuffleGrouping(ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT)
+                .shuffleGrouping(ComponentType.SPEAKER_DISCO_KAFKA_SPOUT);
     }
 
 
@@ -233,6 +342,20 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
         kildaTopoDiscoTopics.add(topicsConfig.getTopoDiscoTopic());
         createKildaTopoDiscoReplyStream(builder, parallelism, topicsConfig, kildaTopoDiscoTopics);
 
+
+        // Part3 Request to Floodlights
+        // Storm -- kilda.speaker.flow --> Floodlight
+        // createSpeakerFlowRequestStream(builder, parallelism, topicsConfig);
+
+        // Storm -- kilda.speaker.flow.ping --> Floodlight
+        // createSpeakerFlowPingRequestStream(builder, parallelism, topicsConfig);
+
+        // Storm -- kilda.speaker --> Floodlight
+        // createSpeakerRequestStream(builder, parallelism, topicsConfig);
+
+        // Storm -- kilda.speaker.disco --> Floodlight
+        // Storm <-- kilda.topo.disco -- Floodlight
+        // createDiscoveryPipelines(builder, parallelism, topicsConfig);
 
         return builder.createTopology();
     }
