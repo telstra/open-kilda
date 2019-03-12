@@ -31,6 +31,10 @@ public interface FloodlightRouterTopologyConfig extends AbstractTopologyConfig {
     @Default("5")
     Long getFloodligthAliveTimeout();
 
+    @Key("floodlight.alive.interval")
+    @Default("2")
+    Long getFloodlightAliveInterval();
+
     @Key("floodlight.request.timeout")
     @Default("5")
     Long getFloodligthRequestTimeout();
