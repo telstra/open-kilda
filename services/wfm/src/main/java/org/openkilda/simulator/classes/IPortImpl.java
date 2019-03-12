@@ -78,7 +78,7 @@ public class IPortImpl implements IPort {
                 number,
                 type
         );
-        return new InfoMessage(data, Instant.now().toEpochMilli(), UUID.randomUUID().toString(), null);
+        return new InfoMessage(data, Instant.now().toEpochMilli(), UUID.randomUUID().toString(), null, null);
     }
 
     @Override

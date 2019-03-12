@@ -35,6 +35,8 @@ public class KafkaProducerService implements IKafkaProducerService {
 
     private static final Logger logger = LoggerFactory.getLogger(KafkaProducerService.class);
 
+
+
     private HeartBeatService heartBeat;
     private Producer<String, String> producer;
     private final Map<String, AbstractWorker> workersMap = new HashMap<>();
@@ -154,7 +156,6 @@ public class KafkaProducerService implements IKafkaProducerService {
                 service.postponeHeartBeat();
                 return;
             }
-
             logger.error(
                     "Fail to send message(correlationId=\"{}\") in kafka topic={}: {}",
                     message.getCorrelationId(), topic, exception);

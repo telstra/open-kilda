@@ -50,7 +50,7 @@ public class HeartBeatService implements IService {
         scheduler = moduleContext.getServiceImpl(IThreadPoolService.class).getScheduledExecutor();
 
         interval = UnitConverter.timeMillis(owner.getConfig().getHeartBeatInterval());
-        topic = owner.getTopics().getTopoDiscoTopic();
+        topic = owner.getTopoDiscoTopic();
 
         currentTask = scheduler.scheduleAtFixedRate(new Action(this), interval, interval, TimeUnit.MILLISECONDS);
     }
