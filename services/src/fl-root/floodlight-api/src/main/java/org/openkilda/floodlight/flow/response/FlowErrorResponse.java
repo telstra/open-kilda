@@ -25,9 +25,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
 public class FlowErrorResponse extends FlowResponse {
 
     @JsonProperty("error_code")
@@ -56,6 +58,7 @@ public class FlowErrorResponse extends FlowResponse {
         UNSUPPORTED,
         BAD_FLAGS,
         BAD_COMMAND,
+        OPERATION_TIMED_OUT,
         UNKNOWN
     }
 

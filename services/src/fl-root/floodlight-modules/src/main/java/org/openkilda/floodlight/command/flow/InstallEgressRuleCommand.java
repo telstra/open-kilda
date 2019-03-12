@@ -35,8 +35,8 @@ import java.util.List;
 
 public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
 
-    final OutputVlanType outputVlanType;
-    final Integer outputVlanId;
+    private final OutputVlanType outputVlanType;
+    private final Integer outputVlanId;
 
     public InstallEgressRuleCommand(@JsonProperty("command_id") String commandId,
                                     @JsonProperty("flowid") String flowId,

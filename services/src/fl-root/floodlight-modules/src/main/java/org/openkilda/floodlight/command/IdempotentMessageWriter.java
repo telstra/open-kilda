@@ -42,17 +42,17 @@ import java.util.function.Function;
 @Slf4j
 public class IdempotentMessageWriter<T extends OFStatsReply> extends MessageWriter {
 
-    private final OFRequest<T> request;
+    private final OFRequest<T> readRequest;
     private final Function<T, Boolean> ofEntryChecker;
     private final ErrorTypeHelper errorTypeHelper;
 
     @Builder
     public IdempotentMessageWriter(@NonNull OFMessage message,
-                                   @NonNull OFRequest<T> request,
+                                   @NonNull OFRequest<T> readRequest,
                                    @NonNull Function<T, Boolean> ofEntryChecker,
                                    @NonNull ErrorTypeHelper errorTypeHelper) {
         super(message);
-        this.request = request;
+        this.readRequest = readRequest;
         this.ofEntryChecker = ofEntryChecker;
         this.errorTypeHelper = errorTypeHelper;
     }
@@ -67,7 +67,7 @@ public class IdempotentMessageWriter<T extends OFStatsReply> extends MessageWrit
                     if (error != null) {
                         SessionErrorResponseException exception = (SessionErrorResponseException) error.getCause();
                         OFErrorMsg errorMsg = exception.getErrorResponse();
-                        if (errorTypeHelper.isConflict(errorMsg)) {
+                        if (errorTypeHelper.alreadyExists(errorMsg)) {
                             checkConflict(sw)
                                     .thenAccept(Void -> result.complete(response));
                         } else {
@@ -82,7 +82,7 @@ public class IdempotentMessageWriter<T extends OFStatsReply> extends MessageWrit
     }
 
     private CompletableFuture<Optional<OFMessage>> checkConflict(IOFSwitch sw) {
-        CompletableFuture<T> loadStatsStage = new CompletableFutureAdapter<>(sw.writeRequest(request));
+        CompletableFuture<T> loadStatsStage = new CompletableFutureAdapter<>(sw.writeRequest(readRequest));
 
         return loadStatsStage.thenApply(entries -> {
             if (ofEntryChecker.apply(entries)) {
@@ -96,6 +96,6 @@ public class IdempotentMessageWriter<T extends OFStatsReply> extends MessageWrit
     }
 
     public interface ErrorTypeHelper {
-        boolean isConflict(OFErrorMsg errorMsg);
+        boolean alreadyExists(OFErrorMsg errorMsg);
     }
 }

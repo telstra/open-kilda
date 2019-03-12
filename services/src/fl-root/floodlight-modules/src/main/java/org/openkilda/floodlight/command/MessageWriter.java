@@ -48,7 +48,9 @@ public class MessageWriter {
             return session.write(ofMessage)
                     .whenComplete((result, error) -> {
                         if (error == null) {
-                            log.debug("OF command successfully executed {}", ofMessage);
+                            log.debug("OF command successfully executed {} on the switch {}", ofMessage, sw.getId());
+                        } else {
+                            log.error("Failed to execute OF command", error);
                         }
                     });
         }

@@ -18,6 +18,7 @@ package org.openkilda.floodlight.command.flow;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 
 import org.openkilda.floodlight.command.MessageWriter;
+import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
@@ -57,7 +58,8 @@ public class InstallTransitRuleCommand extends FlowInstallCommand {
     }
 
     @Override
-    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
+    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
+            throws SwitchOperationException {
         OFFactory factory = sw.getOFFactory();
         List<OFAction> actionList = new ArrayList<>();
 
@@ -91,7 +93,7 @@ public class InstallTransitRuleCommand extends FlowInstallCommand {
         OFOxms oxms = factory.oxms();
         OFActions actions = factory.actions();
         OFVlanVidMatch vlanMatch = factory.getVersion() == OF_12
-                ? OFVlanVidMatch.ofVlan(newVlan) : OFVlanVidMatch.ofRawVid((short) newVlan);
+                ? OFVlanVidMatch.ofRawVid((short) newVlan) : OFVlanVidMatch.ofVlan(newVlan);
 
         return actions.buildSetField().setField(oxms.buildVlanVid()
                 .setValue(vlanMatch)

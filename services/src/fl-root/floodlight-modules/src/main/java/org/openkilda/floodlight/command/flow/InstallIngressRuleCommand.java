@@ -34,6 +34,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import lombok.Getter;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -50,14 +51,16 @@ import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
+@Getter
 public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
 
-    final Long bandwidth;
-    final Integer inputVlanId;
-    final OutputVlanType outputVlanType;
-    final Long meterId;
+    private final Long bandwidth;
+    private final Integer inputVlanId;
+    private final OutputVlanType outputVlanType;
+    private final Long meterId;
 
     @JsonCreator
     public InstallIngressRuleCommand(@JsonProperty("command_id") String commandId,
@@ -80,20 +83,13 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
     }
 
     @Override
-    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
+    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
+            throws SwitchOperationException {
         List<MessageWriter> commands = new ArrayList<>(2);
         FeatureDetectorService featureDetectorService = moduleContext.getServiceImpl(FeatureDetectorService.class);
 
-        try {
-            OfCommand meterCommand = new InstallMeterCommand(messageContext, switchId, meterId, bandwidth);
-            commands.addAll(meterCommand.getCommands(sw, moduleContext));
-        } catch (UnsupportedSwitchOperationException e) {
-            getLogger().info("Skip meter {} installation for flow {} on switch {}: {}",
-                    meterId, flowId, switchId.toString(), e.getMessage());
-        } catch (SwitchOperationException e) {
-            buildError(e);
-        }
-
+        getMeterCommand(sw, moduleContext)
+                .ifPresent(commands::add);
         OFFlowMod ruleCommand = getInstallRuleCommand(sw, featureDetectorService);
         commands.add(new MessageWriter(ruleCommand));
         return commands;
@@ -125,7 +121,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
         OFInstructionApplyActions actions = applyActions(ofFactory, actionList);
 
         // build match by input port and input vlan id
-        Match match = matchFlow(inputPort, transitVlanId, ofFactory);
+        Match match = matchFlow(inputPort, inputVlanId, ofFactory);
 
         // build FLOW_MOD command with meter
         OFFlowAdd.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY)
@@ -141,7 +137,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
 
     private List<OFAction> inputVlanTypeToOfActionList(OFFactory ofFactory) {
         List<OFAction> actionList = new ArrayList<>(3);
-        if (OutputVlanType.PUSH == outputVlanType || OutputVlanType.NONE == outputVlanType) {
+        if (outputVlanType == OutputVlanType.PUSH || outputVlanType == OutputVlanType.NONE) {
             actionList.add(actionPushVlan(ofFactory, ETH_TYPE));
         }
         actionList.add(actionReplaceVlan(ofFactory, transitVlanId));
@@ -156,7 +152,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
     OFInstructionMeter getMeterInstructions(Set<Feature> supportedFeatures, OFFactory ofFactory,
                                             List<OFAction> actionList) {
         OFInstructionMeter meterInstruction = null;
-        if (meterId != 0L && supportedFeatures.contains(Feature.METERS)) {
+        if (meterId != null && meterId != 0L && supportedFeatures.contains(Feature.METERS)) {
             if (ofFactory.getVersion().compareTo(OF_15) == 0) {
                 actionList.add(ofFactory.actions().buildMeter().setMeterId(meterId).build());
             } else /* OF_13, OF_14 */ {
@@ -167,4 +163,19 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
         return meterInstruction;
     }
 
+    private Optional<MessageWriter> getMeterCommand(IOFSwitch sw, FloodlightModuleContext moduleContext)
+            throws SwitchOperationException {
+        if (meterId == null || meterId == 0L) {
+            return Optional.empty();
+        }
+
+        try {
+            OfCommand meterCommand = new InstallMeterCommand(messageContext, switchId, meterId, bandwidth);
+            return meterCommand.getCommands(sw, moduleContext).stream().findFirst();
+        } catch (UnsupportedSwitchOperationException e) {
+            getLogger().info("Skip meter {} installation for flow {} on switch {}: {}",
+                    meterId, flowId, switchId.toString(), e.getMessage());
+            return Optional.empty();
+        }
+    }
 }
