@@ -52,7 +52,7 @@ public final class CoordinatorBolt extends AbstractBolt {
     @Override
     protected void handleInput(Tuple input) {
         if (CoordinatorSpout.ID.equals(input.getSourceComponent())) {
-            Long currentTime = input.getLongByField("time");
+            Long currentTime = input.getLongByField(CoordinatorSpout.FIELD_ID_TIME_MS);
             tick(currentTime);
         } else {
             handleCommand(input);

@@ -23,8 +23,6 @@ import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
-import org.openkilda.wfm.topology.flowhs.model.FlowCommands;
-import org.openkilda.wfm.topology.flowhs.model.FlowResponses;
 import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandCarrier;
 import org.openkilda.wfm.topology.flowhs.service.SpeakerWorkerService;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
@@ -50,14 +48,8 @@ public class SpeakerWorkerBolt extends WorkerBolt {
     @Override
     protected void onHubRequest(Tuple input) throws PipelineException {
         String key = input.getStringByField(KEY_FIELD);
-        FlowCommands commands = (FlowCommands) input.getValueByField(FIELD_ID_PAYLOAD);
-
-        service.sendCommands(key, commands, new WorkerCommandCarrier(input));
-
-        //todo: should be removed once FL request processing is fixed
-        for (FlowRequest request : commands.getCommands()) {
-            service.handleResponse(key, new FlowResponse(request, true), new WorkerCommandCarrier(input));
-        }
+        FlowRequest command = (FlowRequest) input.getValueByField(FIELD_ID_PAYLOAD);
+        service.sendCommand(key, command, new WorkerCommandCarrier(input));
     }
 
     @Override
@@ -69,8 +61,8 @@ public class SpeakerWorkerBolt extends WorkerBolt {
     }
 
     @Override
-    public void onTimeout(String key) {
-        service.handleTimeout(key);
+    public void onTimeout(String key, Tuple tuple) throws PipelineException {
+        service.handleTimeout(key, new WorkerCommandCarrier(tuple));
     }
 
     @Override
@@ -88,13 +80,13 @@ public class SpeakerWorkerBolt extends WorkerBolt {
         }
 
         @Override
-        public void sendCommand(FlowRequest command) throws PipelineException {
-            emit(SPEAKER_WORKER_REQUEST_SENDER.name(), tuple, new Values(tuple.getStringByField(KEY_FIELD), command));
+        public void sendCommand(String key, FlowRequest command) throws PipelineException {
+            emit(SPEAKER_WORKER_REQUEST_SENDER.name(), tuple, new Values(key, command));
         }
 
         @Override
-        public void sendResponse(FlowResponses responses) throws PipelineException {
-            Values values = new Values(tuple.getStringByField(KEY_FIELD), responses, pullContext(tuple));
+        public void sendResponse(String key, FlowResponse response) throws PipelineException {
+            Values values = new Values(key, response, pullContext(tuple));
             emitResponseToHub(tuple, values);
         }
     }

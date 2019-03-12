@@ -25,9 +25,12 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+
+import java.util.UUID;
 
 public class RouterBolt extends AbstractBolt {
 
@@ -40,10 +43,13 @@ public class RouterBolt extends AbstractBolt {
         }
 
         String key = input.getStringByField(MessageTranslator.KEY_FIELD);
+        if (StringUtils.isBlank(key)) {
+            key = UUID.randomUUID().toString();
+        }
         FlowRequest request = (FlowRequest) data;
         switch (request.getType()) {
             case CREATE:
-                emit(ROUTER_TO_FLOW_CREATE_HUB.name(), input, new Values(key, request));
+                emit(ROUTER_TO_FLOW_CREATE_HUB.name(), input, new Values(key, request.getPayload()));
                 break;
             default:
                 throw new UnsupportedOperationException(format("Flow operation %s is not supported",

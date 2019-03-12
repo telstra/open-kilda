@@ -202,4 +202,28 @@ public abstract class FlowMapper {
                 throw new IllegalArgumentException("Unsupported Flow status: " + status);
         }
     }
+
+    /**
+     * Convert {@link FlowDto} to {@link Flow}.
+     */
+    public Flow toFlow(FlowDto dto) {
+        Flow flow = new Flow();
+        flow.setFlowId(dto.getFlowId());
+
+        Switch srcSwitch = Switch.builder().switchId(dto.getSourceSwitch()).build();
+        Switch destSwitch = Switch.builder().switchId(dto.getDestinationSwitch()).build();
+        flow.setSrcSwitch(srcSwitch);
+        flow.setSrcPort(dto.getSourcePort());
+        flow.setSrcVlan(dto.getSourceVlan());
+
+        flow.setDestSwitch(destSwitch);
+        flow.setDestPort(dto.getDestinationPort());
+        flow.setDestVlan(dto.getDestinationVlan());
+
+        flow.setBandwidth(dto.getBandwidth());
+        flow.setIgnoreBandwidth(dto.isIgnoreBandwidth());
+        flow.setDescription(dto.getDescription());
+
+        return flow;
+    }
 }

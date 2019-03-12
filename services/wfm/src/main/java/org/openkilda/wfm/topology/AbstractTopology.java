@@ -31,6 +31,7 @@ import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.error.StreamNameCollisionException;
 import org.openkilda.wfm.kafka.AbstractMessageDeserializer;
+import org.openkilda.wfm.kafka.AbstractMessageSerializer;
 import org.openkilda.wfm.kafka.CustomNamedSubscription;
 import org.openkilda.wfm.kafka.MessageDeserializer;
 import org.openkilda.wfm.kafka.MessageSerializer;
@@ -269,6 +270,22 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     protected KafkaBolt<String, T> buildKafkaBolt(final String topic) {
         Properties properties = getKafkaProducerProperties();
         properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MessageSerializer.class.getName());
+
+        return new KafkaBolt<String, T>()
+                .withProducerProperties(properties)
+                .withTopicSelector(new DefaultTopicSelector(topic))
+                .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
+    }
+
+    /**
+     * Creates Kafka bolt, that uses {@link MessageSerializer} in order to serialize an object.
+     *
+     * @param topic Kafka topic
+     * @return {@link KafkaBolt}
+     */
+    protected KafkaBolt<String, T> buildKafkaBoltWithAbstractMessageSupport(final String topic) {
+        Properties properties = getKafkaProducerProperties();
+        properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, AbstractMessageSerializer.class.getName());
 
         return new KafkaBolt<String, T>()
                 .withProducerProperties(properties)

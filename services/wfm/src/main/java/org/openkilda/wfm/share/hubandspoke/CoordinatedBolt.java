@@ -47,7 +47,7 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
         try {
             if (CoordinatorBolt.ID.equals(input.getSourceComponent())) {
                 String key = input.getStringByField(MessageTranslator.KEY_FIELD);
-                onTimeout(key);
+                onTimeout(key, input);
             } else {
                 handleInput(input);
             }

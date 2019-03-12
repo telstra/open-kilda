@@ -20,7 +20,11 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WO
 
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
+import org.openkilda.pce.PathComputerConfig;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt.Config;
@@ -53,7 +57,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         SpeakerWorkerBolt speakerWorker = new SpeakerWorkerBolt(Config.builder()
                 .autoAck(true)
-                .defaultTimeout(100)
+                .defaultTimeout(500)
                 .workerSpoutComponent(Component.SPEAKER_WORKER_SPOUT.name())
                 .hubComponent(Component.FLOW_CREATE_HUB.name())
                 .streamToHub(SPEAKER_WORKER_TO_HUB_CREATE.name())
@@ -71,7 +75,14 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         tb.setBolt(Component.ROUTER_BOLT.name(), new RouterBolt())
             .shuffleGrouping(Component.FLOW_SPOUT.name());
 
-        tb.setBolt(Component.FLOW_CREATE_HUB.name(), new FlowCreateHubBolt(Component.ROUTER_BOLT.name(), 500, true))
+        PersistenceManager persistenceManager =
+                PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+        PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
+        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+
+        FlowCreateHubBolt hubBolt = new FlowCreateHubBolt(Component.ROUTER_BOLT.name(), 5000, true,
+                persistenceManager, pathComputerConfig, flowResourcesConfig);
+        tb.setBolt(Component.FLOW_CREATE_HUB.name(), hubBolt)
                 .fieldsGrouping(Component.ROUTER_BOLT.name(), ROUTER_TO_FLOW_CREATE_HUB.name(), FIELDS_KEY)
                 .directGrouping(SpeakerWorkerBolt.ID, SPEAKER_WORKER_TO_HUB_CREATE.name())
                 .directGrouping(CoordinatorBolt.ID);
@@ -80,7 +91,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         tb.setBolt(Component.NB_RESPONSE_SENDER.name(), nbKafkaBolt)
                 .shuffleGrouping(Component.FLOW_CREATE_HUB.name(), Stream.HUB_TO_NB_RESPONSE_SENDER.name());
 
-        KafkaBolt flKafkaBolt = buildKafkaBolt(getConfig().getKafkaSpeakerFlowTopic());
+        KafkaBolt flKafkaBolt = buildKafkaBoltWithAbstractMessageSupport(getConfig().getKafkaSpeakerFlowTopic());
         tb.setBolt(Component.SPEAKER_REQUEST_SENDER.name(), flKafkaBolt)
                 .shuffleGrouping(SpeakerWorkerBolt.ID, Stream.SPEAKER_WORKER_REQUEST_SENDER.name());
 

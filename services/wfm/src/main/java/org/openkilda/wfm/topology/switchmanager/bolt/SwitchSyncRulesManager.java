@@ -95,7 +95,7 @@ public class SwitchSyncRulesManager extends HubBolt implements SwitchSyncRulesCa
     }
 
     @Override
-    public void onTimeout(String key) {
+    public void onTimeout(String key, Tuple input) {
         service.handleTaskTimeout(key);
     }
 

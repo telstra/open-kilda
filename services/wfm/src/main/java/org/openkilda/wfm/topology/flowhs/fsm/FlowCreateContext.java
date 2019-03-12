@@ -13,15 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.model;
+package org.openkilda.wfm.topology.flowhs.fsm;
 
 import org.openkilda.floodlight.flow.response.FlowResponse;
 
-import lombok.Value;
+import lombok.Builder;
+import lombok.Data;
 
-import java.util.List;
+@Data
+@Builder
+public class FlowCreateContext {
 
-@Value
-public class FlowResponses {
-    private List<FlowResponse> responses;
+    private final FlowResponse flowResponse;
+
 }

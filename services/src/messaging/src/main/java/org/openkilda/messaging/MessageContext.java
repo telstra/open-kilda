@@ -17,6 +17,7 @@ package org.openkilda.messaging;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.Serializable;
 import java.util.UUID;
@@ -40,6 +41,10 @@ public class MessageContext implements Serializable {
 
     public MessageContext(String correlationId) {
         this(correlationId, System.currentTimeMillis());
+    }
+
+    public MessageContext(String operationId, String correlationId) {
+        this(StringUtils.joinWith(" : ", operationId, correlationId), System.currentTimeMillis());
     }
 
     protected MessageContext(String correlationId, long createTime) {

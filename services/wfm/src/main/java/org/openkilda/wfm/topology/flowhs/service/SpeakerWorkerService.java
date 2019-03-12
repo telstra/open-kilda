@@ -15,69 +15,64 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
-import static java.lang.String.format;
-
 import org.openkilda.floodlight.flow.request.FlowRequest;
+import org.openkilda.floodlight.flow.response.FlowErrorResponse;
+import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.floodlight.flow.response.FlowResponse;
-import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.error.PipelineException;
-import org.openkilda.wfm.topology.flowhs.model.FlowCommands;
-import org.openkilda.wfm.topology.flowhs.model.FlowResponses;
 
-import java.util.ArrayList;
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
+@Slf4j
 public class SpeakerWorkerService {
-    private final Map<String, Map<SwitchId, FlowRequest>> commands = new HashMap<>();
-    private final Map<String, List<FlowResponse>> responses = new HashMap<>();
+    private final Map<String, FlowRequest> keyToRequest = new HashMap<>();
 
     /**
-     * Send batch of commands.
-     * @param key unique identifier.
-     * @param flowCommands list of commands to be sent.
-     * @param commandSender helper for sending messages.
+     * Sends command to speaker.
+     * @param key unique operation's key.
+     * @param command command to be executed.
      */
-    public void sendCommands(String key, FlowCommands flowCommands, SpeakerCommandCarrier commandSender)
-            throws PipelineException {
-        Map<SwitchId, FlowRequest> commandsPerSwitch = new HashMap<>(flowCommands.getCommands().size());
-        for (FlowRequest command : flowCommands.getCommands()) {
-            commandsPerSwitch.put(command.getSwitchId(), command);
-            commandSender.sendCommand(command);
-        }
-
-        commands.put(key, commandsPerSwitch);
+    public void sendCommand(String key, FlowRequest command, SpeakerCommandCarrier carrier) throws PipelineException {
+        log.debug("Got a request from hub bolt {}", command);
+        keyToRequest.put(key, command);
+        carrier.sendCommand(key, command);
     }
 
     /**
-     * Process received response. If it is the last in the batch - then send response to the hub.
+     * Processes received response and forwards it to the hub component.
      * @param key operation's key.
      * @param response response payload.
-     * @param commandSender helper for sending messages.
      */
-    public void handleResponse(String key, FlowResponse response, SpeakerCommandCarrier commandSender)
+    public void handleResponse(String key, FlowResponse response, SpeakerCommandCarrier carrier)
             throws PipelineException {
-        if (!commands.containsKey(key)) {
-            throw new IllegalStateException(format("Received response for non pending request. Payload: %s", response));
-        }
-
-        Map<SwitchId, FlowRequest> pendingRequests = commands.get(key);
-        FlowRequest currentRequest = pendingRequests.remove(response.getSwitchId());
-        if (currentRequest == null) {
-            throw new IllegalStateException(format("Received response with wrong switch dpid. Payload: %s", response));
-        }
-
-        responses.computeIfAbsent(key, function -> new ArrayList<>())
-                .add(response);
-
-        if (pendingRequests.isEmpty()) {
-            commandSender.sendResponse(new FlowResponses(responses.remove(key)));
+        log.debug("Got a response from speaker {}", response);
+        FlowRequest pendingRequest = keyToRequest.remove(key);
+        if (pendingRequest != null) {
+            if (pendingRequest.getCommandId().equals(response.getCommandId())) {
+                carrier.sendResponse(key, response);
+            } else {
+                log.warn("Pending request's command id and received response's command id mismatch");
+            }
         }
     }
 
-    public void handleTimeout(String key) {
-        commands.remove(key);
-        responses.remove(key);
+    /**
+     * Handles operation timeout.
+     * @param key operation identifier.
+     */
+    public void handleTimeout(String key, SpeakerCommandCarrier carrier) throws PipelineException {
+        FlowRequest failedRequest = keyToRequest.remove(key);
+
+        FlowResponse response = FlowErrorResponse.errorBuilder()
+                .flowId(failedRequest.getFlowId())
+                .commandId(failedRequest.getCommandId())
+                .switchId(failedRequest.getSwitchId())
+                .errorCode(ErrorCode.OPERATION_TIMED_OUT)
+                .messageContext(failedRequest.getMessageContext())
+                .build();
+        carrier.sendResponse(key, response);
     }
 }
