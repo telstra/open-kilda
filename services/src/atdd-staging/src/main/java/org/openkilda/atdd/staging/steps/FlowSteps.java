@@ -129,11 +129,13 @@ public class FlowSteps implements En {
         for (FlowPayload flow : flows) {
             FlowPayload result = northboundService.addFlow(flow);
             assertThat(format("A flow creation request for '%s' failed.", flow.getId()), result,
-                    reflectEquals(flow, "lastUpdated", "status"));
+                    reflectEquals(flow, "created", "lastUpdated", "status"));
             assertThat(format("Flow status for '%s' was not set to '%s'. Received status: '%s'",
                     flow.getId(), FlowState.IN_PROGRESS, result.getStatus()),
                     result.getStatus(), equalTo(FlowState.IN_PROGRESS.toString()));
-            assertThat(format("The flow '%s' is missing lastUpdated field", flow.getId()), result,
+            assertThat(format("The flow '%s' is missing 'created' field", flow.getId()), result,
+                    hasProperty("created", notNullValue()));
+            assertThat(format("The flow '%s' is missing 'lastUpdated' field", flow.getId()), result,
                     hasProperty("lastUpdated", notNullValue()));
         }
     }
@@ -180,7 +182,7 @@ public class FlowSteps implements En {
             }
             FlowPayload result = northboundService.updateFlow(flow.getId(), flow);
             assertThat(format("A flow update request for '%s' failed.", flow.getId()), result,
-                    reflectEquals(flow, "lastUpdated", "status"));
+                    reflectEquals(flow, "created", "lastUpdated", "status"));
         }
     }
 
