@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.discovery.service;
 
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -95,13 +95,25 @@ public class DiscoverySwitchService {
     }
 
     /**
-     * .
+     * Handle switch UNMANAGED notification.
      */
-    public void switchEvent(UnmanagedSwitchNotification payload) {
-        log.debug("Switch service receive unmanaged notification for {}", payload.getSwitchId());
-        SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder = SwitchFsmContext.builder(carrier);
-        SwitchFsm fsm = locateControllerCreateIfAbsent(payload.getSwitchId());
-        controllerExecutor.fire(fsm, SwitchFsmEvent.OFFLINE, fsmContextBuilder.build());
+    public void switchBecomeUnmanaged(SwitchId datapath) {
+        log.debug("Switch service receive unmanaged notification for {}", datapath);
+        SwitchFsm fsm = locateControllerCreateIfAbsent(datapath);
+        SwitchFsmContext context = SwitchFsmContext.builder(carrier).build();
+        controllerExecutor.fire(fsm, SwitchFsmEvent.OFFLINE, context);
+    }
+
+    /**
+     * Handle switch MANAGED notification.
+     */
+    public void switchBecomeManaged(SpeakerSwitchView switchView) {
+        log.debug("Switch service receive MANAGED notification for {}", switchView.getDatapath());
+        SwitchFsm fsm = locateControllerCreateIfAbsent(switchView.getDatapath());
+        SwitchFsmContext context = SwitchFsmContext.builder(carrier)
+                .speakerData(switchView)
+                .build();
+        controllerExecutor.fire(fsm, SwitchFsmEvent.ONLINE, context);
     }
 
     /**

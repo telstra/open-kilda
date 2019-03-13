@@ -20,6 +20,7 @@ import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
+import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.DeactivateIslInfoData;
 import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
 import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
@@ -40,6 +41,7 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerBf
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerWorkerCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchEventCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchManagedEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchPortEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchRemoveEventCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchUnmanagedEventCommand;
@@ -103,7 +105,6 @@ public class SpeakerRouter extends AbstractBolt {
     }
 
     private void proxySpeaker(Tuple input, InfoData payload) throws PipelineException {
-
         if (payload instanceof IslInfoData) {
             emit(STREAM_WATCHER_ID, input, makeWatcherTuple(
                     input, new WatcherSpeakerDiscoveryCommand((IslInfoData) payload)));
@@ -114,9 +115,12 @@ public class SpeakerRouter extends AbstractBolt {
             emit(input, makeDefaultTuple(input, new SwitchEventCommand((SwitchInfoData) payload)));
         } else if (payload instanceof PortInfoData) {
             emit(input, makeDefaultTuple(input, new SwitchPortEventCommand((PortInfoData) payload)));
+        } else if (payload instanceof NetworkDumpSwitchData) {
+            emit(input, makeDefaultTuple(
+                    input, new SwitchManagedEventCommand(((NetworkDumpSwitchData) payload).getSwitchView())));
         } else if (payload instanceof UnmanagedSwitchNotification) {
             emit(input, makeDefaultTuple(
-                    input, new SwitchUnmanagedEventCommand((UnmanagedSwitchNotification) payload)));
+                    input, new SwitchUnmanagedEventCommand(((UnmanagedSwitchNotification) payload).getSwitchId())));
         } else if (payload instanceof DeactivateSwitchInfoData) {
             emit(input, makeDefaultTuple(
                     input, new SwitchRemoveEventCommand((DeactivateSwitchInfoData) payload)));

@@ -15,16 +15,19 @@
 
 package org.openkilda.wfm.topology.discovery.storm.bolt.sw.command;
 
-import org.openkilda.model.SwitchId;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.SwitchHandler;
 
-public class SwitchUnmanagedEventCommand extends SwitchCommand {
-    public SwitchUnmanagedEventCommand(SwitchId datapath) {
-        super(datapath);
+public class SwitchManagedEventCommand extends SwitchCommand {
+    private final SpeakerSwitchView switchView;
+
+    public SwitchManagedEventCommand(SpeakerSwitchView switchView) {
+        super(switchView.getDatapath());
+        this.switchView = switchView;
     }
 
     @Override
     public void apply(SwitchHandler handler) {
-        handler.processSwitchBecomeUnmanaged(getDatapath());
+        handler.processSwitchBecomeManaged(switchView);
     }
 }

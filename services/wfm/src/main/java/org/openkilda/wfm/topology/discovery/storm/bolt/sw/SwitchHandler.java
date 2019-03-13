@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.sw;
 
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -169,8 +169,12 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
         service.switchEvent(payload);
     }
 
-    public void processSwitchEvent(UnmanagedSwitchNotification payload) {
-        service.switchEvent(payload);
+    public void processSwitchBecomeUnmanaged(SwitchId datapath) {
+        service.switchBecomeUnmanaged(datapath);
+    }
+
+    public void processSwitchBecomeManaged(SpeakerSwitchView switchView) {
+        service.switchBecomeManaged(switchView);
     }
 
     public void processSwitchAddWithHistory(HistoryFacts history) {
