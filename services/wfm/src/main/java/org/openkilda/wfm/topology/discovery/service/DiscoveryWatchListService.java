@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.discovery.service;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.model.TickClock;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
@@ -29,16 +28,15 @@ import java.util.TreeMap;
 @Slf4j
 public class DiscoveryWatchListService {
     private final IWatchListCarrier carrier;
-    private final long tickPeriodMs;
+    private final long tickPeriod;
 
     private Set<Endpoint> endpoints = new HashSet<>();
     private SortedMap<Long, Set<Endpoint>> timeouts = new TreeMap<>();
 
-    private final TickClock clock = new TickClock();
 
-    public DiscoveryWatchListService(IWatchListCarrier carrier, long tickPeriodMs) {
+    public DiscoveryWatchListService(IWatchListCarrier carrier, long tickPeriod) {
         this.carrier = carrier;
-        this.tickPeriodMs = tickPeriodMs;
+        this.tickPeriod = tickPeriod;
     }
 
     @VisibleForTesting
@@ -51,14 +49,11 @@ public class DiscoveryWatchListService {
         return timeouts;
     }
 
-    /**
-     * Add endpoint into "watch list".
-     */
     @VisibleForTesting
     void addWatch(Endpoint endpoint, long currentTime) {
         if (endpoints.add(endpoint)) {
             carrier.discoveryRequest(endpoint, currentTime);
-            long key = currentTime + tickPeriodMs;
+            long key = currentTime + tickPeriod;
             timeouts.computeIfAbsent(key, mappingFunction -> new HashSet<>())
                     .add(endpoint);
         }
@@ -66,7 +61,7 @@ public class DiscoveryWatchListService {
 
     public void addWatch(Endpoint endpoint) {
         log.debug("Watch-list service receive ADD-WATCH request for {}", endpoint);
-        addWatch(endpoint, clock.getCurrentTimeMs());
+        addWatch(endpoint, now());
     }
 
     /**
@@ -82,8 +77,6 @@ public class DiscoveryWatchListService {
      * Consume timer tick.
      */
     public void tick(long tickTime) {
-        clock.tick(tickTime);
-
         SortedMap<Long, Set<Endpoint>> range = timeouts.subMap(0L, tickTime + 1);
         if (!range.isEmpty()) {
             HashSet<Endpoint> renew = new HashSet<>();
@@ -97,10 +90,18 @@ public class DiscoveryWatchListService {
             }
             range.clear();
             if (!renew.isEmpty()) {
-                long key = tickTime + tickPeriodMs;
+                long key = tickTime + tickPeriod;
                 timeouts.computeIfAbsent(key, mappingFunction -> new HashSet<>())
                         .addAll(renew);
             }
         }
+    }
+
+    public void tick() {
+        tick(now());
+    }
+
+    private long now() {
+        return System.nanoTime();
     }
 }

@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.discovery.service;
 
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsm;
 import org.openkilda.wfm.topology.discovery.controller.DecisionMakerFsm.DecisionMakerFsmContext;
@@ -48,11 +47,11 @@ public class DiscoveryDecisionMakerService {
         this.awaitTime = awaitTime;
     }
 
-    /**
-     * .
-     */
-    public void discovered(Endpoint endpoint, IslInfoData discoveryEvent,
-                           long currentTime) {
+    public void discovered(Endpoint endpoint, IslInfoData discoveryEvent) {
+        discovered(endpoint, discoveryEvent, now());
+    }
+
+    void discovered(Endpoint endpoint, IslInfoData discoveryEvent, long currentTime) {
         log.debug("Decision-maker service receive DISCOVERY event for {}", endpoint);
 
         DecisionMakerFsm decisionMakerFsm = locateControllerCreateIfAbsent(endpoint);
@@ -64,13 +63,13 @@ public class DiscoveryDecisionMakerService {
                 .build();
 
         controllerExecutor.fire(decisionMakerFsm, DecisionMakerFsmEvent.DISCOVERY, context);
-
     }
 
-    /**
-     * Process "failed" event from {@link DiscoveryWatcherService}.
-     */
-    public void failed(Endpoint endpoint, long currentTime) {
+    public void failed(Endpoint endpoint) {
+        failed(endpoint, now());
+    }
+
+    void failed(Endpoint endpoint, long currentTime) {
         log.debug("Decision-maker service receive FAIL notification for {}", endpoint);
         DecisionMakerFsm decisionMakerFsm = locateControllerCreateIfAbsent(endpoint);
 
@@ -82,11 +81,11 @@ public class DiscoveryDecisionMakerService {
         controllerExecutor.fire(decisionMakerFsm, DecisionMakerFsmEvent.FAIL, context);
     }
 
-    /**
-     * Process "tick" event from {@link CoordinatorSpout}.
-     */
-    public void tick(long currentTime) {
+    public void tick() {
+        tick(now());
+    }
 
+    void tick(long currentTime) {
         DecisionMakerFsmContext context = DecisionMakerFsmContext.builder()
                 .currentTime(currentTime)
                 .output(carrier)
@@ -102,5 +101,9 @@ public class DiscoveryDecisionMakerService {
 
     public void clear(Endpoint endpoint) {
         controller.remove(endpoint);
+    }
+
+    private long now() {
+        return System.nanoTime();
     }
 }

@@ -19,7 +19,6 @@ import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
-import org.openkilda.wfm.topology.discovery.model.TickClock;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Value;
@@ -36,8 +35,6 @@ public class DiscoveryWatcherService {
     private final long awaitTime;
     private final Integer taskId;
 
-    private final TickClock clock = new TickClock();
-
     private long packetNo = 0;
     private Set<Packet> producedPackets = new HashSet<>();
     private Set<Packet> confirmedPackets = new HashSet<>();
@@ -49,10 +46,11 @@ public class DiscoveryWatcherService {
         this.taskId = taskId;
     }
 
-    /**
-     * Add new endpoint for send discovery process.
-     */
-    public void addWatch(Endpoint endpoint, long currentTime) {
+    public void addWatch(Endpoint endpoint) {
+        addWatch(endpoint, now());
+    }
+
+    void addWatch(Endpoint endpoint, long currentTime) {
         Packet packet = Packet.of(endpoint, packetNo);
         log.debug("Watcher service receive ADD-watch request for {} and produce packet id:{} task:{}",
                   endpoint, packet.packetNo, taskId);
@@ -78,12 +76,7 @@ public class DiscoveryWatcherService {
         confirmedPackets.removeIf(packet -> packet.endpoint.equals(endpoint));
     }
 
-    /**
-     * Consume timer tick.
-     */
-    public void tick(long tickTime) {
-        clock.tick(tickTime);
-
+    void tick(long tickTime) {
         SortedMap<Long, Set<Packet>> range = timeouts.subMap(0L, tickTime + 1);
         if (!range.isEmpty()) {
             for (Set<Packet> e : range.values()) {
@@ -93,6 +86,10 @@ public class DiscoveryWatcherService {
             }
             range.clear();
         }
+    }
+
+    public void tick() {
+        tick(now());
     }
 
     /**
@@ -131,7 +128,7 @@ public class DiscoveryWatcherService {
         boolean wasProduced = producedPackets.remove(packet);
         boolean wasConfirmed = confirmedPackets.remove(packet);
         if (wasProduced || wasConfirmed) {
-            carrier.discoveryReceived(packet.endpoint, discoveryEvent, clock.getCurrentTimeMs());
+            carrier.discoveryReceived(packet.endpoint, discoveryEvent, now());
         } else {
             log.error("Receive invalid or removed discovery packet on {} id:{} task:{}",
                     packet.endpoint, packet.packetNo, taskId);
@@ -144,8 +141,12 @@ public class DiscoveryWatcherService {
         if (confirmedPackets.remove(packet)) {
             log.info("Detect discovery packet lost sent via {} id:{} task:{}",
                      packet.endpoint, packet.packetNo, taskId);
-            carrier.discoveryFailed(packet.getEndpoint(), clock.getCurrentTimeMs());
+            carrier.discoveryFailed(packet.getEndpoint(), now());
         }
+    }
+
+    private long now() {
+        return System.nanoTime();
     }
 
     @VisibleForTesting

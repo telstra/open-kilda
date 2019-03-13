@@ -69,7 +69,7 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
     protected void handleInput(Tuple input) throws AbstractException {
         String source = input.getSourceComponent();
         if (CoordinatorSpout.ID.equals(source)) {
-            handleTimerTick(input);
+            handleTimerTick();
         } else if (SpeakerRouter.BOLT_ID.equals(source)) {
             handleSpeakerCommand(input);
         } else if (WatchListHandler.BOLT_ID.equals(source)) {
@@ -79,9 +79,8 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
         }
     }
 
-    private void handleTimerTick(Tuple input) {
-        long timeMs = input.getLongByField(CoordinatorSpout.FIELD_ID_TIME_MS);
-        service.tick(timeMs);
+    private void handleTimerTick() {
+        service.tick();
     }
 
     private void handleSpeakerCommand(Tuple input) throws PipelineException {
@@ -112,12 +111,12 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
     @Override
     public void discoveryReceived(Endpoint endpoint, IslInfoData discoveryEvent, long currentTime) {
         emit(getCurrentTuple(), makeDefaultTuple(
-                new DecisionMakerDiscoveryCommand(endpoint, discoveryEvent, currentTime)));
+                new DecisionMakerDiscoveryCommand(endpoint, discoveryEvent)));
     }
 
     @Override
     public void discoveryFailed(Endpoint endpoint, long currentTime) {
-        emit(getCurrentTuple(), makeDefaultTuple(new DecisionMakerFailCommand(endpoint, currentTime)));
+        emit(getCurrentTuple(), makeDefaultTuple(new DecisionMakerFailCommand(endpoint)));
     }
 
     @Override
@@ -146,8 +145,8 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
         service.confirmation(endpoint, packetId);
     }
 
-    public void processAddWatch(Endpoint endpoint, long timeMs) {
-        service.addWatch(endpoint, timeMs);
+    public void processAddWatch(Endpoint endpoint) {
+        service.addWatch(endpoint);
     }
 
     public void processRemoveWatch(Endpoint endpoint) {

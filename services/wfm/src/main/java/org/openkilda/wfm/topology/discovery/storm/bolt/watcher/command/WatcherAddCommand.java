@@ -19,15 +19,12 @@ import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watcher.WatcherHandler;
 
 public class WatcherAddCommand extends WatcherCommand {
-    private final long timeMs;
-
-    public WatcherAddCommand(Endpoint endpoint, long timeMs) {
+    public WatcherAddCommand(Endpoint endpoint) {
         super(endpoint);
-        this.timeMs = timeMs;
     }
 
     @Override
     public void apply(WatcherHandler handler) {
-        handler.processAddWatch(getEndpoint(), timeMs);
+        handler.processAddWatch(getEndpoint());
     }
 }

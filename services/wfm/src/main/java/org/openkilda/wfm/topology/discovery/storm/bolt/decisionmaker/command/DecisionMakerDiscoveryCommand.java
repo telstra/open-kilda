@@ -22,17 +22,14 @@ import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.DecisionMak
 public class DecisionMakerDiscoveryCommand extends DecisionMakerCommand {
     private final IslInfoData discoveryEvent;
 
-    private final long timeMs;
-
     public DecisionMakerDiscoveryCommand(Endpoint endpoint,
-                                         IslInfoData discoveryEvent, long timeMs) {
+                                         IslInfoData discoveryEvent) {
         super(endpoint);
         this.discoveryEvent = discoveryEvent;
-        this.timeMs = timeMs;
     }
 
     @Override
     public void apply(DecisionMakerHandler handler) {
-        handler.processDiscovered(getEndpoint(), discoveryEvent, timeMs);
+        handler.processDiscovered(getEndpoint(), discoveryEvent);
     }
 }

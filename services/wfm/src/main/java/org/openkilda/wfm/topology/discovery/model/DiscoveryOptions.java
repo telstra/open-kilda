@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 @Builder
 @AllArgsConstructor
 public class DiscoveryOptions implements Serializable {
-    private Long discoveryIntervalMs;
+    private Long discoveryInterval;
 
     private Long discoveryPacketTtl;
 
@@ -49,9 +49,9 @@ public class DiscoveryOptions implements Serializable {
     private long delayMin;
 
     public DiscoveryOptions(DiscoveryTopologyConfig topologyConfig) {
-        discoveryIntervalMs = TimeUnit.SECONDS.toMillis(topologyConfig.getDiscoveryInterval());
-        discoveryPacketTtl = TimeUnit.SECONDS.toMillis(topologyConfig.getDiscoveryPacketTtl());
-        discoveryTimeout = TimeUnit.SECONDS.toMillis(topologyConfig.getDiscoveryTimeout());
+        discoveryInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryInterval());
+        discoveryPacketTtl = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryPacketTtl());
+        discoveryTimeout = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryTimeout());
 
         islCostRaiseOnPhysicalDown = topologyConfig.getIslCostWhenPortDown();
         islCostWhenUnderMaintenance = topologyConfig.getIslCostWhenUnderMaintenance();
