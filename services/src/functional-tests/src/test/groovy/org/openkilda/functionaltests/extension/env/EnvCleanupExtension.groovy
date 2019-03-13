@@ -62,7 +62,7 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
     }
 
     def reviveFailedLinks(List<IslInfoData> links) {
-        def failedLinks = links.find { it.state == IslChangeType.FAILED }
+        def failedLinks = links.findAll { it.state == IslChangeType.FAILED }
         if (failedLinks) {
             log.info("Bring ports up for failed links: $failedLinks")
             failedLinks.each {
