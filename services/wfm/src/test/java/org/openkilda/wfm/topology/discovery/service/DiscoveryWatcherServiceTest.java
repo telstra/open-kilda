@@ -51,12 +51,12 @@ public class DiscoveryWatcherServiceTest {
 
     @Test
     public void addWatch() {
-        DiscoveryWatcherService w = new DiscoveryWatcherService(10, taskId);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(1), 1), 1);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(1), 2), 1);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(2), 1), 2);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(2), 1), 2);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(2), 2), 3);
+        DiscoveryWatcherService w = new DiscoveryWatcherService(carrier, 10, taskId);
+        w.addWatch(Endpoint.of(new SwitchId(1), 1), 1);
+        w.addWatch(Endpoint.of(new SwitchId(1), 2), 1);
+        w.addWatch(Endpoint.of(new SwitchId(2), 1), 2);
+        w.addWatch(Endpoint.of(new SwitchId(2), 1), 2);
+        w.addWatch(Endpoint.of(new SwitchId(2), 2), 3);
 
         assertThat(w.getConfirmedPackets().size(), is(0));
         assertThat(w.getTimeouts().size(), is(3));
@@ -66,12 +66,12 @@ public class DiscoveryWatcherServiceTest {
 
     @Test
     public void removeWatch() {
-        DiscoveryWatcherService w = new DiscoveryWatcherService(10, taskId);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(1), 1), 1);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(1), 2), 2);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(2), 1), 3);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(2), 2), 4);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(3), 1), 5);
+        DiscoveryWatcherService w = new DiscoveryWatcherService(carrier, 10, taskId);
+        w.addWatch(Endpoint.of(new SwitchId(1), 1), 1);
+        w.addWatch(Endpoint.of(new SwitchId(1), 2), 2);
+        w.addWatch(Endpoint.of(new SwitchId(2), 1), 3);
+        w.addWatch(Endpoint.of(new SwitchId(2), 2), 4);
+        w.addWatch(Endpoint.of(new SwitchId(3), 1), 5);
 
         verify(carrier, times(5)).sendDiscovery(any(DiscoverIslCommandData.class));
 
@@ -82,8 +82,8 @@ public class DiscoveryWatcherServiceTest {
         assertThat(w.getTimeouts().size(), is(5));
         assertThat(w.getProducedPackets().size(), is(3));
 
-        w.removeWatch(carrier, Endpoint.of(new SwitchId(1), 2));
-        w.removeWatch(carrier, Endpoint.of(new SwitchId(2), 2));
+        w.removeWatch(Endpoint.of(new SwitchId(1), 2));
+        w.removeWatch(Endpoint.of(new SwitchId(2), 2));
 
         verify(carrier).clearDiscovery(Endpoint.of(new SwitchId(1), 2));
         verify(carrier).clearDiscovery(Endpoint.of(new SwitchId(2), 2));
@@ -91,18 +91,18 @@ public class DiscoveryWatcherServiceTest {
         assertThat(w.getConfirmedPackets().size(), is(1));
         assertThat(w.getProducedPackets().size(), is(2));
 
-        w.tick(carrier, 100);
+        w.tick(100);
         assertThat(w.getTimeouts().size(), is(0));
     }
 
     @Test
     public void tick() {
-        DiscoveryWatcherService w = new DiscoveryWatcherService(10, taskId);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(1), 1), 1);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(1), 2), 1);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(2), 1), 2);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(2), 1), 2);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(2), 2), 3);
+        DiscoveryWatcherService w = new DiscoveryWatcherService(carrier, 10, taskId);
+        w.addWatch(Endpoint.of(new SwitchId(1), 1), 1);
+        w.addWatch(Endpoint.of(new SwitchId(1), 2), 1);
+        w.addWatch(Endpoint.of(new SwitchId(2), 1), 2);
+        w.addWatch(Endpoint.of(new SwitchId(2), 1), 2);
+        w.addWatch(Endpoint.of(new SwitchId(2), 2), 3);
 
         assertThat(w.getConfirmedPackets().size(), is(0));
         assertThat(w.getTimeouts().size(), is(3));
@@ -113,7 +113,7 @@ public class DiscoveryWatcherServiceTest {
 
         assertThat(w.getConfirmedPackets().size(), is(2));
 
-        w.tick(carrier, 100);
+        w.tick(100);
 
         assertThat(w.getConfirmedPackets().size(), is(0));
 
@@ -126,12 +126,12 @@ public class DiscoveryWatcherServiceTest {
 
     @Test
     public void discovery() {
-        DiscoveryWatcherService w = new DiscoveryWatcherService(10, taskId);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(1), 1), 1);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(1), 2), 1);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(2), 1), 2);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(2), 1), 2);
-        w.addWatch(carrier, Endpoint.of(new SwitchId(2), 2), 3);
+        DiscoveryWatcherService w = new DiscoveryWatcherService(carrier, 10, taskId);
+        w.addWatch(Endpoint.of(new SwitchId(1), 1), 1);
+        w.addWatch(Endpoint.of(new SwitchId(1), 2), 1);
+        w.addWatch(Endpoint.of(new SwitchId(2), 1), 2);
+        w.addWatch(Endpoint.of(new SwitchId(2), 1), 2);
+        w.addWatch(Endpoint.of(new SwitchId(2), 2), 3);
 
         assertThat(w.getConfirmedPackets().size(), is(0));
         assertThat(w.getTimeouts().size(), is(3));
@@ -146,10 +146,10 @@ public class DiscoveryWatcherServiceTest {
 
         IslInfoData islAlphaBeta = IslInfoData.builder().source(source).destination(destination).packetId(0L).build();
         IslInfoData islBetaAlpha = IslInfoData.builder().source(destination).destination(source).packetId(2L).build();
-        w.discovery(carrier, islAlphaBeta);
-        w.discovery(carrier, islBetaAlpha);
+        w.discovery(islAlphaBeta);
+        w.discovery(islBetaAlpha);
 
-        w.tick(carrier, 100);
+        w.tick(100);
 
         assertThat(w.getConfirmedPackets().size(), is(0));
 
@@ -166,16 +166,16 @@ public class DiscoveryWatcherServiceTest {
         PathNode source = new PathNode(new SwitchId(1), 1, 0);
         PathNode destination = new PathNode(new SwitchId(2), 1, 0);
 
-        DiscoveryWatcherService w = new DiscoveryWatcherService(awaitTime, taskId);
-        w.addWatch(carrier, Endpoint.of(source.getSwitchId(), source.getPortNo()), 1);
+        DiscoveryWatcherService w = new DiscoveryWatcherService(carrier, awaitTime, taskId);
+        w.addWatch(Endpoint.of(source.getSwitchId(), source.getPortNo()), 1);
 
         verify(carrier, times(1)).sendDiscovery(any(DiscoverIslCommandData.class));
 
         IslInfoData islAlphaBeta = IslInfoData.builder().source(source).destination(destination).packetId(0L).build();
 
-        w.discovery(carrier, islAlphaBeta);
+        w.discovery(islAlphaBeta);
         w.confirmation(new Endpoint(source), 0);
-        w.tick(carrier, awaitTime + 1);
+        w.tick(awaitTime + 1);
 
         verify(carrier).discoveryReceived(eq(new Endpoint(source)), eq(islAlphaBeta), anyLong());
         verify(carrier, never()).discoveryFailed(eq(new Endpoint(source)), anyLong());

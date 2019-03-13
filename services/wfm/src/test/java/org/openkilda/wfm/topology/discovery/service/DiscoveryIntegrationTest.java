@@ -134,7 +134,7 @@ public class DiscoveryIntegrationTest {
         portService = new DiscoveryPortService(null);
         bfdPortService = new DiscoveryBfdPortService(integrationCarrier, persistenceManager);
         uniIslService = new DiscoveryUniIslService(null);
-        islService = new DiscoveryIslService(persistenceManager, options);
+        islService = new DiscoveryIslService(null, persistenceManager, options);
 
         integrationCarrier = new IntegrationCarrier(
                 switchService,

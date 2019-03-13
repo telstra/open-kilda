@@ -81,7 +81,7 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
 
     private void handleTimerTick(Tuple input) {
         long timeMs = input.getLongByField(CoordinatorSpout.FIELD_ID_TIME_MS);
-        service.tick(this, timeMs);
+        service.tick(timeMs);
     }
 
     private void handleSpeakerCommand(Tuple input) throws PipelineException {
@@ -99,7 +99,8 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
 
     @Override
     protected void init() {
-        service = new DiscoveryWatcherService(options.getDiscoveryPacketTtl(), getTaskId());
+        service = new DiscoveryWatcherService(this,
+                options.getDiscoveryPacketTtl(), getTaskId());
     }
 
     @Override
@@ -146,15 +147,15 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
     }
 
     public void processAddWatch(Endpoint endpoint, long timeMs) {
-        service.addWatch(this, endpoint, timeMs);
+        service.addWatch(endpoint, timeMs);
     }
 
     public void processRemoveWatch(Endpoint endpoint) {
-        service.removeWatch(this, endpoint);
+        service.removeWatch(endpoint);
     }
 
     public void processDiscovery(IslInfoData payload) {
-        service.discovery(this, payload);
+        service.discovery(payload);
     }
 
     // -- private/service methods --

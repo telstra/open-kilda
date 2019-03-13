@@ -70,7 +70,7 @@ public class DecisionMakerHandler extends AbstractBolt implements IDecisionMaker
 
     private void handleTimer(Tuple input) {
         Long timeMs = input.getLongByField(CoordinatorSpout.FIELD_ID_TIME_MS);
-        service.tick(this, timeMs);
+        service.tick(timeMs);
     }
 
     private void handleCommand(Tuple input) throws PipelineException {
@@ -80,7 +80,8 @@ public class DecisionMakerHandler extends AbstractBolt implements IDecisionMaker
 
     @Override
     protected void init() {
-        service = new DiscoveryDecisionMakerService(options.getDiscoveryTimeout(), options.getDiscoveryPacketTtl());
+        service = new DiscoveryDecisionMakerService(this,
+                options.getDiscoveryTimeout(), options.getDiscoveryPacketTtl());
     }
 
     @Override
@@ -103,15 +104,15 @@ public class DecisionMakerHandler extends AbstractBolt implements IDecisionMaker
     // DecisionMakerCommand
 
     public void processClear(Endpoint endpoint) {
-        service.clear(this, endpoint);
+        service.clear(endpoint);
     }
 
     public void processDiscovered(Endpoint endpoint, IslInfoData discoveryEvent, long timeMs) {
-        service.discovered(this, endpoint, discoveryEvent, timeMs);
+        service.discovered(endpoint, discoveryEvent, timeMs);
     }
 
     public void processFailed(Endpoint endpoint, long timeMs) {
-        service.failed(this, endpoint, timeMs);
+        service.failed(endpoint, timeMs);
     }
 
     // Private

@@ -15,6 +15,6 @@
 
 package org.openkilda.wfm.topology.discovery.storm;
 
-public interface ICommand<S, R> {
-    void apply(S service, R carrier);
+public interface ICommand<H> {
+    void apply(H handler);
 }

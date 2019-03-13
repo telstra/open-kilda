@@ -16,12 +16,12 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.watchlist.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.storm.IHandlerCommand;
+import org.openkilda.wfm.topology.discovery.storm.ICommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.watchlist.WatchListHandler;
 
 import lombok.Getter;
 
-public abstract class WatchListCommand implements IHandlerCommand<WatchListHandler> {
+public abstract class WatchListCommand implements ICommand<WatchListHandler> {
     @Getter
 
     private final Endpoint endpoint;

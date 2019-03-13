@@ -15,12 +15,12 @@
 
 package org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command;
 
-import org.openkilda.wfm.topology.discovery.storm.IHandlerCommand;
+import org.openkilda.wfm.topology.discovery.storm.ICommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerWorker;
 
 import lombok.Getter;
 
-public abstract class SpeakerWorkerCommand implements IHandlerCommand<SpeakerWorker> {
+public abstract class SpeakerWorkerCommand implements ICommand<SpeakerWorker> {
     @Getter
     private final String key;
 

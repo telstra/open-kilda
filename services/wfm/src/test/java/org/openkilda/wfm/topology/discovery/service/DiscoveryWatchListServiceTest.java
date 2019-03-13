@@ -46,13 +46,13 @@ public class DiscoveryWatchListServiceTest {
     @org.junit.Test
     public void addWatch() {
 
-        DiscoveryWatchListService s = new DiscoveryWatchListService(10);
+        DiscoveryWatchListService s = new DiscoveryWatchListService(carrier, 10);
 
-        s.addWatch(carrier, Endpoint.of(new SwitchId(1), 1), 1);
-        s.addWatch(carrier, Endpoint.of(new SwitchId(1), 2), 1);
-        s.addWatch(carrier, Endpoint.of(new SwitchId(2), 1), 2);
-        s.addWatch(carrier, Endpoint.of(new SwitchId(2), 1), 2);
-        s.addWatch(carrier, Endpoint.of(new SwitchId(2), 2), 3);
+        s.addWatch(Endpoint.of(new SwitchId(1), 1), 1);
+        s.addWatch(Endpoint.of(new SwitchId(1), 2), 1);
+        s.addWatch(Endpoint.of(new SwitchId(2), 1), 2);
+        s.addWatch(Endpoint.of(new SwitchId(2), 1), 2);
+        s.addWatch(Endpoint.of(new SwitchId(2), 2), 3);
 
         assertThat(s.getEndpoints().size(), is(4));
         assertThat(s.getTimeouts().size(), is(3));
@@ -62,22 +62,22 @@ public class DiscoveryWatchListServiceTest {
 
     @org.junit.Test
     public void removeWatch() {
-        DiscoveryWatchListService s = new DiscoveryWatchListService(10);
+        DiscoveryWatchListService s = new DiscoveryWatchListService(carrier, 10);
 
-        s.addWatch(carrier, Endpoint.of(new SwitchId(1), 1), 1);
-        s.addWatch(carrier, Endpoint.of(new SwitchId(1), 2), 1);
-        s.addWatch(carrier, Endpoint.of(new SwitchId(2), 1), 11);
+        s.addWatch(Endpoint.of(new SwitchId(1), 1), 1);
+        s.addWatch(Endpoint.of(new SwitchId(1), 2), 1);
+        s.addWatch(Endpoint.of(new SwitchId(2), 1), 11);
 
         assertThat(s.getEndpoints().size(), is(3));
 
-        s.removeWatch(carrier, Endpoint.of(new SwitchId(1), 1));
-        s.removeWatch(carrier, Endpoint.of(new SwitchId(1), 2));
-        s.removeWatch(carrier, Endpoint.of(new SwitchId(2), 1));
+        s.removeWatch(Endpoint.of(new SwitchId(1), 1));
+        s.removeWatch(Endpoint.of(new SwitchId(1), 2));
+        s.removeWatch(Endpoint.of(new SwitchId(2), 1));
 
         assertThat(s.getEndpoints().size(), is(0));
         assertThat(s.getTimeouts().size(), is(2));
 
-        s.tick(carrier, 100);
+        s.tick(100);
 
         assertThat(s.getTimeouts().size(), is(0));
 
@@ -86,15 +86,15 @@ public class DiscoveryWatchListServiceTest {
 
     @org.junit.Test
     public void tick() {
-        DiscoveryWatchListService s = new DiscoveryWatchListService(10);
+        DiscoveryWatchListService s = new DiscoveryWatchListService(carrier, 10);
 
-        s.addWatch(carrier, Endpoint.of(new SwitchId(1), 1), 1);
-        s.addWatch(carrier, Endpoint.of(new SwitchId(1), 2), 1);
-        s.addWatch(carrier, Endpoint.of(new SwitchId(2), 1), 5);
-        s.addWatch(carrier, Endpoint.of(new SwitchId(2), 2), 10);
+        s.addWatch(Endpoint.of(new SwitchId(1), 1), 1);
+        s.addWatch(Endpoint.of(new SwitchId(1), 2), 1);
+        s.addWatch(Endpoint.of(new SwitchId(2), 1), 5);
+        s.addWatch(Endpoint.of(new SwitchId(2), 2), 10);
 
         for (int i = 0; i <= 100; i++) {
-            s.tick(carrier, i);
+            s.tick(i);
         }
         verify(carrier, times(10)).discoveryRequest(eq(Endpoint.of(new SwitchId(1), 1)), anyLong());
         verify(carrier, times(10)).discoveryRequest(eq(Endpoint.of(new SwitchId(1), 2)), anyLong());

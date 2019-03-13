@@ -91,7 +91,7 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
 
     @Override
     protected void init() {
-        service = new DiscoveryIslService(persistenceManager, options);
+        service = new DiscoveryIslService(this, persistenceManager, options);
     }
 
     @Override
@@ -131,22 +131,22 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     }
 
     public void processIslUp(Endpoint endpoint, IslReference reference, IslDataHolder islData) {
-        service.islUp(this, endpoint, reference, islData);
+        service.islUp(endpoint, reference, islData);
     }
 
     public void processIslMove(Endpoint endpoint, IslReference reference) {
-        service.islMove(this, endpoint, reference);
+        service.islMove(endpoint, reference);
     }
 
     public void processIslDown(Endpoint endpoint, IslReference reference, boolean physicalDown) {
-        service.islDown(this, endpoint, reference, physicalDown);
+        service.islDown(endpoint, reference, physicalDown);
     }
 
     public void processBfdEnableDisable(IslReference reference, IslBfdFlagUpdated payload) {
-        service.bfdEnableDisable(this, reference, payload);
+        service.bfdEnableDisable(reference, payload);
     }
 
     public void processIslRemove(IslReference reference) {
-        service.remove(this, reference);
+        service.remove(reference);
     }
 }

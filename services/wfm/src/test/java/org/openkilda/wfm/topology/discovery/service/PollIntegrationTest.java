@@ -50,21 +50,42 @@ public class PollIntegrationTest {
 
     @Test
     public void happyPath() {
-        DiscoveryWatchListService watchListService = new DiscoveryWatchListService(10);
-        DiscoveryWatcherService watcherService = new DiscoveryWatcherService(100, taskId);
-        DiscoveryDecisionMakerService decisionMakerService = new DiscoveryDecisionMakerService(200, 100);
-
         final long latency = 100L;
         final long speed = 100000L;
-        IntegrationCarrier integrationCarrier = new IntegrationCarrier(watcherService, watchListService,
-                                                                       decisionMakerService);
+
+        IntegrationCarrier integrationCarrier = new IntegrationCarrier() {
+            @Override
+            public void sendDiscovery(DiscoverIslCommandData discoveryRequest) {
+                // Emulate response from FL
+                watcherCarrier.sendDiscovery(discoveryRequest);
+                IslInfoData response = IslInfoData.builder().latency(latency)
+                        .source(new PathNode(discoveryRequest.getSwitchId(),
+                                discoveryRequest.getPortNumber(), 0))
+                        .destination(new PathNode(new SwitchId(10), 10, 0))
+                        .state(IslChangeType.DISCOVERED)
+                        .speed(speed).underMaintenance(false)
+                        .packetId(discoveryRequest.getPacketId())
+                        .build();
+
+                watcherService.confirmation(Endpoint.of(discoveryRequest.getSwitchId(),
+                        discoveryRequest.getPortNumber()), discoveryRequest.getPacketId());
+                watcherService.discovery(response);
+            }
+        };
+
         IWatcherCarrier watcherCarrier = mock(IWatcherCarrier.class);
+
+        DiscoveryWatchListService watchListService = new DiscoveryWatchListService(integrationCarrier, 10);
+        DiscoveryWatcherService watcherService = new DiscoveryWatcherService(integrationCarrier, 100, taskId);
+        DiscoveryDecisionMakerService decisionMakerService = new DiscoveryDecisionMakerService(carrier,
+                200, 100);
+
+        integrationCarrier.configure(watcherService, watchListService, decisionMakerService);
         integrationCarrier.setWatcherCarrier(watcherCarrier);
-        integrationCarrier.setDecisionMakerCarrier(carrier);
 
         // should produce discovery request
         Endpoint endpoint = Endpoint.of(new SwitchId(1), 1);
-        watchListService.addWatch(integrationCarrier, endpoint, 1);
+        watchListService.addWatch(endpoint, 1);
 
         ArgumentCaptor<DiscoverIslCommandData> discoveryRequestCatcher = ArgumentCaptor.forClass(
                 DiscoverIslCommandData.class);
@@ -74,19 +95,6 @@ public class PollIntegrationTest {
         Assert.assertEquals(endpoint.getDatapath(), request.getSwitchId());
         Assert.assertEquals(endpoint.getPortNumber(), request.getPortNumber());
 
-        // should process discovery response
-        IslInfoData response = IslInfoData.builder().latency(latency)
-                .source(new PathNode(request.getSwitchId(),
-                        request.getPortNumber(), 0))
-                .destination(new PathNode(new SwitchId(10), 10, 0))
-                .state(IslChangeType.DISCOVERED)
-                .speed(speed).underMaintenance(false)
-                .packetId(request.getPacketId())
-                .build();
-
-        watcherService.confirmation(Endpoint.of(request.getSwitchId(), request.getPortNumber()), request.getPacketId());
-        watcherService.discovery(integrationCarrier, response);
-
         IslInfoData expectedDiscoveryEvent = IslInfoData.builder().latency(latency)
                 .source(new PathNode(new SwitchId(1), 1, 0))
                 .destination(new PathNode(new SwitchId(10), 10, 0))
@@ -95,17 +103,13 @@ public class PollIntegrationTest {
                 .underMaintenance(false)
                 .packetId(0L)
                 .build();
+
         verify(carrier).linkDiscovered(eq(expectedDiscoveryEvent));
     }
 
     @Test
     public void failed() {
-        DiscoveryWatchListService watchListService = new DiscoveryWatchListService(10);
-        DiscoveryWatcherService watcherService = new DiscoveryWatcherService(100, taskId);
-        DiscoveryDecisionMakerService decisionMakerService = new DiscoveryDecisionMakerService(200, 100);
-
-        IntegrationCarrier integrationCarrier = new IntegrationCarrier(watcherService, watchListService,
-                                                                       decisionMakerService) {
+        IntegrationCarrier integrationCarrier = new IntegrationCarrier() {
             @Override
             public void sendDiscovery(DiscoverIslCommandData discoveryRequest) {
                 watcherService.confirmation(
@@ -113,79 +117,66 @@ public class PollIntegrationTest {
                         discoveryRequest.getPacketId());
             }
         };
-        integrationCarrier.setDecisionMakerCarrier(carrier);
 
-        watchListService.addWatch(integrationCarrier, Endpoint.of(new SwitchId(1), 1), 0);
+        DiscoveryWatchListService watchListService = new DiscoveryWatchListService(integrationCarrier, 10);
+        DiscoveryWatcherService watcherService = new DiscoveryWatcherService(integrationCarrier, 100, taskId);
+        DiscoveryDecisionMakerService decisionMakerService = new DiscoveryDecisionMakerService(carrier,
+                200, 100);
+
+        integrationCarrier.configure(watcherService, watchListService, decisionMakerService);
+
+        watchListService.addWatch(Endpoint.of(new SwitchId(1), 1), 0);
 
         for (int i = 1; i <= 200; ++i) {
-            watchListService.tick(integrationCarrier, i);
-            watcherService.tick(integrationCarrier, i);
+            watchListService.tick(i);
+            watcherService.tick(i);
         }
 
         verify(carrier).linkDestroyed(eq(Endpoint.of(new SwitchId(1), 1)));
     }
 
     @Data
-    static class IntegrationCarrier implements IWatchListCarrier, IWatcherCarrier, IDecisionMakerCarrier {
+    abstract static class IntegrationCarrier implements IWatchListCarrier, IWatcherCarrier {
 
-        protected final DiscoveryWatcherService watcherService;
-        protected final DiscoveryWatchListService watchListService;
-        protected final DiscoveryDecisionMakerService decisionMakerService;
+        protected DiscoveryWatcherService watcherService;
+        protected DiscoveryWatchListService watchListService;
+        protected DiscoveryDecisionMakerService decisionMakerService;
 
-        protected IWatchListCarrier watchListCarrier;
         protected IWatcherCarrier watcherCarrier;
-        protected IDecisionMakerCarrier decisionMakerCarrier;
 
-        public IntegrationCarrier(DiscoveryWatcherService watcherService,
+        public void configure(DiscoveryWatcherService watcherService,
                                   DiscoveryWatchListService watchListService,
                                   DiscoveryDecisionMakerService decisionMakerService) {
             this.watcherService = watcherService;
             this.watchListService = watchListService;
             this.decisionMakerService = decisionMakerService;
-
-            watchListCarrier = this;
-            watcherCarrier = this;
-            decisionMakerCarrier = this;
         }
 
         @Override
         public void watchRemoved(Endpoint endpoint) {
-            // dummy, no need implementation
+            // TBD
         }
 
         @Override
         public void discoveryRequest(Endpoint endpoint, long currentTime) {
-            watcherService.addWatch(watcherCarrier, endpoint, currentTime);
+            watcherService.addWatch(endpoint, currentTime);
         }
 
         @Override
         public void discoveryReceived(Endpoint endpoint, IslInfoData discoveryEvent, long currentTime) {
-            decisionMakerService.discovered(decisionMakerCarrier, endpoint, discoveryEvent, currentTime);
+            decisionMakerService.discovered(endpoint, discoveryEvent, currentTime);
         }
 
         @Override
         public void discoveryFailed(Endpoint endpoint, long currentTime) {
-            decisionMakerService.failed(decisionMakerCarrier, endpoint, currentTime);
+            decisionMakerService.failed(endpoint, currentTime);
         }
 
-        @Override
-        public void sendDiscovery(DiscoverIslCommandData discoveryRequest) {
-            // dummy, no need implementation
-        }
+        public abstract void sendDiscovery(DiscoverIslCommandData discoveryRequest);
 
         @Override
         public void clearDiscovery(Endpoint endpoint) {
-
-        }
-
-        @Override
-        public void linkDiscovered(IslInfoData discoveryEvent) {
-            // dummy, no need implementation
-        }
-
-        @Override
-        public void linkDestroyed(Endpoint endpoint) {
-            // dummy, no need implementation
+            // TBD
         }
     }
 }

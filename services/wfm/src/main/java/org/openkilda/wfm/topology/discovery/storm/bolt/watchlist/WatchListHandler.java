@@ -68,7 +68,7 @@ public class WatchListHandler extends AbstractBolt implements IWatchListCarrier 
 
     private void handleTimer(Tuple input) {
         Long timeMs = input.getLongByField(CoordinatorSpout.FIELD_ID_TIME_MS);
-        service.tick(this, timeMs);
+        service.tick(timeMs);
     }
 
     private void handlePortCommand(Tuple input) throws PipelineException {
@@ -78,7 +78,7 @@ public class WatchListHandler extends AbstractBolt implements IWatchListCarrier 
 
     @Override
     protected void init() {
-        service = new DiscoveryWatchListService(options.getDiscoveryIntervalMs());
+        service = new DiscoveryWatchListService(this, options.getDiscoveryIntervalMs());
     }
 
     @Override
@@ -107,10 +107,10 @@ public class WatchListHandler extends AbstractBolt implements IWatchListCarrier 
     // WatchListCommand
 
     public void processAddWatch(Endpoint endpoint) {
-        service.addWatch(this, endpoint);
+        service.addWatch(endpoint);
     }
 
     public void processRemoveWatch(Endpoint endpoint) {
-        service.removeWatch(this, endpoint);
+        service.removeWatch(endpoint);
     }
 }

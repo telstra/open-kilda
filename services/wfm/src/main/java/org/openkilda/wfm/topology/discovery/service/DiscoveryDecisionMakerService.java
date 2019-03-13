@@ -38,10 +38,12 @@ public class DiscoveryDecisionMakerService {
             DecisionMakerFsmContext> controllerExecutor
             = DecisionMakerFsm.makeExecutor();
 
+    private final IDecisionMakerCarrier carrier;
     private final long failTimeout;
     private final long awaitTime;
 
-    public DiscoveryDecisionMakerService(long failTimeout, long awaitTime) {
+    public DiscoveryDecisionMakerService(IDecisionMakerCarrier carrier, long failTimeout, long awaitTime) {
+        this.carrier = carrier;
         this.failTimeout = failTimeout;
         this.awaitTime = awaitTime;
     }
@@ -49,7 +51,7 @@ public class DiscoveryDecisionMakerService {
     /**
      * .
      */
-    public void discovered(IDecisionMakerCarrier carrier, Endpoint endpoint, IslInfoData discoveryEvent,
+    public void discovered(Endpoint endpoint, IslInfoData discoveryEvent,
                            long currentTime) {
         log.debug("Decision-maker service receive DISCOVERY event for {}", endpoint);
 
@@ -68,7 +70,7 @@ public class DiscoveryDecisionMakerService {
     /**
      * Process "failed" event from {@link DiscoveryWatcherService}.
      */
-    public void failed(IDecisionMakerCarrier carrier, Endpoint endpoint, long currentTime) {
+    public void failed(Endpoint endpoint, long currentTime) {
         log.debug("Decision-maker service receive FAIL notification for {}", endpoint);
         DecisionMakerFsm decisionMakerFsm = locateControllerCreateIfAbsent(endpoint);
 
@@ -83,7 +85,7 @@ public class DiscoveryDecisionMakerService {
     /**
      * Process "tick" event from {@link CoordinatorSpout}.
      */
-    public void tick(IDecisionMakerCarrier carrier, long currentTime) {
+    public void tick(long currentTime) {
 
         DecisionMakerFsmContext context = DecisionMakerFsmContext.builder()
                 .currentTime(currentTime)
@@ -98,7 +100,7 @@ public class DiscoveryDecisionMakerService {
         return controller.computeIfAbsent(endpoint, key -> DecisionMakerFsm.create(endpoint, failTimeout, awaitTime));
     }
 
-    public void clear(IDecisionMakerCarrier carrier, Endpoint endpoint) {
+    public void clear(Endpoint endpoint) {
         controller.remove(endpoint);
     }
 }

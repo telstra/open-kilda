@@ -16,12 +16,12 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.storm.IHandlerCommand;
+import org.openkilda.wfm.topology.discovery.storm.ICommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.DecisionMakerHandler;
 
 import lombok.Getter;
 
-public abstract class DecisionMakerCommand implements IHandlerCommand<DecisionMakerHandler> {
+public abstract class DecisionMakerCommand implements ICommand<DecisionMakerHandler> {
     @Getter
     private final Endpoint endpoint;
 

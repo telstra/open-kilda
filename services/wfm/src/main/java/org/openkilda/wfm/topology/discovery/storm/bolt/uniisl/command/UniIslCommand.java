@@ -16,13 +16,13 @@
 package org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.command;
 
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
-import org.openkilda.wfm.topology.discovery.storm.IHandlerCommand;
+import org.openkilda.wfm.topology.discovery.storm.ICommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.uniisl.UniIslHandler;
 
 import lombok.AccessLevel;
 import lombok.Getter;
 
-public abstract class UniIslCommand implements IHandlerCommand<UniIslHandler> {
+public abstract class UniIslCommand implements ICommand<UniIslHandler> {
     @Getter(AccessLevel.PUBLIC)
     private final Endpoint endpoint;
 

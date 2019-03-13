@@ -175,17 +175,17 @@ public class IntegrationCarrier implements ISwitchCarrier, IPortCarrier, IBfdPor
 
     @Override
     public void notifyIslUp(Endpoint endpoint, IslReference reference, IslDataHolder islData) {
-        islService.islUp(islCarrier, endpoint, reference, islData);
+        islService.islUp(endpoint, reference, islData);
     }
 
     @Override
     public void notifyIslDown(Endpoint endpoint, IslReference reference, boolean isPhysicalDown) {
-        islService.islDown(islCarrier, endpoint, reference, isPhysicalDown);
+        islService.islDown(endpoint, reference, isPhysicalDown);
     }
 
     @Override
     public void notifyIslMove(Endpoint endpoint, IslReference reference) {
-        islService.islMove(islCarrier, endpoint, reference);
+        islService.islMove(endpoint, reference);
     }
 
     public void triggerReroute(RerouteFlows trigger) {

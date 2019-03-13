@@ -28,6 +28,7 @@ import java.util.TreeMap;
 
 @Slf4j
 public class DiscoveryWatchListService {
+    private final IWatchListCarrier carrier;
     private final long tickPeriodMs;
 
     private Set<Endpoint> endpoints = new HashSet<>();
@@ -35,7 +36,8 @@ public class DiscoveryWatchListService {
 
     private final TickClock clock = new TickClock();
 
-    public DiscoveryWatchListService(long tickPeriodMs) {
+    public DiscoveryWatchListService(IWatchListCarrier carrier, long tickPeriodMs) {
+        this.carrier = carrier;
         this.tickPeriodMs = tickPeriodMs;
     }
 
@@ -53,7 +55,7 @@ public class DiscoveryWatchListService {
      * Add endpoint into "watch list".
      */
     @VisibleForTesting
-    void addWatch(IWatchListCarrier carrier, Endpoint endpoint, long currentTime) {
+    void addWatch(Endpoint endpoint, long currentTime) {
         if (endpoints.add(endpoint)) {
             carrier.discoveryRequest(endpoint, currentTime);
             long key = currentTime + tickPeriodMs;
@@ -62,15 +64,15 @@ public class DiscoveryWatchListService {
         }
     }
 
-    public void addWatch(IWatchListCarrier carrier, Endpoint endpoint) {
+    public void addWatch(Endpoint endpoint) {
         log.debug("Watch-list service receive ADD-WATCH request for {}", endpoint);
-        addWatch(carrier, endpoint, clock.getCurrentTimeMs());
+        addWatch(endpoint, clock.getCurrentTimeMs());
     }
 
     /**
      * Handle remove watch request.
      */
-    public void removeWatch(IWatchListCarrier carrier, Endpoint endpoint) {
+    public void removeWatch(Endpoint endpoint) {
         log.debug("Watch-list service receive REMOVE-WATCH request for {}", endpoint);
         carrier.watchRemoved(endpoint);
         endpoints.remove(endpoint);
@@ -79,7 +81,7 @@ public class DiscoveryWatchListService {
     /**
      * Consume timer tick.
      */
-    public void tick(IWatchListCarrier carrier, long tickTime) {
+    public void tick(long tickTime) {
         clock.tick(tickTime);
 
         SortedMap<Long, Set<Endpoint>> range = timeouts.subMap(0L, tickTime + 1);

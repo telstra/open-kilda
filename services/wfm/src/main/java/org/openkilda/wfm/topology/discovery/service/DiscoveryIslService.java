@@ -40,10 +40,12 @@ public class DiscoveryIslService {
     private final FsmExecutor<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> controllerExecutor
             = IslFsm.makeExecutor();
 
+    private final IIslCarrier carrier;
     private final PersistenceManager persistenceManager;
     private final DiscoveryOptions options;
 
-    public DiscoveryIslService(PersistenceManager persistenceManager, DiscoveryOptions options) {
+    public DiscoveryIslService(IIslCarrier carrier, PersistenceManager persistenceManager, DiscoveryOptions options) {
+        this.carrier = carrier;
         this.persistenceManager = persistenceManager;
         this.options = options;
     }
@@ -65,7 +67,7 @@ public class DiscoveryIslService {
     /**
      * .
      */
-    public void islUp(IIslCarrier carrier, Endpoint endpoint, IslReference reference, IslDataHolder islData) {
+    public void islUp(Endpoint endpoint, IslReference reference, IslDataHolder islData) {
         log.debug("ISL service receive DISCOVERY notification for {} (on {})", reference, endpoint);
         IslFsm islFsm = locateControllerCreateIfAbsent(reference);
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint)
@@ -77,7 +79,7 @@ public class DiscoveryIslService {
     /**
      * .
      */
-    public void islDown(IIslCarrier carrier, Endpoint endpoint, IslReference reference, boolean isPhysicalDown) {
+    public void islDown(Endpoint endpoint, IslReference reference, boolean isPhysicalDown) {
         log.debug("ISL service receive FAIL notification for {} (on {})", reference, endpoint);
         IslFsm islFsm = locateController(reference);
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint)
@@ -89,7 +91,7 @@ public class DiscoveryIslService {
     /**
      * .
      */
-    public void islMove(IIslCarrier carrier, Endpoint endpoint, IslReference reference) {
+    public void islMove(Endpoint endpoint, IslReference reference) {
         log.debug("ISL service receive MOVED(FAIL) notification for {} (on {})", reference, endpoint);
         IslFsm islFsm = locateController(reference);
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint).build();
@@ -99,7 +101,7 @@ public class DiscoveryIslService {
     /**
      * Process enable/disable BFD requests.
      */
-    public void bfdEnableDisable(IIslCarrier carrier, IslReference reference, IslBfdFlagUpdated payload) {
+    public void bfdEnableDisable(IslReference reference, IslBfdFlagUpdated payload) {
         log.debug("ISL service receive allow-BFD switch update notification for {} new-status:{}",
                   reference, payload.isEnableBfd());
         IslFsm islFsm = locateController(reference);
@@ -112,7 +114,7 @@ public class DiscoveryIslService {
     /**
      * Remove isl by request.
      */
-    public void remove(IIslCarrier carrier, IslReference reference) {
+    public void remove(IslReference reference) {
         IslFsm fsm = controller.get(reference);
         if (fsm != null) {
             IslFsmContext context = IslFsmContext.builder(carrier, reference.getSource())

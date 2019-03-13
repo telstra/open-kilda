@@ -51,7 +51,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.mockito.stubbing.Answer;
 import org.neo4j.ogm.testutil.TestServer;
 
 import java.util.Collections;
@@ -88,7 +87,7 @@ public class DiscoveryIslServiceTest {
     private DiscoveryIslService service;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
@@ -96,13 +95,13 @@ public class DiscoveryIslServiceTest {
         when(repositoryFactory.createLinkPropsRepository()).thenReturn(linkPropsRepository);
         when(repositoryFactory.createFlowSegmentRepository()).thenReturn(flowSegmentRepository);
 
-        doAnswer((Answer) invocation -> {
+        doAnswer(invocation -> {
             TransactionCallbackWithoutResult tr = invocation.getArgument(0);
             tr.doInTransaction();
             return null;
         }).when(transactionManager).doInTransaction(Mockito.any(TransactionCallbackWithoutResult.class));
 
-        service = new DiscoveryIslService(persistenceManager, options);
+        service = new DiscoveryIslService(carrier, persistenceManager, options);
     }
 
     @Test
@@ -164,8 +163,8 @@ public class DiscoveryIslServiceTest {
 
         IslReference ref = new IslReference(endpointAlpha1, endpointBeta2);
         IslDataHolder islData = new IslDataHolder(1000, 50, 1000);
-        service = new DiscoveryIslService(persistenceManager, options);
-        service.islUp(carrier, ref.getSource(), ref, islData);
+        service = new DiscoveryIslService(carrier, persistenceManager, options);
+        service.islUp(ref.getSource(), ref, islData);
 
         System.out.println(mockingDetails(carrier).printInvocations());
         System.out.println(mockingDetails(islRepository).printInvocations());
@@ -177,7 +176,7 @@ public class DiscoveryIslServiceTest {
         emulateEmptyPersistentDb();
 
         IslReference ref = new IslReference(endpointAlpha1, endpointBeta2);
-        service.islMove(carrier, ref.getSource(), ref);
+        service.islMove(ref.getSource(), ref);
 
         // System.out.println(mockingDetails(carrier).printInvocations());
         verify(carrier, times(2)).triggerReroute(any(RerouteAffectedFlows.class));

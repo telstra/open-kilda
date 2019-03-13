@@ -31,16 +31,18 @@ import java.util.HashMap;
 
 @Slf4j
 public class DiscoveryHistoryService {
+    private final ISwitchPrepopulateCarrier carrier;
     private final PersistenceManager persistenceManager;
 
-    public DiscoveryHistoryService(PersistenceManager persistenceManager) {
+    public DiscoveryHistoryService(ISwitchPrepopulateCarrier carrier, PersistenceManager persistenceManager) {
+        this.carrier = carrier;
         this.persistenceManager = persistenceManager;
     }
 
     /**
      * .
      */
-    public void applyHistory(ISwitchPrepopulateCarrier carrier) {
+    public void applyHistory() {
         log.debug("History service receive history lookup request");
         for (HistoryFacts history : loadNetworkHistory()) {
             carrier.switchAddWithHistory(history);

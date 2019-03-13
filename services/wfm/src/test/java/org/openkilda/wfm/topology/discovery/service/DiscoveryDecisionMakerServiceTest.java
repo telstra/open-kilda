@@ -58,69 +58,69 @@ public class DiscoveryDecisionMakerServiceTest {
 
     @Test
     public void discovered() {
-        DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(10, 5);
+        DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(carrier, 10, 5);
 
-        w.discovered(carrier, endpointBeta, islAlphaBeta, 1L);
-        w.discovered(carrier, endpointAlpha, islBetaAlpha, 2L);
+        w.discovered(endpointBeta, islAlphaBeta, 1L);
+        w.discovered(endpointAlpha, islBetaAlpha, 2L);
         verify(carrier).linkDiscovered(eq(islAlphaBeta));
         verify(carrier).linkDiscovered(eq(islBetaAlpha));
     }
 
     @Test
     public void failed() {
-        DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(10, 5);
-        w.failed(carrier, endpointAlpha, 0);
-        w.failed(carrier, endpointAlpha, 1);
-        w.failed(carrier, endpointAlpha, 4);
+        DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(carrier, 10, 5);
+        w.failed(endpointAlpha, 0);
+        w.failed(endpointAlpha, 1);
+        w.failed(endpointAlpha, 4);
         verify(carrier, never()).linkDestroyed(any(Endpoint.class));
-        w.failed(carrier, endpointAlpha, 5);
+        w.failed(endpointAlpha, 5);
         verify(carrier).linkDestroyed(eq(endpointAlpha));
 
-        w.discovered(carrier, endpointAlpha, islBetaAlpha, 20);
+        w.discovered(endpointAlpha, islBetaAlpha, 20);
         verify(carrier).linkDiscovered(islBetaAlpha);
 
         reset(carrier);
-        w.failed(carrier, endpointAlpha, 21);
-        w.failed(carrier, endpointAlpha, 23);
-        w.failed(carrier, endpointAlpha, 24);
+        w.failed(endpointAlpha, 21);
+        w.failed(endpointAlpha, 23);
+        w.failed(endpointAlpha, 24);
         verify(carrier, never()).linkDestroyed(any(Endpoint.class));
-        w.failed(carrier, endpointAlpha, 31);
+        w.failed(endpointAlpha, 31);
         verify(carrier).linkDestroyed(eq(endpointAlpha));
     }
 
     @Test
     public void tickerTest() {
-        DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(10, 5);
-        w.failed(carrier, endpointAlpha, 0);
-        w.tick(carrier, 1);
-        w.tick(carrier, 4);
+        DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(carrier, 10, 5);
+        w.failed(endpointAlpha, 0);
+        w.tick(1);
+        w.tick(4);
         verify(carrier, never()).linkDestroyed(any(Endpoint.class));
-        w.tick(carrier, 5);
+        w.tick(5);
         verify(carrier).linkDestroyed(eq(endpointAlpha));
 
-        w.discovered(carrier, endpointAlpha, islBetaAlpha, 20);
+        w.discovered(endpointAlpha, islBetaAlpha, 20);
         verify(carrier).linkDiscovered(islBetaAlpha);
 
         reset(carrier);
-        w.failed(carrier, endpointAlpha, 21);
-        w.tick(carrier, 23);
-        w.failed(carrier, endpointAlpha, 24);
+        w.failed(endpointAlpha, 21);
+        w.tick(23);
+        w.failed(endpointAlpha, 24);
         verify(carrier, never()).linkDestroyed(any(Endpoint.class));
-        w.tick(carrier, 31);
+        w.tick(31);
         verify(carrier).linkDestroyed(eq(endpointAlpha));
     }
 
     @Test
     public void removeWatchTest() {
-        DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(10, 5);
+        DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(carrier, 10, 5);
 
-        w.discovered(carrier, endpointAlpha, islBetaAlpha, 0);
-        w.discovered(carrier, endpointAlpha, islBetaAlpha, 0);
+        w.discovered(endpointAlpha, islBetaAlpha, 0);
+        w.discovered(endpointAlpha, islBetaAlpha, 0);
         verify(carrier, times(2)).linkDiscovered(islBetaAlpha);
 
         reset(carrier);
-        w.clear(carrier, endpointAlpha);
-        w.discovered(carrier, endpointAlpha, islBetaAlpha, 0);
+        w.clear(endpointAlpha);
+        w.discovered(endpointAlpha, islBetaAlpha, 0);
         verify(carrier, only()).linkDiscovered(islBetaAlpha);
     }
 }

@@ -32,6 +32,7 @@ import java.util.TreeMap;
 
 @Slf4j
 public class DiscoveryWatcherService {
+    private final IWatcherCarrier carrier;
     private final long awaitTime;
     private final Integer taskId;
 
@@ -42,7 +43,8 @@ public class DiscoveryWatcherService {
     private Set<Packet> confirmedPackets = new HashSet<>();
     private SortedMap<Long, Set<Packet>> timeouts = new TreeMap<>();
 
-    public DiscoveryWatcherService(long awaitTime, Integer taskId) {
+    public DiscoveryWatcherService(IWatcherCarrier carrier, long awaitTime, Integer taskId) {
+        this.carrier = carrier;
         this.awaitTime = awaitTime;
         this.taskId = taskId;
     }
@@ -50,7 +52,7 @@ public class DiscoveryWatcherService {
     /**
      * Add new endpoint for send discovery process.
      */
-    public void addWatch(IWatcherCarrier carrier, Endpoint endpoint, long currentTime) {
+    public void addWatch(Endpoint endpoint, long currentTime) {
         Packet packet = Packet.of(endpoint, packetNo);
         log.debug("Watcher service receive ADD-watch request for {} and produce packet id:{} task:{}",
                   endpoint, packet.packetNo, taskId);
@@ -69,7 +71,7 @@ public class DiscoveryWatcherService {
     /**
      * Remove endpoint from discovery process.
      */
-    public void removeWatch(IWatcherCarrier carrier, Endpoint endpoint) {
+    public void removeWatch(Endpoint endpoint) {
         log.debug("Watcher service receive REMOVE-watch request for {}", endpoint);
         carrier.clearDiscovery(endpoint);
         producedPackets.removeIf(packet -> packet.endpoint.equals(endpoint));
@@ -79,14 +81,14 @@ public class DiscoveryWatcherService {
     /**
      * Consume timer tick.
      */
-    public void tick(IWatcherCarrier carrier, long tickTime) {
+    public void tick(long tickTime) {
         clock.tick(tickTime);
 
         SortedMap<Long, Set<Packet>> range = timeouts.subMap(0L, tickTime + 1);
         if (!range.isEmpty()) {
             for (Set<Packet> e : range.values()) {
                 for (Packet ee : e) {
-                    timeoutAction(carrier, ee);
+                    timeoutAction(ee);
                 }
             }
             range.clear();
@@ -109,17 +111,17 @@ public class DiscoveryWatcherService {
     /**
      * Consume discovery event.
      */
-    public void discovery(IWatcherCarrier carrier, IslInfoData discoveryEvent) {
+    public void discovery(IslInfoData discoveryEvent) {
         Endpoint source = new Endpoint(discoveryEvent.getSource());
         Long packetId = discoveryEvent.getPacketId();
         if (packetId == null) {
             log.error("Got corrupted discovery packet into {} - packetId field is empty", source);
         } else {
-            discovery(carrier, discoveryEvent, Packet.of(source, packetId));
+            discovery(discoveryEvent, Packet.of(source, packetId));
         }
     }
 
-    private void discovery(IWatcherCarrier carrier, IslInfoData discoveryEvent, Packet packet) {
+    private void discovery(IslInfoData discoveryEvent, Packet packet) {
         if (log.isDebugEnabled()) {
             IslReference ref = IslReference.of(discoveryEvent);
             log.debug("Watcher service receive DISCOVERY event for {} id:{} task:{} - {}",
@@ -136,7 +138,7 @@ public class DiscoveryWatcherService {
         }
     }
 
-    private void timeoutAction(IWatcherCarrier carrier, Packet packet) {
+    private void timeoutAction(Packet packet) {
         producedPackets.remove(packet);
 
         if (confirmedPackets.remove(packet)) {

@@ -35,7 +35,7 @@ import org.apache.storm.tuple.Values;
 
 import java.util.Map;
 
-public class NetworkHistory extends BaseRichSpout {
+public class NetworkHistory extends BaseRichSpout implements ISwitchPrepopulateCarrier {
     public static final String SPOUT_ID = ComponentId.NETWORK_HISTORY.toString();
 
     public static final String FIELD_ID_DATAPATH = SpeakerRouter.FIELD_ID_DATAPATH;
@@ -48,6 +48,8 @@ public class NetworkHistory extends BaseRichSpout {
 
     private transient DiscoveryHistoryService service;
     private transient SpoutOutputCollector output;
+
+    private final CommandContext rootContext = new CommandContext();
 
     private boolean workDone = false;
 
@@ -63,13 +65,13 @@ public class NetworkHistory extends BaseRichSpout {
         }
         workDone = true;
 
-        service.applyHistory(new OutputAdapter(output));
+        service.applyHistory();
     }
 
     @Override
     public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
         output = collector;
-        service = new DiscoveryHistoryService(persistenceManager);
+        service = new DiscoveryHistoryService(this, persistenceManager);
     }
 
     @Override
@@ -77,20 +79,15 @@ public class NetworkHistory extends BaseRichSpout {
         streamManager.declare(STREAM_FIELDS);
     }
 
-    private static class OutputAdapter implements ISwitchPrepopulateCarrier {
-        private final SpoutOutputCollector output;
-        private final CommandContext rootContext;
+    /**
+     * Emit new history fact about switch.
+     * @param historyFacts entity
+     */
+    public void switchAddWithHistory(HistoryFacts historyFacts) {
+        SwitchHistoryCommand command = new SwitchHistoryCommand(historyFacts);
+        SwitchId switchId = command.getDatapath();
 
-        OutputAdapter(SpoutOutputCollector output) {
-            this.output = output;
-            this.rootContext = new CommandContext();
-        }
-
-        public void switchAddWithHistory(HistoryFacts historyFacts) {
-            SwitchHistoryCommand command = new SwitchHistoryCommand(historyFacts);
-            SwitchId switchId = command.getDatapath();
-            CommandContext context = rootContext.fork(switchId.toOtsdFormat());
-            output.emit(new Values(switchId, command, context));
-        }
+        CommandContext context = rootContext.fork(switchId.toOtsdFormat());
+        output.emit(new Values(switchId, command, context));
     }
 }
