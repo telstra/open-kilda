@@ -64,8 +64,8 @@ public class GetRuleCommand extends FlowCommand {
     }
 
     @Override
-    protected CompletableFuture<Optional<OFMessage>> writeCommand(IOFSwitch sw, SessionService sessionService,
-                                                                  FloodlightModuleContext moduleContext) {
+    protected CompletableFuture<Optional<OFMessage>> writeCommands(IOFSwitch sw, SessionService sessionService,
+                                                                   FloodlightModuleContext moduleContext) {
         getLogger().debug("Getting rule with cookie {} from the switch {}", cookie, switchId);
         return new CompletableFutureAdapter<>(sw.writeRequest(buildCommand(sw)))
                 .thenApply(Optional::of);

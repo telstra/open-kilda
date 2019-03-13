@@ -19,6 +19,7 @@ import org.openkilda.floodlight.FloodlightResponse;
 import org.openkilda.floodlight.command.MessageWriter;
 import org.openkilda.floodlight.command.OfCommand;
 import org.openkilda.floodlight.command.meter.RemoveMeterCommand;
+import org.openkilda.floodlight.error.OfDeleteException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.flow.response.FlowResponse;
@@ -35,6 +36,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowDelete;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
 
@@ -64,7 +66,7 @@ public class FlowRemoveCommand extends FlowCommand {
     }
 
     @Override
-    protected FloodlightResponse buildResponse(OFMessage response) {
+    protected FloodlightResponse buildResponse() {
         return FlowResponse.builder()
                 .commandId(commandId)
                 .flowId(flowId)
@@ -75,41 +77,24 @@ public class FlowRemoveCommand extends FlowCommand {
     }
 
     @Override
-    protected CompletableFuture<Optional<OFMessage>> writeCommand(IOFSwitch sw, SessionService sessionService,
-                                                                  FloodlightModuleContext moduleContext) {
+    protected CompletableFuture<Optional<OFMessage>> writeCommands(IOFSwitch sw, SessionService sessionService,
+                                                                   FloodlightModuleContext moduleContext) {
         CompletableFuture<List<OFFlowStatsEntry>> entriesBeforeDeletion = dumpFlowTable(sw);
-
         CompletableFuture<List<OFFlowStatsEntry>> entriesAfterDeletion = entriesBeforeDeletion
-                .thenCompose(entries ->  {
-                    try {
-                        return super.writeCommand(sw, sessionService, moduleContext);
-                    } catch (SwitchOperationException e) {
-                        throw new CompletionException(e);
-                    }})
-                .thenCompose(deleted -> dumpFlowTable(sw));
+                .thenCompose(ignored -> removeRules(sw, sessionService, moduleContext))
+                .thenCompose(ignored -> dumpFlowTable(sw));
 
-        return entriesAfterDeletion.thenCombine(entriesBeforeDeletion, (entriesAfter, entriesBefore) ->
-                entriesBefore.stream()
-                        .map(entry -> entry.getCookie().getValue())
-                        .filter(cookieBefore -> entriesAfter.stream()
-                                .noneMatch(after -> after.getCookie().getValue() == cookieBefore))
-                        .peek(cookie -> getLogger().info("Rule with cookie {} has been removed from switch {}.",
-                                cookie, sw.getId())))
-                .thenApply(ignored -> Optional.empty());
+        return entriesAfterDeletion
+                .thenCombine(entriesBeforeDeletion, (after, before) -> verifyRulesDeleted(sw.getId(), before, after));
     }
 
     @Override
-    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
+    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
+            throws SwitchOperationException {
         List<MessageWriter> commands = new ArrayList<>();
 
-        try {
-            OfCommand meterRemoveCommand = new RemoveMeterCommand(messageContext, switchId, meterId);
-            commands.addAll(meterRemoveCommand.getCommands(sw, moduleContext));
-        } catch (UnsupportedSwitchOperationException e) {
-            getLogger().debug("Meter {} won't be deleted from switch {}: {}", meterId, e.getDpId(), e.getMessage());
-        } catch (SwitchOperationException e) {
-            buildError(e);
-        }
+        getDeleteMeterCommand(sw, moduleContext)
+                .ifPresent(commands::add);
 
         getDeleteCommands(sw, criteria)
                 .stream()
@@ -125,6 +110,15 @@ public class FlowRemoveCommand extends FlowCommand {
                         criteria, sw.getId()))
                 .map(criteria -> buildFlowDeleteByCriteria(sw.getOFFactory(), criteria))
                 .collect(Collectors.toList());
+    }
+
+    private CompletableFuture<Optional<OFMessage>> removeRules(IOFSwitch sw, SessionService sessionService,
+                                                               FloodlightModuleContext moduleContext) {
+        try {
+            return super.writeCommands(sw, sessionService, moduleContext);
+        } catch (SwitchOperationException e) {
+            throw new CompletionException(e);
+        }
     }
 
     private OFFlowDelete buildFlowDeleteByCriteria(OFFactory ofFactory, DeleteRulesCriteria criteria) {
@@ -154,5 +148,42 @@ public class FlowRemoveCommand extends FlowCommand {
                 .ifPresent(outPort -> builder.setOutPort(OFPort.of(criteria.getOutPort())));
 
         return builder.build();
+    }
+
+    private Optional<MessageWriter> getDeleteMeterCommand(IOFSwitch sw, FloodlightModuleContext moduleContext)
+            throws SwitchOperationException {
+        if (meterId == null || meterId == 0L) {
+            return Optional.empty();
+        }
+
+        try {
+            OfCommand meterCommand = new RemoveMeterCommand(messageContext, switchId, meterId);
+            return meterCommand.getCommands(sw, moduleContext).stream().findFirst();
+        } catch (UnsupportedSwitchOperationException e) {
+            getLogger().debug("Skip meter {} deletion for flow {} on switch {}: {}",
+                    meterId, flowId, switchId.toString(), e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    private Optional<OFMessage> verifyRulesDeleted(DatapathId dpid, List<OFFlowStatsEntry> entriesBefore,
+                                                   List<OFFlowStatsEntry> entriesAfter) {
+        entriesAfter.stream()
+                .filter(entry -> entry.getCookie().equals(U64.of(cookie)))
+                .findAny()
+                .ifPresent(nonDeleted -> {
+                    throw new CompletionException(new OfDeleteException(dpid, cookie));
+                });
+
+        // we might accidentally delete rules belong to another flows. In order to be able to track it we write all
+        // deleted rules into the log.
+        entriesBefore.stream()
+                .map(entry -> entry.getCookie().getValue())
+                .filter(cookieBefore -> entriesAfter.stream()
+                        .noneMatch(after -> after.getCookie().getValue() == cookieBefore))
+                .forEach(deleted -> getLogger().info("Rule with cookie {} has been removed from switch {}.",
+                        deleted, switchId));
+
+        return Optional.empty();
     }
 }

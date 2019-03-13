@@ -166,6 +166,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
     private Optional<MessageWriter> getMeterCommand(IOFSwitch sw, FloodlightModuleContext moduleContext)
             throws SwitchOperationException {
         if (meterId == null || meterId == 0L) {
+            getLogger().debug("Skip meter installation. No meter required for flow {}", flowId);
             return Optional.empty();
         }
 

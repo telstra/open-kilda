@@ -49,11 +49,11 @@ import java.util.concurrent.CompletionException;
 @JsonTypeInfo(use = Id.NAME, property = "clazz")
 @JsonSubTypes({
         @Type(value = InstallIngressRuleCommand.class,
-                name = "org.openkilda.floodlight.flow.request.InstallIngressRule"),
+                name = "org.openkilda.floodlight.flow.request.InstallMultiSwitchIngressRule"),
+        @Type(value = InstallOneSwitchRuleCommand.class,
+                name = "org.openkilda.floodlight.flow.request.InstallSingleSwitchIngressRule"),
         @Type(value = InstallTransitRuleCommand.class,
                 name = "org.openkilda.floodlight.flow.request.InstallTransitRule"),
-        @Type(value = InstallOneSwitchRuleCommand.class,
-                name = "org.openkilda.floodlight.flow.request.InstallSingleSwitchRule"),
         @Type(value = InstallEgressRuleCommand.class,
                 name = "org.openkilda.floodlight.flow.request.InstallEgressRule"),
         @Type(value = FlowRemoveCommand.class,
@@ -85,7 +85,7 @@ public abstract class OfCommand {
             DatapathId dpid = DatapathId.of(switchId.toLong());
             sw = switchManager.lookupSwitch(dpid);
 
-            return writeCommand(sw, sessionService, moduleContext)
+            return writeCommands(sw, sessionService, moduleContext)
                     .handle((result, error) -> {
                         if (error != null) {
                             getLogger().error("Error occurred while processing OF command", error);
@@ -103,8 +103,8 @@ public abstract class OfCommand {
     /**
      * Writes command to a switch.
      */
-    protected CompletableFuture<Optional<OFMessage>> writeCommand(IOFSwitch sw, SessionService sessionService,
-                                                                  FloodlightModuleContext moduleContext)
+    protected CompletableFuture<Optional<OFMessage>> writeCommands(IOFSwitch sw, SessionService sessionService,
+                                                                   FloodlightModuleContext moduleContext)
             throws SwitchOperationException {
         CompletableFuture<Optional<OFMessage>> chain = CompletableFuture.completedFuture(null);
         for (MessageWriter message : getCommands(sw, moduleContext)) {
@@ -122,11 +122,11 @@ public abstract class OfCommand {
     protected abstract FloodlightResponse buildError(Throwable error);
 
     protected FloodlightResponse buildResponse() {
-        throw new UnsupportedOperationException("No response received from the switch while processing command");
+        throw new IllegalStateException("No response received from the switch while processing command");
     }
 
     protected FloodlightResponse buildResponse(OFMessage response) {
-        throw new UnsupportedOperationException("Received unexpected message from switch while processing command");
+        throw new IllegalStateException("Received unexpected message from switch while processing command");
     }
 
     public abstract List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)

@@ -1037,7 +1037,7 @@ class RecordHandler implements Runnable {
                 ofCommand.execute(context.getModuleContext())
                         .whenComplete((response, error) -> {
                             if (error != null) {
-                                logger.error("Error occurred while trying to execute OF command", error);
+                                logger.error("Error occurred while trying to execute OF command", error.getCause());
                             } else {
                                 getKafkaProducer().sendMessageAndTrack(kafkaTopicFactory.getTopic(response),
                                         record.key(), response);

@@ -15,15 +15,11 @@
 
 package org.openkilda.floodlight.flow.request;
 
-import static org.openkilda.messaging.Utils.FLOW_ID;
-
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
@@ -45,29 +41,12 @@ public class InstallIngressRule extends InstallMeteredRule {
     @JsonProperty("output_vlan_type")
     private final OutputVlanType outputVlanType;
 
-    /**
-     * The transit vlan id value.
-     */
-    @JsonProperty("transit_vlan_id")
-    private final Integer transitVlanId;
-
-    @JsonCreator
-    @Builder
-    public InstallIngressRule(@JsonProperty("message_context") MessageContext messageContext,
-                              @JsonProperty("command_id") String commandId,
-                              @JsonProperty(FLOW_ID) String flowId,
-                              @JsonProperty("cookie") Long cookie,
-                              @JsonProperty("switch_id") SwitchId switchId,
-                              @JsonProperty("input_port") Integer inputPort,
-                              @JsonProperty("output_port") Integer outputPort,
-                              @JsonProperty("bandwidth") Long bandwidth,
-                              @JsonProperty("meter_id") Long meterId,
-                              @JsonProperty("output_vlan_type") OutputVlanType outputVlanType,
-                              @JsonProperty("input_vlan_id") Integer inputVlanId,
-                              @JsonProperty("transit_vlan_id") Integer transitVlanId) {
+    public InstallIngressRule(MessageContext messageContext, String commandId, String flowId, Long cookie,
+                              SwitchId switchId, Integer inputPort, Integer outputPort, Long meterId, Long bandwidth,
+                              OutputVlanType outputVlanType, Integer inputVlanId) {
         super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort, meterId, bandwidth);
+
         this.inputVlanId = inputVlanId;
         this.outputVlanType = outputVlanType;
-        this.transitVlanId = transitVlanId;
     }
 }
