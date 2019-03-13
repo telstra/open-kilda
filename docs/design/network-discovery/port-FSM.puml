@@ -32,11 +32,11 @@ state OPERATIONAL {
 
     DOWN --> UP : port-up
     DOWN : enter / emit physical-down
+    DOWN : enter / emit delWatch
     DOWN : poll-fail / emit fail
 
     UP --> DOWN : port-down
     UP : enter / issue addWatch
-    UP : exit / issue delWatch
     UP : poll-discovery / emit discovery
     UP : poll-fail / emit fail
 }
@@ -49,6 +49,7 @@ UNOPERATIONAL --> FINISH : port-del
 UNOPERATIONAL : poll-fail / emit fail
 
 FINISH: enter / emit uni-isl-del
+FINISH: enter / emit delWatch
 FINISH -d-> [*]
 
 @enduml

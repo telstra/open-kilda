@@ -81,9 +81,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
         builder.internalTransition().within(PortFsmState.UP).on(PortFsmEvent.FAIL)
                 .callMethod("proxyFail");
         builder.onEntry(PortFsmState.UP)
-                .callMethod("enableDiscoveryPoll");
-        builder.onExit(PortFsmState.UP)
-                .callMethod("disableDiscoveryPoll");
+                .callMethod("upEnter");
 
         // DOWN
         builder.transition()
@@ -118,13 +116,8 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
         context.getOutput().setupUniIslHandler(endpoint, history);
     }
 
-    protected void enableDiscoveryPoll(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+    protected void upEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         context.getOutput().enableDiscoveryPoll(endpoint);
-    }
-
-    protected void disableDiscoveryPoll(PortFsmState from, PortFsmState to, PortFsmEvent event,
-                                        PortFsmContext context) {
-        context.getOutput().disableDiscoveryPoll(endpoint);
     }
 
     protected void proxyDiscovery(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
@@ -137,11 +130,13 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
 
     protected void downEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         IPortCarrier output = context.getOutput();
+        output.disableDiscoveryPoll(endpoint);
         output.notifyPortPhysicalDown(endpoint);
     }
 
     protected void finish(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         IPortCarrier output = context.getOutput();
+        output.disableDiscoveryPoll(endpoint);
         output.removeUniIslHandler(endpoint);
     }
 
