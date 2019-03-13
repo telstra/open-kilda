@@ -19,6 +19,8 @@ import static java.lang.String.format;
 
 import org.openkilda.floodlight.flow.request.InstallEgressRule;
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
+import org.openkilda.floodlight.flow.request.InstallMultiSwitchIngressRule;
+import org.openkilda.floodlight.flow.request.InstallSingleSwitchIngressRule;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.messaging.MessageContext;
@@ -80,12 +82,21 @@ public class FlowCommandFactory {
      * @return list with commands.
      */
     public List<InstallIngressRule> createInstallIngressRules(CommandContext context, Flow flow) {
-        InstallIngressRule forwardIngressRule = buildInstallIngressRule(context, flow.getForwardPath(),
-                flow.getSrcPort(), flow.getSrcVlan(), flow.getDestVlan());
-        InstallIngressRule reverseIngressRule = buildInstallIngressRule(context, flow.getReversePath(),
-                flow.getDestPort(), flow.getDestVlan(), flow.getSrcVlan());
+        InstallIngressRule forwardRule;
+        InstallIngressRule reverseRule;
+        if (flow.isOneSwitchFlow()) {
+            forwardRule = buildInstallOneSwitchRule(context, flow.getForwardPath(),
+                    flow.getSrcPort(), flow.getDestPort(), flow.getSrcVlan(), flow.getDestVlan());
+            reverseRule = buildInstallOneSwitchRule(context, flow.getReversePath(),
+                    flow.getDestPort(), flow.getSrcPort(), flow.getDestVlan(), flow.getSrcVlan());
+        } else {
+            forwardRule = buildInstallIngressRule(context, flow.getForwardPath(),
+                    flow.getSrcPort(), flow.getSrcVlan(), flow.getDestVlan());
+            reverseRule = buildInstallIngressRule(context, flow.getReversePath(),
+                    flow.getDestPort(), flow.getDestVlan(), flow.getSrcVlan());
+        }
 
-        return ImmutableList.of(forwardIngressRule, reverseIngressRule);
+        return ImmutableList.of(forwardRule, reverseRule);
     }
 
     /**
@@ -121,8 +132,8 @@ public class FlowCommandFactory {
         return ImmutableList.of(removeForwardIngress, removeReverseIngress);
     }
 
-    private InstallIngressRule buildInstallIngressRule(CommandContext context, FlowPath flowPath, int inputPort,
-                                                       int inputVlanId, int outputVlanId) {
+    private InstallMultiSwitchIngressRule buildInstallIngressRule(CommandContext context, FlowPath flowPath,
+                                                                  int inputPort, int inputVlanId, int outputVlanId) {
         TransitVlan transitVlan = transitVlanRepository.findByPathId(flowPath.getPathId())
                 .orElseThrow(() ->
                         new IllegalStateException(format("Transit vlan should be present for path %s for flow %s",
@@ -135,7 +146,7 @@ public class FlowCommandFactory {
                         format("PathSegment was not found for ingress flow rule, flowId: %s", flowPath.getFlowId())));
 
         String commandId = commandIdGenerator.generate().toString();
-        return InstallIngressRule.builder()
+        return InstallMultiSwitchIngressRule.builder()
                 .messageContext(new MessageContext(commandId, context.getCorrelationId()))
                 .commandId(commandIdGenerator.generate().toString())
                 .flowId(flowPath.getFlowId())
@@ -150,6 +161,27 @@ public class FlowCommandFactory {
                 .outputVlanType(getOutputVlanType(inputVlanId, outputVlanId))
                 .inputVlanId(inputVlanId)
                 .transitVlanId(transitVlan.getVlan())
+                .build();
+    }
+
+    private InstallSingleSwitchIngressRule buildInstallOneSwitchRule(CommandContext context, FlowPath flowPath,
+                                                                     int inputPort, int outputPort,
+                                                                     int inputVlanId, int outputVlanId) {
+        String commandId = commandIdGenerator.generate().toString();
+        return InstallSingleSwitchIngressRule.builder()
+                .messageContext(new MessageContext(commandId, context.getCorrelationId()))
+                .commandId(commandIdGenerator.generate().toString())
+                .flowId(flowPath.getFlowId())
+                .switchId(flowPath.getSrcSwitch().getSwitchId())
+                .cookie(flowPath.getCookie().getValue())
+                .bandwidth(flowPath.getBandwidth())
+                .meterId(Optional.ofNullable(flowPath.getMeterId())
+                        .map(MeterId::getValue)
+                        .orElse(null))
+                .inputPort(inputPort)
+                .outputPort(outputPort)
+                .outputVlanType(getOutputVlanType(inputVlanId, outputVlanId))
+                .inputVlanId(inputVlanId)
                 .build();
     }
 

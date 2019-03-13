@@ -22,6 +22,7 @@ import static org.junit.Assert.assertThat;
 
 import org.openkilda.floodlight.flow.request.InstallEgressRule;
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
+import org.openkilda.floodlight.flow.request.InstallMultiSwitchIngressRule;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
@@ -208,7 +209,7 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         List<InstallIngressRule> commands = target.createInstallIngressRules(COMMAND_CONTEXT, flow);
         assertEquals(2, commands.size());
 
-        InstallIngressRule sourceSwitchRule = commands.get(0);
+        InstallMultiSwitchIngressRule sourceSwitchRule = (InstallMultiSwitchIngressRule) commands.get(0);
         assertEquals(srcSwitch.getSwitchId(), sourceSwitchRule.getSwitchId());
         assertEquals(flow.getFlowId(), sourceSwitchRule.getFlowId());
         assertEquals(flow.getForwardPath().getCookie().getValue(), (long) sourceSwitchRule.getCookie());
@@ -219,7 +220,7 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         assertEquals(0, (long) sourceSwitchRule.getBandwidth());
         assertNull(sourceSwitchRule.getMeterId());
 
-        InstallIngressRule destSwitchRule = commands.get(1);
+        InstallMultiSwitchIngressRule destSwitchRule = (InstallMultiSwitchIngressRule) commands.get(1);
         assertEquals(destSwitch.getSwitchId(), destSwitchRule.getSwitchId());
         assertEquals(flow.getFlowId(), destSwitchRule.getFlowId());
         assertEquals(flow.getReversePath().getCookie().getValue(), (long) destSwitchRule.getCookie());
@@ -241,7 +242,7 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 1000, segments);
         List<InstallIngressRule> commands = target.createInstallIngressRules(COMMAND_CONTEXT, flow);
         assertEquals(2, commands.size());
-        InstallIngressRule sourceSwitchRule = commands.get(0);
+        InstallMultiSwitchIngressRule sourceSwitchRule = (InstallMultiSwitchIngressRule) commands.get(0);
         assertEquals(srcSwitch.getSwitchId(), sourceSwitchRule.getSwitchId());
         assertEquals(flow.getForwardPath().getCookie().getValue(), (long) sourceSwitchRule.getCookie());
         assertEquals(flow.getFlowId(), sourceSwitchRule.getFlowId());
@@ -252,7 +253,7 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         assertEquals(flow.getBandwidth(), (long) sourceSwitchRule.getBandwidth());
         assertEquals(flow.getForwardPath().getMeterId().getValue(), (long) sourceSwitchRule.getMeterId());
 
-        InstallIngressRule destSwitchRule = commands.get(1);
+        InstallMultiSwitchIngressRule destSwitchRule = (InstallMultiSwitchIngressRule) commands.get(1);
         assertEquals(destSwitchRule.getSwitchId(), destSwitchRule.getSwitchId());
         assertEquals(flow.getReversePath().getCookie().getValue(), (long) destSwitchRule.getCookie());
         assertEquals(flow.getFlowId(), destSwitchRule.getFlowId());
