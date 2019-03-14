@@ -34,7 +34,7 @@ class CheckLoggingSpec extends BaseSpecification {
         result.hits.hits.any { hit -> hit.source.message.toLowerCase().contains(discoveryMessage) }
     }
 
-    def "Check Northbound and Storm logging"() {
+    def "Check Northbound logging"() {
         when: "A non-existent switch is requested"
         northbound.getSwitch(NON_EXISTENT_SWITCH_ID)
 
@@ -44,6 +44,20 @@ class CheckLoggingSpec extends BaseSpecification {
 
         switchExc.rawStatusCode == 404
         switchExc.responseBodyAsString.to(MessageError).errorMessage.contains(switchErrorMsg)
+
+        and: "Northbound should log these actions within 30 seconds"
+        int timeout = 31
+        Wrappers.wait(timeout, 2) {
+            def nbLogs = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.NORTHBOUND).
+                    setTimeRange(timeout * 2).setLevel("ERROR").setField("message",
+                    String.format('"%s"', switchErrorMsg)).build())
+
+            assert nbLogs?.hits?.hits?.any { hit -> hit.source.message.contains(switchErrorMsg) }:
+                    "Northbound should generate an error message about not being able to find the switch"
+        }
+    }
+
+    def "Check Storm logging"() {
 
         when: "A non-existent flow is requested"
         def flowId = "nonexistentFlowId" + System.currentTimeMillis()
@@ -56,16 +70,13 @@ class CheckLoggingSpec extends BaseSpecification {
         flowExc.rawStatusCode == 404
         flowExc.responseBodyAsString.to(MessageError).errorMessage.contains(flowErrorMsg)
 
-        and: "Northbound and Storm should log these actions within 30 seconds"
+        and: "Storm should log these actions within 30 seconds"
         int timeout = 31
-        Wrappers.wait(timeout, 10) {
-            def nbLogs = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.NORTHBOUND).
-                    setTimeRange(timeout * 2).setLevel("ERROR").build())
+        Wrappers.wait(timeout, 2) {
             def stormLogs = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.STORM_WORKER).
-                    setTimeRange(timeout * 2).setLevel("WARN").build())
+                    setTimeRange(timeout * 2).setLevel("WARN").setField("message",
+                    String.format('"%s"', flowErrorMsg)).build())
 
-            assert nbLogs?.hits?.hits?.any { hit -> hit.source.message.contains(switchErrorMsg) }:
-                    "Northbound should generate an error message about not being able to find the switch"
             assert stormLogs?.hits?.hits?.any { hit -> hit.source.message.contains(flowErrorMsg) }:
                     "Storm should generate an error message about not being able to find the flow"
         }
