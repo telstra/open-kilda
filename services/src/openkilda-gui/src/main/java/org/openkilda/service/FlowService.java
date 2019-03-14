@@ -393,10 +393,12 @@ public class FlowService {
                 flows.get(index).setDiscrepancy(discrepancy);
                 flows.get(index).setState(inventoryFlow.getState());
                 flows.get(index).setIgnoreBandwidth(inventoryFlow.getIgnoreBandwidth());
+                flows.get(index).setInventoryFlow(true);
             } else {
                 final Map<String, String> csNames = switchIntegrationService.getSwitchNames();
                 FlowInfo flowObj = new FlowInfo();
                 flowConverter.toFlowInfo(flowObj, inventoryFlow, csNames);
+                flowObj.setInventoryFlow(true);
                 discrepancyFlow.add(flowObj);
             }
         }
@@ -428,6 +430,7 @@ public class FlowService {
 
                 flow.setDiscrepancy(discrepancy);
             }
+            flow.setControllerFlow(true);
         }
         flows.addAll(discrepancyFlow);
     }

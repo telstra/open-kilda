@@ -19,6 +19,7 @@ import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.KildaCoreConfig;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
+import org.openkilda.floodlight.command.CommandWrapper;
 import org.openkilda.floodlight.command.PendingCommandSubmitter;
 import org.openkilda.floodlight.utils.CommandContextFactory;
 
@@ -99,6 +100,7 @@ public class CommandProcessorService implements IService {
      * Execute command without intermediate completion check.
      */
     public void processLazy(Command command) {
+        command = wrapCommand(command);
         if (command.isOneShot()) {
             executeOneShot(command);
         } else {
@@ -117,6 +119,10 @@ public class CommandProcessorService implements IService {
     }
 
     public synchronized void markCompleted(ProcessorTask task) { }
+
+    private Command wrapCommand(Command target) {
+        return new CommandWrapper(target);
+    }
 
     private void executeOneShot(Command command) {
         executor.execute(() -> {

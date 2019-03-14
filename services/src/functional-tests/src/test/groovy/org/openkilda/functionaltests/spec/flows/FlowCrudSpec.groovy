@@ -278,7 +278,7 @@ class FlowCrudSpec extends BaseSpecification {
         then: "Error is returned, stating a readable reason of conflict"
         def error = thrown(HttpClientErrorException)
         error.statusCode == HttpStatus.CONFLICT
-        error.responseBodyAsString.to(MessageError).errorMessage == data.getError(flow)
+        error.responseBodyAsString.to(MessageError).errorMessage == data.getError(flow, conflictingFlow)
 
         and: "Cleanup: delete the dominant flow"
         flowHelper.deleteFlow(flow.id)
@@ -289,8 +289,8 @@ class FlowCrudSpec extends BaseSpecification {
                 makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
                     flowToConflict.id = dominantFlow.id
                 },
-                getError            : { FlowPayload flowToError ->
-                    "Could not create flow: Flow $flowToError.id already exists"
+                getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict ->
+                    "Could not create flow: Flow $dominantFlow.id already exists"
                 }
         ]
     }
@@ -316,7 +316,7 @@ class FlowCrudSpec extends BaseSpecification {
         then: "Error is returned, stating a readable reason of conflict"
         def error = thrown(HttpClientErrorException)
         error.statusCode == HttpStatus.CONFLICT
-        error.responseBodyAsString.to(MessageError).errorMessage == data.getError(flow1, "update")
+        error.responseBodyAsString.to(MessageError).errorMessage == data.getError(flow1, conflictingFlow, "update")
 
         and: "Cleanup: delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
@@ -438,9 +438,17 @@ class FlowCrudSpec extends BaseSpecification {
     }
 
     @Shared
-    def portError = { String operation, int port, SwitchId switchId, String flowId ->
-        "Could not $operation flow: The port $port on the switch '$switchId' has already occupied " +
-                "by the flow '$flowId'."
+    def errorMessage = { String operation, FlowPayload flow, String endpoint, FlowPayload conflictingFlow,
+                         String conflictingEndpoint ->
+        "Could not $operation flow: Requested flow '$conflictingFlow.id' conflicts with existing flow '$flow.id'. " +
+                "Details: requested flow '$conflictingFlow.id' $conflictingEndpoint: " +
+                "switch=${conflictingFlow."$conflictingEndpoint".datapath} " +
+                "port=${conflictingFlow."$conflictingEndpoint".portNumber} " +
+                "vlan=${conflictingFlow."$conflictingEndpoint".vlanId}, " +
+                "existing flow '$flow.id' $endpoint: " +
+                "switch=${flow."$endpoint".datapath} " +
+                "port=${flow."$endpoint".portNumber} " +
+                "vlan=${flow."$endpoint".vlanId}"
     }
 
     /**
@@ -577,9 +585,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.source.portNumber = dominantFlow.source.portNumber
                             flowToConflict.source.vlanId = dominantFlow.source.vlanId
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.source.portNumber, flowToError.source.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "source", flowToConflict, "source")
                         }
                 ],
                 [
@@ -588,9 +596,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
                             flowToConflict.destination.vlanId = dominantFlow.destination.vlanId
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.destination.portNumber, flowToError.destination.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "destination", flowToConflict, "destination")
                         }
                 ],
                 [
@@ -599,9 +607,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.source.portNumber = dominantFlow.source.portNumber
                             flowToConflict.source.vlanId = 0
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.source.portNumber, flowToError.source.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "source", flowToConflict, "source")
                         }
                 ],
                 [
@@ -610,9 +618,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
                             flowToConflict.destination.vlanId = 0
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.destination.portNumber, flowToError.destination.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "destination", flowToConflict, "destination")
                         }
                 ],
                 [
@@ -621,9 +629,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.source.portNumber = dominantFlow.source.portNumber
                             dominantFlow.source.vlanId = 0
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.source.portNumber, flowToError.source.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "source", flowToConflict, "source")
                         }
                 ],
                 [
@@ -632,9 +640,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
                             dominantFlow.destination.vlanId = 0
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.destination.portNumber, flowToError.destination.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "destination", flowToConflict, "destination")
                         }
                 ],
                 [
@@ -644,9 +652,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.source.vlanId = 0
                             dominantFlow.source.vlanId = 0
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.source.portNumber, flowToError.source.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "source", flowToConflict, "source")
                         }
                 ],
                 [
@@ -656,9 +664,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.destination.vlanId = 0
                             dominantFlow.destination.vlanId = 0
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.destination.portNumber, flowToError.destination.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "destination", flowToConflict, "destination")
                         }
                 ]
         ]

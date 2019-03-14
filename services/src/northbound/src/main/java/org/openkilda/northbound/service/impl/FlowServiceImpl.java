@@ -30,6 +30,8 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
 import org.openkilda.messaging.command.flow.MeterModifyRequest;
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
@@ -723,7 +725,9 @@ public class FlowServiceImpl implements FlowService {
         Collection<Flow> flows = flowRepository.findById(flowId);
         logger.debug("VALIDATE FLOW: Found Flows: count = {}", flows.size());
         if (flows.isEmpty()) {
-            return null;
+            final String correlationId = RequestCorrelationId.getId();
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.NOT_FOUND,
+                    String.format("Could not validate flow: Flow %s not found", flowId), "Flow not found");
         }
 
         /*
