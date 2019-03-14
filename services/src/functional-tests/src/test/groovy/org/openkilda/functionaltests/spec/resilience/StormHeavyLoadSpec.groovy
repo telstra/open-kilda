@@ -46,11 +46,12 @@ class StormHeavyLoadSpec extends BaseSpecification {
         def islData = northbound.getAllLinks().findAll { it.state == IslChangeType.DISCOVERED }
         withPool(threads) {
             messages.intdiv(threads * operations).times {
+                def sw = isl.srcSwitch.dpId
                 producers.eachParallel {
-                    it.send(new ProducerRecord(topoDiscoTopic, buildMessage(new PortInfoData(isl.srcSwitch.dpId,
-                            isl.srcPort, null, PortChangeType.DOWN)).toJson()))
-                    it.send(new ProducerRecord(topoDiscoTopic, buildMessage(new PortInfoData(isl.srcSwitch.dpId,
-                            isl.srcPort, null, PortChangeType.UP)).toJson()))
+                    it.send(new ProducerRecord(topoDiscoTopic, sw.toString(),
+                            buildMessage(new PortInfoData(sw, isl.srcPort, null, PortChangeType.DOWN)).toJson()))
+                    it.send(new ProducerRecord(topoDiscoTopic, sw.toString(),
+                            buildMessage(new PortInfoData(sw, isl.srcPort, null, PortChangeType.UP)).toJson()))
                     it.send(new ProducerRecord(topoDiscoTopic,
                             buildMessage(islData[r.nextInt(islData.size())]).toJson()))
                 }
