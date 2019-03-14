@@ -313,11 +313,11 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
 
     @Override
     public void islBfdFlagChanged(Isl isl) {
-
         IslInfoData islInfoData = IslMapper.INSTANCE.map(isl);
         IslBfdFlagUpdated data = IslBfdFlagUpdated.builder()
                 .source(islInfoData.getSource())
                 .destination(islInfoData.getDestination())
+                .enableBfd(isl.isEnableBfd())
                 .build();
         getOutput().emit(StreamType.DISCO.toString(), getTuple(), new Values(data, getCorrelationId()));
     }
