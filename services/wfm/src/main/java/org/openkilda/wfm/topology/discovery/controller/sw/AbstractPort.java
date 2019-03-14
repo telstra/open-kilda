@@ -50,4 +50,9 @@ public abstract class AbstractPort implements Serializable {
     public int getPortNumber() {
         return endpoint.getPortNumber();
     }
+
+    @Override
+    public String toString() {
+        return String.format("%s:%s status:%s", getClass().getCanonicalName(), endpoint, linkStatus);
+    }
 }

@@ -22,6 +22,7 @@ import org.openkilda.wfm.topology.discovery.controller.BfdPortFsm;
 import org.openkilda.wfm.topology.discovery.controller.BfdPortFsm.BfdPortFsmContext;
 import org.openkilda.wfm.topology.discovery.controller.BfdPortFsm.BfdPortFsmEvent;
 import org.openkilda.wfm.topology.discovery.controller.BfdPortFsm.BfdPortFsmState;
+import org.openkilda.wfm.topology.discovery.error.BfdPortControllerNotFoundException;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.model.LinkStatus;
@@ -69,15 +70,16 @@ public class DiscoveryBfdPortService {
     /**
      * .
      */
-    public void remove(Endpoint logicalEndpoint) {
+    public Endpoint remove(Endpoint logicalEndpoint) {
         log.debug("BFD-port service receive REMOVE request for logical-port {}", logicalEndpoint);
 
         BfdPortFsm controller = controllerByLogicalPort.remove(logicalEndpoint);
-        if (controller != null) {
-            remove(controller);
-        } else {
-            logMissingControllerByLogicalEndpoint(logicalEndpoint, "remove handler");
+        if (controller == null) {
+            throw BfdPortControllerNotFoundException.ofLogical(logicalEndpoint);
         }
+
+        remove(controller);
+        return controller.getPhysicalEndpoint();
     }
 
     private void remove(BfdPortFsm controller) {
@@ -100,28 +102,23 @@ public class DiscoveryBfdPortService {
         log.debug("BFD-port service receive logical port status update for logical-port {} status:{}",
                   logicalEndpoint, linkStatus);
 
-        BfdPortFsm controller = controllerByLogicalPort.get(logicalEndpoint);
-        if (controller != null) {
-            BfdPortFsmContext context = BfdPortFsmContext.builder(controller, carrier).build();
-            BfdPortFsmEvent event;
+        BfdPortFsm controller = lookupControllerByLogicalEndpoint(logicalEndpoint);
+        BfdPortFsmContext context = BfdPortFsmContext.builder(controller, carrier).build();
 
-            switch (linkStatus) {
-                case UP:
-                    event = BfdPortFsmEvent.PORT_UP;
-                    break;
-                case DOWN:
-                    event = BfdPortFsmEvent.PORT_DOWN;
-                    break;
-                default:
-                    throw new IllegalArgumentException(String.format(
-                            "Unsupported %s.%s link state. Can\'t handle event for %s",
-                            LinkStatus.class.getName(), linkStatus, logicalEndpoint));
-            }
-            controllerExecutor.fire(controller, event, context);
-        } else {
-            logMissingControllerByLogicalEndpoint(
-                    logicalEndpoint, String.format("handle link status change to %s", linkStatus));
+        BfdPortFsmEvent event;
+        switch (linkStatus) {
+            case UP:
+                event = BfdPortFsmEvent.PORT_UP;
+                break;
+            case DOWN:
+                event = BfdPortFsmEvent.PORT_DOWN;
+                break;
+            default:
+                throw new IllegalArgumentException(String.format(
+                        "Unsupported %s.%s link state. Can\'t handle event for %s",
+                        LinkStatus.class.getName(), linkStatus, logicalEndpoint));
         }
+        controllerExecutor.fire(controller, event, context);
     }
 
     /**
@@ -138,17 +135,14 @@ public class DiscoveryBfdPortService {
      */
     public void enable(Endpoint physicalEndpoint, IslReference reference) {
         log.debug("BFD-port service receive ENABLE request for physical-port {}", physicalEndpoint);
-        BfdPortFsm controller = controllerByPhysicalPort.get(physicalEndpoint);
-        if (controller != null) {
-            log.info("Setup BFD session request for {} (logical-port:{})",
-                     controller.getPhysicalEndpoint(), controller.getLogicalEndpoint().getPortNumber());
-            BfdPortFsmContext context = BfdPortFsmContext.builder(controller, carrier)
-                    .islReference(reference)
-                    .build();
-            controllerExecutor.fire(controller, BfdPortFsmEvent.ENABLE, context);
-        } else {
-            logMissingControllerByPhysicalEndpoint(physicalEndpoint, "handle ENABLE request");
-        }
+
+        BfdPortFsm controller = lookupControllerByPhysicalEndpoint(physicalEndpoint);
+        log.info("Setup BFD session request for {} (logical-port:{})",
+                 controller.getPhysicalEndpoint(), controller.getLogicalEndpoint().getPortNumber());
+        BfdPortFsmContext context = BfdPortFsmContext.builder(controller, carrier)
+                .islReference(reference)
+                .build();
+        controllerExecutor.fire(controller, BfdPortFsmEvent.ENABLE, context);
     }
 
     /**
@@ -156,15 +150,12 @@ public class DiscoveryBfdPortService {
      */
     public void disable(Endpoint physicalEndpoint) {
         log.debug("BFD-port service receive DISABLE request for physical-port {}", physicalEndpoint);
-        BfdPortFsm controller = controllerByPhysicalPort.get(physicalEndpoint);
-        if (controller != null) {
-            log.info("Remove BFD session request for {} (logical-port:{})",
-                     controller.getPhysicalEndpoint(), controller.getLogicalEndpoint().getPortNumber());
-            BfdPortFsmContext context = BfdPortFsmContext.builder(controller, carrier).build();
-            controllerExecutor.fire(controller, BfdPortFsmEvent.DISABLE, context);
-        } else {
-            logMissingControllerByPhysicalEndpoint(physicalEndpoint, "handle DISABLE request");
-        }
+
+        BfdPortFsm controller = lookupControllerByPhysicalEndpoint(physicalEndpoint);
+        log.info("Remove BFD session request for {} (logical-port:{})",
+                 controller.getPhysicalEndpoint(), controller.getLogicalEndpoint().getPortNumber());
+        BfdPortFsmContext context = BfdPortFsmContext.builder(controller, carrier).build();
+        controllerExecutor.fire(controller, BfdPortFsmEvent.DISABLE, context);
     }
 
     /**
@@ -227,15 +218,19 @@ public class DiscoveryBfdPortService {
     }
 
     // -- private --
-    private void logMissingControllerByLogicalEndpoint(Endpoint endpoint, String operation) {
-        logMissingController(String.format("logical endpoint %s", endpoint), operation);
+    private BfdPortFsm lookupControllerByPhysicalEndpoint(Endpoint endpoint) {
+        BfdPortFsm controller = controllerByPhysicalPort.get(endpoint);
+        if (controller == null) {
+            throw BfdPortControllerNotFoundException.ofPhysical(endpoint);
+        }
+        return controller;
     }
 
-    private void logMissingControllerByPhysicalEndpoint(Endpoint endpoint, String operation) {
-        logMissingController(String.format("physical endpoint %s", endpoint), operation);
-    }
-
-    private void logMissingController(String endpoint, String operation) {
-        log.error("There is no BFD handler associated with {} - unable to {}", endpoint, operation);
+    private BfdPortFsm lookupControllerByLogicalEndpoint(Endpoint endpoint) {
+        BfdPortFsm controller = controllerByLogicalPort.get(endpoint);
+        if (controller == null) {
+            throw BfdPortControllerNotFoundException.ofLogical(endpoint);
+        }
+        return controller;
     }
 }

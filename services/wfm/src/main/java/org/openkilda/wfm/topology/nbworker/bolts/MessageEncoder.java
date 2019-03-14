@@ -19,9 +19,6 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.info.event.DeactivateIslInfoData;
-import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
-import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.share.bolt.KafkaEncoder;
 import org.openkilda.wfm.topology.nbworker.StreamType;
@@ -41,8 +38,6 @@ public class MessageEncoder extends KafkaEncoder {
 
             if (payload instanceof FlowRerouteRequest) {
                 getOutput().emit(StreamType.REROUTE.toString(), input, new Values(message));
-            } else if (routeIntoDisco(payload)) {
-                getOutput().emit(StreamType.DISCO.toString(), input, new Values(message));
             } else if (payload instanceof ErrorData) {
                 getOutput().emit(StreamType.ERROR.toString(), input, new Values(null, message));
             }
@@ -52,16 +47,9 @@ public class MessageEncoder extends KafkaEncoder {
         }
     }
 
-    private boolean routeIntoDisco(MessageData payload) {
-        return payload instanceof DeactivateIslInfoData
-                || payload instanceof DeactivateSwitchInfoData
-                || payload instanceof IslBfdFlagUpdated;
-    }
-
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputManager) {
         outputManager.declareStream(StreamType.REROUTE.toString(), new Fields("message"));
-        outputManager.declareStream(StreamType.DISCO.toString(), new Fields("message"));
         outputManager.declareStream(StreamType.ERROR.toString(), STREAM_FIELDS);
     }
 }

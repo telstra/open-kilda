@@ -92,6 +92,15 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
         return topology.createTopology();
     }
 
+    private void coordinator(TopologyBuilder topology) {
+        topology.setSpout(CoordinatorSpout.ID, new CoordinatorSpout(), 1);
+
+        Fields keyGrouping = new Fields(MessageTranslator.KEY_FIELD);
+        topology.setBolt(CoordinatorBolt.ID, new CoordinatorBolt(), 1)
+                .allGrouping(CoordinatorSpout.ID)
+                .fieldsGrouping(SpeakerWorker.BOLT_ID, CoordinatorBolt.INCOME_STREAM, keyGrouping);
+    }
+
     private void inputSpeaker(TopologyBuilder topology, int scaleFactor) {
         KafkaSpout<String, Message> spout = buildKafkaSpout(
                 topologyConfig.getTopoDiscoTopic(), ComponentId.INPUT_SPEAKER.toString());
@@ -112,15 +121,6 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
                 .directGrouping(CoordinatorBolt.ID)
                 .fieldsGrouping(workerConfig.getHubComponent(), BfdPortHandler.STREAM_SPEAKER_ID, keyGrouping)
                 .fieldsGrouping(workerConfig.getWorkerSpoutComponent(), SpeakerRouter.STREAM_WORKER_ID, keyGrouping);
-    }
-
-    private void coordinator(TopologyBuilder topology) {
-        topology.setSpout(CoordinatorSpout.ID, new CoordinatorSpout(), 1);
-
-        Fields keyGrouping = new Fields(MessageTranslator.KEY_FIELD);
-        topology.setBolt(CoordinatorBolt.ID, new CoordinatorBolt(), 1)
-                .allGrouping(CoordinatorSpout.ID)
-                .fieldsGrouping(SpeakerWorker.BOLT_ID, CoordinatorBolt.INCOME_STREAM, keyGrouping);
     }
 
     private void speakerRouter(TopologyBuilder topology, int scaleFactor) {
@@ -188,7 +188,8 @@ public class DiscoveryTopology extends AbstractTopology<DiscoveryTopologyConfig>
         topology.setBolt(BfdPortHandler.BOLT_ID, bolt, scaleFactor)
                 .fieldsGrouping(SwitchHandler.BOLT_ID, SwitchHandler.STREAM_BFD_PORT_ID, switchGrouping)
                 .fieldsGrouping(IslHandler.BOLT_ID, IslHandler.STREAM_BFD_PORT_ID, islGrouping)
-                .directGrouping(SpeakerWorker.BOLT_ID, SpeakerWorker.STREAM_HUB_ID);
+                .directGrouping(SpeakerWorker.BOLT_ID, SpeakerWorker.STREAM_HUB_ID)
+                .allGrouping(SpeakerRouter.BOLT_ID, SpeakerRouter.STREAM_BCAST_ID);
     }
 
     private void uniIslHandler(TopologyBuilder topology, int scaleFactor) {

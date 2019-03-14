@@ -20,6 +20,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.nbworker.bolts.DiscoveryEncoderBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FeatureTogglesBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.LinkOperationsBolt;
@@ -60,6 +61,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String PATHS_BOLT_NAME = "paths-bolt";
     private static final String SWITCH_VALIDATIONS_BOLT_NAME = "switch-validations-bolt";
     private static final String MESSAGE_ENCODER_BOLT_NAME = "message-encoder-bolt";
+    private static final String DISCOVERY_ENCODER_BOLT_NAME = "discovery-encoder-bolt";
     private static final String SPLITTER_BOLT_NAME = "response-splitter-bolt";
     private static final String NB_KAFKA_BOLT_NAME = "nb-kafka-bolt";
     private static final String FLOW_KAFKA_BOLT_NAME = "flow-kafka-bolt";
@@ -128,15 +130,19 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         tb.setBolt(MESSAGE_ENCODER_BOLT_NAME, messageEncoder, parallelism)
                 .shuffleGrouping(LINKS_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(LINKS_BOLT_NAME, StreamType.REROUTE.toString())
-                .shuffleGrouping(LINKS_BOLT_NAME, StreamType.DISCO.toString())
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.REROUTE.toString())
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.REROUTE.toString())
-                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.DISCO.toString())
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(PATHS_BOLT_NAME, StreamType.ERROR.toString());
+
+        DiscoveryEncoderBolt discoveryEncoder = new DiscoveryEncoderBolt();
+        tb.setBolt(DISCOVERY_ENCODER_BOLT_NAME, discoveryEncoder, parallelism)
+                .shuffleGrouping(LINKS_BOLT_NAME, StreamType.DISCO.toString())
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.DISCO.toString())
+                .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME, FeatureTogglesBolt.STREAM_NOTIFICATION_ID);
 
         KafkaBolt kafkaNbBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         tb.setBolt(NB_KAFKA_BOLT_NAME, kafkaNbBolt, parallelism)
@@ -149,7 +155,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
         KafkaBolt kafkaDiscoBolt = buildKafkaBolt(topologyConfig.getKafkaDiscoTopic());
         tb.setBolt(DISCO_KAFKA_BOLT_NAME, kafkaDiscoBolt, parallelism)
-                .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.DISCO.toString());
+                .shuffleGrouping(DISCOVERY_ENCODER_BOLT_NAME);
 
         return tb.createTopology();
     }

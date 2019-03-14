@@ -43,6 +43,7 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
     protected transient RepositoryFactory repositoryFactory;
     protected transient TransactionManager transactionManager;
     private String correlationId;
+    // TODO(surabujin): should be replaced with currentTuple provided by AbstractBolt
     private Tuple tuple;
 
     PersistenceOperationsBolt(PersistenceManager persistenceManager) {

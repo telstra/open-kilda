@@ -65,7 +65,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
             setupCommandContext();
             handleInput(input);
         } catch (Exception e) {
-            log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
+            wrapExceptionHandler(e);
         } finally {
             ack(input);
             currentTuple = null;
@@ -91,6 +91,10 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     protected abstract void handleInput(Tuple input) throws AbstractException;
 
+    protected void handleException(Exception e) throws Exception {
+        throw e;
+    }
+
     protected void ack(Tuple input) {
         log.debug("ACK tuple id {}", input.getMessageId());
         output.ack(input);
@@ -101,6 +105,14 @@ public abstract class AbstractBolt extends BaseRichBolt {
                 "{} is unable to handle input tuple from \"{}\" stream \"{}\" [{}] - have topology being build"
                 + " correctly?",
                 getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(), formatTuplePayload(input));
+    }
+
+    private void wrapExceptionHandler(Exception e) {
+        try {
+            handleException(e);
+        } catch (Exception ee) {
+            log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
+        }
     }
 
     @Override

@@ -23,20 +23,25 @@ import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.DeactivateIslInfoData;
 import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
+import org.openkilda.messaging.info.event.FeatureTogglesUpdate;
 import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
+import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.mappers.FeatureTogglesMapper;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslBfdFlagUpdatedCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.command.IslDeleteCommand;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.bcast.FeatureTogglesNotificationBcast;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.bcast.SpeakerBcast;
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerBfdSessionResponseCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerWorkerCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.sw.command.SwitchCommand;
@@ -77,6 +82,9 @@ public class SpeakerRouter extends AbstractBolt {
     public static final String STREAM_ISL_ID = "isl";
     public static final Fields STREAM_ISL_FIELDS = new Fields(FIELD_ID_ISL_SOURCE, FIELD_ID_ISL_DEST,
                                                               FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
+
+    public static final String STREAM_BCAST_ID = "notification";
+    public static final Fields STREAM_BCAST_FIELDS = new Fields(FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
     public static final String STREAM_WORKER_ID = "worker";
     public static final Fields STREAM_WORKER_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_INPUT, FIELD_ID_CONTEXT);
@@ -130,6 +138,10 @@ public class SpeakerRouter extends AbstractBolt {
         } else if (payload instanceof IslBfdFlagUpdated) {
             // FIXME(surabujin): is it ok to consume this "event" from speaker stream?
             emit(STREAM_ISL_ID, input, makeIslTuple(input, new IslBfdFlagUpdatedCommand((IslBfdFlagUpdated) payload)));
+        } else if (payload instanceof FeatureTogglesUpdate) {
+            FeatureTogglesDto toggles = ((FeatureTogglesUpdate) payload).getToggles();
+            emit(STREAM_BCAST_ID, input, makeBcastTuple(new FeatureTogglesNotificationBcast(
+                    FeatureTogglesMapper.INSTANCE.map(toggles))));
         } else if (payload instanceof DeactivateIslInfoData) {
             emit(STREAM_ISL_ID, input, makeIslTuple(input, new IslDeleteCommand((DeactivateIslInfoData) payload)));
         } else {
@@ -143,6 +155,7 @@ public class SpeakerRouter extends AbstractBolt {
         streamManager.declareStream(STREAM_WATCHER_ID, STREAM_WATCHER_FIELDS);
         streamManager.declareStream(STREAM_ISL_ID, STREAM_ISL_FIELDS);
         streamManager.declareStream(STREAM_WORKER_ID, STREAM_WORKER_FIELDS);
+        streamManager.declareStream(STREAM_BCAST_ID, STREAM_BCAST_FIELDS);
     }
 
     private Values makeDefaultTuple(Tuple input, SwitchCommand command) throws PipelineException {
@@ -161,5 +174,9 @@ public class SpeakerRouter extends AbstractBolt {
 
     private Values makeWorkerTuple(SpeakerWorkerCommand command) throws PipelineException {
         return new Values(command.getKey(), command, getCommandContext());
+    }
+
+    private Values makeBcastTuple(SpeakerBcast command) {
+        return new Values(command, getCommandContext());
     }
 }

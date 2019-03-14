@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,17 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.wfm.topology.discovery.storm.bolt.speaker.bcast;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    REROUTE,
-    FEATURE_TOGGLES,
-    NOTIFICATION,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR
+import org.openkilda.model.FeatureToggles;
+
+public class FeatureTogglesNotificationBcast extends SpeakerBcast {
+    private final FeatureToggles toggles;
+
+    public FeatureTogglesNotificationBcast(FeatureToggles toggles) {
+        this.toggles = toggles;
+    }
+
+    @Override
+    public void apply(ISpeakerBcastConsumer handler) {
+        handler.processFeatureTogglesUpdate(toggles);
+    }
 }

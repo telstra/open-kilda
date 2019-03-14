@@ -22,11 +22,13 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+
 @Data
 @Builder
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class FeatureTogglesDto {
+public class FeatureTogglesDto implements Serializable {
     @JsonProperty("flows_reroute_on_isl_discovery")
     private Boolean flowsRerouteOnIslDiscoveryEnabled;
 

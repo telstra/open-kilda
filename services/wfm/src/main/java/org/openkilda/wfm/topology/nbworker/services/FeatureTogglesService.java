@@ -25,10 +25,14 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class FeatureTogglesService {
+    private final IFeatureTogglesCarrier carrier;
+
     private FeatureTogglesRepository featureTogglesRepository;
     private TransactionManager transactionManager;
 
-    public FeatureTogglesService(RepositoryFactory repositoryFactory, TransactionManager transactionManager) {
+    public FeatureTogglesService(IFeatureTogglesCarrier carrier, RepositoryFactory repositoryFactory,
+                                 TransactionManager transactionManager) {
+        this.carrier = carrier;
         this.featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
         this.transactionManager = transactionManager;
     }
@@ -47,9 +51,15 @@ public class FeatureTogglesService {
      * @return updated feature toggles.
      */
     public FeatureToggles createOrUpdateFeatureToggles(FeatureToggles featureToggles) {
-        return transactionManager.doInTransaction(() -> {
+        FeatureToggles before = featureTogglesRepository.find().orElse(FeatureToggles.DEFAULTS);
+        FeatureToggles after = transactionManager.doInTransaction(() -> {
             featureTogglesRepository.createOrUpdate(featureToggles);
             return featureTogglesRepository.find().get();
         });
+
+        if (!before.equals(after)) {
+            carrier.featureTogglesUpdateNotification(after);
+        }
+        return after;
     }
 }

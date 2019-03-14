@@ -134,8 +134,11 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         SpeakerSwitchView speakerData = context.getSpeakerData();
 
         // set features for correct port (re)identification
-        features.clear();
-        features.addAll(speakerData.getFeatures());
+        if (!features.equals(speakerData.getFeatures())) {
+            log.info("Update features for {} - old:{} new:{}", switchId, features, speakerData.getFeatures());
+            features.clear();
+            features.addAll(speakerData.getFeatures());
+        }
 
         // locate changes
         Map<Integer, AbstractPort> removedPorts = new HashMap<>(portByNumber);
@@ -211,6 +214,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     protected void handlePortAdd(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                                  SwitchFsmContext context) {
         AbstractPort port = makePortRecord(Endpoint.of(switchId, context.getPortNumber()));
+        log.info("Receive port-add notification for {}", port);
+
         portAdd(port, context);
         updateOnlineStatus(port, context, true);
     }

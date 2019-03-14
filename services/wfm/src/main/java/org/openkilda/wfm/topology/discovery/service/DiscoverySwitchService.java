@@ -49,6 +49,8 @@ public class DiscoverySwitchService {
         this.carrier = carrier;
         this.persistenceManager = persistenceManager;
         this.bfdLogicalPortOffset = bfdLogicalPortOffset;
+
+        log.info("Discovery switch service configuration: bfd-logical-port-offset:{}", bfdLogicalPortOffset);
     }
 
     /**

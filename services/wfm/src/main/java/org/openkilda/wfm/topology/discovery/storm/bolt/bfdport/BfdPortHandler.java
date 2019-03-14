@@ -17,19 +17,26 @@ package org.openkilda.wfm.topology.discovery.storm.bolt.bfdport;
 
 import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.messaging.model.NoviBfdSession;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.TaskIdBasedKeyFactory;
+import org.openkilda.wfm.topology.discovery.error.ControllerNotFoundException;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.model.LinkStatus;
+import org.openkilda.wfm.topology.discovery.service.DiscoveryBfdGlobalToggleService;
 import org.openkilda.wfm.topology.discovery.service.DiscoveryBfdPortService;
+import org.openkilda.wfm.topology.discovery.service.IBfdGlobalToggleCarrier;
 import org.openkilda.wfm.topology.discovery.service.IBfdPortCarrier;
 import org.openkilda.wfm.topology.discovery.storm.ComponentId;
 import org.openkilda.wfm.topology.discovery.storm.bolt.bfdport.command.BfdPortCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.isl.IslHandler;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.SpeakerRouter;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.bcast.ISpeakerBcastConsumer;
+import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.bcast.SpeakerBcast;
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerBfdSessionRemoveCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerBfdSessionSetupCommand;
 import org.openkilda.wfm.topology.discovery.storm.bolt.speaker.command.SpeakerWorkerCommand;
@@ -44,7 +51,8 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class BfdPortHandler extends AbstractBolt implements IBfdPortCarrier {
+public class BfdPortHandler extends AbstractBolt
+        implements IBfdPortCarrier, IBfdGlobalToggleCarrier, ISpeakerBcastConsumer {
     public static final String BOLT_ID = ComponentId.BFD_PORT_HANDLER.toString();
 
     public static final String FIELD_ID_DATAPATH = SwitchHandler.FIELD_ID_DATAPATH;
@@ -62,7 +70,8 @@ public class BfdPortHandler extends AbstractBolt implements IBfdPortCarrier {
 
     private final PersistenceManager persistenceManager;
 
-    private transient DiscoveryBfdPortService service;
+    private transient DiscoveryBfdPortService bfdPortService;
+    private transient DiscoveryBfdGlobalToggleService globalToggleService;
     private transient TaskIdBasedKeyFactory keyFactory;
 
     public BfdPortHandler(PersistenceManager persistenceManager) {
@@ -76,8 +85,19 @@ public class BfdPortHandler extends AbstractBolt implements IBfdPortCarrier {
             handleSwitchCommand(input);
         } else if (IslHandler.BOLT_ID.equals(source)) {
             handleIslCommand(input);
+        } else if (SpeakerRouter.BOLT_ID.equals(source)) {
+            handleSpeakerBcast(input);
         } else {
             unhandledInput(input);
+        }
+    }
+
+    @Override
+    protected void handleException(Exception error) throws Exception {
+        try {
+            super.handleException(error);
+        } catch (ControllerNotFoundException e) {
+            log.error(e.getMessage());
         }
     }
 
@@ -91,6 +111,11 @@ public class BfdPortHandler extends AbstractBolt implements IBfdPortCarrier {
 
     private void handleCommand(Tuple input, String fieldName) throws PipelineException {
         BfdPortCommand command = pullValue(input, fieldName, BfdPortCommand.class);
+        command.apply(this);
+    }
+
+    private void handleSpeakerBcast(Tuple input) throws PipelineException {
+        SpeakerBcast command = pullValue(input, SpeakerRouter.FIELD_ID_COMMAND, SpeakerBcast.class);
         command.apply(this);
     }
 
@@ -114,58 +139,81 @@ public class BfdPortHandler extends AbstractBolt implements IBfdPortCarrier {
 
     @Override
     public void bfdUpNotification(Endpoint physicalEndpoint) {
-        emit(STREAM_UNIISL_ID, getCurrentTuple(), makeUniIslTuple(new UniIslBfdUpDownCommand(physicalEndpoint, true)));
+        globalToggleService.bfdStateChange(physicalEndpoint, LinkStatus.UP);
     }
 
     @Override
     public void bfdDownNotification(Endpoint physicalEndpoint) {
-        emit(STREAM_UNIISL_ID, getCurrentTuple(), makeUniIslTuple(new UniIslBfdUpDownCommand(physicalEndpoint, false)));
+        globalToggleService.bfdStateChange(physicalEndpoint, LinkStatus.DOWN);
     }
 
     @Override
     public void bfdKillNotification(Endpoint physicalEndpoint) {
+        globalToggleService.bfdKillNotification(physicalEndpoint);
+    }
+
+    @Override
+    public void filteredBfdUpNotification(Endpoint physicalEndpoint) {
+        emit(STREAM_UNIISL_ID, getCurrentTuple(), makeUniIslTuple(new UniIslBfdUpDownCommand(physicalEndpoint, true)));
+    }
+
+    @Override
+    public void filteredBfdDownNotification(Endpoint physicalEndpoint) {
+        emit(STREAM_UNIISL_ID, getCurrentTuple(), makeUniIslTuple(new UniIslBfdUpDownCommand(physicalEndpoint, false)));
+    }
+
+    @Override
+    public void filteredBfdKillNotification(Endpoint physicalEndpoint) {
         emit(STREAM_UNIISL_ID, getCurrentTuple(), makeUniIslTuple(new UniIslBfdKillCommand(physicalEndpoint)));
     }
 
     // -- commands processing --
 
     public void processSetup(Endpoint endpoint, int physicalPortNumber) {
-        service.setup(endpoint, physicalPortNumber);
+        bfdPortService.setup(endpoint, physicalPortNumber);
+        globalToggleService.setup(Endpoint.of(endpoint.getDatapath(), physicalPortNumber));
     }
 
-    public void processRemove(Endpoint endpoint) {
-        service.remove(endpoint);
+    public void processRemove(Endpoint logicalEndpoint) {
+        Endpoint physicalEndpoint = bfdPortService.remove(logicalEndpoint);
+        globalToggleService.remove(physicalEndpoint);
     }
 
     public void processEnable(Endpoint endpoint, IslReference reference) {
-        service.enable(endpoint, reference);
+        bfdPortService.enable(endpoint, reference);
     }
 
     public void processDisable(Endpoint endpoint) {
-        service.disable(endpoint);
+        bfdPortService.disable(endpoint);
     }
 
     public void processLinkStatusUpdate(Endpoint endpoint, LinkStatus status) {
-        service.updateLinkStatus(endpoint, status);
+        bfdPortService.updateLinkStatus(endpoint, status);
     }
 
     public void processOnlineModeUpdate(Endpoint endpoint, boolean mode) {
-        service.updateOnlineMode(endpoint, mode);
+        bfdPortService.updateOnlineMode(endpoint, mode);
     }
 
     public void processSpeakerSetupResponse(String key, Endpoint endpoint, BfdSessionResponse response) {
-        service.speakerResponse(key, endpoint, response);
+        bfdPortService.speakerResponse(key, endpoint, response);
     }
 
     public void processSpeakerTimeout(String key, Endpoint endpoint) {
-        service.speakerTimeout(key, endpoint);
+        bfdPortService.speakerTimeout(key, endpoint);
+    }
+
+    @Override
+    public void processFeatureTogglesUpdate(FeatureToggles toggles) {
+        globalToggleService.toggleUpdate(toggles);
     }
 
     // -- setup --
 
     @Override
     protected void init() {
-        service = new DiscoveryBfdPortService(this, persistenceManager);
+        bfdPortService = new DiscoveryBfdPortService(this, persistenceManager);
+        globalToggleService = new DiscoveryBfdGlobalToggleService(this, persistenceManager);
         keyFactory = new TaskIdBasedKeyFactory(getTaskId());
     }
 
@@ -175,7 +223,7 @@ public class BfdPortHandler extends AbstractBolt implements IBfdPortCarrier {
         streamManager.declareStream(STREAM_UNIISL_ID, STREAM_UNIISL_FIELDS);
     }
 
-    // -- private/service methods --
+    // -- private/bfdPortService methods --
 
     private Values makeSpeakerTuple(SpeakerWorkerCommand command) {
         return new Values(command.getKey(), command, getCommandContext());
