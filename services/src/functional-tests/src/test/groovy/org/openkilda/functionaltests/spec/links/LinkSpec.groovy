@@ -29,8 +29,8 @@ class LinkSpec extends BaseSpecification {
             it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd
         } ?: assumeTrue("Wasn't able to find suitable link", false)
 
-        double waitTime = discoveryTimeout - (discoveryTimeout * 0.2)
         double interval = discoveryTimeout * 0.2
+        double waitTime = discoveryTimeout - interval
 
         when: "Remove a one-way flow on an a-switch for simulating lost connection(not port down)"
         lockKeeper.removeFlows([isl.aswitch])
@@ -52,7 +52,7 @@ class LinkSpec extends BaseSpecification {
          * afterward the actualState of ISL on A side is equal to FAILED
          * and on B side is equal to DISCOVERED
          * */
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(WAIT_OFFSET + interval) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
             assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.FAILED
@@ -294,8 +294,8 @@ class LinkSpec extends BaseSpecification {
 
         where:
         islDescription | isl
-        "direct"       | getTopology().islsForActiveSwitches.find { !it.aswitch }
-        "a-switch"     | getTopology().islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
+        "direct"       | getTopology().islsForActiveSwitches.find { !it.aswitch && !it.bfd }
+        "a-switch"     | getTopology().islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd }
         "bfd"          | getTopology().islsForActiveSwitches.find { it.bfd }
     }
 
