@@ -3,11 +3,23 @@
         <div class="row">
             <div class="col-sm-4">
                 <div class="form-group input-group-sm">
-                     <input type="text" class="form-control" (keyup)="fulltextSearch($event)" placeholder="Search"/>
+                     <input type="text" id="search-input" class="form-control" (keyup)="fulltextSearch($event)" placeholder="Search"/>
                  </div>
             </div>
               <div class="col-sm-8 text-right text-filters mb-3">
                   <!-- <a class="cursor-pointer"><i class="fa fa-cog"></i> Custom View | </a> -->
+                  <div *ngIf="storeLinkSetting" class="btn-group btn-group-sm btn-group-toggle" data-toggle="buttons">
+                    <label class="btn" (click)="toggleType('all')" [ngClass]="{ 'btn-secondary' : typeFilter == 'all','btn-dark': typeFilter != 'all'}">
+                      <input type="radio" name="options" id="option1" autocomplete="off" checked> All
+                    </label>
+                    <label class="btn" (click)="toggleType('controller')" [ngClass]="{ 'btn-secondary' : typeFilter == 'controller','btn-dark': typeFilter != 'controller'}">
+                      <input type="radio" name="options" id="option2" autocomplete="off"> Controller
+                    </label>
+                    <label class="btn" (click)="toggleType('inventory')" [ngClass]="{ 'btn-secondary' : typeFilter == 'inventory','btn-dark': typeFilter != 'inventory'}">
+                      <input type="radio" name="options" id="option3" autocomplete="off"> Inventory
+                    </label>
+                  </div>
+                  |
                   <div class="btn-group" *ngIf="storeLinkSetting">
                       <div ngbDropdown class="d-inline-block">
                         <a class="cursor-pointer" ngbDropdownToggle  ><i class="fa fa-cog"></i> Filters | </a>
@@ -116,6 +128,12 @@
                  <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedDescription" id="expandedDescription"/>
                
         </th>
+        <th >
+          <span title="type">
+              type
+             </span>
+              
+        </th>
         <th class=""><span title="Action">Action</span></th>
       </tr>
     </thead>
@@ -131,6 +149,7 @@
         <td>{{row.maximum_bandwidth / 1000  || "-"}}</td>
         <td title="{{row.status || row.state ||  '-'}}">{{ row.status || row.state ||  "-"}}</td>
         <td title="{{row.description}}">{{row.description || "-"}}</td>
+        <td >{{ descrepancyString(row) }}</td>
         <td ><a class="pull-left" title="Edit Flow" *ngIf="commonService.hasPermission('fw_flow_update') && (!storeLinkSetting || (storeLinkSetting && row.hasOwnProperty('discrepancy') && row['discrepancy'].hasOwnProperty('controller-discrepancy') && !row['discrepancy']['controller-discrepancy']))" [routerLink]="['/flows/edit',row.flowid]"><i class="fa fa-edit"></i></a></td>
       </tr>
     </tbody>
