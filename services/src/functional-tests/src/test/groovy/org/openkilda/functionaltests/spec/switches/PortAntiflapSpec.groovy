@@ -103,7 +103,7 @@ timeout"() {
             islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
 
-        and: "cleanup: Bring port up"
+        and: "Cleanup: bring port up"
         northbound.portUp(sw.dpId, islPort)
         Wrappers.wait(antiflapCooldown + discoveryInterval + WAIT_OFFSET) {
             islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
@@ -172,5 +172,9 @@ timeout"() {
         new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, 0)
                 .kafkaChangePort(PortChangeType.UP)
         Wrappers.wait(WAIT_OFFSET) { islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED }
+    }
+
+    def cleanup() {
+        database.resetCosts()
     }
 }

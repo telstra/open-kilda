@@ -15,9 +15,11 @@
 
 package org.openkilda.pce.impl;
 
+import org.openkilda.model.FlowSegment;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.model.Edge;
 import org.openkilda.pce.model.Node;
 import org.openkilda.pce.model.WeightFunction;
@@ -26,8 +28,11 @@ import com.google.common.annotations.VisibleForTesting;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Semantically, this class represents an "available network". That means everything in it is available for path
@@ -66,11 +71,44 @@ public class AvailableNetwork {
     }
 
     /**
+     * Adds diversity weights into {@link AvailableNetwork} based on passed flow segments and configuration.
+     */
+    public void processDiversitySegments(Collection<FlowSegment> segments, PathComputerConfig config) {
+        for (FlowSegment segment : segments) {
+            Node srcNode = getSwitch(segment.getSrcSwitch().getSwitchId());
+            Node dstNode = getSwitch(segment.getDestSwitch().getSwitchId());
+            Edge segmentEdge = Edge.builder()
+                    .srcSwitch(srcNode)
+                    .srcPort(segment.getSrcPort())
+                    .destSwitch(dstNode)
+                    .destPort(segment.getDestPort())
+                    .build();
+
+            Optional<Edge> edgeOptional = dstNode.getIncomingLinks().stream().filter(segmentEdge::equals).findAny();
+            if (edgeOptional.isPresent()) {
+                Edge edge = edgeOptional.get();
+
+                edge.setDiversityWeight(edge.getDiversityWeight() + config.getDiversityIslWeight());
+                dstNode.setDiversityWeight(dstNode.getDiversityWeight() + config.getDiversitySwitchWeight());
+                if (segment.getSeqId() == 0) {
+                    srcNode.setDiversityWeight(srcNode.getDiversityWeight() + config.getDiversitySwitchWeight());
+                }
+            }
+        }
+    }
+
+    /**
      * Call this function to reduce the network to single (directed) links between src and dst switches.
      */
     public void reduceByWeight(WeightFunction weightFunction) {
         for (Node node : switches.values()) {
-            node.reduceByWeight(weightFunction);
+            Set<Edge> reduced = node.reduceByWeight(weightFunction);
+            reduced.forEach(e -> {
+                switches.get(e.getSrcSwitch().getSwitchId()).getIncomingLinks().remove(e);
+                switches.get(e.getSrcSwitch().getSwitchId()).getOutgoingLinks().remove(e);
+                switches.get(e.getDestSwitch().getSwitchId()).getIncomingLinks().remove(e);
+                switches.get(e.getDestSwitch().getSwitchId()).getOutgoingLinks().remove(e);
+            });
         }
     }
 }

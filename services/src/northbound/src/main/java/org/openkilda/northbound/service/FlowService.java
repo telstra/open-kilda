@@ -17,11 +17,14 @@ package org.openkilda.northbound.service;
 
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
+import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PingInput;
 import org.openkilda.northbound.dto.flows.PingOutput;
@@ -39,7 +42,7 @@ public interface FlowService {
      * @param flow          flow
      * @return created flow
      */
-    CompletableFuture<FlowPayload> createFlow(final FlowPayload flow);
+    CompletableFuture<FlowPayload> createFlow(final FlowCreatePayload flow);
 
     /**
      * Deletes flow.
@@ -55,7 +58,16 @@ public interface FlowService {
      * @param flow          flow
      * @return updated flow
      */
-    CompletableFuture<FlowPayload> updateFlow(final FlowPayload flow);
+    CompletableFuture<FlowPayload> updateFlow(final FlowUpdatePayload flow);
+
+    /**
+     * Patch flow.
+     *
+     * @param flowId        flow id
+     * @param flowPatchDto  flow parameters for update
+     * @return updated flow
+     */
+    CompletableFuture<FlowPayload> patchFlow(final String flowId, final FlowPatchDto flowPatchDto);
 
     /**
      * Gets flow by id.

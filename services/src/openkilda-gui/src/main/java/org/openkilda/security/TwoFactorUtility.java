@@ -62,7 +62,7 @@ public final class TwoFactorUtility {
         Base32 base32 = new Base32();
         String base32String = base32.encodeAsString(bytes);
 
-        logger.debug("  getBase32EncryptedKey method response " + base32String);
+        logger.debug("Get base32 encrypted key method response ");
 
         return base32String;
     }
@@ -74,18 +74,16 @@ public final class TwoFactorUtility {
      * @return the string
      */
     public static String generateEncryptedKey(final String base32String) {
-        logger.debug("[generateEncryptedKey] param : base32String " + base32String);
+        logger.debug("Generate encrypted key.");
         String generatedKey = null;
         try {
             String rsaString = RsaEncryptionDescription.rsaEncrypt(base32String.getBytes(), "");
             byte[] key = Base64.encodeBase64(rsaString.getBytes());
             generatedKey = new String(key);
         } catch (Exception e) {
-            logger.error("[generateEncryptedKey] Exception :" + e);
+            logger.error("Error occurred while generating encrypted key", e);
 
         }
-
-        logger.debug("[generateEncryptedKey] response " + generatedKey);
 
         return generatedKey;
     }
@@ -98,12 +96,11 @@ public final class TwoFactorUtility {
      * @throws Exception the exception
      */
     public static String decryptKey(final String secretKey) throws Exception {
-        logger.debug("[decryptKey] param : secretKey " + secretKey);
+        logger.debug("Decrypt key. ");
         byte[] decodedArray = Base64.decodeBase64(secretKey.getBytes());
         String decodeValue = new String(decodedArray, StandardCharsets.UTF_8);
         String decryptKey = RsaEncryptionDescription.rsaDecrypt(decodeValue, "");
 
-        logger.debug("[decryptKey] response " + decryptKey);
         return decryptKey;
     }
 
@@ -115,7 +112,7 @@ public final class TwoFactorUtility {
      * @return true, if successful
      */
     public static boolean validateOtp(final String otp, final String decryptKey) {
-        logger.debug("[validateOtp] param : ,decryptKey : " + decryptKey);
+        logger.debug("Validate otp.");
         boolean otpValid = false;
         Base32 base32 = new Base32();
         byte[] decoded = base32.decode(decryptKey);
@@ -141,14 +138,14 @@ public final class TwoFactorUtility {
                 otpVal = generateOtp(seed, steps, codelength, "HmacSHA1");
             }
         } catch (Exception e) {
-            logger.error("[validateOtp] Exception :" + e);
+            logger.error("Error occurred while vaildating OTP", e);
         }
 
         if (otp.equals(otpVal)) {
             otpValid = true;
         }
 
-        logger.debug("[validateOtp] response " + otpValid);
+        logger.debug("Validate otp. Response: " + otpValid);
 
         return otpValid;
     }
@@ -162,7 +159,7 @@ public final class TwoFactorUtility {
      * @return the string
      */
     public static String generateOtp(final String key, final String time, final String returnDigits) {
-        logger.debug("[generateOtp] param : key " + key + ",returnDigits : " + returnDigits);
+        logger.debug("Generate Otp.");
         return generateOtp(key, time, returnDigits, "HmacSHA1");
     }
 
@@ -180,8 +177,7 @@ public final class TwoFactorUtility {
 
     public static String generateOtp(final String key, final String time, final String returnDigits,
             final String crypto) {
-        logger.debug("[generateOtp] param : key " + key + ",time : " + time + ",returnDigits: " + returnDigits
-                + ", crypto :" + crypto);
+        logger.debug("Generate Otp.");
         int codeDigits = Integer.decode(returnDigits).intValue();
         String result = null;
 
@@ -219,7 +215,7 @@ public final class TwoFactorUtility {
      * @return the byte[]
      */
     private static byte[] hexStr2Bytes(final String hex) {
-        logger.debug("[hexStr2Bytes] param : key " + hex);
+        logger.debug("Hex string to byte. ");
         // Adding one byte to get the right conversion
         // Values starting with "0" can be converted
         byte[] byteArray = new BigInteger("10" + hex, 16).toByteArray();
@@ -230,7 +226,6 @@ public final class TwoFactorUtility {
             ret[i] = byteArray[i + 1];
         }
 
-        logger.debug("[hexStr2Bytes] response " + ret);
         return ret;
     }
 
@@ -243,7 +238,7 @@ public final class TwoFactorUtility {
      * @return the byte[]
      */
     private static byte[] hmac_sha(final String crypto, final byte[] keyBytes, final byte[] text) {
-        logger.debug("[hmac_sha] param : keyBytes " + keyBytes + ",text : " + text + ", crypto :" + crypto);
+        logger.debug("hmac sha.");
 
         try {
             Mac hmac;
@@ -253,7 +248,7 @@ public final class TwoFactorUtility {
 
             return hmac.doFinal(text);
         } catch (GeneralSecurityException gse) {
-            logger.error("[hmac_sha] Exception :" + gse);
+            logger.error("Error occurred while generating otp", gse);
             throw new UndeclaredThrowableException(gse);
         }
     }
@@ -265,7 +260,7 @@ public final class TwoFactorUtility {
      * @return the string
      */
     private static String bytesToHex(final byte[] bytes) {
-        logger.debug("[bytesToHex] param : bytes " + bytes);
+        logger.debug("Bytes to hex.");
         final char[] hexArray = "0123456789ABCDEF".toCharArray();
         char[] hexChars = new char[bytes.length * 2];
         for (int j = 0; j < bytes.length; j++) {
@@ -273,7 +268,6 @@ public final class TwoFactorUtility {
             hexChars[j * 2] = hexArray[v >>> 4];
             hexChars[j * 2 + 1] = hexArray[v & 0x0F];
         }
-        logger.debug("[bytesToHex] response " + new String(hexChars));
         return new String(hexChars);
     }
 }

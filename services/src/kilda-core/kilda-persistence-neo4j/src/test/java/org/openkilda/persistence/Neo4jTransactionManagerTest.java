@@ -148,4 +148,27 @@ public class Neo4jTransactionManagerTest extends Neo4jBasedTest {
         // then
         assertEquals(0, repository.findAll().size());
     }
+
+    @Test(expected = TestCheckedException.class)
+    public void shouldCheckedExceptionThrown() {
+        // when
+        txManager.doInTransaction(() -> {
+            throw new TestCheckedException();
+        });
+
+        fail();
+    }
+
+    @Test(expected = TestCheckedException.class)
+    public void shouldCheckedExceptionThrownWithoutResult() {
+        // when
+        txManager.doInTransaction((TransactionCallbackWithoutResult<TestCheckedException>) () -> {
+            throw new TestCheckedException();
+        });
+
+        fail();
+    }
+
+    private class TestCheckedException extends Exception {
+    }
 }

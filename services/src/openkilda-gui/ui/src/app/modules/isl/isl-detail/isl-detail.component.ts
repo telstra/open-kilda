@@ -379,8 +379,8 @@ get f() {
       formdata.toDate = new Date(new Date(formdata.toDate).getTime() + (autoReloadTime * 1000));
     }
     
-    let convertedStartDate = moment(new Date(formdata.fromDate)).utc().format("YYYY-MM-DD-HH:mm:ss");
-    let convertedEndDate = moment(new Date(formdata.toDate)).utc().format("YYYY-MM-DD-HH:mm:ss");
+    let convertedStartDate = moment(new Date(formdata.fromDate)).add(-60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
+    let convertedEndDate = moment(new Date(formdata.toDate)).add(60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
 
     let startDate = moment(new Date(formdata.fromDate));
     let endDate = moment(new Date(formdata.toDate));
@@ -403,8 +403,8 @@ get f() {
 
 
     if (formdata.timezone == "UTC") {
-      convertedStartDate = moment(new Date(formdata.fromDate)).format("YYYY-MM-DD-HH:mm:ss");
-      convertedEndDate = moment(new Date(formdata.toDate)).format("YYYY-MM-DD-HH:mm:ss");
+      convertedStartDate = moment(new Date(formdata.fromDate)).add(-60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
+      convertedEndDate = moment(new Date(formdata.toDate)).add(60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
       
     }
 
@@ -466,8 +466,8 @@ get f() {
     let timezone = formdata.timezone;
     let graph = formdata.graph;
 
-    let convertedStartDate = moment(new Date(formdata.fromDate)).utc().format("YYYY-MM-DD-HH:mm:ss");
-    let convertedEndDate = moment(new Date(formdata.toDate)).utc().format("YYYY-MM-DD-HH:mm:ss");
+    let convertedStartDate = moment(new Date(formdata.fromDate)).add(-60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
+    let convertedEndDate = moment(new Date(formdata.toDate)).add(60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
 
     let startDate = moment(new Date(formdata.fromDate));
     let endDate = moment(new Date(formdata.toDate));
@@ -490,8 +490,8 @@ get f() {
 
 
     if (formdata.timezone == "UTC") {
-      convertedStartDate = moment(new Date(formdata.fromDate)).format("YYYY-MM-DD-HH:mm:ss");
-      convertedEndDate = moment(new Date(formdata.toDate)).format("YYYY-MM-DD-HH:mm:ss");
+      convertedStartDate = moment(new Date(formdata.fromDate)).add(-60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
+      convertedEndDate = moment(new Date(formdata.toDate)).add(60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
       
     }
 

@@ -16,6 +16,7 @@
 package org.openkilda.messaging.payload.flow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -29,10 +30,8 @@ import java.util.List;
 // TODO move into api module
 @Data
 @NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class FlowPathPayload implements Serializable {
-    /**
-     * Serialization version number constant.
-     */
     private static final long serialVersionUID = 1L;
 
     /**
@@ -53,12 +52,20 @@ public class FlowPathPayload implements Serializable {
     @JsonProperty("flowpath_reverse")
     protected List<PathNodePayload> reversePath;
 
+    /**
+     * The information about other flows in diversity group.
+     */
+    @JsonProperty("diverse_group")
+    protected DiverseGroupPayload diverseGroupPayload;
+
     @JsonCreator
     public FlowPathPayload(@JsonProperty("flowid") String id,
                            @JsonProperty("flowpath_forward") List<PathNodePayload> forwardPath,
-                           @JsonProperty("flowpath_reverse") List<PathNodePayload> reversePath) {
+                           @JsonProperty("flowpath_reverse") List<PathNodePayload> reversePath,
+                           @JsonProperty("diverse_group")  DiverseGroupPayload diverseGroupPayload) {
         this.id = id;
         this.forwardPath = forwardPath;
         this.reversePath = reversePath;
+        this.diverseGroupPayload = diverseGroupPayload;
     }
 }

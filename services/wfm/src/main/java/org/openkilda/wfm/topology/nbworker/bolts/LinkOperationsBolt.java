@@ -79,7 +79,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
     public void init() {
         this.linkOperationsService = new LinkOperationsService(this, repositoryFactory, transactionManager,
                 islCostWhenUnderMaintenance);
-        this.flowOperationsService = new FlowOperationsService(repositoryFactory);
+        this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
     }
 
     @Override

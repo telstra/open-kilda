@@ -48,6 +48,6 @@ public class StringToSetConverter implements TypeConverter<Set<String>> {
 
     @Override
     public String toString(Type type, Set<String> value, Map<String, String> attributes) {
-        return String.join(":", value);
+        return String.join(",", value);
     }
 }

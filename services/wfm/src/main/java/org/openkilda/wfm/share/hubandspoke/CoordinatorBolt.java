@@ -92,7 +92,7 @@ public final class CoordinatorBolt extends AbstractBolt {
     @VisibleForTesting
     void cancelCallback(String key) {
         if (callbacks.remove(key) == null) {
-            throw new IllegalStateException(format("%s is already cancelled", key));
+            log.warn("{} is already cancelled", key);
         } else {
             log.debug("Request processing of {} is finished", key);
         }

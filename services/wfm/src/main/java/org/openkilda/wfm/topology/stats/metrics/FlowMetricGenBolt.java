@@ -39,6 +39,10 @@ import javax.annotation.Nullable;
  */
 public class FlowMetricGenBolt extends MetricGenBolt {
 
+    public FlowMetricGenBolt(String metricPrefix) {
+        super(metricPrefix);
+    }
+
     @Override
     protected void handleInput(Tuple input) throws AbstractException {
         Map<Long, CacheFlowEntry> dataCache = (Map<Long, CacheFlowEntry>) input.getValueByField(COOKIE_CACHE_FIELD);
@@ -95,21 +99,21 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         tags.put("flowid", flowId);
         tags.put("direction", FlowDirectionHelper.findDirection(entry.getCookie()).name().toLowerCase());
 
-        emitMetric("pen.flow.raw.packets", timestamp, entry.getPacketCount(), tags);
-        emitMetric("pen.flow.raw.bytes", timestamp, entry.getByteCount(), tags);
-        emitMetric("pen.flow.raw.bits", timestamp, entry.getByteCount() * 8, tags);
+        emitMetric("flow.raw.packets", timestamp, entry.getPacketCount(), tags);
+        emitMetric("flow.raw.bytes", timestamp, entry.getByteCount(), tags);
+        emitMetric("flow.raw.bits", timestamp, entry.getByteCount() * 8, tags);
     }
 
     private void emitIngressMetrics(FlowStatsEntry entry, long timestamp, Map<String, String> tags) {
-        emitMetric("pen.flow.ingress.packets", timestamp, entry.getPacketCount(), tags);
-        emitMetric("pen.flow.ingress.bytes", timestamp, entry.getByteCount(), tags);
-        emitMetric("pen.flow.ingress.bits", timestamp, entry.getByteCount() * 8, tags);
+        emitMetric("flow.ingress.packets", timestamp, entry.getPacketCount(), tags);
+        emitMetric("flow.ingress.bytes", timestamp, entry.getByteCount(), tags);
+        emitMetric("flow.ingress.bits", timestamp, entry.getByteCount() * 8, tags);
     }
 
     private void emitEgressMetrics(FlowStatsEntry entry, long timestamp, Map<String, String> tags) {
-        emitMetric("pen.flow.packets", timestamp, entry.getPacketCount(), tags);
-        emitMetric("pen.flow.bytes", timestamp, entry.getByteCount(), tags);
-        emitMetric("pen.flow.bits", timestamp, entry.getByteCount() * 8, tags);
+        emitMetric("flow.packets", timestamp, entry.getPacketCount(), tags);
+        emitMetric("flow.bytes", timestamp, entry.getByteCount(), tags);
+        emitMetric("flow.bits", timestamp, entry.getByteCount() * 8, tags);
     }
 
     private Map<String, String> makeFlowTags(FlowStatsEntry entry, String flowId) throws FlowCookieException {

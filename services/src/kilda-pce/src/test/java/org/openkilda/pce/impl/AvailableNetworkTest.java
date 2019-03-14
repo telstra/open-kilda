@@ -15,14 +15,20 @@
 
 package org.openkilda.pce.impl;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
+import org.openkilda.model.FlowSegment;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.model.Edge;
 import org.openkilda.pce.model.Node;
+import org.openkilda.pce.model.WeightFunction;
 
 import org.hamcrest.Matchers;
 import org.junit.Test;
@@ -30,8 +36,11 @@ import org.junit.Test;
 import java.util.Set;
 
 public class AvailableNetworkTest {
-    private static final SwitchId SRC_SWITCH = new SwitchId("00:00:00:22:3d:5a:04:87");
-    private static final SwitchId DST_SWITCH = new SwitchId("00:00:b0:d2:f5:00:5a:b8");
+    private static PathComputerConfig config = new PropertiesBasedConfigurationProvider()
+            .getConfiguration(PathComputerConfig.class);
+
+    private static final SwitchId SRC_SWITCH = new SwitchId("00:00:00:22:3d:6c:00:b8");
+    private static final SwitchId DST_SWITCH = new SwitchId("00:00:00:22:3d:5a:04:87");
 
     @Test
     public void shouldNotAllowDuplicates() {
@@ -83,6 +92,70 @@ public class AvailableNetworkTest {
     }
 
     @Test
+    public void shouldReduceTheSameIslBothSide() {
+        int cost = 700;
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SRC_SWITCH, DST_SWITCH, 1, 2, cost, 5);
+        addLink(network, SRC_SWITCH, DST_SWITCH, 3, 1, cost, 5);
+        addLink(network, DST_SWITCH, SRC_SWITCH, 2, 1, cost, 5);
+        addLink(network, DST_SWITCH, SRC_SWITCH, 1, 3, cost, 5);
+
+        network.reduceByWeight(edge -> (long) edge.getCost());
+
+        assertThat(network.getSwitch(SRC_SWITCH).getOutgoingLinks(), Matchers.hasSize(1));
+        assertThat(network.getSwitch(SRC_SWITCH).getIncomingLinks(), Matchers.hasSize(1));
+        assertThat(network.getSwitch(DST_SWITCH).getOutgoingLinks(), Matchers.hasSize(1));
+        assertThat(network.getSwitch(DST_SWITCH).getIncomingLinks(), Matchers.hasSize(1));
+
+        assertEquals(
+                network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next().getSrcPort(),
+                network.getSwitch(SRC_SWITCH).getIncomingLinks().iterator().next().getDestPort());
+        assertEquals(
+                network.getSwitch(DST_SWITCH).getOutgoingLinks().iterator().next().getSrcPort(),
+                network.getSwitch(DST_SWITCH).getIncomingLinks().iterator().next().getDestPort());
+
+        assertEquals(
+                network.getSwitch(DST_SWITCH).getOutgoingLinks().iterator().next().getDestPort(),
+                network.getSwitch(SRC_SWITCH).getIncomingLinks().iterator().next().getDestPort());
+        assertEquals(
+                network.getSwitch(DST_SWITCH).getIncomingLinks().iterator().next().getDestPort(),
+                network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next().getDestPort());
+    }
+
+    @Test
+    public void shouldReduceWithDiversity() {
+        int cost = 700;
+        final WeightFunction weightFunction = edge -> (long) edge.getCost();
+
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SRC_SWITCH, DST_SWITCH, 1, 2, cost, 5);
+        addLink(network, SRC_SWITCH, DST_SWITCH, 3, 1, cost, 5);
+        addLink(network, DST_SWITCH, SRC_SWITCH, 2, 1, cost, 5);
+        addLink(network, DST_SWITCH, SRC_SWITCH, 1, 3, cost, 5);
+
+        network.processDiversitySegments(
+                asList(buildFlowSegment(SRC_SWITCH, DST_SWITCH, 3, 1, 0),
+                        buildFlowSegment(DST_SWITCH, SRC_SWITCH, 1, 3, 0)),
+                config);
+        network.reduceByWeight(weightFunction);
+
+        assertThat(network.getSwitch(SRC_SWITCH).getOutgoingLinks(), Matchers.hasSize(1));
+        assertThat(network.getSwitch(SRC_SWITCH).getIncomingLinks(), Matchers.hasSize(1));
+        assertThat(network.getSwitch(DST_SWITCH).getOutgoingLinks(), Matchers.hasSize(1));
+        assertThat(network.getSwitch(DST_SWITCH).getIncomingLinks(), Matchers.hasSize(1));
+
+        assertEquals(cost,
+                network.getSwitch(SRC_SWITCH).getOutgoingLinks().iterator().next().getFullWeight(weightFunction));
+        assertEquals(cost,
+                network.getSwitch(DST_SWITCH).getOutgoingLinks().iterator().next().getFullWeight(weightFunction));
+
+        assertEquals(cost,
+                network.getSwitch(DST_SWITCH).getOutgoingLinks().iterator().next().getFullWeight(weightFunction));
+        assertEquals(cost,
+                network.getSwitch(DST_SWITCH).getIncomingLinks().iterator().next().getFullWeight(weightFunction));
+    }
+
+    @Test
     public void shouldSetEqualCostForPairedLinks() {
         AvailableNetwork network = new AvailableNetwork();
         addLink(network, SRC_SWITCH, DST_SWITCH,
@@ -126,8 +199,62 @@ public class AvailableNetworkTest {
         assertEquals(srcSwitch, incomingIsl.getSrcSwitch());
     }
 
+    @Test
+    public void shouldFillDiversityWeightsIngress() {
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SRC_SWITCH, DST_SWITCH,
+                7, 60, 10, 3);
+        network.processDiversitySegments(
+                singletonList(buildFlowSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 0)),
+                config);
+
+        Node srcSwitch = network.getSwitch(SRC_SWITCH);
+        Node dstSwitch = network.getSwitch(DST_SWITCH);
+
+        Edge edge = srcSwitch.getOutgoingLinks().iterator().next();
+        assertEquals(config.getDiversityIslWeight(), edge.getDiversityWeight());
+        assertEquals(config.getDiversitySwitchWeight(), srcSwitch.getDiversityWeight());
+        assertEquals(config.getDiversitySwitchWeight(), dstSwitch.getDiversityWeight());
+    }
+
+    @Test
+    public void shouldFillDiversityWeightsTransit() {
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SRC_SWITCH, DST_SWITCH,
+                7, 60, 10, 3);
+        network.processDiversitySegments(
+                singletonList(buildFlowSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 1)),
+                config);
+
+        Node srcSwitch = network.getSwitch(SRC_SWITCH);
+        Node dstSwitch = network.getSwitch(DST_SWITCH);
+
+        Edge edge = srcSwitch.getOutgoingLinks().iterator().next();
+        assertEquals(config.getDiversityIslWeight(), edge.getDiversityWeight());
+        assertEquals(0, srcSwitch.getDiversityWeight());
+        assertEquals(config.getDiversitySwitchWeight(), dstSwitch.getDiversityWeight());
+    }
+
+    @Test
+    public void shouldProcessAbsentDiversitySegment() {
+        AvailableNetwork network = new AvailableNetwork();
+        addLink(network, SRC_SWITCH, DST_SWITCH,
+                7, 60, 10, 3);
+        network.processDiversitySegments(
+                singletonList(buildFlowSegment(SRC_SWITCH, DST_SWITCH, 1, 2, 0)),
+                config);
+
+        Node srcSwitch = network.getSwitch(SRC_SWITCH);
+        Node dstSwitch = network.getSwitch(DST_SWITCH);
+
+        Edge edge = srcSwitch.getOutgoingLinks().iterator().next();
+        assertEquals(0, edge.getDiversityWeight());
+        assertEquals(0, srcSwitch.getDiversityWeight());
+        assertEquals(0, dstSwitch.getDiversityWeight());
+    }
+
     private void addLink(AvailableNetwork network, SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort,
-                        int cost, int latency) {
+                         int cost, int latency) {
         Switch srcSwitch = Switch.builder().switchId(srcDpid).build();
         Switch dstSwitch = Switch.builder().switchId(dstDpid).build();
 
@@ -138,7 +265,21 @@ public class AvailableNetworkTest {
                 .destPort(dstPort)
                 .cost(cost)
                 .latency(latency)
+                .availableBandwidth(500000)
                 .build();
         network.addLink(isl);
+    }
+
+    private FlowSegment buildFlowSegment(SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort, int seqId) {
+        Switch srcSwitch = Switch.builder().switchId(srcDpid).build();
+        Switch dstSwitch = Switch.builder().switchId(dstDpid).build();
+
+        return FlowSegment.builder()
+                .srcSwitch(srcSwitch)
+                .destSwitch(dstSwitch)
+                .srcPort(srcPort)
+                .destPort(dstPort)
+                .seqId(seqId)
+                .build();
     }
 }

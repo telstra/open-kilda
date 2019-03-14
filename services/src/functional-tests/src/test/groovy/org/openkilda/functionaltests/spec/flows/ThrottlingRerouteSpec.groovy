@@ -207,6 +207,10 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(brokenIsl).get().state == IslChangeType.DISCOVERED }
     }
 
+    def cleanup() {
+        database.resetCosts()
+    }
+
     /**
      * Breaks certain flow path. Ensures that the flow is indeed broken by waiting for ISL to actually get FAILED.
      * @param flowpath path to break
@@ -216,7 +220,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         def sw = flowpath.forwardPath.first().switchId
         def port = flowpath.forwardPath.first().outputPort
         def brokenIsl = (topology.islsForActiveSwitches +
-                topology.islsForActiveSwitches.collect { islUtils.reverseIsl(it) }).find {
+                topology.islsForActiveSwitches.collect { it.reversed }).find {
             it.srcSwitch.dpId == sw && it.srcPort == port
         }
         assert brokenIsl, "This should not be possible. Trying to switch port on ISL which is not present in config?"

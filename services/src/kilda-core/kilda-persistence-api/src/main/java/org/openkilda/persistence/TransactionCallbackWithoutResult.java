@@ -19,6 +19,6 @@ package org.openkilda.persistence;
  * Callback to be executed inside an managed transaction.
  */
 @FunctionalInterface
-public interface TransactionCallbackWithoutResult {
-    void doInTransaction();
+public interface TransactionCallbackWithoutResult<E extends Exception> {
+    void doInTransaction() throws E;
 }

@@ -31,7 +31,7 @@ class AutoRerouteSpec extends BaseSpecification {
         Set<Isl> altFlowIsls = []
         def flowIsls = pathHelper.getInvolvedIsls(flowPath)
         allFlowPaths.findAll { it != flowPath }.each { altFlowIsls.addAll(pathHelper.getInvolvedIsls(it)) }
-        def islToFail = flowIsls.find { !(it in altFlowIsls) && !(islUtils.reverseIsl(it) in altFlowIsls) }
+        def islToFail = flowIsls.find { !(it in altFlowIsls) && !(it.reversed in altFlowIsls) }
         northbound.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "The flow was rerouted after reroute timeout"
@@ -192,8 +192,8 @@ class AutoRerouteSpec extends BaseSpecification {
 
         when: "Set flowsRerouteOnIslDiscovery=#flowsRerouteOnIslDiscovery"
         northbound.toggleFeature(FeatureTogglesDto.builder()
-                        .flowsRerouteOnIslDiscoveryEnabled(flowsRerouteOnIslDiscovery)
-                        .build())
+                .flowsRerouteOnIslDiscoveryEnabled(flowsRerouteOnIslDiscovery)
+                .build())
 
         and: "Connect the intermediate switch back"
         lockKeeper.reviveSwitch(flowPath[1].switchId)
@@ -330,14 +330,12 @@ class AutoRerouteSpec extends BaseSpecification {
         when: "One of the links not used by flow goes down"
         def involvedIsls = pathHelper.getInvolvedIsls(flowPath)
         def islToFail = topology.islsForActiveSwitches.find {
-            !involvedIsls.contains(it) && !involvedIsls.contains(islUtils.reverseIsl(it))
+            !involvedIsls.contains(it) && !involvedIsls.contains(it.reversed)
         }
         northbound.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "Link status becomes 'FAILED'"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(islToFail).get().state == IslChangeType.FAILED
-        }
+        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToFail).get().state == IslChangeType.FAILED }
 
         when: "Failed link goes up"
         northbound.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
@@ -387,6 +385,36 @@ class AutoRerouteSpec extends BaseSpecification {
         PathHelper.convert(northbound.getFlowPath(flow.id)) == flowPath
 
         and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+    }
+
+    def "Flow is not rerouted when one of the flow ports goes down"() {
+        requireProfiles("hardware")
+
+        given: "An intermediate-switch flow with one alternative path at least"
+        def (flow, allFlowPaths) = intermediateSwitchFlow(true, true)
+        flowHelper.addFlow(flow)
+        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
+
+        and: "Make the current flow path less preferable than others"
+        allFlowPaths.findAll { it != flowPath }.each { pathHelper.makePathMorePreferable(it, flowPath) }
+
+        when: "Bring the flow port down on the source switch"
+        northbound.portDown(flow.source.datapath, flow.source.portNumber)
+
+        then: "The flow is not rerouted"
+        TimeUnit.SECONDS.sleep(rerouteDelay)
+        PathHelper.convert(northbound.getFlowPath(flow.id)) == flowPath
+
+        when: "Bring the flow port down on the destination switch"
+        northbound.portDown(flow.destination.datapath, flow.destination.portNumber)
+
+        then: "The flow is not rerouted"
+        TimeUnit.SECONDS.sleep(rerouteDelay)
+        PathHelper.convert(northbound.getFlowPath(flow.id)) == flowPath
+
+        and: "Bring flow ports up and delete the flow"
+        ["source", "destination"].each { northbound.portUp(flow."$it".datapath, flow."$it".portNumber) }
         flowHelper.deleteFlow(flow.id)
     }
 

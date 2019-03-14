@@ -171,13 +171,13 @@ class BandwidthSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
-    def "Able to exceed bandwidth limit on ISL when creating/updating a flow with ignore_bandwidth = true"() {
+    def "Able to exceed bandwidth limit on ISL when creating/updating a flow with ignore_bandwidth=true"() {
         given: "Two active switches"
         def switches = topology.getActiveSwitches()
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .find { Switch src, Switch dst -> src != dst }
 
-        when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL (ignore_bandwidth = true)"
+        when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL (ignore_bandwidth=true)"
         def linksBeforeFlowCreate = northbound.getAllLinks()
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         long maxBandwidth = northbound.getAllLinks()*.availableBandwidth.max()
@@ -265,7 +265,7 @@ class BandwidthSpec extends BaseSpecification {
     private def checkBandwidth(List<PathNode> flowPath, List<IslInfoData> linksBefore, List<IslInfoData> linksAfter,
                                long offset = 0) {
         pathHelper.getInvolvedIsls(flowPath).each { link ->
-            [link, islUtils.reverseIsl(link)].each {
+            [link, link.reversed].each {
                 def bwBefore = islUtils.getIslInfo(linksBefore, it).get().availableBandwidth
                 def bwAfter = islUtils.getIslInfo(linksAfter, it).get().availableBandwidth
                 assert bwAfter == bwBefore + offset

@@ -115,6 +115,7 @@ import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -896,7 +897,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     private void verifySwitchSupportsMeters(IOFSwitch sw) throws UnsupportedSwitchOperationException {
-        if (OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
+        if (!config.isOvsMetersEnabled() && isOvs(sw)) {
             throw new UnsupportedSwitchOperationException(sw.getId(),
                     format("Meters are not supported on OVS switch %s", sw.getId()));
         }
@@ -1343,8 +1344,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public String getSwitchIpAddress(IOFSwitch sw) {
-        return ((InetSocketAddress) sw.getInetAddress()).getAddress().toString();
+    public InetAddress getSwitchIpAddress(IOFSwitch sw) {
+        return ((InetSocketAddress) sw.getInetAddress()).getAddress();
     }
 
     @Override
@@ -1439,7 +1440,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private OFInstructionMeter buildMeterInstruction(long meterId, IOFSwitch sw, OFFactory ofFactory,
                                                      List<OFAction> actionList) {
         OFInstructionMeter meterInstruction = null;
-        if (meterId != 0L && !OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription())) {
+        if (meterId != 0L && (config.isOvsMetersEnabled() || !isOvs(sw))) {
             if (ofFactory.getVersion().compareTo(OF_12) <= 0) {
                 /* FIXME: Since we can't read/validate meters from switches with OF 1.2 we should not install them
                 actionList.add(legacyMeterAction(ofFactory, meterId));
@@ -1726,6 +1727,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                             portNumber, sw.getId()));
         }
         return portDesc.getHwAddr();
+    }
+
+    private boolean isOvs(IOFSwitch sw) {
+        return OVS_MANUFACTURER.equals(sw.getSwitchDescription().getManufacturerDescription());
     }
 
     private OFMeterConfig getMeter(DatapathId dpid, long meter) throws SwitchOperationException {

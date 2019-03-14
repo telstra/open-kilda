@@ -39,7 +39,7 @@ public class FlowPathConverter {
      * @return the flow path
      */
     public FlowPayload getFlowPath(final String flowId, final FlowPayload flowPayload) {
-        Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
+        Map<String, String> csNames = switchIntegrationService.getSwitchNames();
         setSwitchName(flowPayload.getForward(), csNames);
         setSwitchName(flowPayload.getReverse(), csNames);
         return flowPayload;

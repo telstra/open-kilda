@@ -22,7 +22,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
+import org.openkilda.atdd.staging.helpers.DefaultFlowsChecker;
 import org.openkilda.atdd.staging.helpers.TopologyChecker.IslMatcher;
+import org.openkilda.atdd.staging.helpers.TopologyChecker.SwitchEntryMatcher;
 import org.openkilda.atdd.staging.helpers.TopologyChecker.SwitchMatcher;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -30,12 +32,16 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
+import org.openkilda.testing.service.floodlight.FloodlightService;
+import org.openkilda.testing.service.floodlight.model.FlowEntriesMap;
+import org.openkilda.testing.service.floodlight.model.SwitchEntry;
 import org.openkilda.testing.service.northbound.NorthboundService;
 
 import cucumber.api.Scenario;
 import cucumber.api.java.Before;
 import cucumber.api.java.en.And;
 import cucumber.api.java.en.Given;
+import cucumber.api.java.en.Then;
 import cucumber.api.java8.En;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -45,6 +51,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class TopologyVerificationSteps implements En {
+
+    @Autowired
+    private FloodlightService floodlightService;
 
     @Autowired
     private TopologyDefinition topologyDefinition;
@@ -121,5 +130,36 @@ public class TopologyVerificationSteps implements En {
             assertTrue(format("The switch '%s' has excess rules: %s", switchId, validationResult.getExcessRules()),
                     validationResult.getExcessRules().isEmpty());
         });
+    }
+
+    @Then("^floodlight should not find redundant switches")
+    public void checkFloodlightSwitches() {
+        List<TopologyDefinition.Switch> expectedSwitches = topologyDefinition.getActiveSwitches();
+        List<SwitchEntry> floodlightSwitches = fetchFloodlightSwitches();
+
+        assertThat("Discovered switches don't match expected", floodlightSwitches, containsInAnyOrder(
+                expectedSwitches.stream().map(SwitchEntryMatcher::new).collect(toList())));
+    }
+
+    @Then("^default rules for switches are installed")
+    public void checkDefaultRules() {
+        List<SwitchEntry> floodlightSwitches = fetchFloodlightSwitches();
+
+        List<SwitchEntry> switchesWithInvalidFlows = floodlightSwitches.stream()
+                .filter(sw -> {
+                    FlowEntriesMap flows = floodlightService.getFlows(sw.getSwitchId());
+                    return !DefaultFlowsChecker.validateDefaultRules(sw, flows, scenario);
+                })
+                .collect(toList());
+        assertTrue("There were found switches with incorrect default flows",
+                switchesWithInvalidFlows.isEmpty());
+    }
+
+    private List<SwitchEntry> fetchFloodlightSwitches() {
+        Set<SwitchId> skippedSwitches = topologyDefinition.getSkippedSwitchIds();
+
+        return floodlightService.getSwitches().stream()
+                .filter(sw -> !skippedSwitches.contains(sw.getSwitchId()))
+                .collect(toList());
     }
 }

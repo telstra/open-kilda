@@ -4,14 +4,20 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.testing.Constants.DefaultRule
 
 import groovy.time.TimeCategory
+import org.springframework.beans.factory.annotation.Value
 import spock.lang.Issue
 import spock.lang.Narrative
+import spock.lang.Shared
 import spock.lang.Unroll
 import spock.util.mop.Use
 
 @Use(TimeCategory)
 @Narrative("Verify that basic stats logging happens.")
 class OpenTsdbSpec extends BaseSpecification {
+
+    @Shared
+    @Value('${opentsdb.metric.prefix}')
+    String metricPrefix
 
     @Issue("https://github.com/telstra/open-kilda/issues/1434")
     @Unroll("Stats are being logged for metric:#metric, tags:#tags")
@@ -24,15 +30,15 @@ class OpenTsdbSpec extends BaseSpecification {
         where:
         [metric, tags] << (
                 //basic stats for rx/tx, use every unique switch in tags
-                [["pen.switch.rx-bytes", "pen.switch.rx-bits", "pen.switch.rx-packets",
-                 "pen.switch.tx-bytes", "pen.switch.tx-bits", "pen.switch.tx-packets"],
+                [[metricPrefix + "switch.rx-bytes", metricPrefix + "switch.rx-bits", metricPrefix + "switch.rx-packets",
+                  metricPrefix + "switch.tx-bytes", metricPrefix + "switch.tx-bits", metricPrefix + "switch.tx-packets"],
                 uniqueSwitches.collect { [switchid: it.dpId.toOtsdFormat()] }].combinations()
                 //isl latency stats, use every unique switch in src_switch tag
-                + [["pen.isl.latency"], uniqueSwitches.collect { [src_switch: it.dpId.toOtsdFormat()] }].combinations()
+                + [[metricPrefix + "isl.latency"], uniqueSwitches.collect { [src_switch: it.dpId.toOtsdFormat()] }].combinations()
                 //isl latency stats, use every unique switch in dst_switch tag
-                + [["pen.isl.latency"], uniqueSwitches.collect { [dst_switch: it.dpId.toOtsdFormat()] }].combinations()
+                + [[metricPrefix + "isl.latency"], uniqueSwitches.collect { [dst_switch: it.dpId.toOtsdFormat()] }].combinations()
                 //stats for default rules. use discovery packet cookie in tags, as is doesn't need any specific actions
-                + [["pen.switch.flow.system.packets", "pen.switch.flow.system.bytes", "pen.switch.flow.system.bits"],
+                + [[metricPrefix + "switch.flow.system.packets", metricPrefix + "switch.flow.system.bytes", metricPrefix + "switch.flow.system.bits"],
                    [[cookieHex: DefaultRule.VERIFICATION_BROADCAST_RULE.toHexString()]]].combinations())
     }
 
@@ -44,8 +50,8 @@ class OpenTsdbSpec extends BaseSpecification {
         otsdb.query(10.minutes.ago, metric, [:]).dps.size() > 0
         where:
         [metric, tags] << (
-                [["pen.switch.flow.system.meter.packets", "pen.switch.flow.system.meter.bytes",
-                  "pen.switch.flow.system.meter.bits"],
+                [[metricPrefix + "switch.flow.system.meter.packets", metricPrefix + "switch.flow.system.meter.bytes",
+                  metricPrefix + "switch.flow.system.meter.bits"],
                  [[cookieHex: String.format("0x%X", DefaultRule.VERIFICATION_BROADCAST_RULE.cookie)]]].combinations())
     }
 

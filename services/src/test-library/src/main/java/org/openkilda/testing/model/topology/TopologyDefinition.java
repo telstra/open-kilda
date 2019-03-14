@@ -22,10 +22,10 @@ import static java.util.stream.Collectors.toSet;
 
 import org.openkilda.model.SwitchId;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
-import org.openkilda.testing.tools.IslUtils;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
@@ -43,7 +43,6 @@ import lombok.experimental.NonFinal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -150,9 +149,9 @@ public class TopologyDefinition {
     public List<Integer> getAllowedPortsForSwitch(Switch sw) {
         List<Integer> allPorts = new ArrayList<>(sw.getAllPorts());
         allPorts.removeAll(getIslsForActiveSwitches().stream().filter(isl ->
-                isl.getSrcSwitch().getDpId().equals(sw.getDpId())).map(Isl::getSrcPort).collect(Collectors.toList()));
+                isl.getSrcSwitch().getDpId().equals(sw.getDpId())).map(Isl::getSrcPort).collect(toList()));
         allPorts.removeAll(getIslsForActiveSwitches().stream().filter(isl ->
-                isl.getDstSwitch().getDpId().equals(sw.getDpId())).map(Isl::getDstPort).collect(Collectors.toList()));
+                isl.getDstSwitch().getDpId().equals(sw.getDpId())).map(Isl::getDstPort).collect(toList()));
         return allPorts;
     }
 
@@ -160,9 +159,7 @@ public class TopologyDefinition {
      * Get list of switch ports that have ISLs.
      */
     public List<Integer> getBusyPortsForSwitch(Switch sw) {
-        List<Integer> busyPorts = new ArrayList<>(sw.getAllPorts());
-        busyPorts.removeAll(getAllowedPortsForSwitch(sw));
-        return busyPorts;
+        return getRelatedIsls(sw).stream().map(Isl::getSrcPort).collect(toList());
     }
 
     /**
@@ -173,10 +170,10 @@ public class TopologyDefinition {
     public List<Isl> getRelatedIsls(Switch sw) {
         List<Isl> isls = getIslsForActiveSwitches().stream().filter(isl ->
                 isl.getSrcSwitch().getDpId().equals(sw.getDpId()) || isl.getDstSwitch().getDpId().equals(sw.getDpId()))
-                .collect(Collectors.toList());
+                .collect(toList());
         for (Isl isl : isls) {
             if (isl.getDstSwitch().getDpId().equals(sw.getDpId())) {
-                isls.set(isls.indexOf(isl), IslUtils.reverseIsl(isl));
+                isls.set(isls.indexOf(isl), isl.getReversed());
             }
         }
         return isls;
@@ -317,6 +314,22 @@ public class TopologyDefinition {
             return String.format("%s-%s -> %s-%s", srcSwitch.dpId.toString(), srcPort,
                     dstSwitch != null ? dstSwitch.dpId.toString() : "null", dstSwitch != null ? dstPort : "null");
         }
+
+        /**
+         * Returns the 'reverse' version of this ISL.
+         */
+        @JsonIgnore
+        public Isl getReversed() {
+            if (this.getDstSwitch() == null) {
+                return this; //don't reverse not connected ISL
+            }
+            ASwitchFlow reversedAsw = null;
+            if (this.getAswitch() != null) {
+                reversedAsw = this.getAswitch().getReversed();
+            }
+            return Isl.factory(this.getDstSwitch(), this.getDstPort(), this.getSrcSwitch(),
+                    this.getSrcPort(), this.getMaxBandwidth(), reversedAsw, this.isBfd());
+        }
     }
 
     @Value
@@ -359,7 +372,7 @@ public class TopologyDefinition {
         return traffGens.stream()
                 .filter(TraffGen::isActive)
                 .filter(traffGen -> traffGen.getSwitchConnected().isActive())
-                .collect(Collectors.toList());
+                .collect(toList());
     }
 
     @Value

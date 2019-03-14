@@ -173,7 +173,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.info("Stating {}", PathVerificationService.class.getCanonicalName());
         KafkaChannel kafkaChannel = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel();
-        logger.error("region: {}", kafkaChannel.getRegion());
+        logger.info("region: {}", kafkaChannel.getRegion());
         topoDiscoTopic = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getTopoDiscoTopic();
         region = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getRegion();
         InputService inputService = context.getServiceImpl(InputService.class);
@@ -502,7 +502,8 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             PathNode source = new PathNode(new SwitchId(remoteSwitchId.getLong()), remotePort.getPortNumber(), 0,
                             latency);
             PathNode destination = new PathNode(new SwitchId(input.getDpId().getLong()), inPort.getPortNumber(), 1);
-            long speed = getSwitchPortSpeed(input.getDpId(), inPort);
+            long speed = Math.min(getSwitchPortSpeed(input.getDpId(), inPort),
+                    getSwitchPortSpeed(remoteSwitch.getId(), remotePort));
             IslInfoData path = IslInfoData.builder()
                     .latency(latency)
                     .source(source)

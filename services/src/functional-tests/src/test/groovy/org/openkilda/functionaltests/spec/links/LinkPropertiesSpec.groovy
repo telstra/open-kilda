@@ -133,15 +133,14 @@ class LinkPropertiesSpec extends BaseSpecification {
 
         when: "Update cost on ISL via link props"
         def cost = "12345"
-        def linkProps = [new LinkPropsDto(isl.srcSwitch.dpId.toString(), isl.srcPort, isl.dstSwitch.dpId.toString(),
-                isl.dstPort, ["cost": cost])]
+        def linkProps = [islUtils.toLinkProps(isl, ["cost": cost])]
         northbound.updateLinkProps(linkProps)
 
         then: "Cost on ISL is really updated"
         database.getIslCost(isl) == cost.toInteger()
 
         and: "Cost on reverse ISL is not changed"
-        database.getIslCost(islUtils.reverseIsl(isl)) == Constants.DEFAULT_COST
+        database.getIslCost(isl.reversed) == Constants.DEFAULT_COST
 
         when: "Delete link props"
         northbound.deleteLinkProps(linkProps)
@@ -152,38 +151,32 @@ class LinkPropertiesSpec extends BaseSpecification {
 
     def "Newly discovered link gets cost from link props"() {
         given: "An active link"
-        //TODO(ylobankov): Remove avoiding of links with a-switch once issue #2038 is merged.
-        def isl = topology.islsForActiveSwitches.find { !it.aswitch }
+        def isl = topology.islsForActiveSwitches.first()
 
         and: "Bring port down on the source switch"
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
-        }
+        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
 
         and: "Delete the link"
-        northbound.deleteLink(islUtils.getLinkParameters(isl))
+        northbound.deleteLink(islUtils.toLinkParameters(isl))
         assert !islUtils.getIslInfo(isl)
-        assert !islUtils.getIslInfo(islUtils.reverseIsl(isl))
+        assert !islUtils.getIslInfo(isl.reversed)
 
         and: "Set cost on the deleted link via link props"
         def cost = "12345"
-        def linkProps = [new LinkPropsDto(isl.srcSwitch.dpId.toString(), isl.srcPort, isl.dstSwitch.dpId.toString(),
-                isl.dstPort, ["cost": cost])]
+        def linkProps = [islUtils.toLinkProps(isl, ["cost": cost])]
         northbound.updateLinkProps(linkProps)
 
         when: "Bring port up on the source switch to discover the deleted link"
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, islUtils.reverseIsl(isl)).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
 
         then: "The discovered link gets cost from link props"
         database.getIslCost(isl) == cost.toInteger()
         //TODO(ylobankov): Uncomment the check once issue #1954 is merged.
-        //database.getIslCost(islUtils.reverseIsl(isl)) == cost.toInteger()
+        //database.getIslCost(isl.reversed) == cost.toInteger()
 
         and: "Delete link props"
         northbound.deleteLinkProps(linkProps)

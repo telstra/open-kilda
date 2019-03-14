@@ -56,7 +56,7 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
      * Instantiates a new custom exception mapper.
      */
     public CustomExceptionMapper() {
-        _log.info("[CustomExceptionMapper] Initializing {}...", CustomExceptionMapper.class.getName());
+        _log.info("Custom exception mapper. Initializing {}...", CustomExceptionMapper.class.getName());
     }
 
     /**
@@ -68,7 +68,6 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
      */
     @ExceptionHandler(value = { Exception.class })
     protected ResponseEntity<Object> defaultExceptionHandler(final Exception ex, final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.INTERNAL_ERROR.getHttpStatus(), HttpError.INTERNAL_ERROR.getCode(),
                 HttpError.INTERNAL_ERROR.getAuxilaryMessage(), HttpError.INTERNAL_ERROR.getMessage(), "");
     }
@@ -83,7 +82,6 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
     @ExceptionHandler(value = { ConstraintViolationException.class })
     protected ResponseEntity<Object> constraintViolationExceptionHandler(final ConstraintViolationException ex,
             final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
         String message = ex.getConstraintViolations().stream().map(ConstraintViolation::getMessage)
                 .sorted(Collections.reverseOrder()).collect(joining(", "));
         return response(HttpError.BAD_REQUEST.getHttpStatus(), HttpError.BAD_REQUEST.getCode(),
@@ -100,7 +98,6 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
     @ExceptionHandler(value = { IntegrationException.class })
     protected ResponseEntity<Object> integrationExceptionHandler(final IntegrationException ex,
             final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.INTERNAL_ERROR.getHttpStatus(), HttpError.INTERNAL_ERROR.getCode(),
                 HttpError.INTERNAL_ERROR.getAuxilaryMessage(), ex.toString());
     }
@@ -115,7 +112,6 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
     @ExceptionHandler(value = { StoreIntegrationException.class })
     protected ResponseEntity<Object> storeIntegrationExceptionHandler(final StoreIntegrationException ex,
             final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.STORE_INTEGRATION_ERROR.getHttpStatus(), HttpError.STORE_INTEGRATION_ERROR.getCode(),
                 HttpError.STORE_INTEGRATION_ERROR.getAuxilaryMessage(), HttpError.STORE_INTEGRATION_ERROR.getMessage());
     }
@@ -130,7 +126,6 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
     @ExceptionHandler(value = { InvalidResponseException.class, NoDataFoundException.class })
     protected ResponseEntity<Object> invalidResponseExceptionHandler(final InvalidResponseException ex,
             final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
         if (ex.getResponse() != null) {
             JSONParser jsonParser = new JSONParser();
             try {
@@ -163,7 +158,6 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
     @ExceptionHandler(value = { ContentNotFoundException.class })
     protected ResponseEntity<Object> contentNotFoundExceptionHandler(final ContentNotFoundException ex,
             final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpStatus.NO_CONTENT, HttpError.NO_CONTENT.getCode(),
                 HttpError.NO_CONTENT.getAuxilaryMessage(), ex.toString());
     }
@@ -178,7 +172,6 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
     @ExceptionHandler(value = { MethodArgumentTypeMismatchException.class })
     protected ResponseEntity<Object> methodArgumentTypeMismatchExceptionHandler(
             final MethodArgumentTypeMismatchException ex, final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpStatus.BAD_REQUEST, HttpError.BAD_REQUEST.getCode(),
                 HttpError.BAD_REQUEST.getAuxilaryMessage(), ex.toString());
     }

@@ -73,7 +73,7 @@ public class ActivityLogger {
             try {
                 logs.put(logInfo);
             } catch (InterruptedException e) {
-                LOGGER.error("Error while adding logs for logging user activity", e);
+                LOGGER.error("Error occurred while adding logs for logging user activity", e);
             }
         }
     }
@@ -100,7 +100,7 @@ public class ActivityLogger {
                     LogInfo logInfo = logs.take();
                     userActivityService.logUserActivity(logInfo);
                 } catch (Exception e) {
-                    LOGGER.error("Error while logging user activity", e);
+                    LOGGER.error("Error occurred while logging user activity", e);
                 }
             }
         }

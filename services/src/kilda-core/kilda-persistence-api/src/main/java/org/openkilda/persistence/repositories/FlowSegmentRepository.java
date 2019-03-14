@@ -19,13 +19,23 @@ import org.openkilda.model.FlowSegment;
 import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
+import java.util.Optional;
 
 public interface FlowSegmentRepository extends Repository<FlowSegment> {
     Collection<FlowSegment> findByFlowIdAndCookie(String flowId, long flowCookie);
+
+    Optional<FlowSegment> findBySrcSwitchIdAndCookie(SwitchId switchId, long flowCookie);
 
     Collection<FlowSegment> findByDestSwitchId(SwitchId switchId);
 
     Collection<FlowSegment> findBySrcSwitchId(SwitchId switchId);
 
     long getUsedBandwidthBetweenEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
+
+    /**
+     * Finds flow segments that are used by flows in flow group.
+     *
+     * @param flowGroupId the flow group id.
+     */
+    Collection<FlowSegment> findByFlowGroupId(String flowGroupId);
 }

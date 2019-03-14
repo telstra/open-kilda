@@ -98,7 +98,7 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
             }
             links.findAll { it.state == IslChangeType.FAILED }.empty
             def topoLinks = topology.islsForActiveSwitches.collectMany {
-                [islUtils.getIslInfo(links, it).get(), islUtils.getIslInfo(links, islUtils.reverseIsl(it)).get()]
+                [islUtils.getIslInfo(links, it).get(), islUtils.getIslInfo(links, it.reversed).get()]
             }
             def missingLinks = links - topoLinks
             missingLinks.empty
@@ -109,10 +109,11 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
         and: "Link bandwidths and speeds are equal. No excess and missing switch rules are present"
         verifyAll {
             links.findAll { it.availableBandwidth != it.speed }.empty
-            topology.activeSwitches.findAll {
-                def rules = northbound.validateSwitchRules(it.dpId)
-                !rules.excessRules.empty || !rules.missingRules.empty
-            }.empty
+            topology.activeSwitches.each { sw ->
+                def rules = northbound.validateSwitchRules(sw.dpId)
+                assert rules.excessRules.empty, sw
+                assert rules.missingRules.empty, sw
+            }
 
             topology.activeSwitches.findAll {
                 !it.virtual && it.ofVersion != "OF_12" && !floodlight.getMeters(it.dpId).findAll {

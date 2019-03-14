@@ -41,7 +41,6 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
 
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 
 abstract class BfdSessionCommand extends BfdCommand {
     private final NoviBfdSession bfdSession;
@@ -139,7 +138,7 @@ abstract class BfdSessionCommand extends BfdCommand {
                 .setSourcePort(udpPort)
                 .setDestinationPort(udpPort);
 
-        InetAddress sourceIpAddress = ((InetSocketAddress) sw.getInetAddress()).getAddress();
+        InetAddress sourceIpAddress = switchManager.getSwitchIpAddress(sw);
         InetAddress destIpAddress = bfdSession.getRemote().getInetAddress();
         IPacket l3 = new IPv4()
                 .setSourceAddress(IPv4Address.of(sourceIpAddress.getAddress()))

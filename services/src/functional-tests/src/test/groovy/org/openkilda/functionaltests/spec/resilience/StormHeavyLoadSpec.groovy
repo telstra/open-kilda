@@ -18,12 +18,12 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
 
 @Slf4j
 class StormHeavyLoadSpec extends BaseSpecification {
     @Value("#{kafkaTopicsConfig.getTopoDiscoTopic()}")
     String topoDiscoTopic
+
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
@@ -34,8 +34,9 @@ class StormHeavyLoadSpec extends BaseSpecification {
      * Test produces multiple port up/down and IslInfoData messages to the topo.disco kafka topic,
      * expecting that Storm will be able to swallow that and continue to operate
      */
-    @Ignore("Due to https://github.com/telstra/open-kilda/issues/1827")
     def "Storm does not fail under heavy load of topo.disco topic"() {
+        requireProfiles("hardware")
+
         when: "Produce massive amount of messages into topo.disco topic"
         def messages = 100000 //total sum of messages of all types produced
         def operations = 3 //discovery, port up, port down
@@ -78,7 +79,7 @@ class StormHeavyLoadSpec extends BaseSpecification {
         northbound.activeSwitches.size() == topology.activeSwitches.size()
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll { it.state == IslChangeType.DISCOVERED }
-                             .size() == topology.islsForActiveSwitches.size() * 2
+                    .size() == topology.islsForActiveSwitches.size() * 2
         }
 
         cleanup:

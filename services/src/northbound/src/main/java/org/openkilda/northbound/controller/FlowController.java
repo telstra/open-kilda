@@ -18,11 +18,14 @@ package org.openkilda.northbound.controller;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
+import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PingInput;
 import org.openkilda.northbound.dto.flows.PingOutput;
@@ -92,7 +95,7 @@ public class FlowController {
     @ApiOperation(value = "Creates new flow", response = FlowPayload.class)
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FlowPayload> createFlow(@RequestBody FlowPayload flow) {
+    public CompletableFuture<FlowPayload> createFlow(@RequestBody FlowCreatePayload flow) {
         return flowService.createFlow(flow);
     }
 
@@ -133,8 +136,23 @@ public class FlowController {
     @PutMapping(value = "/{flow-id:.+}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowPayload> updateFlow(@PathVariable(name = "flow-id") String flowId,
-                                                     @RequestBody FlowPayload flow) {
+                                                     @RequestBody FlowUpdatePayload flow) {
         return flowService.updateFlow(flow);
+    }
+
+    /**
+     * Updates max latency or priority of existing flow.
+     *
+     * @param flowPatchDto  flow parameters for update
+     * @param flowId        flow id
+     * @return flow
+     */
+    @ApiOperation(value = "Updates flow", response = FlowPayload.class)
+    @PatchMapping(value = "/{flow-id:.+}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowPayload> patchFlow(@PathVariable(name = "flow-id") String flowId,
+                                                    @RequestBody FlowPatchDto flowPatchDto) {
+        return flowService.patchFlow(flowId, flowPatchDto);
     }
 
     /**

@@ -85,6 +85,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     private static final long timestamp = System.currentTimeMillis();
     private static final int POLL_TIMEOUT = 1000;
     private static final String POLL_DATAPOINT_ASSERT_MESSAGE = "Could not poll all %d datapoints, got only %d records";
+    private static final String METRIC_PREFIX = "kilda.";
 
     private final SwitchId switchId = new SwitchId(1L);
     private static final UUID TRANSACTION_ID = UUID.randomUUID();
@@ -111,6 +112,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
         Properties configOverlay = new Properties();
         configOverlay.setProperty("neo4j.uri", embeddedNeo4jDb.getConnectionUri());
+        configOverlay.setProperty("opentsdb.metric.prefix", METRIC_PREFIX);
 
         launchEnvironment.setupOverlay(configOverlay);
 
@@ -185,7 +187,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         datapoints.forEach(datapoint -> {
             assertThat(datapoint.getTags().get("switchid"), is(switchId.toOtsdFormat()));
             assertThat(datapoint.getTime(), is(timestamp));
-            assertThat(datapoint.getMetric(), startsWith("pen.switch"));
+            assertThat(datapoint.getMetric(), startsWith(METRIC_PREFIX + "switch"));
 
             metricsByPort.get(datapoint.getTags().get("port"))
                     .put(datapoint.getMetric(), datapoint.getValue());
@@ -196,20 +198,20 @@ public class StatsTopologyTest extends AbstractStormTest {
             assertEquals(14, metrics.size());
 
             int baseCount = i * 20;
-            assertEquals(baseCount, metrics.get("pen.switch.rx-packets"));
-            assertEquals(baseCount + 1, metrics.get("pen.switch.tx-packets"));
-            assertEquals(baseCount + 2, metrics.get("pen.switch.rx-bytes"));
-            assertEquals((baseCount + 2) * 8, metrics.get("pen.switch.rx-bits"));
-            assertEquals(baseCount + 3, metrics.get("pen.switch.tx-bytes"));
-            assertEquals((baseCount + 3) * 8, metrics.get("pen.switch.tx-bits"));
-            assertEquals(baseCount + 4, metrics.get("pen.switch.rx-dropped"));
-            assertEquals(baseCount + 5, metrics.get("pen.switch.tx-dropped"));
-            assertEquals(baseCount + 6, metrics.get("pen.switch.rx-errors"));
-            assertEquals(baseCount + 7, metrics.get("pen.switch.tx-errors"));
-            assertEquals(baseCount + 8, metrics.get("pen.switch.rx-frame-error"));
-            assertEquals(baseCount + 9, metrics.get("pen.switch.rx-over-error"));
-            assertEquals(baseCount + 10, metrics.get("pen.switch.rx-crc-error"));
-            assertEquals(baseCount + 11, metrics.get("pen.switch.collisions"));
+            assertEquals(baseCount, metrics.get(METRIC_PREFIX + "switch.rx-packets"));
+            assertEquals(baseCount + 1, metrics.get(METRIC_PREFIX + "switch.tx-packets"));
+            assertEquals(baseCount + 2, metrics.get(METRIC_PREFIX + "switch.rx-bytes"));
+            assertEquals((baseCount + 2) * 8, metrics.get(METRIC_PREFIX + "switch.rx-bits"));
+            assertEquals(baseCount + 3, metrics.get(METRIC_PREFIX + "switch.tx-bytes"));
+            assertEquals((baseCount + 3) * 8, metrics.get(METRIC_PREFIX + "switch.tx-bits"));
+            assertEquals(baseCount + 4, metrics.get(METRIC_PREFIX + "switch.rx-dropped"));
+            assertEquals(baseCount + 5, metrics.get(METRIC_PREFIX + "switch.tx-dropped"));
+            assertEquals(baseCount + 6, metrics.get(METRIC_PREFIX + "switch.rx-errors"));
+            assertEquals(baseCount + 7, metrics.get(METRIC_PREFIX + "switch.tx-errors"));
+            assertEquals(baseCount + 8, metrics.get(METRIC_PREFIX + "switch.rx-frame-error"));
+            assertEquals(baseCount + 9, metrics.get(METRIC_PREFIX + "switch.rx-over-error"));
+            assertEquals(baseCount + 10, metrics.get(METRIC_PREFIX + "switch.rx-crc-error"));
+            assertEquals(baseCount + 11, metrics.get(METRIC_PREFIX + "switch.collisions"));
         }
     }
 
@@ -225,7 +227,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         datapoints.forEach(datapoint -> {
             assertThat(datapoint.getTags().get("switchid"), is(switchId.toOtsdFormat()));
             assertThat(datapoint.getTime(), is(timestamp));
-            assertThat(datapoint.getMetric(), is("pen.switch.meters"));
+            assertThat(datapoint.getMetric(), is(METRIC_PREFIX + "switch.meters"));
         });
     }
 
@@ -241,11 +243,11 @@ public class StatsTopologyTest extends AbstractStormTest {
         Map<String, Datapoint> datapointMap = createDatapointMap(datapoints);
 
         assertEquals(meterStats.getPacketsInCount(),
-                datapointMap.get("pen.switch.flow.system.meter.packets").getValue().longValue());
+                datapointMap.get(METRIC_PREFIX + "switch.flow.system.meter.packets").getValue().longValue());
         assertEquals(meterStats.getByteInCount(),
-                datapointMap.get("pen.switch.flow.system.meter.bytes").getValue().longValue());
+                datapointMap.get(METRIC_PREFIX + "switch.flow.system.meter.bytes").getValue().longValue());
         assertEquals(meterStats.getByteInCount() * 8,
-                datapointMap.get("pen.switch.flow.system.meter.bits").getValue().longValue());
+                datapointMap.get(METRIC_PREFIX + "switch.flow.system.meter.bits").getValue().longValue());
 
         datapoints.forEach(datapoint -> {
             assertEquals(3, datapoint.getTags().size());
@@ -270,9 +272,12 @@ public class StatsTopologyTest extends AbstractStormTest {
 
         Map<String, Datapoint> datapointMap = createDatapointMap(datapoints);
 
-        assertEquals(meterStats.getPacketsInCount(), datapointMap.get("pen.flow.meter.packets").getValue().longValue());
-        assertEquals(meterStats.getByteInCount(), datapointMap.get("pen.flow.meter.bytes").getValue().longValue());
-        assertEquals(meterStats.getByteInCount() * 8, datapointMap.get("pen.flow.meter.bits").getValue().longValue());
+        assertEquals(meterStats.getPacketsInCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.meter.packets").getValue().longValue());
+        assertEquals(meterStats.getByteInCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.meter.bytes").getValue().longValue());
+        assertEquals(meterStats.getByteInCount() * 8,
+                datapointMap.get(METRIC_PREFIX + "flow.meter.bits").getValue().longValue());
 
 
         datapoints.forEach(datapoint -> {
@@ -299,23 +304,32 @@ public class StatsTopologyTest extends AbstractStormTest {
 
         Map<String, Datapoint> datapointMap = createDatapointMap(datapoints);
 
-        assertEquals(flowStats.getPacketCount(), datapointMap.get("pen.flow.raw.packets").getValue().longValue());
-        assertEquals(flowStats.getPacketCount(), datapointMap.get("pen.flow.ingress.packets").getValue().longValue());
-        assertEquals(flowStats.getPacketCount(), datapointMap.get("pen.flow.packets").getValue().longValue());
+        assertEquals(flowStats.getPacketCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.raw.packets").getValue().longValue());
+        assertEquals(flowStats.getPacketCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.ingress.packets").getValue().longValue());
+        assertEquals(flowStats.getPacketCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.packets").getValue().longValue());
 
-        assertEquals(flowStats.getByteCount(), datapointMap.get("pen.flow.raw.bytes").getValue().longValue());
-        assertEquals(flowStats.getByteCount(), datapointMap.get("pen.flow.ingress.bytes").getValue().longValue());
-        assertEquals(flowStats.getByteCount(), datapointMap.get("pen.flow.bytes").getValue().longValue());
+        assertEquals(flowStats.getByteCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.raw.bytes").getValue().longValue());
+        assertEquals(flowStats.getByteCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.ingress.bytes").getValue().longValue());
+        assertEquals(flowStats.getByteCount(),
+                datapointMap.get(METRIC_PREFIX + "flow.bytes").getValue().longValue());
 
-        assertEquals(flowStats.getByteCount() * 8, datapointMap.get("pen.flow.raw.bits").getValue().longValue());
-        assertEquals(flowStats.getByteCount() * 8, datapointMap.get("pen.flow.ingress.bits").getValue().longValue());
-        assertEquals(flowStats.getByteCount() * 8, datapointMap.get("pen.flow.bits").getValue().longValue());
+        assertEquals(flowStats.getByteCount() * 8,
+                datapointMap.get(METRIC_PREFIX + "flow.raw.bits").getValue().longValue());
+        assertEquals(flowStats.getByteCount() * 8,
+                datapointMap.get(METRIC_PREFIX + "flow.ingress.bits").getValue().longValue());
+        assertEquals(flowStats.getByteCount() * 8,
+                datapointMap.get(METRIC_PREFIX + "flow.bits").getValue().longValue());
 
         datapoints.forEach(datapoint -> {
             switch (datapoint.getMetric()) {
-                case "pen.flow.raw.packets":
-                case "pen.flow.raw.bytes":
-                case "pen.flow.raw.bits":
+                case METRIC_PREFIX + "flow.raw.packets":
+                case METRIC_PREFIX + "flow.raw.bytes":
+                case METRIC_PREFIX + "flow.raw.bits":
                     assertEquals(5, datapoint.getTags().size());
                     assertEquals(flowId, datapoint.getTags().get("flowid"));
                     assertEquals("forward", datapoint.getTags().get("direction"));
@@ -323,12 +337,12 @@ public class StatsTopologyTest extends AbstractStormTest {
                     assertEquals(String.valueOf(cookie), datapoint.getTags().get("cookie"));
                     assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
                     break;
-                case "pen.flow.ingress.packets":
-                case "pen.flow.ingress.bytes":
-                case "pen.flow.ingress.bits":
-                case "pen.flow.packets":
-                case "pen.flow.bytes":
-                case "pen.flow.bits":
+                case METRIC_PREFIX + "flow.ingress.packets":
+                case METRIC_PREFIX + "flow.ingress.bytes":
+                case METRIC_PREFIX + "flow.ingress.bits":
+                case METRIC_PREFIX + "flow.packets":
+                case METRIC_PREFIX + "flow.bytes":
+                case METRIC_PREFIX + "flow.bits":
                     assertEquals(2, datapoint.getTags().size());
                     assertEquals(flowId, datapoint.getTags().get("flowid"));
                     assertEquals("forward", datapoint.getTags().get("direction"));
@@ -350,11 +364,11 @@ public class StatsTopologyTest extends AbstractStormTest {
         Map<String, Datapoint> datapointMap = createDatapointMap(datapoints);
 
         assertEquals(systemRuleStats.getPacketCount(),
-                datapointMap.get("pen.switch.flow.system.packets").getValue().longValue());
+                datapointMap.get(METRIC_PREFIX + "switch.flow.system.packets").getValue().longValue());
         assertEquals(systemRuleStats.getByteCount(),
-                datapointMap.get("pen.switch.flow.system.bytes").getValue().longValue());
+                datapointMap.get(METRIC_PREFIX + "switch.flow.system.bytes").getValue().longValue());
         assertEquals(systemRuleStats.getByteCount() * 8,
-                datapointMap.get("pen.switch.flow.system.bits").getValue().longValue());
+                datapointMap.get(METRIC_PREFIX + "switch.flow.system.bits").getValue().longValue());
 
 
         datapoints.forEach(datapoint -> {

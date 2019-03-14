@@ -38,6 +38,7 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
+import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.cache.ResourceCache;
 import org.openkilda.wfm.topology.flow.service.FlowService.ReroutedFlow;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
@@ -157,7 +158,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
                 .build();
         when(pathComputer.getPath(any())).thenReturn(PATH_DIRECT_1_TO_3);
 
-        flowService.createFlow(flow, mock(FlowCommandSender.class));
+        flowService.createFlow(flow, null, mock(FlowCommandSender.class));
         flowService.updateFlowStatus(flow.getFlowId(), FlowStatus.UP);
 
         when(pathComputer.getPath(any(), eq(true))).thenReturn(PATH_1_TO_3_VIA_2);

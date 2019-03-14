@@ -30,6 +30,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.simulator.SimulatorTopology;
 import org.openkilda.simulator.classes.Commands;
 import org.openkilda.wfm.OfeMessageUtils;
+import org.openkilda.wfm.topology.AbstractTopology;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -64,7 +65,7 @@ public class CommandBolt extends BaseRichBolt {
     }
 
     protected String getJson(Tuple tuple) {
-        return tuple.getString(0);
+        return tuple.getStringByField(AbstractTopology.MESSAGE_FIELD);
     }
 
     protected void processCommand(Tuple tuple) throws Exception {

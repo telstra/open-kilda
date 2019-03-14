@@ -77,7 +77,7 @@ public class StatsController {
             @PathVariable String endDate, @PathVariable String downsample, @PathVariable String metric)
             throws Exception {
 
-        LOGGER.info("Inside StatsController method getIslStats ");
+        LOGGER.info("Get stat for Isl");
         return statsService.getSwitchIslStats(startDate, endDate, downsample, srcSwitch, srcPort, dstSwitch, dstPort,
                 metric);
 
@@ -103,7 +103,7 @@ public class StatsController {
             @PathVariable String startDate, @PathVariable String endDate, @PathVariable String downsample,
             @PathVariable String metric) throws Exception {
 
-        LOGGER.info("Inside StatsController method getPortStats ");
+        LOGGER.info("Get stat for port");
         return statsService.getSwitchPortStats(startDate, endDate, downsample, switchid, port, metric);
 
     }
@@ -127,7 +127,7 @@ public class StatsController {
             @PathVariable String endDate, @PathVariable String downsample, @PathVariable String metric)
             throws Exception {
 
-        LOGGER.info("Inside StatsController method getFlowStats ");
+        LOGGER.info("Get stat for flow");
         return statsService.getFlowStats(startDate, endDate, downsample, flowid, metric);
     }
 
@@ -157,7 +157,7 @@ public class StatsController {
             @PathVariable String endDate, @PathVariable String downsample, @PathVariable String metric)
             throws Exception {
 
-        LOGGER.info("Inside StatsController method getIslLossPacketStats ");
+        LOGGER.info("Get stat of Isl loss packet");
         return statsService.getSwitchIslLossPacketStats(startDate, endDate, downsample, srcSwitch, srcPort, dstSwitch,
                 dstPort, metric);
     }
@@ -182,7 +182,7 @@ public class StatsController {
             @PathVariable String endDate, @PathVariable String downsample, @PathVariable String direction)
             throws Exception {
 
-        LOGGER.info("Inside StatsController method getFlowLossPacketStats ");
+        LOGGER.info("Get stat of flow loss packet");
         return statsService.getFlowLossPacketStats(startDate, endDate, downsample, flowid, direction);
     }
     
@@ -199,7 +199,7 @@ public class StatsController {
     @ResponseBody
     public String getFlowPathStat(@RequestBody FlowPathStats flowPathStats) throws Exception {
 
-        LOGGER.info("Inside StatsController method getFlowPathStat ");
+        LOGGER.info("Get flow path stat ");
         return statsService.getFlowPathStats(flowPathStats);
     }
     
@@ -222,7 +222,7 @@ public class StatsController {
             @PathVariable String startDate, @PathVariable String endDate, @PathVariable String downsample)
             throws Exception {
 
-        LOGGER.info("Inside StatsController method getSwitchPortsStats ");
+        LOGGER.info("Get switch ports stat ");
         return statsService.getSwitchPortsStats(startDate, endDate, downsample, switchid);
     }
 }

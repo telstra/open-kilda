@@ -48,7 +48,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
@@ -124,13 +123,13 @@ public class EnableBfdResource extends ServerResource {
     }
 
     private IPacket makeSessionConfigPayload(IOFSwitch sw, ISwitchManager switchManager,
-                                             NoviBfdSession bfdSession) throws UnknownHostException {
+                                             NoviBfdSession bfdSession) {
         final TransportPort udpPort = TransportPort.of(bfdSession.getUdpPortNumber());
         UDP l4 = new UDP()
                 .setSourcePort(udpPort)
                 .setDestinationPort(udpPort);
 
-        InetAddress sourceIpAddress = ((InetSocketAddress) sw.getInetAddress()).getAddress();
+        InetAddress sourceIpAddress = switchManager.getSwitchIpAddress(sw);
         InetAddress destIpAddress = bfdSession.getRemote().getInetAddress();
         IPacket l3 = new IPv4()
                 .setSourceAddress(IPv4Address.of(sourceIpAddress.getAddress()))

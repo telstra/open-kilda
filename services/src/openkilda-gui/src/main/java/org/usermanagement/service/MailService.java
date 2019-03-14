@@ -76,7 +76,7 @@ public class MailService {
                 javaMailSender.send(mimeMessage);
                 LOGGER.info("Mail sent successfully. Subject: " + subject);
             } catch (MessagingException e) {
-                LOGGER.error("Failed to send mail. Error: " + e.getMessage(), e);
+                LOGGER.error("Failed to send mail ", e);
             }
         }
     }
@@ -104,7 +104,7 @@ public class MailService {
                 javaMailSender.send(mimeMessage);
                 LOGGER.info("Mail sent successfully. Subject: " + subject);
             } catch (MessagingException e) {
-                LOGGER.error("Failed to send mail. Error: " + e.getMessage(), e);
+                LOGGER.error("Failed to send mail", e);
             }
         }
     }

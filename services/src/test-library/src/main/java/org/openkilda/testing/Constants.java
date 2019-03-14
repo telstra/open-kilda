@@ -18,6 +18,8 @@ package org.openkilda.testing;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
 
+import java.util.UUID;
+
 public final class Constants {
     public static final Integer DEFAULT_COST = 700;
     public static final Integer WAIT_OFFSET = 10;
@@ -27,6 +29,7 @@ public final class Constants {
     public static final Integer RULES_INSTALLATION_TIME = 5;
     public static final Integer STATS_LOGGING_TIMEOUT = 70;
     public static final SwitchId NON_EXISTENT_SWITCH_ID = new SwitchId("de:ad:be:ef:de:ad:be:ef");
+    public static final String NON_EXISTENT_FLOW_ID = "non-existent-" + UUID.randomUUID().toString();
 
     private Constants() {
         throw new UnsupportedOperationException();

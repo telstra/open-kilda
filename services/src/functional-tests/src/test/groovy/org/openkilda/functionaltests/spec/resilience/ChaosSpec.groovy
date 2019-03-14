@@ -61,7 +61,7 @@ class ChaosSpec extends BaseSpecification {
             }
         }
 
-        and: "Cleanup: remove flows"
+        and: "Cleanup: remove flows and reset costs"
         flows.each { northbound.deleteFlow(it.id) }
         // Wait for meters deletion from all OF_13 switches since it impacts other tests.
         // Virtual and hardware OF_12 switches don't support meters.
@@ -72,6 +72,7 @@ class ChaosSpec extends BaseSpecification {
                 }.empty
             }
         } : true
+        database.resetCosts()
     }
 
     def validateFlow(String flowId) {

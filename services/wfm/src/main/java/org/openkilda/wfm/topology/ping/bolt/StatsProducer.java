@@ -19,6 +19,7 @@ import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.model.PingMeters;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -36,6 +37,12 @@ public class StatsProducer extends Abstract {
 
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_STATS_DATAPOINT, FIELD_ID_CONTEXT);
 
+    private MetricFormatter metricFormatter;
+
+    public StatsProducer(String metricPrefix) {
+        this.metricFormatter = new MetricFormatter(metricPrefix);
+    }
+
     @Override
     protected void handleInput(Tuple input) throws AbstractException {
         PingContext pingContext = pullPingContext(input);
@@ -52,7 +59,7 @@ public class StatsProducer extends Abstract {
 
         PingMeters meters = pingContext.getMeters();
         Datapoint datapoint = new Datapoint(
-                "pen.flow.latency", pingContext.getTimestamp(), tags, meters.getNetworkLatency());
+                metricFormatter.format("flow.latency"), pingContext.getTimestamp(), tags, meters.getNetworkLatency());
         emit(input, datapoint);
     }
 

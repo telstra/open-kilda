@@ -38,7 +38,8 @@ public class SimulatorCommandBoltTest {
         //        int peerPort = 8;
         //        Tuple tuple = mock(Tuple.class);
         //        LinkMessage linkMessage = new LinkMessage(latency, localPort, peerSwitch, peerPort);
-        //        when(tuple.getString(0)).thenReturn(mapper.writeValueAsString(linkMessage));
+        //        when(tuple.getStringByField(AbstractTopology.MESSAGE_FIELD))
+        //        .thenReturn(mapper.writeValueAsString(linkMessage));
         //
         //        Map<String, Object> values = simulatorCommandBolt.doCommand(tuple);
         //        assertTrue(values.containsKey("stream"));
