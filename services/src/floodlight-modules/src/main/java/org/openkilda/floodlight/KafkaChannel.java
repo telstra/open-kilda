@@ -80,47 +80,47 @@ public class KafkaChannel implements IFloodlightModule {
     }
 
     public String getSpeakerTopic() {
-        return formatTopicWithRegion(topics.getSpeakerTopic());
+        return formatTopicWithRegion(topics.getSpeakerRegionTopic());
     }
 
     public String getSpeakerFlowTopic() {
-        return formatTopicWithRegion(topics.getSpeakerFlowTopic());
+        return formatTopicWithRegion(topics.getSpeakerFlowRegionTopic());
     }
 
     public String getSpeakerFlowPingTopic() {
-        return formatTopicWithRegion(topics.getSpeakerFlowPingTopic());
+        return formatTopicWithRegion(topics.getSpeakerFlowPingRegionTopic());
     }
 
     public String getSpeakerDiscoTopic() {
-        return formatTopicWithRegion(topics.getSpeakerDiscoTopic());
+        return formatTopicWithRegion(topics.getSpeakerDiscoRegionTopic());
     }
 
     public String getStatsTopic() {
-        return formatTopicWithRegion(topics.getStatsTopic());
+        return formatTopicWithRegion(topics.getStatsRegionTopic());
     }
 
     public String getFlowTopic() {
-        return formatTopicWithRegion(topics.getFlowTopic());
+        return formatTopicWithRegion(topics.getFlowRegionTopic());
     }
 
     public String getTopoDiscoTopic() {
-        return formatTopicWithRegion(topics.getTopoDiscoTopic());
+        return formatTopicWithRegion(topics.getTopoDiscoRegionTopic());
     }
 
     public String getNorthboundTopic() {
-        return formatTopicWithRegion(topics.getNorthboundTopic());
+        return formatTopicWithRegion(topics.getNorthboundRegionTopic());
     }
 
     public String getKafkaNbWorkerTopic() {
-        return formatTopicWithRegion(topics.getTopoNbTopic());
+        return formatTopicWithRegion(topics.getTopoNbRegionTopic());
     }
 
     public String  getPingTopic() {
-        return formatTopicWithRegion(topics.getPingTopic());
+        return formatTopicWithRegion(topics.getPingRegionTopic());
     }
 
     public String getTopoSwitchManagerTopic() {
-        return formatTopicWithRegion(topics.getTopoSwitchManagerTopic());
+        return formatTopicWithRegion(topics.getTopoSwitchManagerRegionTopic());
     }
 
     private String formatTopicWithRegion(String topic) {

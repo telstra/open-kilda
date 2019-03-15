@@ -32,6 +32,7 @@ public final class Stream {
     public static final String SPEAKER_DISCO = "SPEAKER_DISCO";
     public static final String NORTHBOUND_REPLY = "NORTHBOUND_REPLY";
     public static final String REGION_NOTIFICATION = "REGION_NOTIFICATION";
+    public static final String NB_WORKER = "NB_WORKER";
 
     public static final String STORM_SUFFIX = "storm";
 

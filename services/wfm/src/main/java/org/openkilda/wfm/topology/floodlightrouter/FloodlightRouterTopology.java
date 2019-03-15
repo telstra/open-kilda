@@ -159,14 +159,42 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
 
     private void createKildaNorthboundReplyStream(TopologyBuilder builder, int parallelism,
                                                      KafkaTopicsConfig topicsConfig,
-                                                     List<String> kildaSwitchManagerTopics) {
-        createKildaNorthboundSpout(builder, parallelism, kildaSwitchManagerTopics);
+                                                     List<String> kildaNorthboundTopics) {
+        createKildaNorthboundSpout(builder, parallelism, kildaNorthboundTopics);
         createKildaNorthboundKafkaBolt(builder, parallelism, topicsConfig);
 
         ReplyBolt replyBolt = new ReplyBolt(Stream.NORTHBOUND_REPLY);
         builder.setBolt(ComponentType.NORTHBOUND_REPLY_BOLT, replyBolt, parallelism)
                 .shuffleGrouping(ComponentType.NORTHBOUND_REPLY_KAFKA_SPOUT);
     }
+
+    private void createKildaNbWorkerSpout(TopologyBuilder builder, int parallelism,
+                                            List<String> kildaNbWorkerTopics) {
+        KafkaSpout kildaNbWorkerSpout = createKafkaSpout(kildaNbWorkerTopics,
+                ComponentType.KILDA_NB_WORKER_KAFKA_SPOUT);
+        builder.setSpout(ComponentType.KILDA_NB_WORKER_KAFKA_SPOUT, kildaNbWorkerSpout, parallelism);
+    }
+
+    private void createKildaNbWorkerKafkaBolt(TopologyBuilder builder, int parallelism,
+                                                KafkaTopicsConfig topicsConfig) {
+        KafkaBolt kildaNbWorkerKafkaBolt = createKafkaBolt(
+                Stream.formatWithRegion(topicsConfig.getTopoNbTopic(), Stream.STORM_SUFFIX));
+        builder.setBolt(ComponentType.KILDA_NB_WORKER_KAFKA_BOLT, kildaNbWorkerKafkaBolt, parallelism)
+                .shuffleGrouping(ComponentType.KILDA_NB_WORKER_REPLY_BOLT, Stream.NB_WORKER);
+    }
+
+
+    private void createKildaNbWorkerReplyStream(TopologyBuilder builder, int parallelism,
+                                                  KafkaTopicsConfig topicsConfig,
+                                                  List<String> kildaNbWorkerTopics) {
+        createKildaNbWorkerSpout(builder, parallelism, kildaNbWorkerTopics);
+        createKildaNbWorkerKafkaBolt(builder, parallelism, topicsConfig);
+
+        ReplyBolt replyBolt = new ReplyBolt(Stream.NB_WORKER);
+        builder.setBolt(ComponentType.KILDA_NB_WORKER_REPLY_BOLT, replyBolt, parallelism)
+                .shuffleGrouping(ComponentType.KILDA_NB_WORKER_KAFKA_SPOUT);
+    }
+
 
 
     private void createSpeakerFlowRequestStream(TopologyBuilder builder, int parallelism,
@@ -313,35 +341,39 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
 
         // Floodlight -- kilda.flow --> Router
         List<String> kildaFlowTopics = new ArrayList<>();
-        kildaFlowTopics.add(topicsConfig.getFlowTopic());
+        kildaFlowTopics.add(topicsConfig.getFlowRegionTopic());
         createKildaFlowReplyStream(builder, parallelism, topicsConfig, kildaFlowTopics);
 
 
         // Floodlight -- kilda.ping --> Router
         List<String> kildaPingTopics = new ArrayList<>();
-        kildaPingTopics.add(topicsConfig.getPingTopic());
+        kildaPingTopics.add(topicsConfig.getPingRegionTopic());
         createKildaPingReplyStream(builder, parallelism, topicsConfig, kildaPingTopics);
 
         // Floodlight -- kilda.stats --> Router
         List<String> kildaStatsTopics = new ArrayList<>();
-        kildaStatsTopics.add(topicsConfig.getStatsTopic());
+        kildaStatsTopics.add(topicsConfig.getStatsRegionTopic());
         createKildaStatsReplyStream(builder, parallelism, topicsConfig, kildaStatsTopics);
 
         // Floodlight -- kilda.topo.switch.manager --> Router
         List<String> kildaSwitchManagerTopics = new ArrayList<>();
-        kildaSwitchManagerTopics.add(topicsConfig.getTopoSwitchManagerTopic());
+        kildaSwitchManagerTopics.add(topicsConfig.getTopoSwitchManagerRegionTopic());
         createKildaSwitchManagerReplyStream(builder, parallelism, topicsConfig, kildaSwitchManagerTopics);
 
         // Floodlight -- kilda.northbound --> Router
         List<String> kildaNorthboundTopics = new ArrayList<>();
-        kildaNorthboundTopics.add(topicsConfig.getNorthboundTopic());
-        createKildaNorthboundReplyStream(builder, parallelism, topicsConfig, kildaSwitchManagerTopics);
+        kildaNorthboundTopics.add(topicsConfig.getNorthboundRegionTopic());
+        createKildaNorthboundReplyStream(builder, parallelism, topicsConfig, kildaNorthboundTopics);
 
         // Floodlight -- kilda.topo.disco --> Router
         List<String> kildaTopoDiscoTopics = new ArrayList<>();
-        kildaTopoDiscoTopics.add(topicsConfig.getTopoDiscoTopic());
+        kildaTopoDiscoTopics.add(topicsConfig.getTopoDiscoRegionTopic());
         createKildaTopoDiscoReplyStream(builder, parallelism, topicsConfig, kildaTopoDiscoTopics);
 
+        // Floodlight -- kilda.topo.nb --> Router
+        List<String> kildaNbWorkerTopics = new ArrayList<>();
+        kildaNbWorkerTopics.add(topicsConfig.getTopoNbRegionTopic());
+        createKildaNbWorkerReplyStream(builder, parallelism, topicsConfig, kildaNbWorkerTopics);
 
         // Part3 Request to Floodlights
         // Storm -- kilda.speaker.flow --> Floodlight
