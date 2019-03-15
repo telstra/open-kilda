@@ -1,14 +1,14 @@
 #!/bin/bash
-ELASTICSEARCH=http://localhost:9200
+ELASTICSEARCH=http://elasticsearch.pendev:9200
 CURL=curl
 KIBANA_INDEX=".kibana"
 
-(echo > /dev/tcp/127.0.0.1/9200) >/dev/null 2>&1
+(echo > /dev/tcp/elasticsearch.pendev/9200) >/dev/null 2>&1
  result=$?
 if [[ $result -eq 0 ]]; then
 
 echo "Loading index-pattern"
-curl -X PUT --data @index_pattern.json -H 'Content-Type: application/json' 'http://localhost:9200/.kibana/index-pattern/AWUfJAj0duClWTXkEj7q'
+curl -X PUT --data @index_pattern.json -H 'Content-Type: application/json' 'http://elasticsearch.pendev:9200/.kibana/index-pattern/AWUfJAj0duClWTXkEj7q'
 echo
 
 echo "Loading dashboards to ${ELASTICSEARCH} in ${KIBANA_INDEX}"
