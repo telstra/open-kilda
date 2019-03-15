@@ -107,7 +107,7 @@ public class HistoryService {
     }
 
     public List<FlowEvent> listFlowEvents(String flowId, Instant timeFrom, Instant timeTo) {
-        return new ArrayList<>(flowEventRepository.listEventsByFlowIdAndTimeFrame(flowId, timeFrom, timeTo));
+        return new ArrayList<>(flowEventRepository.findByFlowIdAndTimeFrame(flowId, timeFrom, timeTo));
     }
 
     public List<FlowHistory> listFlowHistory(String taskId) {

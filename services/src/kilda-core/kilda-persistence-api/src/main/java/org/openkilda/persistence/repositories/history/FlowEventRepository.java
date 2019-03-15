@@ -25,5 +25,5 @@ import java.util.Optional;
 public interface FlowEventRepository extends Repository<FlowEvent> {
     Optional<FlowEvent> findByTaskId(String taskId);
 
-    Collection<FlowEvent> listEventsByFlowIdAndTimeFrame(String flowId, Instant timeFrom, Instant timeTo);
+    Collection<FlowEvent> findByFlowIdAndTimeFrame(String flowId, Instant timeFrom, Instant timeTo);
 }

@@ -56,7 +56,7 @@ public class Neo4jFlowEventRepository extends Neo4jGenericRepository<FlowEvent> 
     }
 
     @Override
-    public Collection<FlowEvent> listEventsByFlowIdAndTimeFrame(String flowId, Instant timeFrom, Instant timeTo) {
+    public Collection<FlowEvent> findByFlowIdAndTimeFrame(String flowId, Instant timeFrom, Instant timeTo) {
         Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
         Filter beforeFilter = new Filter(TIMESTAMP_PROPERTY_NAME, ComparisonOperator.LESS_THAN_EQUAL, timeTo);
         Filter afterFilter = new Filter(TIMESTAMP_PROPERTY_NAME, ComparisonOperator.GREATER_THAN_EQUAL, timeFrom);
