@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,17 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.persistence.repositories.history;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    REROUTE,
-    FEATURE_TOGGLES,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR,
-    HISTORY
+import org.openkilda.model.history.FlowEvent;
+import org.openkilda.persistence.repositories.Repository;
+
+import java.time.Instant;
+import java.util.Collection;
+import java.util.Optional;
+
+public interface FlowEventRepository extends Repository<FlowEvent> {
+    Optional<FlowEvent> findByTaskId(String taskId);
+
+    Collection<FlowEvent> findByFlowIdAndTimeFrame(String flowId, Instant timeFrom, Instant timeTo);
 }

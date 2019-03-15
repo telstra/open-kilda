@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,17 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.messaging.payload.history;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    REROUTE,
-    FEATURE_TOGGLES,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR,
-    HISTORY
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+public class FlowHistoryPayload {
+    private long timestamp;
+
+    private String action;
+
+    private String details;
 }

@@ -82,5 +82,10 @@ public enum StreamType {
     /**
      * Meter mode.
      */
-    METER_MODE;
+    METER_MODE,
+
+    /**
+     * History messages.
+     */
+    HISTORY;
 }
