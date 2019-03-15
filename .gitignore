@@ -34,6 +34,8 @@ services/src/api/target/
 /services/src/floodlight-modules/src/main/resources/logback.xml
 /services/src/northbound/src/main/resources/log4j2.xml
 /services/src/northbound/src/main/resources/northbound.properties
+/services/src/grpc-speaker/grpc-service/src/main/resources/log4j2.xml
+/services/src/grpc-speaker/grpc-service/src/main/resources/grpc-service.properties
 /services/src/openkilda-gui/src/main/resources/application.properties
 /services/src/openkilda-gui/src/main/resources/logback.xml
 /services/storm/log4j2/cluster.xml
