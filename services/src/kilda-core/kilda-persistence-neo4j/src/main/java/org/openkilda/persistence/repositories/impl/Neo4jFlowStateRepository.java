@@ -19,9 +19,22 @@ import org.openkilda.model.history.FlowDump;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.history.FlowStateRepository;
 
+import org.neo4j.ogm.cypher.ComparisonOperator;
+import org.neo4j.ogm.cypher.Filter;
+
+import java.util.Collection;
+
 public class Neo4jFlowStateRepository extends Neo4jGenericRepository<FlowDump> implements FlowStateRepository {
+    private static final String TASK_ID_PROPERTY_NAME = "task_id";
+
     Neo4jFlowStateRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public Collection<FlowDump> listFlowDumpByTaskId(String taskId) {
+        Filter taskIdFilter = new Filter(TASK_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, taskId);
+        return getSession().loadAll(getEntityType(), taskIdFilter, DEPTH_LOAD_ENTITY);
     }
 
     @Override

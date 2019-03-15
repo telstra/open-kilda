@@ -31,6 +31,7 @@ import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
 import org.openkilda.messaging.command.flow.MeterModifyRequest;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.flow.FlowHistoryData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
@@ -45,11 +46,13 @@ import org.openkilda.messaging.info.rule.FlowSetFieldAction;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
@@ -118,6 +121,12 @@ public class FlowServiceImpl implements FlowService {
      */
     @Value("#{kafkaTopicsConfig.getPingTopic()}")
     private String pingTopic;
+
+    /**
+     * The kafka topic for `nbWorker` topology.
+     */
+    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
+    private String nbWorkerTopic;
 
     @Value("${neo4j.uri}")
     private String neoUri;
@@ -808,6 +817,22 @@ public class FlowServiceImpl implements FlowService {
                 .thenApply(FlowRerouteResponse.class::cast)
                 .thenApply(response ->
                         flowMapper.toReroutePayload(flowId, response.getPayload(), response.isRerouted()));
+    }
+
+    @Override
+    public CompletableFuture<List<FlowEventPayload>> listFlowEvents(String flowId,
+                                                                    long timestampFrom,
+                                                                    long timestampTo) {
+        String correlationId = RequestCorrelationId.getId();
+        GetFlowHistoryRequest request = GetFlowHistoryRequest.builder()
+                .flowId(flowId)
+                .timestampFrom(timestampFrom)
+                .timestampTo(timestampTo)
+                .build();
+        CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);
+        return messagingChannel.sendAndGet(nbWorkerTopic, command)
+                .thenApply(FlowHistoryData.class::cast)
+                .thenApply(FlowHistoryData::getPayload);
     }
 
 }

@@ -19,9 +19,25 @@ import org.openkilda.model.history.FlowHistory;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.history.FlowHistoryRepository;
 
+import org.neo4j.ogm.cypher.ComparisonOperator;
+import org.neo4j.ogm.cypher.Filter;
+import org.neo4j.ogm.cypher.query.SortOrder;
+
+import java.util.Collection;
+
 public class Neo4jFlowHistoryRepository extends Neo4jGenericRepository<FlowHistory> implements FlowHistoryRepository {
+    private static final String TASK_ID_PROPERTY_NAME = "task_id";
+    private static final String TIMESTAMP_PROPERTY_NAME = "timestamp";
+
     Neo4jFlowHistoryRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public Collection<FlowHistory> listFlowHistoryByTaskId(String taskId) {
+        Filter taskIdFilter = new Filter(TASK_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, taskId);
+        return getSession()
+                .loadAll(getEntityType(), taskIdFilter, new SortOrder(TIMESTAMP_PROPERTY_NAME), DEPTH_LOAD_ENTITY);
     }
 
     @Override

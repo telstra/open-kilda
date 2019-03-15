@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.history;
+package org.openkilda.wfm.share.services;
 
 import org.openkilda.model.history.FlowDump;
 import org.openkilda.model.history.FlowEvent;
@@ -31,6 +31,9 @@ import org.openkilda.persistence.repositories.history.StateLogRepository;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -43,8 +46,11 @@ public class HistoryService {
     private final StateLogRepository stateLogRepository;
 
     public HistoryService(PersistenceManager persistenceManager) {
-        transactionManager = persistenceManager.getTransactionManager();
-        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        this(persistenceManager.getTransactionManager(), persistenceManager.getRepositoryFactory());
+    }
+
+    public HistoryService(TransactionManager transactionManager, RepositoryFactory repositoryFactory) {
+        this.transactionManager = transactionManager;
         flowEventRepository = repositoryFactory.createFlowEventRepository();
         flowHistoryRepository = repositoryFactory.createFlowHistoryRepository();
         flowStateRepository = repositoryFactory.createFlowStateRepository();
@@ -83,9 +89,8 @@ public class HistoryService {
      * Makes edge between the flowDump and related flowEvent.
      *
      * @param flowDump the dump of flow.
-     * @param type the state type.
      */
-    public void store(FlowDump flowDump, String type) {
+    public void store(FlowDump flowDump) {
         transactionManager.doInTransaction(() -> {
             flowStateRepository.createOrUpdate(flowDump);
             Optional<FlowEvent> flowEvents = flowEventRepository.findByTaskId(flowDump.getTaskId());
@@ -93,11 +98,23 @@ public class HistoryService {
                 stateLogRepository.createOrUpdate(StateLog.builder()
                         .flowEvent(flowEvents.get())
                         .flowDump(flowDump)
-                        .type(type)
+                        .type(flowDump.getType())
                         .build());
             } else {
                 log.warn("Unable to find related FlowEvent by taskId: {}", flowDump.getTaskId());
             }
         });
+    }
+
+    public List<FlowEvent> listFlowEvents(String flowId, Instant timeFrom, Instant timeTo) {
+        return new ArrayList<>(flowEventRepository.findByFlowIdAndTimeFrame(flowId, timeFrom, timeTo));
+    }
+
+    public List<FlowHistory> listFlowHistory(String taskId) {
+        return new ArrayList<>(flowHistoryRepository.listFlowHistoryByTaskId(taskId));
+    }
+
+    public List<FlowDump> listFlowDump(String taskId) {
+        return new ArrayList<>(flowStateRepository.listFlowDumpByTaskId(taskId));
     }
 }

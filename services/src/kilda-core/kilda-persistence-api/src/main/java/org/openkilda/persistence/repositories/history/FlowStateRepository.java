@@ -18,5 +18,8 @@ package org.openkilda.persistence.repositories.history;
 import org.openkilda.model.history.FlowDump;
 import org.openkilda.persistence.repositories.Repository;
 
+import java.util.Collection;
+
 public interface FlowStateRepository extends Repository<FlowDump> {
+    Collection<FlowDump> listFlowDumpByTaskId(String taskId);
 }
