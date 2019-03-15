@@ -1,7 +1,5 @@
 <div class="row switch_rules">
   <div class="col-lg-12 text-right" style="padding-bottom: 10px;margin-top:-20px; margin-bottom: 10px;">
-    <!-- <span class="btn kilda_btn" id="switch_rules_btn" (click)="switchMeters()">Switch Meters</span> -->
-    <!-- <div class="row"> -->
       <a class="cursor-pointer pull-right"  style="font-size:16px;" id="switch_rules_btn" (click)="switchMeters()"><i class="fa fa-refresh"></i>  Refresh</a>
       <div class="pull-right" [hidden]="showMetersJSON" style="margin-right:10px; margin-top:-4px;">
         <input type="hidden" class="on-off-switch" value="0" style="display: none;">
@@ -14,13 +12,8 @@
             </label>
           </div>
         </div>
-      </div>
-      
-    <!-- </div> -->
-   
-    <!-- &nbsp; <button class="btn btn-dark" [hidden]="showMetersJSON" (click)="toggleView('jsonViewer')">JSON View</button> -->
-    <!-- &nbsp; <button class="btn btn-dark" [hidden]="showMetersJSON" (click)="toggleView('tabularViewer')">Tabular View</button> -->
-  </div>
+      </div>      
+   </div>
   <div id="switch_rules_loader" class="bg-data-loader" style="bottom:1px;display:none;">
     <div class="loader"></div>
   </div>
