@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -20,19 +20,14 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class RulesValidationResult {
+public class SwitchValidationResult {
 
-    @JsonProperty("missing")
-    private List<Long> missingRules;
+    @JsonProperty("rules")
+    private RulesValidationResult rules;
 
-    @JsonProperty("proper")
-    private List<Long> properRules;
-
-    @JsonProperty("excess")
-    private List<Long> excessRules;
+    @JsonProperty("meters")
+    private MetersValidationResult meters;
 }

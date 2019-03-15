@@ -35,8 +35,6 @@ port.up.down.throttling.delay.seconds.cool.down = 5
 
 bfd.port.offset = 200
 
-switch.manager.timeout.ms = 5000
-
 opentsdb.hosts = http://opentsdb.pendev:4242
 opentsdb.timeout = 30
 opentsdb.num.spouts = 1
@@ -90,3 +88,6 @@ pce.strategy = COST
 pce.network.strategy = SYMMETRIC_COST
 pce.diversity.isl.weight = 1000
 pce.diversity.switch.weight = 100
+
+burst.coefficient = 1.05
+min.burst.size.in.kbits = 1024

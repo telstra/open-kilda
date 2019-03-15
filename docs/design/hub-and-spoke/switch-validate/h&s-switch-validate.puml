@@ -1,0 +1,57 @@
+@startuml
+title Switch rules and meters validation
+
+actor User
+boundary Northbound as NB
+participant SwitchValidateManager << Hub >>
+participant ValidationService
+participant Floodlight as FL
+database DAO
+
+User -> NB : Switch validate
+
+activate NB
+NB -> SwitchValidateManager : SwitchValidateRequest
+activate SwitchValidateManager
+
+SwitchValidateManager -> FL : DumpRulesRequest
+deactivate SwitchValidateManager
+FL -> SwitchValidateManager : SwitchFlowEntries
+activate SwitchValidateManager
+SwitchValidateManager -> ValidationService : Validate rules
+activate ValidationService
+ValidationService -> DAO : Get flow segments\nby dst switch id
+activate DAO
+DAO -> ValidationService : Flow segments
+deactivate DAO
+ValidationService -> DAO : Get flows\nby src switch id
+activate DAO
+DAO -> ValidationService : Flows
+deactivate DAO
+ValidationService -> ValidationService : Compute\nmissing/proper/excess\nrules
+
+ValidationService -> SwitchValidateManager : Validate rules\nresult
+deactivate ValidationService
+
+SwitchValidateManager -> FL : DumpMetersRequest
+deactivate SwitchValidateManager
+FL -> SwitchValidateManager : SwitchMeterEntries
+activate SwitchValidateManager
+SwitchValidateManager -> ValidationService : Validate meters
+activate ValidationService
+
+ValidationService -> DAO : Get flows\nby src switch id
+activate DAO
+DAO -> ValidationService : Flows
+deactivate DAO
+ValidationService -> ValidationService : Compute\nmissing/misconfigured\n/proper/excess\nmeters
+
+ValidationService -> SwitchValidateManager : Validate meters\nresult
+deactivate ValidationService
+
+SwitchValidateManager -> NB : SwitchValidationResponse
+deactivate SwitchValidateManager
+NB -> User : SwitchValidationResult
+deactivate NB
+
+ @enduml
