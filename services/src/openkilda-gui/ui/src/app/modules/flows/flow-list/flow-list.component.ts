@@ -74,6 +74,10 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
     this.loadingData = true;
     this.loaderService.show("Loading Flows");
     if(this.storedData && this.storedData.length <=0 ){  
+      var statusParam = statusParam.filter(function (el) {
+        return el != null && el != "";
+      });
+
       let filtersOptions = statusParam.length > 0 ? { status:statusParam.join(","),_:new Date().getTime()} : {_:new Date().getTime()};
       this.flowService.getFlowsList(filtersOptions).subscribe((data : Array<object>) =>{
         this.dataSet = data || [];

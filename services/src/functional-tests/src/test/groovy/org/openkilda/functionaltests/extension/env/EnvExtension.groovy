@@ -35,7 +35,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     LabService labService
 
     @Value('${spring.profiles.active}')
-    String profile;
+    String profile
 
     @Override
     void start() {

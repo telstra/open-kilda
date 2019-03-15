@@ -24,10 +24,10 @@ export class IslListComponent implements OnInit, AfterViewInit {
   ngOnInit() {
     this.titleService.setTitle('OPEN KILDA - ISL');
     var islList = JSON.parse(localStorage.getItem("ISL_LIST"));
-    if (islList) {
+    if(islList){
       this.dataSet = islList;
       this.loadingData = false;
-    } else {
+    }else{
       this.getISLlistService();
     }
   }

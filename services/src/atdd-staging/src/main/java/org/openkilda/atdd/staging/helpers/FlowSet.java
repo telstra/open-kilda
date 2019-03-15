@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * A builder for flows ({@link FlowPayload}) in nonoverlapped VLANs.
+ * A builder for flows ({@link FlowPayload}) in non-overlapped VLANs.
  */
 public class FlowSet {
 
@@ -44,19 +44,6 @@ public class FlowSet {
 
     public Set<FlowPayload> getFlows() {
         return unmodifiableSet(flows);
-    }
-
-    /**
-     * Returns an unallocated vlan. The returned vlan is immediately added to the list of allocated vlans
-     */
-    public int allocateVlan() {
-        RangeSet<Integer> availableVlansRange = TreeRangeSet.create();
-        availableVlansRange.removeAll(allocatedVlans);
-        Integer vlan = availableVlansRange.asRanges().stream()
-                .flatMap(range -> ContiguousSet.create(range, DiscreteDomain.integers()).stream())
-                .findFirst().get();
-        allocatedVlans.add(Range.singleton(vlan));
-        return vlan;
     }
 
     public void addFlow(String flowId, Switch srcSwitch, Switch destSwitch) {
@@ -251,9 +238,14 @@ public class FlowSet {
             FlowEndpointPayload srcEndpoint = new FlowEndpointPayload(srcSwitch.getDpId(), srcPort, srcVlan);
             FlowEndpointPayload destEndpoint = new FlowEndpointPayload(destSwitch.getDpId(), destPort, destVlan);
 
-            return new FlowPayload(flowId, srcEndpoint, destEndpoint,
-                    1, false, false, flowId, null, FlowState.UP.getState());
+            return FlowPayload.builder()
+                    .id(flowId)
+                    .source(srcEndpoint)
+                    .destination(destEndpoint)
+                    .maximumBandwidth(1)
+                    .description(flowId)
+                    .status(FlowState.UP.getState())
+                    .build();
         }
     }
 }
-

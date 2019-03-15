@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -28,6 +28,10 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<Flow> findById(String flowId);
 
+    Collection<Flow> findByGroupId(String flowGroupId);
+
+    Optional<Flow> findByIdAndCookie(String flowId, long cookie);
+
     Optional<FlowPair> findFlowPairById(String flowId);
 
     Collection<FlowPair> findAllFlowPairs();
@@ -36,9 +40,9 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<Flow> findFlowIdsByEndpoint(SwitchId switchId, int port);
 
-    Collection<String> findActiveFlowIdsWithPortInPath(SwitchId switchId, int port);
+    Collection<Flow> findActiveFlowIdsWithPortInPathOverSegments(SwitchId switchId, int port);
 
-    Collection<String> findDownFlowIds();
+    Collection<Flow> findDownFlows();
 
     Collection<Flow> findBySrcSwitchId(SwitchId switchId);
 
@@ -48,8 +52,12 @@ public interface FlowRepository extends Repository<Flow> {
 
     void delete(FlowPair flowPair);
 
+    Optional<String> getOrCreateFlowGroupId(String flowId);
+
     Collection<FlowPair> findAllFlowPairsWithSegment(SwitchId srcSwitchId, int srcPort,
                                                      SwitchId dstSwitchId, int dstPort);
 
     Set<String> findFlowIdsBySwitch(SwitchId switchId);
+
+    Collection<FlowPair> findFlowPairsByGroupId(String flowGroupId);
 }

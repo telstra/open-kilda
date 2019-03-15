@@ -40,10 +40,6 @@ public class KafkaChannel implements IFloodlightModule {
         return config;
     }
 
-    public KafkaTopicsConfig getTopics() {
-        return topics;
-    }
-
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         return ImmutableList.of(
@@ -77,5 +73,61 @@ public class KafkaChannel implements IFloodlightModule {
         moduleContext.getServiceImpl(KafkaUtilityService.class).setup(moduleContext);
         moduleContext.getServiceImpl(IKafkaProducerService.class).setup(moduleContext);
         moduleContext.getServiceImpl(HeartBeatService.class).setup(moduleContext);
+    }
+
+    public String getRegion() {
+        return config.getFloodlightRegion();
+    }
+
+    public String getSpeakerTopic() {
+        return formatTopicWithRegion(topics.getSpeakerTopic());
+    }
+
+    public String getSpeakerFlowTopic() {
+        return formatTopicWithRegion(topics.getSpeakerFlowTopic());
+    }
+
+    public String getSpeakerFlowPingTopic() {
+        return formatTopicWithRegion(topics.getSpeakerFlowPingTopic());
+    }
+
+    public String getSpeakerDiscoTopic() {
+        return formatTopicWithRegion(topics.getSpeakerDiscoTopic());
+    }
+
+    public String getStatsTopic() {
+        return formatTopicWithRegion(topics.getStatsTopic());
+    }
+
+    public String getFlowTopic() {
+        return formatTopicWithRegion(topics.getFlowTopic());
+    }
+
+    public String getTopoDiscoTopic() {
+        return formatTopicWithRegion(topics.getTopoDiscoTopic());
+    }
+
+    public String getNorthboundTopic() {
+        return formatTopicWithRegion(topics.getNorthboundTopic());
+    }
+
+    public String getKafkaNbWorkerTopic() {
+        return formatTopicWithRegion(topics.getTopoNbTopic());
+    }
+
+    public String  getPingTopic() {
+        return formatTopicWithRegion(topics.getPingTopic());
+    }
+
+    public String getTopoSwitchManagerTopic() {
+        return formatTopicWithRegion(topics.getTopoSwitchManagerTopic());
+    }
+
+    private String formatTopicWithRegion(String topic) {
+        String region =  config.getFloodlightRegion();
+        if (region == null || region.isEmpty()) {
+            return topic;
+        }
+        return String.format("%s.%s", topic, region);
     }
 }

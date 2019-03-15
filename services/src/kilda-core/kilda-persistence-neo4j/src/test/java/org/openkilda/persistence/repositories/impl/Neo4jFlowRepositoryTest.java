@@ -16,6 +16,7 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
@@ -38,11 +39,13 @@ import org.junit.Test;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
+    static final String TEST_GROUP_ID = "test_group";
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
     static final SwitchId TEST_SWITCH_C_ID = new SwitchId(3);
@@ -225,6 +228,21 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void shouldFindFlowByGroupId() {
+        Flow flow = Flow.builder()
+                .flowId(TEST_FLOW_ID)
+                .groupId(TEST_FLOW_ID)
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .build();
+
+        flowRepository.createOrUpdate(flow);
+
+        List<Flow> foundFlow = Lists.newArrayList(flowRepository.findByGroupId(TEST_FLOW_ID));
+        assertThat(foundFlow, Matchers.hasSize(1));
+    }
+
+    @Test
     public void shouldFindAllFlowPairs() {
         Flow forwardFlow = Flow.builder()
                 .flowId(TEST_FLOW_ID)
@@ -295,7 +313,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldFindActiveFlowIdsOverSegments() {
+    public void shouldFindActiveFlowsOverSegments() {
         Switch switchC = Switch.builder().switchId(TEST_SWITCH_C_ID).build();
         switchRepository.createOrUpdate(switchC);
 
@@ -308,6 +326,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(2)
                 .destVlan(11)
                 .status(FlowStatus.UP)
+                .cookie(1 | Flow.FORWARD_FLOW_COOKIE_MASK)
                 .build();
 
         Flow reverseFlow = Flow.builder()
@@ -319,6 +338,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(1)
                 .destVlan(10)
                 .status(FlowStatus.UP)
+                .cookie(1 | Flow.REVERSE_FLOW_COOKIE_MASK)
                 .build();
 
         flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
@@ -332,13 +352,13 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .build();
         flowSegmentRepository.createOrUpdate(segment);
 
-        Collection<String> foundFlowIds = flowRepository.findActiveFlowIdsWithPortInPath(TEST_SWITCH_C_ID, 100);
-        assertThat(foundFlowIds, Matchers.hasSize(1));
+        Collection<Flow> foundFlowIds = flowRepository
+                .findActiveFlowIdsWithPortInPathOverSegments(TEST_SWITCH_C_ID, 100);
+        assertThat(foundFlowIds, Matchers.hasSize(2));
     }
 
-
     @Test
-    public void shouldFindActiveFlowIdsByEndpoint() {
+    public void shouldNotFindActiveFlowsByFlowEndpoint() {
         Flow forwardFlow = Flow.builder()
                 .flowId(TEST_FLOW_ID)
                 .srcSwitch(switchA)
@@ -348,6 +368,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(2)
                 .destVlan(11)
                 .status(FlowStatus.UP)
+                .cookie(1 | Flow.FORWARD_FLOW_COOKIE_MASK)
                 .build();
 
         Flow reverseFlow = Flow.builder()
@@ -359,16 +380,21 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(1)
                 .destVlan(10)
                 .status(FlowStatus.UP)
+                .cookie(1 | Flow.REVERSE_FLOW_COOKIE_MASK)
                 .build();
 
         flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
 
-        Collection<String> foundFlowIds = flowRepository.findActiveFlowIdsWithPortInPath(TEST_SWITCH_A_ID, 1);
-        assertThat(foundFlowIds, Matchers.hasSize(1));
+        Collection<Flow> foundFlowIds =
+                flowRepository.findActiveFlowIdsWithPortInPathOverSegments(TEST_SWITCH_A_ID, 1);
+        assertThat(foundFlowIds, Matchers.hasSize(0));
     }
 
     @Test
-    public void shouldNotFindInactiveFlowIdsByEndpoint() {
+    public void shouldNotFindInactiveFlowsByEndpoint() {
+        Switch switchC = Switch.builder().switchId(TEST_SWITCH_C_ID).build();
+        switchRepository.createOrUpdate(switchC);
+
         Flow forwardFlow = Flow.builder()
                 .flowId(TEST_FLOW_ID)
                 .srcSwitch(switchA)
@@ -378,6 +404,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(2)
                 .destVlan(11)
                 .status(FlowStatus.DOWN)
+                .cookie(1 | Flow.FORWARD_FLOW_COOKIE_MASK)
                 .build();
 
         Flow reverseFlow = Flow.builder()
@@ -389,16 +416,27 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(1)
                 .destVlan(10)
                 .status(FlowStatus.DOWN)
+                .cookie(1 | Flow.REVERSE_FLOW_COOKIE_MASK)
                 .build();
 
         flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
 
-        Collection<String> foundFlowIds = flowRepository.findActiveFlowIdsWithPortInPath(TEST_SWITCH_A_ID, 1);
+        FlowSegment segment = FlowSegment.builder()
+                .flowId(TEST_FLOW_ID)
+                .srcSwitch(switchB)
+                .srcPort(1)
+                .destSwitch(switchC)
+                .destPort(100)
+                .build();
+        flowSegmentRepository.createOrUpdate(segment);
+
+        Collection<Flow> foundFlowIds = flowRepository
+                .findActiveFlowIdsWithPortInPathOverSegments(TEST_SWITCH_C_ID, 1);
         assertThat(foundFlowIds, Matchers.empty());
     }
 
     @Test
-    public void shouldFindDownFlowIdsByEndpoint() {
+    public void shouldFindDownFlowsByEndpoint() {
         Flow forwardFlow = Flow.builder()
                 .flowId(TEST_FLOW_ID)
                 .srcSwitch(switchA)
@@ -408,6 +446,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(2)
                 .destVlan(11)
                 .status(FlowStatus.DOWN)
+                .cookie(1 | Flow.FORWARD_FLOW_COOKIE_MASK)
                 .build();
 
         Flow reverseFlow = Flow.builder()
@@ -419,13 +458,14 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destPort(1)
                 .destVlan(10)
                 .status(FlowStatus.DOWN)
+                .cookie(1 | Flow.REVERSE_FLOW_COOKIE_MASK)
                 .build();
 
         flowRepository.createOrUpdate(forwardFlow);
         flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
 
-        Collection<String> foundFlowIds = flowRepository.findDownFlowIds();
-        assertThat(foundFlowIds, Matchers.hasSize(1));
+        Collection<Flow> foundFlowIds = flowRepository.findDownFlows();
+        assertThat(foundFlowIds, Matchers.hasSize(2));
     }
 
     @Test
@@ -460,5 +500,59 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         assertThat(foundFlowPair, Matchers.hasSize(1));
         assertThat(foundFlowPair.iterator().next().getForward(), Matchers.equalTo(forwardFlow));
         assertThat(foundFlowPair.iterator().next().getReverse(), Matchers.equalTo(reverseFlow));
+    }
+
+    @Test
+    public void shouldCreateFlowGroupIdForFlow() {
+        flowRepository.createOrUpdate(Flow.builder()
+                .flowId(TEST_FLOW_ID)
+                .srcSwitch(switchA)
+                .srcPort(1)
+                .destSwitch(switchB)
+                .destPort(2)
+                .cookie(Flow.FORWARD_FLOW_COOKIE_MASK | 1L)
+                .build());
+        flowRepository.createOrUpdate(Flow.builder()
+                .flowId(TEST_FLOW_ID)
+                .srcSwitch(switchB)
+                .srcPort(2)
+                .destSwitch(switchA)
+                .destPort(1)
+                .cookie(Flow.REVERSE_FLOW_COOKIE_MASK | 1L)
+                .build());
+
+        Optional<String> groupOptional = flowRepository.getOrCreateFlowGroupId(TEST_FLOW_ID);
+
+        assertTrue(groupOptional.isPresent());
+        assertNotNull(groupOptional.get());
+        assertEquals(groupOptional.get(),
+                flowRepository.findFlowPairById(TEST_FLOW_ID).get().getForward().getGroupId());
+    }
+
+    @Test
+    public void shouldGetFlowGroupIdForFlow() {
+        flowRepository.createOrUpdate(Flow.builder()
+                .flowId(TEST_FLOW_ID)
+                .groupId(TEST_GROUP_ID)
+                .srcSwitch(switchA)
+                .srcPort(1)
+                .destSwitch(switchB)
+                .destPort(2)
+                .cookie(Flow.FORWARD_FLOW_COOKIE_MASK | 1L)
+                .build());
+        flowRepository.createOrUpdate(Flow.builder()
+                .flowId(TEST_FLOW_ID)
+                .groupId(TEST_GROUP_ID)
+                .srcSwitch(switchB)
+                .srcPort(2)
+                .destSwitch(switchA)
+                .destPort(1)
+                .cookie(Flow.REVERSE_FLOW_COOKIE_MASK | 1L)
+                .build());
+
+        Optional<String> groupOptional = flowRepository.getOrCreateFlowGroupId(TEST_FLOW_ID);
+
+        assertTrue(groupOptional.isPresent());
+        assertEquals(TEST_GROUP_ID, groupOptional.get());
     }
 }

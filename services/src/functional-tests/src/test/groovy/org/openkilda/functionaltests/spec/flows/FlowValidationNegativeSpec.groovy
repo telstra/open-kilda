@@ -99,6 +99,24 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         "transit"       | getNonNeighbouringSwitches() | -1   | "last"   | "reverse"
     }
 
+    @Unroll
+    def "Unable to #action a non-existent flow"() {
+        when: "Trying to #action a non-existent flow"
+        northbound."${action}Flow"(NON_EXISTENT_FLOW_ID)
+
+        then: "An error is received (404 code)"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 404
+        exc.responseBodyAsString.to(MessageError).errorMessage == message
+
+        where:
+        action        | message
+        "get"         | "Can not get flow: Flow $NON_EXISTENT_FLOW_ID not found"
+        "reroute"     | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
+        "validate"    | "Could not validate flow: Flow $NON_EXISTENT_FLOW_ID not found"
+        "synchronize" | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
+    }
+
     /**
      * Checks if there is no discrepancies in the flow validation results
      * //TODO: Don't skip MeterId discrepancies when OVS 2.10 support is added for virtual envs
@@ -165,24 +183,5 @@ class FlowValidationNegativeSpec extends BaseSpecification {
     def getSingleSwitch() {
         def switches = topology.getActiveSwitches()
         return [switches.first(), switches.first()]
-    }
-
-    @Unroll
-    def "Unable to #action a non-existent flow"() {
-        Assume.assumeFalse("Ignored due to issue #2027", action == "validate")
-        when: "Trying to #action a non-existent flow"
-        northbound."${action}Flow"(NON_EXISTENT_FLOW_ID)
-
-        then: "An error is received (404 code)"
-        def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage == message
-
-        where:
-        action        | message
-        "synchronize" | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
-        "reroute"     | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
-        "get"         | "Can not get flow: Flow $NON_EXISTENT_FLOW_ID not found"
-        "validate"    | "Can not validate flow: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 }

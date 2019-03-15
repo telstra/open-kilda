@@ -21,10 +21,12 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -44,6 +46,17 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
         Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
         Filter cookieFilter = new Filter(COOKIE_PROPERTY_NAME, ComparisonOperator.EQUALS, flowCookie);
         return getSession().loadAll(getEntityType(), flowIdFilter.and(cookieFilter), DEPTH_LOAD_ENTITY);
+    }
+
+    @Override
+    public Optional<FlowSegment> findBySrcSwitchIdAndCookie(SwitchId switchId, long flowCookie) {
+        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
+        Filter cookieFilter = new Filter(COOKIE_PROPERTY_NAME, ComparisonOperator.EQUALS, flowCookie);
+
+        Collection<FlowSegment> flowSegments =
+                getSession().loadAll(getEntityType(), srcSwitchFilter.and(cookieFilter), DEPTH_LOAD_ENTITY);
+
+        return flowSegments.isEmpty() ? Optional.empty() : Optional.of(flowSegments.iterator().next());
     }
 
     @Override
@@ -86,6 +99,18 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
 
         return Optional.ofNullable(getSession().queryForObject(Long.class, query, parameters))
                 .orElse(0L);
+    }
+
+    @Override
+    public Collection<FlowSegment> findByFlowGroupId(String flowGroupId) {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("flow_group_id", flowGroupId);
+        String query = "MATCH (:switch)-[fl:flow {group_id: $flow_group_id}]->(:switch) "
+                + "MATCH (src:switch)-[fs:flow_segment]->(dst:switch) "
+                + "WHERE fs.flowid = fl.flowid "
+                + "RETURN src, fs, dst";
+
+        return Lists.newArrayList(getSession().query(FlowSegment.class, query, parameters));
     }
 
     @Override

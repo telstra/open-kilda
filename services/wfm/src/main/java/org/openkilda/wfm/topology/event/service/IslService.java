@@ -253,8 +253,8 @@ public class IslService {
         IslStatus islStatus = IslStatus.MOVED == isl.getStatus() ? IslStatus.MOVED : IslStatus.INACTIVE;
         Collection<Isl> isls = islRepository.findBySrcEndpoint(isl.getSrcSwitch().getSwitchId(), isl.getSrcPort())
                 .stream()
-                .filter(link -> IslStatus.ACTIVE == link.getStatus()
-                              || IslStatus.MOVED == islStatus)
+                .filter(link -> islStatus != link.getStatus()
+                              || islStatus != link.getActualStatus())
                 .collect(Collectors.toList());
 
         for (Isl link : isls) {

@@ -71,6 +71,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.error.ClientException;
+import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.bolt.HistoryBolt;
 import org.openkilda.wfm.share.cache.ResourceCache;
 import org.openkilda.wfm.share.mappers.FlowMapper;
@@ -86,7 +87,6 @@ import org.openkilda.wfm.topology.flow.service.FeatureTogglesService;
 import org.openkilda.wfm.topology.flow.service.FlowAlreadyExistException;
 import org.openkilda.wfm.topology.flow.service.FlowCommandFactory;
 import org.openkilda.wfm.topology.flow.service.FlowCommandSender;
-import org.openkilda.wfm.topology.flow.service.FlowNotFoundException;
 import org.openkilda.wfm.topology.flow.service.FlowResourcesManager;
 import org.openkilda.wfm.topology.flow.service.FlowService;
 import org.openkilda.wfm.topology.flow.service.FlowService.ReroutedFlow;
@@ -320,7 +320,7 @@ public class CrudBolt
         initFlowResourcesManager();
 
         Values values = new Values(new InfoMessage(new FlowCacheSyncResponse(),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
     }
 
@@ -352,7 +352,7 @@ public class CrudBolt
 
             Values values = new Values(new InfoMessage(
                     new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowMapper.INSTANCE.map(flowStatus))),
-                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowAlreadyExistException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -387,7 +387,7 @@ public class CrudBolt
 
             Values values = new Values(new InfoMessage(
                     new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.DOWN)),
-                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -410,7 +410,7 @@ public class CrudBolt
             logger.info("Deleted the flow: {}", deletedFlow);
 
             Values values = new Values(new InfoMessage(buildFlowResponse(deletedFlow.getForward()),
-                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -427,10 +427,12 @@ public class CrudBolt
         try {
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.CREATE_FLOW);
 
-            Flow flow = FlowMapper.INSTANCE.map(((FlowCreateRequest) message.getData()).getPayload());
+            FlowCreateRequest request = (FlowCreateRequest) message.getData();
+            Flow flow = FlowMapper.INSTANCE.map(request.getPayload());
             saveHistory("Flow creating", flow.getFlowId(), "", message.getCorrelationId(), tuple);
 
             FlowPair createdFlow = flowService.createFlow(flow,
+                    request.getDiverseFlowId(),
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.CREATE));
 
             logger.info("Created the flow: {}", createdFlow);
@@ -438,7 +440,7 @@ public class CrudBolt
             saveHistory(createdFlow, "stateAfter", message.getCorrelationId(), tuple);
 
             Values values = new Values(new InfoMessage(buildFlowResponse(createdFlow.getForward()),
-                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -452,6 +454,9 @@ public class CrudBolt
         } catch (UnroutableFlowException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found : " + e.getMessage());
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_FOUND, errorType, "The flow not found :  " + e.getMessage());
         } catch (Exception e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, errorType, e.getMessage());
@@ -533,7 +538,7 @@ public class CrudBolt
 
             FlowRerouteResponse response = new FlowRerouteResponse(resultPath, !resultPath.equals(currentPath));
             Values values = new Values(new InfoMessage(response, message.getTimestamp(),
-                    message.getCorrelationId(), Destination.NORTHBOUND));
+                    message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -555,11 +560,13 @@ public class CrudBolt
         try {
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.UPDATE_FLOW);
 
-            Flow flow = FlowMapper.INSTANCE.map(((FlowUpdateRequest) message.getData()).getPayload());
+            FlowUpdateRequest request = (FlowUpdateRequest) message.getData();
+            Flow flow = FlowMapper.INSTANCE.map((request).getPayload());
             saveHistory("Flow updating", flow.getFlowId(), "", message.getCorrelationId(), tuple);
             saveHistory(flowService.getFlowPair(flow.getFlowId()), "stateBefore", message.getCorrelationId(), tuple);
 
-            FlowPair updatedFlow = flowService.updateFlow(flow.getFlowId(), flow,
+            FlowPair updatedFlow = flowService.updateFlow(flow,
+                    request.getDiverseFlowId(),
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             logger.info("Updated the flow: {}", updatedFlow);
@@ -567,7 +574,7 @@ public class CrudBolt
             saveHistory(updatedFlow, "stateAfter", message.getCorrelationId(), tuple);
 
             Values values = new Values(new InfoMessage(buildFlowResponse(updatedFlow.getForward()),
-                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -620,7 +627,7 @@ public class CrudBolt
         logger.debug("Got bidirectional flow: {}, correlationId {}", flow, message.getCorrelationId());
 
         Values values = new Values(new InfoMessage(new FlowReadResponse(flow),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
     }
 

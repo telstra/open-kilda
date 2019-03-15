@@ -14,12 +14,16 @@ import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
+import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
 
 @Narrative("Verify scenarios around replugging ISLs between different switches/ports.")
 class IslReplugSpec extends BaseSpecification {
+
+    @Value('${opentsdb.metric.prefix}')
+    String metricPrefix
 
     def "ISL status changes to MOVED when replugging ISL into another switch"() {
         given: "A connected a-switch link"
@@ -36,23 +40,23 @@ class IslReplugSpec extends BaseSpecification {
         def newIsl = islUtils.replug(isl, false, notConnectedIsl, true)
 
         then: "Replugged ISL status changes to MOVED"
-        islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], MOVED)
+        islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
 
         and: "New ISL becomes DISCOVERED"
-        islUtils.waitForIslStatus([newIsl, islUtils.reverseIsl(newIsl)], DISCOVERED)
+        islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
 
         when: "Replug the link back where it was"
         islUtils.replug(newIsl, true, isl, false)
 
         then: "Original ISL becomes DISCOVERED again"
-        islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], DISCOVERED)
+        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
 
         and: "Replugged ISL status changes to MOVED"
-        islUtils.waitForIslStatus([newIsl, islUtils.reverseIsl(newIsl)], MOVED)
+        islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
 
         and: "MOVED ISL can be deleted"
-        [newIsl, islUtils.reverseIsl(newIsl)].each { Isl islToRemove ->
-            assert northbound.deleteLink(islUtils.getLinkParameters(islToRemove)).deleted
+        [newIsl, newIsl.reversed].each { Isl islToRemove ->
+            assert northbound.deleteLink(islUtils.toLinkParameters(islToRemove)).deleted
             assert Wrappers.wait(WAIT_OFFSET) { !islUtils.getIslInfo(islToRemove).isPresent() }
 
         }
@@ -67,18 +71,18 @@ class IslReplugSpec extends BaseSpecification {
         def loopedIsl = islUtils.replug(isl, false, isl, true)
 
         then: "Replugged ISL status changes to FAILED"
-        islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], FAILED)
+        islUtils.waitForIslStatus([isl, isl.reversed], FAILED)
 
         and: "The potential self-loop ISL is not present in the list of ISLs"
         def allLinks = northbound.getAllLinks()
         !islUtils.getIslInfo(allLinks, loopedIsl).present
-        !islUtils.getIslInfo(allLinks, islUtils.reverseIsl(loopedIsl)).present
+        !islUtils.getIslInfo(allLinks, loopedIsl.reversed).present
 
         when: "Replug the link back where it was"
         islUtils.replug(loopedIsl, true, isl, false)
 
         then: "Original ISL becomes DISCOVERED again"
-        islUtils.waitForIslStatus([isl, islUtils.reverseIsl(isl)], DISCOVERED)
+        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
     }
 
     def "New potential self-loop ISL (different ports on the same switch) is not getting discovered when replugging"() {
@@ -86,11 +90,11 @@ class IslReplugSpec extends BaseSpecification {
         def isls = topology.isls.findAll { it.aswitch && it.srcSwitch?.active }
                 .inject([:].withDefault { [] }) { r, link ->
             link.srcSwitch && r[link.srcSwitch] << link
-            link.dstSwitch && r[link.dstSwitch] << islUtils.reverseIsl(link)
+            link.dstSwitch && r[link.dstSwitch] << link.reversed
             r //map where key: switch, value: list of a-switch isls related to this switch
         }.find { k, v ->
             k.ofVersion != "OF_12" &&
-            v.findAll { !it.dstSwitch }.size() > 1 //contains at least 2 not connected asw link
+                    v.findAll { !it.dstSwitch }.size() > 1 //contains at least 2 not connected asw link
         }?.value as List<TopologyDefinition.Isl>
         assumeNotNull("Not able to find required switch with enough free a-switch ISLs", isls)
 
@@ -109,12 +113,12 @@ class IslReplugSpec extends BaseSpecification {
         TimeUnit.SECONDS.sleep(discoveryInterval + WAIT_OFFSET)
         def allLinks = northbound.getAllLinks()
         !islUtils.getIslInfo(allLinks, expectedIsl).present
-        !islUtils.getIslInfo(allLinks, islUtils.reverseIsl(expectedIsl)).present
+        !islUtils.getIslInfo(allLinks, expectedIsl.reversed).present
 
         and: "Self-loop rule packet counter is incremented and logged in otsdb"
         def statsData = null
         Wrappers.wait(STATS_LOGGING_TIMEOUT, 2) {
-            statsData = otsdb.query(beforeReplugTime, "pen.switch.flow.system.packets",
+            statsData = otsdb.query(beforeReplugTime, metricPrefix + "switch.flow.system.packets",
                     [switchid : expectedIsl.srcSwitch.dpId.toOtsdFormat(),
                      cookieHex: DefaultRule.DROP_LOOP_RULE.toHexString()]).dps
             assert statsData && !statsData.empty

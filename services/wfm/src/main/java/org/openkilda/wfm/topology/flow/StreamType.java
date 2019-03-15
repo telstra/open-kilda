@@ -25,7 +25,7 @@ public enum StreamType {
     CREATE,
 
     /**
-     * Get flow topology stream.
+     * Get flow stream.
      */
     READ,
 

@@ -195,7 +195,7 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
     }
 
     private void statsProducer(TopologyBuilder topology) {
-        StatsProducer bolt = new StatsProducer();
+        StatsProducer bolt = new StatsProducer(topologyConfig.getMetricPrefix());
         topology.setBolt(StatsProducer.BOLT_ID, bolt, scaleFactor)
                 .shuffleGrouping(PeriodicResultManager.BOLT_ID, PeriodicResultManager.STREAM_STATS_ID);
     }

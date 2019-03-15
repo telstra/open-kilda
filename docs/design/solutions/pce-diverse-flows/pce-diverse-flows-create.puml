@@ -9,7 +9,6 @@ participant PathComputer
 participant AvailableNetworkFactory
 participant AvailableNetwork
 database Neo4J
-participant IntersectionComputer
 
 activate Client
 Client -> NB: create diverse flow
@@ -22,15 +21,15 @@ alt diverse flow "flow group" property is not defined
    FlowTopology -> Neo4J: generate and save "flow group" id into diverse flow
 end
 
-FlowTopology -> PathComputerFactory: getPathComputer with diverse\nweight compute strategy
+FlowTopology -> PathComputerFactory: getPathComputer
 create PathComputer
-PathComputerFactory -> PathComputer: create with proper weight function
+PathComputerFactory -> PathComputer: create
 PathComputer --> FlowTopology: PathComputer
 
-FlowTopology -> PathComputer: getPath with diverse\nnetwork build strategy
+FlowTopology -> PathComputer: getPath with flow group id
 activate PathComputer
 
-PathComputer -> AvailableNetworkFactory: getAvailableNetwork with\ndiverse build strategy
+PathComputer -> AvailableNetworkFactory: getAvailableNetwork\nwith flow group id
 activate AvailableNetworkFactory
 
 group Build AvailableNetwork
@@ -41,10 +40,7 @@ group Build AvailableNetwork
     AvailableNetwork --> AvailableNetworkFactory
 
     group Fill network diversity weights
-        AvailableNetworkFactory -> Neo4J: get diverse flow by id
-        Neo4J --> AvailableNetworkFactory: Flow instance
-
-        AvailableNetworkFactory -> Neo4J: get all flow segments for flows with the "flow group" id
+        AvailableNetworkFactory -> Neo4J: get flow segments for flows with the "flow group" id
         Neo4J--> AvailableNetworkFactory: diverse flow segments
 
         AvailableNetworkFactory -> AvailableNetwork: fill diverse weighs using\ndiverse flow segments
@@ -61,8 +57,8 @@ end
 
 alt path found
     FlowTopology -> Neo4J: create new flow with "flow group" id
-    FlowTopology -> IntersectionComputer: get intersection counts by ISLs and switches in flow group
-    IntersectionComputer --> FlowTopology: intersection counts
+    FlowTopology -> Neo4J: install flow segments
+
     FlowTopology --> NB: computed FlowPair
     NB --> Client: Flow Response
 

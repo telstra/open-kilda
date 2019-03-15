@@ -83,8 +83,7 @@ public class SwitchService {
                 inventorySwitches = switchStoreService.getSwitches();
                 processInventorySwitch(switchInfo, inventorySwitches);
             } catch (Exception ex) {
-                LOGGER.error("[getSwitches] Exception while retrieving switches from store. Exception: "
-                        + ex.getLocalizedMessage(), ex);
+                LOGGER.error("Error occurred while retrieving switches from store", ex);
             }
         }
         return switchInfo;
@@ -124,8 +123,7 @@ public class SwitchService {
                     switchInfo.setDiscrepancy(discrepancy);
                 }
             } catch (Exception ex) {
-                LOGGER.error("[getSwitches] Exception while retrieving switches from store. Exception: "
-                        + ex.getLocalizedMessage(), ex);
+                LOGGER.error("Error occurred while retrieving switches from store", ex);
             }
         }
         return switchInfo;
@@ -189,9 +187,11 @@ public class SwitchService {
 
                     switchObj.setDiscrepancy(discrepancy);
                 }
+                switchObj.setInventorySwitch(true);
             } else {
                 SwitchInfo switchInfoObj = new SwitchInfo();
                 toSwitchInfo(switchInfoObj, inventorySwitch);
+                switchInfoObj.setInventorySwitch(true);
                 discrepancySwitch.add(switchInfoObj);
             }
         }
@@ -217,6 +217,7 @@ public class SwitchService {
 
                 switchInfo.setDiscrepancy(discrepancy);
             }
+            switchInfo.setControllerSwitch(true);
         }
         switches.addAll(discrepancySwitch);
     }
@@ -224,14 +225,16 @@ public class SwitchService {
     private void appendInventoryInfo(final SwitchInfo switchInfo, final InventorySwitch inventorySwitch) {
         switchInfo.setUuid(inventorySwitch.getUuid());
         switchInfo.setCommonName(inventorySwitch.getCommonName());
-        PopLocation popLocation = new PopLocation();
-        popLocation.setStateCode(inventorySwitch.getPopLocation().getStateCode());
-        popLocation.setCountryCode(inventorySwitch.getPopLocation().getCountryCode());
-        popLocation.setPopUuid(inventorySwitch.getPopLocation().getPopUuid());
-        popLocation.setPopName(inventorySwitch.getPopLocation().getPopName());
-        popLocation.setPopCode(inventorySwitch.getPopLocation().getPopCode());
+        if (inventorySwitch.getPopLocation() != null) {
+            PopLocation popLocation = new PopLocation();
+            popLocation.setStateCode(inventorySwitch.getPopLocation().getStateCode());
+            popLocation.setCountryCode(inventorySwitch.getPopLocation().getCountryCode());
+            popLocation.setPopUuid(inventorySwitch.getPopLocation().getPopUuid());
+            popLocation.setPopName(inventorySwitch.getPopLocation().getPopName());
+            popLocation.setPopCode(inventorySwitch.getPopLocation().getPopCode());
 
-        switchInfo.setPopLocation(popLocation);
+            switchInfo.setPopLocation(popLocation);
+        }
         switchInfo.setModel(inventorySwitch.getModel());
         switchInfo.setRackLocation(inventorySwitch.getRackLocation());
         switchInfo.setReferenceUrl(inventorySwitch.getReferenceUrl());
@@ -374,7 +377,7 @@ public class SwitchService {
             try {
                 customers = switchStoreService.getPortFlows(switchId, port);
             } catch (Exception ex) {
-                LOGGER.info("[getPortFlows] : Exception : " + ex);
+                LOGGER.warn("Get port flows.", ex);
             }
         }
         return customers;
@@ -391,8 +394,6 @@ public class SwitchService {
      */
     public List<FlowInfo> getIslFlows(String srcSwitch, String srcPort, String dstSwitch,
             String dstPort) {
-        
-        LOGGER.info("Inside SwitchService method getIslFlows");
         return switchIntegrationService.getIslFlows(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 

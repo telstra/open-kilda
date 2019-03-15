@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -145,6 +145,9 @@ public class Flow implements Serializable {
     @Property(name = "meter_id")
     private Integer meterId;
 
+    @Property(name = "group_id")
+    private String groupId;
+
     @Property(name = "ignore_bandwidth")
     private boolean ignoreBandwidth;
 
@@ -155,6 +158,16 @@ public class Flow implements Serializable {
     // Enforce usage of custom converters.
     @Convert(graphPropertyType = String.class)
     private FlowStatus status;
+
+    @Property(name = "max_latency")
+    private Integer maxLatency;
+
+    @Property(name = "priority")
+    private Integer priority;
+
+    @Property(name = "time_create")
+    @Convert(InstantStringConverter.class)
+    private Instant timeCreate;
 
     @Property(name = "time_modify")
     @Convert(InstantStringConverter.class)
@@ -167,8 +180,8 @@ public class Flow implements Serializable {
     Flow(String flowId, long cookie, //NOSONAR
             Switch srcSwitch, Switch destSwitch, int srcPort, int srcVlan, int destPort, int destVlan,
             FlowPath flowPath, long bandwidth, String description, int transitVlan,
-            Integer meterId, boolean ignoreBandwidth, boolean periodicPings,
-            FlowStatus status, Instant timeModify) {
+            Integer meterId, String groupId, boolean ignoreBandwidth, boolean periodicPings,
+            FlowStatus status, Integer maxLatency, Integer priority, Instant timeCreate, Instant timeModify) {
         this.flowId = flowId;
         this.cookie = cookie;
         setSrcSwitch(srcSwitch);
@@ -182,9 +195,13 @@ public class Flow implements Serializable {
         this.description = description;
         this.transitVlan = transitVlan;
         this.meterId = meterId;
+        this.groupId = groupId;
         this.ignoreBandwidth = ignoreBandwidth;
         this.periodicPings = periodicPings;
         this.status = status;
+        this.maxLatency = maxLatency;
+        this.priority = priority;
+        this.timeCreate = timeCreate;
         setTimeModify(timeModify);
     }
 

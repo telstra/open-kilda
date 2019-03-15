@@ -530,6 +530,7 @@ public class NorthboundServiceImpl implements NorthboundService {
                 .actualState(IslChangeType.from(dto.getActualState().toString()))
                 .cost(dto.getCost())
                 .availableBandwidth(dto.getAvailableBandwidth())
+                .maxBandwidth(dto.getMaxBandwidth())
                 .underMaintenance(dto.isUnderMaintenance())
                 .build();
     }

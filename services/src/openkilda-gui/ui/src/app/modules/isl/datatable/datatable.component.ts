@@ -154,7 +154,7 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
       retrieve: true,
       autoWidth: false,
       colResize: false,      
-      dom: 'tpl',
+      dom: 'tpli',
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       language: {
         searchPlaceholder: "Search"

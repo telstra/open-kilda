@@ -101,17 +101,22 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 .allGrouping(STATS_CACHE_FILTER_BOLT.name(), CACHE_UPDATE.name())
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.CACHE_DATA.toString(), statsFields);
 
-        builder.setBolt(PORT_STATS_METRIC_GEN.name(), new PortMetricGenBolt(), parallelism)
+        builder.setBolt(PORT_STATS_METRIC_GEN.name(),
+                new PortMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.PORT_STATS.toString(), fieldMessage);
-        builder.setBolt(METER_CFG_STATS_METRIC_GEN.name(), new MeterConfigMetricGenBolt(), parallelism)
+        builder.setBolt(METER_CFG_STATS_METRIC_GEN.name(),
+                new MeterConfigMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.METER_CONFIG_STATS.toString(), fieldMessage);
-        builder.setBolt(SYSTEM_RULE_STATS_METRIC_GEN.name(), new SystemRuleMetricGenBolt(), parallelism)
+        builder.setBolt(SYSTEM_RULE_STATS_METRIC_GEN.name(),
+                new SystemRuleMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.SYSTEM_RULE_STATS.toString(), statsFields);
 
         logger.debug("starting flow_stats_metric_gen");
-        builder.setBolt(FLOW_STATS_METRIC_GEN.name(), new FlowMetricGenBolt(), parallelism)
+        builder.setBolt(FLOW_STATS_METRIC_GEN.name(),
+                new FlowMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
                 .fieldsGrouping(STATS_CACHE_BOLT.name(), StatsStreamType.FLOW_STATS.toString(), statsWithCacheFields);
-        builder.setBolt(METER_STATS_METRIC_GEN.name(), new MeterStatsMetricGenBolt(), parallelism)
+        builder.setBolt(METER_STATS_METRIC_GEN.name(),
+                new MeterStatsMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
                 .fieldsGrouping(STATS_CACHE_BOLT.name(), StatsStreamType.METER_STATS.toString(), statsWithCacheFields);
 
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();

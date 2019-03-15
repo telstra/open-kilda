@@ -15,7 +15,6 @@
 
 package org.openkilda.floodlight.service.kafka;
 
-import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.service.IService;
 
@@ -49,8 +48,8 @@ public class KafkaUtilityService implements IService {
         return new KafkaProducer<>(owner.getConfig().producerProperties());
     }
 
-    public KafkaTopicsConfig getTopics() {
-        return owner.getTopics();
+    public KafkaChannel getKafkaChannel() {
+        return owner;
     }
 
     public boolean isTestingMode() {
