@@ -123,4 +123,21 @@ public class DiscoveryDecisionMakerServiceTest {
         w.discovered(endpointAlpha, islBetaAlpha, 0);
         verify(carrier, only()).linkDiscovered(islBetaAlpha);
     }
+
+    @Test
+    public void ensureDiscoveryResetFailTime() {
+        DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(carrier, 10, 5);
+
+        w.discovered(endpointAlpha, islBetaAlpha, 0);
+        w.failed(endpointAlpha, 6);
+        w.tick(9);
+        w.discovered(endpointAlpha, islBetaAlpha, 10);
+        w.failed(endpointAlpha, 11);
+
+        w.tick(19);
+        verify(carrier, never()).linkDestroyed(any(Endpoint.class));
+
+        w.tick(20);
+        verify(carrier).linkDestroyed(endpointAlpha);
+    }
 }

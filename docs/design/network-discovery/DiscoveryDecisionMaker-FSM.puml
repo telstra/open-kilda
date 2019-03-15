@@ -14,7 +14,9 @@ Failed : enter / emit fail
 Failed -> Discovered : discovered
 
 Discovered -> Unstable : fail
+Discovered : enter / save failTimeLowerLimit
 Discovered : enter / emit discovered
+Discovered : discovered / save failTimeLowerLimit
 Discovered : discovered / emit discovered
 
 @enduml

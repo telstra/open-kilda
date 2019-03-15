@@ -86,6 +86,7 @@ public final class DecisionMakerFsm extends AbstractBaseFsm<DecisionMakerFsm,
     private final Long failTimeout;
     private final Long awaitTime;
     private Long failTime;
+    private long failTimeLowerLimit = 0;
 
     public DecisionMakerFsm(Endpoint endpoint, Long failTimeout, Long awaitTime) {
         this.endpoint = endpoint;
@@ -106,12 +107,16 @@ public final class DecisionMakerFsm extends AbstractBaseFsm<DecisionMakerFsm,
 
     public void saveFailTime(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
                               DecisionMakerFsmContext context) {
-        failTime = context.getCurrentTime() - awaitTime;
+        failTime = Math.max(context.getCurrentTime() - awaitTime, failTimeLowerLimit);
     }
 
+    /**
+     * .
+     */
     public void emitDiscovery(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
                                DecisionMakerFsmContext context) {
         context.getOutput().linkDiscovered(context.getDiscoveryEvent());
+        failTimeLowerLimit = context.getCurrentTime();
         failTime = null;
     }
 
