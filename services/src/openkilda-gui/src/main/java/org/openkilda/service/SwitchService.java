@@ -187,9 +187,11 @@ public class SwitchService {
 
                     switchObj.setDiscrepancy(discrepancy);
                 }
+                switchObj.setInventorySwitch(true);
             } else {
                 SwitchInfo switchInfoObj = new SwitchInfo();
                 toSwitchInfo(switchInfoObj, inventorySwitch);
+                switchInfoObj.setInventorySwitch(true);
                 discrepancySwitch.add(switchInfoObj);
             }
         }
@@ -215,6 +217,7 @@ public class SwitchService {
 
                 switchInfo.setDiscrepancy(discrepancy);
             }
+            switchInfo.setControllerSwitch(true);
         }
         switches.addAll(discrepancySwitch);
     }

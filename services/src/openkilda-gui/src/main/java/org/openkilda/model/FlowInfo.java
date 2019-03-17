@@ -89,6 +89,12 @@ public class FlowInfo implements Serializable {
 
     @JsonProperty("state")
     private String state;
+    
+    @JsonProperty("controller-flow")
+    private boolean controllerFlow;
+    
+    @JsonProperty("inventory-flow")
+    private boolean inventoryFlow;
 
     private static final long serialVersionUID = -7015976328478701934L;
 

@@ -3,10 +3,23 @@
       <div class="row">
           <div class="col-sm-4">
               <div class="form-group input-group-sm">
-                   <input type="text" class="form-control" (keyup)="fulltextSearch($event)" placeholder="Search"/>
+                   <input id="search-input" type="text" class="form-control" (keyup)="fulltextSearch($event)" placeholder="Search"/>
                </div>
           </div>
             <div class="col-sm-8 text-right text-filters mb-3">
+                <div *ngIf="hasStoreSetting" class="btn-group btn-group-sm btn-group-toggle mr-1" data-toggle="buttons">
+                    <label class="btn" (click)="toggleType('all')" [ngClass]="{ 'btn-secondary' : typeFilter == 'all','btn-dark': typeFilter != 'all'}">
+                      <input type="radio" name="options" id="option1" autocomplete="off" checked> All
+                    </label>
+                    <label class="btn" (click)="toggleType('controller')" [ngClass]="{ 'btn-secondary' : typeFilter == 'controller','btn-dark': typeFilter != 'controller'}">
+                      <input type="radio" name="options" id="option2" autocomplete="off"> Controller
+                    </label>
+                    <label class="btn" (click)="toggleType('inventory')" [ngClass]="{ 'btn-secondary' : typeFilter == 'inventory','btn-dark': typeFilter != 'inventory'}">
+                      <input type="radio" name="options" id="option3" autocomplete="off"> Inventory
+                    </label>
+                    
+                  </div>
+                  <a *ngIf="hasStoreSetting" class="mr-1"> | </a>
                <a class="cursor-pointer" (click)="refreshList()"><i class="fa fa-refresh"></i>  Refresh</a>
             </div>
        </div>
@@ -59,6 +72,12 @@
             <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="state" [hidden]="!state" />
         
         </th>
+        <th >
+          <span title="type">
+              type
+             </span>
+              
+        </th>
       </tr>
     </thead>
 
@@ -86,6 +105,7 @@
             <td class="divTableCell" title="{{checkValue(row.state)}}" >
               {{checkValue(row.state)}}
             </td>
+            <td >{{ descrepancyString(row) }}</td>
         </tr>
     </tbody>
   </table>

@@ -22,6 +22,7 @@ public final class ComponentType {
     public static final String NORTHBOUND_REPLY_BOLT = "NORTHBOUND_REPLY_BOLT";
     public static final String KILDA_SWITCH_MANAGER_REPLY_BOLT = "KILDA_SWITCH_MANAGER_REPLY_BOLT";
     public static final String KILDA_STATS_REPLY_BOLT = "KILDA_STATS_REPLY_BOLT";
+    public static final String KILDA_NB_WORKER_REPLY_BOLT = "KILDA_NB_WORKER_REPLY_BOLT";
     public static final String KILDA_TOPO_DISCO_BOLT = "KILDA_TOPO_DISCO_BOLT";
 
 
@@ -50,6 +51,8 @@ public final class ComponentType {
     public static final String KILDA_TOPO_DISCO_KAFKA_BOLT = "KILDA_TOPO_DISCO_KAFKA_BOLT";
     public static final String NORTHBOUND_REPLY_KAFKA_BOLT = "NORTHBOUND_REPLY_KAFKA_BOLT";
     public static final String NORTHBOUND_REPLY_KAFKA_SPOUT = "NORTHBOUND_REPLY_KAFKA_SPOUT";
+    public static final String KILDA_NB_WORKER_KAFKA_SPOUT = "KILDA_NB_WORKER_KAFKA_SPOUT";
+    public static final String KILDA_NB_WORKER_KAFKA_BOLT = "KILDA_NB_WORKER_KAFKA_BOLT";
 
     private ComponentType() {}
 }

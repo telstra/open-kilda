@@ -111,8 +111,9 @@ public class FlowService extends BaseFlowService {
         log.info("Creating the flow {} with path: {}", flow, pathPair);
 
         FlowPairWithSegments result = transactionManager.doInTransaction(() -> {
-            FlowPair flowPair = flowResourcesManager.allocateFlow(buildFlowPair(flow, pathPair));
-            flowPair.setTimeCreate(Instant.now());
+            Instant timestamp = Instant.now();
+            FlowPair flowPair = flowResourcesManager.allocateFlow(buildFlowPair(flow, pathPair, timestamp));
+            flowPair.setTimeCreate(timestamp);
 
             List<FlowSegment> forwardSegments = buildFlowSegments(flowPair.getForward());
             List<FlowSegment> reverseSegments = buildFlowSegments(flowPair.getReverse());
@@ -354,6 +355,11 @@ public class FlowService extends BaseFlowService {
 
     private FlowPair buildFlowPair(Flow flow, PathPair pathPair) {
         Instant timestamp = Instant.now();
+
+        return buildFlowPair(flow, pathPair, timestamp);
+    }
+
+    private FlowPair buildFlowPair(Flow flow, PathPair pathPair, Instant timestamp) {
 
         Flow forward = flow.toBuilder()
                 .srcSwitch(switchRepository.reload(flow.getSrcSwitch()))
