@@ -17,7 +17,6 @@ package org.openkilda.floodlight;
 
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
-import org.openkilda.floodlight.service.HeartBeatService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaProducerProxy;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
@@ -44,16 +43,14 @@ public class KafkaChannel implements IFloodlightModule {
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         return ImmutableList.of(
                 KafkaUtilityService.class,
-                IKafkaProducerService.class,
-                HeartBeatService.class);
+                IKafkaProducerService.class);
     }
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
         return ImmutableMap.of(
                 KafkaUtilityService.class, new KafkaUtilityService(this),
-                IKafkaProducerService.class, new KafkaProducerProxy(this),
-                HeartBeatService.class, new HeartBeatService(this));
+                IKafkaProducerService.class, new KafkaProducerProxy(this));
     }
 
     @Override
@@ -72,7 +69,6 @@ public class KafkaChannel implements IFloodlightModule {
     public void startUp(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
         moduleContext.getServiceImpl(KafkaUtilityService.class).setup(moduleContext);
         moduleContext.getServiceImpl(IKafkaProducerService.class).setup(moduleContext);
-        moduleContext.getServiceImpl(HeartBeatService.class).setup(moduleContext);
     }
 
     public String getRegion() {

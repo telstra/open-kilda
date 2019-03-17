@@ -228,7 +228,7 @@ class RecordHandler implements Runnable {
 
     private void doAliveRequest(CommandMessage message) {
         // TODO(tdurakov): return logic for failed amount counter
-        int totalFailedAmount = 0;
+        int totalFailedAmount = getKafkaProducer().getFailedSendMessageCounter();
         getKafkaProducer().sendMessageAndTrack(context.getKafkaTopoDiscoTopic(),
                 new InfoMessage(new AliveResponse(context.getRegion(), totalFailedAmount), System.currentTimeMillis(),
                         message.getCorrelationId()));
