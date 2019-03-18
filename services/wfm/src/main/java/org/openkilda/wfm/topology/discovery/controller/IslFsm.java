@@ -45,10 +45,12 @@ import org.openkilda.wfm.topology.discovery.model.IslDataHolder;
 import org.openkilda.wfm.topology.discovery.model.IslReference;
 import org.openkilda.wfm.topology.discovery.model.facts.DiscoveryFacts;
 import org.openkilda.wfm.topology.discovery.service.IIslCarrier;
+import org.openkilda.wfm.topology.utils.DiscoveryTopologyLogWrapper;
 
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.event.Level;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
@@ -73,6 +75,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private final DiscoveryFacts discoveryFacts;
 
     private static final StateMachineBuilder<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> builder;
+
+    private final DiscoveryTopologyLogWrapper logWrapper = new DiscoveryTopologyLogWrapper(log);
 
     static {
         builder = StateMachineBuilderFactory.create(
@@ -214,6 +218,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     protected void upEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
+        String message = String.format("ISL changed status to: %s", to);
+        logWrapper.onIslUpdateStatus(Level.INFO, message, discoveryFacts.getReference(), to.toString());
 
         saveAllTransaction();
         triggerDownFlowReroute(context);
@@ -279,6 +285,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 throw new IllegalStateException(String.format("Unexpected event %s for %s.handleSourceDestUpState",
                                                               event, getClass().getName()));
         }
+
         endpointStatus.put(context.getEndpoint(), status);
     }
 
