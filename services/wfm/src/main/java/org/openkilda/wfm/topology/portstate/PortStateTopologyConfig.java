@@ -33,7 +33,7 @@ public interface PortStateTopologyConfig extends AbstractTopologyConfig {
     }
 
     default String getKafkaStatsTopic() {
-        return getKafkaTopics().getStatsTopic();
+        return getKafkaTopics().getStatsStormTopic();
     }
 
     default String getKafkaSpeakerTopic() {
