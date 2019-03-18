@@ -55,4 +55,11 @@ public abstract class AbstractPort implements Serializable {
     public String toString() {
         return String.format("%s:%s status:%s", getClass().getCanonicalName(), endpoint, linkStatus);
     }
+
+    /**
+     * Type of a port for dashboard log.
+     *
+     * @return the type of port.
+     */
+    public abstract String getLogIdentifier();
 }

@@ -50,4 +50,12 @@ public class PhysicalPort extends AbstractPort {
     public void updatePortLinkMode(ISwitchCarrier carrier) {
         carrier.setPortLinkMode(getEndpoint(), getLinkStatus());
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getLogIdentifier() {
+        return "physical";
+    }
 }
