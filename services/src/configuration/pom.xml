@@ -54,13 +54,6 @@
             <artifactId>javax.el</artifactId>
             <scope>test</scope>
         </dependency>
-
-        <dependency>
-            <groupId>org.projectfloodlight</groupId>
-            <artifactId>floodlight</artifactId>
-            <version>${floodlight.version}</version>
-            <scope>provided</scope>
-        </dependency>
     </dependencies>
 
     <build>
