@@ -73,9 +73,10 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
     protected void doWork(Tuple input) {
         String sourceComponent = input.getSourceComponent();
         currentTuple = input;
+        Message message = null;
         try {
             String json = input.getValueByField(AbstractTopology.MESSAGE_FIELD).toString();
-            Message message = MAPPER.readValue(json, Message.class);
+            message = MAPPER.readValue(json, Message.class);
             switch (sourceComponent) {
                 case ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT:
                     routerService.processSpeakerDiscoResponse(this, message);
@@ -88,7 +89,7 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
                     break;
             }
         } catch (Exception e) {
-            logger.error("failed to process message");
+            logger.error("Failed to process message {}", message);
         } finally {
             outputCollector.ack(input);
         }
@@ -129,7 +130,24 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
     public void send(Message message, String outputStream) {
         try {
             String json = MAPPER.writeValueAsString(message);
-            Values values = new Values(json);
+            Values values;
+            if (currentTuple.getFields().contains(AbstractTopology.KEY_FIELD)
+                    && currentTuple.getValueByField(AbstractTopology.KEY_FIELD) != null) {
+                values = new Values(currentTuple.getStringByField(AbstractTopology.KEY_FIELD), json);
+            } else {
+                values = new Values(json);
+            }
+            outputCollector.emit(outputStream, currentTuple, values);
+        } catch (JsonProcessingException e) {
+            logger.error("failed to serialize message {}", message);
+        }
+    }
+
+    @Override
+    public void send(String key, Message message, String outputStream) {
+        try {
+            String json = MAPPER.writeValueAsString(message);
+            Values values = new Values(key, json);
             outputCollector.emit(outputStream, currentTuple, values);
         } catch (JsonProcessingException e) {
             logger.error("failed to serialize message {}", message);

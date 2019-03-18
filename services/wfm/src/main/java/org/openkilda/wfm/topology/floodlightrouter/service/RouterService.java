@@ -130,7 +130,7 @@ public class RouterService {
         log.info(
                 "Send network dump request (correlation-id: {})",
                 correlationId);
-        routerMessageSender.send(command, Stream.formatWithRegion(Stream.SPEAKER, region));
+        routerMessageSender.send(command, Stream.formatWithRegion(Stream.SPEAKER_DISCO, region));
         return correlationId;
     }
 }

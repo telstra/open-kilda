@@ -39,7 +39,7 @@ public class ReplyBolt extends AbstractBolt {
         Object key = input.getValueByField(AbstractTopology.KEY_FIELD);
         String message = input.getValueByField(AbstractTopology.MESSAGE_FIELD).toString();
         Values values = new Values(key, message);
-        getOutput().emit(outputStream, values);
+        getOutput().emit(outputStream, input, values);
     }
 
     @Override

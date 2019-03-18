@@ -27,6 +27,7 @@ import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
 import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
+import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
@@ -81,6 +82,8 @@ public final class RouterUtils {
                 return ((ValidateRulesRequest) commandData).getSwitchId();
             } else if (commandData instanceof MeterModifyCommandRequest) {
                 return ((MeterModifyCommandRequest) commandData).getFwdSwitchId();
+            } else if (commandData instanceof DumpRulesForSwitchManagerRequest) {
+                return ((DumpRulesForSwitchManagerRequest) commandData).getSwitchId();
             }
         }
         return null;

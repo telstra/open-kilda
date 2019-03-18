@@ -349,11 +349,11 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
 
         ArrayList<Message> producedMessages = new ArrayList<>();
         // setup hook for verify that we create new message for producer
-        producerService.sendMessageAndTrack(eq(KAFKA_ISL_DISCOVERY_TOPIC), anyObject(InfoMessage.class));
+        producerService.sendMessageAndTrack(eq(KAFKA_ISL_DISCOVERY_TOPIC), anyObject(), anyObject(InfoMessage.class));
         expectLastCall().andAnswer(new IAnswer<Object>() {
             @Override
             public Object answer() {
-                Message sentMessage = (Message) getCurrentArguments()[1];
+                Message sentMessage = (Message) getCurrentArguments()[2];
                 sentMessage.setTimestamp(0);
                 producedMessages.add(sentMessage);
                 return null;
@@ -396,7 +396,6 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
                                 new SpeakerSwitchPortView(4, SpeakerSwitchPortView.State.UP),
                                 new SpeakerSwitchPortView(5, SpeakerSwitchPortView.State.DOWN)))),
                 0, correlationId, 1, 2, "1"));
-
         assertEquals(expectedMessages, producedMessages);
     }
 
