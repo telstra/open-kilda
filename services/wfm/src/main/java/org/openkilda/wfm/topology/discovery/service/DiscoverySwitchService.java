@@ -26,8 +26,10 @@ import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm.SwitchFsmCon
 import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm.SwitchFsmEvent;
 import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm.SwitchFsmState;
 import org.openkilda.wfm.topology.discovery.model.facts.HistoryFacts;
+import org.openkilda.wfm.topology.utils.DiscoveryTopologyLogWrapper;
 
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.event.Level;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +39,7 @@ public class DiscoverySwitchService {
     private final Map<SwitchId, SwitchFsm> controller = new HashMap<>();
     private final FsmExecutor<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> controllerExecutor
             = SwitchFsm.makeExecutor();
+    private final DiscoveryTopologyLogWrapper logWrapper = new DiscoveryTopologyLogWrapper(log);
 
     private final PersistenceManager persistenceManager;
 
@@ -79,9 +82,17 @@ public class DiscoverySwitchService {
             case ACTIVATED:
                 event = SwitchFsmEvent.ONLINE;
                 fsmContextBuilder.speakerData(payload.getSwitchView());
+                logWrapper.onSwitchUpdateStatus(Level.INFO,
+                        String.format("Switch '%s' change status to '%s'", payload.getSwitchId(),
+                                SwitchFsmEvent.ONLINE.toString()),
+                        payload.getSwitchId(), SwitchFsmEvent.ONLINE.toString());
                 break;
             case DEACTIVATED:
                 event = SwitchFsmEvent.OFFLINE;
+                logWrapper.onSwitchUpdateStatus(Level.INFO,
+                        String.format("Switch '%s' change status to '%s'", payload.getSwitchId(),
+                                SwitchFsmEvent.OFFLINE.toString()),
+                        payload.getSwitchId(), SwitchFsmEvent.OFFLINE.toString());
                 break;
 
             default:
