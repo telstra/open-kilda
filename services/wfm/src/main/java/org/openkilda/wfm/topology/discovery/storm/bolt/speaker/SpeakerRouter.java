@@ -63,7 +63,7 @@ import org.apache.storm.tuple.Values;
 
 @Slf4j
 public class SpeakerRouter extends AbstractBolt {
-    public static final String BOLT_ID = ComponentId.SPEAKER_MONITOR.toString();
+    public static final String BOLT_ID = ComponentId.SPEAKER_ROUTER.toString();
 
     public static final String FIELD_ID_KEY = MessageTranslator.KEY_FIELD;
     public static final String FIELD_ID_INPUT = MessageTranslator.FIELD_ID_PAYLOAD;

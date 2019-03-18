@@ -118,11 +118,11 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
     // -- FSM actions --
 
     protected void handleActivate(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event,
-                                UniIslFsmContext contest) {
-        Isl history = contest.getHistory();
+                                UniIslFsmContext context) {
+        Isl history = context.getHistory();
         if (history != null) {
             islReference = IslReference.of(history);
-            contest.getOutput().setupIslFromHistory(endpoint, islReference, history);
+            context.getOutput().setupIslFromHistory(endpoint, islReference, history);
         }
     }
 

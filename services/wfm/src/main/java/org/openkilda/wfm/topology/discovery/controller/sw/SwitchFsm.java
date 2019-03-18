@@ -41,6 +41,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -290,8 +291,9 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                 .orElseGet(() -> Switch.builder().switchId(switchId).build());
 
         SpeakerSwitchView speakerData = context.getSpeakerData();
-        sw.setAddress(speakerData.getSwitchSocketAddress().toString());
-        sw.setHostname(speakerData.getSwitchSocketAddress().getHostName());
+        InetSocketAddress socketAddress = speakerData.getSwitchSocketAddress();
+        sw.setAddress(socketAddress.getAddress().getHostAddress());
+        sw.setHostname(socketAddress.getHostName());
 
         SpeakerSwitchDescription description = speakerData.getDescription();
         sw.setDescription(String.format("%s %s %s",
@@ -299,12 +301,12 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                                         speakerData.getOfVersion(),
                                         description.getSoftware()));
 
-        sw.setOfVersion(sw.getOfVersion());
-        sw.setOfDescriptionManufacturer(sw.getOfDescriptionManufacturer());
-        sw.setOfDescriptionHardware(sw.getOfDescriptionHardware());
-        sw.setOfDescriptionSoftware(sw.getOfDescriptionSoftware());
-        sw.setOfDescriptionSerialNumber(sw.getOfDescriptionSerialNumber());
-        sw.setOfDescriptionDatapath(sw.getOfDescriptionDatapath());
+        sw.setOfVersion(speakerData.getOfVersion());
+        sw.setOfDescriptionManufacturer(description.getManufacturer());
+        sw.setOfDescriptionHardware(description.getHardware());
+        sw.setOfDescriptionSoftware(description.getSoftware());
+        sw.setOfDescriptionSerialNumber(description.getSerialNumber());
+        sw.setOfDescriptionDatapath(description.getDatapath());
 
         sw.setStatus(SwitchStatus.ACTIVE);
 

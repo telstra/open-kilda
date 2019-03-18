@@ -25,7 +25,7 @@ public enum ComponentId {
     WATCHER("watcher-handler"),
     DECISION_MAKER("decision-maker-handler"),
 
-    SPEAKER_MONITOR("speaker-monitor"),
+    SPEAKER_ROUTER("speaker.router"),
     SWITCH_HANDLER("switch-handler"),
     PORT_HANDLER("port-handler"),
     BFD_PORT_HANDLER("bfd-port-handler"),

@@ -119,7 +119,8 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
 
     private Values makeBfdPortTuple(BfdPortCommand command) {
         Endpoint endpoint = command.getEndpoint();
-        return new Values(endpoint.getDatapath(), command, getCommandContext());
+        return new Values(endpoint.getDatapath(), command,
+                          getCommandContext().fork(String.format("ISL-2-BFD %s", endpoint)));
     }
 
     private Values makeRerouteTuple(CommandData payload) {

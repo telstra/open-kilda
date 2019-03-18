@@ -95,15 +95,16 @@ public final class BfdPortFsm extends
 
         // IDLE
         builder.transition()
-                .from(BfdPortFsmState.INIT).to(BfdPortFsmState.INSTALLING).on(BfdPortFsmEvent.ENABLE);
+                .from(BfdPortFsmState.IDLE).to(BfdPortFsmState.INSTALLING).on(BfdPortFsmEvent.ENABLE);
         builder.transition()
-                .from(BfdPortFsmState.INIT).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.PORT_UP);
-        builder.onEntry(BfdPortFsmState.INIT)
-                .callMethod("initEnter");
+                .from(BfdPortFsmState.IDLE).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.PORT_UP);
+        builder.onEntry(BfdPortFsmState.IDLE)
+                .callMethod("idleEnter");
 
         // INSTALLING
         builder.transition()
-                .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.ACTIVE).on(BfdPortFsmEvent.PORT_UP);
+                .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.ACTIVE).on(BfdPortFsmEvent.PORT_UP)
+                .callMethod("reportSetupComplete");
         builder.transition()
                 .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.SPEAKER_FAIL)
                 .when(new ResponseKeyValidator())
@@ -178,7 +179,8 @@ public final class BfdPortFsm extends
 
         // FAIL
         builder.transition()
-                .from(BfdPortFsmState.FAIL).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.PORT_DOWN)
+                .from(BfdPortFsmState.FAIL).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.PORT_DOWN);
+        builder.onEntry(BfdPortFsmState.FAIL)
                 .callMethod("failEnter");
 
         // HOUSEKEEPING
@@ -240,24 +242,21 @@ public final class BfdPortFsm extends
         }
     }
 
-    protected void initEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+    protected void idleEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                              BfdPortFsmContext context) {
-        log.info("BFD port {}(physical-port:{}) is for setup requests",
-                 logicalEndpoint, physicalEndpoint.getPortNumber());
+        logInfo("ready for setup requests");
+    }
+
+    protected void reportSetupComplete(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                       BfdPortFsmContext context) {
+        logInfo("BFD session setup is successfully completed");
     }
 
     protected void installingEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                    BfdPortFsmContext context) {
         Endpoint remoteEndpoint = context.getIslReference().getOpposite(getPhysicalEndpoint());
         remoteDatapath = remoteEndpoint.getDatapath();
-
-        allocateDiscriminator();
-        try {
-            pendingRequestKey = context.getOutput().setupBfdSession(makeBfdSessionRecord());
-        } catch (SwitchReferenceLookupException e) {
-            log.error("Can't make BFD-session setup request - {}", e.getMessage());
-            fire(BfdPortFsmEvent.FAIL, context);
-        }
+        doBfdSetup(context);
     }
 
     protected void releaseResources(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
@@ -269,7 +268,7 @@ public final class BfdPortFsm extends
 
     protected void cleaningEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                   BfdPortFsmContext context) {
-        doBfdSetup(context);
+        doBfdRemove(context);
     }
 
     protected void cleaningExit(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
@@ -303,32 +302,38 @@ public final class BfdPortFsm extends
 
     protected void waitReleaseExit(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                    BfdPortFsmContext context) {
+        logInfo("BFD session have been successfully removed, wait for DOWN event for logical port");
         linkStatus = LinkStatus.DOWN;
     }
 
     protected void upEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
+        logInfo("LINK detected");
         linkStatus = LinkStatus.UP;
         context.getOutput().bfdUpNotification(physicalEndpoint);
     }
 
     protected void downEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                              BfdPortFsmContext context) {
+        logInfo("LINK corrupted");
         linkStatus = LinkStatus.DOWN;
         context.getOutput().bfdDownNotification(physicalEndpoint);
     }
 
     protected void failEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                              BfdPortFsmContext context) {
-        log.error("BFD port {}(physical-port:{}) is marked as FAILED, it can't process any request at this moment",
-                  logicalEndpoint, physicalEndpoint.getPortNumber());
+        if (log.isErrorEnabled()) {
+            log.error("{} - is marked as FAILED, it can't process any request at this moment",
+                      makeLogPrefix());
+        }
     }
 
     protected void housekeepingEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                              BfdPortFsmContext context) {
+        logInfo("perform housekeeping - release all resources");
         context.getOutput().bfdKillNotification(physicalEndpoint);
 
         if (remoteDatapath != null) {
-            doBfdSetup(context);
+            doBfdRemove(context);
         }
     }
 
@@ -358,6 +363,22 @@ public final class BfdPortFsm extends
     // -- private/service methods --
 
     private void doBfdSetup(BfdPortFsmContext context) {
+        allocateDiscriminator();
+        logInfo(String.format("BFD session setup process have started - discriminator:%s, remote-datapath:%s",
+                              discriminator, remoteDatapath));
+
+        try {
+            pendingRequestKey = context.getOutput().setupBfdSession(makeBfdSessionRecord());
+        } catch (SwitchReferenceLookupException e) {
+            log.error("Can't make BFD-session setup request - {}", e.getMessage());
+            fire(BfdPortFsmEvent.FAIL, context);
+        }
+    }
+
+    private void doBfdRemove(BfdPortFsmContext context) {
+        logInfo(String.format("perform BFD session remove - discriminator:%s, remote-datapath:%s",
+                              discriminator, remoteDatapath));
+
         try {
             pendingRequestKey = context.getOutput().removeBfdSession(makeBfdSessionRecord());
         } catch (SwitchReferenceLookupException e) {
@@ -428,6 +449,16 @@ public final class BfdPortFsm extends
         }
 
         return new SwitchReference(datapath, address);
+    }
+
+    private void logInfo(String message) {
+        if (log.isInfoEnabled()) {
+            log.info("{} - {}", makeLogPrefix(), message);
+        }
+    }
+
+    private String makeLogPrefix() {
+        return String.format("BFD port %s(physical-port:%s)", logicalEndpoint, physicalEndpoint.getPortNumber());
     }
 
     private static class ResponseKeyValidator implements Condition<BfdPortFsmContext> {
