@@ -44,10 +44,9 @@ import java.util.List;
 import java.util.Map;
 
 public class FeatureTogglesBolt extends PersistenceOperationsBolt implements IFeatureTogglesCarrier {
-    public static final String FIELD_ID_PAYLOAD = "payload";
-
     public static final String STREAM_NOTIFICATION_ID = StreamType.NOTIFICATION.toString();
-    public static final Fields STREAM_NOTIFICATION_FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
+    public static final Fields STREAM_NOTIFICATION_FIELDS = new Fields(
+            DiscoveryEncoderBolt.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     private transient FeatureTogglesService featureTogglesService;
 
