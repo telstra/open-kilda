@@ -27,6 +27,7 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.discovery.DiscoveryTopologyDashboardLogger;
 import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm.SwitchFsmContext;
 import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm.SwitchFsmEvent;
 import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm.SwitchFsmState;
@@ -38,6 +39,7 @@ import org.openkilda.wfm.topology.discovery.service.ISwitchCarrier;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.event.Level;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
@@ -51,6 +53,9 @@ import java.util.Set;
 
 @Slf4j
 public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> {
+
+    private final DiscoveryTopologyDashboardLogger logWrapper = new DiscoveryTopologyDashboardLogger(log);
+
     private final TransactionManager transactionManager;
     private final SwitchRepository switchRepository;
 
@@ -139,7 +144,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         transactionManager.doInTransaction(() -> persistSwitchData(context));
 
         SpeakerSwitchView speakerData = context.getSpeakerData();
-
+        logWrapper.onSwitchAdd(Level.INFO, switchId);
         // set features for correct port (re)identification
         if (!features.equals(speakerData.getFeatures())) {
             log.info("Update features for {} - old:{} new:{}", switchId, features, speakerData.getFeatures());
@@ -205,11 +210,13 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     public void onlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+        logWrapper.onSwitchUpdateStatus(Level.INFO, switchId, SwitchFsmEvent.ONLINE.toString());
         initialSwitchSetup(context);
     }
 
     public void offlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                              SwitchFsmContext context) {
+        logWrapper.onSwitchUpdateStatus(Level.INFO, switchId, SwitchFsmEvent.OFFLINE.toString());
         transactionManager.doInTransaction(() -> updatePersistentStatus(SwitchStatus.INACTIVE));
 
         for (AbstractPort port : portByNumber.values()) {
@@ -241,7 +248,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
             portDel(port, context);
         } else {
             log.error("Receive port del request for {}, but this port is missing",
-                      Endpoint.of(switchId, context.getPortNumber()));
+                    Endpoint.of(switchId, context.getPortNumber()));
         }
     }
 
@@ -274,7 +281,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     public void removePortsFsm(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                                SwitchFsmContext context) {
         List<AbstractPort> ports = new ArrayList<>(portByNumber.values());
-        for (AbstractPort port: ports) {
+        for (AbstractPort port : ports) {
             portDel(port, context);
         }
     }
@@ -284,19 +291,23 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private void portAdd(AbstractPort port, SwitchFsmContext context) {
         portByNumber.put(port.getPortNumber(), port);
         port.portAdd(context.getOutput());
+        logWrapper.onPortAdd(Level.INFO, switchId, port);
     }
 
     private void portDel(AbstractPort port, SwitchFsmContext context) {
         portByNumber.remove(port.getPortNumber());
         port.portDel(context.getOutput());
+        logWrapper.onPortDelete(Level.INFO, switchId, port);
     }
 
     private void updatePortLinkMode(AbstractPort port, SwitchFsmContext context) {
         port.updatePortLinkMode(context.getOutput());
+        logWrapper.onUpdatePortStatus(Level.INFO, switchId, port.getPortNumber(), port.getLinkStatus());
     }
 
     private void updateOnlineStatus(AbstractPort port, SwitchFsmContext context, boolean mode) {
         port.updateOnlineStatus(context.getOutput(), mode);
+        String state = mode ? "UP" : "DOWN";
     }
 
     private void persistSwitchData(SwitchFsmContext context) {
@@ -310,9 +321,9 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
         SpeakerSwitchDescription description = speakerData.getDescription();
         sw.setDescription(String.format("%s %s %s",
-                                        description.getManufacturer(),
-                                        speakerData.getOfVersion(),
-                                        description.getSoftware()));
+                description.getManufacturer(),
+                speakerData.getOfVersion(),
+                description.getSoftware()));
 
         sw.setOfVersion(speakerData.getOfVersion());
         sw.setOfDescriptionManufacturer(description.getManufacturer());
