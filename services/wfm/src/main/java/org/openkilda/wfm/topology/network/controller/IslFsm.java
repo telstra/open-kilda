@@ -37,6 +37,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.network.DiscoveryTopologyDashboardLogger;
 import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmContext;
 import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmEvent;
 import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmState;
@@ -75,6 +76,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private final DiscoveryFacts discoveryFacts;
 
     private static final StateMachineBuilder<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> builder;
+
+    private final DiscoveryTopologyDashboardLogger logWrapper = new DiscoveryTopologyDashboardLogger(log);
 
     static {
         builder = StateMachineBuilderFactory.create(
@@ -231,6 +234,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void downEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
+        logWrapper.onIslUpdateStatus(discoveryFacts.getReference(), to.toString());
         saveStatusTransaction();
     }
 
@@ -249,6 +253,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     public void upEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
 
+        logWrapper.onIslUpdateStatus(discoveryFacts.getReference(), to.toString());
         saveAllTransaction();
 
         if (event != IslFsmEvent._HISTORY_UP) {
@@ -272,6 +277,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
+        logWrapper.onIslUpdateStatus(discoveryFacts.getReference(), to.toString());
         saveStatusTransaction();
     }
 
