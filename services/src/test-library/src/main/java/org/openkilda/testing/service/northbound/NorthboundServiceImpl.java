@@ -448,7 +448,7 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public SwitchValidationResult validateMeters(SwitchId switchId) {
+    public SwitchValidationResult switchValidate(SwitchId switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/validate", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResult.class, switchId).getBody();
     }
