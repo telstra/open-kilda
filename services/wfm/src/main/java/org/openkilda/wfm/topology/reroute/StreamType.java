@@ -13,22 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.reroute.model;
+package org.openkilda.wfm.topology.reroute;
 
-import org.openkilda.model.PathId;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-
-import java.io.Serializable;
-import java.time.Instant;
-import java.util.Set;
-
-@Data
-@AllArgsConstructor
-public class FlowThrottlingData implements Serializable {
-    private String correlationId;
-    private Integer priority;
-    private Instant timeCreate;
-    private Set<PathId> pathIdSet;
+/**
+ * Represents stream used in {@link RerouteTopology}.
+ */
+public enum StreamType {
+    SWAP
 }

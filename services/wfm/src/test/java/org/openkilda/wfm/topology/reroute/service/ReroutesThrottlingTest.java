@@ -31,6 +31,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -44,9 +45,11 @@ public class ReroutesThrottlingTest {
 
     private static final String FLOW_ID_2 = "flow2";
 
-    private static final FlowThrottlingData THROTTLING_DATA_1 = new FlowThrottlingData("corrId1", 1, null);
+    private static final FlowThrottlingData THROTTLING_DATA_1 =
+            new FlowThrottlingData("corrId1", 1, null, Collections.emptySet());
 
-    private static final FlowThrottlingData THROTTLING_DATA_2 = new FlowThrottlingData("corrId2", 1, null);
+    private static final FlowThrottlingData THROTTLING_DATA_2 =
+            new FlowThrottlingData("corrId2", 1, null, Collections.emptySet());
 
     @Before
     public void init() {

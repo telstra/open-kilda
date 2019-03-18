@@ -13,22 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.reroute.model;
+package org.openkilda.wfm.error;
 
-import org.openkilda.model.PathId;
+import org.openkilda.wfm.topology.flow.model.UpdatedFlow;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 
-import java.io.Serializable;
-import java.time.Instant;
-import java.util.Set;
+/**
+ * {@code NoNewPathException} indicates that there is no required new path to allocate.
+ */
+@Getter
+public class NoNewPathException extends AbstractException {
 
-@Data
-@AllArgsConstructor
-public class FlowThrottlingData implements Serializable {
-    private String correlationId;
-    private Integer priority;
-    private Instant timeCreate;
-    private Set<PathId> pathIdSet;
+    private final UpdatedFlow updatedFlow;
+
+    public NoNewPathException(UpdatedFlow updatedFlow) {
+        super(updatedFlow.getOldFlow().getFlowId());
+        this.updatedFlow = updatedFlow;
+    }
 }

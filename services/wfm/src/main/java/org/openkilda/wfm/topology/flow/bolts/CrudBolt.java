@@ -71,6 +71,7 @@ import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.error.ClientException;
 import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.error.NoNewPathException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.mappers.FlowMapper;
@@ -80,7 +81,6 @@ import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 import org.openkilda.wfm.topology.flow.model.UpdatedFlow;
-import org.openkilda.wfm.topology.flow.model.UpdatedFlowPair;
 import org.openkilda.wfm.topology.flow.service.FeatureToggle;
 import org.openkilda.wfm.topology.flow.service.FeatureTogglesService;
 import org.openkilda.wfm.topology.flow.service.FlowAlreadyExistException;
@@ -447,26 +447,15 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         final String errorType = "Could not reroute flow";
 
         try {
-            UpdatedFlowPair reroutedFlow = flowService.rerouteFlow(flowId, request.isForce(),
+            UpdatedFlow reroutedFlow = flowService.rerouteFlow(flowId, request.isForce(), request.getPathIds(),
                     new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
-            if (reroutedFlow.getNewFlow() != null) {
-                logger.warn("Rerouted flow: {}", reroutedFlow);
-            } else {
-                // There's no new path found, but the current flow may still be active.
-                logger.warn("Reroute {} is unsuccessful: can't find new path.", flowId);
-            }
+            logger.warn("Rerouted flow: {}", reroutedFlow);
+            handleReroute(message, tuple, reroutedFlow);
+        } catch (NoNewPathException e) {
+            logger.warn("Reroute {} is unsuccessful: can't find new path.", request.getFlowId());
 
-            PathInfoData currentPath = FlowPathMapper.INSTANCE.map(reroutedFlow.getOldFlow()
-                    .getForward().getFlowPath());
-            PathInfoData resultPath = Optional.ofNullable(reroutedFlow.getNewFlow())
-                    .map(flow -> FlowPathMapper.INSTANCE.map(flow.getForward().getFlowPath()))
-                    .orElse(currentPath);
-
-            FlowRerouteResponse response = new FlowRerouteResponse(resultPath, !resultPath.equals(currentPath));
-            Values values = new Values(new InfoMessage(response, message.getTimestamp(),
-                    message.getCorrelationId(), Destination.NORTHBOUND, null));
-            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+            handleReroute(message, tuple, e.getUpdatedFlow());
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
@@ -480,6 +469,20 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
         }
+    }
+
+    private void handleReroute(CommandMessage message, Tuple tuple, UpdatedFlow reroutedFlow) {
+        // TODO consider protected path
+        PathInfoData currentPath = FlowPathMapper.INSTANCE.map(reroutedFlow.getOldFlow()
+                .getForwardPath());
+        PathInfoData resultPath = Optional.ofNullable(reroutedFlow.getNewFlow())
+                .map(flow -> FlowPathMapper.INSTANCE.map(flow.getForwardPath()))
+                .orElse(currentPath);
+
+        FlowRerouteResponse response = new FlowRerouteResponse(resultPath, !resultPath.equals(currentPath));
+        Values values = new Values(new InfoMessage(response, message.getTimestamp(),
+                message.getCorrelationId(), Destination.NORTHBOUND, null));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
     }
 
     private void handlePathSwapRequest(CommandMessage message, Tuple tuple) {
@@ -712,21 +715,31 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         private List<FlowCommandGroup> createInstallGroups(Flow flow) {
             List<FlowCommandGroup> commandGroups = new ArrayList<>();
 
-            createInstallTransitAndEgressRules(flow, flow.getForwardPath())
-                    .ifPresent(commandGroups::add);
-            createInstallTransitAndEgressRules(flow, flow.getReversePath())
-                    .ifPresent(commandGroups::add);
+            if (flow.getForwardPath() != null) {
+                createInstallTransitAndEgressRules(flow, flow.getForwardPath())
+                        .ifPresent(commandGroups::add);
+            }
+            if (flow.getReversePath() != null) {
+                createInstallTransitAndEgressRules(flow, flow.getReversePath())
+                        .ifPresent(commandGroups::add);
+            }
 
-            if (flow.isAllocateProtectedPath()) {
+            if (flow.getProtectedForwardPath() != null) {
                 createInstallTransitAndEgressRules(flow, flow.getProtectedForwardPath())
                         .ifPresent(commandGroups::add);
+            }
+            if (flow.getProtectedReversePath() != null) {
                 createInstallTransitAndEgressRules(flow, flow.getProtectedReversePath())
                         .ifPresent(commandGroups::add);
             }
 
             // The ingress rule must be installed after the egress and transit ones.
-            commandGroups.add(createInstallIngressRules(flow, flow.getForwardPath()));
-            commandGroups.add(createInstallIngressRules(flow, flow.getReversePath()));
+            if (flow.getForwardPath() != null) {
+                commandGroups.add(createInstallIngressRules(flow, flow.getForwardPath()));
+            }
+            if (flow.getReversePath() != null) {
+                commandGroups.add(createInstallIngressRules(flow, flow.getReversePath()));
+            }
 
             return commandGroups;
         }
@@ -745,16 +758,27 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         private List<FlowCommandGroup> createRemoveGroups(Flow flow) {
             List<FlowCommandGroup> commandGroups = new ArrayList<>();
 
-            commandGroups.add(createRemoveIngressRules(flow, flow.getForwardPath()));
-            commandGroups.add(createRemoveIngressRules(flow, flow.getReversePath()));
-            createRemoveTransitAndEgressRules(flow, flow.getForwardPath())
-                    .ifPresent(commandGroups::add);
-            createRemoveTransitAndEgressRules(flow, flow.getReversePath())
-                    .ifPresent(commandGroups::add);
+            if (flow.getForwardPath() != null) {
+                commandGroups.add(createRemoveIngressRules(flow, flow.getForwardPath()));
+            }
+            if (flow.getReversePath() != null) {
+                commandGroups.add(createRemoveIngressRules(flow, flow.getReversePath()));
+            }
 
-            if (flow.isAllocateProtectedPath()) {
+            if (flow.getForwardPath() != null) {
+                createRemoveTransitAndEgressRules(flow, flow.getForwardPath())
+                        .ifPresent(commandGroups::add);
+            }
+            if (flow.getReversePath() != null) {
+                createRemoveTransitAndEgressRules(flow, flow.getReversePath())
+                        .ifPresent(commandGroups::add);
+            }
+
+            if (flow.getProtectedForwardPath() != null) {
                 createRemoveTransitAndEgressRules(flow, flow.getProtectedForwardPath())
                         .ifPresent(commandGroups::add);
+            }
+            if (flow.getProtectedReversePath() != null) {
                 createRemoveTransitAndEgressRules(flow, flow.getProtectedReversePath())
                         .ifPresent(commandGroups::add);
             }

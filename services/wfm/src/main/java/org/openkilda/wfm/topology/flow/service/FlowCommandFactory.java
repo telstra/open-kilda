@@ -248,8 +248,17 @@ public class FlowCommandFactory {
     }
 
     private boolean isForward(Flow flow, FlowPath flowPath) {
-        return flowPath.getPathId().equals(flow.getForwardPathId())
-                || flowPath.getPathId().equals(flow.getProtectedForwardPathId());
+        if (flowPath.getPathId().equals(flow.getForwardPathId())
+                || flowPath.getPathId().equals(flow.getProtectedForwardPathId())) {
+            return true;
+        }
+        if (flowPath.getPathId().equals(flow.getReversePathId())
+                || flowPath.getPathId().equals(flow.getProtectedReversePathId())) {
+            return false;
+        } else {
+            throw new IllegalArgumentException(format(
+                    "Flow path %s doesn't correspond to the given flow %s.", flowPath.getPathId(), flow.getFlowId()));
+        }
     }
 
     private OutputVlanType getOutputVlanType(int sourceVlanId, int destinationVlanId) {

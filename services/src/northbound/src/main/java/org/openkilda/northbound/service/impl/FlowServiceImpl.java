@@ -65,6 +65,7 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.model.FlowPair;
+import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
@@ -513,7 +514,7 @@ public class FlowServiceImpl implements FlowService {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Swapping paths for flow : {}", input.getFlowId());
 
-        FlowPathSwapRequest payload = new FlowPathSwapRequest(input.getFlowId(), input.getPathId());
+        FlowPathSwapRequest payload = new FlowPathSwapRequest(input.getFlowId(), new PathId(input.getPathId()));
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 

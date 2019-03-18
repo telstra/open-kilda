@@ -17,14 +17,13 @@ package org.openkilda.wfm.topology.reroute.bolts;
 
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.wfm.topology.reroute.RerouteTopology;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 import org.openkilda.wfm.topology.reroute.service.ReroutesThrottling;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
@@ -68,7 +67,7 @@ public class FlowThrottlingBolt extends AbstractTickStatefulBolt<InMemoryKeyValu
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declare(new Fields(MessageTranslator.KEY_FIELD, MessageTranslator.FIELD_ID_PAYLOAD));
+        outputFieldsDeclarer.declare(RerouteTopology.KAFKA_FIELDS);
     }
 
     @Override

@@ -42,10 +42,11 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
 import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.error.NoNewPathException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
-import org.openkilda.wfm.topology.flow.model.UpdatedFlowPair;
+import org.openkilda.wfm.topology.flow.model.UpdatedFlow;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
@@ -53,6 +54,7 @@ import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.Optional;
 
 public class FlowServiceTest extends Neo4jBasedTest {
@@ -141,7 +143,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
     @Test
     public void shouldRerouteFlow() throws RecoverableException, UnroutableFlowException,
             FlowNotFoundException, FlowAlreadyExistException, FlowValidationException,
-            SwitchValidationException, ResourceAllocationException {
+            SwitchValidationException, ResourceAllocationException, NoNewPathException {
         PathComputer pathComputer = mock(PathComputer.class);
         PathComputerFactory pathComputerFactory = mock(PathComputerFactory.class);
         FlowValidator flowValidator = new FlowValidator(persistenceManager.getRepositoryFactory());
@@ -165,9 +167,10 @@ public class FlowServiceTest extends Neo4jBasedTest {
 
         when(pathComputer.getPath(any(), eq(true))).thenReturn(PATH_1_TO_3_VIA_2);
 
-        UpdatedFlowPair reroutedFlow = flowService.rerouteFlow(flowId, true, mock(FlowCommandSender.class));
+        UpdatedFlow reroutedFlow =
+                flowService.rerouteFlow(flowId, true, Collections.emptySet(), mock(FlowCommandSender.class));
         assertNotNull(reroutedFlow);
-        checkSamePaths(PATH_1_TO_3_VIA_2.getForward(), reroutedFlow.getNewFlow().getForward().getFlowPath());
+        checkSamePaths(PATH_1_TO_3_VIA_2.getForward(), reroutedFlow.getNewFlow().getForwardPath());
 
         Optional<FlowPair> foundFlow = persistenceManager.getRepositoryFactory().createFlowPairRepository()
                 .findById(flowId);

@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.PathId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -34,11 +35,11 @@ public class FlowPathSwapRequest extends CommandData {
     protected String flowId;
 
     @JsonProperty("path_id")
-    protected String pathId;
+    protected PathId pathId;
 
     @JsonCreator
     public FlowPathSwapRequest(@NonNull @JsonProperty("flow_id") String flowId,
-                               @JsonProperty("path_id") String pathId) {
+                               @JsonProperty("path_id") PathId pathId) {
         this.flowId = flowId;
         this.pathId = pathId;
     }

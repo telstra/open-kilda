@@ -28,6 +28,7 @@ import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.Neo4jBasedTest;
@@ -147,16 +148,38 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
         assertThat(paths, containsInAnyOrder(primaryForward, primaryReverse));
     }
 
+    @Test
+    public void shouldFindActiveAffectedPaths() {
+        FlowPath path1 = buildTestFlowPath(TEST_FLOW_ID, switchA, switchB);
+        FlowPath path2 = buildTestFlowPath(TEST_FLOW_ID, switchB, switchA);
+        path2.setStatus(FlowPathStatus.IN_PROGRESS);
+
+        flowPathRepository.createOrUpdate(path1);
+        flowPathRepository.createOrUpdate(path2);
+        flowRepository.createOrUpdate(buildFlow(TEST_FLOW_ID, switchA, switchB, path1, path2, null));
+
+        Collection<FlowPath> paths = flowPathRepository.findActiveAffectedPaths(
+                switchA.getSwitchId(), 1);
+        assertThat(paths, containsInAnyOrder(path1));
+    }
+
     private FlowPath buildTestFlowPath(String flowId, Switch srcSwitch, Switch destSwitch) {
+        PathId pathId = new PathId(UUID.randomUUID().toString());
         return FlowPath.builder()
-                .pathId(new PathId(UUID.randomUUID().toString()))
+                .pathId(pathId)
                 .flowId(flowId)
                 .cookie(new Cookie(1))
                 .meterId(new MeterId(1))
                 .srcSwitch(srcSwitch)
                 .destSwitch(destSwitch)
                 .status(FlowPathStatus.ACTIVE)
-                .segments(Collections.emptyList())
+                .segments(Collections.singletonList(PathSegment.builder()
+                        .srcSwitch(srcSwitch)
+                        .srcPort(1)
+                        .destSwitch(destSwitch)
+                        .destPort(1)
+                        .pathId(pathId)
+                        .build()))
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
                 .build();
@@ -173,6 +196,7 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
                 .forwardPath(primaryForward)
                 .reversePath(primaryReverse)
                 .protectedForwardPath(protect)
+                .allocateProtectedPath(protect != null)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .status(FlowStatus.UP)
                 .timeCreate(Instant.now())

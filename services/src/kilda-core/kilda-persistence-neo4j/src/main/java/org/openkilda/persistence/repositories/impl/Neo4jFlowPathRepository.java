@@ -19,16 +19,19 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.converters.FlowPathStatusConverter;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Session;
@@ -51,6 +54,8 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     static final String PATH_ID_PROPERTY_NAME = "path_id";
     static final String FLOW_ID_PROPERTY_NAME = "flowid";
     static final String COOKIE_PROPERTY_NAME = "cookie";
+
+    private final FlowPathStatusConverter statusConverter = new FlowPathStatusConverter();
 
     public Neo4jFlowPathRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
@@ -163,6 +168,22 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
         //TODO: this is slow and requires optimization
         paths.forEach(this::completeWithSegments);
         return paths;
+    }
+
+    @Override
+    public Collection<FlowPath> findActiveAffectedPaths(SwitchId switchId, int port) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_id", switchId.toString(),
+                "port", port,
+                "path_status", statusConverter.toGraphProperty(FlowPathStatus.ACTIVE));
+
+        return Sets.newHashSet(getSession().query(getEntityType(),
+                "MATCH (ps_src:switch)-[ps:path_segment]->(ps_dst:switch) "
+                        + "WHERE (ps_src.name=$switch_id AND ps.src_port=$port "
+                        + " OR ps_dst.name=$switch_id AND ps.dst_port=$port) "
+                        + "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
+                        + "WHERE fp.path_id = ps.path_id AND (fp.status=$path_status OR fp.status IS NULL) "
+                        + "RETURN src, fp, dst", parameters));
     }
 
     @Override
