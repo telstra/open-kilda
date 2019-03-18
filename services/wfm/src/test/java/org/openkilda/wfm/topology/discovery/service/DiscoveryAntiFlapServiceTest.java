@@ -67,7 +67,7 @@ public class DiscoveryAntiFlapServiceTest {
         // delayCoolingDown + firs event + 1
         service.tick(5000 + 100 + 1);
 
-        verify(carrier, never()).filteredLinkStatus(endpoint1, LinkStatus.UP);
+        verify(carrier).filteredLinkStatus(endpoint1, LinkStatus.UP);
         verify(carrier, never()).filteredLinkStatus(endpoint1, LinkStatus.DOWN);
 
         resetMocks();

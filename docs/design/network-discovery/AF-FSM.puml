@@ -20,6 +20,7 @@ endlegend
 state WarmingUpEnded <<choice>>
 
 Nothing : port-up / emit port-up
+Nothing: enter [up-time>down-time] / emit port-up
 Nothing -d-> WarmingUp : port-down
 
 WarmingUp: enter / save start-time and down-time
@@ -35,7 +36,6 @@ WarmingUpEnded -> Nothing : else
 note top on link #lightgreen: happy-path
 
 CoolingDown: enter / emit port-down
-CoolingDown: exit [up-time>down-time] / emit port-up
 CoolingDown: port-up / save port-up-time
 CoolingDown: port-down / save port-down-time
 CoolingDown -u-> Nothing : tick [now() \n- max(down-time,up-time) \n> delay_cooldown]
