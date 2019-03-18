@@ -62,7 +62,6 @@ import org.apache.storm.tuple.Values;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.kohsuke.args4j.CmdLineException;
 import org.mockito.ArgumentCaptor;
@@ -77,7 +76,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@Ignore
 public class OfeLinkBoltTest extends AbstractStormTest {
 
     private static final Integer TASK_ID_BOLT = 0;

@@ -16,7 +16,7 @@ elasticsearch.username={{ getv "/kilda_logging_elasticsearch_user" }}
 elasticsearch.password={{ getv "/kilda_logging_elasticsearch_pass" }}
 
 kafka.bootstrap.server={{ getv "/kilda_kafka_hosts" }}
-kafka.topic.topo.disco=kilda.topo.disco
+kafka.topic.topo.disco=kilda.topo.disco.storm
 
 lab-api.endpoint={{ getv "/kilda_lab_api_endpoint" }}:{{ getv "/kilda_lab_api_port" }}
 lockkeeper.endpoint={{ getv "/kilda_aswitch_endpoint" }}:{{ getv "/kilda_aswitch_port" }}
