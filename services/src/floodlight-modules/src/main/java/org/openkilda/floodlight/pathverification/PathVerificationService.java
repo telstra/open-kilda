@@ -504,7 +504,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null,
                     region);
 
-            producerService.sendMessageAndTrack(topoDiscoTopic, message);
+            producerService.sendMessageAndTrack(topoDiscoTopic, source.getSwitchId().toString(), message);
             logger.debug("packet_in processed for {}-{}", input.getDpId(), inPort);
 
         } catch (UnsupportedOperationException exception) {

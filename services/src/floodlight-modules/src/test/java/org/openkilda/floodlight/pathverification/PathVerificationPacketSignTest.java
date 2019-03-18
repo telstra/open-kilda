@@ -91,7 +91,7 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
 
     @Test
     public void testSignPacketPositive() throws Exception {
-        producerService.sendMessageAndTrack(anyObject(), anyObject());
+        producerService.sendMessageAndTrack(anyObject(), anyObject(), anyObject());
         expectLastCall().once();
         replay(producerService);
 
@@ -103,7 +103,7 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
     public void testHandlePacketInWithDifferentPortSpeeds() {
         Capture<InfoMessage> capturedArgument = newCapture();
 
-        producerService.sendMessageAndTrack(anyObject(), capture(capturedArgument));
+        producerService.sendMessageAndTrack(anyObject(), anyObject(), capture(capturedArgument));
         expectLastCall().once();
         replay(producerService);
 

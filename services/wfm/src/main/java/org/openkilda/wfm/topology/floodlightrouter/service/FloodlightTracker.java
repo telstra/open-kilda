@@ -161,7 +161,7 @@ public class FloodlightTracker {
             UnmanagedSwitchNotification notification = new UnmanagedSwitchNotification(sw);
             InfoMessage message = new InfoMessage(notification, System.currentTimeMillis(), UUID.randomUUID()
                     .toString());
-            messageSender.send(message, Stream.KILDA_TOPO_DISCO);
+            messageSender.send(sw.toString(), message, Stream.KILDA_TOPO_DISCO);
         }
     }
 
