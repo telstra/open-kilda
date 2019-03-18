@@ -19,9 +19,8 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.model.SwitchId;
 
-import lombok.Value;
+import lombok.EqualsAndHashCode;
 import org.slf4j.Logger;
-import org.slf4j.MDC;
 import org.slf4j.event.Level;
 
 import java.util.HashMap;
@@ -30,8 +29,9 @@ import java.util.Map;
 /**
  * The KIBANA dashboard log wrapper.
  */
-@Value
-public class KibanaLogWrapper {
+
+@EqualsAndHashCode(callSuper = true)
+public class KibanaLogWrapper extends AbstractLogWrapper {
 
     private static final String SWITCH_ID = "switch_id";
     private static final String SRC_SWITCH = "src_switch";
@@ -45,7 +45,9 @@ public class KibanaLogWrapper {
      */
     private static final String TAG = "KIBANA_DASHBOARD_TAG";
 
-    private final Logger logger;
+    public KibanaLogWrapper(Logger logger) {
+        super(logger);
+    }
 
     /**
      * Log a switch discovery event with dashboard tags.
@@ -121,41 +123,5 @@ public class KibanaLogWrapper {
         data.put(SRC_PORT, String.valueOf(srcPort));
         data.put(DST_PORT, String.valueOf(dstPort));
         proceed(level, message, data);
-    }
-
-    /**
-     * Build and write log message and MDC custom fields.
-     *
-     * @param level a log level.
-     * @param message a message text.
-     * @param logData a data for MDC custom fields.
-     */
-    private void proceed(Level level, String message, Map<String, String> logData) {
-        Map<String, String> oldValues = MDC.getCopyOfContextMap();
-        logData.forEach(MDC::put);
-        try {
-            switch (level) {
-                case INFO:
-                    logger.info(message);
-                    break;
-                case WARN:
-                    logger.warn(message);
-                    break;
-                case ERROR:
-                    logger.error(message);
-                    break;
-                case DEBUG:
-                    logger.debug(message);
-                    break;
-                case TRACE:
-                    logger.trace(message);
-                    break;
-                default:
-                    throw new IllegalArgumentException(String.format("Unhandled log level %s", level));
-            }
-        } finally {
-            logData.forEach((key, value) -> MDC.remove(key));
-            oldValues.forEach(MDC::put);
-        }
     }
 }
