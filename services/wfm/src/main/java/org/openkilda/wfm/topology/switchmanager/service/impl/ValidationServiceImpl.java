@@ -15,13 +15,13 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
-import org.openkilda.config.utils.MeterConfig;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowSegment;
+import org.openkilda.model.Meter;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -119,7 +119,7 @@ public class ValidationServiceImpl implements ValidationService {
                 .collect(Collectors.toList());
 
         for (Flow flow: flows) {
-            long calculatedBurstSize = MeterConfig.calculateBurstSize(flow.getBandwidth(), flowMeterMinBurstSizeInKbits,
+            long calculatedBurstSize = Meter.calculateBurstSize(flow.getBandwidth(), flowMeterMinBurstSizeInKbits,
                     flowMeterBurstCoefficient, flow.getSrcSwitch().getDescription());
 
             if (!presentMeterIds.contains(flow.getMeterLongValue())) {
@@ -129,7 +129,7 @@ public class ValidationServiceImpl implements ValidationService {
                         .flowId(flow.getFlowId())
                         .rate(flow.getBandwidth())
                         .burstSize(calculatedBurstSize)
-                        .flags(MeterConfig.getMeterFlagsAsStringArray())
+                        .flags(Meter.getMeterFlags())
                         .build());
             }
 
@@ -137,7 +137,7 @@ public class ValidationServiceImpl implements ValidationService {
                 if (meter.getMeterId() == flow.getMeterLongValue()) {
                     if (meter.getRate() == flow.getBandwidth()
                             && meter.getBurstSize() == calculatedBurstSize
-                            && Arrays.equals(meter.getFlags(), MeterConfig.getMeterFlagsAsStringArray())) {
+                            && Arrays.equals(meter.getFlags(), Meter.getMeterFlags())) {
                         properMeters.add(MeterInfoEntry.builder()
                                 .meterId(meter.getMeterId())
                                 .cookie(flow.getCookie())
@@ -158,9 +158,9 @@ public class ValidationServiceImpl implements ValidationService {
                             actual.setBurstSize(meter.getBurstSize());
                             expected.setBurstSize(calculatedBurstSize);
                         }
-                        if (!Arrays.equals(meter.getFlags(), MeterConfig.getMeterFlagsAsStringArray())) {
+                        if (!Arrays.equals(meter.getFlags(), Meter.getMeterFlags())) {
                             actual.setFlags(meter.getFlags());
-                            expected.setFlags(MeterConfig.getMeterFlagsAsStringArray());
+                            expected.setFlags(Meter.getMeterFlags());
                         }
 
                         misconfiguredMeters.add(MeterInfoEntry.builder()

@@ -13,27 +13,28 @@
  *   limitations under the License.
  */
 
-package org.openkilda.config.utils;
+package org.openkilda.model;
 
-import com.google.common.collect.ImmutableSet;
-import org.apache.commons.lang3.StringUtils;
-import org.projectfloodlight.openflow.protocol.OFMeterFlags;
+import lombok.Data;
 
-import java.util.Set;
-import java.util.regex.Pattern;
+import java.io.Serializable;
 
-public final class MeterConfig {
+@Data
+public final class Meter implements Serializable {
+    private static final long serialVersionUID = 1L;
 
-    private static final Set<OFMeterFlags> METER_FLAGS
-            = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
-    private static final Pattern NOVIFLOW_SOFTWARE_REGEX = Pattern.compile("(.*)NW\\d{3}\\.\\d+\\.\\d+(.*)");
     private static final double MAX_NOVIFLOW_BURST_COEFFICIENT = 1.005;
     private static final long MIN_CENTEC_SWITCH_BURST_SIZE = 1024L;
     private static final long MAX_CENTEC_SWITCH_BURST_SIZE = 32000L;
 
+    private static final String[] METER_FLAGS = {"KBPS", "BURST", "STATS"};
+
+    private SwitchId switchId;
+
+    private MeterId meterId;
 
     /**
-     * Calculate burst size using description from database.
+     * Calculate burst size using combined (manufacturer + software) switch description.
      */
     public static long calculateBurstSize(long bandwidth, long flowMeterMinBurstSizeInKbits,
                                           double flowMeterBurstCoefficient, String switchDescription) {
@@ -42,12 +43,12 @@ public final class MeterConfig {
     }
 
     /**
-     * Calculate burst size with IOFSwitch.
+     * Calculate burst size using switch manufacturer and software description.
      */
     public static long calculateBurstSize(long bandwidth, long flowMeterMinBurstSizeInKbits,
-                                           double flowMeterBurstCoefficient, String switchManufacturerDescription,
-                                           String switchSoftwareDescription) {
-        if (isCentecSwitch(switchManufacturerDescription)) {
+                                          double flowMeterBurstCoefficient, String switchManufacturerDescription,
+                                          String switchSoftwareDescription) {
+        if (Switch.isCentecSwitch(switchManufacturerDescription)) {
             long burstSize = Math.max(flowMeterMinBurstSizeInKbits, (long) (bandwidth * flowMeterBurstCoefficient));
             if (burstSize < MIN_CENTEC_SWITCH_BURST_SIZE) {
                 return MIN_CENTEC_SWITCH_BURST_SIZE;
@@ -56,35 +57,17 @@ public final class MeterConfig {
         }
 
         double burstCoefficient = flowMeterBurstCoefficient;
-        if (isNoviflowSwitch(switchSoftwareDescription) && burstCoefficient > MAX_NOVIFLOW_BURST_COEFFICIENT) {
+        if (Switch.isNoviflowSwitch(switchSoftwareDescription) && burstCoefficient > MAX_NOVIFLOW_BURST_COEFFICIENT) {
             burstCoefficient = MAX_NOVIFLOW_BURST_COEFFICIENT;
         }
 
         return (long) (bandwidth * burstCoefficient);
     }
 
-    private static boolean isCentecSwitch(String manufacturerDescription) {
-        return StringUtils.contains(manufacturerDescription.toLowerCase(), "centec");
-    }
-
-    private static boolean isNoviflowSwitch(String softwareDescription) {
-        return NOVIFLOW_SOFTWARE_REGEX.matcher(softwareDescription).matches();
-    }
-
-    public static Set<OFMeterFlags> getMeterFlags() {
-        return METER_FLAGS;
-    }
-
     /**
      * Get meter flags as string array.
      */
-    public static String[] getMeterFlagsAsStringArray() {
-        return METER_FLAGS.stream()
-                .map(OFMeterFlags::name)
-                .toArray(String[]::new);
-    }
-
-    private MeterConfig() {
-        throw new UnsupportedOperationException();
+    public static String[] getMeterFlags() {
+        return METER_FLAGS;
     }
 }

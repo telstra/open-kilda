@@ -33,7 +33,6 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
-import org.openkilda.config.utils.MeterConfig;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.error.OfInstallException;
@@ -53,6 +52,7 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.model.Switch.Feature;
+import org.openkilda.model.Meter;
 import org.openkilda.model.OutputVlanType;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -591,11 +591,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (meterId >= MIN_FLOW_METER_ID) {
             IOFSwitch sw = lookupSwitch(dpid);
             verifySwitchSupportsMeters(sw);
-            long burstSize = MeterConfig.calculateBurstSize(bandwidth, config.getFlowMeterMinBurstSizeInKbits(),
+            long burstSize = Meter.calculateBurstSize(bandwidth, config.getFlowMeterMinBurstSizeInKbits(),
                     config.getFlowMeterBurstCoefficient(), sw.getSwitchDescription().getManufacturerDescription(),
                     sw.getSwitchDescription().getSoftwareDescription());
 
-            Set<OFMeterFlags> flags = MeterConfig.getMeterFlags();
+            Set<OFMeterFlags> flags = Arrays.stream(Meter.getMeterFlags())
+                    .map(OFMeterFlags::valueOf)
+                    .collect(Collectors.toSet());
             installMeter(sw, flags, bandwidth, burstSize, meterId);
         } else {
             throw new InvalidMeterIdException(dpid, "Meter id must be positive.");
@@ -612,11 +614,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             IOFSwitch sw = lookupSwitch(dpid);
             verifySwitchSupportsMeters(sw);
 
-            long burstSize = MeterConfig.calculateBurstSize(bandwidth, config.getFlowMeterMinBurstSizeInKbits(),
+            long burstSize = Meter.calculateBurstSize(bandwidth, config.getFlowMeterMinBurstSizeInKbits(),
                     config.getFlowMeterBurstCoefficient(), sw.getSwitchDescription().getManufacturerDescription(),
                     sw.getSwitchDescription().getSoftwareDescription());
 
-            Set<OFMeterFlags> flags = MeterConfig.getMeterFlags();
+            Set<OFMeterFlags> flags = Arrays.stream(Meter.getMeterFlags())
+                    .map(OFMeterFlags::valueOf)
+                    .collect(Collectors.toSet());
 
             modifyMeter(sw, bandwidth, burstSize, meterId, flags);
         } else {
