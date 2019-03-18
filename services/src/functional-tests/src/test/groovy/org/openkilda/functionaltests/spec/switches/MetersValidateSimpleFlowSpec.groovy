@@ -12,69 +12,64 @@ import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 
-@Narrative("""This test suite check the meter validate request on a flow that contains 2+ switches.
-description of fields:
-- missing - those meters/rules, which is NOT exist on a switch, but it is exist in db
+@Narrative("""This test suite check the meter validate feature on a flow that contains 2+ switches.
+Description of fields:
+- missing - those meters/rules, which are NOT present on a switch, but are present in db
 - misconfigured - those meters which have different value (on a switch and in db) for the same parameter
-- excess - those meters/rules, which is exist on a switch, but it is NOT exist in db
-- proper - meters/rules value is the same on a switch and in db
+- excess - those meters/rules, which are present on a switch, but are NOT present in db
+- proper - meters/rules values are the same on a switch and in db
 """)
 class MetersValidateSimpleFlowSpec extends BaseSpecification {
     @Autowired
     SwitchHelper switchHelper
 
-    def "Able to get meter validate information"() {
+    def "Switch validation is able to return correct information about a flow"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def defaultMetersSrcSwitch = northbound.getAllMeters(srcSwitch.dpId)
-        def defaultMetersDstSwitch = northbound.getAllMeters(dstSwitch.dpId)
+        def srcSwitchDefaultMeters = northbound.getAllMeters(srcSwitch.dpId)
+        def dstSwitchDefaultMeters = northbound.getAllMeters(dstSwitch.dpId)
         def flow = flowHelper.addFlow(flowHelper.randomFlow(srcSwitch, dstSwitch))
 
-        then: "One meter is automatically created on the both switches"
-        def createdMetersIdSrcSwitch = getCreatedMetersId(srcSwitch.dpId, defaultMetersSrcSwitch)
-        def createdMetersIdDstSwitch = getCreatedMetersId(dstSwitch.dpId, defaultMetersDstSwitch)
-        def burstSizeSrcSwitch = switchHelper.getExpectedBurst(srcSwitch.dpId, flow.maximumBandwidth)
-        def burstSizeDstSwitch = switchHelper.getExpectedBurst(dstSwitch.dpId, flow.maximumBandwidth)
-
-        createdMetersIdSrcSwitch.size() == 1
-        createdMetersIdDstSwitch.size() == 1
+        then: "One meter is automatically created on the src and dst switches"
+        def srcSwitchCreatedMetersId = getCreatedMetersId(srcSwitch.dpId, srcSwitchDefaultMeters)
+        def dstSwitchCreatedMetersId = getCreatedMetersId(dstSwitch.dpId, dstSwitchDefaultMeters)
+        srcSwitchCreatedMetersId.size() == 1
+        dstSwitchCreatedMetersId.size() == 1
 
         and: "The correct info is stored in the validate meter response"
-        def meterValidateInfoSrcSwitch = northbound.validateMeters(srcSwitch.dpId)
-        def meterValidateInfoDstSwitch = northbound.validateMeters(dstSwitch.dpId)
-        def createdCookieSrcSwitch = getCreatedCookies(srcSwitch.dpId, createdMetersIdSrcSwitch)
-        def createdCookieDstSwitch = getCreatedCookies(dstSwitch.dpId, createdMetersIdDstSwitch)
+        def srcSwitchValidateInfo = northbound.validateMeters(srcSwitch.dpId)
+        def dstSwitchValidateInfo = northbound.validateMeters(dstSwitch.dpId)
+        def srcSwitchCreatedCookie = getCreatedCookies(srcSwitch.dpId, srcSwitchCreatedMetersId)
+        def dstSwitchCreatedCookie = getCreatedCookies(dstSwitch.dpId, dstSwitchCreatedMetersId)
 
-        def createdCookies = createdCookieSrcSwitch + createdCookieDstSwitch
+        srcSwitchValidateInfo.meters.proper*.meterId.containsAll(srcSwitchCreatedMetersId)
+        dstSwitchValidateInfo.meters.proper*.meterId.containsAll(dstSwitchCreatedMetersId)
 
-        meterValidateInfoSrcSwitch.meters.proper.collect { it.meterId }.containsAll(createdMetersIdSrcSwitch)
-        meterValidateInfoDstSwitch.meters.proper.collect { it.meterId }.containsAll(createdMetersIdDstSwitch)
+        srcSwitchValidateInfo.meters.proper*.cookie.containsAll(srcSwitchCreatedCookie)
+        dstSwitchValidateInfo.meters.proper*.cookie.containsAll(dstSwitchCreatedCookie)
 
-        meterValidateInfoSrcSwitch.meters.proper.collect { it.cookie }.containsAll(createdCookieSrcSwitch)
-        meterValidateInfoDstSwitch.meters.proper.collect { it.cookie }.containsAll(createdCookieDstSwitch)
-
-        [meterValidateInfoSrcSwitch, meterValidateInfoDstSwitch].each {
+        [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
             it.meters.proper.each {
                 assert it.rate == flow.maximumBandwidth
                 assert it.flowId == flow.id
             }
-        }
-
-        meterValidateInfoSrcSwitch.meters.proper.burstSize[0] == burstSizeSrcSwitch
-        meterValidateInfoDstSwitch.meters.proper.burstSize[0] == burstSizeDstSwitch
-
-        [meterValidateInfoSrcSwitch, meterValidateInfoDstSwitch].each {
             it.meters.proper.every {
-                ["KBPS", "BURST", "STATS"].containsAll(it.flags)
+                assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
             }
         }
+
+        def srcSwitchBurstSize = switchHelper.getExpectedBurst(srcSwitch.dpId, flow.maximumBandwidth)
+        def dstSwitchBurstSize = switchHelper.getExpectedBurst(dstSwitch.dpId, flow.maximumBandwidth)
+        srcSwitchValidateInfo.meters.proper*.burstSize[0] == srcSwitchBurstSize
+        dstSwitchValidateInfo.meters.proper*.burstSize[0] == dstSwitchBurstSize
 
         [srcSwitch, dstSwitch].each {
             checkNoMeterValidation(it.dpId, ["proper"])
         }
 
         and: "Created rules are stored in the proper section"
-        [meterValidateInfoSrcSwitch, meterValidateInfoDstSwitch].each {
+        def createdCookies = srcSwitchCreatedCookie + dstSwitchCreatedCookie
+        [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
             it.rules.properRules.containsAll(createdCookies)
         }
 
@@ -87,6 +82,8 @@ class MetersValidateSimpleFlowSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
 
         and: "Check that meter validate info is also deleted"
+//            checkNoRuleMeterValidation -> checkNoRuleSwitchValidateInfoExist   ???
+//            checkNoMeterValidation - checkNoMeterSwitchValidateInfoExist  ???
         [srcSwitch, dstSwitch].each {
             checkNoRuleMeterValidation(it.dpId)
             checkNoMeterValidation(it.dpId)
