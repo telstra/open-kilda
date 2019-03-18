@@ -21,6 +21,7 @@ import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.discovery.DiscoveryTopologyDashboardLogger;
 import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm;
 import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm.SwitchFsmContext;
 import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm.SwitchFsmEvent;
@@ -28,6 +29,7 @@ import org.openkilda.wfm.topology.discovery.controller.sw.SwitchFsm.SwitchFsmSta
 import org.openkilda.wfm.topology.discovery.model.facts.HistoryFacts;
 
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.event.Level;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +39,8 @@ public class DiscoverySwitchService {
     private final Map<SwitchId, SwitchFsm> controller = new HashMap<>();
     private final FsmExecutor<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> controllerExecutor
             = SwitchFsm.makeExecutor();
+
+    private static final DiscoveryTopologyDashboardLogger logWrapper = new DiscoveryTopologyDashboardLogger(log);
 
     private final PersistenceManager persistenceManager;
 
@@ -174,6 +178,7 @@ public class DiscoverySwitchService {
         if (fsm.isTerminated()) {
             controller.remove(datapath);
             log.debug("Switch service removed FSM {}", datapath);
+            logWrapper.onSwitchDelete(Level.INFO, datapath);
         } else {
             log.error("Switch service remove failed for FSM {}, state: {}", datapath, fsm.getCurrentState());
         }

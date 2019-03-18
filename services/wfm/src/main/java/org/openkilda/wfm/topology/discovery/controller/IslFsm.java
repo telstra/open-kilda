@@ -35,6 +35,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
+import org.openkilda.wfm.topology.discovery.DiscoveryTopologyDashboardLogger;
 import org.openkilda.wfm.topology.discovery.controller.IslFsm.IslFsmContext;
 import org.openkilda.wfm.topology.discovery.controller.IslFsm.IslFsmEvent;
 import org.openkilda.wfm.topology.discovery.controller.IslFsm.IslFsmState;
@@ -49,6 +50,7 @@ import org.openkilda.wfm.topology.discovery.service.IIslCarrier;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.event.Level;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
@@ -73,6 +75,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private final DiscoveryFacts discoveryFacts;
 
     private static final StateMachineBuilder<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> builder;
+
+    private final DiscoveryTopologyDashboardLogger logWrapper = new DiscoveryTopologyDashboardLogger(log);
 
     static {
         builder = StateMachineBuilderFactory.create(
@@ -229,6 +233,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void downEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
+        logWrapper.onIslUpdateStatus(Level.INFO, discoveryFacts.getReference(), to.toString());
         saveStatusTransaction();
     }
 
@@ -247,6 +252,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     public void upEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
 
+        logWrapper.onIslUpdateStatus(Level.INFO, discoveryFacts.getReference(), to.toString());
         saveAllTransaction();
 
         if (event != IslFsmEvent._HISTORY_UP) {
@@ -270,6 +276,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
+        logWrapper.onIslUpdateStatus(Level.INFO, discoveryFacts.getReference(), to.toString());
         saveStatusTransaction();
     }
 
@@ -315,6 +322,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 throw new IllegalStateException(String.format("Unexpected event %s for %s.handleSourceDestUpState",
                                                               event, getClass().getName()));
         }
+
         endpointStatus.put(context.getEndpoint(), status);
     }
 
