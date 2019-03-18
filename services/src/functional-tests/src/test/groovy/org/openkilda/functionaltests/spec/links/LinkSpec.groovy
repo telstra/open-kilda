@@ -293,10 +293,13 @@ class LinkSpec extends BaseSpecification {
         database.resetCosts()
 
         where:
-        islDescription | isl
-        "direct"       | getTopology().islsForActiveSwitches.find { !it.aswitch && !it.bfd }
-        "a-switch"     | getTopology().islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd }
-        "bfd"          | getTopology().islsForActiveSwitches.find { it.bfd }
+        [islDescription, isl] << [
+                ["direct", getTopology().islsForActiveSwitches.find { !it.aswitch && !it.bfd }],
+                ["a-switch", getTopology().islsForActiveSwitches.find {
+                    it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd
+                }],
+                ["bfd", getTopology().islsForActiveSwitches.find { it.bfd }]
+        ]
     }
 
     def "Reroute all flows going through a particular link"() {
@@ -312,9 +315,6 @@ class LinkSpec extends BaseSpecification {
             } && possibleFlowPaths.size() > 1
         } ?: assumeTrue("No suiting switches found", false)
 
-        and: "Make the first path more preferable than others by setting corresponding link props"
-        possibleFlowPaths[1..-1].each { pathHelper.makePathMorePreferable(possibleFlowPaths.first(), it) }
-
         and: "Create a couple of flows going through these switches"
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow1)
@@ -324,14 +324,10 @@ class LinkSpec extends BaseSpecification {
         flowHelper.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
 
-        assert flow1Path == possibleFlowPaths.first()
-        assert flow2Path == possibleFlowPaths.first()
-
-        and: "Delete link props from all links of alternative paths to allow rerouting flows"
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        assert flow1Path == flow2Path
 
         and: "Make the current flows path not preferable"
-        possibleFlowPaths[1..-1].each { pathHelper.makePathMorePreferable(it, possibleFlowPaths.first()) }
+        pathHelper.makePathMorePreferable(possibleFlowPaths.find { it != flow1Path }, flow1Path)
 
         when: "Submit request for rerouting flows to avoid the first link involved in flow paths"
         def isl = pathHelper.getInvolvedIsls(flow1Path).first()
@@ -340,9 +336,8 @@ class LinkSpec extends BaseSpecification {
         then: "Flows are rerouted"
         response.containsAll([flow1, flow2]*.id)
 
-        def flow1PathUpdated
-        def flow2PathUpdated
-
+        def flow1PathUpdated = null
+        def flow2PathUpdated = null
         Wrappers.wait(WAIT_OFFSET) {
             flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.id))
             flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.id))
