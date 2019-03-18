@@ -1,6 +1,12 @@
 @startuml
 title Discovery Decision Maker FSM
 
+legend
+    FSM keep track of processed packet/notifications using packet-id. And
+    ignore all "outdated" notifications - i.e. notifications with packet-id
+    lover than last processed.
+endlegend
+
 [*] --> Init
 
 Init -> Discovered : discovered
@@ -14,9 +20,7 @@ Failed : enter / emit fail
 Failed -> Discovered : discovered
 
 Discovered -> Unstable : fail
-Discovered : enter / save failTimeLowerLimit
 Discovered : enter / emit discovered
-Discovered : discovered / save failTimeLowerLimit
 Discovered : discovered / emit discovered
 
 @enduml

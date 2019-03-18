@@ -106,12 +106,12 @@ public class DecisionMakerHandler extends AbstractBolt implements IDecisionMaker
         service.clear(endpoint);
     }
 
-    public void processDiscovered(Endpoint endpoint, IslInfoData discoveryEvent) {
-        service.discovered(endpoint, discoveryEvent);
+    public void processDiscovered(Endpoint endpoint, long packetId, IslInfoData discoveryEvent) {
+        service.discovered(endpoint, packetId, discoveryEvent);
     }
 
-    public void processFailed(Endpoint endpoint) {
-        service.failed(endpoint);
+    public void processFailed(Endpoint endpoint, long packetId) {
+        service.failed(endpoint, packetId);
     }
 
     // Private

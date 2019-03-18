@@ -109,14 +109,14 @@ public class WatcherHandler extends AbstractBolt implements IWatcherCarrier {
     }
 
     @Override
-    public void discoveryReceived(Endpoint endpoint, IslInfoData discoveryEvent, long currentTime) {
+    public void discoveryReceived(Endpoint endpoint, long packetId, IslInfoData discoveryEvent, long currentTime) {
         emit(getCurrentTuple(), makeDefaultTuple(
-                new DecisionMakerDiscoveryCommand(endpoint, discoveryEvent)));
+                new DecisionMakerDiscoveryCommand(endpoint, packetId, discoveryEvent)));
     }
 
     @Override
-    public void discoveryFailed(Endpoint endpoint, long currentTime) {
-        emit(getCurrentTuple(), makeDefaultTuple(new DecisionMakerFailCommand(endpoint)));
+    public void discoveryFailed(Endpoint endpoint, long packetId, long currentTime) {
+        emit(getCurrentTuple(), makeDefaultTuple(new DecisionMakerFailCommand(endpoint, packetId)));
     }
 
     @Override

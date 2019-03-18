@@ -128,7 +128,7 @@ public class DiscoveryWatcherService {
         boolean wasProduced = producedPackets.remove(packet);
         boolean wasConfirmed = confirmedPackets.remove(packet);
         if (wasProduced || wasConfirmed) {
-            carrier.discoveryReceived(packet.endpoint, discoveryEvent, now());
+            carrier.discoveryReceived(packet.endpoint, packet.packetNo, discoveryEvent, now());
         } else {
             log.error("Receive invalid or removed discovery packet on {} id:{} task:{}",
                     packet.endpoint, packet.packetNo, taskId);
@@ -141,7 +141,7 @@ public class DiscoveryWatcherService {
         if (confirmedPackets.remove(packet)) {
             log.info("Detect discovery packet lost sent via {} id:{} task:{}",
                      packet.endpoint, packet.packetNo, taskId);
-            carrier.discoveryFailed(packet.getEndpoint(), now());
+            carrier.discoveryFailed(packet.getEndpoint(), packet.packetNo, now());
         }
     }
 

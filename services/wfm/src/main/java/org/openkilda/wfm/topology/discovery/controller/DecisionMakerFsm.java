@@ -42,6 +42,8 @@ public final class DecisionMakerFsm extends AbstractBaseFsm<DecisionMakerFsm,
                 DecisionMakerFsmContext.class,
                 Endpoint.class, Long.class, Long.class);
 
+        final String verifyAndTransit = "verifyAndTransit";
+
         // INIT
         builder.transition()
                 .from(DecisionMakerFsmState.INIT).to(DecisionMakerFsmState.DISCOVERED)
@@ -53,12 +55,16 @@ public final class DecisionMakerFsm extends AbstractBaseFsm<DecisionMakerFsm,
         // UNSTABLE
         builder.onEntry(DecisionMakerFsmState.UNSTABLE)
                 .callMethod("saveFailTime");
+        builder.internalTransition().within(DecisionMakerFsmState.UNSTABLE).on(DecisionMakerFsmEvent.DISCOVERY)
+                .callMethod(verifyAndTransit);
+        builder.internalTransition().within(DecisionMakerFsmState.UNSTABLE).on(DecisionMakerFsmEvent.FAIL)
+                .callMethod(verifyAndTransit);
         builder.transition()
                 .from(DecisionMakerFsmState.UNSTABLE).to(DecisionMakerFsmState.DISCOVERED)
-                .on(DecisionMakerFsmEvent.DISCOVERY);
-        builder.internalTransition().within(DecisionMakerFsmState.UNSTABLE).on(DecisionMakerFsmEvent.TICK)
+                .on(DecisionMakerFsmEvent.VALID_DISCOVERY);
+        builder.internalTransition().within(DecisionMakerFsmState.UNSTABLE).on(DecisionMakerFsmEvent.VALID_FAIL)
                 .callMethod("tick");
-        builder.internalTransition().within(DecisionMakerFsmState.UNSTABLE).on(DecisionMakerFsmEvent.FAIL)
+        builder.internalTransition().within(DecisionMakerFsmState.UNSTABLE).on(DecisionMakerFsmEvent.TICK)
                 .callMethod("tick");
         builder.transition()
                 .from(DecisionMakerFsmState.UNSTABLE).to(DecisionMakerFsmState.FAILED)
@@ -67,26 +73,33 @@ public final class DecisionMakerFsm extends AbstractBaseFsm<DecisionMakerFsm,
         // DISCOVERED
         builder.onEntry(DecisionMakerFsmState.DISCOVERED)
                 .callMethod("emitDiscovery");
+        builder.internalTransition()
+                .within(DecisionMakerFsmState.DISCOVERED).on(DecisionMakerFsmEvent.FAIL)
+                .callMethod(verifyAndTransit);
+        builder.internalTransition().within(DecisionMakerFsmState.DISCOVERED).on(DecisionMakerFsmEvent.DISCOVERY)
+                .callMethod(verifyAndTransit);
         builder.transition()
                 .from(DecisionMakerFsmState.DISCOVERED).to(DecisionMakerFsmState.UNSTABLE)
-                .on(DecisionMakerFsmEvent.FAIL);
-        builder.internalTransition().within(DecisionMakerFsmState.DISCOVERED).on(DecisionMakerFsmEvent.DISCOVERY)
+                .on(DecisionMakerFsmEvent.VALID_FAIL);
+        builder.internalTransition().within(DecisionMakerFsmState.DISCOVERED).on(DecisionMakerFsmEvent.VALID_DISCOVERY)
                 .callMethod("emitDiscovery");
 
         // FAILED
         builder.onEntry(DecisionMakerFsmState.FAILED)
                 .callMethod("emitFailed");
+        builder.internalTransition()
+                .within(DecisionMakerFsmState.FAILED).on(DecisionMakerFsmEvent.DISCOVERY)
+                .callMethod(verifyAndTransit);
         builder.transition()
                 .from(DecisionMakerFsmState.FAILED).to(DecisionMakerFsmState.DISCOVERED)
-                .on(DecisionMakerFsmEvent.DISCOVERY);
-
+                .on(DecisionMakerFsmEvent.VALID_DISCOVERY);
     }
 
     private final Endpoint endpoint;
     private final Long failTimeout;
     private final Long awaitTime;
     private Long failTime;
-    private long failTimeLowerLimit = 0;
+    private Long lastProcessedPacketId;
 
     public DecisionMakerFsm(Endpoint endpoint, Long failTimeout, Long awaitTime) {
         this.endpoint = endpoint;
@@ -105,23 +118,34 @@ public final class DecisionMakerFsm extends AbstractBaseFsm<DecisionMakerFsm,
 
     // -- FSM actions --
 
-    public void saveFailTime(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
-                              DecisionMakerFsmContext context) {
-        failTime = Math.max(context.getCurrentTime() - awaitTime, failTimeLowerLimit);
+    protected void verifyAndTransit(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+                                    DecisionMakerFsmContext context) {
+        boolean verification = lastProcessedPacketId == null;
+        if (!verification) {
+            verification = context.getPacketId() != null && lastProcessedPacketId < context.getPacketId();
+        }
+
+        if (verification) {
+            fire(mapVerificationEvent(event), context);
+        }
     }
 
-    /**
-     * .
-     */
-    public void emitDiscovery(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+    protected void saveFailTime(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+                              DecisionMakerFsmContext context) {
+        saveLastProcessed(context);
+        failTime = context.getCurrentTime() - awaitTime;
+    }
+
+    protected void emitDiscovery(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
                                DecisionMakerFsmContext context) {
+        saveLastProcessed(context);
         context.getOutput().linkDiscovered(context.getDiscoveryEvent());
-        failTimeLowerLimit = context.getCurrentTime();
         failTime = null;
     }
 
-    public void emitFailed(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+    protected void emitFailed(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
                             DecisionMakerFsmContext context) {
+        saveLastProcessed(context);
         context.getOutput().linkDestroyed(endpoint);
         failTime = null;
     }
@@ -129,12 +153,39 @@ public final class DecisionMakerFsm extends AbstractBaseFsm<DecisionMakerFsm,
     /**
      * Tick event process.
      */
-    public void tick(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+    protected void tick(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
                       DecisionMakerFsmContext context) {
+        saveLastProcessed(context);
         if (context.getCurrentTime() >= failTime + failTimeout) {
             fire(DecisionMakerFsmEvent.FAIL_BY_TIMEOUT, context);
         }
     }
+
+    // -- private/service methods --
+
+    private DecisionMakerFsmEvent mapVerificationEvent(DecisionMakerFsmEvent event) {
+        DecisionMakerFsmEvent result;
+        switch (event) {
+            case FAIL:
+                result = DecisionMakerFsmEvent.VALID_FAIL;
+                break;
+            case DISCOVERY:
+                result = DecisionMakerFsmEvent.VALID_DISCOVERY;
+                break;
+            default:
+                throw new IllegalArgumentException(String.format("Threre is no verification mapping for %s.%s",
+                                                                 event.getClass().getName(), event));
+        }
+        return result;
+    }
+
+    private void saveLastProcessed(DecisionMakerFsmContext context) {
+        if (context.getPacketId() != null) {
+            lastProcessedPacketId = context.getPacketId();
+        }
+    }
+
+    // -- service data types --
 
     @Data
     @Builder
@@ -142,12 +193,15 @@ public final class DecisionMakerFsm extends AbstractBaseFsm<DecisionMakerFsm,
         private final IDecisionMakerCarrier output;
         private final IslInfoData discoveryEvent;
         private final Long currentTime;
+        private final Long packetId;
     }
 
     public enum DecisionMakerFsmEvent {
         NEXT,
 
-        DISCOVERY, FAIL, TICK,
+        DISCOVERY, FAIL,
+        VALID_DISCOVERY, VALID_FAIL,
+        TICK,
 
         FAIL_BY_TIMEOUT
     }

@@ -47,16 +47,17 @@ public class DiscoveryDecisionMakerService {
         this.awaitTime = awaitTime;
     }
 
-    public void discovered(Endpoint endpoint, IslInfoData discoveryEvent) {
-        discovered(endpoint, discoveryEvent, now());
+    public void discovered(Endpoint endpoint, long packetId, IslInfoData discoveryEvent) {
+        discovered(endpoint, packetId, discoveryEvent, now());
     }
 
-    void discovered(Endpoint endpoint, IslInfoData discoveryEvent, long currentTime) {
+    void discovered(Endpoint endpoint, long packetId, IslInfoData discoveryEvent, long currentTime) {
         log.debug("Decision-maker service receive DISCOVERY event for {}", endpoint);
 
         DecisionMakerFsm decisionMakerFsm = locateControllerCreateIfAbsent(endpoint);
 
         DecisionMakerFsmContext context = DecisionMakerFsmContext.builder()
+                .packetId(packetId)
                 .currentTime(currentTime)
                 .discoveryEvent(discoveryEvent)
                 .output(carrier)
@@ -65,15 +66,16 @@ public class DiscoveryDecisionMakerService {
         controllerExecutor.fire(decisionMakerFsm, DecisionMakerFsmEvent.DISCOVERY, context);
     }
 
-    public void failed(Endpoint endpoint) {
-        failed(endpoint, now());
+    public void failed(Endpoint endpoint, long packetId) {
+        failed(endpoint, packetId, now());
     }
 
-    void failed(Endpoint endpoint, long currentTime) {
+    void failed(Endpoint endpoint, long packetId, long currentTime) {
         log.debug("Decision-maker service receive FAIL notification for {}", endpoint);
         DecisionMakerFsm decisionMakerFsm = locateControllerCreateIfAbsent(endpoint);
 
         DecisionMakerFsmContext context = DecisionMakerFsmContext.builder()
+                .packetId(packetId)
                 .currentTime(currentTime)
                 .output(carrier)
                 .build();

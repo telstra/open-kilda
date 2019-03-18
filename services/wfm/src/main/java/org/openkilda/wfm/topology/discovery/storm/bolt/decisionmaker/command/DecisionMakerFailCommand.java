@@ -19,13 +19,15 @@ import org.openkilda.wfm.topology.discovery.model.Endpoint;
 import org.openkilda.wfm.topology.discovery.storm.bolt.decisionmaker.DecisionMakerHandler;
 
 public class DecisionMakerFailCommand extends DecisionMakerCommand {
+    private final long packetId;
 
-    public DecisionMakerFailCommand(Endpoint endpoint) {
+    public DecisionMakerFailCommand(Endpoint endpoint, long packetId) {
         super(endpoint);
+        this.packetId = packetId;
     }
 
     @Override
     public void apply(DecisionMakerHandler handler) {
-        handler.processFailed(getEndpoint());
+        handler.processFailed(getEndpoint(), packetId);
     }
 }

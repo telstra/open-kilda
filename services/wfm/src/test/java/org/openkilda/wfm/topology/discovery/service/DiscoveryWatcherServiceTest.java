@@ -117,9 +117,9 @@ public class DiscoveryWatcherServiceTest {
 
         assertThat(w.getConfirmedPackets().size(), is(0));
 
-        verify(carrier).discoveryFailed(eq(Endpoint.of(new SwitchId(1), 1)), anyLong());
-        verify(carrier).discoveryFailed(eq(Endpoint.of(new SwitchId(2), 1)), anyLong());
-        verify(carrier, times(2)).discoveryFailed(any(Endpoint.class), anyLong());
+        verify(carrier).discoveryFailed(eq(Endpoint.of(new SwitchId(1), 1)), eq(0L), anyLong());
+        verify(carrier).discoveryFailed(eq(Endpoint.of(new SwitchId(2), 1)), eq(2L), anyLong());
+        verify(carrier, times(2)).discoveryFailed(any(Endpoint.class), anyLong(), anyLong());
 
         assertThat(w.getTimeouts().size(), is(0));
     }
@@ -153,9 +153,11 @@ public class DiscoveryWatcherServiceTest {
 
         assertThat(w.getConfirmedPackets().size(), is(0));
 
-        verify(carrier).discoveryReceived(eq(new Endpoint(islAlphaBeta.getSource())), eq(islAlphaBeta), anyLong());
-        verify(carrier).discoveryReceived(eq(new Endpoint(islBetaAlpha.getSource())), eq(islBetaAlpha), anyLong());
-        verify(carrier, times(2)).discoveryReceived(any(Endpoint.class), any(IslInfoData.class), anyLong());
+        verify(carrier).discoveryReceived(eq(new Endpoint(islAlphaBeta.getSource())), eq(0L), eq(islAlphaBeta),
+                                          anyLong());
+        verify(carrier).discoveryReceived(eq(new Endpoint(islBetaAlpha.getSource())), eq(2L), eq(islBetaAlpha),
+                                          anyLong());
+        verify(carrier, times(2)).discoveryReceived(any(Endpoint.class), anyLong(), any(IslInfoData.class), anyLong());
 
         assertThat(w.getTimeouts().size(), is(0));
     }
@@ -177,8 +179,8 @@ public class DiscoveryWatcherServiceTest {
         w.confirmation(new Endpoint(source), 0);
         w.tick(awaitTime + 1);
 
-        verify(carrier).discoveryReceived(eq(new Endpoint(source)), eq(islAlphaBeta), anyLong());
-        verify(carrier, never()).discoveryFailed(eq(new Endpoint(source)), anyLong());
+        verify(carrier).discoveryReceived(eq(new Endpoint(source)), eq(0L), eq(islAlphaBeta), anyLong());
+        verify(carrier, never()).discoveryFailed(eq(new Endpoint(source)), anyLong(), anyLong());
 
         assertThat(w.getConfirmedPackets().size(), is(0));
     }

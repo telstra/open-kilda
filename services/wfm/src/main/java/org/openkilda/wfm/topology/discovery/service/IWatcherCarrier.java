@@ -20,9 +20,9 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.topology.discovery.model.Endpoint;
 
 public interface IWatcherCarrier {
-    void discoveryReceived(Endpoint endpoint, IslInfoData discoveryEvent, long currentTime);
+    void discoveryReceived(Endpoint endpoint, long packetNo, IslInfoData discoveryEvent, long currentTime);
 
-    void discoveryFailed(Endpoint endpoint, long currentTime);
+    void discoveryFailed(Endpoint endpoint, long packetNo, long currentTime);
 
     void sendDiscovery(DiscoverIslCommandData discoveryRequest);
 

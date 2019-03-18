@@ -163,12 +163,12 @@ public class PollIntegrationTest {
         }
 
         @Override
-        public void discoveryReceived(Endpoint endpoint, IslInfoData discoveryEvent, long currentTime) {
-            decisionMakerService.discovered(endpoint, discoveryEvent, currentTime);
+        public void discoveryReceived(Endpoint endpoint, long packetNo, IslInfoData discoveryEvent, long currentTime) {
+            decisionMakerService.discovered(endpoint, packetNo, discoveryEvent, currentTime);
         }
 
         @Override
-        public void discoveryFailed(Endpoint endpoint, long currentTime) {
+        public void discoveryFailed(Endpoint endpoint, long packetNo, long currentTime) {
             decisionMakerService.failed(endpoint, currentTime);
         }
 

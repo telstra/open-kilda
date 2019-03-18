@@ -60,8 +60,8 @@ public class DiscoveryDecisionMakerServiceTest {
     public void discovered() {
         DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(carrier, 10, 5);
 
-        w.discovered(endpointBeta, islAlphaBeta, 1L);
-        w.discovered(endpointAlpha, islBetaAlpha, 2L);
+        w.discovered(endpointBeta, 1L, islAlphaBeta, 1L);
+        w.discovered(endpointAlpha, 2L, islBetaAlpha, 2L);
         verify(carrier).linkDiscovered(eq(islAlphaBeta));
         verify(carrier).linkDiscovered(eq(islBetaAlpha));
     }
@@ -69,42 +69,42 @@ public class DiscoveryDecisionMakerServiceTest {
     @Test
     public void failed() {
         DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(carrier, 10, 5);
-        w.failed(endpointAlpha, 0);
-        w.failed(endpointAlpha, 1);
-        w.failed(endpointAlpha, 4);
+        w.failed(endpointAlpha, 0L, 0);
+        w.failed(endpointAlpha, 1L, 1);
+        w.failed(endpointAlpha, 2L, 4);
         verify(carrier, never()).linkDestroyed(any(Endpoint.class));
-        w.failed(endpointAlpha, 5);
+        w.failed(endpointAlpha, 3L, 5);
         verify(carrier).linkDestroyed(eq(endpointAlpha));
 
-        w.discovered(endpointAlpha, islBetaAlpha, 20);
+        w.discovered(endpointAlpha, 4L, islBetaAlpha, 20);
         verify(carrier).linkDiscovered(islBetaAlpha);
 
         reset(carrier);
-        w.failed(endpointAlpha, 21);
-        w.failed(endpointAlpha, 23);
-        w.failed(endpointAlpha, 24);
+        w.failed(endpointAlpha, 5L, 21);
+        w.failed(endpointAlpha, 6L, 23);
+        w.failed(endpointAlpha, 7L, 24);
         verify(carrier, never()).linkDestroyed(any(Endpoint.class));
-        w.failed(endpointAlpha, 31);
+        w.failed(endpointAlpha, 8L, 31);
         verify(carrier).linkDestroyed(eq(endpointAlpha));
     }
 
     @Test
     public void tickerTest() {
         DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(carrier, 10, 5);
-        w.failed(endpointAlpha, 0);
+        w.failed(endpointAlpha, 0L, 0);
         w.tick(1);
         w.tick(4);
         verify(carrier, never()).linkDestroyed(any(Endpoint.class));
         w.tick(5);
         verify(carrier).linkDestroyed(eq(endpointAlpha));
 
-        w.discovered(endpointAlpha, islBetaAlpha, 20);
+        w.discovered(endpointAlpha, 1L, islBetaAlpha, 20);
         verify(carrier).linkDiscovered(islBetaAlpha);
 
         reset(carrier);
-        w.failed(endpointAlpha, 21);
+        w.failed(endpointAlpha, 2L, 21);
         w.tick(23);
-        w.failed(endpointAlpha, 24);
+        w.failed(endpointAlpha, 3L, 24);
         verify(carrier, never()).linkDestroyed(any(Endpoint.class));
         w.tick(31);
         verify(carrier).linkDestroyed(eq(endpointAlpha));
@@ -114,13 +114,13 @@ public class DiscoveryDecisionMakerServiceTest {
     public void removeWatchTest() {
         DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(carrier, 10, 5);
 
-        w.discovered(endpointAlpha, islBetaAlpha, 0);
-        w.discovered(endpointAlpha, islBetaAlpha, 0);
+        w.discovered(endpointAlpha, 0L, islBetaAlpha, 0);
+        w.discovered(endpointAlpha, 1L, islBetaAlpha, 0);
         verify(carrier, times(2)).linkDiscovered(islBetaAlpha);
 
         reset(carrier);
         w.clear(endpointAlpha);
-        w.discovered(endpointAlpha, islBetaAlpha, 0);
+        w.discovered(endpointAlpha, 2L, islBetaAlpha, 0);
         verify(carrier, only()).linkDiscovered(islBetaAlpha);
     }
 
@@ -128,16 +128,23 @@ public class DiscoveryDecisionMakerServiceTest {
     public void ensureDiscoveryResetFailTime() {
         DiscoveryDecisionMakerService w = new DiscoveryDecisionMakerService(carrier, 10, 5);
 
-        w.discovered(endpointAlpha, islBetaAlpha, 0);
-        w.failed(endpointAlpha, 6);
-        w.tick(9);
-        w.discovered(endpointAlpha, islBetaAlpha, 10);
-        w.failed(endpointAlpha, 11);
+        // we have discovered port (discovery discovery.interval is 3, and discovery.packet.ttl is 5)
+        w.discovered(endpointAlpha, 1L, islBetaAlpha, 0);
+        // send packet at 3
+        // send packet at 6
+        w.failed(endpointAlpha, 2L, 8); // 3 + 5
+        // send packet at 9
+        w.discovered(endpointAlpha, 4L, islBetaAlpha, 9); // 9 + 0
+        w.failed(endpointAlpha, 3L, 11); // 6 + 3 (should be ignored)
+        // send packet at 12
+        w.failed(endpointAlpha, 5L, 17); // 12 + 3
 
-        w.tick(19);
+        // we should not fail until 9 + 10 (discovery.timeout)
+        w.tick(21);
         verify(carrier, never()).linkDestroyed(any(Endpoint.class));
 
-        w.tick(20);
+        // but we should fail at 9 + 10
+        w.tick(22);
         verify(carrier).linkDestroyed(endpointAlpha);
     }
 }
