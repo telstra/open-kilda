@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
+import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.command.switches.ValidateRulesRequest;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
@@ -41,6 +42,7 @@ import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
+import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
@@ -57,6 +59,7 @@ import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
@@ -216,6 +219,18 @@ public class SwitchServiceImpl implements SwitchService {
         return messagingChannel.sendAndGet(floodlightTopic, validateCommandMessage)
                 .thenApply(SyncRulesResponse.class::cast)
                 .thenApply(switchMapper::toRulesValidationResult);
+    }
+
+    @Override
+    public CompletableFuture<SwitchValidationResult> validateSwitch(SwitchId switchId) {
+        logger.info("Sync rules request for switch {}", switchId);
+
+        CommandMessage syncCommandMessage = new CommandMessage(
+                new SwitchValidateRequest(switchId), System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
+                .thenApply(SwitchValidationResponse.class::cast)
+                .thenApply(switchMapper::toSwitchValidationResult);
     }
 
     @Override

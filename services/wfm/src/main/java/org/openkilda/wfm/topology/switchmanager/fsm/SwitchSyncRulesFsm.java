@@ -176,7 +176,7 @@ public class SwitchSyncRulesFsm
         log.info("Key: {}, validate rules", key);
         try {
             ValidationService validationService = new ValidationServiceImpl(persistenceManager);
-            validateRulesResult = validationService.validate(switchId, presentCookies);
+            validateRulesResult = validationService.validateRules(switchId, presentCookies);
 
             if (validateRulesResult.getMissingRules().isEmpty()) {
                 fire(FINISH);

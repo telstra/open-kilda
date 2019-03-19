@@ -24,6 +24,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
+import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
@@ -54,6 +55,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -333,5 +336,24 @@ public class FlowController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowMeterEntries> updateMetersBurst(@PathVariable("flow_id") String flowId) {
         return flowService.modifyMeter(flowId);
+    }
+
+    /**
+     * Gets flow history.
+     */
+    @ApiOperation(value = "Gets history for flow")
+    @GetMapping(path = "/{flow_id}/history")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<List<FlowEventPayload>> getHistory(
+            @PathVariable("flow_id") String flowId,
+            @ApiParam(value = "default: the day before timeTo.", required = false)
+            @RequestParam(value = "timeFrom", required = false) Optional<Long> optionalTimeFrom,
+            @ApiParam(value = "default: now.", required = false)
+            @RequestParam(value = "timeTo", required = false) Optional<Long> optionalTimeTo) {
+        Long timeTo = optionalTimeTo.orElseGet(() -> Instant.now().getEpochSecond());
+        Long timeFrom = optionalTimeFrom.orElseGet(
+                () -> Instant.ofEpochSecond(timeTo).minus(1, ChronoUnit.DAYS).getEpochSecond()
+        );
+        return flowService.listFlowEvents(flowId, timeFrom, timeTo);
     }
 }
