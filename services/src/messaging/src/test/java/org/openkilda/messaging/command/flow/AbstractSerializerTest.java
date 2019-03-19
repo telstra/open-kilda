@@ -461,7 +461,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void eventPortInfoTest() throws IOException, ClassNotFoundException {
-        PortInfoData data = new PortInfoData(SWITCH_ID, INPUT_PORT, 0, PORT_CHANGE);
+        PortInfoData data = new PortInfoData(SWITCH_ID, INPUT_PORT, PORT_CHANGE);
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION,

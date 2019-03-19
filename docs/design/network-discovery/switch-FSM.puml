@@ -37,7 +37,9 @@ SETUP -r-> ONLINE : next
 
 ONLINE : enter / create or update DB record
 ONLINE : enter / update status in DB
-ONLINE : port-add / setup port FSM, emit online for port
+ONLINE : port-add / setup port FSM
+ONLINE : port-add / emit online for port
+ONLINE : port-add / emit port-up/down
 ONLINE : port-del / kill port FSM
 ONLINE : port-up / proxy
 ONLINE : port-down / proxy

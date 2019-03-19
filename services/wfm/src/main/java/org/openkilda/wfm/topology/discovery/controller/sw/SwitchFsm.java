@@ -219,6 +219,14 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
         portAdd(port, context);
         updateOnlineStatus(port, context, true);
+
+        Boolean isPortEnabled = context.getPortEnabled();
+        if (isPortEnabled == null) {
+            log.error("Link status of {} is unknown - treat is as DOWN", port.getEndpoint());
+            isPortEnabled = false;
+        }
+        port.setLinkStatus(isPortEnabled ? LinkStatus.UP : LinkStatus.DOWN);
+        updatePortLinkMode(port, context);
     }
 
     protected void handlePortDel(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
@@ -367,6 +375,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         private HistoryFacts history;
 
         private Integer portNumber;
+        private Boolean portEnabled;
 
         public static SwitchFsmContextBuilder builder(ISwitchCarrier output) {
             return (new SwitchFsmContextBuilder()).output(output);

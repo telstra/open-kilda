@@ -124,13 +124,13 @@ public class DiscoverySwitchService {
     public void switchPortEvent(PortInfoData payload) {
         log.debug("Switch service receive PORT event for {} port:{}, status:{}",
                   payload.getSwitchId(), payload.getPortNo(), payload.getState());
-        SwitchFsmContext fsmContext = SwitchFsmContext.builder(carrier)
-                .portNumber(payload.getPortNo())
-                .build();
+        SwitchFsmContext.SwitchFsmContextBuilder fsmContext = SwitchFsmContext.builder(carrier)
+                .portNumber(payload.getPortNo());
         SwitchFsmEvent event = null;
         switch (payload.getState()) {
             case ADD:
                 event = SwitchFsmEvent.PORT_ADD;
+                fsmContext.portEnabled(payload.getEnabled());
                 break;
             case DELETE:
                 event = SwitchFsmEvent.PORT_DEL;
@@ -154,7 +154,7 @@ public class DiscoverySwitchService {
 
         if (event != null) {
             SwitchFsm switchFsm = locateController(payload.getSwitchId());
-            controllerExecutor.fire(switchFsm, event, fsmContext);
+            controllerExecutor.fire(switchFsm, event, fsmContext.build());
         }
     }
 

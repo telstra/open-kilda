@@ -231,7 +231,39 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         producerService.sendMessageAndTrack(discoveryTopic, dpId.toString(), message);
     }
 
-    private org.openkilda.messaging.info.event.PortChangeType toJsonType(PortChangeType type) {
+    private Boolean obtainPortEnableStatus(DatapathId dpId, OFPort port, PortChangeType changeType) {
+        Boolean result = null;
+        switch (changeType) {
+            case UP:
+                result = true;
+                break;
+            case DOWN:
+                result = false;
+                break;
+            case ADD:
+                result = obtainPortEnableStatus(dpId, port);
+                break;
+            case DELETE:
+                break;
+            default:
+                logger.error("Unable to obtain port-enable-status {}_{} - change-type:{} is not supported",
+                        dpId, port.getPortNumber(), changeType);
+        }
+
+        return result;
+    }
+
+    private Boolean obtainPortEnableStatus(DatapathId dpId, OFPort port) {
+        try {
+            IOFSwitch sw = switchManager.lookupSwitch(dpId);
+            return sw.portEnabled(port);
+        } catch (SwitchNotFoundException e) {
+            logger.error("Unable to obtain port-enable-status {}_{}: {}", dpId, port.getPortNumber(), e.getMessage());
+            return null;
+        }
+    }
+
+    private static org.openkilda.messaging.info.event.PortChangeType mapChangeType(PortChangeType type) {
         switch (type) {
             case ADD:
                 return org.openkilda.messaging.info.event.PortChangeType.ADD;
@@ -277,8 +309,9 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
      * @return Message
      */
     private Message buildPortMessage(final DatapathId switchId, final OFPort port, final PortChangeType type) {
-        InfoData data = new PortInfoData(new SwitchId(switchId.getLong()), port.getPortNumber(),
-                null, toJsonType(type));
+        InfoData data = new PortInfoData(
+                new SwitchId(switchId.getLong()), port.getPortNumber(), mapChangeType(type),
+                obtainPortEnableStatus(switchId, port, type));
         return buildMessage(data);
     }
 

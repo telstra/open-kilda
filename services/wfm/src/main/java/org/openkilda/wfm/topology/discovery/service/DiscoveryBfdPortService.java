@@ -88,10 +88,12 @@ public class DiscoveryBfdPortService {
         controllerByPhysicalPort.remove(controller.getPhysicalEndpoint());
 
         if (controller.isHousekeeping()) {
-            log.info("BFD-port {} (physical-port:{}) have switched into housekeeping mode");
+            log.info("BFD-port {} (physical-port:{}) have switched into housekeeping mode",
+                     controller.getLogicalEndpoint(), controller.getPhysicalEndpoint().getPortNumber());
             doHousekeeping.add(controller);
         } else {
-            log.debug("BFD-port {} (physical-port:{}) do not require housekeeping, remove it immediately");
+            log.debug("BFD-port {} (physical-port:{}) do not require housekeeping, remove it immediately",
+                      controller.getLogicalEndpoint(), controller.getPhysicalEndpoint().getPortNumber());
         }
     }
 

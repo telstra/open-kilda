@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.info.event.PortChangeType;
@@ -459,6 +460,39 @@ public class DiscoverySwitchServiceTest {
                                            LinkStatus.of(portsDown.get(1).getState()));
 
         //System.out.println(mockingDetails(carrier).printInvocations());
+    }
+
+    @Test
+    public void portAddOnOnlineSwitch() {
+        DiscoverySwitchService service = new DiscoverySwitchService(carrier, persistenceManager,
+                                                                    BFD_LOGICAL_PORT_OFFSET);
+
+        // prepare
+        SpeakerSwitchView speakerSwitchView = getSpeakerSwitchView().toBuilder()
+                .ports(Collections.emptyList())
+                .build();
+
+        SwitchInfoData switchAddEvent = new SwitchInfoData(
+                alphaDatapath, SwitchChangeType.ACTIVATED,
+                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                speakerInetAddress.toString(),
+                false,
+                speakerSwitchView);
+
+        service.switchEvent(switchAddEvent);
+
+        // process
+        Endpoint endpoint = Endpoint.of(alphaDatapath, 1);
+        PortInfoData speakerPortEvent = new PortInfoData(endpoint.getDatapath(), endpoint.getPortNumber(),
+                                                         PortChangeType.ADD, true);
+
+        service.switchPortEvent(speakerPortEvent);
+
+        verify(carrier).setupPortHandler(endpoint, null);
+        verify(carrier).setOnlineMode(endpoint, true);
+        verify(carrier).setPortLinkMode(endpoint, LinkStatus.UP);
+
+        verifyNoMoreInteractions(carrier);
     }
 
 
