@@ -31,7 +31,6 @@ class LinkSpec extends BaseSpecification {
 
         double interval = discoveryTimeout * 0.2
         double waitTime = discoveryTimeout - interval
-        def ruleToRemove = [isl.aswitch]
 
         when: "Remove a one-way flow on an a-switch for simulating lost connection(not port down)"
         lockKeeper.removeFlows([isl.aswitch])
@@ -274,8 +273,6 @@ class LinkSpec extends BaseSpecification {
 
         when: "Try to delete the link"
         def response = northbound.deleteLink(islUtils.toLinkParameters(isl))
-        // TODO(rtretiak): Below line to be removed after #1977 fix
-        northbound.deleteLink(islUtils.toLinkParameters(isl.reversed))
 
         then: "The link is actually deleted"
         response.size() == 2
