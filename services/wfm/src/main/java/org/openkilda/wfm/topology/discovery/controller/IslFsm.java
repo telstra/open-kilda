@@ -81,6 +81,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 PersistenceManager.class, DiscoveryOptions.class, IslReference.class);
 
         String updateEndpointStatusMethod = "updateEndpointStatus";
+        String updateAndPersistEndpointStatusMethod = "updateAndPersistEndpointStatus";
 
         // DOWN
         builder.transition()
@@ -91,7 +92,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 .callMethod(updateEndpointStatusMethod);
         builder.internalTransition()
                 .within(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN)
-                .callMethod(updateEndpointStatusMethod);
+                .callMethod(updateAndPersistEndpointStatusMethod);
         builder.internalTransition()
                 .within(IslFsmState.DOWN).on(IslFsmEvent.ISL_REMOVE)
                 .callMethod("removeAttempt");
@@ -126,7 +127,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 .callMethod(updateEndpointStatusMethod);
         builder.internalTransition()
                 .within(IslFsmState.MOVED).on(IslFsmEvent.ISL_DOWN)
-                .callMethod(updateEndpointStatusMethod);
+                .callMethod(updateAndPersistEndpointStatusMethod);
         builder.internalTransition()
                 .within(IslFsmState.MOVED).on(IslFsmEvent.ISL_REMOVE)
                 .callMethod("removeAttempt");
@@ -193,6 +194,12 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     protected void updateEndpointStatus(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         updateEndpointStatusByEvent(event, context);
+    }
+
+    protected void updateAndPersistEndpointStatus(IslFsmState from, IslFsmState to, IslFsmEvent event,
+                                                  IslFsmContext context) {
+        updateEndpointStatusByEvent(event, context);
+        saveStatusTransaction();
     }
 
     protected void downEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {

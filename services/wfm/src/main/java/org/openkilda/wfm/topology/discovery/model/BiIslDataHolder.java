@@ -59,9 +59,9 @@ public class BiIslDataHolder<T> {
 
     protected static int dataIndexByEndpoint(IslReference ref, Endpoint e) {
         int idx;
-        if (ref.getDest().equals(e)) {
+        if (ref.getSource().equals(e)) {
             idx =  0; // forward bind
-        } else if (ref.getSource().equals(e)) {
+        } else if (ref.getDest().equals(e)) {
             idx = 1; // reverse bind
         } else {
             throw new IllegalArgumentException(String.format("Endpoint %s is not belong to ISL %s", e, ref));

@@ -32,6 +32,7 @@ DOWN --> upAttempt : isl-up / set endpoint-(A||B)-up = true
 DOWN --> MOVED : isl-move
 DOWN : enter / persist DB state
 DOWN : isl-down / set endpoint-(A||B)-up = false
+DOWN : isl-down / persist DB state
 DOWN -> deleteAttempt : isl-remove
 
 upAttempt --> UP : [endpoint-(A&&B)-up]
@@ -55,6 +56,7 @@ MOVED : enter / persist DB state
 MOVED : enter / emit isl-move
 MOVED : enter / set endpoint-(A|B)-up = false
 MOVED : isl-down / set endpoint-(A|B)-up = false
+MOVED : isl-down / persist DB state
 
 DELETED -> [*]
 @enduml
