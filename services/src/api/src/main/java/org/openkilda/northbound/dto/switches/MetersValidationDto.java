@@ -20,14 +20,22 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class SwitchValidationResult {
+public class MetersValidationDto {
 
-    @JsonProperty("rules")
-    private RulesValidationDto rules;
+    @JsonProperty("missing")
+    private List<MeterInfoDto> missing;
 
-    @JsonProperty("meters")
-    private MetersValidationDto meters;
+    @JsonProperty("misconfigured")
+    private List<MeterInfoDto> misconfigured;
+
+    @JsonProperty("proper")
+    private List<MeterInfoDto> proper;
+
+    @JsonProperty("excess")
+    private List<MeterInfoDto> excess;
 }

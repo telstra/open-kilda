@@ -25,17 +25,14 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class MetersValidationResult {
+public class RulesValidationDto {
 
     @JsonProperty("missing")
-    private List<MeterInfoDto> missing;
-
-    @JsonProperty("misconfigured")
-    private List<MeterInfoDto> misconfigured;
+    private List<Long> missing;
 
     @JsonProperty("proper")
-    private List<MeterInfoDto> proper;
+    private List<Long> proper;
 
     @JsonProperty("excess")
-    private List<MeterInfoDto> excess;
+    private List<Long> excess;
 }

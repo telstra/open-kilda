@@ -27,12 +27,12 @@ import java.util.List;
 @NoArgsConstructor
 public class RulesValidationResult {
 
-    @JsonProperty("missing")
+    @JsonProperty("missing_rules")
     private List<Long> missingRules;
 
-    @JsonProperty("proper")
+    @JsonProperty("proper_rules")
     private List<Long> properRules;
 
-    @JsonProperty("excess")
+    @JsonProperty("excess_rules")
     private List<Long> excessRules;
 }
