@@ -25,14 +25,14 @@ import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.switches.MeterInfoDto;
 import org.openkilda.northbound.dto.switches.MeterMisconfiguredInfoDto;
-import org.openkilda.northbound.dto.switches.MetersValidationResult;
+import org.openkilda.northbound.dto.switches.MetersValidationDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.switches.RulesValidationDto;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
 import org.openkilda.northbound.dto.switches.SwitchValidationResult;
 
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface SwitchMapper {
@@ -45,12 +45,9 @@ public interface SwitchMapper {
 
     RulesValidationResult toRulesValidationResult(SyncRulesResponse response);
 
-    @Mapping(target = "missingRules", source = "missing")
-    @Mapping(target = "properRules", source = "proper")
-    @Mapping(target = "excessRules", source = "excess")
-    RulesValidationResult toRulesValidationResult(RulesValidationEntry data);
+    RulesValidationDto toRulesValidationResult(RulesValidationEntry data);
 
-    MetersValidationResult toMetersValidationResult(MetersValidationEntry data);
+    MetersValidationDto toMetersValidationResult(MetersValidationEntry data);
 
     MeterInfoDto toMeterInfoDto(MeterInfoEntry data);
 
