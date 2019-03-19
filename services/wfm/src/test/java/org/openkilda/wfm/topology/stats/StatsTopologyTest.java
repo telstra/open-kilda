@@ -384,7 +384,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         switchRepository.createOrUpdate(sw);
 
         FlowPairRepository flowPairRepository = repositoryFactory.createFlowPairRepository();
-        FlowPair flowPair = new FlowPair(flowId, sw, 1, 5, sw, 2, 5);
+        FlowPair flowPair = new FlowPair(flowId, sw, 1, 5, sw, 2, 5, 1);
         flowPair.getForward().setCookie(cookie);
         flowPair.getForward().setMeterId(456L);
         flowPairRepository.createOrUpdate(flowPair);

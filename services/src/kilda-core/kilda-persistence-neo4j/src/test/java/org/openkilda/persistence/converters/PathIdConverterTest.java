@@ -31,7 +31,7 @@ public class PathIdConverterTest {
         String graphObject = new PathIdConverter().toGraphProperty(pathId);
 
         // then
-        assertEquals(pathId.getPathId(), graphObject);
+        assertEquals(pathId.getId(), graphObject);
     }
 
     @Test
@@ -40,7 +40,7 @@ public class PathIdConverterTest {
         PathId pathId = new PathId("test_path_id");
 
         // when
-        PathId actualEntity = new PathIdConverter().toEntityAttribute(pathId.getPathId());
+        PathId actualEntity = new PathIdConverter().toEntityAttribute(pathId.getId());
 
         // then
         assertEquals(pathId, actualEntity);

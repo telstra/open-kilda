@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flow.transactions;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasItem;
@@ -24,11 +25,14 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-import org.openkilda.messaging.command.flow.BaseFlow;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.CommandGroup;
+import org.openkilda.messaging.command.CommandGroup.FailureReaction;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
-import org.openkilda.messaging.command.flow.FlowCommandGroup;
-import org.openkilda.messaging.command.flow.FlowCommandGroup.FailureReaction;
+import org.openkilda.messaging.command.flow.DeallocateFlowResourcesRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 
 import net.jodah.failsafe.Failsafe;
@@ -45,11 +49,15 @@ import java.util.concurrent.TimeUnit;
 
 public class FlowCommandRegistryTest {
     private static final String TEST_FLOW = "test-flow";
+    private static final UUID FAKE_BATCH_ID = UUID.randomUUID();
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final BaseInstallFlow FLOW_COMMAND_1 =
             new BaseInstallFlow(UUID.randomUUID(), TEST_FLOW, 0L, SWITCH_ID_1, 1, 1);
     private static final RemoveFlow FLOW_COMMAND_2 =
             new RemoveFlow(UUID.randomUUID(), TEST_FLOW, 0L, SWITCH_ID_1, null, null);
+    private static final CommandData NON_FLOW_COMMAND =
+            new DeallocateFlowResourcesRequest(TEST_FLOW, 0, new PathId(UUID.randomUUID().toString()),
+                    FlowEncapsulationType.TRANSIT_VLAN);
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
@@ -58,7 +66,7 @@ public class FlowCommandRegistryTest {
     public void shouldNotPollBeforeRegistration() {
         FlowCommandRegistry registry = new FlowCommandRegistry();
 
-        List<BaseFlow> currentGroup = registry.pollNextGroup(TEST_FLOW);
+        List<CommandData> currentGroup = registry.pollNextGroup(TEST_FLOW);
         assertThat(currentGroup, empty());
     }
 
@@ -66,42 +74,75 @@ public class FlowCommandRegistryTest {
     public void failToLocateTransactionBeforeRegistration() throws UnknownTransactionException {
         FlowCommandRegistry registry = new FlowCommandRegistry();
 
-        assertFalse(registry.hasCommand(TEST_FLOW));
-
         thrown.expect(UnknownTransactionException.class);
         registry.removeCommand(TEST_FLOW, FLOW_COMMAND_1.getTransactionId());
     }
 
     @Test
-    public void failToLocateBatchBeforeRegistration() throws UnknownTransactionException {
+    public void failToLocateBatchBeforeRegistration() throws UnknownBatchException {
         FlowCommandRegistry registry = new FlowCommandRegistry();
 
-        thrown.expect(UnknownTransactionException.class);
-        registry.removeBatch(TEST_FLOW, FLOW_COMMAND_1.getTransactionId());
+        thrown.expect(UnknownBatchException.class);
+        registry.isBatchEmpty(FAKE_BATCH_ID);
+    }
+
+    @Test
+    public void failToRemoveBatchBeforeRegistration() throws UnknownBatchException {
+        FlowCommandRegistry registry = new FlowCommandRegistry();
+
+        thrown.expect(UnknownBatchException.class);
+        registry.removeBatch(FAKE_BATCH_ID);
+    }
+
+    @Test
+    public void failToObtainOnSuccessCommandsBeforeRegistration() throws UnknownBatchException {
+        FlowCommandRegistry registry = new FlowCommandRegistry();
+
+        thrown.expect(UnknownBatchException.class);
+        registry.getOnSuccessCommands(FAKE_BATCH_ID);
+    }
+
+    @Test
+    public void failToObtainOnFailureCommandsBeforeRegistration() throws UnknownBatchException {
+        FlowCommandRegistry registry = new FlowCommandRegistry();
+
+        thrown.expect(UnknownBatchException.class);
+        registry.getOnFailureCommands(FAKE_BATCH_ID);
     }
 
     @Test
     public void failToRegisterTransactionWithWrongFlowId() {
         FlowCommandRegistry registry = new FlowCommandRegistry();
 
-        List<FlowCommandGroup> groups = asList(
-                new FlowCommandGroup(singletonList(FLOW_COMMAND_1), FailureReaction.IGNORE),
-                new FlowCommandGroup(singletonList(FLOW_COMMAND_2), FailureReaction.IGNORE));
+        List<CommandGroup> groups = asList(
+                new CommandGroup(singletonList(FLOW_COMMAND_1), FailureReaction.IGNORE),
+                new CommandGroup(singletonList(FLOW_COMMAND_2), FailureReaction.IGNORE));
 
         thrown.expect(IllegalArgumentException.class);
-        registry.registerBatch(TEST_FLOW + "_fake", groups);
+        registry.registerBatch(TEST_FLOW + "_fake", groups, emptyList(), emptyList());
     }
 
     @Test
     public void failToRegisterDuplicationTransaction() {
         FlowCommandRegistry registry = new FlowCommandRegistry();
 
-        List<FlowCommandGroup> groups = asList(
-                new FlowCommandGroup(singletonList(FLOW_COMMAND_1), FailureReaction.IGNORE),
-                new FlowCommandGroup(singletonList(FLOW_COMMAND_1), FailureReaction.IGNORE));
+        List<CommandGroup> groups = asList(
+                new CommandGroup(singletonList(FLOW_COMMAND_1), FailureReaction.IGNORE),
+                new CommandGroup(singletonList(FLOW_COMMAND_1), FailureReaction.IGNORE));
 
         thrown.expect(IllegalArgumentException.class);
-        registry.registerBatch(TEST_FLOW, groups);
+        registry.registerBatch(TEST_FLOW, groups, emptyList(), emptyList());
+    }
+
+    @Test
+    public void shouldObtainFailureReaction() {
+        FlowCommandRegistry registry = new FlowCommandRegistry();
+        registerBatchWith2Groups(registry);
+
+        assertEquals(FailureReaction.IGNORE,
+                registry.getFailureReaction(TEST_FLOW, FLOW_COMMAND_1.getTransactionId()).get());
+        assertEquals(FailureReaction.ABORT_BATCH,
+                registry.getFailureReaction(TEST_FLOW, FLOW_COMMAND_2.getTransactionId()).get());
     }
 
     @Test
@@ -109,10 +150,10 @@ public class FlowCommandRegistryTest {
         FlowCommandRegistry registry = new FlowCommandRegistry();
         registerBatchWith2Groups(registry);
 
-        List<BaseFlow> currentGroup = registry.pollNextGroup(TEST_FLOW);
+        List<CommandData> currentGroup = registry.pollNextGroup(TEST_FLOW);
         assertEquals(FLOW_COMMAND_1, currentGroup.get(0));
 
-        List<BaseFlow> nextGroup = registry.pollNextGroup(TEST_FLOW);
+        List<CommandData> nextGroup = registry.pollNextGroup(TEST_FLOW);
         assertThat(nextGroup, empty());
     }
 
@@ -124,19 +165,27 @@ public class FlowCommandRegistryTest {
         registry.pollNextGroup(TEST_FLOW);
         registry.removeCommand(TEST_FLOW, FLOW_COMMAND_1.getTransactionId());
 
-        List<BaseFlow> currentGroup = registry.pollNextGroup(TEST_FLOW);
+        List<CommandData> currentGroup = registry.pollNextGroup(TEST_FLOW);
         assertEquals(FLOW_COMMAND_2, currentGroup.get(0));
     }
 
     @Test
-    public void shouldLocateCommandOnActiveBatch() {
+    public void shouldLocateCommandOnActiveBatch() throws UnknownBatchException {
         FlowCommandRegistry registry = new FlowCommandRegistry();
-        registerBatchWith2Groups(registry);
+        UUID batchId = registerBatchWith2Groups(registry);
 
-        assertTrue(registry.hasCommand(TEST_FLOW));
-        List<BaseFlow> currentGroup = registry.pollNextGroup(TEST_FLOW);
+        assertFalse(registry.isBatchEmpty(batchId));
+        List<CommandData> currentGroup = registry.pollNextGroup(TEST_FLOW);
         assertEquals(FLOW_COMMAND_1, currentGroup.get(0));
-        assertTrue(registry.hasCommand(TEST_FLOW));
+        assertFalse(registry.isBatchEmpty(batchId));
+    }
+
+    @Test
+    public void shouldLocateBatchAfterRegistration() throws UnknownBatchException {
+        FlowCommandRegistry registry = new FlowCommandRegistry();
+        UUID batchId = registerBatchWith2Groups(registry);
+
+        assertFalse(registry.isBatchEmpty(batchId));
     }
 
     @Test
@@ -162,27 +211,27 @@ public class FlowCommandRegistryTest {
     }
 
     @Test
-    public void failToLocateBatchByWrongTransaction() throws UnknownTransactionException {
+    public void failToLocateBatchByWrongTransaction() throws UnknownBatchException {
         FlowCommandRegistry registry = new FlowCommandRegistry();
         registerBatchWith2Groups(registry);
 
         registry.pollNextGroup(TEST_FLOW);
 
-        thrown.expect(UnknownTransactionException.class);
-        registry.removeBatch(TEST_FLOW, UUID.randomUUID());
+        thrown.expect(UnknownBatchException.class);
+        registry.removeBatch(UUID.randomUUID());
     }
 
     @Test
-    public void shouldRemoveBatchWhenAllGroupEmpty() throws UnknownTransactionException {
+    public void shouldRemoveBatchWhenAllGroupEmpty() throws UnknownTransactionException, UnknownBatchException {
         FlowCommandRegistry registry = new FlowCommandRegistry();
-        registerBatchWith2Groups(registry);
+        UUID batchId = registerBatchWith2Groups(registry);
 
         registry.pollNextGroup(TEST_FLOW);
         registry.removeCommand(TEST_FLOW, FLOW_COMMAND_1.getTransactionId());
         registry.pollNextGroup(TEST_FLOW);
         registry.removeCommand(TEST_FLOW, FLOW_COMMAND_2.getTransactionId());
 
-        assertFalse(registry.hasCommand(TEST_FLOW));
+        assertTrue(registry.isBatchEmpty(batchId));
     }
 
     @Test
@@ -223,29 +272,78 @@ public class FlowCommandRegistryTest {
         registry.pollNextGroup(TEST_FLOW);
         registry.removeCommand(TEST_FLOW, FLOW_COMMAND_2.getTransactionId());
 
-        List<BaseFlow> currentGroup = registry.pollNextGroup(TEST_FLOW);
+        List<CommandData> currentGroup = registry.pollNextGroup(TEST_FLOW);
+        assertThat(currentGroup, empty());
+    }
+
+    @Test
+    public void shouldNotRemoveBatchWhenAllGroupEmpty() throws UnknownTransactionException, UnknownBatchException {
+        FlowCommandRegistry registry = new FlowCommandRegistry();
+        UUID batchId = registerBatchWith2Groups(registry);
+
+        registry.pollNextGroup(TEST_FLOW);
+        registry.removeCommand(TEST_FLOW, FLOW_COMMAND_1.getTransactionId());
+        registry.pollNextGroup(TEST_FLOW);
+        registry.removeCommand(TEST_FLOW, FLOW_COMMAND_2.getTransactionId());
+
+        assertTrue(registry.isBatchEmpty(batchId));
+    }
+
+    @Test
+    public void shouldProcessNonFlowCommand() throws UnknownTransactionException, UnknownBatchException {
+        FlowCommandRegistry registry = new FlowCommandRegistry();
+        UUID batchId = registerBatchWithNonFlowCommand(registry);
+
+        registry.pollNextGroup(TEST_FLOW);
+        registry.removeCommand(TEST_FLOW, FLOW_COMMAND_1.getTransactionId());
+
+        assertFalse(registry.isBatchEmpty(batchId));
+
+        List<CommandData> currentGroup = registry.pollNextGroup(TEST_FLOW);
+        assertEquals(NON_FLOW_COMMAND, currentGroup.get(0));
+
+        assertTrue(registry.isBatchEmpty(batchId));
+    }
+
+    @Test
+    public void shouldNotPollFromRemovedBatch() throws UnknownBatchException {
+        FlowCommandRegistry registry = new FlowCommandRegistry();
+        UUID batchId = registerBatchWith2Groups(registry);
+
+        assertEquals(batchId, registry.getCurrentBatch(TEST_FLOW).get());
+        registry.removeBatch(batchId);
+
+        assertFalse(registry.getCurrentBatch(TEST_FLOW).isPresent());
+        List<CommandData> currentGroup = registry.pollNextGroup(TEST_FLOW);
         assertThat(currentGroup, empty());
     }
 
     @Test
     public void shouldReturnFlowForExpiredBatch() throws InterruptedException {
         FlowCommandRegistry registry = new FlowCommandRegistry();
-        registerBatchWith2Groups(registry);
+        UUID batchId = registerBatchWith2Groups(registry);
 
         registry.pollNextGroup(TEST_FLOW);
 
-        Set<String> affectedFlows = Failsafe.with(new RetryPolicy()
+        Set<UUID> expiredBatches = Failsafe.with(new RetryPolicy()
                 .withDelay(10, TimeUnit.MILLISECONDS)
                 .withMaxDuration(100, TimeUnit.MILLISECONDS)
                 .retryIf(result -> ((Set) result).isEmpty()))
-                .get(() -> registry.removeExpiredBatch(Duration.ZERO));
-        assertThat(affectedFlows, hasItem(TEST_FLOW));
+                .get(() -> registry.getExpiredBatches(Duration.ZERO));
+        assertThat(expiredBatches, hasItem(batchId));
     }
 
-    private void registerBatchWith2Groups(FlowCommandRegistry registry) {
-        List<FlowCommandGroup> groups = asList(
-                new FlowCommandGroup(singletonList(FLOW_COMMAND_1), FailureReaction.IGNORE),
-                new FlowCommandGroup(singletonList(FLOW_COMMAND_2), FailureReaction.IGNORE));
-        registry.registerBatch(TEST_FLOW, groups);
+    private UUID registerBatchWith2Groups(FlowCommandRegistry registry) {
+        List<CommandGroup> groups = asList(
+                new CommandGroup(singletonList(FLOW_COMMAND_1), FailureReaction.IGNORE),
+                new CommandGroup(singletonList(FLOW_COMMAND_2), FailureReaction.ABORT_BATCH));
+        return registry.registerBatch(TEST_FLOW, groups, emptyList(), emptyList());
+    }
+
+    private UUID registerBatchWithNonFlowCommand(FlowCommandRegistry registry) {
+        List<CommandGroup> groups = asList(
+                new CommandGroup(singletonList(FLOW_COMMAND_1), FailureReaction.ABORT_BATCH),
+                new CommandGroup(singletonList(NON_FLOW_COMMAND), FailureReaction.IGNORE));
+        return registry.registerBatch(TEST_FLOW, groups, emptyList(), emptyList());
     }
 }

@@ -13,9 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.flow;
-
-import org.openkilda.messaging.command.CommandData;
+package org.openkilda.messaging.command;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
@@ -23,15 +21,25 @@ import lombok.Value;
 import java.util.List;
 
 /**
- * Defines the payload of a message representing a batch of grouped flow commands (install / remove). The batch must be
+ * Defines the payload of a message representing a batch of grouped commands. The batch must be
  * either completely processed group by group or canceled as a whole.
  */
 @Value
-public class BatchFlowCommandsRequest extends CommandData {
+public class BatchCommandsRequest extends CommandData {
     @JsonProperty("groups")
-    private List<FlowCommandGroup> groups;
+    private List<CommandGroup> groups;
 
-    public BatchFlowCommandsRequest(@JsonProperty("groups") List<FlowCommandGroup> groups) {
+    @JsonProperty("on_success")
+    private List<? extends CommandData> onSuccessCommands;
+
+    @JsonProperty("on_failure")
+    private List<? extends CommandData> onFailureCommands;
+
+    public BatchCommandsRequest(@JsonProperty("groups") List<CommandGroup> groups,
+                                @JsonProperty("on_success") List<? extends CommandData> onSuccessCommands,
+                                @JsonProperty("on_failure") List<? extends CommandData> onFailureCommands) {
         this.groups = groups;
+        this.onSuccessCommands = onSuccessCommands;
+        this.onFailureCommands = onFailureCommands;
     }
 }

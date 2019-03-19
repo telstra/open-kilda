@@ -82,7 +82,8 @@ public class FlowResourcesManager {
                                 .pathId(reversePathId);
 
                         if (flow.getBandwidth() > 0L) {
-                            switchRepository.lockSwitches(flow.getSrcSwitch(), flow.getDestSwitch());
+                            switchRepository.lockSwitches(switchRepository.reload(flow.getSrcSwitch()),
+                                    switchRepository.reload(flow.getDestSwitch()));
 
                             forward.meterId(meterPool.allocate(
                                     flow.getSrcSwitch().getSwitchId(), flow.getFlowId(), forwardPathId));
@@ -143,6 +144,26 @@ public class FlowResourcesManager {
                     getEncapsulationResourcesProvider(flow.getEncapsulationType());
             encapsulationResourcesProvider.deallocate(flowResources.getForward().getPathId());
             encapsulationResourcesProvider.deallocate(flowResources.getReverse().getPathId());
+        });
+    }
+
+    /**
+     * Deallocate the flow resources.
+     */
+    public void deallocatePathPairResources(PathId pathId,
+                                            long unmaskedCookie,
+                                            FlowEncapsulationType encapsulationType) {
+        log.debug("Deallocate flow resources for path {}, cookie: {}.",
+                pathId, unmaskedCookie);
+
+        transactionManager.doInTransaction(() -> {
+            cookiePool.deallocate(unmaskedCookie);
+
+            meterPool.deallocate(pathId);
+
+            EncapsulationResourcesProvider encapsulationResourcesProvider =
+                    getEncapsulationResourcesProvider(encapsulationType);
+            encapsulationResourcesProvider.deallocate(pathId);
         });
     }
 }

@@ -29,7 +29,7 @@ public class PathIdConverter implements AttributeConverter<PathId, String> {
         if (value == null) {
             return null;
         }
-        return value.getPathId();
+        return value.getId();
     }
 
     @Override

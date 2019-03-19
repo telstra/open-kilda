@@ -52,14 +52,14 @@ public class FlowPair implements Serializable {
 
     @VisibleForTesting
     public FlowPair(Switch srcSwitch, Switch destSwitch) {
-        this(UUID.randomUUID().toString(), srcSwitch, 0, 0, destSwitch, 0, 0);
+        this(UUID.randomUUID().toString(), srcSwitch, 0, 0, destSwitch, 0, 0, 0);
     }
 
     @VisibleForTesting
     public FlowPair(String flowId, Switch srcSwitch, int srcPort, int srcVlan,
-                    Switch destSwitch, int destPort, int destVlan) {
-        FlowPath forwardPath = buildFlowPath(flowId, srcSwitch, destSwitch);
-        FlowPath reversePath = buildFlowPath(flowId, destSwitch, srcSwitch);
+                    Switch destSwitch, int destPort, int destVlan, long unmaskedCookie) {
+        FlowPath forwardPath = buildFlowPath(flowId, srcSwitch, destSwitch, Cookie.buildForwardCookie(unmaskedCookie));
+        FlowPath reversePath = buildFlowPath(flowId, destSwitch, srcSwitch, Cookie.buildReverseCookie(unmaskedCookie));
 
         Flow flow = Flow.builder()
                 .flowId(flowId)
@@ -71,6 +71,7 @@ public class FlowPair implements Serializable {
                 .destVlan(destVlan)
                 .forwardPath(forwardPath)
                 .reversePath(reversePath)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build();
 
         TransitVlan forwardTransitVlan = TransitVlan.builder()
@@ -133,13 +134,14 @@ public class FlowPair implements Serializable {
         reverse.setTimeModify(timeModify);
     }
 
-    private FlowPath buildFlowPath(String flowId, Switch pathSrc, Switch pathDest) {
+    private FlowPath buildFlowPath(String flowId, Switch pathSrc, Switch pathDest, Cookie cookie) {
         return FlowPath.builder()
                 .flowId(flowId)
                 .pathId(new PathId(UUID.randomUUID().toString()))
                 .srcSwitch(pathSrc)
                 .destSwitch(pathDest)
                 .segments(Collections.emptyList())
+                .cookie(cookie)
                 .build();
     }
 }

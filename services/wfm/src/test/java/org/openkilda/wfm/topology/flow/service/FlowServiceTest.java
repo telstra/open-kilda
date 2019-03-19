@@ -45,7 +45,7 @@ import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
-import org.openkilda.wfm.topology.flow.service.FlowService.ReroutedFlow;
+import org.openkilda.wfm.topology.flow.model.ReroutedFlow;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
@@ -149,25 +149,27 @@ public class FlowServiceTest extends Neo4jBasedTest {
 
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
         FlowService flowService = new FlowService(persistenceManager,
-                pathComputerFactory, new FlowResourcesManager(persistenceManager, flowResourcesConfig), flowValidator);
+                pathComputerFactory, new FlowResourcesManager(persistenceManager, flowResourcesConfig), flowValidator,
+                new FlowCommandFactory());
 
         String flowId = "test-flow";
         FlowPair flowPair = new FlowPair(flowId,
                 getOrCreateSwitch(SWITCH_ID_1), 1, 101,
-                getOrCreateSwitch(SWITCH_ID_3), 2, 102);
+                getOrCreateSwitch(SWITCH_ID_3), 2, 102,
+                1);
         flowPair.getForward().setBandwidth(0);
         flowPair.setStatus(FlowStatus.IN_PROGRESS);
 
         when(pathComputer.getPath(any())).thenReturn(PATH_DIRECT_1_TO_3);
 
-        flowService.createFlow(flowPair.getForward(), null, mock(FlowCommandSender.class));
+        flowService.createFlow(flowPair.getFlowEntity(), null, mock(FlowCommandSender.class));
         flowService.updateFlowStatus(flowId, FlowStatus.UP);
 
         when(pathComputer.getPath(any(), eq(true))).thenReturn(PATH_1_TO_3_VIA_2);
 
         ReroutedFlow reroutedFlow = flowService.rerouteFlow(flowId, true, mock(FlowCommandSender.class));
         assertNotNull(reroutedFlow);
-        checkSamePaths(PATH_1_TO_3_VIA_2.getForward(), reroutedFlow.getNewFlow().getForward().getFlowPath());
+        checkSamePaths(PATH_1_TO_3_VIA_2.getForward(), reroutedFlow.getNewFlow().getFlowPath());
 
         Optional<FlowPair> foundFlow = persistenceManager.getRepositoryFactory().createFlowPairRepository()
                 .findById(flowId);

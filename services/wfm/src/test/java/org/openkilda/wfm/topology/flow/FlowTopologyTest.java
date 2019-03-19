@@ -25,7 +25,6 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.BaseFlow;
-import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowReadRequest;
@@ -692,35 +691,6 @@ public class FlowTopologyTest extends AbstractStormTest {
         assertEquals(request.getCorrelationId(), response.getCorrelationId());
         assertEquals(ComponentType.CRUD_BOLT.toString(), payload.getComponent());
         assertTrue(payload instanceof DumpStateResponseData);
-    }
-
-    @Test
-    public void shouldInvalidateCacheWithFlowsTest() throws Exception {
-        String flowId = UUID.randomUUID().toString();
-        ConsumerRecord<String, String> record;
-
-        createFlow(flowId);
-        for (int i = 0; i < 2; i++) {
-            record = ofsConsumer.pollMessage();
-            assertNotNull(record);
-            CommandMessage commandMessage = objectMapper.readValue(record.value(), CommandMessage.class);
-            assertNotNull(commandMessage);
-            assertNotNull(commandMessage.getData());
-
-            commandMessage.setDestination(Destination.WFM_TRANSACTION);
-            sendFlowMessage(commandMessage);
-        }
-
-        FlowCacheSyncRequest commandData = new FlowCacheSyncRequest();
-        CommandMessage message = new CommandMessage(commandData, 0, "sync-cache-flow", Destination.WFM);
-        sendFlowMessage(message);
-
-        nbConsumer.clear();
-
-        statusFlow(flowId);
-
-        record = nbConsumer.pollMessage();
-        assertNotNull(record);
     }
 
     private FlowState getFlowReadStatus(ConsumerRecord<String, String> record, String flowId) throws IOException {

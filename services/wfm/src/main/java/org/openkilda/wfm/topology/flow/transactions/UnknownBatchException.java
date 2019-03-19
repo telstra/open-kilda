@@ -13,29 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.wfm.topology.flow.transactions;
 
-import com.fasterxml.jackson.annotation.JsonValue;
-import lombok.AllArgsConstructor;
-import lombok.NonNull;
-import lombok.Value;
+import static java.lang.String.format;
 
-import java.io.Serializable;
+import java.util.UUID;
 
-/**
- * Represents a flow path id.
- */
-@Value
-@AllArgsConstructor
-public class PathId implements Serializable {
-    private static final long serialVersionUID = 1L;
-
-    @NonNull
-    private final String id;
-
-    @JsonValue
-    @Override
-    public String toString() {
-        return id;
+public class UnknownBatchException extends Exception {
+    public UnknownBatchException(UUID batchId) {
+        super(format("Batch %s not found", batchId));
     }
 }

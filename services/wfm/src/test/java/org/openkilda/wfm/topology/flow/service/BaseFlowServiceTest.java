@@ -42,7 +42,8 @@ public class BaseFlowServiceTest extends Neo4jBasedTest {
         String flowId = "test-flow";
         FlowPair flowPair = new FlowPair(flowId,
                 getOrCreateSwitch(SWITCH_ID_1), 1, 101,
-                getOrCreateSwitch(SWITCH_ID_2), 2, 102);
+                getOrCreateSwitch(SWITCH_ID_2), 2, 102,
+                1);
         flowPair.getForward().setBandwidth(0);
         flowPair.setStatus(FlowStatus.IN_PROGRESS);
 

@@ -195,15 +195,29 @@ public class Flow implements Serializable {
         }
     }
 
+    /**
+     * Check whether the path corresponds to the forward flow.
+     */
+    public boolean isForward(FlowPath path) {
+        return Objects.equals(path.getFlowId(), getFlowId())
+                && Objects.equals(path.getSrcSwitch().getSwitchId(), getSrcSwitch().getSwitchId())
+                && Objects.equals(path.getDestSwitch().getSwitchId(), getDestSwitch().getSwitchId())
+                && (!isOneSwitchFlow() || path.getCookie() != null && path.getCookie().isMaskedAsForward());
+    }
+
+    /**
+     * Check whether the path corresponds to the reverse flow.
+     */
+    public boolean isReverse(FlowPath path) {
+        return Objects.equals(path.getFlowId(), getFlowId())
+                && Objects.equals(path.getSrcSwitch().getSwitchId(), getDestSwitch().getSwitchId())
+                && Objects.equals(path.getDestSwitch().getSwitchId(), getSrcSwitch().getSwitchId())
+                && (!isOneSwitchFlow() || path.getCookie() != null && path.getCookie().isMaskedAsReversed());
+    }
+
     private FlowPath validateForwardPath(FlowPath path) {
-        validatePath(path);
-
-        checkArgument(Objects.equals(path.getSrcSwitch().getSwitchId(), getSrcSwitch().getSwitchId()),
-                "Forward path %s and the flow have different source switch, but expected the same.",
-                path.getPathId());
-
-        checkArgument(Objects.equals(path.getDestSwitch().getSwitchId(), getDestSwitch().getSwitchId()),
-                "Forward path %s and the flow have different destination switch, but expected the same.",
+        checkArgument(isForward(path),
+                "Forward path %s and the flow have different endpoints, but expected the same.",
                 path.getPathId());
 
         return path;
@@ -223,30 +237,9 @@ public class Flow implements Serializable {
     }
 
     private FlowPath validateReversePath(FlowPath path) {
-        validatePath(path);
-
-        checkArgument(Objects.equals(path.getSrcSwitch().getSwitchId(), getDestSwitch().getSwitchId()),
-                "Reverse path %s source and the flow destination are different, but expected the same.",
+        checkArgument(isReverse(path),
+                "Reverse path %s and the flow have different endpoints, but expected the same.",
                 path.getPathId());
-
-        checkArgument(Objects.equals(path.getDestSwitch().getSwitchId(), getSrcSwitch().getSwitchId()),
-                "Reverse path %s destination and the flow source are different, but expected the same.",
-                path.getPathId());
-
-        return path;
-    }
-
-    private FlowPath validatePath(FlowPath path) {
-        checkArgument(Objects.equals(path.getFlowId(), getFlowId()),
-                "Path %s belongs to another flow, but expected the same.", path.getPathId());
-
-        checkArgument(Objects.equals(path.getSrcSwitch().getSwitchId(), getSrcSwitch().getSwitchId())
-                        || Objects.equals(path.getSrcSwitch().getSwitchId(), getDestSwitch().getSwitchId()),
-                "Path %s source doesn't correspond to any of flow endpoints.", path.getSrcSwitch());
-
-        checkArgument(Objects.equals(path.getDestSwitch().getSwitchId(), getSrcSwitch().getSwitchId())
-                        || Objects.equals(path.getDestSwitch().getSwitchId(), getDestSwitch().getSwitchId()),
-                "Path %s destination doesn't correspond to any of flow endpoints.", path.getSrcSwitch());
 
         return path;
     }

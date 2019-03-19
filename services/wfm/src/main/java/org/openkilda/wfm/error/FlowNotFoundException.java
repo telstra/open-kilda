@@ -23,4 +23,8 @@ public class FlowNotFoundException extends AbstractException {
     public FlowNotFoundException(String flowId) {
         super(String.format("Flow %s not found", flowId));
     }
+
+    public FlowNotFoundException(String flowId, String message) {
+        super(String.format("Flow %s not found. %s", flowId, message));
+    }
 }

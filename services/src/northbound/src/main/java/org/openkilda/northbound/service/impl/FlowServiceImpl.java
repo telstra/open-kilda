@@ -21,7 +21,6 @@ import static org.openkilda.northbound.utils.async.AsyncUtils.collectResponses;
 import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
@@ -859,16 +858,6 @@ public class FlowServiceImpl implements FlowService {
                 Destination.WFM);
         return messagingChannel.sendAndGet(topic, message)
                 .thenApply(FlowMeterEntries.class::cast);
-    }
-
-    @Override
-    public void invalidateFlowResourcesCache() {
-        final String correlationId = RequestCorrelationId.getId();
-        logger.debug("Invalidating Flow Resources Cache.");
-        FlowCacheSyncRequest data = new FlowCacheSyncRequest();
-        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
-
-        messagingChannel.sendAndGet(topic, request);
     }
 
     private CompletableFuture<FlowReroutePayload> reroute(String flowId, boolean forced) {

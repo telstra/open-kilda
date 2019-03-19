@@ -60,11 +60,11 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         switchB.setStatus(SwitchStatus.ACTIVE);
         switchRepository.createOrUpdate(switchB);
 
-        FlowPair flowPair = new FlowPair(testFlowId, switchA, 1, 10, switchB, 2, 11);
+        FlowPair flowPair = new FlowPair(testFlowId, switchA, 1, 10, switchB, 2, 11, 1);
         flowPair.setStatus(FlowStatus.UP);
         flowPairRepository.createOrUpdate(flowPair);
 
-        FlowPair receivedFlow = new FlowPair(testFlowId, switchA, 1, 10, switchB, 2, 11);
+        FlowPair receivedFlow = new FlowPair(testFlowId, switchA, 1, 10, switchB, 2, 11, 1);
         receivedFlow.getForward().setMaxLatency(maxLatency);
         receivedFlow.getForward().setPriority(priority);
 
@@ -73,7 +73,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
 
-        receivedFlow = new FlowPair(testFlowId, switchA, 1, 10, switchB, 2, 11);
+        receivedFlow = new FlowPair(testFlowId, switchA, 1, 10, switchB, 2, 11, 1);
         updatedFlow = flowOperationsService.updateFlow(receivedFlow.getForward());
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
