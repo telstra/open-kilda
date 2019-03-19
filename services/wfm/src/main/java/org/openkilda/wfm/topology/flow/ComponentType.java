@@ -97,5 +97,10 @@ public enum ComponentType {
     /**
      * Error bolt. Processes errors.
      */
-    ERROR_BOLT
+    ERROR_BOLT,
+
+    /**
+     * History bolt.
+     */
+    HISTORY_BOLT
 }

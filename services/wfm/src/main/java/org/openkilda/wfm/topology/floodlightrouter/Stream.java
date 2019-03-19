@@ -17,7 +17,16 @@ package org.openkilda.wfm.topology.floodlightrouter;
 
 public final class Stream {
 
+    /**
+     * Returns formatted param with respect to region.
+     * @param param - stream or topic
+     * @param region target region
+     * @return formatted string or initial param if region is empty
+     */
     public static String formatWithRegion(String param, String region) {
+        if (region == null || region.isEmpty()) {
+            return param;
+        }
         return String.format("%s.%s", param, region);
     }
 
@@ -32,8 +41,7 @@ public final class Stream {
     public static final String SPEAKER_DISCO = "SPEAKER_DISCO";
     public static final String NORTHBOUND_REPLY = "NORTHBOUND_REPLY";
     public static final String REGION_NOTIFICATION = "REGION_NOTIFICATION";
-
-    public static final String STORM_SUFFIX = "storm";
+    public static final String NB_WORKER = "NB_WORKER";
 
     private Stream() {}
 }

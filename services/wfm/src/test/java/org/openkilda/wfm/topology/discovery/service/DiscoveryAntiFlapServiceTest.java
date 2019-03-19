@@ -62,6 +62,10 @@ public class DiscoveryAntiFlapServiceTest {
 
         DiscoveryAntiFlapService service = new DiscoveryAntiFlapService(carrier, config);
 
+        service.filterLinkStatus(endpoint1, LinkStatus.UP, 1);
+        verify(carrier).filteredLinkStatus(endpoint1, LinkStatus.UP);
+        resetMocks();
+
         service.filterLinkStatus(endpoint1, LinkStatus.DOWN, 100);
         service.filterLinkStatus(endpoint1, LinkStatus.UP, 110);
         // delayCoolingDown + firs event + 1
@@ -150,6 +154,8 @@ public class DiscoveryAntiFlapServiceTest {
 
         DiscoveryAntiFlapService service = new DiscoveryAntiFlapService(carrier, config);
 
+        service.filterLinkStatus(endpoint1, LinkStatus.UP, 1);
+        resetMocks();
         service.filterLinkStatus(endpoint1, LinkStatus.DOWN, 100);
         service.filterLinkStatus(endpoint1, LinkStatus.UP, 100 + 5000 - 500);
         // now - last_down > delay_min

@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ import org.openkilda.northbound.dto.switches.PortDto;
 import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
@@ -244,6 +245,20 @@ public class SwitchController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<RulesValidationResult> validateRules(@PathVariable(name = "switch_id") SwitchId switchId) {
         return switchService.validateRules(switchId);
+    }
+
+    /**
+     * Validate the rules and the meters installed on the switch against the flows in Neo4J.
+     *
+     * @return the validation details.
+     */
+    @ApiOperation(value = "Validate the rules and the meters installed on the switch",
+            response = SwitchValidationResult.class)
+    @GetMapping(path = "/{switch_id}/validate")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchValidationResult> validateSwitch(
+            @PathVariable(name = "switch_id") SwitchId switchId) {
+        return switchService.validateSwitch(switchId);
     }
 
     /**

@@ -25,5 +25,6 @@ public enum StreamType {
     PATHS,
     VALIDATION,
     DISCO,
-    ERROR
+    ERROR,
+    HISTORY
 }

@@ -23,6 +23,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
+import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
@@ -152,7 +153,8 @@ public interface FlowService {
      * on the network.
      *
      * @param flowId id of the flow
-     * @return the results of the comparison, or null if the flow isn't found.
+     * @return the results of the comparison
+     * @throws org.openkilda.messaging.error.MessageException if the flow doesn't exist
      * @throws java.nio.file.InvalidPathException if the flow doesn't return a path and it should.
      */
     CompletableFuture<List<FlowValidationDto>> validateFlow(final String flowId);
@@ -170,4 +172,8 @@ public interface FlowService {
      * Invalidate FlowResourcesCache in the flow topology.
      */
     void invalidateFlowResourcesCache();
+
+    CompletableFuture<List<FlowEventPayload>> listFlowEvents(String flowId,
+                                                             long timestampFrom,
+                                                             long timestampTo);
 }

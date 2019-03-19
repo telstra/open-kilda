@@ -23,19 +23,18 @@ import spock.lang.Unroll
 
 class LinkSpec extends BaseSpecification {
 
-    def "Link(not BFD) is NOT FAILED earlier than discoveryTimeout is exceeded \
-when connection is lost(not port down)"() {
+    def "Link (not BFD) status is properly changed when link connectivity is broken (not port down)"() {
         given: "A link going through a-switch"
         def isl = topology.islsForActiveSwitches.find {
             it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd
         } ?: assumeTrue("Wasn't able to find suitable link", false)
 
-        double waitTime = discoveryTimeout - (discoveryTimeout * 0.2)
         double interval = discoveryTimeout * 0.2
+        double waitTime = discoveryTimeout - interval
         def ruleToRemove = [isl.aswitch]
 
         when: "Remove a one-way flow on an a-switch for simulating lost connection(not port down)"
-        lockKeeper.removeFlows(ruleToRemove)
+        lockKeeper.removeFlows([isl.aswitch])
 
         then: "Status of the link is not changed to FAILED until discoveryTimeout is exceeded"
         Wrappers.timedLoop(waitTime) {
@@ -45,7 +44,7 @@ when connection is lost(not port down)"() {
             sleep((interval * 1000).toLong())
         }
 
-        and: "Status of the link is changed to FAILED when discoveryTimeout is exceeded"
+        and: "Status of the link is changed to FAILED, actual status remains DISCOVERED for the alive direction"
         /**
          * actualState shows real state of ISL and this value is taken from DB
          * also it allows to understand direction where issue has appeared
@@ -54,7 +53,7 @@ when connection is lost(not port down)"() {
          * afterward the actualState of ISL on A side is equal to FAILED
          * and on B side is equal to DISCOVERED
          * */
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(WAIT_OFFSET + interval) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
             assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.FAILED
@@ -62,10 +61,34 @@ when connection is lost(not port down)"() {
             assert islUtils.getIslInfo(links, isl.reversed).get().actualState == IslChangeType.DISCOVERED
         }
 
-        when: "Add the removed one-way flow rule for restoring topology"
-        lockKeeper.addFlows(ruleToRemove)
+        when: "Fail the other part of ISL"
+        lockKeeper.removeFlows([isl.aswitch.reversed])
 
-        then: "The link is discovered back"
+        then: "Status remains FAILED and actual status is changed to failed for both directions"
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().actualState == IslChangeType.FAILED
+        }
+
+        when: "Add the removed flow rules for one direction"
+        lockKeeper.addFlows([isl.aswitch])
+
+        then: "The link remains FAILED, but actual status for one direction is DISCOVERED"
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl).get().actualState == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().actualState == IslChangeType.FAILED
+        }
+
+        when: "Add the remaining missing rules on a-switch"
+        lockKeeper.addFlows([isl.aswitch.reversed])
+
+        then: "Link status and actual status both changed to DISCOVERED in both directions"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
@@ -272,8 +295,8 @@ when connection is lost(not port down)"() {
 
         where:
         islDescription | isl
-        "direct"       | getTopology().islsForActiveSwitches.find { !it.aswitch }
-        "a-switch"     | getTopology().islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
+        "direct"       | getTopology().islsForActiveSwitches.find { !it.aswitch && !it.bfd }
+        "a-switch"     | getTopology().islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd }
         "bfd"          | getTopology().islsForActiveSwitches.find { it.bfd }
     }
 

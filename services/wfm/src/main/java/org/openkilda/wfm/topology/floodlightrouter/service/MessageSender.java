@@ -22,4 +22,6 @@ public interface MessageSender {
     void send(Message message, String outputStream);
 
     void send(Object payload, String outputStream);
+
+    void send(String key, Message message, String outputStream);
 }

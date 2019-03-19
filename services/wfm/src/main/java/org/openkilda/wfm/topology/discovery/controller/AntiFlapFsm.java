@@ -43,11 +43,23 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
                 // extra parameters
                 Config.class);
 
-        // NOTHING
-        builder.internalTransition().within(State.NOTHING).on(Event.PORT_UP)
-                .callMethod("emitPortUp");
+        // INIT
         builder.transition()
-                .from(State.NOTHING).to(State.WARMING_UP).on(Event.PORT_DOWN);
+                .from(State.INIT).to(State.NOTHING).on(Event.PORT_UP)
+                .callMethod("emitPortUpAndSaveTime");
+        builder.transition()
+                .from(State.INIT).to(State.NOTHING).on(Event.PORT_DOWN)
+                .callMethod("emitPortDownAndSaveTime");
+
+        // NOTHING
+        builder.internalTransition()
+                .within(State.NOTHING).on(Event.PORT_UP)
+                .callMethod("portUpOnNothing");
+        builder.internalTransition()
+                .within(State.NOTHING).on(Event.PORT_DOWN)
+                .callMethod("portDownOnNothing");
+        builder.transition()
+                .from(State.NOTHING).to(State.WARMING_UP).on(Event.TO_WARMING_UP);
 
         // State.WARMING_UP
         builder.onEntry(State.WARMING_UP)
@@ -87,13 +99,13 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     private long upTime = 0;
     private long startTime = 0;
 
-    private boolean down = true;
-
     public AntiFlapFsm(Config config) {
         endpoint = config.getEndpoint();
         delayCoolingDown = config.getDelayCoolingDown();
         delayWarmUp = config.getDelayWarmUp();
         delayMin = config.getDelayMin();
+
+        log.debug("{}", config);
     }
 
     public static FsmExecutor<AntiFlapFsm, State, Event, Context> makeExecutor() {
@@ -101,23 +113,52 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     }
 
     public static AntiFlapFsm create(Config config) {
-        return builder.newStateMachine(State.NOTHING, config);
+        return builder.newStateMachine(State.INIT, config);
     }
 
     // -- FSM actions --
 
+    protected void emitPortUpAndSaveTime(State from, State to, Event event, Context context) {
+        emitPortUp(from, to, event, context);
+        savePortUpTime(from, to, event, context);
+    }
+
+    protected void emitPortDownAndSaveTime(State from, State to, Event event, Context context) {
+        emitPortDown(from, to, event, context);
+        savePortDownTime(from, to, event, context);
+    }
+
+    protected void portUpOnNothing(State from, State to, Event event, Context context) {
+        emitPortUp(from, to, event, context);
+        savePortUpTime(from, to, event, context);
+    }
+
+    protected void portDownOnNothing(State from, State to, Event event, Context context) {
+        log.debug("portDownOnNothing {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
+                from, to, event, context);
+        if (upWasLast()) {
+            fire(Event.TO_WARMING_UP, context);
+        }
+    }
+
     protected void emitPortUp(State from, State to, Event event, Context context) {
-        log.debug("Filter physical port {} become {}", endpoint, LinkStatus.UP);
+        log.debug("emitPortUp {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
+                from, to, event, context);
+        log.debug("Emit physical port {} become {}", endpoint, LinkStatus.UP);
         context.getOutput().filteredLinkStatus(endpoint, LinkStatus.UP);
     }
 
     protected void saveStartTimeAndDownTime(State from, State to, Event event, Context context) {
+        log.trace("saveStartTimeAndDownTime {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".",
+                endpoint, from, to, event, context);
         startTime = downTime = context.getTime();
         upTime = downTime - 1;
         log.debug("Physical port {} become DOWN on {}", endpoint, downTime);
     }
 
     protected void savePortUpTime(State from, State to, Event event, Context context) {
+        log.debug("savePortUpTime {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
+                from, to, event, context);
         upTime = context.getTime();
 
         if (downTime > upTime) {
@@ -125,10 +166,12 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
             downTime = upTime - 1;
         }
 
-        log.debug("Physical port {} become UP on {}", endpoint, downTime);
+        log.debug("Physical port {} become UP on {}", endpoint, upTime);
     }
 
     protected void savePortDownTime(State from, State to, Event event, Context context) {
+        log.trace("savePortDownTime {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
+                from, to, event, context);
         downTime = context.getTime();
 
         if (upTime > downTime) {
@@ -140,31 +183,42 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     }
 
     protected void exitCoolingDown(State from, State to, Event event, Context context) {
+        log.debug("exitCoolingDown {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
+                from, to, event, context);
         if (upWasLast()) {
             emitPortUp(from, to, event, context);
         }
     }
 
     protected void tickOnWarmingUp(State from, State to, Event event, Context context) {
+        log.trace("tickOnWarmingUp {} from \"{}\" to \"{}\" on \"{}\" on time \"{}\" start {} down {} up {} ", endpoint,
+                from, to, event, context.getTime(), startTime, downTime, upTime);
         long now = context.getTime();
 
         if (donwWasLast() && now - downTime > delayMin) {
             fire(Event.TO_COOLING_DOWN, context);
+            log.trace("tickOnWarmingUp TO_COOLING_DOWN");
         } else if (now - startTime > delayWarmUp) {
             if (donwWasLast() || last() > startTime + delayWarmUp - delayMin) {
                 fire(Event.TO_COOLING_DOWN, context);
+                log.trace("tickOnWarmingUp TO_COOLING_DOWN 2");
             } else {
                 fire(Event.TO_NOTHING, context);
+                log.trace("tickOnWarmingUp TO_NOTHING");
             }
         }
     }
 
     protected void emitPortDown(State from, State to, Event event, Context context) {
-        log.debug("Filter physical port {} become {}", endpoint, LinkStatus.DOWN);
+        log.trace("emitPortDown {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
+                from, to, event, context);
+        log.debug("Emit physical port {} become {}", endpoint, LinkStatus.DOWN);
         context.getOutput().filteredLinkStatus(endpoint, LinkStatus.DOWN);
     }
 
     protected void tickCoolingDown(State from, State to, Event event, Context context) {
+        log.trace("tickCoolingDown {} from \"{}\" to \"{}\" on \"{}\" with context \"{}\".", endpoint,
+                from, to, event, context);
         long now = context.getTime();
 
         if (now - last() > delayCoolingDown) {
@@ -190,11 +244,13 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     public enum Event {
         NEXT,
 
-        PORT_UP, PORT_DOWN, TO_COOLING_DOWN, TO_NOTHING, TICK
+        PORT_UP, PORT_DOWN, TICK,
+
+        TO_COOLING_DOWN, TO_NOTHING, TO_WARMING_UP
     }
 
     public enum State {
-        NOTHING, WARMING_UP, COOLING_DOWN
+        INIT, NOTHING, WARMING_UP, COOLING_DOWN
     }
 
     @Data

@@ -16,7 +16,7 @@ elasticsearch.username=kilda
 elasticsearch.password=kilda
 
 kafka.bootstrap.server=kafka.pendev:9092
-kafka.topic.topo.disco=kilda.topo.disco
+kafka.topic.topo.disco=kilda.topo.disco.storm
 
 lab-api.endpoint=http://localhost:8288
 lockkeeper.endpoint=http://localhost:5001
