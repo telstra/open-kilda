@@ -24,6 +24,11 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.history.FlowEventRepository;
+import org.openkilda.persistence.repositories.history.FlowHistoryRepository;
+import org.openkilda.persistence.repositories.history.FlowStateRepository;
+import org.openkilda.persistence.repositories.history.HistoryLogRepository;
+import org.openkilda.persistence.repositories.history.StateLogRepository;
 
 /**
  * Neo4J OGM implementation of {@link RepositoryFactory}.
@@ -66,6 +71,31 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public FeatureTogglesRepository createFeatureTogglesRepository() {
         return new Neo4jFeatureTogglesRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public FlowEventRepository createFlowEventRepository() {
+        return new Neo4jFlowEventRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public FlowHistoryRepository createFlowHistoryRepository() {
+        return new Neo4jFlowHistoryRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public FlowStateRepository createFlowStateRepository() {
+        return new Neo4jFlowStateRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public HistoryLogRepository createHistoryLogRepository() {
+        return new Neo4jHistoryLogRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public StateLogRepository createStateLogRepository() {
+        return new Neo4jStateLogRepository(sessionFactory, transactionManager);
     }
 
     @Override

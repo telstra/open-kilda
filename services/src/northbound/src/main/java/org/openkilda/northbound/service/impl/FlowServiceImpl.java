@@ -33,6 +33,7 @@ import org.openkilda.messaging.command.flow.MeterModifyRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.flow.FlowHistoryData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
@@ -48,6 +49,7 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.payload.flow.DiverseGroupPayload;
@@ -59,6 +61,7 @@ import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
+import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
@@ -131,6 +134,12 @@ public class FlowServiceImpl implements FlowService {
      */
     @Value("#{kafkaTopicsConfig.getPingTopic()}")
     private String pingTopic;
+
+    /**
+     * The kafka topic for `nbWorker` topology.
+     */
+    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
+    private String nbWorkerTopic;
 
     @Value("${neo4j.uri}")
     private String neoUri;
@@ -872,6 +881,22 @@ public class FlowServiceImpl implements FlowService {
                 .thenApply(FlowRerouteResponse.class::cast)
                 .thenApply(response ->
                         flowMapper.toReroutePayload(flowId, response.getPayload(), response.isRerouted()));
+    }
+
+    @Override
+    public CompletableFuture<List<FlowEventPayload>> listFlowEvents(String flowId,
+                                                                    long timestampFrom,
+                                                                    long timestampTo) {
+        String correlationId = RequestCorrelationId.getId();
+        GetFlowHistoryRequest request = GetFlowHistoryRequest.builder()
+                .flowId(flowId)
+                .timestampFrom(timestampFrom)
+                .timestampTo(timestampTo)
+                .build();
+        CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);
+        return messagingChannel.sendAndGet(nbWorkerTopic, command)
+                .thenApply(FlowHistoryData.class::cast)
+                .thenApply(FlowHistoryData::getPayload);
     }
 
 }

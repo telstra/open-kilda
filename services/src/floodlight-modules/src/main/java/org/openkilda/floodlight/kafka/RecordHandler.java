@@ -66,6 +66,7 @@ import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
 import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
@@ -208,6 +209,8 @@ class RecordHandler implements Runnable {
             doDumpPortDescriptionRequest(message);
         } else if (data instanceof DumpMetersRequest) {
             doDumpMetersRequest(message);
+        } else if (data instanceof DumpMetersForSwitchManagerRequest) {
+            doDumpMetersForSwitchManagerRequest(message);
         } else if (data instanceof MeterModifyCommandRequest) {
             doModifyMeterRequest(message);
         } else if (data instanceof AliveRequest) {
@@ -932,12 +935,20 @@ class RecordHandler implements Runnable {
 
     private void doDumpMetersRequest(CommandMessage message) {
         DumpMetersRequest request = (DumpMetersRequest) message.getData();
-
         String replyToTopic = context.getKafkaNorthboundTopic();
+        dumpMeters(request.getSwitchId(), message.getCorrelationId(), replyToTopic, message.getTimestamp());
+    }
+
+    private void doDumpMetersForSwitchManagerRequest(CommandMessage message) {
+        DumpMetersForSwitchManagerRequest request = (DumpMetersForSwitchManagerRequest) message.getData();
+        String replyToTopic = context.getKafkaSwitchManagerTopic();
+        dumpMeters(request.getSwitchId(), message.getCorrelationId(), replyToTopic, message.getTimestamp());
+    }
+
+    private void dumpMeters(SwitchId switchId, String correlationId, String replyToTopic, long timestamp) {
         final IKafkaProducerService producerService = getKafkaProducer();
 
         try {
-            SwitchId switchId = request.getSwitchId();
             logger.debug("Get all meters for switch {}", switchId);
             ISwitchManager switchManager = context.getSwitchManager();
             List<OFMeterConfig> meterEntries = switchManager.dumpMeters(DatapathId.of(switchId.toLong()));
@@ -949,23 +960,23 @@ class RecordHandler implements Runnable {
                     .switchId(switchId)
                     .meterEntries(meters)
                     .build();
-            InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(), message.getCorrelationId());
-            producerService.sendMessageAndTrack(replyToTopic, infoMessage);
+            InfoMessage infoMessage = new InfoMessage(response, timestamp, correlationId);
+            producerService.sendMessageAndTrack(replyToTopic, correlationId, infoMessage);
         } catch (UnsupportedSwitchOperationException e) {
-            String messageString = "Not supported: " + request.getSwitchId();
+            String messageString = "Not supported: " + switchId;
             logger.error(messageString, e);
             anError(ErrorType.PARAMETERS_INVALID)
                     .withMessage(e.getMessage())
                     .withDescription(messageString)
-                    .withCorrelationId(message.getCorrelationId())
+                    .withCorrelationId(correlationId)
                     .withTopic(replyToTopic)
                     .sendVia(producerService);
         } catch (SwitchNotFoundException e) {
-            logger.info("Dumping switch meters is unsuccessful. Switch {} not found", request.getSwitchId());
+            logger.info("Dumping switch meters is unsuccessful. Switch {} not found", switchId);
             anError(ErrorType.NOT_FOUND)
                     .withMessage(e.getMessage())
-                    .withDescription(request.getSwitchId().toString())
-                    .withCorrelationId(message.getCorrelationId())
+                    .withDescription(switchId.toString())
+                    .withCorrelationId(correlationId)
                     .withTopic(replyToTopic)
                     .sendVia(producerService);
         } catch (SwitchOperationException e) {
@@ -973,7 +984,7 @@ class RecordHandler implements Runnable {
             anError(ErrorType.NOT_FOUND)
                     .withMessage(e.getMessage())
                     .withDescription("Unable to dump meters")
-                    .withCorrelationId(message.getCorrelationId())
+                    .withCorrelationId(correlationId)
                     .withTopic(replyToTopic)
                     .sendVia(producerService);
         }

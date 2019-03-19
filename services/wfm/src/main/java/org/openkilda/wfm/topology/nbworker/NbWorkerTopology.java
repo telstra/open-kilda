@@ -23,6 +23,7 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.nbworker.bolts.DiscoveryEncoderBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FeatureTogglesBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsBolt;
+import org.openkilda.wfm.topology.nbworker.bolts.HistoryOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.LinkOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.MessageEncoder;
 import org.openkilda.wfm.topology.nbworker.bolts.PathsBolt;
@@ -44,6 +45,7 @@ import org.apache.storm.topology.TopologyBuilder;
  *                                     | ---> flows-operations-bolt      ---> |  \ \                      |
  *                                     | ---> switches-operations-bolt   ---> | \ \ \                     |
  *                                     | ---> switch-validations-bolt    ---> |\ \ \ \                    |
+ *                                     | ---> history-operations-bolt    ---> | \ \ \ \                   |
  *                                     | --->                   message-encoder-bolt (in error case) ---> |
  *
  * <p>kilda.topo.nb-spout: reads data from kafka.
@@ -66,6 +68,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String NB_KAFKA_BOLT_NAME = "nb-kafka-bolt";
     private static final String FLOW_KAFKA_BOLT_NAME = "flow-kafka-bolt";
     private static final String DISCO_KAFKA_BOLT_NAME = "disco-kafka-bolt";
+    private static final String HISTORY_BOLT_NAME = "history-operations-bolt";
     private static final String NB_SPOUT_ID = "nb-spout";
 
     public NbWorkerTopology(LaunchEnvironment env) {
@@ -117,6 +120,10 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         tb.setBolt(SWITCH_VALIDATIONS_BOLT_NAME, validationBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.VALIDATION.toString());
 
+        HistoryOperationsBolt historyBolt = new HistoryOperationsBolt(persistenceManager);
+        tb.setBolt(HISTORY_BOLT_NAME, historyBolt, parallelism)
+                .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.HISTORY.toString());
+
         ResponseSplitterBolt splitterBolt = new ResponseSplitterBolt();
         tb.setBolt(SPLITTER_BOLT_NAME, splitterBolt, parallelism)
                 .shuffleGrouping(SWITCHES_BOLT_NAME)
@@ -124,7 +131,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(FLOWS_BOLT_NAME)
                 .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME)
                 .shuffleGrouping(PATHS_BOLT_NAME)
-                .shuffleGrouping(SWITCH_VALIDATIONS_BOLT_NAME);
+                .shuffleGrouping(SWITCH_VALIDATIONS_BOLT_NAME)
+                .shuffleGrouping(HISTORY_BOLT_NAME);
 
         MessageEncoder messageEncoder = new MessageEncoder();
         tb.setBolt(MESSAGE_ENCODER_BOLT_NAME, messageEncoder, parallelism)
@@ -136,7 +144,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.REROUTE.toString())
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME, StreamType.ERROR.toString())
-                .shuffleGrouping(PATHS_BOLT_NAME, StreamType.ERROR.toString());
+                .shuffleGrouping(PATHS_BOLT_NAME, StreamType.ERROR.toString())
+                .shuffleGrouping(HISTORY_BOLT_NAME, StreamType.ERROR.toString());
 
         DiscoveryEncoderBolt discoveryEncoder = new DiscoveryEncoderBolt();
         tb.setBolt(DISCOVERY_ENCODER_BOLT_NAME, discoveryEncoder, parallelism)

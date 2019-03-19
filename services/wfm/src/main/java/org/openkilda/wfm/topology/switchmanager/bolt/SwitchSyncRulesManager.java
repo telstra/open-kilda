@@ -31,6 +31,7 @@ import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt.CoordinatorCommand;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.topology.switchmanager.StreamType;
 import org.openkilda.wfm.topology.switchmanager.SwitchSyncRulesCarrier;
+import org.openkilda.wfm.topology.switchmanager.command.RemoveKeyRouterBolt;
 import org.openkilda.wfm.topology.switchmanager.service.SyncRulesService;
 import org.openkilda.wfm.topology.switchmanager.service.impl.SyncRulesServiceImpl;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
@@ -46,6 +47,7 @@ import java.util.Map;
 
 public class SwitchSyncRulesManager extends HubBolt implements SwitchSyncRulesCarrier {
     public static final String ID = "switch.sync.rules";
+    public static final String INCOME_STREAM = "sync.rules.command";
     private static final int TIMEOUT_MS = 10000;
     private static final boolean AUTO_ACK = true;
 
@@ -110,10 +112,17 @@ public class SwitchSyncRulesManager extends HubBolt implements SwitchSyncRulesCa
     @Override
     public void endProcessing(String key) {
         cancelCallback(key);
+        removeKeyFromRouterBolt(key);
     }
 
     private void cancelCallback(String key) {
         getOutput().emit(CoordinatorBolt.INCOME_STREAM, new Values(key, CoordinatorCommand.CANCEL_CALLBACK, 0, null));
+    }
+
+    private void removeKeyFromRouterBolt(String key) {
+        CommandMessage commandMessage =
+                new CommandMessage(new RemoveKeyRouterBolt(key), System.currentTimeMillis(), key);
+        getOutput().emit(RouterBolt.INCOME_STREAM, new Values(key, commandMessage));
     }
 
     @Override
@@ -123,6 +132,6 @@ public class SwitchSyncRulesManager extends HubBolt implements SwitchSyncRulesCa
         Fields fields = new Fields(MessageTranslator.KEY_FIELD, MessageTranslator.FIELD_ID_PAYLOAD);
         declarer.declareStream(StreamType.TO_NORTHBOUND.toString(), fields);
         declarer.declareStream(StreamType.TO_FLOODLIGHT.toString(), fields);
-
+        declarer.declareStream(RouterBolt.INCOME_STREAM, fields);
     }
 }

@@ -21,6 +21,7 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.DiscoveryBolt;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.ReplyBolt;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.RequestBolt;
+import org.openkilda.wfm.topology.floodlightrouter.bolts.SpeakerRequestBolt;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -149,6 +150,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                                                    KafkaTopicsConfig topicsConfig) {
         KafkaBolt kildaNorthboundKafkaBolt = createKafkaBolt(topicsConfig.getNorthboundTopic());
         builder.setBolt(ComponentType.NORTHBOUND_REPLY_KAFKA_BOLT, kildaNorthboundKafkaBolt, parallelism)
+                .shuffleGrouping(ComponentType.SPEAKER_REQUEST_BOLT, Stream.NORTHBOUND_REPLY)
                 .shuffleGrouping(ComponentType.NORTHBOUND_REPLY_BOLT, Stream.NORTHBOUND_REPLY);
     }
 
@@ -175,6 +177,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                                                 KafkaTopicsConfig topicsConfig) {
         KafkaBolt kildaNbWorkerKafkaBolt = createKafkaBolt(topicsConfig.getTopoNbTopic());
         builder.setBolt(ComponentType.KILDA_NB_WORKER_KAFKA_BOLT, kildaNbWorkerKafkaBolt, parallelism)
+                .shuffleGrouping(ComponentType.SPEAKER_REQUEST_BOLT, Stream.NB_WORKER)
                 .shuffleGrouping(ComponentType.KILDA_NB_WORKER_REPLY_BOLT, Stream.NB_WORKER);
     }
 
@@ -251,7 +254,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                             Stream.formatWithRegion(Stream.SPEAKER, region));
         }
 
-        RequestBolt speakerRequestBolt = new RequestBolt(Stream.SPEAKER,
+        SpeakerRequestBolt speakerRequestBolt = new SpeakerRequestBolt(Stream.SPEAKER,
                 topologyConfig.getFloodlightRegions());
         builder.setBolt(ComponentType.SPEAKER_REQUEST_BOLT, speakerRequestBolt, parallelism)
                 .shuffleGrouping(ComponentType.SPEAKER_KAFKA_SPOUT)

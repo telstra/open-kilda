@@ -42,10 +42,10 @@ import java.util.Set;
 @Slf4j
 public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, SwitchTracker>> {
     private static final String SWITCH_TRACKER_KEY = "SWITCH_TRACKER_KEY";
-    private String outputStream;
-    private final Set<String> regions;
+    protected String outputStream;
+    protected final Set<String> regions;
 
-    private transient SwitchTracker switchTracker;
+    protected transient SwitchTracker switchTracker;
 
     protected OutputCollector outputCollector;
 
@@ -64,14 +64,20 @@ public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, 
             } else {
                 String json = input.getValueByField(AbstractTopology.MESSAGE_FIELD).toString();
                 Message message = MAPPER.readValue(json, Message.class);
+
                 SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
                 if (switchId != null) {
                     String region = switchTracker.lookupRegion(switchId);
-                    String targetStream = Stream.formatWithRegion(outputStream, region);
-                    Values values = new Values(json);
-                    outputCollector.emit(targetStream, input, values);
+                    if (region != null) {
+                        String targetStream = Stream.formatWithRegion(outputStream, region);
+                        Values values = new Values(json);
+                        outputCollector.emit(targetStream, input, values);
+                    } else {
+                        log.error("Unable to lookup region for message: {}", json);
+                    }
+
                 } else {
-                    log.error("Unable to lookup region for message: {}", json);
+                    log.error("Unable to lookup switch for message: {}", json);
                 }
             }
         } catch (Exception e) {

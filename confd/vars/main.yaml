@@ -35,6 +35,9 @@ kilda_floodlight_flow_meter_burst_coefficient: 1.05
 kilda_floodlight_consumer_executors: 20
 kilda_floodlight_consumer_disco_executors: 20
 
+kilda_grpc_speaker_kafka_listener_threads: 1
+kilda_grpc_speaker_kafka_session_timeout: 30000
+
 kilda_aswitch_port: "5001"
 kilda_aswitch_endpoint: "http://127.0.0.1"
 kilda_mininet_endpoint: "http://127.0.0.1"
@@ -131,5 +134,7 @@ kilda_gui_application_name_prefix: "Dev"
 
 kilda_grpc_endpoint: "http://grpc-speaker.pendev"
 kilda_grpc_rest_port: "8091"
+kilda_grpc_basicauth_username: "kilda"
+kilda_grpc_basicauth_password: "kilda"
 kilda_grpc_username: "kilda"
 kilda_grpc_password: "kilda"

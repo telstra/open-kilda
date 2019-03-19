@@ -10,7 +10,7 @@ service.description=@project.description@
 kafka.hosts=kafka.pendev:9092
 server.port=8091
 
-grpc.speaker.kafka.listener.threads=10
+grpc.speaker.kafka.listener.threads=1
 grpc.speaker.kafka.session.timeout=30000
 grpc.speaker.kafka.messages.expiration.minutes=15
 

@@ -10,12 +10,12 @@ service.description=@project.description@
 kafka.hosts={{ getv "/kilda_kafka_hosts" }}
 server.port={{ getv "/kilda_grpc_rest_port" }}
 
-grpc.speaker.kafka.listener.threads=10
-grpc.speaker.kafka.session.timeout=30000
+grpc.speaker.kafka.listener.threads={{ getv "/kilda_grpc_speaker_kafka_listener_threads" }}
+grpc.speaker.kafka.session.timeout={{ getv "/kilda_grpc_speaker_kafka_session_timeout" }}
 grpc.speaker.kafka.messages.expiration.minutes=15
 
 server.contextPath=/api/v1
 security.rest.username.env=REST_USERNAME
 security.rest.password.env=REST_PASSWORD
-security.rest.username.default={{ getv "/kilda_grpc_username" }}
-security.rest.password.default={{ getv "/kilda_grpc_password" }}
+security.rest.username.default={{ getv "/kilda_grpc_basicauth_username" }}
+security.rest.password.default={{ getv "/kilda_grpc_basicauth_password" }}

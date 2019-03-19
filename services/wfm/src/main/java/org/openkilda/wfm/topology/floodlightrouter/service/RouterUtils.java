@@ -20,7 +20,9 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
+import org.openkilda.messaging.command.discovery.PortsCommandData;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
+import org.openkilda.messaging.command.flow.BatchInstallForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.BatchInstallRequest;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
@@ -41,6 +43,21 @@ public final class RouterUtils {
 
 
     private  RouterUtils(){}
+
+    /**
+     * Checks if the message should be broadcasted among regions or not.
+     * @param message target
+     * @return flag
+     */
+    public static boolean isBroadcast(Message message) {
+        if (message instanceof CommandMessage) {
+            CommandData commandData = ((CommandMessage) message).getData();
+            if (commandData instanceof PortsCommandData) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * lookup SwitchId in message object.
@@ -84,6 +101,8 @@ public final class RouterUtils {
                 return ((MeterModifyCommandRequest) commandData).getFwdSwitchId();
             } else if (commandData instanceof DumpRulesForSwitchManagerRequest) {
                 return ((DumpRulesForSwitchManagerRequest) commandData).getSwitchId();
+            } else if (commandData instanceof BatchInstallForSwitchManagerRequest) {
+                return ((BatchInstallForSwitchManagerRequest) commandData).getSwitchId();
             }
         }
         return null;
