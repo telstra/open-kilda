@@ -112,7 +112,7 @@ public class SyncRulesServiceImpl implements SyncRulesService {
     }
 
     private void sendFsmNotFound(String key) {
-        String message = String.format("FSM with key %s not found", key);
+        String message = String.format("Sync rules FSM with key %s not found", key);
         log.error(message);
         ErrorData errorData = new ErrorData(ErrorType.INTERNAL_ERROR, message,
                 "FSM not found");

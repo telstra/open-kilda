@@ -22,6 +22,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.apache.commons.lang3.StringUtils;
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
@@ -32,6 +33,7 @@ import org.neo4j.ogm.annotation.typeconversion.Convert;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Represents information about a switch.
@@ -43,6 +45,8 @@ import java.util.List;
 @NodeEntity(label = "switch")
 public class Switch implements Serializable {
     private static final long serialVersionUID = 1L;
+
+    private static final Pattern NOVIFLOW_SOFTWARE_REGEX = Pattern.compile("(.*)NW\\d{3}\\.\\d+\\.\\d+(.*)");
 
     // Hidden as needed for OGM only.
     @Id
@@ -96,5 +100,13 @@ public class Switch implements Serializable {
         this.underMaintenance = underMaintenance;
         this.incomingLinks = incomingLinks;
         this.outgoingLinks = outgoingLinks;
+    }
+
+    public static boolean isCentecSwitch(String manufacturerDescription) {
+        return StringUtils.contains(manufacturerDescription.toLowerCase(), "centec");
+    }
+
+    public static boolean isNoviflowSwitch(String softwareDescription) {
+        return NOVIFLOW_SOFTWARE_REGEX.matcher(softwareDescription).matches();
     }
 }

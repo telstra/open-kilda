@@ -137,6 +137,9 @@ class IntentionalRerouteSpec extends BaseSpecification {
         given: "An unmetered flow going through a long not preferable path(reroute potential)"
         //will be available on virtual as soon as we get the latest iperf installed in lab-service images
         requireProfiles("hardware")
+        assumeTrue("There should be at least two active traffgens for test execution",
+                topology.activeTraffGens.size() >= 2)
+
         def src = topology.activeTraffGens[0].switchConnected
         def dst = topology.activeTraffGens[1].switchConnected
         //first adjust costs to use the longest possible path between switches

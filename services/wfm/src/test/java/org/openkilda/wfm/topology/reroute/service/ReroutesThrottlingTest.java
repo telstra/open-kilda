@@ -40,9 +40,15 @@ public class ReroutesThrottlingTest {
 
     private Clock clock;
 
+    private static final long minDelay = 10;
+
+    private static final long maxDelay = 100;
+
     private static final String FLOW_ID_1 = "flow1";
 
     private static final String FLOW_ID_2 = "flow2";
+
+    private static final String FLOW_ID_3 = "flow3";
 
     private static final FlowThrottlingData THROTTLING_DATA_1 = new FlowThrottlingData("corrId1", 1, null);
 
@@ -52,7 +58,7 @@ public class ReroutesThrottlingTest {
     public void init() {
         clock = mock(Clock.class);
         when(clock.getZone()).thenReturn(ZoneId.systemDefault());
-        reroutesThrottling = new ReroutesThrottling(new ExtendableTimeWindow(10, 100, clock));
+        reroutesThrottling = new ReroutesThrottling(new ExtendableTimeWindow(minDelay, maxDelay, clock));
     }
 
     @Test
@@ -63,8 +69,8 @@ public class ReroutesThrottlingTest {
     @Test
     public void basicTest() {
         Instant event = Instant.now();
-        Instant beforeTimeout = event.plusSeconds(5);
-        Instant afterTimeout = event.plusSeconds(12);
+        Instant beforeTimeout = event.plusSeconds(minDelay);
+        Instant afterTimeout = event.plusSeconds(minDelay + 1);
 
         when(clock.instant()).thenReturn(event, beforeTimeout, afterTimeout);
 
@@ -79,7 +85,7 @@ public class ReroutesThrottlingTest {
     @Test
     public void unique() {
         Instant event = Instant.now();
-        Instant afterTimeout = event.plusSeconds(12);
+        Instant afterTimeout = event.plusSeconds(minDelay + 1);
 
         when(clock.instant()).thenReturn(event, event, event, afterTimeout);
 
@@ -93,12 +99,64 @@ public class ReroutesThrottlingTest {
     }
 
     @Test
+    public void hardTimeout() {
+        Instant lastEvent = Instant.now();
+        when(clock.instant()).thenReturn(lastEvent);
+        FlowThrottlingData throttlingData = new FlowThrottlingData("corrId0", 1, null);
+        reroutesThrottling.putRequest(FLOW_ID_1, throttlingData);
+
+        long overallDelay = 0;
+        //reroute of the same flow appears multiple times before reroute window closes
+        while (overallDelay < maxDelay) {
+            overallDelay += minDelay;
+            lastEvent = lastEvent.plusSeconds(minDelay);
+            when(clock.instant()).thenReturn(lastEvent, lastEvent);
+            throttlingData.setCorrelationId("corrId" + overallDelay);
+            reroutesThrottling.putRequest(FLOW_ID_1, throttlingData);
+            assertTrue(reroutesThrottling.getReroutes().isEmpty());
+        }
+        Instant beforeHardTimeout = lastEvent;
+        Instant afterHardTimeout = lastEvent.plusSeconds(1);
+        when(clock.instant()).thenReturn(beforeHardTimeout, afterHardTimeout);
+        //before hard timeout reroute still did not happen
+        assertTrue(reroutesThrottling.getReroutes().isEmpty());
+        //after hard timeout the reroute is finally released
+        assertEquals(1, reroutesThrottling.getReroutes().size());
+    }
+
+
+    @Test
+    public void priority() {
+        Instant event = Instant.now();
+        Instant afterTimeout = event.plusSeconds(minDelay + 1);
+
+        when(clock.instant()).thenReturn(event, event, event, afterTimeout);
+
+        //three flows with different priorities
+        FlowThrottlingData throttlingData1 = new FlowThrottlingData("corrId1", 1, null);
+        FlowThrottlingData throttlingData2 = new FlowThrottlingData("corrId1", 2, null);
+        FlowThrottlingData throttlingData3 = new FlowThrottlingData("corrId1", 3, null);
+
+        //add them in a non-priority order
+        reroutesThrottling.putRequest(FLOW_ID_3, throttlingData3);
+        reroutesThrottling.putRequest(FLOW_ID_1, throttlingData1);
+        reroutesThrottling.putRequest(FLOW_ID_2, throttlingData2);
+
+        //expect sorted reroutes, with higher priority flows going first
+        List<Map.Entry<String, FlowThrottlingData>> expected = new ArrayList<>(
+                ImmutableMap.of(FLOW_ID_1, throttlingData1,
+                        FLOW_ID_2, throttlingData2,
+                        FLOW_ID_3, throttlingData3).entrySet());
+        assertEquals(expected, reroutesThrottling.getReroutes());
+    }
+
+    @Test
     public void extendWindow() {
         Instant event = Instant.now();
-        Instant check = event.plusSeconds(8);
-        Instant secondEvent = event.plusSeconds(9);
-        Instant secondCheck = event.plusSeconds(18);
-        Instant finalCheck = event.plusSeconds(20);
+        Instant check = event.plusSeconds(minDelay);
+        Instant secondEvent = event.plusSeconds(minDelay);
+        Instant secondCheck = secondEvent.plusSeconds(minDelay);
+        Instant finalCheck = secondEvent.plusSeconds(minDelay + 1);
 
         when(clock.instant()).thenReturn(event, check, secondEvent, secondCheck, finalCheck);
 

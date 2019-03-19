@@ -24,6 +24,7 @@ import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.error.NameCollisionException;
+import org.openkilda.wfm.share.bolt.HistoryBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.bolts.CrudBolt;
 import org.openkilda.wfm.topology.flow.bolts.ErrorBolt;
@@ -169,6 +170,13 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         KafkaBolt northboundKafkaBolt = createKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         builder.setBolt(ComponentType.NORTHBOUND_KAFKA_BOLT.toString(), northboundKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentType.NORTHBOUND_REPLY_BOLT.toString(), StreamType.RESPONSE.toString());
+
+        /*
+         * Bolt saves History data
+         */
+        HistoryBolt historyBolt = new HistoryBolt(persistenceManager);
+        builder.setBolt(ComponentType.HISTORY_BOLT.toString(), historyBolt, parallelism)
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.HISTORY.toString());
 
         createCtrlBranch(builder, ctrlTargets);
 

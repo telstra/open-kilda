@@ -27,24 +27,24 @@ import java.util.List;
 @Value
 public class SyncRulesResponse extends InfoData {
 
-    @JsonProperty("missing_rules")
+    @JsonProperty("missing")
     private List<Long> missingRules;
 
-    @JsonProperty("proper_rules")
+    @JsonProperty("proper")
     private List<Long> properRules;
 
-    @JsonProperty("excess_rules")
+    @JsonProperty("excess")
     private List<Long> excessRules;
 
-    @JsonProperty("installed_rules")
+    @JsonProperty("installed")
     private List<Long> installedRules;
 
     @JsonCreator
     public SyncRulesResponse(
-            @JsonProperty("missing_rules") List<Long> missingRules,
-            @JsonProperty("proper_rules") List<Long> properRules,
-            @JsonProperty("excess_rules") List<Long> excessRules,
-            @JsonProperty("installed_rules") List<Long> installedRules) {
+            @JsonProperty("missing") List<Long> missingRules,
+            @JsonProperty("proper") List<Long> properRules,
+            @JsonProperty("excess") List<Long> excessRules,
+            @JsonProperty("installed") List<Long> installedRules) {
         this.missingRules = missingRules;
         this.properRules = properRules;
         this.excessRules = excessRules;
