@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Value
 
 @Slf4j
 class StormHeavyLoadSpec extends BaseSpecification {
+
     @Value("#{kafkaTopicsConfig.getTopoDiscoTopic()}")
     String topoDiscoTopic
 
@@ -32,7 +33,7 @@ class StormHeavyLoadSpec extends BaseSpecification {
 
     /**
      * Test produces multiple port up/down and IslInfoData messages to the topo.disco kafka topic,
-     * expecting that Storm will be able to swallow that and continue to operate
+     * expecting that Storm will be able to swallow them and continue to operate.
      */
     def "Storm does not fail under heavy load of topo.disco topic"() {
         requireProfiles("hardware")
@@ -78,7 +79,7 @@ class StormHeavyLoadSpec extends BaseSpecification {
 
         and: "Topology is unchanged at the end"
         northbound.activeSwitches.size() == topology.activeSwitches.size()
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(WAIT_OFFSET * 2 + antiflapCooldown) {
             assert northbound.getAllLinks().findAll { it.state == IslChangeType.DISCOVERED }
                     .size() == topology.islsForActiveSwitches.size() * 2
         }
@@ -88,6 +89,6 @@ class StormHeavyLoadSpec extends BaseSpecification {
     }
 
     private static Message buildMessage(final InfoData data) {
-        return new InfoMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null);
+        return new InfoMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null)
     }
 }
