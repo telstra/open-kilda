@@ -27,6 +27,7 @@ title Switch FSM
 INIT --> OFFLINE : history / setup port workers
 INIT --> SETUP : online
 
+SETUP : enter / create or update DB record
 SETUP : enter / save features
 SETUP : enter / setup port FSM for NEW ports
 SETUP : enter / emit online for ALL ports
@@ -35,8 +36,6 @@ SETUP : enter / emit port-down for UP->DOWN ports
 SETUP : enter / emit port-up for DOWN->UP ports
 SETUP -r-> ONLINE : next
 
-ONLINE : enter / create or update DB record
-ONLINE : enter / update status in DB
 ONLINE : port-add / setup port FSM
 ONLINE : port-add / emit online for port
 ONLINE : port-add / emit port-up/down

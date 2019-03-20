@@ -132,6 +132,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     protected void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+        transactionManager.doInTransaction(() -> persistSwitchData(context));
+
         SpeakerSwitchView speakerData = context.getSpeakerData();
 
         // set features for correct port (re)identification
@@ -199,7 +201,6 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     protected void onlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
-        transactionManager.doInTransaction(() -> persistSwitchData(context));
         initialSwitchSetup(context);
     }
 
