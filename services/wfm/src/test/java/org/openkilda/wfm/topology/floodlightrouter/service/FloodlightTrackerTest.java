@@ -68,25 +68,13 @@ public class FloodlightTrackerTest {
     }
 
     @Test
-    public void testGetActiveRegions() {
-        FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT,
-                DEFAULT_RESPONSE_TIMEOUT);
-        FloodlightInstance floodlightInstance = new FloodlightInstance(REGION_ONE);
-        floodlightInstance.setAlive(true);
-
-        floodlightTracker.floodlightStatus.put(REGION_ONE, floodlightInstance);
-
-        Set<String> actualActiveRegions = floodlightTracker.getActiveRegions();
-        assertTrue(actualActiveRegions.contains(REGION_ONE));
-        assertTrue(actualActiveRegions.size() == 1);
-
-    }
-
-    @Test
     public void testInActiveRegions() {
         FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT,
                 DEFAULT_RESPONSE_TIMEOUT);
-        Set<String> actualInActiveRegions = floodlightTracker.getInActiveRegions();
+        for (FloodlightInstance instance : floodlightTracker.floodlightStatus.values()) {
+            instance.setRequireUnmanagedNotification(true);
+        }
+        Set<String> actualInActiveRegions = floodlightTracker.getNewInActiveRegions();
         assertTrue(actualInActiveRegions.contains(REGION_ONE));
         assertTrue(actualInActiveRegions.contains(REGION_TWO));
         assertTrue(actualInActiveRegions.size() == 2);
@@ -96,6 +84,9 @@ public class FloodlightTrackerTest {
     public void testGetUnmanageableSwitches() {
         FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT,
                 DEFAULT_RESPONSE_TIMEOUT);
+        for (FloodlightInstance instance : floodlightTracker.floodlightStatus.values()) {
+            instance.setRequireUnmanagedNotification(true);
+        }
         floodlightTracker.switchRegionMap.put(SWITCH_ID_ONE, REGION_ONE);
         floodlightTracker.switchRegionMap.put(SWITCH_ID_TWO, REGION_TWO);
         List<SwitchId> unmanagedSwitches = floodlightTracker.getUnmanageableSwitches();
@@ -134,6 +125,9 @@ public class FloodlightTrackerTest {
     public void testHandleUnmanagedSwitches() {
         FloodlightTracker floodlightTracker  = new FloodlightTracker(floodlights, DEFAULT_ALIVE_TIMEOUT,
                 DEFAULT_RESPONSE_TIMEOUT);
+        for (FloodlightInstance instance : floodlightTracker.floodlightStatus.values()) {
+            instance.setRequireUnmanagedNotification(true);
+        }
         floodlightTracker.switchRegionMap.put(SWITCH_ID_ONE, REGION_ONE);
         floodlightTracker.switchRegionMap.put(SWITCH_ID_TWO, REGION_TWO);
         MessageSender sender = mock(MessageSender.class);

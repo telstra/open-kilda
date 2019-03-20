@@ -24,6 +24,7 @@ public class FloodlightInstance {
     private long lastAliveResponse;
     private int missedAliveResponses;
     private boolean alive;
+    private boolean requireUnmanagedNotification;
 
     public FloodlightInstance(String region) {
         this.region = region;

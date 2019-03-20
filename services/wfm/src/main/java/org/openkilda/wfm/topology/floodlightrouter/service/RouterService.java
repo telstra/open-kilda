@@ -72,6 +72,10 @@ public class RouterService {
             String region = ((InfoMessage) message).getRegion();
             handleResponseFromSpeaker(routerMessageSender, region, message.getTimestamp());
             if (infoData instanceof AliveResponse) {
+                AliveResponse aliveResponse = (AliveResponse) infoData;
+                if (aliveResponse.getFailedMessages() > 0) {
+                    sendNetworkRequest(routerMessageSender, region);
+                }
                 return;
             } else if (infoData instanceof NetworkDumpSwitchData) {
                 switchId = ((NetworkDumpSwitchData) infoData).getSwitchRecord().getDatapath();
