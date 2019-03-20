@@ -96,6 +96,13 @@ public class PortInfoData extends InfoData {
         this(switchId, portNo, null, event, enabled);
     }
 
+    public PortInfoData(final SwitchId switchId,
+                        final int portNo,
+                        final Integer maxCapacity,
+                        PortChangeType state) {
+        this(switchId, portNo, maxCapacity, state, null);
+    }
+
     /**
      * Instance constructor.
      *
