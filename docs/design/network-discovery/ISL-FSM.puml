@@ -19,10 +19,12 @@ Output signals:
 @startuml
 title ISL FSM
 
-[*] --> DOWN : history [history-down]
-[*] --> DOWN : isl-up
-[*] --> UP : history [history-up]
-[*] --> MOVED : history [history-moved]
+[*] --> INIT
+
+INIT --> DOWN : isl-up / set endpoint-(A||B)-up = UP\nisl-down / set endpoint-(A||B)-up = DOWN
+INIT --> DOWN : history [history-down]
+INIT --> UP : history [history-up]
+INIT --> MOVED : history [history-moved]\nisl-move / set endpoint-(A||B)-up
 
 state upAttempt <<choice>>
 state deleteAttempt <<choice>>

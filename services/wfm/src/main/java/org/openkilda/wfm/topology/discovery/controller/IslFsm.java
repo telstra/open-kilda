@@ -83,6 +83,26 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         String updateEndpointStatusMethod = "updateEndpointStatus";
         String updateAndPersistEndpointStatusMethod = "updateAndPersistEndpointStatus";
 
+        // INIT
+        builder.transition()
+                .from(IslFsmState.INIT).to(IslFsmState.DOWN).on(IslFsmEvent.ISL_UP)
+                .callMethod(updateAndPersistEndpointStatusMethod);
+        builder.transition()
+                .from(IslFsmState.INIT).to(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN)
+                .callMethod(updateAndPersistEndpointStatusMethod);
+        builder.transition()
+                .from(IslFsmState.INIT).to(IslFsmState.MOVED).on(IslFsmEvent.ISL_MOVE)
+                .callMethod(updateAndPersistEndpointStatusMethod);
+        builder.transition()
+                .from(IslFsmState.INIT).to(IslFsmState.DOWN).on(IslFsmEvent._HISTORY_DOWN);
+        builder.transition()
+                .from(IslFsmState.INIT).to(IslFsmState.UP).on(IslFsmEvent._HISTORY_UP);
+        builder.transition()
+                .from(IslFsmState.INIT).to(IslFsmState.MOVED).on(IslFsmEvent._HISTORY_MOVED);
+        builder.internalTransition()
+                .within(IslFsmState.INIT).on(IslFsmEvent.HISTORY)
+                .callMethod("handleHistory");
+
         // DOWN
         builder.transition()
                 .from(IslFsmState.DOWN).to(IslFsmState.UP_ATTEMPT).on(IslFsmEvent.ISL_UP)
@@ -135,6 +155,9 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 .from(IslFsmState.MOVED).to(IslFsmState.DELETED).on(IslFsmEvent._ISL_REMOVE_SUCESS);
         builder.onEntry(IslFsmState.MOVED)
                 .callMethod("movedEnter");
+
+        // DELETED
+        builder.defineFinalState(IslFsmState.DELETED);
     }
 
     public static FsmExecutor<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> makeExecutor() {
@@ -142,34 +165,13 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     /**
-     * Use "history" data to determine initial FSM state and to pre-fill internal ISL representation.
+     * Create and properly initialize new {@link IslFsm}.
      */
-    public static IslFsm createFromHistory(PersistenceManager persistenceManager, DiscoveryOptions options,
-                                           IslReference reference, Isl history) {
-        IslFsmState initialState;
-        switch (history.getStatus()) {
-            case ACTIVE:
-                initialState = IslFsmState.UP;
-                break;
-            case INACTIVE:
-                initialState = IslFsmState.DOWN;
-                break;
-            case MOVED:
-                initialState = IslFsmState.MOVED;
-                break;
-            default:
-                throw new IllegalArgumentException(makeInvalidMappingMessage(
-                        history.getStatus().getClass(), IslFsmState.class, history.getStatus()));
-        }
-
-        IslFsm fsm = builder.newStateMachine(initialState, persistenceManager, options, reference);
-        fsm.applyHistory(history);
-        return fsm;
-    }
-
     public static IslFsm create(PersistenceManager persistenceManager, DiscoveryOptions options,
                                 IslReference reference) {
-        return builder.newStateMachine(IslFsmState.DOWN, persistenceManager, options, reference);
+        IslFsm fsm = builder.newStateMachine(IslFsmState.INIT, persistenceManager, options, reference);
+        fsm.start();
+        return fsm;
     }
 
     public IslFsm(PersistenceManager persistenceManager, DiscoveryOptions options, IslReference reference) {
@@ -191,6 +193,29 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     // -- FSM actions --
+
+    protected void handleHistory(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        applyHistory(context.getHistory());
+
+        IslFsmEvent route;
+        DiscoveryEndpointStatus status = getAggregatedStatus();
+        switch (status) {
+            case UP:
+                route = IslFsmEvent._HISTORY_UP;
+                break;
+            case DOWN:
+                route = IslFsmEvent._HISTORY_DOWN;
+                break;
+            case MOVED:
+                route = IslFsmEvent._HISTORY_MOVED;
+                break;
+            default:
+                throw new IllegalArgumentException(makeInvalidMappingMessage(
+                        status.getClass(), IslFsmEvent.class, status));
+        }
+
+        fire(route, context);
+    }
 
     protected void updateEndpointStatus(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         updateEndpointStatusByEvent(event, context);
@@ -223,7 +248,11 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
 
         saveAllTransaction();
-        triggerDownFlowReroute(context);
+
+        if (event != IslFsmEvent._HISTORY_UP) {
+            // Do not produce reroute during recovery system state from DB
+            triggerDownFlowReroute(context);
+        }
 
         if (shouldUseBfd()) {
             emitBfdEnableRequest(context);
@@ -344,22 +373,37 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     private void saveAllTransaction() {
-        transactionManager.doInTransaction(() -> saveAll(Instant.now()));
+        try {
+            transactionManager.doInTransaction(() -> saveAll(Instant.now()));
+        } catch (Exception e) {
+            logDbException(e);
+            throw e;
+        }
     }
 
     private void saveStatusTransaction() {
-        transactionManager.doInTransaction(() -> saveStatus(Instant.now()));
+        try {
+            transactionManager.doInTransaction(() -> saveStatus(Instant.now()));
+        } catch (Exception e) {
+            logDbException(e);
+            throw e;
+        }
     }
 
     private void saveStatusAndCostRaiseTransaction(IslFsmContext context) {
-        transactionManager.doInTransaction(() -> {
-            Instant timeNow = Instant.now();
+        try {
+            transactionManager.doInTransaction(() -> {
+                Instant timeNow = Instant.now();
 
-            saveStatus(timeNow);
-            if (context.getPhysicalLinkDown() != null && context.getPhysicalLinkDown()) {
-                raiseCostOnPhysicalDown(timeNow);
-            }
-        });
+                saveStatus(timeNow);
+                if (context.getPhysicalLinkDown() != null && context.getPhysicalLinkDown()) {
+                    raiseCostOnPhysicalDown(timeNow);
+                }
+            });
+        } catch (Exception e) {
+            logDbException(e);
+            throw e;
+        }
     }
 
     private void saveAll(Instant timeNow) {
@@ -575,6 +619,12 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 .orElse(FeatureToggles.DEFAULTS.getFlowsRerouteOnIslDiscoveryEnabled());
     }
 
+    private void logDbException(Exception e) {
+        log.error(
+                String.format("Error in DB transaction for ISL %s: %s", discoveryFacts.getReference(), e.getMessage()),
+                e);
+    }
+
     private static IslStatus mapStatus(DiscoveryEndpointStatus status) {
         switch (status) {
             case UP:
@@ -628,9 +678,9 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     @Builder
     public static class IslFsmContext {
         private final IIslCarrier output;
-
         private final Endpoint endpoint;
 
+        private Isl history;
         private IslDataHolder islData;
 
         private Boolean physicalLinkDown;
@@ -652,11 +702,13 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
         BFD_UPDATE,
 
+        HISTORY, _HISTORY_DOWN, _HISTORY_UP, _HISTORY_MOVED,
         ISL_UP, ISL_DOWN, ISL_MOVE,
         _UP_ATTEMPT_SUCCESS, ISL_REMOVE, _ISL_REMOVE_SUCESS, _UP_ATTEMPT_FAIL
     }
 
     public enum IslFsmState {
+        INIT,
         UP, DOWN,
         MOVED,
 

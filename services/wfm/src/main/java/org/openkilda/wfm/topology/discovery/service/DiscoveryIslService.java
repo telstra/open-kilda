@@ -57,7 +57,13 @@ public class DiscoveryIslService {
         log.info("ISL service receive SETUP request from history data for {} (on {})", reference, endpoint);
         if (!controller.containsKey(reference)) {
             ensureControllerIsMissing(reference);
-            controller.put(reference, IslFsm.createFromHistory(persistenceManager, options, reference, history));
+
+            IslFsm fsm = IslFsm.create(persistenceManager, options, reference);
+            controller.put(reference, fsm);
+            IslFsmContext context = IslFsmContext.builder(carrier, endpoint)
+                    .history(history)
+                    .build();
+            controllerExecutor.fire(fsm, IslFsmEvent.HISTORY, context);
         } else {
             log.error("Receive HISTORY data for already created ISL - ignore history "
                               + "(possible start-up race condition)");
