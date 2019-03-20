@@ -71,20 +71,21 @@ public class FloodlightTracker {
         return switchRegionMap.get(switchId);
     }
 
-    /**
-     * Return active available regions.
-     * @return set of active regions
-     */
-    public Set<String> getActiveRegions() {
-        return getRegions(true);
-    }
 
     /**
      * Return inactive available regions.
      * @return set of active regions
      */
-    public Set<String> getInActiveRegions() {
-        return getRegions(false);
+    public Set<String> getNewInActiveRegions() {
+        Set<String> inactiveRegions = new HashSet<>();
+        for (Map.Entry<String, FloodlightInstance> entry: floodlightStatus.entrySet()) {
+            FloodlightInstance instance = entry.getValue();
+            if (!instance.isAlive() && entry.getValue().isRequireUnmanagedNotification()) {
+                inactiveRegions.add(entry.getKey());
+                instance.setRequireUnmanagedNotification(false);
+            }
+        }
+        return inactiveRegions;
     }
 
     /**
@@ -98,6 +99,7 @@ public class FloodlightTracker {
                 log.warn("Floodlight region {} is marked as inactive no alive responses for {}", instance.getRegion(),
                         TimeUnit.MILLISECONDS.toSeconds(now - instance.getLastAliveResponse()));
                 instance.setAlive(false);
+                instance.setRequireUnmanagedNotification(true);
             }
         }
     }
@@ -107,22 +109,12 @@ public class FloodlightTracker {
      * @return list of switches
      */
     public List<SwitchId> getUnmanageableSwitches() {
-        Set<String> inactiveRegions = getInActiveRegions();
+        Set<String> inactiveRegions = getNewInActiveRegions();
         return switchRegionMap.entrySet().stream()
                 .filter(switchIdStringEntry -> inactiveRegions.contains(
                         switchIdStringEntry.getValue()))
                 .map(Entry::getKey)
                 .collect(Collectors.toList());
-    }
-
-    private Set<String> getRegions(boolean live) {
-        Set<String> activeRegions = new HashSet<>();
-        for (Map.Entry<String, FloodlightInstance> entry: floodlightStatus.entrySet()) {
-            if (entry.getValue().isAlive() == live) {
-                activeRegions.add(entry.getKey());
-            }
-        }
-        return activeRegions;
     }
 
     /**
@@ -145,7 +137,6 @@ public class FloodlightTracker {
             instance.setAlive(true);
         } else {
             log.debug("Outdated alive response for region {}", region);
-            instance.setAlive(false);
         }
         return needDiscovery;
     }

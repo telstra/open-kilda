@@ -27,7 +27,7 @@ public final class Stream {
         if (region == null || region.isEmpty()) {
             return param;
         }
-        return String.format("%s.%s", param, region);
+        return String.format("%s_%s", param, region);
     }
 
     public static final String KILDA_TOPO_DISCO = "KILDA_TOPO_DISCO";

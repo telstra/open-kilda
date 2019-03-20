@@ -124,6 +124,6 @@ public class KafkaChannel implements IFloodlightModule {
         if (region == null || region.isEmpty()) {
             return topic;
         }
-        return String.format("%s.%s", topic, region);
+        return String.format("%s_%s", topic, region);
     }
 }
