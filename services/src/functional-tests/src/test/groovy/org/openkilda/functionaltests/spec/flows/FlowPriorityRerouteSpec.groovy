@@ -10,8 +10,11 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import spock.lang.Ignore
+
 import java.util.concurrent.TimeUnit
 
+@Ignore
 class FlowPriorityRerouteSpec extends BaseSpecification {
     def "System is able to reroute(automatically) flow in the correct order based on the priority field"() {
         given: "3 flows on the same path, with alt paths available"
