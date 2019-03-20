@@ -57,7 +57,7 @@ public class DiscoverySwitchService {
      * .
      */
     public void switchAddWithHistory(HistoryFacts history) {
-        log.debug("Switch service receive switch ADD from history request for {}", history.getSwitchId());
+        log.info("Switch service receive switch ADD from history request for {}", history.getSwitchId());
         SwitchFsm switchFsm = SwitchFsm.create(persistenceManager, history.getSwitchId(), bfdLogicalPortOffset);
 
         SwitchFsmContext fsmContext = SwitchFsmContext.builder(carrier)
@@ -71,7 +71,7 @@ public class DiscoverySwitchService {
      * .
      */
     public void switchEvent(SwitchInfoData payload) {
-        log.debug("Switch service receive SWITCH event for {} status:{}", payload.getSwitchId(), payload.getState());
+        log.info("Switch service receive SWITCH event for {} status:{}", payload.getSwitchId(), payload.getState());
         SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder = SwitchFsmContext.builder(carrier);
         SwitchFsmEvent event = null;
 
@@ -162,7 +162,7 @@ public class DiscoverySwitchService {
      * Remove isl by request.
      */
     public void remove(SwitchId datapath) {
-        log.debug("Switch service receive remove request for {}", datapath);
+        log.info("Switch service receive remove request for {}", datapath);
         SwitchFsm fsm = controller.get(datapath);
         if (fsm != null) {
             SwitchFsmContext context = SwitchFsmContext.builder(carrier).build();

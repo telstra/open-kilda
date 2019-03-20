@@ -54,7 +54,7 @@ public class DiscoveryIslService {
      * Create ISL handler and use "history" data to initialize it's state.
      */
     public void islSetupFromHistory(Endpoint endpoint, IslReference reference, Isl history) {
-        log.debug("ISL service receive SETUP request from history data for {} (on {})", reference, endpoint);
+        log.info("ISL service receive SETUP request from history data for {} (on {})", reference, endpoint);
         if (!controller.containsKey(reference)) {
             ensureControllerIsMissing(reference);
             controller.put(reference, IslFsm.createFromHistory(persistenceManager, options, reference, history));

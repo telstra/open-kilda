@@ -46,7 +46,7 @@ public class DiscoveryPortService {
      * .
      */
     public void setup(Endpoint endpoint, Isl history) {
-        log.debug("Port service receive setup request for {}", endpoint);
+        log.info("Port service receive setup request for {}", endpoint);
         // TODO: try to switch on atomic action i.e. port-setup + online|offline action in one event
         PortFsm portFsm = PortFsm.create(endpoint, history);
         controller.put(endpoint, portFsm);
@@ -56,7 +56,7 @@ public class DiscoveryPortService {
      * .
      */
     public void remove(Endpoint endpoint) {
-        log.debug("Port service receive remove request for {}", endpoint);
+        log.info("Port service receive remove request for {}", endpoint);
         PortFsm portFsm = controller.remove(endpoint);
         if (portFsm == null) {
             throw new IllegalStateException(String.format("Port FSM not found (%s).", endpoint));

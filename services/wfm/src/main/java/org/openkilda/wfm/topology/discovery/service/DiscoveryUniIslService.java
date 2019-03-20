@@ -46,7 +46,7 @@ public class DiscoveryUniIslService {
      * .
      */
     public void uniIslSetup(Endpoint endpoint, Isl history) {
-        log.debug("Uni-ISL service receive SETUP request for {}", endpoint);
+        log.info("Uni-ISL service receive SETUP request for {}", endpoint);
         UniIslFsm fsm = UniIslFsm.create(endpoint);
         UniIslFsmContext context = UniIslFsmContext.builder(carrier)
                 .history(history)
@@ -98,7 +98,7 @@ public class DiscoveryUniIslService {
      * .
      */
     public void uniIslRemove(Endpoint endpoint) {
-        log.debug("Uni-ISL service receive KILL request for {}", endpoint);
+        log.info("Uni-ISL service receive KILL request for {}", endpoint);
         controller.remove(endpoint);
     }
 

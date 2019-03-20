@@ -56,7 +56,7 @@ public class DiscoveryBfdPortService {
      * .
      */
     public void setup(Endpoint endpoint, int physicalPortNumber) {
-        log.debug("BFD-port service receive SETUP request for logical-port {} (physical-port:{})",
+        log.info("BFD-port service receive SETUP request for logical-port {} (physical-port:{})",
                   endpoint, physicalPortNumber);
         BfdPortFsm controller = BfdPortFsm.create(persistenceManager, endpoint, physicalPortNumber);
 
@@ -71,7 +71,7 @@ public class DiscoveryBfdPortService {
      * .
      */
     public Endpoint remove(Endpoint logicalEndpoint) {
-        log.debug("BFD-port service receive REMOVE request for logical-port {}", logicalEndpoint);
+        log.info("BFD-port service receive REMOVE request for logical-port {}", logicalEndpoint);
 
         BfdPortFsm controller = controllerByLogicalPort.remove(logicalEndpoint);
         if (controller == null) {
@@ -136,7 +136,7 @@ public class DiscoveryBfdPortService {
      * .
      */
     public void enable(Endpoint physicalEndpoint, IslReference reference) {
-        log.debug("BFD-port service receive ENABLE request for physical-port {}", physicalEndpoint);
+        log.info("BFD-port service receive ENABLE request for physical-port {}", physicalEndpoint);
 
         BfdPortFsm controller = lookupControllerByPhysicalEndpoint(physicalEndpoint);
         log.info("Setup BFD session request for {} (logical-port:{})",
@@ -151,7 +151,7 @@ public class DiscoveryBfdPortService {
      * .
      */
     public void disable(Endpoint physicalEndpoint) {
-        log.debug("BFD-port service receive DISABLE request for physical-port {}", physicalEndpoint);
+        log.info("BFD-port service receive DISABLE request for physical-port {}", physicalEndpoint);
 
         BfdPortFsm controller = lookupControllerByPhysicalEndpoint(physicalEndpoint);
         log.info("Remove BFD session request for {} (logical-port:{})",
