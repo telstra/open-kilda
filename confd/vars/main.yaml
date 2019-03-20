@@ -104,6 +104,10 @@ kilda_port_up_down_throttling_delay_seconds_min: 1
 kilda_port_up_down_throttling_delay_seconds_warm_up: 5
 kilda_port_up_down_throttling_delay_seconds_cool_down: 5
 
+kilda_floodlight_alive_timeout: 5
+kilda_floodlight_alive_interval: 2
+kilda_floodlight_regions: "1"
+
 kilda_bfd_port_offset: 200
 
 kilda_pce_strategy: "COST"
