@@ -1,0 +1,41 @@
+@startuml
+title New implementation of ISL discovery and round-trip latency with NOT NoviFlow switch and without groups support
+
+participant Floodlight_A as FLA
+participant Floodlight_B as FLB
+participant "Switch_A\n(not Noviflow)" as SWA
+participant "Switch_B\n(without groups support)" as SWB
+control kilda.topo.disco as DI
+participant EventTopology as EV
+database DB
+control kilda.isl.latency as LT
+participant IslLatencyTopology as ILT
+control kilda.otsdb as OTSDB
+participant OpenTSDBTopology as OTOP
+activate FLA
+FLA -> FLA : set current timestemp **T**
+FLA -> SWA : Discovery Packet
+deactivate FLA
+activate SWA
+SWA -> SWB : Discovery Packet
+deactivate SWA
+activate SWB
+SWB -> FLB : Discovery Packet (old style)
+deactivate SWB
+activate FLB
+FLB -> DI : IslInfoData\n(without latency)
+DI -> EV : IslInfoData\n(without latency)
+activate EV
+EV -> DB : Store ISL
+deactivate EV
+FLB -> FLB : understand that packet has no **t0** timestamp\nso we need to calculate legacy latency \n**curTime - T - controller latency**
+FLB -> LT : IslLatencyInfoData
+deactivate FLB
+LT -> ILT : IslLatencyInfoData
+activate ILT
+ILT -> DB : Set Latency
+ILT -> OTSDB : latency metric
+deactivate ILT
+OTSDB -> OTOP : latency metric
+
+@enduml
