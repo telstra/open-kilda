@@ -413,7 +413,7 @@ public class SwitchManagerTest {
 
     @Test
     public void installBandwidthMeterForCentecSwitch() throws Exception {
-        runInstallMeterTest(bandwidth, (long) (bandwidth * config.getFlowMeterBurstCoefficient()), true, false);
+        runInstallMeterTest(bandwidth, Math.round(bandwidth * config.getFlowMeterBurstCoefficient()), true, false);
     }
 
     @Test
@@ -423,12 +423,12 @@ public class SwitchManagerTest {
 
     @Test
     public void installBandwidthMeterForNoviFlowSwitch() throws Exception {
-        runInstallMeterTest(bandwidth, (long) (bandwidth * MAX_NOVIFLOW_BURST_COEFFICIENT), false, true);
+        runInstallMeterTest(bandwidth, Math.round(bandwidth * MAX_NOVIFLOW_BURST_COEFFICIENT), false, true);
     }
 
     @Test
     public void installBandwidthMeter() throws Exception {
-        runInstallMeterTest(bandwidth, (long) (bandwidth * config.getFlowMeterBurstCoefficient()), false, false);
+        runInstallMeterTest(bandwidth, Math.round(bandwidth * config.getFlowMeterBurstCoefficient()), false, false);
     }
 
     private void runInstallMeterTest(long bandwidth, long burstSize, boolean isCentecSwitch, boolean isNoviFlowSwitch)
