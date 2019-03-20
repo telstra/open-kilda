@@ -15,18 +15,20 @@
 
 package org.openkilda.model;
 
-import lombok.NonNull;
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
 /**
  * Represents a flow path id.
  */
-@Value
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class PathId implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @NonNull
-    private final String pathId;
+    private String pathId;
 }

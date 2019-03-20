@@ -49,10 +49,6 @@ public class FlowRerouteRequest extends CommandData {
     @JsonProperty("force")
     private boolean force;
 
-    public FlowRerouteRequest(String flowId) {
-        this(flowId, false, Collections.emptySet());
-    }
-
     public FlowRerouteRequest(String flowId, boolean force) {
         this(flowId, force, Collections.emptySet());
     }

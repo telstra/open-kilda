@@ -220,44 +220,6 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                 }));
     }
 
-    @Override
-    public Collection<Flow> findWithPathSegment(SwitchId srcSwitchId, int srcPort,
-                                                SwitchId dstSwitchId, int dstPort) {
-        Map<String, Object> parameters = ImmutableMap.of(
-                "src_switch", srcSwitchId,
-                "src_port", srcPort,
-                "dst_switch", dstSwitchId,
-                "dst_port", dstPort);
-
-        Set<Flow> flows = new HashSet<>();
-        getSession().query(Flow.class, "MATCH (src:switch)-[ps:path_segment]->(dst:switch) "
-                + "WHERE src.name=$src_switch AND ps.src_port=$src_port  "
-                + "AND dst.name=$dst_switch AND ps.dst_port=$dst_port  "
-                + "MATCH ()-[fp:flow_path { path_id: ps.path_id }]->() "
-                + "MATCH (f_src:switch)-[f:flow]->(f_dst:switch) "
-                + "WHERE fp.flow_id=f.flowid  "
-                + "RETURN f_src, f, f_dst", parameters)
-                .forEach(flow -> flows.add(completeWithPaths(flow)));
-        return flows;
-    }
-
-    @Override
-    public Set<String> findFlowIdsWithSwitchInPath(SwitchId switchId) {
-        Map<String, Object> parameters = ImmutableMap.of(
-                "switch_id", switchId);
-
-        Set<String> flowIds = new HashSet<>();
-        getSession().query(String.class, "MATCH (src:switch)-[f:flow]->(dst:switch) "
-                + "WHERE (src.name=$switch_id OR dst.name=$switch_id) "
-                + "RETURN f.flowid", parameters).forEach(flowIds::add);
-
-        getSession().query(String.class, "MATCH (src:switch)-[ps:path_segment]->(dst:switch) "
-                + "WHERE (src.name=$switch_id OR dst.name=$switch_id) "
-                + "MATCH ()-[fp:flow_path { path_id: ps.path_id }]->() "
-                + "RETURN fp.flow_id", parameters).forEach(flowIds::add);
-        return flowIds;
-    }
-
     private Flow completeWithPaths(Flow flow) {
         flow.setForwardPath(flowPathRepository.findById(flow.getForwardPathId()).orElse(null));
         flow.setReversePath(flowPathRepository.findById(flow.getReversePathId()).orElse(null));

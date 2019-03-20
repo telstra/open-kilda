@@ -20,7 +20,6 @@ import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * A repository for flow pairs.
@@ -36,9 +35,4 @@ public interface FlowPairRepository extends Repository<FlowPair> {
     Collection<FlowPair> findWithPeriodicPingsEnabled();
 
     Collection<FlowPair> findByEndpoint(SwitchId switchId, int port);
-
-    Collection<FlowPair> findWithSegmentInPath(SwitchId srcSwitchId, int srcPort,
-                                               SwitchId dstSwitchId, int dstPort);
-
-    Set<String> findFlowIdsWithSwitchInPath(SwitchId switchId);
 }

@@ -36,6 +36,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
+import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -149,6 +150,22 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void shouldFindFlowPathsForIsl() {
+        FlowPath primaryForward = buildTestFlowPath(TEST_FLOW_ID, switchA, switchB);
+        FlowPath primaryReverse = buildTestFlowPath(TEST_FLOW_ID, switchB, switchA);
+
+        flowPathRepository.createOrUpdate(primaryForward);
+        flowPathRepository.createOrUpdate(primaryReverse);
+        flowRepository.createOrUpdate(
+                buildFlow(TEST_FLOW_ID, switchA, switchB, primaryForward, primaryReverse, null));
+
+        Collection<FlowPath> paths = flowPathRepository.findWithPathSegment(switchA.getSwitchId(), 1,
+                switchB.getSwitchId(), 1);
+        assertThat(paths, Matchers.hasSize(1));
+        assertThat(paths, containsInAnyOrder(primaryForward));
+    }
+
+    @Test
     public void shouldFindActiveAffectedPaths() {
         FlowPath path1 = buildTestFlowPath(TEST_FLOW_ID, switchA, switchB);
         FlowPath path2 = buildTestFlowPath(TEST_FLOW_ID, switchB, switchA);
@@ -192,7 +209,7 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
                 .srcSwitch(srcSwitch)
                 .srcPort(1)
                 .destSwitch(destSwitch)
-                .destPort(2)
+                .destPort(1)
                 .forwardPath(primaryForward)
                 .reversePath(primaryReverse)
                 .protectedForwardPath(protect)

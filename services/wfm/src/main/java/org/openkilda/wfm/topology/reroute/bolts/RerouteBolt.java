@@ -93,7 +93,7 @@ public class RerouteBolt extends AbstractBolt {
             emitPathSwapCommands(tuple, pathsForSwapping, message.getCorrelationId(),
                     rerouteAffectedFlows.getReason());
 
-            Map<Flow, Set<PathId>> flowsForRerouting = rerouteService.getFlowsForRerouting(affectedFlowPaths);
+            Map<Flow, Set<PathId>> flowsForRerouting = rerouteService.groupFlowsForRerouting(affectedFlowPaths);
             for (Entry<Flow, Set<PathId>> entry : flowsForRerouting.entrySet()) {
                 Flow flow = entry.getKey();
 

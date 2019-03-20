@@ -38,6 +38,11 @@ public interface FlowPathRepository extends Repository<FlowPath> {
 
     Collection<FlowPath> findBySegmentDestSwitch(SwitchId switchId);
 
+    Collection<FlowPath> findPathsWithSwitch(SwitchId switchId);
+
+    Collection<FlowPath> findWithPathSegment(SwitchId srcSwitchId, int srcPort,
+                                             SwitchId dstSwitchId, int dstPort);
+
     Collection<FlowPath> findActiveAffectedPaths(SwitchId switchId, int port);
 
     long getUsedBandwidthBetweenEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);

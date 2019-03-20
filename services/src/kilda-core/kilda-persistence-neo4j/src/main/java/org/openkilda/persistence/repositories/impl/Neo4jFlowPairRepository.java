@@ -26,7 +26,6 @@ import org.openkilda.persistence.repositories.TransitVlanRepository;
 
 import java.util.Collection;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -67,19 +66,6 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
         return flowRepository.findByEndpoint(switchId, port).stream()
                 .map(this::toFlowPair)
                 .collect(Collectors.toList());
-    }
-
-    @Override
-    public Collection<FlowPair> findWithSegmentInPath(SwitchId srcSwitchId, int srcPort,
-                                                      SwitchId dstSwitchId, int dstPort) {
-        return flowRepository.findWithPathSegment(srcSwitchId, srcPort, dstSwitchId, dstPort).stream()
-                .map(this::toFlowPair)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public Set<String> findFlowIdsWithSwitchInPath(SwitchId switchId) {
-        return flowRepository.findFlowIdsWithSwitchInPath(switchId);
     }
 
     @Override

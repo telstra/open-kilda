@@ -47,11 +47,11 @@ public class RerouteService {
     }
 
     /**
-     * Get set of active affected flow paths with flows.
+     * Get list of active affected flow paths with flows.
      *
      * @param switchId switch id.
      * @param port     port.
-     * @return set affected flows and flow paths.
+     * @return list affected flows and flow paths.
      */
     public List<ImmutablePair<FlowPath, Flow>> getAffectedFlowPaths(SwitchId switchId, int port) {
         log.info("Get affected flow paths by node {}_{}", switchId, port);
@@ -84,9 +84,9 @@ public class RerouteService {
     /**
      * Returns map with flow for reroute and set of reroute pathId.
      *
-     * @return list with flow for reroute and set of reroute pathId.
+     * @return map with flow for reroute and set of reroute pathId.
      */
-    public Map<Flow, Set<PathId>> getFlowsForRerouting(List<ImmutablePair<FlowPath, Flow>> pairs) {
+    public Map<Flow, Set<PathId>> groupFlowsForRerouting(List<ImmutablePair<FlowPath, Flow>> pairs) {
         return pairs.stream()
                 .collect(Collectors.groupingBy(ImmutablePair::getRight,
                         Collectors.mapping(e -> e.getLeft().getPathId(), Collectors.toSet())));

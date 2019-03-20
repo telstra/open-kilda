@@ -24,6 +24,7 @@ import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
@@ -43,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -65,16 +67,16 @@ public class FlowOperationsService {
     }
 
     /**
-     * Return all flows for a particular link.
+     * Return all paths for a particular link.
      *
      * @param srcSwitchId source switch id.
      * @param srcPort     source port.
      * @param dstSwitchId destination switch id.
      * @param dstPort     destination port.
-     * @return all flows for a particular link.
+     * @return all paths for a particular link.
      * @throws IslNotFoundException if there is no link with these parameters.
      */
-    public Collection<FlowPair> getFlowIdsForLink(SwitchId srcSwitchId, Integer srcPort,
+    public Collection<FlowPath> getFlowIdsForLink(SwitchId srcSwitchId, Integer srcPort,
                                                   SwitchId dstSwitchId, Integer dstPort)
             throws IslNotFoundException {
 
@@ -82,17 +84,33 @@ public class FlowOperationsService {
             throw new IslNotFoundException(srcSwitchId, srcPort, dstSwitchId, dstPort);
         }
 
-        return flowPairRepository.findWithSegmentInPath(srcSwitchId, srcPort, dstSwitchId, dstPort);
+        return flowPathRepository.findWithPathSegment(srcSwitchId, srcPort, dstSwitchId, dstPort);
     }
 
     /**
-     * Return flows for a switch.
+     * Groups passed flow paths by flow id.
+     *
+     * @param paths the flow paths for grouping.
+     * @return map with grouped grouped flow paths.
+     */
+    public Map<String, Set<PathId>> groupFlowIdWithPathIdsForRerouting(Collection<FlowPath> paths) {
+        return paths.stream()
+                .collect(Collectors.groupingBy(FlowPath::getFlowId,
+                        Collectors.mapping(FlowPath::getPathId, Collectors.toSet())));
+    }
+
+    public Optional<FlowPair> getFlowPairById(String flowId) {
+        return flowPairRepository.findById(flowId);
+    }
+
+    /**
+     * Return flow paths for a switch.
      *
      * @param switchId switch id.
-     * @return all flows for a switch.
+     * @return all flow paths for a switch.
      */
-    public Set<String> getFlowIdsForSwitch(SwitchId switchId) {
-        return flowPairRepository.findFlowIdsWithSwitchInPath(switchId);
+    public Collection<FlowPath> getFlowIdsForSwitch(SwitchId switchId) {
+        return flowPathRepository.findPathsWithSwitch(switchId);
     }
 
     /**

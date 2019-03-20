@@ -50,7 +50,7 @@ public class FlowThrottlingBolt extends AbstractTickStatefulBolt<InMemoryKeyValu
         for (Map.Entry<String, FlowThrottlingData> entry: reroutesThrottling.getReroutes()) {
             String flowId = entry.getKey();
             FlowThrottlingData throttlingData = entry.getValue();
-            FlowRerouteRequest request = new FlowRerouteRequest(flowId);
+            FlowRerouteRequest request = new FlowRerouteRequest(flowId, false, throttlingData.getPathIdSet());
             outputCollector.emit(tuple, new Values(throttlingData.getCorrelationId(),
                     new CommandMessage(request, System.currentTimeMillis(), throttlingData.getCorrelationId())));
         }
