@@ -42,6 +42,7 @@ ONLINE : port-add / emit port-up/down
 ONLINE : port-del / kill port FSM
 ONLINE : port-up / proxy
 ONLINE : port-down / proxy
+ONLINE -l-> SETUP : online
 ONLINE --> OFFLINE : offline
 
 OFFLINE : enter / update status in DB

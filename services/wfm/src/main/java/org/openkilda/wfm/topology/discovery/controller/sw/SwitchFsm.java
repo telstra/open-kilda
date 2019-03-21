@@ -82,6 +82,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                 .callMethod("setupEnter");
 
         // ONLINE
+        builder.transition().from(SwitchFsmState.ONLINE).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.ONLINE);
         builder.transition().from(SwitchFsmState.ONLINE).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
         builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_ADD)
                 .callMethod("handlePortAdd");
