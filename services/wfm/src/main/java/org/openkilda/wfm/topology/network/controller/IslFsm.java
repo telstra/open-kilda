@@ -26,6 +26,7 @@ import org.openkilda.model.LinkProps;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
@@ -518,7 +519,15 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 .status(SwitchStatus.INACTIVE)
                 .description(String.format("auto created as part of ISL %s discovery", discoveryFacts.getReference()))
                 .build();
-        switchRepository.createOrUpdate(sw);
+
+        try {
+            switchRepository.createOrUpdate(sw);
+        } catch (ConstraintViolationException e) {
+            throw e;
+            // throw new
+            // "Switch record with name={} appear in DB during attempt to create it's dummy representation"
+        }
+
         return sw;
     }
 
@@ -615,7 +624,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     private boolean shouldUseBfd() {
-        // TODO(surabujin): ensure the switch is BFD cappable
+        // TODO(surabujin): ensure the switch is BFD capable
 
         if (!isGlobalBfdToggleEnabled()) {
             return false;

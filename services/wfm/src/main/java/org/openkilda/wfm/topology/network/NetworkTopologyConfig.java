@@ -69,6 +69,7 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
     int getIslCostWhenUnderMaintenance();
 
     @Key("speaker.io.timeout.seconds")
+    @Default("60")
     int getSpeakerIoTimeoutSeconds();
 
     @Key("port.up.down.throttling.delay.seconds.min")
