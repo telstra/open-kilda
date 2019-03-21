@@ -118,8 +118,8 @@ public final class DecisionMakerFsm extends AbstractBaseFsm<DecisionMakerFsm,
 
     // -- FSM actions --
 
-    protected void verifyAndTransit(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
-                                    DecisionMakerFsmContext context) {
+    public void verifyAndTransit(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+                                 DecisionMakerFsmContext context) {
         boolean verification = lastProcessedPacketId == null;
         if (!verification) {
             verification = context.getPacketId() != null && lastProcessedPacketId < context.getPacketId();
@@ -130,21 +130,21 @@ public final class DecisionMakerFsm extends AbstractBaseFsm<DecisionMakerFsm,
         }
     }
 
-    protected void saveFailTime(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
-                              DecisionMakerFsmContext context) {
+    public void saveFailTime(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+                             DecisionMakerFsmContext context) {
         saveLastProcessed(context);
         failTime = context.getCurrentTime() - awaitTime;
     }
 
-    protected void emitDiscovery(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
-                               DecisionMakerFsmContext context) {
+    public void emitDiscovery(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+                              DecisionMakerFsmContext context) {
         saveLastProcessed(context);
         context.getOutput().linkDiscovered(context.getDiscoveryEvent());
         failTime = null;
     }
 
-    protected void emitFailed(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
-                            DecisionMakerFsmContext context) {
+    public void emitFailed(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+                           DecisionMakerFsmContext context) {
         saveLastProcessed(context);
         context.getOutput().linkDestroyed(endpoint);
         failTime = null;
@@ -153,8 +153,8 @@ public final class DecisionMakerFsm extends AbstractBaseFsm<DecisionMakerFsm,
     /**
      * Tick event process.
      */
-    protected void tick(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
-                      DecisionMakerFsmContext context) {
+    public void tick(DecisionMakerFsmState from, DecisionMakerFsmState to, DecisionMakerFsmEvent event,
+                     DecisionMakerFsmContext context) {
         saveLastProcessed(context);
         if (context.getCurrentTime() >= failTime + failTimeout) {
             fire(DecisionMakerFsmEvent.FAIL_BY_TIMEOUT, context);

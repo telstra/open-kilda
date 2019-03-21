@@ -194,7 +194,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     // -- FSM actions --
 
-    protected void handleHistory(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    public void handleHistory(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         applyHistory(context.getHistory());
 
         IslFsmEvent route;
@@ -217,22 +217,22 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         fire(route, context);
     }
 
-    protected void updateEndpointStatus(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    public void updateEndpointStatus(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         updateEndpointStatusByEvent(event, context);
     }
 
-    protected void updateAndPersistEndpointStatus(IslFsmState from, IslFsmState to, IslFsmEvent event,
-                                                  IslFsmContext context) {
+    public void updateAndPersistEndpointStatus(IslFsmState from, IslFsmState to, IslFsmEvent event,
+                                               IslFsmContext context) {
         updateEndpointStatusByEvent(event, context);
         saveStatusTransaction();
     }
 
-    protected void downEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    public void downEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
         saveStatusTransaction();
     }
 
-    protected void handleUpAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    public void handleUpAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         discoveryFacts.put(context.getEndpoint(), context.getIslData());
 
         IslFsmEvent route;
@@ -244,7 +244,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         fire(route, context);
     }
 
-    protected void upEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    public void upEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
 
         saveAllTransaction();
@@ -259,7 +259,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         }
     }
 
-    protected void upExit(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    public void upExit(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} is no more UP (physical-down:{})",
                   discoveryFacts.getReference(), to, context.getPhysicalLinkDown());
 
@@ -268,12 +268,12 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         triggerAffectedFlowReroute(context);
     }
 
-    protected void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    public void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
         saveStatusTransaction();
     }
 
-    protected void handleBfdEnableDisable(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    public void handleBfdEnableDisable(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         if (context.getBfdEnable()) {
             emitBfdEnableRequest(context);
         } else {
@@ -281,7 +281,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         }
     }
 
-    protected void removeAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+    public void removeAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         // FIXME(surabujin): this check is always true, because it is called from DOWN or MOVED state
         if (getAggregatedStatus() != DiscoveryEndpointStatus.UP) {
             fire(IslFsmEvent._ISL_REMOVE_SUCESS);

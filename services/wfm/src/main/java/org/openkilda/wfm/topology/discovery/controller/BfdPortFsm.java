@@ -224,8 +224,8 @@ public final class BfdPortFsm extends
 
     // -- FSM actions --
 
-    protected void consumeHistory(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                  BfdPortFsmContext context) {
+    public void consumeHistory(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                               BfdPortFsmContext context) {
         Optional<BfdPort> port = loadBfdPort();
         port.ifPresent(bfdPort -> {
             remoteDatapath = bfdPort.getRemoteSwitchId();
@@ -233,8 +233,8 @@ public final class BfdPortFsm extends
         });
     }
 
-    protected void handleInitChoice(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                    BfdPortFsmContext context) {
+    public void handleInitChoice(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                 BfdPortFsmContext context) {
         if (discriminator == null) {
             fire(BfdPortFsmEvent._INIT_CHOICE_CLEAN, context);
         } else {
@@ -242,42 +242,41 @@ public final class BfdPortFsm extends
         }
     }
 
-    protected void idleEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                             BfdPortFsmContext context) {
+    public void idleEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
         logInfo("ready for setup requests");
     }
 
-    protected void reportSetupComplete(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                       BfdPortFsmContext context) {
+    public void reportSetupComplete(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                    BfdPortFsmContext context) {
         logInfo("BFD session setup is successfully completed");
     }
 
-    protected void installingEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                   BfdPortFsmContext context) {
+    public void installingEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                BfdPortFsmContext context) {
         Endpoint remoteEndpoint = context.getIslReference().getOpposite(getPhysicalEndpoint());
         remoteDatapath = remoteEndpoint.getDatapath();
         doBfdSetup(context);
     }
 
-    protected void releaseResources(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                    BfdPortFsmContext context) {
+    public void releaseResources(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                 BfdPortFsmContext context) {
         bfdPortRepository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber())
                 .ifPresent(bfdPortRepository::delete);
         discriminator = null;
     }
 
-    protected void cleaningEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                  BfdPortFsmContext context) {
+    public void cleaningEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                              BfdPortFsmContext context) {
         doBfdRemove(context);
     }
 
-    protected void cleaningExit(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                BfdPortFsmContext context) {
+    public void cleaningExit(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                             BfdPortFsmContext context) {
         remoteDatapath = null;
     }
 
-    protected void cleaningUpdateLinkStatus(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                          BfdPortFsmContext context) {
+    public void cleaningUpdateLinkStatus(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                         BfdPortFsmContext context) {
         switch (event) {
             case PORT_UP:
                 linkStatus = LinkStatus.UP;
@@ -291,8 +290,8 @@ public final class BfdPortFsm extends
         }
     }
 
-    protected void handleCleaningChoice(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                        BfdPortFsmContext context) {
+    public void handleCleaningChoice(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                     BfdPortFsmContext context) {
         if (linkStatus != LinkStatus.DOWN) {
             fire(BfdPortFsmEvent._CLEANING_CHOICE_HOLD, context);
         } else {
@@ -300,35 +299,33 @@ public final class BfdPortFsm extends
         }
     }
 
-    protected void waitReleaseExit(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                   BfdPortFsmContext context) {
+    public void waitReleaseExit(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                BfdPortFsmContext context) {
         logInfo("BFD session have been successfully removed, wait for DOWN event for logical port");
         linkStatus = LinkStatus.DOWN;
     }
 
-    protected void upEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
+    public void upEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
         logInfo("LINK detected");
         linkStatus = LinkStatus.UP;
         context.getOutput().bfdUpNotification(physicalEndpoint);
     }
 
-    protected void downEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                             BfdPortFsmContext context) {
+    public void downEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
         logInfo("LINK corrupted");
         linkStatus = LinkStatus.DOWN;
         context.getOutput().bfdDownNotification(physicalEndpoint);
     }
 
-    protected void failEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                             BfdPortFsmContext context) {
+    public void failEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
         if (log.isErrorEnabled()) {
             log.error("{} - is marked as FAILED, it can't process any request at this moment",
                       makeLogPrefix());
         }
     }
 
-    protected void housekeepingEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                             BfdPortFsmContext context) {
+    public void housekeepingEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                  BfdPortFsmContext context) {
         logInfo("perform housekeeping - release all resources");
         context.getOutput().bfdKillNotification(physicalEndpoint);
 
@@ -337,8 +334,8 @@ public final class BfdPortFsm extends
         }
     }
 
-    protected void reportSpeakerFailure(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                        BfdPortFsmContext context) {
+    public void reportSpeakerFailure(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                     BfdPortFsmContext context) {
 
         String prefix;
         if (from == BfdPortFsmState.INSTALLING) {

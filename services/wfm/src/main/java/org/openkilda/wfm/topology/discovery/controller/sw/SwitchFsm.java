@@ -125,8 +125,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     // -- FSM actions --
 
-    protected void applyHistory(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
-                                SwitchFsmContext context) {
+    public void applyHistory(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                             SwitchFsmContext context) {
         HistoryFacts historyFacts = context.getHistory();
         for (Isl outgoingLink : historyFacts.getOutgoingLinks()) {
             PhysicalPort port = new PhysicalPort(Endpoint.of(switchId, outgoingLink.getSrcPort()));
@@ -135,7 +135,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         }
     }
 
-    protected void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+    public void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         transactionManager.doInTransaction(() -> persistSwitchData(context));
 
         SpeakerSwitchView speakerData = context.getSpeakerData();
@@ -204,12 +204,12 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         }
     }
 
-    protected void onlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+    public void onlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         initialSwitchSetup(context);
     }
 
-    protected void offlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
-                                SwitchFsmContext context) {
+    public void offlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                             SwitchFsmContext context) {
         transactionManager.doInTransaction(() -> updatePersistentStatus(SwitchStatus.INACTIVE));
 
         for (AbstractPort port : portByNumber.values()) {
@@ -217,8 +217,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         }
     }
 
-    protected void handlePortAdd(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
-                                 SwitchFsmContext context) {
+    public void handlePortAdd(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                              SwitchFsmContext context) {
         AbstractPort port = makePortRecord(Endpoint.of(switchId, context.getPortNumber()));
         log.info("Receive port-add notification for {}", port);
 
@@ -234,8 +234,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         updatePortLinkMode(port, context);
     }
 
-    protected void handlePortDel(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
-                                 SwitchFsmContext context) {
+    public void handlePortDel(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                              SwitchFsmContext context) {
         AbstractPort port = portByNumber.get(context.getPortNumber());
         if (port != null) {
             portDel(port, context);
@@ -245,8 +245,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         }
     }
 
-    protected void handlePortLinkStateChange(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
-                                           SwitchFsmContext context) {
+    public void handlePortLinkStateChange(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                                          SwitchFsmContext context) {
         AbstractPort port = portByNumber.get(context.getPortNumber());
         if (port == null) {
             log.error("Port {} is not listed into {}", context.getPortNumber(), switchId);
@@ -272,7 +272,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
      * Removed ports FSM on SWITCH_REMOVE event.
      */
     public void removePortsFsm(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
-                                             SwitchFsmContext context) {
+                               SwitchFsmContext context) {
         List<AbstractPort> ports = new ArrayList<>(portByNumber.values());
         for (AbstractPort port: ports) {
             portDel(port, context);

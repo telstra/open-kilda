@@ -112,29 +112,29 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
 
     // -- FSM actions --
 
-    protected void setupUniIsl(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+    public void setupUniIsl(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         context.getOutput().setupUniIslHandler(endpoint, history);
     }
 
-    protected void upEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+    public void upEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         context.getOutput().enableDiscoveryPoll(endpoint);
     }
 
-    protected void proxyDiscovery(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+    public void proxyDiscovery(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         context.getOutput().notifyPortDiscovered(endpoint, context.getSpeakerDiscoveryEvent());
     }
 
-    protected void proxyFail(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+    public void proxyFail(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         context.getOutput().notifyPortDiscoveryFailed(endpoint);
     }
 
-    protected void downEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+    public void downEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         IPortCarrier output = context.getOutput();
         output.disableDiscoveryPoll(endpoint);
         output.notifyPortPhysicalDown(endpoint);
     }
 
-    protected void finish(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
+    public void finish(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
         IPortCarrier output = context.getOutput();
         output.disableDiscoveryPoll(endpoint);
         output.removeUniIslHandler(endpoint);

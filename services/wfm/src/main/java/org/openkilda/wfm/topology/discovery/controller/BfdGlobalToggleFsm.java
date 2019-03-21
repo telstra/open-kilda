@@ -119,20 +119,20 @@ public class BfdGlobalToggleFsm
 
     // -- FSM actions --
 
-    protected void emitBfdKill(BfdGlobalToggleFsmState from, BfdGlobalToggleFsmState to, BfdGlobalToggleFsmEvent event,
-                               BfdGlobalToggleFsmContext context) {
+    public void emitBfdKill(BfdGlobalToggleFsmState from, BfdGlobalToggleFsmState to, BfdGlobalToggleFsmEvent event,
+                            BfdGlobalToggleFsmContext context) {
         log.info("BFD event KILL for {}", endpoint);
         carrier.filteredBfdKillNotification(endpoint);
     }
 
-    protected void emitBfdUp(BfdGlobalToggleFsmState from, BfdGlobalToggleFsmState to, BfdGlobalToggleFsmEvent event,
-                             BfdGlobalToggleFsmContext context) {
+    public void emitBfdUp(BfdGlobalToggleFsmState from, BfdGlobalToggleFsmState to, BfdGlobalToggleFsmEvent event,
+                          BfdGlobalToggleFsmContext context) {
         log.info("BFD event UP for {}", endpoint);
         carrier.filteredBfdUpNotification(endpoint);
     }
 
-    protected void emitBfdDown(BfdGlobalToggleFsmState from, BfdGlobalToggleFsmState to, BfdGlobalToggleFsmEvent event,
-                               BfdGlobalToggleFsmContext context) {
+    public void emitBfdDown(BfdGlobalToggleFsmState from, BfdGlobalToggleFsmState to, BfdGlobalToggleFsmEvent event,
+                            BfdGlobalToggleFsmContext context) {
         log.info("BFD event DOWN for {}", endpoint);
         carrier.filteredBfdDownNotification(endpoint);
     }
