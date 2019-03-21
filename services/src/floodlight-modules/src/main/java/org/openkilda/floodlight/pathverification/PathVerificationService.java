@@ -490,8 +490,13 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             PathNode source = new PathNode(new SwitchId(remoteSwitchId.getLong()), remotePort.getPortNumber(), 0,
                             latency);
             PathNode destination = new PathNode(new SwitchId(input.getDpId().getLong()), inPort.getPortNumber(), 1);
-            long speed = Math.min(getSwitchPortSpeed(input.getDpId(), inPort),
-                    getSwitchPortSpeed(remoteSwitch.getId(), remotePort));
+            long speed = 0L;
+            if (remoteSwitch == null) {
+                speed = getSwitchPortSpeed(input.getDpId(), inPort);
+            }  else {
+                speed = Math.min(getSwitchPortSpeed(input.getDpId(), inPort),
+                        getSwitchPortSpeed(remoteSwitchId, remotePort));
+            }
             IslInfoData path = IslInfoData.builder()
                     .latency(latency)
                     .source(source)
@@ -504,7 +509,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null,
                     region);
 
-            producerService.sendMessageAndTrack(topoDiscoTopic, message);
+            producerService.sendMessageAndTrack(topoDiscoTopic, source.getSwitchId().toString(), message);
             logger.debug("packet_in processed for {}-{}", input.getDpId(), inPort);
 
         } catch (UnsupportedOperationException exception) {

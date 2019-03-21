@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,20 +15,12 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.service;
 
-import lombok.Data;
+import org.openkilda.model.SwitchId;
 
-@Data
-public class FloodlightInstance {
+import lombok.Value;
+
+@Value
+public class SwitchMapping {
+    private SwitchId switchId;
     private String region;
-    private long aliveTimeout;
-    private long lastAliveResponse;
-    private int missedAliveResponses;
-    private boolean alive;
-    private boolean requireUnmanagedNotification;
-
-    public FloodlightInstance(String region) {
-        this.region = region;
-    }
-
-
 }

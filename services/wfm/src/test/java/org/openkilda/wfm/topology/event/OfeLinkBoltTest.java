@@ -62,7 +62,6 @@ import org.apache.storm.tuple.Values;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.kohsuke.args4j.CmdLineException;
 import org.mockito.ArgumentCaptor;
@@ -77,7 +76,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@Ignore
 public class OfeLinkBoltTest extends AbstractStormTest {
 
     private static final Integer TASK_ID_BOLT = 0;
@@ -236,7 +234,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
                 TASK_ID_BOLT, STREAM_ID_INPUT);
         bolt.discovery = Mockito.mock(DiscoveryManager.class);
         ArgumentCaptor<Switch> switchCaptor = ArgumentCaptor.forClass(Switch.class);
-        bolt.dispatchSyncInProgress(tuple, inputMessage);
+        bolt.dispatch(tuple, inputMessage);
         Mockito.verify(bolt.discovery, Mockito.times(1)).registerSwitch(switchCaptor.capture());
 
         assertEquals(2, switchCaptor.getValue().getPorts().size());
@@ -264,7 +262,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
                 TASK_ID_BOLT, STREAM_ID_INPUT);
         bolt.discovery = Mockito.mock(DiscoveryManager.class);
         ArgumentCaptor<Switch> switchCaptor = ArgumentCaptor.forClass(Switch.class);
-        bolt.dispatchMain(tuple, inputMessage);
+        bolt.dispatch(tuple, inputMessage);
         Mockito.verify(bolt.discovery, Mockito.times(1)).registerSwitch(switchCaptor.capture());
 
         assertEquals(2, switchCaptor.getValue().getPorts().size());
