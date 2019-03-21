@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.floodlightrouter.service;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.topology.floodlightrouter.Stream;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
@@ -152,7 +151,7 @@ public class FloodlightTracker {
             UnmanagedSwitchNotification notification = new UnmanagedSwitchNotification(sw);
             InfoMessage message = new InfoMessage(notification, System.currentTimeMillis(), UUID.randomUUID()
                     .toString());
-            messageSender.send(sw.toString(), message, Stream.KILDA_TOPO_DISCO);
+            messageSender.emitConsumerMessage(sw.toString(), message);
         }
     }
 
