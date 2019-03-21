@@ -101,6 +101,9 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                 .callMethod("removePortsFsm");
         builder.onEntry(SwitchFsmState.OFFLINE)
                 .callMethod("offlineEnter");
+
+        // DELETED
+        builder.defineFinalState(SwitchFsmState.DELETED);
     }
 
     public static FsmExecutor<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> makeExecutor() {

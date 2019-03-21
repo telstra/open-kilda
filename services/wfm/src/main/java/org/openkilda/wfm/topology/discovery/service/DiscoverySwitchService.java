@@ -164,15 +164,18 @@ public class DiscoverySwitchService {
     public void remove(SwitchId datapath) {
         log.info("Switch service receive remove request for {}", datapath);
         SwitchFsm fsm = controller.get(datapath);
-        if (fsm != null) {
-            SwitchFsmContext context = SwitchFsmContext.builder(carrier).build();
-            controllerExecutor.fire(fsm, SwitchFsmEvent.SWITCH_REMOVE, context);
-            if (fsm.getCurrentState() == SwitchFsmState.DELETED) {
-                controller.remove(datapath);
-                log.debug("Switch service removed FSM {}", datapath);
-            } else {
-                log.error("Switch service remove failed for FSM {}, state: {}", datapath, fsm.getCurrentState());
-            }
+        if (fsm == null) {
+            log.info("Got DELETE request for not existing switch {}", datapath);
+            return;
+        }
+
+        SwitchFsmContext context = SwitchFsmContext.builder(carrier).build();
+        controllerExecutor.fire(fsm, SwitchFsmEvent.SWITCH_REMOVE, context);
+        if (fsm.isTerminated()) {
+            controller.remove(datapath);
+            log.debug("Switch service removed FSM {}", datapath);
+        } else {
+            log.error("Switch service remove failed for FSM {}, state: {}", datapath, fsm.getCurrentState());
         }
     }
 

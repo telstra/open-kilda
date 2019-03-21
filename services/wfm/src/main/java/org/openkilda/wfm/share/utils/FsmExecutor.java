@@ -36,12 +36,12 @@ public class FsmExecutor<T extends AbstractStateMachine<T, S, E, C>, S, E, C> {
     }
 
     private void skipIntermediateStates(T fsm, C context) {
-        S originState;
+        S originState = null;
         S finalState = fsm.getCurrentState();
-        do {
+        while (!fsm.isTerminated() && originState != finalState) {
             originState = finalState;
             fsm.fire(next, context);
             finalState = fsm.getCurrentState();
-        } while (originState != finalState);
+        }
     }
 }
