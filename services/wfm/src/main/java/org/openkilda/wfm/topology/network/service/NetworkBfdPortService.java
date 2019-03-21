@@ -56,7 +56,7 @@ public class NetworkBfdPortService {
      * .
      */
     public void setup(Endpoint endpoint, int physicalPortNumber) {
-        log.info("BFD-port service receive SETUP request for logical-port {} (physical-port:{})",
+        log.info("BFD-port service receive SETUP request for {} (physical-port:{})",
                   endpoint, physicalPortNumber);
         BfdPortFsm controller = BfdPortFsm.create(persistenceManager, endpoint, physicalPortNumber);
 
@@ -71,7 +71,7 @@ public class NetworkBfdPortService {
      * .
      */
     public Endpoint remove(Endpoint logicalEndpoint) {
-        log.info("BFD-port service receive REMOVE request for logical-port {}", logicalEndpoint);
+        log.info("BFD-port service receive REMOVE request for logical-port {} (logical)", logicalEndpoint);
 
         BfdPortFsm controller = controllerByLogicalPort.remove(logicalEndpoint);
         if (controller == null) {
@@ -101,7 +101,7 @@ public class NetworkBfdPortService {
      * .
      */
     public void updateLinkStatus(Endpoint logicalEndpoint, LinkStatus linkStatus) {
-        log.debug("BFD-port service receive logical port status update for logical-port {} status:{}",
+        log.debug("BFD-port service receive logical port status update for {} (logical) status:{}",
                   logicalEndpoint, linkStatus);
 
         BfdPortFsm controller = lookupControllerByLogicalEndpoint(logicalEndpoint);
@@ -127,7 +127,7 @@ public class NetworkBfdPortService {
      * Handle change in ONLINE status of switch that own logical-BFD port.
      */
     public void updateOnlineMode(Endpoint endpoint, boolean mode) {
-        log.debug("BFD-port service receive online mode change notification for logical-port {} mode:{}",
+        log.debug("BFD-port service receive online mode change notification for {} (logical) mode:{}",
                   endpoint, mode ? "ONLINE" : "OFFLINE");
         // Current implementation do not take into account switch's online status
     }
@@ -136,7 +136,7 @@ public class NetworkBfdPortService {
      * .
      */
     public void enable(Endpoint physicalEndpoint, IslReference reference) {
-        log.info("BFD-port service receive ENABLE request for physical-port {}", physicalEndpoint);
+        log.info("BFD-port service receive ENABLE request for {} (physical)", physicalEndpoint);
 
         BfdPortFsm controller = lookupControllerByPhysicalEndpoint(physicalEndpoint);
         log.info("Setup BFD session request for {} (logical-port:{})",
@@ -151,7 +151,7 @@ public class NetworkBfdPortService {
      * .
      */
     public void disable(Endpoint physicalEndpoint) {
-        log.info("BFD-port service receive DISABLE request for physical-port {}", physicalEndpoint);
+        log.info("BFD-port service receive DISABLE request for {} (physical)", physicalEndpoint);
 
         BfdPortFsm controller = lookupControllerByPhysicalEndpoint(physicalEndpoint);
         log.info("Remove BFD session request for {} (logical-port:{})",
@@ -164,7 +164,7 @@ public class NetworkBfdPortService {
      * Handle speaker response.
      */
     public void speakerResponse(String key, Endpoint logicalEndpoint, BfdSessionResponse response) {
-        log.debug("BFD-port service receive speaker response on BFD-session-setup request for {} key:{}",
+        log.debug("BFD-port service receive speaker response on BFD-session-setup request for {} (logical) key:{}",
                   logicalEndpoint, key);
 
         BfdPortFsmEvent event;
@@ -184,7 +184,7 @@ public class NetworkBfdPortService {
      * Handle speaker timeout response.
      */
     public void speakerTimeout(String key, Endpoint logicalEndpoint) {
-        log.debug("BFD-port service receive speaker timeout response for {} key:{}", logicalEndpoint, key);
+        log.debug("BFD-port service receive speaker timeout response for {} (logical) key:{}", logicalEndpoint, key);
 
         BfdPortFsmContext.BfdPortFsmContextBuilder contextBuilder = BfdPortFsmContext.builder(carrier)
                 .requestKey(key);

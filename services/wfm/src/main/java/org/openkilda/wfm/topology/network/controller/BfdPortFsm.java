@@ -32,6 +32,7 @@ import org.openkilda.wfm.topology.network.controller.BfdPortFsm.BfdPortFsmContex
 import org.openkilda.wfm.topology.network.controller.BfdPortFsm.BfdPortFsmEvent;
 import org.openkilda.wfm.topology.network.controller.BfdPortFsm.BfdPortFsmState;
 import org.openkilda.wfm.topology.network.error.SwitchReferenceLookupException;
+import org.openkilda.wfm.topology.network.model.BfdDescriptor;
 import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
@@ -61,6 +62,8 @@ public final class BfdPortFsm extends
     private final SwitchRepository switchRepository;
     private final BfdPortRepository bfdPortRepository;
 
+    private final Random random = new Random();
+
     @Getter
     private final Endpoint physicalEndpoint;
     @Getter
@@ -68,9 +71,8 @@ public final class BfdPortFsm extends
 
     private LinkStatus linkStatus = null;
 
-    private String pendingRequestKey;
-    private SwitchId remoteDatapath = null;
-    private Integer discriminator = null;
+    private String pendingRequestKey = null;
+    private BfdDescriptor sessionDescriptor = null;
 
     private static final StateMachineBuilder<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> builder;
 
@@ -151,6 +153,8 @@ public final class BfdPortFsm extends
         // WAIT_RELEASE
         builder.transition()
                 .from(BfdPortFsmState.WAIT_RELEASE).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.PORT_DOWN);
+        builder.onEntry(BfdPortFsmState.WAIT_RELEASE)
+                .callMethod("waitReleaseEnter");
         builder.onExit(BfdPortFsmState.WAIT_RELEASE)
                 .callMethod("waitReleaseExit");
 
@@ -178,8 +182,13 @@ public final class BfdPortFsm extends
                 .callMethod("downEnter");
 
         // FAIL
+        String reportMalfunctionMethod = "reportMalfunction";
         builder.transition()
                 .from(BfdPortFsmState.FAIL).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.PORT_DOWN);
+        builder.internalTransition().within(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.ENABLE)
+                .callMethod(reportMalfunctionMethod);
+        builder.internalTransition().within(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.DISABLE)
+                .callMethod(reportMalfunctionMethod);
         builder.onEntry(BfdPortFsmState.FAIL)
                 .callMethod("failEnter");
 
@@ -190,8 +199,6 @@ public final class BfdPortFsm extends
         builder.transition()
                 .from(BfdPortFsmState.HOUSEKEEPING).to(BfdPortFsmState.STOP).on(BfdPortFsmEvent.SPEAKER_FAIL)
                 .callMethod("reportSpeakerFailure");
-        builder.transition()
-                .from(BfdPortFsmState.HOUSEKEEPING).to(BfdPortFsmState.STOP).on(BfdPortFsmEvent.FAIL);
         builder.onEntry(BfdPortFsmState.HOUSEKEEPING)
                 .callMethod("housekeepingEnter");
 
@@ -226,16 +233,25 @@ public final class BfdPortFsm extends
 
     public void consumeHistory(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                BfdPortFsmContext context) {
-        Optional<BfdPort> port = loadBfdPort();
-        port.ifPresent(bfdPort -> {
-            remoteDatapath = bfdPort.getRemoteSwitchId();
-            discriminator = bfdPort.getDiscriminator();
-        });
+        Optional<BfdPort> port = loadBfdSession();
+        if (port.isPresent()) {
+            BfdPort dbView = port.get();
+            try {
+                sessionDescriptor = BfdDescriptor.builder()
+                        .local(makeSwitchReference(dbView.getSwitchId(), dbView.getIpAddress()))
+                        .remote(makeSwitchReference(dbView.getRemoteSwitchId(), dbView.getRemoteIpAddress()))
+                        .discriminator(dbView.getDiscriminator())
+                        .build();
+            } catch (SwitchReferenceLookupException e) {
+                log.error("{} - unable to use stored BFD session data {} - {}",
+                          makeLogPrefix(), dbView, e.getMessage());
+            }
+        }
     }
 
     public void handleInitChoice(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                  BfdPortFsmContext context) {
-        if (discriminator == null) {
+        if (sessionDescriptor == null) {
             fire(BfdPortFsmEvent._INIT_CHOICE_CLEAN, context);
         } else {
             fire(BfdPortFsmEvent._INIT_CHOICE_DIRTY, context);
@@ -253,8 +269,6 @@ public final class BfdPortFsm extends
 
     public void installingEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                 BfdPortFsmContext context) {
-        Endpoint remoteEndpoint = context.getIslReference().getOpposite(getPhysicalEndpoint());
-        remoteDatapath = remoteEndpoint.getDatapath();
         doBfdSetup(context);
     }
 
@@ -262,7 +276,7 @@ public final class BfdPortFsm extends
                                  BfdPortFsmContext context) {
         bfdPortRepository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber())
                 .ifPresent(bfdPortRepository::delete);
-        discriminator = null;
+        sessionDescriptor = null;
     }
 
     public void cleaningEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
@@ -272,7 +286,7 @@ public final class BfdPortFsm extends
 
     public void cleaningExit(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                              BfdPortFsmContext context) {
-        remoteDatapath = null;
+        sessionDescriptor = null;
     }
 
     public void cleaningUpdateLinkStatus(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
@@ -299,9 +313,13 @@ public final class BfdPortFsm extends
         }
     }
 
+    public void waitReleaseEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                 BfdPortFsmContext context) {
+        logInfo("BFD session have been successfully removed, wait for DOWN event for logical port");
+    }
+
     public void waitReleaseExit(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                 BfdPortFsmContext context) {
-        logInfo("BFD session have been successfully removed, wait for DOWN event for logical port");
         linkStatus = LinkStatus.DOWN;
     }
 
@@ -329,7 +347,7 @@ public final class BfdPortFsm extends
         logInfo("perform housekeeping - release all resources");
         context.getOutput().bfdKillNotification(physicalEndpoint);
 
-        if (remoteDatapath != null) {
+        if (sessionDescriptor != null) {
             doBfdRemove(context);
         }
     }
@@ -357,14 +375,21 @@ public final class BfdPortFsm extends
         }
     }
 
+    public void reportMalfunction(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                  BfdPortFsmContext context) {
+        if (log.isErrorEnabled()) {
+            log.error("{} is in FAIL state - ignore {} request", makeLogPrefix(), event);
+        }
+    }
+
     // -- private/service methods --
 
     private void doBfdSetup(BfdPortFsmContext context) {
-        allocateDiscriminator();
-        logInfo(String.format("BFD session setup process have started - discriminator:%s, remote-datapath:%s",
-                              discriminator, remoteDatapath));
-
         try {
+            sessionDescriptor = allocateDiscriminator(makeSessionDescriptor(context.getIslReference()));
+            logInfo(String.format("BFD session setup process have started - discriminator:%s, remote-datapath:%s",
+                                  sessionDescriptor.getDiscriminator(), sessionDescriptor.getRemote().getDatapath()));
+
             pendingRequestKey = context.getOutput().setupBfdSession(makeBfdSessionRecord());
         } catch (SwitchReferenceLookupException e) {
             log.error("Can't make BFD-session setup request - {}", e.getMessage());
@@ -374,75 +399,81 @@ public final class BfdPortFsm extends
 
     private void doBfdRemove(BfdPortFsmContext context) {
         logInfo(String.format("perform BFD session remove - discriminator:%s, remote-datapath:%s",
-                              discriminator, remoteDatapath));
-
-        try {
-            pendingRequestKey = context.getOutput().removeBfdSession(makeBfdSessionRecord());
-        } catch (SwitchReferenceLookupException e) {
-            log.error("Can't make BFD-session remove request - {}", e.getMessage());
-            fire(BfdPortFsmEvent.FAIL, context);
-        }
+                              sessionDescriptor.getDiscriminator(), sessionDescriptor.getRemote().getDatapath()));
+        pendingRequestKey = context.getOutput().removeBfdSession(makeBfdSessionRecord());
     }
 
-    private NoviBfdSession makeBfdSessionRecord() throws SwitchReferenceLookupException {
-        SwitchReference localSwitchReference = makeSwitchReference(physicalEndpoint.getDatapath());
-        SwitchReference remoteSwitchReference = makeSwitchReference(remoteDatapath);
-
+    private NoviBfdSession makeBfdSessionRecord() {
         return NoviBfdSession.builder()
-                .target(localSwitchReference)
-                .remote(remoteSwitchReference)
+                .target(sessionDescriptor.getLocal())
+                .remote(sessionDescriptor.getRemote())
                 .physicalPortNumber(physicalEndpoint.getPortNumber())
                 .logicalPortNumber(logicalEndpoint.getPortNumber())
                 .udpPortNumber(BFD_UDP_PORT)
-                .discriminator(discriminator)
+                .discriminator(sessionDescriptor.getDiscriminator())
                 .intervalMs(bfdPollInterval)
                 .multiplier(bfdFailCycleLimit)
                 .keepOverDisconnect(true)
                 .build();
     }
 
-    private void allocateDiscriminator() {
-        Optional<BfdPort> foundPort = loadBfdPort();
+    private BfdDescriptor allocateDiscriminator(BfdDescriptor descriptor) {
+        BfdPort dbView = loadBfdSession()
+                .orElseGet(() -> new BfdPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber()));
 
-        if (foundPort.isPresent()) {
-            this.discriminator = foundPort.get().getDiscriminator();
-        } else {
-            Random random = new Random();
-            BfdPort bfdPort = new BfdPort();
-            bfdPort.setSwitchId(logicalEndpoint.getDatapath());
-            bfdPort.setRemoteSwitchId(remoteDatapath);
-            bfdPort.setPort(logicalEndpoint.getPortNumber());
-            boolean success = false;
-            while (!success) {
+        Integer discriminator = dbView.getDiscriminator();
+        descriptor.fill(dbView);
+
+        if (discriminator == null) {
+            while (true) {
+                // FIXME(surabujin): loop will never end if all possible discriminators are allocated
+                discriminator = random.nextInt();
                 try {
-                    bfdPort.setDiscriminator(random.nextInt());
-                    bfdPortRepository.createOrUpdate(bfdPort);
-                    success = true;
+                    dbView.setDiscriminator(discriminator);
+                    bfdPortRepository.createOrUpdate(dbView);
+                    break;
                 } catch (ConstraintViolationException ex) {
                     log.warn("ConstraintViolationException on allocate bfd discriminator");
                 }
             }
-            this.discriminator = bfdPort.getDiscriminator();
+        } else {
+            bfdPortRepository.createOrUpdate(dbView);
         }
+
+        return descriptor.toBuilder()
+                .discriminator(discriminator)
+                .build();
     }
 
-    private Optional<BfdPort> loadBfdPort() {
+    private Optional<BfdPort> loadBfdSession() {
         return bfdPortRepository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber());
     }
 
+    private BfdDescriptor makeSessionDescriptor(IslReference islReference) throws SwitchReferenceLookupException {
+        Endpoint remoteEndpoint = islReference.getOpposite(getPhysicalEndpoint());
+        return BfdDescriptor.builder()
+                .local(makeSwitchReference(physicalEndpoint.getDatapath()))
+                .remote(makeSwitchReference(remoteEndpoint.getDatapath()))
+                .build();
+    }
+
     private SwitchReference makeSwitchReference(SwitchId datapath) throws SwitchReferenceLookupException {
-        Optional<Switch> potentialSw = switchRepository.findById(datapath);
-        if (!potentialSw.isPresent()) {
+        Optional<Switch> sw = switchRepository.findById(datapath);
+        if (!sw.isPresent()) {
             throw new SwitchReferenceLookupException(datapath, "persistent record is missing");
         }
-        Switch sw = potentialSw.get();
+        return makeSwitchReference(datapath, sw.get().getAddress());
+    }
+
+    private SwitchReference makeSwitchReference(SwitchId datapath, String ipAddress)
+            throws SwitchReferenceLookupException {
         InetAddress address;
         try {
-            address = InetAddress.getByName(sw.getAddress());
+            address = InetAddress.getByName(ipAddress);
         } catch (UnknownHostException e) {
             throw new SwitchReferenceLookupException(
                     datapath,
-                    String.format("unable to parse switch address \"%s\"", sw.getAddress()));
+                    String.format("unable to parse switch address \"%s\"", ipAddress));
         }
 
         return new SwitchReference(datapath, address);

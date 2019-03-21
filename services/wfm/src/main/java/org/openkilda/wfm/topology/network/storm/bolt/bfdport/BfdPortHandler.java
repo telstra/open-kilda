@@ -35,6 +35,7 @@ import org.openkilda.wfm.topology.network.storm.ComponentId;
 import org.openkilda.wfm.topology.network.storm.bolt.bfdport.command.BfdPortCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerWorker;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast.ISpeakerBcastConsumer;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast.SpeakerBcast;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerBfdSessionRemoveCommand;
@@ -85,6 +86,8 @@ public class BfdPortHandler extends AbstractBolt
             handleSwitchCommand(input);
         } else if (IslHandler.BOLT_ID.equals(source)) {
             handleIslCommand(input);
+        } else if (SpeakerWorker.BOLT_ID.equals(source)) {
+            handleWorkerCommand(input);
         } else if (SpeakerRouter.BOLT_ID.equals(source)) {
             handleSpeakerBcast(input);
         } else {
@@ -107,6 +110,10 @@ public class BfdPortHandler extends AbstractBolt
 
     private void handleIslCommand(Tuple input) throws PipelineException {
         handleCommand(input, IslHandler.FIELD_ID_COMMAND);
+    }
+
+    private void handleWorkerCommand(Tuple input) throws PipelineException {
+        handleCommand(input, SpeakerWorker.FIELD_ID_PAYLOAD);
     }
 
     private void handleCommand(Tuple input, String fieldName) throws PipelineException {
