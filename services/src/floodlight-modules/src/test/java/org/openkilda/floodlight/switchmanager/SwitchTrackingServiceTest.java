@@ -37,8 +37,6 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.discovery.NetworkDumpBeginMarker;
-import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -320,11 +318,11 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
 
         ArrayList<Message> producedMessages = new ArrayList<>();
         // setup hook for verify that we create new message for producer
-        producerService.sendMessageAndTrack(eq(KAFKA_ISL_DISCOVERY_TOPIC), anyObject(InfoMessage.class));
+        producerService.sendMessageAndTrack(eq(KAFKA_ISL_DISCOVERY_TOPIC), anyObject(), anyObject(InfoMessage.class));
         expectLastCall().andAnswer(new IAnswer<Object>() {
             @Override
             public Object answer() {
-                Message sentMessage = (Message) getCurrentArguments()[1];
+                Message sentMessage = (Message) getCurrentArguments()[2];
                 sentMessage.setTimestamp(0);
                 producedMessages.add(sentMessage);
                 return null;
@@ -342,7 +340,6 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         verify(producerService);
 
         ArrayList<Message> expectedMessages = new ArrayList<>();
-        expectedMessages.add(new InfoMessage(new NetworkDumpBeginMarker(), 0, correlationId));
         expectedMessages.add(new ChunkedInfoMessage(
                 new NetworkDumpSwitchData(new Switch(
                         new SwitchId(swAid.getLong()), Inet4Address.getByName("127.0.2.1"),
@@ -358,7 +355,6 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
                                 new SwitchPort(3, SwitchPort.State.UP),
                                 new SwitchPort(4, SwitchPort.State.UP),
                                 new SwitchPort(5, SwitchPort.State.DOWN)))), 0, correlationId, 1, 2, "1"));
-        expectedMessages.add(new InfoMessage(new NetworkDumpEndMarker(), 0, correlationId));
         assertEquals(expectedMessages, producedMessages);
     }
 

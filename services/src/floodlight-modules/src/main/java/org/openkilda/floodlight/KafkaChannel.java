@@ -17,7 +17,6 @@ package org.openkilda.floodlight;
 
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
-import org.openkilda.floodlight.service.HeartBeatService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaProducerProxy;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
@@ -44,16 +43,14 @@ public class KafkaChannel implements IFloodlightModule {
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         return ImmutableList.of(
                 KafkaUtilityService.class,
-                IKafkaProducerService.class,
-                HeartBeatService.class);
+                IKafkaProducerService.class);
     }
 
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
         return ImmutableMap.of(
                 KafkaUtilityService.class, new KafkaUtilityService(this),
-                IKafkaProducerService.class, new KafkaProducerProxy(this),
-                HeartBeatService.class, new HeartBeatService(this));
+                IKafkaProducerService.class, new KafkaProducerProxy(this));
     }
 
     @Override
@@ -72,7 +69,6 @@ public class KafkaChannel implements IFloodlightModule {
     public void startUp(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
         moduleContext.getServiceImpl(KafkaUtilityService.class).setup(moduleContext);
         moduleContext.getServiceImpl(IKafkaProducerService.class).setup(moduleContext);
-        moduleContext.getServiceImpl(HeartBeatService.class).setup(moduleContext);
     }
 
     public String getRegion() {
@@ -80,47 +76,47 @@ public class KafkaChannel implements IFloodlightModule {
     }
 
     public String getSpeakerTopic() {
-        return formatTopicWithRegion(topics.getSpeakerTopic());
+        return formatTopicWithRegion(topics.getSpeakerRegionTopic());
     }
 
     public String getSpeakerFlowTopic() {
-        return formatTopicWithRegion(topics.getSpeakerFlowTopic());
+        return formatTopicWithRegion(topics.getSpeakerFlowRegionTopic());
     }
 
     public String getSpeakerFlowPingTopic() {
-        return formatTopicWithRegion(topics.getSpeakerFlowPingTopic());
+        return formatTopicWithRegion(topics.getSpeakerFlowPingRegionTopic());
     }
 
     public String getSpeakerDiscoTopic() {
-        return formatTopicWithRegion(topics.getSpeakerDiscoTopic());
+        return formatTopicWithRegion(topics.getSpeakerDiscoRegionTopic());
     }
 
     public String getStatsTopic() {
-        return formatTopicWithRegion(topics.getStatsTopic());
+        return formatTopicWithRegion(topics.getStatsRegionTopic());
     }
 
     public String getFlowTopic() {
-        return formatTopicWithRegion(topics.getFlowTopic());
+        return formatTopicWithRegion(topics.getFlowRegionTopic());
     }
 
     public String getTopoDiscoTopic() {
-        return formatTopicWithRegion(topics.getTopoDiscoTopic());
+        return formatTopicWithRegion(topics.getTopoDiscoRegionTopic());
     }
 
     public String getNorthboundTopic() {
-        return formatTopicWithRegion(topics.getNorthboundTopic());
+        return formatTopicWithRegion(topics.getNorthboundRegionTopic());
     }
 
     public String getKafkaNbWorkerTopic() {
-        return formatTopicWithRegion(topics.getTopoNbTopic());
+        return formatTopicWithRegion(topics.getTopoNbRegionTopic());
     }
 
     public String  getPingTopic() {
-        return formatTopicWithRegion(topics.getPingTopic());
+        return formatTopicWithRegion(topics.getPingRegionTopic());
     }
 
     public String getTopoSwitchManagerTopic() {
-        return formatTopicWithRegion(topics.getTopoSwitchManagerTopic());
+        return formatTopicWithRegion(topics.getTopoSwitchManagerRegionTopic());
     }
 
     private String formatTopicWithRegion(String topic) {
@@ -128,6 +124,6 @@ public class KafkaChannel implements IFloodlightModule {
         if (region == null || region.isEmpty()) {
             return topic;
         }
-        return String.format("%s.%s", topic, region);
+        return String.format("%s_%s", topic, region);
     }
 }

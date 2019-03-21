@@ -22,15 +22,21 @@ public final class ComponentType {
     public static final String NORTHBOUND_REPLY_BOLT = "NORTHBOUND_REPLY_BOLT";
     public static final String KILDA_SWITCH_MANAGER_REPLY_BOLT = "KILDA_SWITCH_MANAGER_REPLY_BOLT";
     public static final String KILDA_STATS_REPLY_BOLT = "KILDA_STATS_REPLY_BOLT";
+    public static final String KILDA_NB_WORKER_REPLY_BOLT = "KILDA_NB_WORKER_REPLY_BOLT";
     public static final String KILDA_TOPO_DISCO_BOLT = "KILDA_TOPO_DISCO_BOLT";
 
 
-    public static final String ROUTER_SPEAKER_FLOW_KAFKA_SPOUT = "ROUTER_SPEAKER_FLOW_KAFKA_SPOUT";
-    public static final String ROUTER_SPEAKER_KAFKA_SPOUT = "ROUTER_SPEAKER_KAFKA_SPOUT";
+    public static final String SPEAKER_FLOW_REQUEST_BOLT = "KILDA_FLOW_REQUEST_BOLT";
+    public static final String SPEAKER_PING_REQUEST_BOLT = "SPEAKER_PING_REQUEST_BOLT";
+    public static final String SPEAKER_REQUEST_BOLT = "SPEAKER_REQUEST_BOLT";
+
+
+    public static final String SPEAKER_KAFKA_SPOUT = "ROUTER_SPEAKER_KAFKA_SPOUT";
     public static final String SPEAKER_KAFKA_BOLT = "SPEAKER_KAFKA_BOLT";
     public static final String KILDA_FLOW_KAFKA_BOLT = "KILDA_FLOW_KAFKA_BOLT";
     public static final String KILDA_FLOW_KAFKA_SPOUT = "KILDA_FLOW_KAFKA_SPOUT";
     public static final String SPEAKER_FLOW_KAFKA_BOLT = "SPEAKER_FLOW_KAFKA_BOLT";
+    public static final String SPEAKER_FLOW_KAFKA_SPOUT = "ROUTER_SPEAKER_FLOW_KAFKA_SPOUT";
     public static final String SPEAKER_PING_KAFKA_SPOUT = "SPEAKER_PING_KAFKA_SPOUT";
     public static final String SPEAKER_PING_KAFKA_BOLT = "SPEAKER_PING_KAFKA_BOLT";
     public static final String KILDA_PING_KAFKA_SPOUT = "KILDA_PING_KAFKA_SPOUT";
@@ -41,12 +47,12 @@ public final class ComponentType {
     public static final String KILDA_SWITCH_MANAGER_KAFKA_SPOUT = "KILDA_SWITCH_MANAGER_KAFKA_SPOUT";
     public static final String SPEAKER_DISCO_KAFKA_SPOUT = "SPEAKER_DISCO_KAFKA_SPOUT";
     public static final String SPEAKER_DISCO_KAFKA_BOLT = "SPEAKER_DISCO_KAFKA_BOLT";
-    public static final String ROUTER_TOPO_DISCO_SPOUT = "ROUTER_TOPO_DISCO_SPOUT";
     public static final String KILDA_TOPO_DISCO_KAFKA_SPOUT = "KILDA_TOPO_DISCO_KAFKA_SPOUT";
     public static final String KILDA_TOPO_DISCO_KAFKA_BOLT = "KILDA_TOPO_DISCO_KAFKA_BOLT";
-    public static final String ROUTER_BOLT = "ROUTER_BOLT";
     public static final String NORTHBOUND_REPLY_KAFKA_BOLT = "NORTHBOUND_REPLY_KAFKA_BOLT";
     public static final String NORTHBOUND_REPLY_KAFKA_SPOUT = "NORTHBOUND_REPLY_KAFKA_SPOUT";
+    public static final String KILDA_NB_WORKER_KAFKA_SPOUT = "KILDA_NB_WORKER_KAFKA_SPOUT";
+    public static final String KILDA_NB_WORKER_KAFKA_BOLT = "KILDA_NB_WORKER_KAFKA_BOLT";
 
     private ComponentType() {}
 }

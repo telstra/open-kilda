@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,23 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.service.kafka;
+package org.openkilda.wfm.topology.floodlightrouter.service;
 
-import org.openkilda.floodlight.service.IService;
 import org.openkilda.messaging.Message;
 
-public interface IKafkaProducerService extends IService {
-    void enableGuaranteedOrder(String topic);
 
-    void disableGuaranteedOrder(String topic);
+public interface MessageSender {
+    void send(Message message, String outputStream);
 
-    void disableGuaranteedOrder(String topic, long transitionPeriod);
+    void send(Object payload, String outputStream);
 
-    void sendMessageAndTrack(String topic, Message message);
-
-    void sendMessageAndTrack(String topic, String key, Message message);
-
-    SendStatus sendMessage(String topic, Message message);
-
-    int getFailedSendMessageCounter();
+    void send(String key, Message message, String outputStream);
 }
