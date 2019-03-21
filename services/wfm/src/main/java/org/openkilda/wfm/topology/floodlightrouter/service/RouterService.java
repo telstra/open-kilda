@@ -27,7 +27,6 @@ import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.topology.floodlightrouter.Stream;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -51,8 +50,7 @@ public class RouterService {
             AliveRequest request = new AliveRequest();
             CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), UUID.randomUUID()
                     .toString());
-            routerMessageSender.send(message, Stream.formatWithRegion(Stream.SPEAKER_DISCO, region), false);
-
+            routerMessageSender.emitSpeakerMessage(message.getCorrelationId(), message, region);
         }
         floodlightTracker.checkTimeouts();
         floodlightTracker.handleUnmanagedSwitches(routerMessageSender);
@@ -69,7 +67,7 @@ public class RouterService {
             InfoMessage infoMessage = (InfoMessage) message;
             InfoData infoData = infoMessage.getData();
             SwitchId switchId = null;
-            String region = ((InfoMessage) message).getRegion();
+            String region = infoMessage.getRegion();
             handleResponseFromSpeaker(routerMessageSender, region, message.getTimestamp());
             if (infoData instanceof AliveResponse) {
                 AliveResponse aliveResponse = (AliveResponse) infoData;
@@ -87,14 +85,11 @@ public class RouterService {
 
             // NOTE(tdurakov): need to notify of a mapping update
             if (switchId != null && region != null && floodlightTracker.updateSwitchRegion(switchId, region)) {
-                routerMessageSender.send(new SwitchMapping(switchId, region), Stream.REGION_NOTIFICATION);
+                routerMessageSender.emitRegionNotification(new SwitchMapping(switchId, region));
             }
         }
-        routerMessageSender.send(message, Stream.KILDA_TOPO_DISCO, true);
+        routerMessageSender.emitConsumerMessage(message);
     }
-
-
-
 
     /**
      * Process request to speaker disco.
@@ -108,8 +103,7 @@ public class RouterService {
             if (region == null) {
                 log.error("Received command message for the untracked switch: {} {}", switchId, message);
             } else {
-                String stream = Stream.formatWithRegion(Stream.SPEAKER_DISCO, region);
-                routerMessageSender.send(message, stream, false);
+                routerMessageSender.emitSpeakerMessage(message, region);
             }
         } else {
             log.warn("Received message without target switch from SPEAKER_DISCO stream: {}", message);
@@ -129,18 +123,14 @@ public class RouterService {
      * Send network dump requests for target region.
      * @param routerMessageSender sender
      * @param region target
-     * @return requested correlation id
      */
-    public String sendNetworkRequest(MessageSender routerMessageSender, String region) {
+    public void sendNetworkRequest(MessageSender routerMessageSender, String region) {
         String correlationId = UUID.randomUUID().toString();
         CommandMessage command = new CommandMessage(new NetworkCommandData(),
                 System.currentTimeMillis(), correlationId,
                 Destination.CONTROLLER);
 
-        log.info(
-                "Send network dump request (correlation-id: {})",
-                correlationId);
-        routerMessageSender.send(command, Stream.formatWithRegion(Stream.SPEAKER_DISCO, region), false);
-        return correlationId;
+        log.info("Send network dump request (correlation-id: {})", correlationId);
+        routerMessageSender.emitSpeakerMessage(correlationId, command, region);
     }
 }
