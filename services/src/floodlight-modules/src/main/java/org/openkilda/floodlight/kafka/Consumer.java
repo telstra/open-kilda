@@ -115,7 +115,7 @@ public class Consumer implements Runnable {
     }
 
     protected void handle(ConsumerRecord<String, String> record) {
-        logger.trace("received message: {} - {}", record.offset(), record.value());
+        logger.trace("received message: {} - key:{}, value:{}", record.offset(), record.key(), record.value());
         handlersPool.execute(handlerFactory.produce(record));
     }
 

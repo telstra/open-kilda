@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.command;
 
+import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 
@@ -25,6 +26,7 @@ import java.util.UUID;
 public class CommandContext {
     private final FloodlightModuleContext moduleContext;
     private final long ctime;
+    private String requestKey;
     private String correlationId;
 
     public CommandContext(FloodlightModuleContext moduleContext) {
@@ -32,13 +34,24 @@ public class CommandContext {
     }
 
     public CommandContext(FloodlightModuleContext moduleContext, String correlationId) {
+        this(moduleContext, correlationId, null);
+    }
+
+    public CommandContext(FloodlightModuleContext moduleContext, String correlationId, String requestKey) {
         this.moduleContext = moduleContext;
         this.ctime = System.currentTimeMillis();
         this.correlationId = correlationId;
+        this.requestKey = requestKey;
     }
 
+    /**
+     * Add message wrapper.
+     */
     public InfoMessage makeInfoMessage(InfoData payload) {
-        return new InfoMessage(payload, System.currentTimeMillis(), correlationId);
+        // FIXME(surabujin) - do not use KafkaUtilityService from here - it leads do dependency hell
+        KafkaUtilityService kafkaUtility = moduleContext.getServiceImpl(KafkaUtilityService.class);
+        return new InfoMessage(payload, System.currentTimeMillis(), correlationId,
+                               kafkaUtility.getKafkaChannel().getRegion());
     }
 
     public FloodlightModuleContext getModuleContext() {
@@ -51,6 +64,10 @@ public class CommandContext {
 
     public void setCorrelationId(String correlationId) {
         this.correlationId = correlationId;
+    }
+
+    public String getRequestKey() {
+        return requestKey;
     }
 
     public String getCorrelationId() {
