@@ -51,7 +51,8 @@ public class RouterService {
             AliveRequest request = new AliveRequest();
             CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), UUID.randomUUID()
                     .toString());
-            routerMessageSender.send(message, Stream.formatWithRegion(Stream.SPEAKER_DISCO, region));
+            routerMessageSender.send(message.getCorrelationId(), message,
+                                     Stream.formatWithRegion(Stream.SPEAKER_DISCO, region));
 
         }
         floodlightTracker.checkTimeouts();
@@ -69,7 +70,7 @@ public class RouterService {
             InfoMessage infoMessage = (InfoMessage) message;
             InfoData infoData = infoMessage.getData();
             SwitchId switchId = null;
-            String region = ((InfoMessage) message).getRegion();
+            String region = infoMessage.getRegion();
             handleResponseFromSpeaker(routerMessageSender, region, message.getTimestamp());
             if (infoData instanceof AliveResponse) {
                 AliveResponse aliveResponse = (AliveResponse) infoData;
@@ -140,7 +141,7 @@ public class RouterService {
         log.info(
                 "Send network dump request (correlation-id: {})",
                 correlationId);
-        routerMessageSender.send(command, Stream.formatWithRegion(Stream.SPEAKER_DISCO, region));
+        routerMessageSender.send(correlationId, command, Stream.formatWithRegion(Stream.SPEAKER_DISCO, region));
         return correlationId;
     }
 }

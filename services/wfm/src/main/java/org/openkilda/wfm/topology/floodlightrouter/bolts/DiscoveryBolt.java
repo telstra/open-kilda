@@ -92,7 +92,7 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
         currentTuple = input;
         Message message = null;
         try {
-            String json = input.getValueByField(AbstractTopology.MESSAGE_FIELD).toString();
+            String json = input.getStringByField(AbstractTopology.MESSAGE_FIELD);
             message = MAPPER.readValue(json, Message.class);
             switch (sourceComponent) {
                 case ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT:
@@ -106,7 +106,7 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
                     break;
             }
         } catch (Exception e) {
-            logger.error("Failed to process message {}", message);
+            logger.error(String.format("Failed to process message %s", message), e);
         } finally {
             outputCollector.ack(input);
         }
@@ -127,7 +127,7 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         for (String region : floodlights) {
             outputFieldsDeclarer.declareStream(Stream.formatWithRegion(Stream.SPEAKER_DISCO, region),
-                    new Fields(AbstractTopology.MESSAGE_FIELD));
+                    new Fields(AbstractTopology.KEY_FIELD, AbstractTopology.MESSAGE_FIELD));
             outputFieldsDeclarer.declareStream(Stream.formatWithRegion(Stream.SPEAKER, region),
                     new Fields(AbstractTopology.MESSAGE_FIELD));
         }
@@ -148,14 +148,11 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
     public void send(Message message, String outputStream) {
         try {
             String json = MAPPER.writeValueAsString(message);
-            Values values;
-            if (currentTuple.getFields().contains(AbstractTopology.KEY_FIELD)
-                    && currentTuple.getValueByField(AbstractTopology.KEY_FIELD) != null) {
-                values = new Values(currentTuple.getStringByField(AbstractTopology.KEY_FIELD), json);
-            } else {
-                values = new Values(json);
+            String key = null;
+            if (currentTuple.getFields().contains(AbstractTopology.KEY_FIELD)) {
+                key = currentTuple.getStringByField(AbstractTopology.KEY_FIELD);
             }
-            outputCollector.emit(outputStream, currentTuple, values);
+            outputCollector.emit(outputStream, currentTuple, new Values(key, json));
         } catch (JsonProcessingException e) {
             logger.error("failed to serialize message {}", message);
         }
