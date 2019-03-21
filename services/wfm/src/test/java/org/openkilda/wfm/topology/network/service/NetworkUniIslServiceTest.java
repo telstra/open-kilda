@@ -333,4 +333,28 @@ public class NetworkUniIslServiceTest {
         verify(carrier, times(2)).notifyIslUp(endpoint1, IslReference.of(islA1toB1), new IslDataHolder(islA1toB1));
         verify(carrier).notifyIslDown(endpoint1, IslReference.of(islA1toB1), false);
     }
+
+    @Test
+    public void fromDownToBfd() {
+        NetworkUniIslService service = new NetworkUniIslService(carrier);
+        Endpoint endpoint = Endpoint.of(alphaDatapath, 1);
+        Endpoint remote = Endpoint.of(betaDatapath, 2);
+
+        Isl link = Isl.builder()
+                .srcSwitch(Switch.builder().switchId(endpoint.getDatapath()).build())
+                .srcPort(endpoint.getPortNumber())
+                .destPort(remote.getPortNumber())
+                .destSwitch(Switch.builder().switchId(remote.getDatapath()).build())
+                .build();
+
+        service.uniIslSetup(endpoint, link);
+        service.uniIslPhysicalDown(endpoint);
+
+        resetMocks();
+
+        service.uniIslBfdUpDown(endpoint, true);
+
+        // System.out.println(mockingDetails(carrier).printInvocations());
+        verify(carrier).notifyIslUp(endpoint, IslReference.of(link), new IslDataHolder(link));
+    }
 }

@@ -25,6 +25,7 @@ import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.service.IUniIslCarrier;
 import org.openkilda.wfm.topology.network.service.NetworkUniIslService;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
+import org.openkilda.wfm.topology.network.storm.bolt.bfdport.BfdPortHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslDownCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslMoveCommand;
@@ -55,13 +56,23 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
         String source = input.getSourceComponent();
         if (PortHandler.BOLT_ID.equals(source)) {
             handlePortCommand(input);
+        } else if (BfdPortHandler.BOLT_ID.equals(source)) {
+            handleBfdPortCommand(input);
         } else {
             unhandledInput(input);
         }
     }
 
     private void handlePortCommand(Tuple input) throws PipelineException {
-        UniIslCommand command = pullValue(input, PortHandler.FIELD_ID_COMMAND, UniIslCommand.class);
+        handleCommand(input, PortHandler.FIELD_ID_COMMAND);
+    }
+
+    private void handleBfdPortCommand(Tuple input) throws PipelineException {
+        handleCommand(input, BfdPortHandler.FIELD_ID_COMMAND);
+    }
+
+    private void handleCommand(Tuple input, String field) throws PipelineException {
+        UniIslCommand command = pullValue(input, field, UniIslCommand.class);
         command.apply(this);
     }
 
