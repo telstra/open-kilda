@@ -25,12 +25,14 @@ import java.util.List;
 public class KafkaRecordTranslator<K, V> implements RecordTranslator<K, V> {
     private static final long serialVersionUID = 1L;
 
+    public static final String FIELD_ID_KEY = "key";
     public static final String FIELD_ID_PAYLOAD = "message";
-    public static final Fields FIELDS = new Fields(FIELD_ID_PAYLOAD);
+    // FIXME(surabujin): keep payload at index 0 because some code grab it in following way: `tuple.getString(0)`
+    public static final Fields FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_KEY);
 
     @Override
     public List<Object> apply(ConsumerRecord<K, V> record) {
-        return new Values(record.value());
+        return new Values(record.value(), record.key());
     }
 
     @Override
