@@ -525,7 +525,9 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 .status(SwitchStatus.INACTIVE)
                 .description(String.format("auto created as part of ISL %s discovery", discoveryFacts.getReference()))
                 .build();
+
         switchRepository.createOrUpdate(sw);
+
         return sw;
     }
 
@@ -657,7 +659,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     private boolean shouldUseBfd() {
-        // TODO(surabujin): ensure the switch is BFD cappable
+        // TODO(surabujin): ensure the switch is BFD capable
 
         if (!isGlobalBfdToggleEnabled()) {
             return false;

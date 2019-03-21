@@ -314,6 +314,9 @@ public class NetworkIslServiceTest {
         when(islRepository.findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
                                            endpointBeta2.getDatapath(), endpointBeta2.getPortNumber()))
                 .thenReturn(Optional.of(islAlphaBeta.toBuilder().build()));
+        when(islRepository.findByEndpoints(endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
+                                           endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber()))
+                .thenReturn(Optional.of(islBetaAlpha.toBuilder().build()));
         service.islUp(endpointBeta2, reference, new IslDataHolder(islBetaAlpha));
 
         // mock/prepare persistent data

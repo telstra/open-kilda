@@ -122,6 +122,7 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
         Isl history = context.getHistory();
         if (history != null) {
             islReference = IslReference.of(history);
+            islData = new IslDataHolder(history);
             context.getOutput().setupIslFromHistory(endpoint, islReference, history);
         }
     }

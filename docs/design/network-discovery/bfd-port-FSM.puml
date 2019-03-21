@@ -48,7 +48,6 @@ state cleaningChoice <<choice>>
 
 CLEANING --> cleaningChoice : FL-ok / release BFD-discriminator
 CLEANING --> FAIL : FL-fail [match reuest-key] /\nreport error
-CLEANING --> FAIL : fail
 CLEANING --> HOUSEKEEPING : kill
 CLEANING : enter / emit BFD-session remove
 CLEANING : enter / save request-key
@@ -80,8 +79,10 @@ ACTIVE --> HOUSEKEEPING : kill
 HOUSEKEEPING : enter / emit bfd-kill
 HOUSEKEEPING : enter [remote SwitchId is set] / emit BFD-session remove
 HOUSEKEEPING : enter [remote SwitchId is set] / save request-key
-HOUSEKEEPING --> [*] : fail\nFL-ok / release BFD-discriminator\nFL-fail / report error
+HOUSEKEEPING --> [*] : FL-ok / release BFD-discriminator\nFL-fail / report error
 
 FAIL -r-> IDLE : port-down
+FAIL : enable / report malfunction
+FAIL : disable / report malfunction
 
 @enduml
