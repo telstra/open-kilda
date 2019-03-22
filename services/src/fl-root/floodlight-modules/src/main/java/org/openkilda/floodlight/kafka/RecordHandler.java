@@ -1096,7 +1096,13 @@ class RecordHandler implements Runnable {
 
         // Process the message within the message correlation context.
         try (CorrelationContextClosable closable = CorrelationContext.create(message.getCorrelationId())) {
-            if (!dispatch(message)) {
+            if (logger.isDebugEnabled()) {
+                logger.debug("Receive command: key={}, payload={}", record.key(), message.getData());
+            }
+
+            CommandContext commandContext = new CommandContext(context.getModuleContext(), message.getCorrelationId(),
+                                                               record.key());
+            if (!dispatch(commandContext, message)) {
                 doControllerMsg(message);
             }
         } catch (Exception exception) {
@@ -1136,8 +1142,7 @@ class RecordHandler implements Runnable {
         parseRecord(record);
     }
 
-    private boolean dispatch(CommandMessage message) {
-        CommandContext commandContext = new CommandContext(context.getModuleContext(), message.getCorrelationId());
+    private boolean dispatch(CommandContext commandContext, CommandMessage message) {
         CommandData payload = message.getData();
 
         for (CommandDispatcher<?> entry : dispatchers) {

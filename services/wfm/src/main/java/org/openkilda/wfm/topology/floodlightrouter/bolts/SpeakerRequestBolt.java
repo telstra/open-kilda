@@ -53,22 +53,18 @@ public class SpeakerRequestBolt extends RequestBolt {
                 updateSwitchMapping((SwitchMapping) input.getValueByField(
                         AbstractTopology.MESSAGE_FIELD));
             } else {
-                String json = input.getValueByField(AbstractTopology.MESSAGE_FIELD).toString();
+                String json = pullRequest(input);
                 Message message = MAPPER.readValue(json, Message.class);
                 if (RouterUtils.isBroadcast(message)) {
                     for (String region : regions) {
-                        String targetStream = Stream.formatWithRegion(outputStream, region);
-                        Values values = new Values(json);
-                        outputCollector.emit(targetStream, input, values);
+                        proxyRequestToSpeaker(input, region);
                     }
                 } else {
                     SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
                     if (switchId != null) {
                         String region = switchTracker.lookupRegion(switchId);
                         if (region != null) {
-                            String targetStream = Stream.formatWithRegion(outputStream, region);
-                            Values values = new Values(json);
-                            outputCollector.emit(targetStream, input, values);
+                            proxyRequestToSpeaker(input, region);
                         } else {
                             if (message instanceof CommandMessage) {
                                 processNotFoundError((CommandMessage) message, switchId, input, json);
