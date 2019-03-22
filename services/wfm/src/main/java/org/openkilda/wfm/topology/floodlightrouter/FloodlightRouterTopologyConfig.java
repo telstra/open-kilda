@@ -35,6 +35,10 @@ public interface FloodlightRouterTopologyConfig extends AbstractTopologyConfig {
     @Default("2")
     Long getFloodlightAliveInterval();
 
+    @Key("floodlight.dump.interval")
+    @Default("60")
+    Long getFloodlightDumpInterval();
+
     @Key("floodlight.regions")
     @Default("1")
     @Converter(StringToSetConverter.class)

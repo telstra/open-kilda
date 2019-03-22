@@ -319,7 +319,8 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
         createSpeakerDiscoSpout(builder, parallelism, topicsConfig.getSpeakerDiscoTopic());
         createSpeakerDiscoKafkaBolt(builder, parallelism, topicsConfig);
         DiscoveryBolt discoveryBolt = new DiscoveryBolt(topologyConfig.getFloodlightRegions(),
-                topologyConfig.getFloodlightAliveTimeout(), topologyConfig.getFloodlightAliveInterval());
+                topologyConfig.getFloodlightAliveTimeout(), topologyConfig.getFloodlightAliveInterval(),
+                topologyConfig.getFloodlightDumpInterval());
         builder.setBolt(ComponentType.KILDA_TOPO_DISCO_BOLT, discoveryBolt, parallelism)
                 .shuffleGrouping(ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT)
                 .shuffleGrouping(ComponentType.SPEAKER_DISCO_KAFKA_SPOUT);
