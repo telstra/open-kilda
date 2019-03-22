@@ -58,9 +58,7 @@ class IslCostSpec extends BaseSpecification {
     def "Cost of #data.description ISL is NOT increased due to bringing port down on a switch \
 (ISL cost #data.condition isl.cost.when.port.down)"() {
         given: "An active ISL with created link props"
-        //TODO(rtretiak): After #1954 is merged use only one-direction prop
-        def linkProps = [data.isl, data.isl.reversed]
-                .collect { islUtils.toLinkProps(it, ["cost": data.cost.toString()]) }
+        def linkProps = [islUtils.toLinkProps(data.isl, ["cost": data.cost.toString()])]
         northbound.updateLinkProps(linkProps)
         int islCost = islUtils.getIslInfo(data.isl).get().cost
 

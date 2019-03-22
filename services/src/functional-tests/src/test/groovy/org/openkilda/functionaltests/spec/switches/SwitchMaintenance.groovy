@@ -133,7 +133,6 @@ class SwitchMaintenance extends BaseSpecification {
 
         and: "Delete the link"
         northbound.deleteLink(islUtils.toLinkParameters(isl))
-        northbound.deleteLink(islUtils.toLinkParameters(isl.reversed))
         assert !islUtils.getIslInfo(isl)
         assert !islUtils.getIslInfo(isl.reversed)
 
