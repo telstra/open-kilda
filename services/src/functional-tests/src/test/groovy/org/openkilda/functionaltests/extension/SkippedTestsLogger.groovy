@@ -20,8 +20,9 @@ class SkippedTestsLogger extends AbstractGlobalExtension {
         void intercept(IMethodInvocation invocation) throws Throwable {
             try {
                 invocation.proceed()
-            } catch(AssumptionViolatedException t) {
-                log.warn("Skipped test: ${invocation.feature.spec.name}#${invocation.iteration.name}\nReason: ${t.message}")
+            } catch (AssumptionViolatedException t) {
+                log.warn("Skipped test: ${invocation.feature.spec.name}#${invocation.iteration.name}\n" +
+                        "Reason: ${t.message}")
                 throw t
             }
         }

@@ -35,6 +35,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
+import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
@@ -506,6 +507,13 @@ public class NorthboundServiceImpl implements NorthboundService {
     public PortDescription getPort(SwitchId switchId, Integer portNo) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/ports/{port_id}", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), PortDescription.class, switchId, portNo).getBody();
+    }
+
+    @Override
+    public PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch) {
+        return restTemplate.exchange(
+                "/api/v1/network/paths?src_switch={src_switch}&dst_switch={dst_switch}", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), PathsDto.class, srcSwitch, dstSwitch).getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {

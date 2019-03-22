@@ -121,8 +121,8 @@ class IslReplugSpec extends BaseSpecification {
                     [switchid : expectedIsl.srcSwitch.dpId.toOtsdFormat(),
                      cookieHex: DefaultRule.DROP_LOOP_RULE.toHexString()]).dps
             assert statsData && !statsData.empty
+            assert statsData.values().last().toLong() > dropCounterBefore
         }
-        statsData.values().last().toLong() > dropCounterBefore
 
         and: "Unplug the link how it was before"
         lockKeeper.removeFlows([expectedIsl.aswitch, expectedIsl.aswitch.reversed])
