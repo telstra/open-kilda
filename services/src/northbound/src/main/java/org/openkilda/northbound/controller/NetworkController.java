@@ -15,8 +15,8 @@
 
 package org.openkilda.northbound.controller;
 
+import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.SwitchId;
-import org.openkilda.northbound.dto.network.PathsDto;
 import org.openkilda.northbound.service.NetworkService;
 
 import io.swagger.annotations.Api;
