@@ -82,8 +82,13 @@ class SwitchRulesSpec extends BaseSpecification {
         requireProfiles("virtual")
 
         given: "A switch with some rules installed (including default) and not connected to the controller"
+        def srcSwitchDefaultMeters = northbound.getAllMeters(srcSwitch.dpId)
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
+
+        def srcSwitchCreatedMetersIds = northbound.getAllMeters(srcSwitch.dpId).meterEntries.findAll {
+            !srcSwitchDefaultMeters.meterEntries*.meterId.contains(it.meterId)
+        }.collect { it.meterId }
 
         def defaultPlusFlowRules = []
         Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -102,8 +107,9 @@ class SwitchRulesSpec extends BaseSpecification {
         then: "Previously installed rules are not deleted from the switch"
         compareRules(northbound.getSwitchRules(srcSwitch.dpId).flowEntries, defaultPlusFlowRules)
 
-        and: "Delete previously installed rules"
+        and: "Delete previously installed rules and meters on the srcSwitch"
         northbound.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
+        srcSwitchCreatedMetersIds.each { northbound.deleteMeter(srcSwitch.dpId, it) }
         Wrappers.wait(RULES_DELETION_TIME) {
             assert northbound.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwitch.defaultCookies.size()
         }
