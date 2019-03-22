@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.grpc
 
-import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.grpc.speaker.model.LogicalPortDto
 import org.openkilda.messaging.error.MessageError
 
@@ -19,19 +18,13 @@ by associating a list of physical ports to them to create Link Aggregation Group
 a list of BFD ports to them to create a LAG for fast-failover for BFD sessions.
 
 NOTE: The GRPC implementation supports the LAG type only and it is set by default.""")
-class LogicalPortSpec extends BaseSpecification {
-    @Shared
-    String switchIp
+class LogicalPortSpec extends GrpcBaseSpecification {
     @Shared
     Integer switchPort
     @Shared
     Integer switchLogicalPort
 
-    def setupOnce() {
-        requireProfiles("hardware")
-        def nFlowSwitch = northbound.activeSwitches.find { it.description =~ /NW[0-9]+.[0-9].[0-9]/ }
-        def pattern = /(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\-){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/
-        switchIp = (nFlowSwitch.address =~ pattern)[0].replaceAll("-", ".")
+    def setup() {
         switchPort = northbound.getPorts(nFlowSwitch.switchId).find { it.state[0] == "LINK_DOWN" }.portNumber
         switchLogicalPort = 1100 + switchPort
     }
@@ -39,24 +32,25 @@ class LogicalPortSpec extends BaseSpecification {
     def "Able to create/read/delete logicalport"() {
         /**the update action is not working(issue on a Noviflow switch side)*/
         when: "Create logical port"
-        grpc.createLogicalPort(switchIp, new LogicalPortDto([switchPort], switchLogicalPort))
+        def responseAfterCreating = grpc.createLogicalPort(switchIp, new LogicalPortDto([switchPort], switchLogicalPort))
+        assert responseAfterCreating.logicalPortNumber.value == switchLogicalPort
 
         then: "Able to get the created logical port"
-        def r = grpc.getSwitchLogicalPortConfig(switchIp, switchLogicalPort)
-        r.logicalPortNumber == switchLogicalPort
-        r.name == "novi_lport" + switchLogicalPort.toString()
-        r.portNumbers[0] == switchPort
+        def responseAfterGetting = grpc.getSwitchLogicalPortConfig(switchIp, switchLogicalPort)
+        responseAfterGetting.logicalPortNumber == switchLogicalPort
+        responseAfterGetting.name == "novi_lport" + switchLogicalPort.toString()
+        responseAfterGetting.portNumbers[0] == switchPort
 
         and: "The created port is exist in a list of all logical port"
-        grpc.getSwitchLogicalPorts(switchIp).contains(r)
+        grpc.getSwitchLogicalPorts(switchIp).contains(responseAfterGetting)
 
         //        TODO(andriidovhan): add update action
         //        and: "able to edit the created logical port"
         when: "Try to delete the created logical port"
-        def r1 = grpc.deleteSwitchLogicalPort(switchIp, switchLogicalPort)
+        def responseAfterDeleting = grpc.deleteSwitchLogicalPort(switchIp, switchLogicalPort)
 
         then: "Logical port is deleted"
-        r1.deleted
+        responseAfterDeleting.deleted
 
         when: "Try to get the deleted logical port"
         grpc.getSwitchLogicalPortConfig(switchIp, switchLogicalPort)
@@ -76,7 +70,7 @@ class LogicalPortSpec extends BaseSpecification {
     @Unroll
     def "Not able to create logical port with incorrect port number(lPort/sPort): #logicalPortNumber/#portNumber"() {
         when:
-        "Try to create logical port: $logicalPortNumber/$portNumber"
+        "Try to create logical port: #logicalPortNumber/#portNumber"
         grpc.createLogicalPort(switchIp, new LogicalPortDto([portNumber], logicalPortNumber))
 
         then: "Human readable error is returned."
