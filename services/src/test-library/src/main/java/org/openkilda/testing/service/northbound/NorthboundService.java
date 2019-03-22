@@ -38,6 +38,7 @@ import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.links.LinkDto;
+import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthDto;
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto;
 import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
 import org.openkilda.northbound.dto.v1.links.LinkUnderMaintenanceDto;
@@ -151,6 +152,9 @@ public interface NorthboundService {
     List<LinkDto> deleteLink(LinkParametersDto linkParameters);
 
     List<LinkDto> setLinkMaintenance(LinkUnderMaintenanceDto link);
+
+    LinkMaxBandwidthDto updateLinkMaxBandwidth(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort,
+                                               Long linkMaxBandwidth);
 
     //feature toggles
 

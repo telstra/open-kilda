@@ -37,10 +37,13 @@ class LinkPropertiesSpec extends BaseSpecification {
         northbound.getAllLinkProps().empty
     }
 
-    def "No error is returned when sending an invalid char in link props key"() {
+    //TODO(ylobankov): Actually this is abnormal behavior and we should have an error. But this test is aligned
+    // with the current system behavior to verify that system is not hanging. Need to rework the test when system
+    // behavior is fixed.
+    def "Link props are created with empty values when sending not a valid link props key"() {
         when: "Send link property request with invalid character"
         def response = northbound.updateLinkProps([new LinkPropsDto("00:00:00:00:00:00:00:01", 1,
-                "00:00:00:00:00:00:00:02", 1, ['`cost': "700"])])
+                "00:00:00:00:00:00:00:02", 1, ["`cost": "700"])])
 
         then: "Response states that operation succeeded"
         response.successes == 1
@@ -64,14 +67,18 @@ class LinkPropertiesSpec extends BaseSpecification {
         response.messages.first() == "Can not parse input string: \"${linkProp.srcSwitch}\""
     }
 
-    def "Unable to create link property with non-numeric values"() {
+    @Unroll
+    def "Unable to create link property with non-numeric value for #key"() {
         when: "Try creating link property with non-numeric values"
-        def linkProp = new LinkPropsDto("00:00:00:00:00:00:00:01", 1, "00:00:00:00:00:00:00:02", 1, ["cost": "1000L"])
+        def linkProp = new LinkPropsDto("00:00:00:00:00:00:00:01", 1, "00:00:00:00:00:00:00:02", 1, [(key): "1000L"])
         def response = northbound.updateLinkProps([linkProp])
 
         then: "Response with error is received"
         response.failures == 1
-        response.messages.first() == "For input string: \"${linkProp.props["cost"]}\""
+        response.messages.first() == "For input string: \"${linkProp.props[key]}\""
+
+        where:
+        key << ["cost", "max_bandwidth"]
     }
 
     @Unroll
@@ -138,23 +145,24 @@ class LinkPropertiesSpec extends BaseSpecification {
     }
 
     def "Updating cost and max bandwidth via link props actually updates cost and max bandwidth on ISLs"() {
-        given: "An ISL"
+        given: "An active ISL"
         def isl = topology.islsForActiveSwitches.first()
         def initialMaxBandwidth = islUtils.getIslInfo(isl).get().maxBandwidth
 
         when: "Update cost and max bandwidth on ISL via link props"
-        def value = "12345"
-        def linkProps = [islUtils.toLinkProps(isl, ["cost": value, "max_bandwidth": value])]
+        def costValue = "12345"
+        def maxBandwidthValue = "54321"
+        def linkProps = [islUtils.toLinkProps(isl, ["cost": costValue, "max_bandwidth": maxBandwidthValue])]
         northbound.updateLinkProps(linkProps)
 
         then: "Cost on forward and reverse ISLs is really updated"
-        database.getIslCost(isl) == value.toInteger()
-        database.getIslCost(isl.reversed) == value.toInteger()
+        database.getIslCost(isl) == costValue.toInteger()
+        database.getIslCost(isl.reversed) == costValue.toInteger()
 
         and: "Max bandwidth on forward and reverse ISLs is really updated as well"
         def updatedLinks = northbound.getAllLinks()
-        islUtils.getIslInfo(updatedLinks, isl).get().maxBandwidth == value.toInteger()
-        islUtils.getIslInfo(updatedLinks, isl.reversed).get().maxBandwidth == value.toInteger()
+        islUtils.getIslInfo(updatedLinks, isl).get().maxBandwidth == maxBandwidthValue.toInteger()
+        islUtils.getIslInfo(updatedLinks, isl.reversed).get().maxBandwidth == maxBandwidthValue.toInteger()
 
         when: "Delete link props"
         northbound.deleteLinkProps(linkProps)
@@ -170,7 +178,7 @@ class LinkPropertiesSpec extends BaseSpecification {
     }
 
     def "Newly discovered link gets cost and max bandwidth from link props"() {
-        given: "An active link"
+        given: "An active ISL"
         def isl = topology.islsForActiveSwitches.first()
 
         and: "Bring port down on the source switch"
@@ -183,8 +191,9 @@ class LinkPropertiesSpec extends BaseSpecification {
         assert !islUtils.getIslInfo(isl.reversed)
 
         and: "Set cost and max bandwidth on the deleted link via link props"
-        def value = "12345"
-        def linkProps = [islUtils.toLinkProps(isl, ["cost": value, "max_bandwidth": value])]
+        def costValue = "12345"
+        def maxBandwidthValue = "54321"
+        def linkProps = [islUtils.toLinkProps(isl, ["cost": costValue, "max_bandwidth": maxBandwidthValue])]
         northbound.updateLinkProps(linkProps)
 
         when: "Bring port up on the source switch to discover the deleted link"
@@ -194,13 +203,13 @@ class LinkPropertiesSpec extends BaseSpecification {
         }
 
         then: "The discovered link gets cost from link props"
-        database.getIslCost(isl) == value.toInteger()
-        database.getIslCost(isl.reversed) == value.toInteger()
+        database.getIslCost(isl) == costValue.toInteger()
+        database.getIslCost(isl.reversed) == costValue.toInteger()
 
         and: "The discovered link gets max bandwidth from link props as well"
         def links = northbound.getAllLinks()
-        islUtils.getIslInfo(links, isl).get().maxBandwidth == value.toInteger()
-        islUtils.getIslInfo(links, isl.reversed).get().maxBandwidth == value.toInteger()
+        islUtils.getIslInfo(links, isl).get().maxBandwidth == maxBandwidthValue.toInteger()
+        islUtils.getIslInfo(links, isl.reversed).get().maxBandwidth == maxBandwidthValue.toInteger()
 
         and: "Delete link props"
         northbound.deleteLinkProps(linkProps)
