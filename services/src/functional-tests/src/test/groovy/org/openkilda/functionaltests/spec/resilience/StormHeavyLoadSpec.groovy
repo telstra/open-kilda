@@ -53,8 +53,6 @@ class StormHeavyLoadSpec extends BaseSpecification {
                             buildMessage(new PortInfoData(sw, isl.srcPort, null, PortChangeType.DOWN)).toJson()))
                     it.send(new ProducerRecord(topoDiscoTopic, sw.toString(),
                             buildMessage(new PortInfoData(sw, isl.srcPort, null, PortChangeType.UP)).toJson()))
-                    it.send(new ProducerRecord(topoDiscoTopic,
-                            buildMessage(islData[r.nextInt(islData.size())]).toJson()))
                 }
             }
         }
