@@ -31,14 +31,15 @@ export class RuleDetailsComponent implements OnInit {
   ngOnInit() {
       let retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON'));
       this.switch_id =retrievedSwitchObject.switch_id;
+      this.switchRules();
   }
 
   switchRules() {
     this.loading = true;
     this.switchService.getSwitchRulesList(this.switch_id).subscribe(
       data => {
-        this.switchedRules = data;
-        this.clipBoardItems.switchRulesVal = data;
+        this.switchedRules = this.commonService.convertNumberToString(data);
+        this.clipBoardItems.switchRulesVal = this.switchedRules;
         this.showRulesJSON = false;
         this.loading = false;
       },
