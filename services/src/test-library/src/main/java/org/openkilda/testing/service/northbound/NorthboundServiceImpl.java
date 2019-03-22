@@ -43,6 +43,8 @@ import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.links.LinkDto;
+import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthDto;
+import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthRequest;
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto;
 import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
 import org.openkilda.northbound.dto.v1.links.LinkUnderMaintenanceDto;
@@ -423,6 +425,27 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public LinkMaxBandwidthDto updateLinkMaxBandwidth(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch,
+                                                      Integer dstPort, Long linkMaxBandwidth) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/links/bandwidth");
+        if (srcSwitch != null) {
+            uriBuilder.queryParam("src_switch", srcSwitch);
+        }
+        if (srcPort != null) {
+            uriBuilder.queryParam("src_port", srcPort);
+        }
+        if (dstSwitch != null) {
+            uriBuilder.queryParam("dst_switch", dstSwitch);
+        }
+        if (dstPort != null) {
+            uriBuilder.queryParam("dst_port", dstPort);
+        }
+        return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.PATCH,
+                new HttpEntity<>(new LinkMaxBandwidthRequest(linkMaxBandwidth), buildHeadersWithCorrelationId()),
+                LinkMaxBandwidthDto.class).getBody();
+    }
+
+    @Override
     public FeatureTogglesDto getFeatureToggles() {
         return restTemplate.exchange("/api/v1/features", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), FeatureTogglesDto.class).getBody();
@@ -548,6 +571,7 @@ public class NorthboundServiceImpl implements NorthboundService {
                 .availableBandwidth(dto.getAvailableBandwidth())
                 .defaultMaxBandwidth(dto.getDefaultMaxBandwidth())
                 .maxBandwidth(dto.getMaxBandwidth())
+                .defaultMaxBandwidth(dto.getDefaultMaxBandwidth())
                 .underMaintenance(dto.isUnderMaintenance())
                 .build();
     }

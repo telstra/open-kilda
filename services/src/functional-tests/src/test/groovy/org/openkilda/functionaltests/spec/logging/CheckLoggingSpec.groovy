@@ -58,7 +58,6 @@ class CheckLoggingSpec extends BaseSpecification {
     }
 
     def "Check Storm logging"() {
-
         when: "A non-existent flow is requested"
         def flowId = "nonexistentFlowId" + System.currentTimeMillis()
         northbound.getFlow(flowId)
