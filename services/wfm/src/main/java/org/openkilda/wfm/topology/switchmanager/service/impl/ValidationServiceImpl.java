@@ -44,6 +44,8 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class ValidationServiceImpl implements ValidationService {
+    private static final int METER_BURST_SIZE_EQUALS_EPS = 1;
+
     private FlowRepository flowRepository;
     private FlowSegmentRepository flowSegmentRepository;
 
@@ -136,7 +138,7 @@ public class ValidationServiceImpl implements ValidationService {
             for (MeterEntry meter: presentMeters) {
                 if (meter.getMeterId() == flow.getMeterLongValue()) {
                     if (meter.getRate() == flow.getBandwidth()
-                            && meter.getBurstSize() == calculatedBurstSize
+                            && equalsBurstSize(meter.getBurstSize(), calculatedBurstSize)
                             && Arrays.equals(meter.getFlags(), Meter.getMeterFlags())) {
                         properMeters.add(MeterInfoEntry.builder()
                                 .meterId(meter.getMeterId())
@@ -154,7 +156,7 @@ public class ValidationServiceImpl implements ValidationService {
                             actual.setRate(meter.getRate());
                             expected.setRate(flow.getBandwidth());
                         }
-                        if (meter.getBurstSize() != calculatedBurstSize) {
+                        if (!equalsBurstSize(meter.getBurstSize(), calculatedBurstSize)) {
                             actual.setBurstSize(meter.getBurstSize());
                             expected.setBurstSize(calculatedBurstSize);
                         }
@@ -195,5 +197,9 @@ public class ValidationServiceImpl implements ValidationService {
         }
 
         return new ValidateMetersResult(missingMeters, misconfiguredMeters, properMeters, excessMeters);
+    }
+
+    private boolean equalsBurstSize(long actual, long expected) {
+        return Math.abs(actual - expected) <= METER_BURST_SIZE_EQUALS_EPS;
     }
 }
