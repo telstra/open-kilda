@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 
 public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<String, RouterService>>
@@ -50,6 +51,8 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
     private final Set<String> floodlights;
     private final long floodlightAliveTimeout;
     private final long floodlightAliveInterval;
+    private final long floodlightDumpInterval;
+    private long lastNetworkDumpTimestamp;
 
     private transient RouterService routerService;
 
@@ -57,16 +60,25 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
 
     private Tuple currentTuple;
 
-    public DiscoveryBolt(Set<String> floodlights, long floodlightAliveTimeout, long floodlightAliveInterval) {
+    public DiscoveryBolt(Set<String> floodlights, long floodlightAliveTimeout, long floodlightAliveInterval,
+                         long floodlightDumpInterval) {
         this.floodlights = floodlights;
         this.floodlightAliveTimeout = floodlightAliveTimeout;
         this.floodlightAliveInterval = floodlightAliveInterval;
+        this.floodlightDumpInterval = TimeUnit.SECONDS.toMillis(floodlightDumpInterval);
     }
 
     @Override
     protected void doTick(Tuple tuple) {
         currentTuple = tuple;
         routerService.doPeriodicProcessing(this);
+        long now = System.currentTimeMillis();
+        if (now >= lastNetworkDumpTimestamp + floodlightDumpInterval) {
+            for (String region : floodlights) {
+                routerService.sendNetworkRequest(this, region);
+            }
+            lastNetworkDumpTimestamp = now;
+        }
     }
 
     @Override

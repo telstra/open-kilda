@@ -125,7 +125,13 @@ public class RouterService {
         }
     }
 
-    private String sendNetworkRequest(MessageSender routerMessageSender, String region) {
+    /**
+     * Send network dump requests for target region.
+     * @param routerMessageSender sender
+     * @param region target
+     * @return requested correlation id
+     */
+    public String sendNetworkRequest(MessageSender routerMessageSender, String region) {
         String correlationId = UUID.randomUUID().toString();
         CommandMessage command = new CommandMessage(new NetworkCommandData(),
                 System.currentTimeMillis(), correlationId,
