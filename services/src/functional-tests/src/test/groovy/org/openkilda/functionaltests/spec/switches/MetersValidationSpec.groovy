@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
@@ -8,13 +9,15 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.model.Cookie
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 
-@Narrative("""This test suite check the switch validate feature on a flow that contains 2+ switches.
+@Narrative("""This test suite checks the switch validate feature on a flow that contains 2+ switches.
 Description of fields:
 - missing - those meters/rules, which are NOT present on a switch, but are present in db
 - misconfigured - those meters which have different value (on a switch and in db) for the same parameter
@@ -25,27 +28,25 @@ class MetersValidationSpec extends BaseSpecification {
     @Autowired
     SwitchHelper switchHelper
 
-    def "Switch validation is able to store correct information about a flow in the proper section"() {
+    def "Switch validation is able to store correct information about a flow in the 'proper' section"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def srcSwitchDefaultMeters = northbound.getAllMeters(srcSwitch.dpId)
-        def dstSwitchDefaultMeters = northbound.getAllMeters(dstSwitch.dpId)
         def flow = flowHelper.addFlow(flowHelper.randomFlow(srcSwitch, dstSwitch))
 
         then: "One meter is automatically created on the src and dst switches"
-        def srcSwitchCreatedMetersIds = getCreatedMetersId(srcSwitch.dpId, srcSwitchDefaultMeters)
-        def dstSwitchCreatedMetersIds = getCreatedMetersId(dstSwitch.dpId, dstSwitchDefaultMeters)
-        srcSwitchCreatedMetersIds.size() == 1
-        dstSwitchCreatedMetersIds.size() == 1
+        def srcSwitchCreatedMeterIds = createdMeterIds(srcSwitch.dpId)
+        def dstSwitchCreatedMeterIds = createdMeterIds(dstSwitch.dpId)
+        srcSwitchCreatedMeterIds.size() == 1
+        dstSwitchCreatedMeterIds.size() == 1
 
         and: "The correct info is stored in the validate meter response"
         def srcSwitchValidateInfo = northbound.switchValidate(srcSwitch.dpId)
         def dstSwitchValidateInfo = northbound.switchValidate(dstSwitch.dpId)
-        def srcSwitchCreatedCookies = getCreatedCookies(srcSwitch.dpId, srcSwitchCreatedMetersIds)
-        def dstSwitchCreatedCookies = getCreatedCookies(dstSwitch.dpId, dstSwitchCreatedMetersIds)
+        def srcSwitchCreatedCookies = cookiesWithMeter(srcSwitch.dpId)
+        def dstSwitchCreatedCookies = cookiesWithMeter(dstSwitch.dpId)
 
-        srcSwitchValidateInfo.meters.proper*.meterId.containsAll(srcSwitchCreatedMetersIds)
-        dstSwitchValidateInfo.meters.proper*.meterId.containsAll(dstSwitchCreatedMetersIds)
+        srcSwitchValidateInfo.meters.proper*.meterId.containsAll(srcSwitchCreatedMeterIds)
+        dstSwitchValidateInfo.meters.proper*.meterId.containsAll(dstSwitchCreatedMeterIds)
 
         srcSwitchValidateInfo.meters.proper*.cookie.containsAll(srcSwitchCreatedCookies)
         dstSwitchValidateInfo.meters.proper*.cookie.containsAll(dstSwitchCreatedCookies)
@@ -64,18 +65,18 @@ class MetersValidationSpec extends BaseSpecification {
         dstSwitchValidateInfo.meters.proper*.burstSize[0] == dstSwitchBurstSize
 
 
-        and: "The rest fields in the meter section are empty"
+        and: "The rest fields in the 'meter' section are empty"
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
             meterSectionsAreEmpty(it, ["missing", "misconfigured", "excess"])
         }
 
-        and: "Created rules are stored in the proper section"
+        and: "Created rules are stored in the 'proper' section"
         def createdCookies = srcSwitchCreatedCookies + dstSwitchCreatedCookies
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
             it.rules.proper.containsAll(createdCookies)
         }
 
-        and: "The rest fields in the rule section are empty"
+        and: "The rest fields in the 'rule' section are empty"
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
             ruleSectionsAreEmpty(it, ["missing", "excess"])
         }
@@ -94,32 +95,30 @@ class MetersValidationSpec extends BaseSpecification {
         }
     }
 
-    def "Switch validation is able to detect meter info into the misconfigured section"() {
+    def "Switch validation is able to detect meter info into the 'misconfigured' section"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def srcSwitchDefaultMeters = northbound.getAllMeters(srcSwitch.dpId)
-        def dstSwitchDefaultMeters = northbound.getAllMeters(dstSwitch.dpId)
         def flow = flowHelper.addFlow(flowHelper.randomFlow(srcSwitch, dstSwitch))
-        def srcSwitchCreatedMetersIds = getCreatedMetersId(srcSwitch.dpId, srcSwitchDefaultMeters)
-        def dstSwitchCreatedMetersIds = getCreatedMetersId(dstSwitch.dpId, dstSwitchDefaultMeters)
+        def srcSwitchCreatedMeterIds = createdMeterIds(srcSwitch.dpId)
+        def dstSwitchCreatedMeterIds = createdMeterIds(dstSwitch.dpId)
 
         and: "Change bandwidth for the created flow directly in DB"
         def newBandwidth = northbound.getSwitchRules(srcSwitch.dpId).flowEntries*.instructions.goToMeter.max() + 100
         /** at this point meter is set for given flow. Now update flow bandwidth directly via DB,
-         it is done just for moving meter from the proper section into the misconfigured*/
+         it is done just for moving meter from the 'proper' section into the 'misconfigured'*/
         database.updateFlowBandwidth(flow.id, newBandwidth)
         //at this point existing meters do not correspond with the flow
 
-        then: "Meters info are moved into the misconfigured section"
+        then: "Meters info are moved into the 'misconfigured' section"
         def srcSwitchValidateInfo = northbound.switchValidate(srcSwitch.dpId)
         def dstSwitchValidateInfo = northbound.switchValidate(dstSwitch.dpId)
-        def srcSwitchCreatedCookies = getCreatedCookies(srcSwitch.dpId, srcSwitchCreatedMetersIds)
-        def dstSwitchCreatedCookies = getCreatedCookies(dstSwitch.dpId, dstSwitchCreatedMetersIds)
+        def srcSwitchCreatedCookies = cookiesWithMeter(srcSwitch.dpId)
+        def dstSwitchCreatedCookies = cookiesWithMeter(dstSwitch.dpId)
 
         def createdCookies = srcSwitchCreatedCookies + dstSwitchCreatedCookies
 
-        srcSwitchValidateInfo.meters.misconfigured*.meterId.containsAll(srcSwitchCreatedMetersIds)
-        dstSwitchValidateInfo.meters.misconfigured*.meterId.containsAll(dstSwitchCreatedMetersIds)
+        srcSwitchValidateInfo.meters.misconfigured*.meterId.containsAll(srcSwitchCreatedMeterIds)
+        dstSwitchValidateInfo.meters.misconfigured*.meterId.containsAll(dstSwitchCreatedMeterIds)
 
         srcSwitchValidateInfo.meters.misconfigured*.cookie.containsAll(srcSwitchCreatedCookies)
         dstSwitchValidateInfo.meters.misconfigured*.cookie.containsAll(dstSwitchCreatedCookies)
@@ -145,12 +144,12 @@ class MetersValidationSpec extends BaseSpecification {
             }
         }
 
-        and: "The rest fields of meter section are empty"
+        and: "The rest fields of 'meter' section are empty"
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
             meterSectionsAreEmpty(it, ["missing", "proper", "excess"])
         }
 
-        and: "Created rules are still stored in the proper section"
+        and: "Created rules are still stored in the 'proper' section"
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
             it.rules.proper.containsAll(createdCookies)
         }
@@ -158,12 +157,12 @@ class MetersValidationSpec extends BaseSpecification {
         when: "Restore correct bandwidth via DB"
         database.updateFlowBandwidth(flow.id, flow.maximumBandwidth)
 
-        then: "Misconfigured meters are moved into the proper section"
+        then: "Misconfigured meters are moved into the 'proper' section"
         def srcSwitchValidateInfoRestored = northbound.switchValidate(srcSwitch.dpId)
         def dstSwitchValidateInfoRestored = northbound.switchValidate(dstSwitch.dpId)
 
-        srcSwitchValidateInfoRestored.meters.proper*.meterId.containsAll(srcSwitchCreatedMetersIds)
-        dstSwitchValidateInfoRestored.meters.proper*.meterId.containsAll(dstSwitchCreatedMetersIds)
+        srcSwitchValidateInfoRestored.meters.proper*.meterId.containsAll(srcSwitchCreatedMeterIds)
+        dstSwitchValidateInfoRestored.meters.proper*.meterId.containsAll(dstSwitchCreatedMeterIds)
 
         [srcSwitchValidateInfoRestored, dstSwitchValidateInfoRestored].each {
             meterSectionsAreEmpty(it, ["missing", "misconfigured", "excess"])
@@ -183,27 +182,25 @@ class MetersValidationSpec extends BaseSpecification {
         }
     }
 
-    def "Switch validation is able to detect meter info into the missing section"() {
+    def "Switch validation is able to detect meter info into the 'missing' section"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def srcSwitchDefaultMeters = northbound.getAllMeters(srcSwitch.dpId)
-        def dstSwitchDefaultMeters = northbound.getAllMeters(dstSwitch.dpId)
         def flow = flowHelper.addFlow(flowHelper.randomFlow(srcSwitch, dstSwitch))
-        def srcSwitchCreatedMetersIds = getCreatedMetersId(srcSwitch.dpId, srcSwitchDefaultMeters)
-        def dstSwitchCreatedMetersIds = getCreatedMetersId(dstSwitch.dpId, dstSwitchDefaultMeters)
+        def srcSwitchCreatedMeterIds = createdMeterIds(srcSwitch.dpId)
+        def dstSwitchCreatedMeterIds = createdMeterIds(dstSwitch.dpId)
 
         and: "Remove created meter on the srcSwitch"
-        northbound.deleteMeter(srcSwitch.dpId, srcSwitchCreatedMetersIds[0])
+        northbound.deleteMeter(srcSwitch.dpId, srcSwitchCreatedMeterIds[0])
 
-        then: "Meters info/rules are moved into the missing section on the srcSwitch only"
-        def srcSwitchCreatedCookies = getCreatedCookies(srcSwitch.dpId, srcSwitchCreatedMetersIds)
-        def dstSwitchCreatedCookies = getCreatedCookies(dstSwitch.dpId, dstSwitchCreatedMetersIds)
+        then: "Meters info/rules are moved into the 'missing' section on the srcSwitch only"
+        def srcSwitchCreatedCookies = cookiesWithMeter(srcSwitch.dpId)
+        def dstSwitchCreatedCookies = cookiesWithMeter(dstSwitch.dpId)
 
         def srcSwitchValidateInfo = northbound.switchValidate(srcSwitch.dpId)
         srcSwitchValidateInfo.rules.missing.containsAll(srcSwitchCreatedCookies)
         srcSwitchValidateInfo.rules.proper.containsAll(dstSwitchCreatedCookies)
 
-        srcSwitchValidateInfo.meters.missing*.meterId.containsAll(srcSwitchCreatedMetersIds)
+        srcSwitchValidateInfo.meters.missing*.meterId.containsAll(srcSwitchCreatedMeterIds)
         srcSwitchValidateInfo.meters.missing*.cookie.containsAll(srcSwitchCreatedCookies)
 
         def srcSwitchBurstSize = switchHelper.getExpectedBurst(srcSwitch.dpId, flow.maximumBandwidth)
@@ -218,12 +215,12 @@ class MetersValidationSpec extends BaseSpecification {
         meterSectionsAreEmpty(srcSwitchValidateInfo, ["misconfigured", "proper", "excess"])
         ruleSectionsAreEmpty(srcSwitchValidateInfo, ["excess"])
 
-        and: "Meters info/rules are NOT moved into the missing section on the dstSwitch"
+        and: "Meters info/rules are NOT moved into the 'missing' section on the dstSwitch"
         def createdCookies = srcSwitchCreatedCookies + dstSwitchCreatedCookies
         def dstSwitchValidateInfo = northbound.switchValidate(dstSwitch.dpId)
         dstSwitchValidateInfo.rules.proper.containsAll(createdCookies)
 
-        dstSwitchValidateInfo.meters.proper*.meterId.containsAll(dstSwitchCreatedMetersIds)
+        dstSwitchValidateInfo.meters.proper*.meterId.containsAll(dstSwitchCreatedMeterIds)
         dstSwitchValidateInfo.meters.proper*.cookie.containsAll(dstSwitchCreatedCookies)
 
         def dstSwitchBurstSize = switchHelper.getExpectedBurst(dstSwitch.dpId, flow.maximumBandwidth)
@@ -252,20 +249,18 @@ class MetersValidationSpec extends BaseSpecification {
         }
     }
 
-    def "Switch validation is able to detect meter info into the excess section"() {
+    def "Switch validation is able to detect meter info into the 'excess' section"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def srcSwitchDefaultMeters = northbound.getAllMeters(srcSwitch.dpId)
-        def dstSwitchDefaultMeters = northbound.getAllMeters(dstSwitch.dpId)
         def flow = flowHelper.addFlow(flowHelper.randomFlow(srcSwitch, dstSwitch))
-        def srcSwitchCreatedMetersIds = getCreatedMetersId(srcSwitch.dpId, srcSwitchDefaultMeters)
-        def dstSwitchCreatedMetersIds = getCreatedMetersId(dstSwitch.dpId, dstSwitchDefaultMeters)
+        def srcSwitchCreatedMeterIds = createdMeterIds(srcSwitch.dpId)
+        def dstSwitchCreatedMeterIds = createdMeterIds(dstSwitch.dpId)
 
         and: "Update meterId for created flow directly via db"
         def newMeterId = 100
         database.updateFlowMeterId(flow.id, newMeterId)
 
-        then: "Meters info is moved into the excess section on the src and dst switches"
+        then: "Meters info is moved into the 'excess' section on the src and dst switches"
         def srcSwitchValidateInfo = northbound.switchValidate(srcSwitch.dpId)
         def dstSwitchValidateInfo = northbound.switchValidate(dstSwitch.dpId)
 
@@ -276,16 +271,16 @@ class MetersValidationSpec extends BaseSpecification {
             }
         }
 
-        srcSwitchValidateInfo.meters.excess*.meterId.containsAll(srcSwitchCreatedMetersIds)
-        dstSwitchValidateInfo.meters.excess*.meterId.containsAll(dstSwitchCreatedMetersIds)
+        srcSwitchValidateInfo.meters.excess*.meterId.containsAll(srcSwitchCreatedMeterIds)
+        dstSwitchValidateInfo.meters.excess*.meterId.containsAll(dstSwitchCreatedMeterIds)
 
         def srcSwitchBurstSize = switchHelper.getExpectedBurst(srcSwitch.dpId, flow.maximumBandwidth)
         def dstSwitchBurstSize = switchHelper.getExpectedBurst(dstSwitch.dpId, flow.maximumBandwidth)
         srcSwitchValidateInfo.meters.excess*.burstSize[0] == srcSwitchBurstSize
         dstSwitchValidateInfo.meters.excess*.burstSize[0] == dstSwitchBurstSize
 
-        and: "Meters info is also stored in the missing section on the src and dst switches"
-        def srcSwitchCreatedCookies = getCreatedCookies(srcSwitch.dpId, srcSwitchCreatedMetersIds)
+        and: "Meters info is also stored in the 'missing' section on the src and dst switches"
+        def srcSwitchCreatedCookies = cookiesWithMeter(srcSwitch.dpId)
         srcSwitchValidateInfo.meters.missing*.meterId[0] == newMeterId
         srcSwitchValidateInfo.meters.missing*.cookie.containsAll(srcSwitchCreatedCookies)
 
@@ -296,7 +291,7 @@ class MetersValidationSpec extends BaseSpecification {
             burstSizeIsCorrect(srcSwitchBurstSize, it.burstSize)
         }
 
-        def dstSwitchCreatedCookies = getCreatedCookies(dstSwitch.dpId, dstSwitchCreatedMetersIds)
+        def dstSwitchCreatedCookies = cookiesWithMeter(dstSwitch.dpId)
         dstSwitchValidateInfo.meters.missing*.meterId[0] == newMeterId
         dstSwitchValidateInfo.meters.missing*.cookie.containsAll(dstSwitchCreatedCookies)
 
@@ -312,7 +307,7 @@ class MetersValidationSpec extends BaseSpecification {
             meterSectionsAreEmpty(it, ["misconfigured", "proper"])
         }
 
-        and: "Rules are still exist in the proper section on the src and dst switches"
+        and: "Rules are still exist in the 'proper' section on the src and dst switches"
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
             ruleSectionsAreEmpty(it, ["missing", "excess"])
         }
@@ -321,8 +316,8 @@ class MetersValidationSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
 
         and: "Delete created meter on the both switches"
-        srcSwitchCreatedMetersIds.each { northbound.deleteMeter(srcSwitch.dpId, it) }
-        dstSwitchCreatedMetersIds.each { northbound.deleteMeter(dstSwitch.dpId, it) }
+        srcSwitchCreatedMeterIds.each { northbound.deleteMeter(srcSwitch.dpId, it) }
+        dstSwitchCreatedMeterIds.each { northbound.deleteMeter(dstSwitch.dpId, it) }
 
         then: "Check that switch validate info is also deleted"
         Wrappers.wait(WAIT_OFFSET) {
@@ -335,28 +330,24 @@ class MetersValidationSpec extends BaseSpecification {
         }
     }
 
-    def "Switch validate is able to detect rule info into the missing section"() {
+    def "Switch validate is able to detect rule info into the 'missing' section"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def srcSwitchDefaultMeters = northbound.getAllMeters(srcSwitch.dpId)
-        def dstSwitchDefaultMeters = northbound.getAllMeters(dstSwitch.dpId)
         def flow = flowHelper.addFlow(flowHelper.randomFlow(srcSwitch, dstSwitch))
-        def srcSwitchCreatedMetersIds = getCreatedMetersId(srcSwitch.dpId, srcSwitchDefaultMeters)
-        def dstSwitchCreatedMetersIds = getCreatedMetersId(dstSwitch.dpId, dstSwitchDefaultMeters)
 
         and: "Delete created rules on the srcSwitch"
         northbound.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
 
-        then: "Rule info is moved into the missing section on the srcSwitch"
-        def srcSwitchCreatedCookies = getCreatedCookies(srcSwitch.dpId, srcSwitchCreatedMetersIds)
-        def dstSwitchCreatedCookies = getCreatedCookies(dstSwitch.dpId, dstSwitchCreatedMetersIds)
+        then: "Rule info is moved into the 'missing' section on the srcSwitch"
+        def srcSwitchCreatedCookies = cookiesWithMeter(srcSwitch.dpId)
+        def dstSwitchCreatedCookies = cookiesWithMeter(dstSwitch.dpId)
         def createdCookies = srcSwitchCreatedCookies + dstSwitchCreatedCookies
 
         def srcSwitchValidateInfo = northbound.switchValidate(srcSwitch.dpId)
         srcSwitchValidateInfo.rules.missing.containsAll(createdCookies)
         ruleSectionsAreEmpty(srcSwitchValidateInfo, ["proper", "excess"])
 
-        and: "Rule info is NOT moved into the missing section on the dstSwitch"
+        and: "Rule info is NOT moved into the 'missing' section on the dstSwitch"
         def dstSwitchValidateInfo = northbound.switchValidate(dstSwitch.dpId)
         dstSwitchValidateInfo.rules.proper.collect { it }.containsAll(createdCookies)
         ruleSectionsAreEmpty(dstSwitchValidateInfo, ["missing", "excess"])
@@ -375,28 +366,24 @@ class MetersValidationSpec extends BaseSpecification {
         }
     }
 
-    def "Switch validate is able to detect rule info into the excess section"() {
+    def "Switch validate is able to detect rule info into the 'excess' section"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def srcSwitchDefaultMeters = northbound.getAllMeters(srcSwitch.dpId)
-        def dstSwitchDefaultMeters = northbound.getAllMeters(dstSwitch.dpId)
         def flow = flowHelper.addFlow(flowHelper.randomFlow(srcSwitch, dstSwitch))
-        def srcSwitchCreatedMetersIds = getCreatedMetersId(srcSwitch.dpId, srcSwitchDefaultMeters)
-        def dstSwitchCreatedMetersIds = getCreatedMetersId(dstSwitch.dpId, dstSwitchDefaultMeters)
 
         and: "Change cookies for the created flow directly in DB"
-        def srcSwitchCreatedCookies = getCreatedCookies(srcSwitch.dpId, srcSwitchCreatedMetersIds)
-        def dstSwitchCreatedCookies = getCreatedCookies(dstSwitch.dpId, dstSwitchCreatedMetersIds)
+        def srcSwitchCreatedCookies = cookiesWithMeter(srcSwitch.dpId)
+        def dstSwitchCreatedCookies = cookiesWithMeter(dstSwitch.dpId)
         def createdCookies = srcSwitchCreatedCookies + dstSwitchCreatedCookies
         def newFlowCookies = [createdCookies[0] + 1, createdCookies[1] + 1]
         /** at this point rules are set for given flow. Now update flow cookies directly via DB,
-         it is done just for moving rules from the proper section into the excess section*/
+         it is done just for moving rules from the 'proper' section into the 'excess' section*/
         //TODO(andriidovhan)try to create excess rules directly via kafka, then remove the updateFlowSegmentCookie impl
         database.updateFlowCookie(flow.id, newFlowCookies[0], newFlowCookies[1])
         database.updateFlowSegmentCookie(flow.id, srcSwitchCreatedCookies[0])
         database.updateFlowSegmentCookie(flow.id, dstSwitchCreatedCookies[0])
 
-        then: "Rule validate info is moved into the missing and excess sections on the src and dst switches"
+        then: "Rule validate info is moved into the 'missing' and 'excess' sections on the src and dst switches"
         def srcSwitchValidateInfo = northbound.switchValidate(srcSwitch.dpId)
         srcSwitchValidateInfo.rules.excess.containsAll(srcSwitchCreatedCookies)
         srcSwitchValidateInfo.rules.missing.containsAll(newFlowCookies[0])
@@ -490,22 +477,20 @@ class MetersValidationSpec extends BaseSpecification {
         topology.activeSwitches.findAll { it.ofVersion == "OF_12" }
     }
 
-    List<Integer> getCreatedMetersId(switchId, defaultMeters) {
-        northbound.getAllMeters(switchId).meterEntries.findAll {
-            !defaultMeters.meterEntries*.meterId.contains(it.meterId)
-        }.collect { it.meterId }
+    List<Integer> createdMeterIds(SwitchId switchId) {
+        northbound.getAllMeters(switchId).meterEntries.findAll { it.meterId > MAX_SYSTEM_RULE_METER_ID }.collect {
+            it.meterId
+        }
     }
 
-    List<Integer> getCreatedCookies(switchId, createdMetersId) {
-        def createdCookies = []
-        createdMetersId.each { id ->
-            northbound.getSwitchRules(switchId).flowEntries.each {
-                if (it.instructions.goToMeter == id) {
-                    createdCookies << it.cookie
-                }
+    List<Long> cookiesWithMeter(SwitchId switchId) {
+        def cookies = []
+        northbound.getSwitchRules(switchId).flowEntries.collect {
+            if (!Cookie.isDefaultRule(it.cookie) && it.instructions.goToMeter) {
+                cookies << it.cookie
             }
         }
-        return createdCookies
+        return cookies
     }
 
     void meterSectionsAreEmpty(switchValidateInfo,
