@@ -61,8 +61,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
         try {
             currentTuple = input;
-
-            setupCommandContext();
+            commandContext = setupCommandContext();
             handleInput(input);
         } catch (Exception e) {
             wrapExceptionHandler(e);
@@ -125,12 +124,13 @@ public abstract class AbstractBolt extends BaseRichBolt {
 
     protected void init() { }
 
-    protected void setupCommandContext() {
+    protected CommandContext setupCommandContext() {
         Tuple input = getCurrentTuple();
+        CommandContext context;
         try {
-            commandContext = pullContext(input);
+            context = pullContext(input);
         } catch (PipelineException e) {
-            commandContext = new CommandContext().fork("trace-fail");
+            context = new CommandContext().fork("trace-fail");
 
             log.warn("The command context is missing in input tuple received by {} on stream {}:{}, execution context"
                              + " can't  be traced. Create new command context for possible tracking of following"
@@ -138,6 +138,8 @@ public abstract class AbstractBolt extends BaseRichBolt {
                      getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(),
                      formatTuplePayload(input));
         }
+
+        return context;
     }
 
     protected CommandContext pullContext(Tuple input) throws PipelineException {

@@ -51,11 +51,16 @@ public abstract class AbstractTick extends AbstractBolt {
     }
 
     protected void produceTick(Tuple input) {
-        getOutput().emit(input, new Values(System.currentTimeMillis(), tickNumber, new CommandContext()));
+        getOutput().emit(input, new Values(System.currentTimeMillis(), tickNumber, getCommandContext()));
     }
 
     protected boolean isMultiplierTick(int multiplier) {
         return tickNumber % multiplier == 0;
+    }
+
+    @Override
+    protected CommandContext setupCommandContext() {
+        return new CommandContext();
     }
 
     @Override
