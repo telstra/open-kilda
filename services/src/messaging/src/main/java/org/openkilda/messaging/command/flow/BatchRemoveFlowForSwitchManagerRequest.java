@@ -13,34 +13,31 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.switches;
+package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.model.SwitchId;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
 import lombok.Value;
 
+import java.util.List;
+
 @Value
-public class SwitchValidateRequest extends CommandData {
+@Builder
+public class BatchRemoveFlowForSwitchManagerRequest extends CommandData {
 
     @JsonProperty("switch_id")
     private SwitchId switchId;
 
-    @JsonProperty("perform_sync")
-    private boolean performSync;
+    @JsonProperty("flow_commands")
+    private List<RemoveFlow> flowCommands;
 
-    @JsonProperty("remove_excess")
-    private boolean removeExcess;
-
-    @JsonCreator
-    public SwitchValidateRequest(@JsonProperty("switch_id") SwitchId switchId,
-                                 @JsonProperty("perform_sync") boolean performSync,
-                                 @JsonProperty("remove_excess") boolean removeExcess) {
+    public BatchRemoveFlowForSwitchManagerRequest(
+            @JsonProperty("switch_id") SwitchId switchId,
+            @JsonProperty("flow_commands") List<RemoveFlow> flowCommands) {
         this.switchId = switchId;
-        this.performSync = performSync;
-        this.removeExcess = removeExcess;
+        this.flowCommands = flowCommands;
     }
 }
-

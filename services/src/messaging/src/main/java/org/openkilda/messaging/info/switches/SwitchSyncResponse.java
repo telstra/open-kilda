@@ -13,9 +13,29 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.rule;
+package org.openkilda.messaging.info.switches;
 
 import org.openkilda.messaging.info.InfoData;
 
-public class BatchInstallResponse extends InfoData {
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
+import lombok.Value;
+
+@Value
+@Builder
+public class SwitchSyncResponse extends InfoData {
+
+    @JsonProperty("rules")
+    private RulesSyncEntry rules;
+
+    @JsonProperty("meters")
+    private MetersSyncEntry meters;
+
+    @JsonCreator
+    public SwitchSyncResponse(@JsonProperty("rules") RulesSyncEntry rules,
+                              @JsonProperty("meters") MetersSyncEntry meters) {
+        this.rules = rules;
+        this.meters = meters;
+    }
 }
