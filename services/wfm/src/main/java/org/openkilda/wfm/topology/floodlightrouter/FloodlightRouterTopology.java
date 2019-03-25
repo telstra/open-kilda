@@ -16,6 +16,8 @@
 package org.openkilda.wfm.topology.floodlightrouter;
 
 import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.DiscoveryBolt;
@@ -37,9 +39,12 @@ import java.util.Set;
  * Floodlight topology.
  */
 public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterTopologyConfig> {
+    private final PersistenceManager persistenceManager;
 
     public FloodlightRouterTopology(LaunchEnvironment env) {
         super(env, FloodlightRouterTopologyConfig.class);
+
+        persistenceManager = PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
     }
 
     private void createKildaFlowSpout(TopologyBuilder builder, int parallelism, List<String> kildaFlowTopics) {
@@ -318,9 +323,10 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
         createKildaTopoDiscoKafkaBolt(builder, parallelism, topicsConfig);
         createSpeakerDiscoSpout(builder, parallelism, topicsConfig.getSpeakerDiscoTopic());
         createSpeakerDiscoKafkaBolt(builder, parallelism, topicsConfig);
-        DiscoveryBolt discoveryBolt = new DiscoveryBolt(topologyConfig.getFloodlightRegions(),
-                topologyConfig.getFloodlightAliveTimeout(), topologyConfig.getFloodlightAliveInterval(),
-                topologyConfig.getFloodlightDumpInterval());
+        DiscoveryBolt discoveryBolt = new DiscoveryBolt(
+                persistenceManager,
+                topologyConfig.getFloodlightRegions(), topologyConfig.getFloodlightAliveTimeout(),
+                topologyConfig.getFloodlightAliveInterval(), topologyConfig.getFloodlightDumpInterval());
         builder.setBolt(ComponentType.KILDA_TOPO_DISCO_BOLT, discoveryBolt, parallelism)
                 .shuffleGrouping(ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT)
                 .shuffleGrouping(ComponentType.SPEAKER_DISCO_KAFKA_SPOUT);

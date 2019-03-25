@@ -7,6 +7,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.PortBlinker
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PortChangeType
+import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
@@ -29,7 +30,6 @@ Initially, port is considered 'flapping' if it changes status quicker than once 
 change status from UP to DOWN only after 'antiflap.min' in case of a single-time change of status)
 """)
 @Issue("https://github.com/telstra/open-kilda/issues/1729")
-//@Ignore("New discovery-topology incompatibility.")
 class PortAntiflapSpec extends BaseSpecification {
 
     @Value('${antiflap.min}')
@@ -43,6 +43,14 @@ class PortAntiflapSpec extends BaseSpecification {
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
+
+    def setupOnce() {
+        northbound.toggleFeature(FeatureTogglesDto.builder().floodlightRoutePeriodicSync(false).build())
+    }
+
+    def cleanupSpec() {
+        getNorthbound().toggleFeature(FeatureTogglesDto.builder().floodlightRoutePeriodicSync(true).build())
+    }
 
     //rerun is required to check the #1790 issue
     @Rerun(times = 2)

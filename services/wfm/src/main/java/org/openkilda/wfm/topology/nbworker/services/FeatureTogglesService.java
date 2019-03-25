@@ -51,6 +51,7 @@ public class FeatureTogglesService {
      * @return updated feature toggles.
      */
     public FeatureToggles createOrUpdateFeatureToggles(FeatureToggles featureToggles) {
+        log.info("Process feature-toggles update - toggles:{}", featureToggles);
         FeatureToggles before = featureTogglesRepository.find().orElse(FeatureToggles.DEFAULTS);
         FeatureToggles after = transactionManager.doInTransaction(() -> {
             featureTogglesRepository.createOrUpdate(featureToggles);
@@ -58,6 +59,7 @@ public class FeatureTogglesService {
         });
 
         if (!before.equals(after)) {
+            log.info("Emit feature-toggles update notification - toggles:{}", after);
             carrier.featureTogglesUpdateNotification(after);
         }
         return after;

@@ -18,6 +18,9 @@ package org.openkilda.wfm.topology.floodlightrouter.bolts;
 import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.model.FeatureToggles;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.floodlightrouter.ComponentType;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
@@ -47,6 +50,7 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
     private static final Logger logger = LoggerFactory.getLogger(DiscoveryBolt.class);
     private static final String ROUTER_SERVICE = "ROUTER_SERVICE";
 
+    private final PersistenceManager persistenceManager;
 
     private final Set<String> floodlights;
     private final long floodlightAliveTimeout;
@@ -54,14 +58,16 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
     private final long floodlightDumpInterval;
     private long lastNetworkDumpTimestamp;
 
+    private transient FeatureTogglesRepository featureTogglesRepository;
     private transient RouterService routerService;
 
     protected OutputCollector outputCollector;
 
     private Tuple currentTuple;
 
-    public DiscoveryBolt(Set<String> floodlights, long floodlightAliveTimeout, long floodlightAliveInterval,
-                         long floodlightDumpInterval) {
+    public DiscoveryBolt(PersistenceManager persistenceManager, Set<String> floodlights, long floodlightAliveTimeout,
+                         long floodlightAliveInterval, long floodlightDumpInterval) {
+        this.persistenceManager = persistenceManager;
         this.floodlights = floodlights;
         this.floodlightAliveTimeout = floodlightAliveTimeout;
         this.floodlightAliveInterval = floodlightAliveInterval;
@@ -72,11 +78,10 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
     protected void doTick(Tuple tuple) {
         currentTuple = tuple;
         routerService.doPeriodicProcessing(this);
+
         long now = System.currentTimeMillis();
         if (now >= lastNetworkDumpTimestamp + floodlightDumpInterval) {
-            for (String region : floodlights) {
-                routerService.sendNetworkRequest(this, region);
-            }
+            doNetworkDump();
             lastNetworkDumpTimestamp = now;
         }
     }
@@ -133,6 +138,7 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
 
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
+        this.featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
         this.outputCollector = outputCollector;
         super.prepare(map, topologyContext, outputCollector);
     }
@@ -170,5 +176,23 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
     public void send(Object payload, String outputStream) {
         Values values = new Values(payload);
         outputCollector.emit(outputStream, currentTuple, values);
+    }
+
+    private void doNetworkDump() {
+        if (!queryPeriodicSyncFeatureToggle()) {
+            logger.warn("Skip periodic network sync (disabled by feature toggle)");
+            return;
+        }
+
+        logger.debug("Do periodic network dump request");
+        for (String region : floodlights) {
+            routerService.sendNetworkRequest(this, region);
+        }
+    }
+
+    private boolean queryPeriodicSyncFeatureToggle() {
+        return featureTogglesRepository.find()
+                .map(FeatureToggles::getFloodlightRoutePeriodicSync)
+                .orElse(FeatureToggles.DEFAULTS.getFloodlightRoutePeriodicSync());
     }
 }
