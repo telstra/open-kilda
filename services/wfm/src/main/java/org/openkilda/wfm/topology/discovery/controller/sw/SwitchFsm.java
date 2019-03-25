@@ -141,66 +141,29 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         SpeakerSwitchView speakerData = context.getSpeakerData();
 
         // set features for correct port (re)identification
-        if (!features.equals(speakerData.getFeatures())) {
-            log.info("Update features for {} - old:{} new:{}", switchId, features, speakerData.getFeatures());
-            features.clear();
-            features.addAll(speakerData.getFeatures());
-        }
+        updateFeatures(speakerData.getFeatures());
 
-        // locate changes
-        Map<Integer, AbstractPort> removedPorts = new HashMap<>(portByNumber);
-        List<AbstractPort> addedPorts = new ArrayList<>();
-        List<AbstractPort> upPorts = new ArrayList<>();
-        List<AbstractPort> downPorts = new ArrayList<>();
+        Set<Integer> removedPorts = new HashSet<>(portByNumber.keySet());
         for (SpeakerSwitchPortView speakerPort : speakerData.getPorts()) {
             AbstractPort actualPort = makePortRecord(speakerPort);
             AbstractPort storedPort = portByNumber.get(speakerPort.getNumber());
+
             if (storedPort == null) {
-                addedPorts.add(actualPort);
+                portAdd(actualPort, context);
             } else if (!storedPort.isSameKind(actualPort)) {
                 // port kind have been changed, we must recreate port handler
-                addedPorts.add(actualPort);
+                portDel(storedPort, context);
+                portAdd(actualPort, context);
             } else {
                 removedPorts.remove(speakerPort.getNumber());
             }
 
-            switch (actualPort.getLinkStatus()) {
-                case UP:
-                    upPorts.add(actualPort);
-                    break;
-                case DOWN:
-                    downPorts.add(actualPort);
-                    break;
-                default:
-                    throw new IllegalArgumentException(String.format(
-                            "Unsupported port admin state value %s (%s)",
-                            actualPort.getLinkStatus(), actualPort.getLinkStatus().getClass().getName()));
-            }
+            updateOnlineStatus(actualPort, context, true);
+            updatePortLinkMode(actualPort, context);
         }
 
-        // apply changes
-        for (AbstractPort port : removedPorts.values()) {
-            portDel(port, context);
-        }
-
-        for (AbstractPort port : addedPorts) {
-            portAdd(port, context);
-        }
-
-        // emit "online" status for all ports
-        for (AbstractPort port : portByNumber.values()) {
-            updateOnlineStatus(port, context, true);
-        }
-
-        // emit ports up/down
-        for (AbstractPort port : downPorts) {
-            port.setLinkStatus(LinkStatus.DOWN);
-            updatePortLinkMode(port, context);
-        }
-
-        for (AbstractPort port : upPorts) {
-            port.setLinkStatus(LinkStatus.UP);
-            updatePortLinkMode(port, context);
+        for (Integer portNumber : removedPorts) {
+            portDel(portByNumber.get(portNumber), context);
         }
     }
 
@@ -280,6 +243,14 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     // -- private/service methods --
+
+    private void updateFeatures(Set<SpeakerSwitchView.Feature> update) {
+        if (!features.equals(update)) {
+            log.info("Update features for {} - old:{} new:{}", switchId, features, update);
+            features.clear();
+            features.addAll(update);
+        }
+    }
 
     private void portAdd(AbstractPort port, SwitchFsmContext context) {
         portByNumber.put(port.getPortNumber(), port);
