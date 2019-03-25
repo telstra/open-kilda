@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,39 +15,43 @@
 
 package org.openkilda.messaging.info.switches;
 
-import org.openkilda.messaging.info.InfoData;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
 import lombok.Value;
 
+import java.io.Serializable;
 import java.util.List;
 
-//TODO should be removed
 @Value
-public class SyncRulesResponse extends InfoData {
+@Builder
+public class RulesSyncEntry implements Serializable {
 
     @JsonProperty("missing")
-    private List<Long> missingRules;
+    private List<Long> missing;
 
     @JsonProperty("proper")
-    private List<Long> properRules;
+    private List<Long> proper;
 
     @JsonProperty("excess")
-    private List<Long> excessRules;
+    private List<Long> excess;
 
     @JsonProperty("installed")
-    private List<Long> installedRules;
+    private List<Long> installed;
+
+    @JsonProperty("removed")
+    private List<Long> removed;
 
     @JsonCreator
-    public SyncRulesResponse(
-            @JsonProperty("missing") List<Long> missingRules,
-            @JsonProperty("proper") List<Long> properRules,
-            @JsonProperty("excess") List<Long> excessRules,
-            @JsonProperty("installed") List<Long> installedRules) {
-        this.missingRules = missingRules;
-        this.properRules = properRules;
-        this.excessRules = excessRules;
-        this.installedRules = installedRules;
+    public RulesSyncEntry(@JsonProperty("missing") List<Long> missing,
+                          @JsonProperty("proper") List<Long> proper,
+                          @JsonProperty("excess") List<Long> excess,
+                          @JsonProperty("installed") List<Long> installed,
+                          @JsonProperty("removed") List<Long> removed) {
+        this.missing = missing;
+        this.proper = proper;
+        this.excess = excess;
+        this.installed = installed;
+        this.removed = removed;
     }
 }

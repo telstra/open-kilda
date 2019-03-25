@@ -26,7 +26,7 @@ import java.util.List;
 
 @Value
 @Builder
-public class BatchInstallForSwitchManagerRequest extends CommandData {
+public class BatchInstallFlowForSwitchManagerRequest extends CommandData {
 
     @JsonProperty("switch_id")
     private SwitchId switchId;
@@ -34,7 +34,7 @@ public class BatchInstallForSwitchManagerRequest extends CommandData {
     @JsonProperty("flow_commands")
     private List<BaseInstallFlow> flowCommands;
 
-    public BatchInstallForSwitchManagerRequest(
+    public BatchInstallFlowForSwitchManagerRequest(
             @JsonProperty("switch_id") SwitchId switchId,
             @JsonProperty("flow_commands") List<BaseInstallFlow> flowCommands) {
         this.switchId = switchId;
