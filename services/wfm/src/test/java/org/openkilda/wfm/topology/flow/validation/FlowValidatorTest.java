@@ -21,9 +21,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
@@ -60,6 +62,11 @@ public class FlowValidatorTest {
         when(switchRepository.findById(eq(dstSwitchId))).thenReturn(
                 Optional.of(dstSwitch));
 
+        IslRepository islRepository = mock(IslRepository.class);
+        Isl isl = Isl.builder().srcSwitch(srcSwitch).srcPort(srtPort).destSwitch(dstSwitch).destPort(dstPort).build();
+        when(islRepository.findBySrcEndpoint(eq(srcSwitchId), eq(srtPort))).thenReturn(singletonList(isl));
+        when(islRepository.findByDestEndpoint(eq(dstSwitchId), eq(dstPort))).thenReturn(singletonList(isl));
+
         FlowRepository flowRepository = mock(FlowRepository.class);
         Flow flow = new Flow();
         flow.setFlowId(flowId);
@@ -75,6 +82,7 @@ public class FlowValidatorTest {
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
+        when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
 
         target = new FlowValidator(repositoryFactory);
     }
@@ -87,6 +95,57 @@ public class FlowValidatorTest {
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         target = new FlowValidator(repositoryFactory);
+    }
+
+    @Test(expected = FlowValidationException.class)
+    public void shouldFailIfSourcePortIsOccupiedByIsl() throws FlowValidationException {
+        defaultSetUp(SRC_SWITCH_ID, SRC_PORT, 0, DST_SWITCH_ID, DST_PORT, 0, FLOW_ID);
+        Flow flow = new Flow();
+        flow.setFlowId(ANOTHER_FLOW_ID);
+        Switch srcSwitch = new Switch();
+        srcSwitch.setSwitchId(SRC_SWITCH_ID);
+        flow.setSrcSwitch(srcSwitch);
+        flow.setSrcPort(SRC_PORT);
+        Switch dstSwitch = new Switch();
+        dstSwitch.setSwitchId(DST_SWITCH_ID);
+        flow.setDestSwitch(dstSwitch);
+        flow.setDestPort(DST_PORT + 1);
+
+        target.checkFlowForIslConflicts(flow);
+    }
+
+    @Test(expected = FlowValidationException.class)
+    public void shouldFailIfDestinationPortIsOccupiedByIsl() throws FlowValidationException {
+        defaultSetUp(SRC_SWITCH_ID, SRC_PORT, 0, DST_SWITCH_ID, DST_PORT, 0, FLOW_ID);
+        Flow flow = new Flow();
+        flow.setFlowId(ANOTHER_FLOW_ID);
+        Switch srcSwitch = new Switch();
+        srcSwitch.setSwitchId(SRC_SWITCH_ID);
+        flow.setSrcSwitch(srcSwitch);
+        flow.setSrcPort(SRC_PORT + 1);
+        Switch dstSwitch = new Switch();
+        dstSwitch.setSwitchId(DST_SWITCH_ID);
+        flow.setDestSwitch(dstSwitch);
+        flow.setDestPort(DST_PORT);
+
+        target.checkFlowForIslConflicts(flow);
+    }
+
+    @Test
+    public void shouldNotFailIfPortIsNotOccupiedByIsl() throws FlowValidationException {
+        defaultSetUp(SRC_SWITCH_ID, SRC_PORT, 0, DST_SWITCH_ID, DST_PORT, 0, FLOW_ID);
+        Flow flow = new Flow();
+        flow.setFlowId(ANOTHER_FLOW_ID);
+        Switch srcSwitch = new Switch();
+        srcSwitch.setSwitchId(SRC_SWITCH_ID);
+        flow.setSrcSwitch(srcSwitch);
+        flow.setSrcPort(SRC_PORT + 1);
+        Switch dstSwitch = new Switch();
+        dstSwitch.setSwitchId(DST_SWITCH_ID);
+        flow.setDestSwitch(dstSwitch);
+        flow.setDestPort(DST_PORT + 1);
+
+        target.checkFlowForIslConflicts(flow);
     }
 
     @Test(expected = FlowValidationException.class)

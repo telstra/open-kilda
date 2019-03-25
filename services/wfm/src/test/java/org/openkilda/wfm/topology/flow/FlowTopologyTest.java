@@ -770,8 +770,8 @@ public class FlowTopologyTest extends AbstractStormTest {
         createIslIfNotExist("ff:00", "ff:01");
 
         FlowDto flowPayload =
-                new FlowDto(flowId, 10000, false, "", new SwitchId("ff:00"), 1, 2,
-                        new SwitchId("ff:01"), 1, 2);
+                new FlowDto(flowId, 10000, false, "", new SwitchId("ff:00"), 10, 20,
+                        new SwitchId("ff:01"), 10, 20);
         FlowCreateRequest commandData = new FlowCreateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "create-flow", Destination.WFM);
         //sendNorthboundMessage(message);
@@ -823,8 +823,8 @@ public class FlowTopologyTest extends AbstractStormTest {
     private FlowDto updateFlow(final String flowId) throws IOException {
         System.out.println("NORTHBOUND: Update flow");
         FlowDto flowPayload =
-                new FlowDto(flowId, 10000, true, "", new SwitchId("ff:00"), 1, 2,
-                        new SwitchId("ff:01"), 1, 2);
+                new FlowDto(flowId, 10000, true, "", new SwitchId("ff:00"), 10, 20,
+                        new SwitchId("ff:01"), 10, 20);
         FlowUpdateRequest commandData = new FlowUpdateRequest(flowPayload);
         CommandMessage message = new CommandMessage(commandData, 0, "update-flow", Destination.WFM);
         //sendNorthboundMessage(message);
