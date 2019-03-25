@@ -108,10 +108,47 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         isl.setSrcSwitch(switchA);
         isl.setSrcPort(111);
         isl.setDestSwitch(switchB);
+        isl.setDestPort(112);
+
+        islRepository.createOrUpdate(isl);
+
+        List<Isl> foundIsls = Lists.newArrayList(islRepository.findByEndpoint(TEST_SWITCH_A_ID, 111));
+        assertEquals(1, foundIsls.size());
+        assertEquals(switchA.getSwitchId(), foundIsls.get(0).getSrcSwitch().getSwitchId());
+        assertEquals(switchB.getSwitchId(), foundIsls.get(0).getDestSwitch().getSwitchId());
+
+        foundIsls = Lists.newArrayList(islRepository.findByEndpoint(TEST_SWITCH_B_ID, 112));
+        assertEquals(1, foundIsls.size());
+        assertEquals(switchA.getSwitchId(), foundIsls.get(0).getSrcSwitch().getSwitchId());
+        assertEquals(switchB.getSwitchId(), foundIsls.get(0).getDestSwitch().getSwitchId());
+    }
+
+    @Test
+    public void shouldFindIslBySrcEndpoint() {
+        Isl isl = new Isl();
+        isl.setSrcSwitch(switchA);
+        isl.setSrcPort(111);
+        isl.setDestSwitch(switchB);
 
         islRepository.createOrUpdate(isl);
 
         List<Isl> foundIsls = Lists.newArrayList(islRepository.findBySrcEndpoint(TEST_SWITCH_A_ID, 111));
+        assertEquals(1, foundIsls.size());
+        assertEquals(switchA.getSwitchId(), foundIsls.get(0).getSrcSwitch().getSwitchId());
+        assertEquals(switchB.getSwitchId(), foundIsls.get(0).getDestSwitch().getSwitchId());
+    }
+
+    @Test
+    public void shouldFindIslByDestEndpoint() {
+        Isl isl = new Isl();
+        isl.setSrcSwitch(switchA);
+        isl.setSrcPort(111);
+        isl.setDestSwitch(switchB);
+        isl.setDestPort(112);
+
+        islRepository.createOrUpdate(isl);
+
+        List<Isl> foundIsls = Lists.newArrayList(islRepository.findByDestEndpoint(TEST_SWITCH_B_ID, 112));
         assertEquals(1, foundIsls.size());
         assertEquals(switchA.getSwitchId(), foundIsls.get(0).getSrcSwitch().getSwitchId());
         assertEquals(switchB.getSwitchId(), foundIsls.get(0).getDestSwitch().getSwitchId());

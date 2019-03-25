@@ -20,10 +20,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
@@ -61,6 +63,11 @@ public class FlowValidatorTest {
         when(switchRepository.findById(eq(dstSwitchId))).thenReturn(
                 Optional.of(dstSwitch));
 
+        IslRepository islRepository = mock(IslRepository.class);
+        Isl isl = Isl.builder().srcSwitch(srcSwitch).srcPort(srtPort).destSwitch(dstSwitch).destPort(dstPort).build();
+        when(islRepository.findByEndpoint(eq(srcSwitchId), eq(srtPort))).thenReturn(singletonList(isl));
+        when(islRepository.findByEndpoint(eq(dstSwitchId), eq(dstPort))).thenReturn(singletonList(isl));
+
         UnidirectionalFlow flow = new TestFlowBuilder(flowId)
                 .srcSwitch(srcSwitch)
                 .srcPort(srtPort)
@@ -79,6 +86,7 @@ public class FlowValidatorTest {
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
+        when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
 
         target = new FlowValidator(repositoryFactory);
     }
@@ -91,6 +99,60 @@ public class FlowValidatorTest {
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         target = new FlowValidator(repositoryFactory);
+    }
+
+    @Test(expected = FlowValidationException.class)
+    public void shouldFailIfSourcePortIsOccupiedByIsl() throws FlowValidationException {
+        defaultSetUp(SRC_SWITCH_ID, SRC_PORT, 0, DST_SWITCH_ID, DST_PORT, 0, FLOW_ID);
+
+        Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
+        Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
+
+        UnidirectionalFlow flow = new TestFlowBuilder()
+                .flowId(ANOTHER_FLOW_ID)
+                .srcSwitch(srcSwitch)
+                .srcPort(SRC_PORT)
+                .destSwitch(dstSwitch)
+                .destPort(DST_PORT + 1)
+                .buildUnidirectionalFlow();
+
+        target.checkFlowForIslConflicts(flow.getFlow());
+    }
+
+    @Test(expected = FlowValidationException.class)
+    public void shouldFailIfDestinationPortIsOccupiedByIsl() throws FlowValidationException {
+        defaultSetUp(SRC_SWITCH_ID, SRC_PORT, 0, DST_SWITCH_ID, DST_PORT, 0, FLOW_ID);
+
+        Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
+        Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
+
+        UnidirectionalFlow flow = new TestFlowBuilder()
+                .flowId(ANOTHER_FLOW_ID)
+                .srcSwitch(srcSwitch)
+                .srcPort(SRC_PORT + 1)
+                .destSwitch(dstSwitch)
+                .destPort(DST_PORT)
+                .buildUnidirectionalFlow();
+
+        target.checkFlowForIslConflicts(flow.getFlow());
+    }
+
+    @Test
+    public void shouldNotFailIfPortIsNotOccupiedByIsl() throws FlowValidationException {
+        defaultSetUp(SRC_SWITCH_ID, SRC_PORT, 0, DST_SWITCH_ID, DST_PORT, 0, FLOW_ID);
+
+        Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
+        Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
+
+        UnidirectionalFlow flow = new TestFlowBuilder()
+                .flowId(ANOTHER_FLOW_ID)
+                .srcSwitch(srcSwitch)
+                .srcPort(SRC_PORT + 1)
+                .destSwitch(dstSwitch)
+                .destPort(DST_PORT + 1)
+                .buildUnidirectionalFlow();
+
+        target.checkFlowForIslConflicts(flow.getFlow());
     }
 
     @Test(expected = FlowValidationException.class)
