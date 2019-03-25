@@ -13,20 +13,32 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.service;
+package org.openkilda.northbound.dto.v1.switches;
 
-import org.openkilda.messaging.command.flow.BaseInstallFlow;
-import org.openkilda.messaging.command.flow.RemoveFlow;
-import org.openkilda.messaging.info.rule.FlowEntry;
-import org.openkilda.model.SwitchId;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-public interface CommandBuilder {
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class RulesSyncDto extends RulesValidationDto {
 
-    List<BaseInstallFlow> buildCommandsToCreateMissingRules(SwitchId switchId, List<Long> switchRules);
+    @JsonProperty("missing")
+    private List<Long> missing;
 
-    List<RemoveFlow> buildCommandsToRemoveExcessRules(SwitchId switchId,
-                                                      List<FlowEntry> flows,
-                                                      List<Long> excessRulesCookies);
+    @JsonProperty("proper")
+    private List<Long> proper;
+
+    @JsonProperty("excess")
+    private List<Long> excess;
+
+    @JsonProperty("installed")
+    private List<Long> installed;
+
+    @JsonProperty("removed")
+    private List<Long> removed;
 }

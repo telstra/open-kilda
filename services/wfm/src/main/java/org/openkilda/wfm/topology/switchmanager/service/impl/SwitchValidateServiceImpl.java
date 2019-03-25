@@ -104,6 +104,7 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
         }
 
         fsm.fire(SwitchValidateEvent.TIMEOUT);
+        process(fsm);
     }
 
     @Override
@@ -114,6 +115,7 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
         }
 
         fsm.fire(SwitchValidateEvent.ERROR, message);
+        process(fsm);
     }
 
     private void logFsmNotFound(String key) {
