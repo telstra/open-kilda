@@ -58,8 +58,9 @@ import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.command.discovery.PortsCommandData;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
-import org.openkilda.messaging.command.flow.BatchInstallForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.BatchInstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.BatchInstallRequest;
+import org.openkilda.messaging.command.flow.BatchRemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
@@ -67,6 +68,7 @@ import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.command.switches.BatchRemoveMeters;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
@@ -87,11 +89,13 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.rule.FlowCommandErrorData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
+import org.openkilda.messaging.info.flow.BatchFlowInstallResponse;
+import org.openkilda.messaging.info.flow.BatchFlowRemoveResponse;
+import org.openkilda.messaging.info.meter.BatchMetersRemoveResponse;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
-import org.openkilda.messaging.info.rule.BatchInstallResponse;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.stats.PortStatusData;
@@ -186,6 +190,8 @@ class RecordHandler implements Runnable {
             doProcessOneSwitchFlow(message, replyToTopic, replyDestination);
         } else if (data instanceof RemoveFlow) {
             doDeleteFlow(message, replyToTopic, replyDestination);
+        } else if (data instanceof BatchRemoveFlowForSwitchManagerRequest) {
+            doBatchDeleteFlowForSwitchManager(message);
         } else if (data instanceof NetworkCommandData) {
             doNetworkDump(message);
         } else if (data instanceof SwitchRulesDeleteRequest) {
@@ -202,10 +208,12 @@ class RecordHandler implements Runnable {
             doDumpRulesForSwitchManagerRequest(message);
         } else if (data instanceof BatchInstallRequest) {
             doBatchInstall(message);
-        } else if (data instanceof BatchInstallForSwitchManagerRequest) {
+        } else if (data instanceof BatchInstallFlowForSwitchManagerRequest) {
             doBatchInstallForSwitchManager(message);
         } else if (data instanceof PortsCommandData) {
             doPortsCommandDataRequest(message);
+        } else if (data instanceof BatchRemoveMeters) {
+            doBatchDeleteMeters(message);
         } else if (data instanceof DeleteMeterRequest) {
             doDeleteMeter(message);
         } else if (data instanceof PortConfigurationRequest) {
@@ -448,6 +456,35 @@ class RecordHandler implements Runnable {
         RemoveFlow command = (RemoveFlow) message.getData();
 
         DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
+
+        processDeleteFlow(command, dpid);
+
+        message.setDestination(replyDestination);
+        getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
+    }
+
+    /**
+     * Batch removes flow.
+     *
+     * @param message command message for flow installation
+     */
+    private void doBatchDeleteFlowForSwitchManager(final CommandMessage message)
+            throws FlowCommandException {
+        BatchRemoveFlowForSwitchManagerRequest request = (BatchRemoveFlowForSwitchManagerRequest) message.getData();
+        String replyToTopic = context.getKafkaSwitchManagerTopic();
+
+        DatapathId dpid = DatapathId.of(request.getSwitchId().toLong());
+
+        for (RemoveFlow command : request.getFlowCommands()) {
+            processDeleteFlow(command, dpid);
+        }
+
+        InfoMessage response = new InfoMessage(new BatchFlowRemoveResponse(), System.currentTimeMillis(),
+                message.getCorrelationId());
+        getKafkaProducer().sendMessageAndTrack(replyToTopic, message.getCorrelationId(), response);
+    }
+
+    private void processDeleteFlow(RemoveFlow command, DatapathId dpid) throws FlowCommandException {
         ISwitchManager switchManager = context.getSwitchManager();
         try {
             logger.info("Deleting flow {} from switch {}", command.getId(), dpid);
@@ -464,7 +501,6 @@ class RecordHandler implements Runnable {
                     ErrorType.DELETION_FAILURE, e);
         }
 
-        // FIXME(surabujin): QUICK FIX - try to drop meterPool completely
         Long meterId = command.getMeterId();
         if (meterId != null) {
             try {
@@ -475,9 +511,6 @@ class RecordHandler implements Runnable {
                 logger.error("Failed to delete meter {} from switch {}: {}", meterId, dpid, e.getMessage());
             }
         }
-
-        message.setDestination(replyDestination);
-        getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
     }
 
     /**
@@ -727,7 +760,7 @@ class RecordHandler implements Runnable {
      * @param message with list of flows.
      */
     private void doBatchInstallForSwitchManager(final CommandMessage message) {
-        BatchInstallForSwitchManagerRequest request = (BatchInstallForSwitchManagerRequest) message.getData();
+        BatchInstallFlowForSwitchManagerRequest request = (BatchInstallFlowForSwitchManagerRequest) message.getData();
 
         String replyToTopic = context.getKafkaSwitchManagerTopic();
 
@@ -752,7 +785,7 @@ class RecordHandler implements Runnable {
             getKafkaProducer().sendMessageAndTrack(replyToTopic, message.getCorrelationId(), error);
         }
 
-        InfoMessage infoMessage = new InfoMessage(new BatchInstallResponse(), System.currentTimeMillis(),
+        InfoMessage infoMessage = new InfoMessage(new BatchFlowInstallResponse(), System.currentTimeMillis(),
                 message.getCorrelationId());
         getKafkaProducer().sendMessageAndTrack(replyToTopic, message.getCorrelationId(), infoMessage);
     }
@@ -837,6 +870,35 @@ class RecordHandler implements Runnable {
         } catch (SwitchOperationException e) {
             logger.error("Deleting meter '{}' from switch '{}' was unsuccessful: {}",
                     request.getMeterId(), request.getSwitchId(), e.getMessage());
+            anError(ErrorType.DATA_INVALID)
+                    .withMessage(e.getMessage())
+                    .withDescription(request.getSwitchId().toString())
+                    .withCorrelationId(message.getCorrelationId())
+                    .withTopic(replyToTopic)
+                    .sendVia(producerService);
+        }
+    }
+
+    private void doBatchDeleteMeters(CommandMessage message) {
+        BatchRemoveMeters request = (BatchRemoveMeters) message.getData();
+        logger.info("Deleting meters '{}'. Switch: '{}'", request.getMetersId(), request.getSwitchId());
+
+        final IKafkaProducerService producerService = getKafkaProducer();
+        final String replyToTopic = context.getKafkaSwitchManagerTopic();
+
+        try {
+            DatapathId dpid = DatapathId.of(request.getSwitchId().toLong());
+
+            for (Long meterId : request.getMetersId()) {
+                context.getSwitchManager().deleteMeter(dpid, meterId);
+            }
+
+            BatchMetersRemoveResponse response = new BatchMetersRemoveResponse();
+            InfoMessage infoMessage = new InfoMessage(response, System.currentTimeMillis(), message.getCorrelationId());
+            producerService.sendMessageAndTrack(replyToTopic, message.getCorrelationId(), infoMessage);
+        } catch (SwitchOperationException e) {
+            logger.error("Deleting meters '{}' from switch '{}' was unsuccessful: {}",
+                    request.getMetersId(), request.getSwitchId(), e.getMessage());
             anError(ErrorType.DATA_INVALID)
                     .withMessage(e.getMessage())
                     .withDescription(request.getSwitchId().toString())

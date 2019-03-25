@@ -25,6 +25,10 @@ public interface SwitchSyncService {
 
     void handleInstallRulesResponse(String key);
 
+    void handleRemoveRulesResponse(String key);
+
+    void handleRemoveMetersResponse(String key);
+
     void handleTaskTimeout(String key);
 
     void handleTaskError(String key, ErrorMessage message);
