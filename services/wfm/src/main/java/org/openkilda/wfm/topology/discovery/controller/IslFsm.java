@@ -24,6 +24,8 @@ import org.openkilda.model.Isl.IslBuilder;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
@@ -454,8 +456,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     private Socket prepareSocket() {
         IslReference reference = discoveryFacts.getReference();
-        Anchor source = loadSwitch(reference.getSource());
-        Anchor dest = loadSwitch(reference.getDest());
+        Anchor source = loadSwitchCreateIfMissing(reference.getSource());
+        Anchor dest = loadSwitchCreateIfMissing(reference.getDest());
         switchRepository.lockSwitches(source.getSw(), dest.getSw());
 
         return new Socket(source, dest);
@@ -488,11 +490,24 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         return link;
     }
 
-    private Anchor loadSwitch(Endpoint endpoint) {
-        Switch sw = switchRepository.findById(endpoint.getDatapath())
-                .orElseThrow(() -> new PersistenceException(
-                        String.format("Switch %s not found in DB", endpoint.getDatapath())));
+    private Anchor loadSwitchCreateIfMissing(Endpoint endpoint) {
+        final SwitchId datapath = endpoint.getDatapath();
+        Switch sw = switchRepository.findById(datapath)
+                .orElseGet(() -> {
+                    log.error("Switch {} is missing in DB, create empty switch record", datapath);
+                    return createSwitch(datapath);
+                });
         return new Anchor(endpoint, sw);
+    }
+
+    private Switch createSwitch(SwitchId datapath) {
+        Switch sw = Switch.builder()
+                .switchId(datapath)
+                .status(SwitchStatus.INACTIVE)
+                .description(String.format("auto created as part of ISL %s discovery", discoveryFacts.getReference()))
+                .build();
+        switchRepository.createOrUpdate(sw);
+        return sw;
     }
 
     private Optional<Isl> loadIsl(Endpoint source, Endpoint dest) {
