@@ -100,15 +100,16 @@ public class BfdGlobalToggleFsm
      */
     public static BfdGlobalToggleFsm create(IBfdGlobalToggleCarrier carrier, Endpoint endpoint,
                                             FeatureTogglesRepository featureTogglesRepository) {
-        FeatureToggles toggles = featureTogglesRepository.find().orElse(FeatureToggles.DEFAULTS);
-        Boolean value = toggles.getUseBfdForIslIntegrityCheck();
-        if (value == null) {
+        Boolean toggle = featureTogglesRepository.find()
+                .map(FeatureToggles::getUseBfdForIslIntegrityCheck)
+                .orElseGet(FeatureToggles.DEFAULTS::getUseBfdForIslIntegrityCheck);
+        if (toggle == null) {
             throw new IllegalStateException("Unable to identify initial BFD-global-toggle value (it is null at"
                                                     + " this moment)");
         }
 
         BfdGlobalToggleFsmState state;
-        if (value) {
+        if (toggle) {
             state = BfdGlobalToggleFsmState.DOWN_ENABLED;
         } else {
             state = BfdGlobalToggleFsmState.DOWN_DISABLED;
