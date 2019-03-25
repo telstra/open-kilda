@@ -79,6 +79,10 @@ export class FlowsService {
     return this.httpClient.patch(`${environment.apiEndPoint}/flows/${flowId}/sync`,{});
   }
 
+  pingFlow(flowId):Observable<any>{
+    return this.httpClient.put(`${environment.apiEndPoint}/flows/${flowId}/ping`,{});
+  }
+
   getcontract(flowid):Observable<any>{
     return this.httpClient.get(`${environment.apiEndPoint}/contracts/list/${flowid}`);
   }
@@ -89,6 +93,10 @@ export class FlowsService {
 
   getStatusList() : Observable<any[]>{
     return this.httpClient.get<any[]>(`${environment.apiEndPoint}/flows/status`);
+  }
+
+  getFlowStatus(flowid) : Observable<any>{
+    return this.httpClient.get<any>(`${environment.apiEndPoint}/flows/${flowid}/status`);
   }
   
 }

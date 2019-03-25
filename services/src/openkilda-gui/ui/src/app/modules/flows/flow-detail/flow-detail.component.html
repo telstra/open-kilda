@@ -176,6 +176,9 @@
           <li *ngIf="storeLinkSetting && (bandWidthDescrepancy || statusDescrepancy)" [ngClass]="{'active': openedTab == 'descrepancy'}">
             <a href="javascript:void(0);" (click)="openTab('descrepancy');">Discrepancy</a>
           </li>
+          <li  [ngClass]="{'active': openedTab == 'ping'}">
+            <a href="javascript:void(0);" (click)="openTab('ping');">Ping</a>
+          </li>
         </ul>
         <div class="tab-content padding-15 clearfix">
           <div class="tab-pane" *ngIf="openedTab == 'graph'" [ngClass]="{'active': openedTab == 'graph'}">
@@ -190,12 +193,25 @@
           </div>
           <div class="tab-pane" [ngClass]="{'active': openedTab == 'validate'}">
             <div class="text-right mb-2">
+                <!-- <button  class="btn btn-dark btn-sm" (click)="pingFlow()">Ping
+                    Flow</button>&nbsp; -->
               <button *ngIf="commonService.hasPermission('fw_flow_resync')" class="btn btn-dark btn-sm" (click)="resyncFlow()">Resync
                 Flow</button>&nbsp;
               <button *ngIf="commonService.hasPermission('fw_permission_validate')" class="btn btn-dark btn-sm" (click)="validateFlow()">Validate
                 Flow</button>
             </div>
             <div *ngIf="loading" class="component-loader"></div>
+            <!-- <div *ngIf="flowIs =='ping' && !loading" class="clip-board-wrapper">
+              <div class="row">
+              <div class="col-md-12">
+                <label class="response_flow_label">Ping Flow</label>
+                <button class="btn btn-secondary btn-no-radius pull-right btn-custom-margin" (click)="clearPingedFlow()">Clear</button>
+                <div class="clear clearfix"></div>
+              </div>
+            </div>
+           
+            <pre [contextMenu]="copyPingedFlow" class="code pingedFlow" *ngIf="pingedFlow">{{pingedFlow | json}}</pre>
+            </div> -->
             <div *ngIf="flowIs =='validate' && !loading" class="clip-board-wrapper">
               <div class="row">
               <div class="col-md-12">
@@ -240,6 +256,12 @@
               </tbody>
             </table>
           </div>
+      </div>
+      <div class="tab-pane" [ngClass]="{'active': openedTab == 'ping'}">
+          <div class="text-right mb-2">
+              <button  class="btn btn-dark btn-sm" (click)="pingFlow()">Ping Flow</button>
+          </div>
+         <svg id="pingGraph" width="800" height="250"></svg>
       </div>
       </div>
     </div>
@@ -289,3 +311,9 @@
     Copy to Clipboard
   </ng-template>
 </context-menu>
+
+<context-menu #copyPingedFlow>
+    <ng-template contextMenuItem (execute)="copyToClipHtml($event,'pingedFlow');">
+      Copy to Clipboard
+    </ng-template>
+  </context-menu>

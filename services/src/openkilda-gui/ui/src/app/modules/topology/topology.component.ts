@@ -279,10 +279,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       this.graphdata.flow.length == 0
     ) {
       this.appLoader.hide();
-      /*common.infoMessage('No Data Available','info');
-			$("#wait").css("display", "none");
-			$("#switchesgraph").removeClass("hide");*/
-      //return false;
     }
 
     /*
@@ -620,7 +616,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   private insertLinks(links) {
     let ref = this;
-    
     let graphLinksData = this.graphLinkGroup.selectAll("path.link").data(links);
 
     let graphNewLink = graphLinksData
@@ -1807,10 +1802,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       this.svgElement.transition().duration(300).call(this.zoom.transform, newtranformation);
     }
     
-   
-
-   
-
   }
 
   toggleSearch = () => {

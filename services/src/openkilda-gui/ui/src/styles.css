@@ -1983,3 +1983,35 @@ button:focus{
   padding-left: 10px;
   padding-bottom: 5px;
 }
+
+.failed_ping_flowline{
+  stroke: #d93923;
+  stroke-width: 2.5 !important;
+}
+.flowline {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  stroke: #009900;
+  animation: flow 3s linear infinite;
+  -webkit-animation: flow 3s linear infinite;
+}
+
+@keyframes flow {
+  from {
+    stroke-dashoffset: 1000;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@-webkit-keyframes flow {
+  from {
+    stroke-dashoffset: 1000;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
