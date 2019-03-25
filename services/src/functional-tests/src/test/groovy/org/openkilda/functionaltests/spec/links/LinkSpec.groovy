@@ -184,6 +184,44 @@ class LinkSpec extends BaseSpecification {
         database.resetCosts()
     }
 
+    def "ISL should immediately fail if the port went down while switch was disconnected"() {
+        requireProfiles("virtual")
+
+        when: "A switch disconnects"
+        def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
+        lockKeeper.knockoutSwitch(isl.srcSwitch.dpId)
+
+        and: "One of its ports goes down"
+        //Bring down port on a-switch, which will lead to a port down on the Kilda switch
+        lockKeeper.portsDown([isl.aswitch.inPort])
+
+        and: "The switch reconnects back with a port being down"
+        lockKeeper.reviveSwitch(isl.srcSwitch.dpId)
+
+        then: "The related ISL immediately goes down"
+        Wrappers.wait(WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
+        }
+
+        when: "The switch disconnects again"
+        lockKeeper.knockoutSwitch(isl.srcSwitch.dpId)
+
+        and: "The DOWN port is brought back to UP state"
+        lockKeeper.portsUp([isl.aswitch.inPort])
+
+        and: "The switch reconnects back with a port being up"
+        lockKeeper.reviveSwitch(isl.srcSwitch.dpId)
+
+        then: "The related ISL is discovered again"
+        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
+        }
+    }
+
     @Unroll
     def "Unable to get flows for NOT existing link (#item doesn't exist) "() {
         when: "Get flows for NOT existing link"
