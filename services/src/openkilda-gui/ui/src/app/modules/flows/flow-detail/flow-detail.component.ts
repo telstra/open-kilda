@@ -578,16 +578,16 @@ export class FlowDetailComponent implements OnInit {
   removePingFromLinks(forward_ping,reverse_ping){
     this.links.forEach(function(d,index){
       if(index == 0){
-        if(forward_ping){
-          $('#link'+index).removeClass('flowline');
-        }else{
+        if(!forward_ping){
           $('#link'+index).removeClass('flowline').addClass('failed_ping_flowline');
+        }else{
+          $('#link'+index).removeClass('flowline').addClass('ping_success_flow');
         }
       }else if(index !=0){
-        if(reverse_ping){
-          $('#link'+index).removeClass('flowline');
-        }else{
+        if(!reverse_ping){
           $('#link'+index).removeClass('flowline').addClass('failed_ping_flowline');
+        }else{
+          $('#link'+index).removeClass('flowline').addClass('ping_success_flow');
         }
       }
     })

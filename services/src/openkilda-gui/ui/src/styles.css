@@ -1996,6 +1996,10 @@ button:focus{
   -webkit-animation: flow 3s linear infinite;
 }
 
+.ping_success_flow{
+  stroke: #009900!important;
+}
+
 @keyframes flow {
   from {
     stroke-dashoffset: 1000;
