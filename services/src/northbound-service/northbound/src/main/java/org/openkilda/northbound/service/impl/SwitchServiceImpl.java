@@ -223,7 +223,7 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Override
     public CompletableFuture<SwitchValidationResult> validateSwitch(SwitchId switchId) {
-        logger.info("Sync rules request for switch {}", switchId);
+        logger.info("Validate request for switch {}", switchId);
 
         CommandMessage syncCommandMessage = new CommandMessage(
                 new SwitchValidateRequest(switchId), System.currentTimeMillis(), RequestCorrelationId.getId());
@@ -234,11 +234,12 @@ public class SwitchServiceImpl implements SwitchService {
     }
 
     @Override
-    public CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId) {
-        logger.info("Sync rules request for switch {}", switchId);
+    public CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId, boolean removeExcessRules) {
+        logger.info("Sync rules request for switch {}, removeExcessRules = {}", switchId, removeExcessRules);
 
         CommandMessage syncCommandMessage = new CommandMessage(
-                new SwitchRulesSyncRequest(switchId), System.currentTimeMillis(), RequestCorrelationId.getId());
+                new SwitchRulesSyncRequest(switchId, removeExcessRules),
+                System.currentTimeMillis(), RequestCorrelationId.getId());
 
         return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
                 .thenApply(SyncRulesResponse.class::cast)

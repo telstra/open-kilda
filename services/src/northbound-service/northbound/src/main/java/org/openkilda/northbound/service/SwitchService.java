@@ -129,7 +129,7 @@ public interface SwitchService {
      * @param switchId switch to synchronize rules on.
      * @return the synchronization result.
      */
-    CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId);
+    CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId, boolean removeExcessRules);
 
     /**
      * Dumps all meters from the switch.

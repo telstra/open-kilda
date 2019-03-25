@@ -21,7 +21,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
 
-import java.util.Collections;
 import java.util.List;
 
 @Value
@@ -39,22 +38,20 @@ public class SyncRulesResponse extends InfoData {
     @JsonProperty("installed")
     private List<Long> installedRules;
 
+    @JsonProperty("removed")
+    private List<Long> removedRules;
+
     @JsonCreator
     public SyncRulesResponse(
             @JsonProperty("missing") List<Long> missingRules,
             @JsonProperty("proper") List<Long> properRules,
             @JsonProperty("excess") List<Long> excessRules,
-            @JsonProperty("installed") List<Long> installedRules) {
+            @JsonProperty("installed") List<Long> installedRules,
+            @JsonProperty("removed") List<Long> removedRules) {
         this.missingRules = missingRules;
         this.properRules = properRules;
         this.excessRules = excessRules;
         this.installedRules = installedRules;
-    }
-
-    public SyncRulesResponse() {
-        this.missingRules = Collections.emptyList();
-        this.properRules = Collections.emptyList();
-        this.excessRules = Collections.emptyList();
-        this.installedRules = Collections.emptyList();
+        this.removedRules = removedRules;
     }
 }

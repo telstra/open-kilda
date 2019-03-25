@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.service;
 
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
@@ -41,7 +43,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 
 @RunWith(SpringRunner.class)
@@ -68,15 +69,18 @@ public class SwitchServiceTest {
         Long properRule = 10L;
         SwitchId switchId = new SwitchId(1L);
 
-        SyncRulesResponse rules = new SyncRulesResponse(Collections.singletonList(missingRule),
-                Collections.singletonList(properRule), Collections.singletonList(excessRule),
-                Collections.singletonList(missingRule));
+        SyncRulesResponse rules = new SyncRulesResponse(singletonList(missingRule),
+                singletonList(properRule), singletonList(excessRule),
+                singletonList(missingRule), singletonList(excessRule));
         messageExchanger.mockResponse(correlationId, rules);
 
-        RulesSyncResult result = switchService.syncRules(switchId).get();
-        assertThat(result.getMissingRules(), is(Collections.singletonList(missingRule)));
-        assertThat(result.getInstalledRules(), is(Collections.singletonList(missingRule)));
-        assertThat(result.getExcessRules(), is(Collections.singletonList(excessRule)));
+        RulesSyncResult result = switchService.syncRules(switchId, true).get();
+        assertThat(result.getMissingRules(), is(singletonList(missingRule)));
+        assertThat(result.getInstalledRules(), is(singletonList(missingRule)));
+        assertThat(result.getExcessRules(), is(singletonList(excessRule)));
+
+        assertThat(result.getInstalledRules(), is(singletonList(missingRule)));
+        assertThat(result.getRemovedRules(), is(singletonList(excessRule)));
     }
 
     @Test
@@ -84,19 +88,21 @@ public class SwitchServiceTest {
         String correlationId = "not-sync-rules";
         RequestCorrelationId.create(correlationId);
 
-        Long excessRule = 101L;
         Long properRule = 10L;
         SwitchId switchId = new SwitchId(1L);
 
-        // the switch has 1 excess, 1 proper and no missing rules
-        InfoData validationResult = new SyncRulesResponse(Collections.emptyList(),
-                Collections.singletonList(properRule), Collections.singletonList(excessRule), Collections.emptyList());
+        // the switch has 1 proper and no missing and excess rules
+        InfoData validationResult = new SyncRulesResponse(emptyList(),
+                singletonList(properRule), emptyList(), emptyList(), emptyList());
         messageExchanger.mockResponse(correlationId, validationResult);
 
-        RulesSyncResult result = switchService.syncRules(switchId).get();
+        RulesSyncResult result = switchService.syncRules(switchId, true).get();
         assertThat(result.getMissingRules(), is(empty()));
-        assertThat(result.getExcessRules(), is(Collections.singletonList(excessRule)));
-        assertThat(result.getProperRules(), is(Collections.singletonList(properRule)));
+        assertThat(result.getExcessRules(), is(empty()));
+        assertThat(result.getProperRules(), is(singletonList(properRule)));
+
+        assertThat(result.getInstalledRules(), is(empty()));
+        assertThat(result.getRemovedRules(), is(empty()));
     }
 
     @TestConfiguration

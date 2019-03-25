@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,27 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.switches;
-
-import org.openkilda.messaging.command.CommandData;
-import org.openkilda.model.SwitchId;
+package org.openkilda.northbound.dto.v1.switches;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+import lombok.Data;
 
-@Value
-public class SwitchRulesSyncRequest extends CommandData {
-
-    @JsonProperty("switch_id")
-    private SwitchId switchId;
-
+@Data
+public class SwitchSyncRequest {
     @JsonProperty("remove_excess_rules")
     private boolean removeExcessRules;
-
-    public SwitchRulesSyncRequest(@JsonProperty("switch_id") SwitchId switchId,
-                                  @JsonProperty("remove_excess_rules") boolean removeExcessRules) {
-        this.switchId = switchId;
-        this.removeExcessRules = removeExcessRules;
-    }
 }
-

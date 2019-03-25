@@ -22,7 +22,8 @@ import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.rule.BatchInstallResponse;
+import org.openkilda.messaging.info.flow.BatchFlowInstallResponse;
+import org.openkilda.messaging.info.flow.BatchFlowRemoveResponse;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
@@ -80,8 +81,10 @@ public class SwitchSyncRulesManager extends HubBolt implements SwitchSyncRulesCa
             InfoData data = ((InfoMessage) message).getData();
             if (data instanceof SwitchFlowEntries) {
                 service.handleFlowEntriesResponse(key, (SwitchFlowEntries) data);
-            } else if (data instanceof BatchInstallResponse) {
+            } else if (data instanceof BatchFlowInstallResponse) {
                 service.handleInstallRulesResponse(key);
+            } else if (data instanceof BatchFlowRemoveResponse) {
+                service.handleRemoveRulesResponse(key);
             }
 
         } else if (message instanceof ErrorMessage) {

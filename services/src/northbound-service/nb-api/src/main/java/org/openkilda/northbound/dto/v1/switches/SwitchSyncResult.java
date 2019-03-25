@@ -13,9 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.rule;
+package org.openkilda.northbound.dto.v1.switches;
 
-import org.openkilda.messaging.info.InfoData;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-public class BatchInstallResponse extends InfoData {
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class SwitchSyncResult {
+
+    @JsonProperty("rules")
+    private RulesValidationDto rules;
+
+    @JsonProperty("meters")
+    private MetersValidationDto meters;
 }
