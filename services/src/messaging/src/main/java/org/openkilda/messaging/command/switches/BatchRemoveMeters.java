@@ -13,20 +13,30 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.service;
+package org.openkilda.messaging.command.switches;
 
-import org.openkilda.messaging.command.flow.BaseInstallFlow;
-import org.openkilda.messaging.command.flow.RemoveFlow;
-import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.model.SwitchId;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
 
 import java.util.List;
 
-public interface CommandBuilder {
+@Value
+public class BatchRemoveMeters extends CommandData {
 
-    List<BaseInstallFlow> buildCommandsToCreateMissingRules(SwitchId switchId, List<Long> switchRules);
+    @JsonProperty("switch_id")
+    private SwitchId switchId;
 
-    List<RemoveFlow> buildCommandsToRemoveExcessRules(SwitchId switchId,
-                                                      List<FlowEntry> flows,
-                                                      List<Long> excessRulesCookies);
+    @JsonProperty("meters_id")
+    private List<Long> metersId;
+
+    @JsonCreator
+    public BatchRemoveMeters(@JsonProperty("switch_id") SwitchId switchId,
+                             @JsonProperty("meters_id") List<Long> metersId) {
+        this.switchId = switchId;
+        this.metersId = metersId;
+    }
 }
