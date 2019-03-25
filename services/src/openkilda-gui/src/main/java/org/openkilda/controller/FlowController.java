@@ -267,5 +267,19 @@ public class FlowController extends BaseController {
         Status statuses = Status.INSTANCE;
         statuses.setStatuses(flowService.getAllStatus());
     }
+    
+    /**
+     * Flow ping.
+     *
+     * @param flowId the flow id
+     * @param flow the flow
+     * @return the string
+     */
+    @RequestMapping(value = "/{flowId}/ping", method = RequestMethod.PUT)
+    @ResponseStatus(HttpStatus.OK)
+    public @ResponseBody String flowPing(@PathVariable final String flowId, @RequestBody final Flow flow) {
+        LOGGER.info("Flow ping. Flow id: '" + flowId + "'");
+        return flowService.flowPing(flowId, flow);
+    }
 
 }

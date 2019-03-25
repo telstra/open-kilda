@@ -138,6 +138,7 @@ public abstract class IConstants {
         public static final String GET_ISL_FLOW = 
                 "/links/flows?src_switch={src_switch}&src_port={src_port}&dst_switch={dst_switch}&dst_port={dst_port}";
         public static final String GET_SWITCH_METERS =  GET_SWITCHES + "/{switch_id}/meters";
+        public static final String FLOW_PING = GET_FLOW + "/{flow_id}/ping";
     }
     
     public final class OpenTsDbUrl {
