@@ -496,6 +496,34 @@ class LinkSpec extends BaseSpecification {
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
     }
 
+    def "Isl is able to properly fail when both src and dst switches suddenly disconnect"() {
+        requireProfiles("virtual")
+
+        given: "An ISL under test"
+        def isl = topology.islsForActiveSwitches.first()
+
+        when: "Source and destination switches of the ISL suddenly disconnect"
+        lockKeeper.knockoutSwitch(isl.srcSwitch.dpId)
+        lockKeeper.knockoutSwitch(isl.dstSwitch.dpId)
+
+        then: "ISL gets failed after discovery timeout"
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
+        }
+
+        and: "Restore broken switches and revive ISL"
+        lockKeeper.reviveSwitch(isl.srcSwitch.dpId)
+        lockKeeper.reviveSwitch(isl.dstSwitch.dpId)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            assert northbound.getActiveSwitches()*.switchId.containsAll([isl.srcSwitch.dpId, isl.dstSwitch.dpId])
+            northbound.getAllLinks().each {
+                assert it.state == IslChangeType.DISCOVERED
+            }
+        }
+    }
+
     @Memoized
     Isl getIsl() {
         topology.islsForActiveSwitches.first()
