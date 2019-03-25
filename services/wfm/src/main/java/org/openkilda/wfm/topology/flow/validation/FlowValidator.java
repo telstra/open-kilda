@@ -21,6 +21,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
@@ -37,10 +38,12 @@ public class FlowValidator {
 
     private final FlowRepository flowRepository;
     private final SwitchRepository switchRepository;
+    private final IslRepository islRepository;
 
     public FlowValidator(RepositoryFactory repositoryFactory) {
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.switchRepository = repositoryFactory.createSwitchRepository();
+        this.islRepository = repositoryFactory.createIslRepository();
     }
 
     /**
@@ -51,6 +54,7 @@ public class FlowValidator {
      */
     public void validate(Flow flow) throws FlowValidationException, SwitchValidationException {
         checkBandwidth(flow);
+        checkFlowForIslConflicts(flow);
         checkFlowForEndpointConflicts(flow);
         checkOneSwitchFlowHasNoConflicts(flow);
         checkSwitchesExists(flow);
@@ -64,6 +68,31 @@ public class FlowValidator {
                             flow.getFlowId(),
                             flow.getBandwidth()),
                     ErrorType.DATA_INVALID);
+        }
+    }
+
+    /**
+     * Checks a flow for conflicts with ISL ports.
+     *
+     * @param requestedFlow a flow to be validated.
+     * @throws FlowValidationException is thrown in a case when flow endpoints conflict with existing ISL ports.
+     */
+    @VisibleForTesting
+    void checkFlowForIslConflicts(Flow requestedFlow) throws FlowValidationException {
+        // Check the source
+        if (!islRepository.findByEndpoint(requestedFlow.getSrcSwitch().getSwitchId(),
+                requestedFlow.getSrcPort()).isEmpty()) {
+            String errorMessage = format("The port %d on the switch '%s' is occupied by an ISL.",
+                    requestedFlow.getSrcPort(), requestedFlow.getSrcSwitch().getSwitchId());
+            throw new FlowValidationException(errorMessage, ErrorType.PARAMETERS_INVALID);
+        }
+
+        // Check the destination
+        if (!islRepository.findByEndpoint(requestedFlow.getDestSwitch().getSwitchId(),
+                requestedFlow.getDestPort()).isEmpty()) {
+            String errorMessage = format("The port %d on the switch '%s' is occupied by an ISL.",
+                    requestedFlow.getDestPort(), requestedFlow.getDestSwitch().getSwitchId());
+            throw new FlowValidationException(errorMessage, ErrorType.PARAMETERS_INVALID);
         }
     }
 
