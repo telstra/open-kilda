@@ -70,6 +70,30 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
     }
 
     @Override
+    public void handleRemoveRulesResponse(String key) {
+        SwitchSyncFsm fsm = fsms.get(key);
+        if (fsm == null) {
+            logFsmNotFound(key);
+            return;
+        }
+
+        fsm.fire(SwitchSyncEvent.RULES_REMOVED);
+        process(fsm);
+    }
+
+    @Override
+    public void handleRemoveMetersResponse(String key) {
+        SwitchSyncFsm fsm = fsms.get(key);
+        if (fsm == null) {
+            logFsmNotFound(key);
+            return;
+        }
+
+        fsm.fire(SwitchSyncEvent.METERS_REMOVED);
+        process(fsm);
+    }
+
+    @Override
     public void handleTaskTimeout(String key) {
         SwitchSyncFsm fsm = fsms.get(key);
         if (fsm == null) {
@@ -77,6 +101,7 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
         }
 
         fsm.fire(SwitchSyncEvent.TIMEOUT);
+        process(fsm);
     }
 
     @Override
@@ -87,6 +112,7 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
         }
 
         fsm.fire(SwitchSyncEvent.ERROR, message);
+        process(fsm);
     }
 
     private void logFsmNotFound(String key) {
@@ -95,7 +121,7 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
 
     void process(SwitchSyncFsm fsm) {
         final List<SwitchSyncState> stopStates = Arrays.asList(
-                SwitchSyncState.INSTALL_RULES,
+                SwitchSyncState.COMMANDS_SEND,
                 SwitchSyncState.FINISHED,
                 SwitchSyncState.FINISHED_WITH_ERROR
         );

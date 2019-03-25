@@ -16,29 +16,40 @@
 package org.openkilda.wfm.topology.switchmanager.fsm;
 
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.ERROR;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.METERS_REMOVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.NEXT;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.RULES_INSTALLED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.RULES_REMOVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent.TIMEOUT;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMMANDS_SEND;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_INSTALL_RULES;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_REMOVE_METERS;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.COMPUTE_REMOVE_RULES;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.FINISHED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.FINISHED_WITH_ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.INITIALIZED;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState.INSTALL_RULES;
 
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
-import org.openkilda.messaging.command.flow.BatchInstallForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.BatchInstallFlowForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.BatchRemoveFlowForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.command.switches.BatchRemoveMeters;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.switches.SyncRulesResponse;
+import org.openkilda.messaging.info.switches.MeterInfoEntry;
+import org.openkilda.messaging.info.switches.MetersSyncEntry;
+import org.openkilda.messaging.info.switches.RulesSyncEntry;
+import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncState;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.CommandBuilder;
@@ -49,7 +60,9 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class SwitchSyncFsm
@@ -65,7 +78,10 @@ public class SwitchSyncFsm
     private final PersistenceManager persistenceManager;
     private SwitchId switchId;
     private ValidationResult validationResult;
+
     private List<BaseInstallFlow> missingRules;
+    private List<RemoveFlow> excessRules;
+    private List<Long> excessMeters;
 
     public SwitchSyncFsm(SwitchManagerCarrier carrier, String key, PersistenceManager persistenceManager,
                          SwitchValidateRequest request, ValidationResult validationResult) {
@@ -96,18 +112,30 @@ public class SwitchSyncFsm
         builder.onEntry(INITIALIZED).callMethod("initialized");
         builder.externalTransition().from(INITIALIZED).to(COMPUTE_INSTALL_RULES).on(NEXT)
                 .callMethod("computeInstallRules");
-
         builder.externalTransition().from(COMPUTE_INSTALL_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
-        builder.externalTransition().from(COMPUTE_INSTALL_RULES).to(INSTALL_RULES).on(NEXT)
-                .callMethod("installRules");
 
-        builder.internalTransition().within(INSTALL_RULES).on(RULES_INSTALLED).callMethod("installedRules");
-        builder.externalTransition().from(INSTALL_RULES).to(FINISHED_WITH_ERROR).on(TIMEOUT)
-                .callMethod("installingRulesFailedByTimeout");
-        builder.externalTransition().from(INSTALL_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
+        builder.externalTransition().from(COMPUTE_INSTALL_RULES).to(COMPUTE_REMOVE_RULES).on(NEXT)
+                .callMethod("computeRemoveRules");
+        builder.externalTransition().from(COMPUTE_REMOVE_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
-        builder.externalTransition().from(INSTALL_RULES).to(FINISHED).on(NEXT)
+
+        builder.externalTransition().from(COMPUTE_REMOVE_RULES).to(COMPUTE_REMOVE_METERS).on(NEXT)
+                .callMethod("computeRemoveMeters");
+        builder.externalTransition().from(COMPUTE_REMOVE_METERS).to(FINISHED_WITH_ERROR).on(ERROR)
+                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
+
+        builder.externalTransition().from(COMPUTE_REMOVE_METERS).to(COMMANDS_SEND).on(NEXT)
+                .callMethod("sendCommands");
+        builder.internalTransition().within(COMMANDS_SEND).on(RULES_INSTALLED).callMethod("rulesInstalled");
+        builder.internalTransition().within(COMMANDS_SEND).on(RULES_REMOVED).callMethod("rulesRemoved");
+        builder.internalTransition().within(COMMANDS_SEND).on(METERS_REMOVED).callMethod("metersRemoved");
+
+        builder.externalTransition().from(COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(TIMEOUT)
+                .callMethod("commandsProcessingFailedByTimeout");
+        builder.externalTransition().from(COMMANDS_SEND).to(FINISHED_WITH_ERROR).on(ERROR)
+                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
+        builder.externalTransition().from(COMMANDS_SEND).to(FINISHED).on(NEXT)
                 .callMethod(FINISHED_METHOD_NAME);
 
         return builder;
@@ -128,33 +156,108 @@ public class SwitchSyncFsm
         log.info("Key: {}, compute install rules", key);
         try {
             CommandBuilder commandBuilder = new CommandBuilderImpl(persistenceManager);
-            missingRules = commandBuilder.buildCommandsToSyncRules(
+            missingRules = commandBuilder.buildCommandsToCreateMissingRules(
                     switchId, validationResult.getValidateRulesResult().getMissingRules());
         } catch (Exception e) {
             sendException(e);
         }
     }
 
-    protected void installRules(SwitchSyncState from, SwitchSyncState to,
-                                SwitchSyncEvent event, Object context) {
-        log.info("Key: {}, request to install switch rules has been sent", key);
-        CommandMessage installCommandMessage = new CommandMessage(
-                new BatchInstallForSwitchManagerRequest(switchId, missingRules), System.currentTimeMillis(), key);
+    protected void computeRemoveRules(SwitchSyncState from, SwitchSyncState to,
+                                      SwitchSyncEvent event, Object context) {
+        ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
 
-        carrier.sendCommand(key, installCommandMessage);
+        if (request.isRemoveExcess() && !validateRulesResult.getExcessRules().isEmpty()) {
+            log.info("Key: {}, compute remove rules", key);
+            try {
+                CommandBuilder commandBuilder = new CommandBuilderImpl(persistenceManager);
+                excessRules = commandBuilder.buildCommandsToRemoveExcessRules(
+                        switchId, validationResult.getFlowEntries(), validateRulesResult.getExcessRules());
+            } catch (Exception e) {
+                sendException(e);
+            }
+        }
     }
 
-    protected void installedRules(SwitchSyncState from, SwitchSyncState to,
+    protected void computeRemoveMeters(SwitchSyncState from, SwitchSyncState to,
+                                       SwitchSyncEvent event, Object context) {
+        ValidateMetersResult validateMetersResult = validationResult.getValidateMetersResult();
+
+        if (request.isRemoveExcess() && !validateMetersResult.getExcessMeters().isEmpty()) {
+            log.info("Key: {}, compute remove meters", key);
+            try {
+                excessMeters = validateMetersResult.getExcessMeters().stream()
+                        .map(MeterInfoEntry::getMeterId)
+                        .collect(Collectors.toList());
+            } catch (Exception e) {
+                sendException(e);
+            }
+        }
+    }
+
+    protected void sendCommands(SwitchSyncState from, SwitchSyncState to,
+                                SwitchSyncEvent event, Object context) {
+        if (checkAllDone()) {
+            log.info("Key: {}, nothing to do", key);
+            fire(NEXT);
+        }
+
+        if (missingRules != null) {
+            log.info("Key: {}, request to install switch rules has been sent", key);
+            carrier.sendCommand(key, new CommandMessage(
+                    new BatchInstallFlowForSwitchManagerRequest(switchId, missingRules),
+                    System.currentTimeMillis(), key));
+        }
+
+        if (excessRules != null) {
+            log.info("Key: {}, request to remove switch rules has been sent", key);
+            carrier.sendCommand(key, new CommandMessage(
+                    new BatchRemoveFlowForSwitchManagerRequest(switchId, excessRules),
+                    System.currentTimeMillis(), key));
+        }
+
+        if (excessMeters != null) {
+            log.info("Key: {}, request to remove switch meters has been sent", key);
+            carrier.sendCommand(key, new CommandMessage(
+                    new BatchRemoveMeters(switchId, excessMeters), System.currentTimeMillis(), key));
+        }
+    }
+
+    private boolean checkAllDone() {
+        return missingRules == null && excessRules == null && excessMeters == null;
+    }
+
+    protected void rulesInstalled(SwitchSyncState from, SwitchSyncState to,
                                   SwitchSyncEvent event, Object context) {
         log.info("Key: {}, switch rules installed", key);
-        fire(NEXT);
-
+        missingRules = null;
+        continueIfAllDone();
     }
 
-    protected void installingRulesFailedByTimeout(SwitchSyncState from, SwitchSyncState to,
+    protected void rulesRemoved(SwitchSyncState from, SwitchSyncState to,
+                                SwitchSyncEvent event, Object context) {
+        log.info("Key: {}, switch rules removed", key);
+        excessRules = null;
+        continueIfAllDone();
+    }
+
+    protected void metersRemoved(SwitchSyncState from, SwitchSyncState to,
+                                 SwitchSyncEvent event, Object context) {
+        log.info("Key: {}, switch meters removed", key);
+        excessMeters = null;
+        continueIfAllDone();
+    }
+
+    private void continueIfAllDone() {
+        if (checkAllDone()) {
+            fire(NEXT);
+        }
+    }
+
+    protected void commandsProcessingFailedByTimeout(SwitchSyncState from, SwitchSyncState to,
                                                   SwitchSyncEvent event, Object context) {
-        ErrorData errorData = new ErrorData(ErrorType.OPERATION_TIMED_OUT, "Installing rules failed by timeout",
-                "Error when install switch rules");
+        ErrorData errorData = new ErrorData(ErrorType.OPERATION_TIMED_OUT, "Commands processing failed by timeout",
+                "Error when processing switch commands");
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
 
         log.warn(ERROR_LOG_MESSAGE, key, errorData.getErrorMessage());
@@ -165,11 +268,22 @@ public class SwitchSyncFsm
     protected void finished(SwitchSyncState from, SwitchSyncState to,
                             SwitchSyncEvent event, Object context) {
         ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
+        ValidateMetersResult validateMetersResult = validationResult.getValidateMetersResult();
 
-        SyncRulesResponse response = new SyncRulesResponse(validateRulesResult.getMissingRules(),
+        RulesSyncEntry rulesEntry = new RulesSyncEntry(validateRulesResult.getMissingRules(),
                 validateRulesResult.getProperRules(),
                 validateRulesResult.getExcessRules(),
-                validateRulesResult.getMissingRules());
+                validateRulesResult.getMissingRules(),
+                request.isRemoveExcess() ? validateRulesResult.getExcessRules() : Collections.emptyList());
+
+        MetersSyncEntry metersEntry = new MetersSyncEntry(validateMetersResult.getMissingMeters(),
+                validateMetersResult.getMisconfiguredMeters(),
+                validateMetersResult.getProperMeters(),
+                validateMetersResult.getExcessMeters(),
+                validateMetersResult.getMissingMeters(),
+                request.isRemoveExcess() ? validateMetersResult.getExcessMeters() : Collections.emptyList());
+
+        SwitchSyncResponse response = new SwitchSyncResponse(rulesEntry, metersEntry);
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);
         carrier.endProcessing(key);
         carrier.response(key, message);
@@ -193,7 +307,9 @@ public class SwitchSyncFsm
     public enum SwitchSyncState {
         INITIALIZED,
         COMPUTE_INSTALL_RULES,
-        INSTALL_RULES,
+        COMPUTE_REMOVE_RULES,
+        COMPUTE_REMOVE_METERS,
+        COMMANDS_SEND,
         FINISHED_WITH_ERROR,
         FINISHED
     }
@@ -201,6 +317,8 @@ public class SwitchSyncFsm
     public enum SwitchSyncEvent {
         NEXT,
         RULES_INSTALLED,
+        RULES_REMOVED,
+        METERS_REMOVED,
         TIMEOUT,
         ERROR,
         FINISH

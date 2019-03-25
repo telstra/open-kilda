@@ -15,6 +15,7 @@
 
 package org.openkilda.northbound.dto;
 
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
@@ -28,9 +29,15 @@ import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
 import org.openkilda.northbound.dto.v1.links.LinkStatus;
 import org.openkilda.northbound.dto.v1.links.PathDto;
 import org.openkilda.northbound.dto.v1.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.v1.switches.MetersSyncDto;
+import org.openkilda.northbound.dto.v1.switches.MetersValidationDto;
+import org.openkilda.northbound.dto.v1.switches.RulesSyncDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.v1.switches.RulesValidationDto;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
+import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -122,6 +129,24 @@ public class JsonSerializationTest {
         RulesSyncResult dto = new RulesSyncResult(
                 singletonList(0L), singletonList(1L), singletonList(2L), singletonList(3L));
         assertEquals(dto, pass(dto, RulesSyncResult.class));
+    }
+
+    @Test
+    public void switchSyncResultTest() throws IOException {
+        RulesSyncDto rules = new RulesSyncDto(singletonList(0L), singletonList(1L), singletonList(2L),
+                singletonList(3L), singletonList(4L));
+        MetersSyncDto meters = new MetersSyncDto(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(),
+                emptyList());
+        SwitchSyncResult dto = new SwitchSyncResult(rules, meters);
+        assertEquals(dto, pass(dto, SwitchSyncResult.class));
+    }
+
+    @Test
+    public void switchValidateResultTest() throws IOException {
+        RulesValidationDto rules = new RulesValidationDto(singletonList(0L), singletonList(1L), singletonList(2L));
+        MetersValidationDto meters = new MetersValidationDto(emptyList(), emptyList(), emptyList(), emptyList());
+        SwitchValidationResult dto = new SwitchValidationResult(rules, meters);
+        assertEquals(dto, pass(dto, SwitchValidationResult.class));
     }
 
     @Test

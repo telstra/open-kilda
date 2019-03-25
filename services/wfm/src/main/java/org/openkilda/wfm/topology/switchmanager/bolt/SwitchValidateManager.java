@@ -22,8 +22,10 @@ import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.flow.BatchFlowInstallResponse;
+import org.openkilda.messaging.info.flow.BatchFlowRemoveResponse;
+import org.openkilda.messaging.info.meter.BatchMetersRemoveResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
-import org.openkilda.messaging.info.rule.BatchInstallResponse;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
@@ -94,8 +96,12 @@ public class SwitchValidateManager extends HubBolt implements SwitchManagerCarri
                 validateService.handleFlowEntriesResponse(key, (SwitchFlowEntries) data);
             } else if (data instanceof SwitchMeterEntries) {
                 validateService.handleMeterEntriesResponse(key, (SwitchMeterEntries) data);
-            } else if (data instanceof BatchInstallResponse) {
+            } else if (data instanceof BatchFlowInstallResponse) {
                 syncService.handleInstallRulesResponse(key);
+            } else if (data instanceof BatchFlowRemoveResponse) {
+                syncService.handleRemoveRulesResponse(key);
+            } else if (data instanceof BatchMetersRemoveResponse) {
+                syncService.handleRemoveMetersResponse(key);
             }
 
         } else if (message instanceof ErrorMessage) {
@@ -112,6 +118,7 @@ public class SwitchValidateManager extends HubBolt implements SwitchManagerCarri
 
     @Override
     public void onTimeout(String key) {
+        log.warn("Receive TaskTimeout for key {}", key);
         validateService.handleTaskTimeout(key);
         syncService.handleTaskTimeout(key);
     }

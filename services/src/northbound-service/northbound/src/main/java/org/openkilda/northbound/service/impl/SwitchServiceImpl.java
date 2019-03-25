@@ -40,8 +40,8 @@ import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
+import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
-import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
@@ -57,6 +57,7 @@ import org.openkilda.northbound.dto.v1.switches.PortDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.messaging.MessagingChannel;
@@ -209,10 +210,11 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Override
     public CompletableFuture<RulesValidationResult> validateRules(SwitchId switchId) {
-        final String correlationId = RequestCorrelationId.getId();
+        logger.info("Validate rules request for switch {}", switchId);
 
         CommandMessage validateCommandMessage = new CommandMessage(
-                new SwitchValidateRequest(switchId, false), System.currentTimeMillis(), correlationId);
+                new SwitchValidateRequest(switchId, false, false),
+                System.currentTimeMillis(), RequestCorrelationId.getId());
 
         return messagingChannel.sendAndGet(switchManagerTopic, validateCommandMessage)
                 .thenApply(SwitchValidationResponse.class::cast)
@@ -221,10 +223,11 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Override
     public CompletableFuture<SwitchValidationResult> validateSwitch(SwitchId switchId) {
-        logger.info("Sync rules request for switch {}", switchId);
+        logger.info("Validate request for switch {}", switchId);
 
         CommandMessage syncCommandMessage = new CommandMessage(
-                new SwitchValidateRequest(switchId, false), System.currentTimeMillis(), RequestCorrelationId.getId());
+                new SwitchValidateRequest(switchId, false, false),
+                System.currentTimeMillis(), RequestCorrelationId.getId());
 
         return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
                 .thenApply(SwitchValidationResponse.class::cast)
@@ -236,12 +239,25 @@ public class SwitchServiceImpl implements SwitchService {
         logger.info("Sync rules request for switch {}", switchId);
 
         CommandMessage syncCommandMessage = new CommandMessage(
-                new SwitchValidateRequest(switchId, true), System.currentTimeMillis(),
+                new SwitchValidateRequest(switchId, true, false), System.currentTimeMillis(),
                 RequestCorrelationId.getId());
 
         return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
-                .thenApply(SyncRulesResponse.class::cast)
+                .thenApply(SwitchSyncResponse.class::cast)
                 .thenApply(switchMapper::toRulesSyncResult);
+    }
+
+    @Override
+    public CompletableFuture<SwitchSyncResult> syncSwitch(SwitchId switchId, boolean removeExcess) {
+        logger.info("Sync request for switch {}. Remove excess {}", switchId, removeExcess);
+
+        CommandMessage syncCommandMessage = new CommandMessage(
+                new SwitchValidateRequest(switchId, true, removeExcess), System.currentTimeMillis(),
+                RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
+                .thenApply(SwitchSyncResponse.class::cast)
+                .thenApply(switchMapper::toSwitchSyncResult);
     }
 
     @Override

@@ -18,18 +18,23 @@ package org.openkilda.northbound.converter;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
+import org.openkilda.messaging.info.switches.MetersSyncEntry;
 import org.openkilda.messaging.info.switches.MetersValidationEntry;
+import org.openkilda.messaging.info.switches.RulesSyncEntry;
 import org.openkilda.messaging.info.switches.RulesValidationEntry;
+import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
-import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto;
 import org.openkilda.northbound.dto.v1.switches.MeterMisconfiguredInfoDto;
+import org.openkilda.northbound.dto.v1.switches.MetersSyncDto;
 import org.openkilda.northbound.dto.v1.switches.MetersValidationDto;
+import org.openkilda.northbound.dto.v1.switches.RulesSyncDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationDto;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 
 import org.mapstruct.Mapper;
@@ -40,7 +45,17 @@ public interface SwitchMapper {
 
     SwitchDto toSwitchDto(SwitchInfoData data);
 
-    RulesSyncResult toRulesSyncResult(SyncRulesResponse response);
+    @Mapping(source = "rules.excess", target = "excessRules")
+    @Mapping(source = "rules.missing", target = "missingRules")
+    @Mapping(source = "rules.proper", target = "properRules")
+    @Mapping(source = "rules.installed", target = "installedRules")
+    RulesSyncResult toRulesSyncResult(SwitchSyncResponse response);
+
+    SwitchSyncResult toSwitchSyncResult(SwitchSyncResponse response);
+
+    RulesSyncDto toRulesSyncDto(RulesSyncEntry data);
+
+    MetersSyncDto toMetersSyncDto(MetersSyncEntry data);
 
     SwitchValidationResult toSwitchValidationResult(SwitchValidationResponse response);
 
@@ -49,9 +64,9 @@ public interface SwitchMapper {
     @Mapping(source = "rules.proper", target = "properRules")
     RulesValidationResult toRulesValidationResult(SwitchValidationResponse response);
 
-    RulesValidationDto toRulesValidationResult(RulesValidationEntry data);
+    RulesValidationDto toRulesValidationDto(RulesValidationEntry data);
 
-    MetersValidationDto toMetersValidationResult(MetersValidationEntry data);
+    MetersValidationDto toMetersValidationDto(MetersValidationEntry data);
 
     MeterInfoDto toMeterInfoDto(MeterInfoEntry data);
 

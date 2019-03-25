@@ -175,7 +175,6 @@ public class ValidationServiceImpl implements ValidationService {
                                 .build());
                     }
                 }
-
             }
         }
 

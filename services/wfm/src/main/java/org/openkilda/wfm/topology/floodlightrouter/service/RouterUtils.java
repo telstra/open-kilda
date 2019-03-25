@@ -22,11 +22,13 @@ import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.PortsCommandData;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
-import org.openkilda.messaging.command.flow.BatchInstallForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.BatchInstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.BatchInstallRequest;
+import org.openkilda.messaging.command.flow.BatchRemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.command.switches.BatchRemoveMeters;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
@@ -104,12 +106,14 @@ public final class RouterUtils {
                 return ((MeterModifyCommandRequest) commandData).getFwdSwitchId();
             } else if (commandData instanceof DumpRulesForSwitchManagerRequest) {
                 return ((DumpRulesForSwitchManagerRequest) commandData).getSwitchId();
-            } else if (commandData instanceof BatchInstallForSwitchManagerRequest) {
-                return ((BatchInstallForSwitchManagerRequest) commandData).getSwitchId();
+            } else if (commandData instanceof BatchInstallFlowForSwitchManagerRequest) {
+                return ((BatchInstallFlowForSwitchManagerRequest) commandData).getSwitchId();
+            } else if (commandData instanceof BatchRemoveFlowForSwitchManagerRequest) {
+                return ((BatchRemoveFlowForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpMetersForSwitchManagerRequest) {
                 return ((DumpMetersForSwitchManagerRequest) commandData).getSwitchId();
-            } else if (commandData instanceof MeterModifyCommandRequest) {
-                return ((MeterModifyCommandRequest) commandData).getFwdSwitchId();
+            } else if (commandData instanceof BatchRemoveMeters) {
+                return ((BatchRemoveMeters) commandData).getSwitchId();
             }
         }
         return null;
