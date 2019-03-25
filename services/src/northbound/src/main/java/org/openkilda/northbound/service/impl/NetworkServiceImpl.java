@@ -18,10 +18,10 @@ package org.openkilda.northbound.service.impl;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.info.network.PathsInfoData;
 import org.openkilda.messaging.nbtopology.request.GetPathsRequest;
+import org.openkilda.messaging.payload.network.PathDto;
+import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.PathMapper;
-import org.openkilda.northbound.dto.network.PathDto;
-import org.openkilda.northbound.dto.network.PathsDto;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.NetworkService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
@@ -61,8 +61,7 @@ public class NetworkServiceImpl implements NetworkService {
                     List<PathDto> pathsDtoList = paths.stream().map(PathsInfoData.class::cast)
                             .map(p -> pathMapper.mapToPath(p.getPath()))
                             .collect(Collectors.toList());
-                    long totalBandwidth = pathsDtoList.stream().mapToLong(PathDto::getBandwidth).sum();
-                    return new PathsDto(totalBandwidth, pathsDtoList);
+                    return new PathsDto(pathsDtoList);
                 });
     }
 }

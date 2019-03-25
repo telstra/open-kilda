@@ -329,7 +329,7 @@ class LinkSpec extends BaseSpecification {
         and: "Make the current flows path not preferable"
         pathHelper.makePathMorePreferable(possibleFlowPaths.find { it != flow1Path }, flow1Path)
 
-        when: "Submit request for rerouting flows to avoid the first link involved in flow paths"
+        when: "Submit request for rerouting flows"
         def isl = pathHelper.getInvolvedIsls(flow1Path).first()
         def response = northbound.rerouteLinkFlows(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort)
 
@@ -345,10 +345,6 @@ class LinkSpec extends BaseSpecification {
             assert flow1PathUpdated != flow1Path
             assert flow2PathUpdated != flow2Path
         }
-
-        and: "Requested link is not involved in new flow paths"
-        !(isl in pathHelper.getInvolvedIsls(flow1PathUpdated))
-        !(isl in pathHelper.getInvolvedIsls(flow2PathUpdated))
 
         and: "Delete flows and delete link props"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }

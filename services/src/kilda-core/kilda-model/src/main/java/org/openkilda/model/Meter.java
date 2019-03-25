@@ -49,7 +49,7 @@ public final class Meter implements Serializable {
                                           double flowMeterBurstCoefficient, String switchManufacturerDescription,
                                           String switchSoftwareDescription) {
         if (Switch.isCentecSwitch(switchManufacturerDescription)) {
-            long burstSize = Math.max(flowMeterMinBurstSizeInKbits, (long) (bandwidth * flowMeterBurstCoefficient));
+            long burstSize = Math.max(flowMeterMinBurstSizeInKbits, Math.round(bandwidth * flowMeterBurstCoefficient));
             if (burstSize < MIN_CENTEC_SWITCH_BURST_SIZE) {
                 return MIN_CENTEC_SWITCH_BURST_SIZE;
             }
@@ -61,7 +61,7 @@ public final class Meter implements Serializable {
             burstCoefficient = MAX_NOVIFLOW_BURST_COEFFICIENT;
         }
 
-        return (long) (bandwidth * burstCoefficient);
+        return Math.round(bandwidth * burstCoefficient);
     }
 
     /**
