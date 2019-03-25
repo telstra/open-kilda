@@ -20,6 +20,12 @@ import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
+import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.info.rule.FlowApplyActions;
+import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.rule.FlowInstructions;
+import org.openkilda.messaging.info.rule.FlowMatchField;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowSegment;
 import org.openkilda.model.OutputVlanType;
@@ -37,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class CommandBuilderImpl implements CommandBuilder {
@@ -51,7 +58,7 @@ public class CommandBuilderImpl implements CommandBuilder {
     }
 
     @Override
-    public List<BaseInstallFlow> buildCommandsToSyncRules(SwitchId switchId, List<Long> switchRules) {
+    public List<BaseInstallFlow> buildCommandsToCreateMissingRules(SwitchId switchId, List<Long> switchRules) {
         List<BaseInstallFlow> commands = new ArrayList<>();
 
         flowSegmentRepository.findByDestSwitchId(switchId).forEach(segment -> {
@@ -83,6 +90,34 @@ public class CommandBuilderImpl implements CommandBuilder {
         });
 
         return commands;
+    }
+
+    @Override
+    public List<RemoveFlow> buildCommandsToRemoveExcessRules(SwitchId switchId,
+                                                             List<FlowEntry> flows,
+                                                             List<Long> excessRulesCookies) {
+        return flows.stream()
+                .filter(flow -> excessRulesCookies.contains(flow.getCookie()))
+                .map(entry -> buildRemoveFlowFromFlowEntry(switchId, entry))
+                .collect(Collectors.toList());
+    }
+
+    private RemoveFlow buildRemoveFlowFromFlowEntry(SwitchId switchId, FlowEntry entry) {
+        Optional<FlowMatchField> entryMatch = Optional.ofNullable(entry.getMatch());
+
+        Integer inPort = entryMatch.map(FlowMatchField::getInPort).map(Integer::valueOf).orElse(null);
+        Integer vlan = entryMatch.map(FlowMatchField::getVlanVid).map(Integer::valueOf).orElse(null);
+
+        Optional<FlowApplyActions> actions = Optional.ofNullable(entry.getInstructions())
+                .map(FlowInstructions::getApplyActions);
+
+        Integer outPort = actions.map(FlowApplyActions::getFlowOutput).map(Integer::valueOf).orElse(null);
+        Long meterId = actions.map(FlowApplyActions::getMeter).map(Long::valueOf).orElse(null);
+
+        DeleteRulesCriteria criteria = new DeleteRulesCriteria(entry.getCookie(), inPort, vlan,
+                0, outPort);
+        return new RemoveFlow(transactionIdGenerator.generate(), null, entry.getCookie(),
+                switchId, meterId, criteria);
     }
 
     private List<BaseInstallFlow> buildInstallCommandFromSegment(FlowSegment segment) {

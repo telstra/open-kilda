@@ -22,8 +22,9 @@ import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.PortsCommandData;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
-import org.openkilda.messaging.command.flow.BatchInstallForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.BatchFlowInstallForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.BatchInstallRequest;
+import org.openkilda.messaging.command.flow.BatchRemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
@@ -104,12 +105,12 @@ public final class RouterUtils {
                 return ((MeterModifyCommandRequest) commandData).getFwdSwitchId();
             } else if (commandData instanceof DumpRulesForSwitchManagerRequest) {
                 return ((DumpRulesForSwitchManagerRequest) commandData).getSwitchId();
-            } else if (commandData instanceof BatchInstallForSwitchManagerRequest) {
-                return ((BatchInstallForSwitchManagerRequest) commandData).getSwitchId();
+            } else if (commandData instanceof BatchFlowInstallForSwitchManagerRequest) {
+                return ((BatchFlowInstallForSwitchManagerRequest) commandData).getSwitchId();
+            } else if (commandData instanceof BatchRemoveFlowForSwitchManagerRequest) {
+                return ((BatchRemoveFlowForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpMetersForSwitchManagerRequest) {
                 return ((DumpMetersForSwitchManagerRequest) commandData).getSwitchId();
-            } else if (commandData instanceof MeterModifyCommandRequest) {
-                return ((MeterModifyCommandRequest) commandData).getFwdSwitchId();
             }
         }
         return null;

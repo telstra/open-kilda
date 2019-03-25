@@ -19,7 +19,6 @@ import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.switchmanager.SwitchSyncRulesCarrier;
@@ -35,8 +34,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class SyncRulesServiceImpl implements SyncRulesService {
@@ -69,11 +66,7 @@ public class SyncRulesServiceImpl implements SyncRulesService {
             return;
         }
 
-        Set<Long> presentCookies = data.getFlowEntries().stream()
-                .map(FlowEntry::getCookie)
-                .collect(Collectors.toSet());
-
-        fsm.fire(SwitchSyncRulesEvent.RULES_RECEIVED, presentCookies);
+        fsm.fire(SwitchSyncRulesEvent.RULES_RECEIVED, data.getFlowEntries());
         process(fsm);
     }
 
@@ -86,6 +79,18 @@ public class SyncRulesServiceImpl implements SyncRulesService {
         }
 
         fsm.fire(SwitchSyncRulesEvent.RULES_INSTALLED);
+        process(fsm);
+    }
+
+    @Override
+    public void handleRemoveRulesResponse(String key) {
+        SwitchSyncRulesFsm fsm = fsms.get(key);
+        if (fsm == null) {
+            sendFsmNotFound(key);
+            return;
+        }
+
+        fsm.fire(SwitchSyncRulesEvent.RULES_REMOVED);
         process(fsm);
     }
 
@@ -124,6 +129,7 @@ public class SyncRulesServiceImpl implements SyncRulesService {
         final List<SwitchSyncRulesState> stopStates = Arrays.asList(
                 SwitchSyncRulesState.RECEIVE_RULES,
                 SwitchSyncRulesState.INSTALL_RULES,
+                SwitchSyncRulesState.REMOVE_RULES,
                 SwitchSyncRulesState.FINISHED,
                 SwitchSyncRulesState.FINISHED_WITH_ERROR
         );

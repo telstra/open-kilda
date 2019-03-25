@@ -269,7 +269,7 @@ public class StubServiceFactory {
                 });
 
         when(serviceMock.synchronizeSwitchRules(any()))
-                .thenReturn(new RulesSyncResult(emptyList(), emptyList(), emptyList(), emptyList()));
+                .thenReturn(new RulesSyncResult(emptyList(), emptyList(), emptyList(), emptyList(), emptyList()));
 
         when(serviceMock.validateSwitchRules(any()))
                 .thenReturn(new RulesValidationResult(emptyList(), emptyList(), emptyList()));

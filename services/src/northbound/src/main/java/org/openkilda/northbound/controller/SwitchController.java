@@ -38,6 +38,7 @@ import org.openkilda.northbound.dto.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.switches.SwitchDto;
 import org.openkilda.northbound.dto.switches.SwitchValidationResult;
+import org.openkilda.northbound.dto.switches.SyncRulesRequest;
 import org.openkilda.northbound.dto.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.ExtraAuthRequired;
@@ -270,7 +271,21 @@ public class SwitchController {
     @GetMapping(path = "/{switch_id}/rules/synchronize")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<RulesSyncResult> syncRules(@PathVariable(name = "switch_id") SwitchId switchId) {
-        return switchService.syncRules(switchId);
+        return switchService.syncRules(switchId, false);
+    }
+
+    /**
+     * Synchronize (install) missing flows that should be on the switch but exist only in neo4j.
+     * Optionally removes excess rules from the switch.
+     *
+     * @return the synchronization result.
+     */
+    @ApiOperation(value = "Synchronize rules on the switch", response = RulesSyncResult.class)
+    @PostMapping(path = "/{switch_id}/synchronize")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<RulesSyncResult> syncRules(@PathVariable(name = "switch_id") SwitchId switchId,
+                                                        @RequestBody SyncRulesRequest request) {
+        return switchService.syncRules(switchId, request.isRemoveExcessRules());
     }
 
     /**

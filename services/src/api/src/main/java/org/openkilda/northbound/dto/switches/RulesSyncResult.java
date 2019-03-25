@@ -30,13 +30,18 @@ public class RulesSyncResult extends RulesValidationResult {
     @JsonProperty("installed_rules")
     private List<Long> installedRules;
 
+    @JsonProperty("removed_rules")
+    private List<Long> removedRules;
+
     public RulesSyncResult(
             @JsonProperty("missing_rules") List<Long> missingRules,
             @JsonProperty("proper_rules") List<Long> properRules,
             @JsonProperty("excess_rules") List<Long> excessRules,
-            @JsonProperty("installed_rules") List<Long> installedRules) {
+            @JsonProperty("installed_rules") List<Long> installedRules,
+            @JsonProperty("removed_rules") List<Long> removedRules) {
         super(missingRules, properRules, excessRules);
 
         this.installedRules = installedRules;
+        this.removedRules = removedRules;
     }
 }

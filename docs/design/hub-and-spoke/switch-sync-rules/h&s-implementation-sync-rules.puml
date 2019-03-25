@@ -15,9 +15,9 @@ activate NB
 NB -> SwitchManager : SwitchRulesSyncRequest
 activate SwitchManager
 
-SwitchManager -> FL : DumpRulesRequest
+SwitchManager ->> FL : DumpRulesRequest
 deactivate SwitchManager
-FL -> SwitchManager : SwitchFlowEntries
+FL ->> SwitchManager : SwitchFlowEntries
 activate SwitchManager
 SwitchManager -> ValidateService : Validate rules
 activate ValidateService
@@ -29,25 +29,40 @@ ValidateService -> DAO : Get flows\nby src switch id
 activate DAO
 DAO -> ValidateService : Flows
 deactivate DAO
-ValidateService -> ValidateService : Compute missing rules
+ValidateService -> ValidateService : Validate rules
 
 ValidateService -> SwitchManager : Validate result
 deactivate ValidateService
 
-SwitchManager -> CommandBuilder : Create switch rules
-activate CommandBuilder
-CommandBuilder -> CommandBuilder : Build commands
-CommandBuilder -> SwitchManager : Rule installation commands
-deactivate CommandBuilder
+alt Missing rules exists
+    SwitchManager -> CommandBuilder : buildCommandsToCreateMissingRules
+    activate CommandBuilder
+    CommandBuilder -> CommandBuilder : Build commands
+    CommandBuilder -> SwitchManager : Rule installation commands
+    deactivate CommandBuilder
 
-SwitchManager -> FL : BatchInstallRequest
-deactivate SwitchManager
-FL -> SwitchManager : Rules has been installed
+    SwitchManager ->> FL : BatchInstallRequest
+    deactivate SwitchManager
+    FL ->> SwitchManager : Rules has been installed
+    activate SwitchManager
+end
 
-activate SwitchManager
-SwitchManager -> NB
+alt Excess rules exists
+    SwitchManager -> CommandBuilder : buildCommandsToRemoveExcessRules
+    activate CommandBuilder
+    CommandBuilder -> CommandBuilder : Build commands
+    CommandBuilder -> SwitchManager : Rule remove commands
+    deactivate CommandBuilder
+
+    SwitchManager ->> FL : BatchRemoveRequest
+    deactivate SwitchManager
+    FL ->> SwitchManager : Rules has been deleted
+    activate SwitchManager
+end
+
+SwitchManager ->> NB: SyncRulesResponse
 deactivate SwitchManager
-NB -> User
+NB -> User: SyncRulesResponse
 deactivate NB
 
- @enduml
+@enduml

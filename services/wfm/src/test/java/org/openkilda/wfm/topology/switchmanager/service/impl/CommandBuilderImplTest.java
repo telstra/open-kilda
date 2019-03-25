@@ -51,7 +51,7 @@ public class CommandBuilderImplTest {
     public void testCommandBuilder() {
         CommandBuilder commandBuilder = new CommandBuilderImpl(persistenceManager().build());
         List<BaseInstallFlow> response = commandBuilder
-                .buildCommandsToSyncRules(SWITCH_ID_B, Arrays.asList(1L, 2L, 3L, 4L));
+                .buildCommandsToCreateMissingRules(SWITCH_ID_B, Arrays.asList(1L, 2L, 3L, 4L));
         assertEquals(4, response.size());
         assertTrue(response.get(0) instanceof InstallTransitFlow);
         assertTrue(response.get(1) instanceof InstallEgressFlow);

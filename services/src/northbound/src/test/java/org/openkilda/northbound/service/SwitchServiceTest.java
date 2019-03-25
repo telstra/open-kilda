@@ -73,7 +73,7 @@ public class SwitchServiceTest {
                 Collections.singletonList(missingRule));
         messageExchanger.mockResponse(correlationId, rules);
 
-        RulesSyncResult result = switchService.syncRules(switchId).get();
+        RulesSyncResult result = switchService.syncRules(switchId, false).get();
         assertThat(result.getMissingRules(), is(Collections.singletonList(missingRule)));
         assertThat(result.getInstalledRules(), is(Collections.singletonList(missingRule)));
         assertThat(result.getExcessRules(), is(Collections.singletonList(excessRule)));
@@ -93,7 +93,7 @@ public class SwitchServiceTest {
                 Collections.singletonList(properRule), Collections.singletonList(excessRule), Collections.emptyList());
         messageExchanger.mockResponse(correlationId, validationResult);
 
-        RulesSyncResult result = switchService.syncRules(switchId).get();
+        RulesSyncResult result = switchService.syncRules(switchId, false).get();
         assertThat(result.getMissingRules(), is(empty()));
         assertThat(result.getExcessRules(), is(Collections.singletonList(excessRule)));
         assertThat(result.getProperRules(), is(Collections.singletonList(properRule)));

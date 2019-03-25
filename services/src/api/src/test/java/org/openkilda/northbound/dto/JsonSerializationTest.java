@@ -120,7 +120,7 @@ public class JsonSerializationTest {
     @Test
     public void rulesSyncResultTest() throws IOException {
         RulesSyncResult dto = new RulesSyncResult(
-                singletonList(0L), singletonList(1L), singletonList(2L), singletonList(3L));
+                singletonList(0L), singletonList(1L), singletonList(2L), singletonList(3L), singletonList(3L));
         assertEquals(dto, pass(dto, RulesSyncResult.class));
     }
 

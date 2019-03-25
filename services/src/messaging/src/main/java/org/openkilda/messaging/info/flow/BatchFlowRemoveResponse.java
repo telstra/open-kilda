@@ -13,9 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.rule;
+package org.openkilda.messaging.info.flow;
 
 import org.openkilda.messaging.info.InfoData;
 
-public class BatchInstallResponse extends InfoData {
+public class BatchFlowRemoveResponse extends InfoData {
 }

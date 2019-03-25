@@ -16,28 +16,37 @@
 package org.openkilda.wfm.topology.switchmanager.fsm;
 
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesEvent.ERROR;
-import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesEvent.FINISH;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesEvent.EXCESS_RULES_EXIST;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesEvent.MISSING_RULES_EXIST;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesEvent.NEXT;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesEvent.RULES_INSTALLED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesEvent.RULES_RECEIVED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesEvent.RULES_REMOVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesEvent.TIMEOUT;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesState.CHECK_EXCESS_RULES;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesState.CHECK_MISSING_RULES;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesState.COMPUTE_INSTALL_RULES;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesState.COMPUTE_REMOVE_RULES;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesState.FINISHED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesState.FINISHED_WITH_ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesState.INITIALIZED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesState.INSTALL_RULES;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesState.RECEIVE_RULES;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesState.REMOVE_RULES;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncRulesFsm.SwitchSyncRulesState.VALIDATE_RULES;
 
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
-import org.openkilda.messaging.command.flow.BatchInstallForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.BatchFlowInstallForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.BatchRemoveFlowForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -57,6 +66,7 @@ import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class SwitchSyncRulesFsm
@@ -71,9 +81,11 @@ public class SwitchSyncRulesFsm
     private final SwitchSyncRulesCarrier carrier;
     private final PersistenceManager persistenceManager;
     private SwitchId switchId;
+    private List<FlowEntry> initialFlowEntries;
     private Set<Long> presentCookies;
     private ValidateRulesResult validateRulesResult;
     private List<BaseInstallFlow> missingRules;
+    private List<RemoveFlow> excessRules;
 
     public SwitchSyncRulesFsm(SwitchSyncRulesCarrier carrier, String key, SwitchRulesSyncRequest request,
                               PersistenceManager persistenceManager) {
@@ -111,11 +123,14 @@ public class SwitchSyncRulesFsm
         builder.externalTransition().from(RECEIVE_RULES).to(VALIDATE_RULES).on(NEXT)
                 .callMethod("validateRules");
 
+        builder.externalTransition().from(VALIDATE_RULES).to(CHECK_MISSING_RULES).on(NEXT)
+                .callMethod("checkMissingRulesExists");
         builder.externalTransition().from(VALIDATE_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
-        builder.externalTransition().from(VALIDATE_RULES).to(FINISHED).on(FINISH)
-                .callMethod(FINISHED_METHOD_NAME);
-        builder.externalTransition().from(VALIDATE_RULES).to(COMPUTE_INSTALL_RULES).on(NEXT)
+
+        builder.externalTransition().from(CHECK_MISSING_RULES).to(CHECK_EXCESS_RULES).on(NEXT)
+                .callMethod("checkExcessRulesExists");
+        builder.externalTransition().from(CHECK_MISSING_RULES).to(COMPUTE_INSTALL_RULES).on(MISSING_RULES_EXIST)
                 .callMethod("computeInstallRules");
 
         builder.externalTransition().from(COMPUTE_INSTALL_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
@@ -128,7 +143,26 @@ public class SwitchSyncRulesFsm
                 .callMethod("installingRulesFailedByTimeout");
         builder.externalTransition().from(INSTALL_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
-        builder.externalTransition().from(INSTALL_RULES).to(FINISHED).on(NEXT)
+        builder.externalTransition().from(INSTALL_RULES).to(CHECK_EXCESS_RULES).on(NEXT)
+                .callMethod("checkMissingRulesExists");
+
+        builder.externalTransition().from(CHECK_EXCESS_RULES).to(FINISHED).on(NEXT)
+                .callMethod(FINISHED_METHOD_NAME);
+        builder.externalTransition().from(CHECK_EXCESS_RULES).to(COMPUTE_REMOVE_RULES).on(EXCESS_RULES_EXIST)
+                .callMethod("computeRemoveRules");
+
+
+        builder.externalTransition().from(COMPUTE_REMOVE_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
+                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
+        builder.externalTransition().from(COMPUTE_REMOVE_RULES).to(REMOVE_RULES).on(NEXT)
+                .callMethod("removeRules");
+
+        builder.internalTransition().within(REMOVE_RULES).on(RULES_REMOVED).callMethod("removedRules");
+        builder.externalTransition().from(REMOVE_RULES).to(FINISHED_WITH_ERROR).on(TIMEOUT)
+                .callMethod("removingRulesFailedByTimeout");
+        builder.externalTransition().from(REMOVE_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
+                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
+        builder.externalTransition().from(REMOVE_RULES).to(FINISHED).on(NEXT)
                 .callMethod(FINISHED_METHOD_NAME);
 
         return builder;
@@ -156,7 +190,12 @@ public class SwitchSyncRulesFsm
     protected void receivedRules(SwitchSyncRulesState from, SwitchSyncRulesState to,
                                  SwitchSyncRulesEvent event, Object context) {
         log.info("Key: {}, switch rules received", key);
-        this.presentCookies = (Set<Long>) context;
+
+        this.initialFlowEntries = (List<FlowEntry>) context;
+        this.presentCookies = initialFlowEntries.stream()
+                .map(FlowEntry::getCookie)
+                .collect(Collectors.toSet());
+
         fire(NEXT);
     }
 
@@ -177,12 +216,20 @@ public class SwitchSyncRulesFsm
         try {
             ValidationService validationService = new ValidationServiceImpl(persistenceManager);
             validateRulesResult = validationService.validateRules(switchId, presentCookies);
-
-            if (validateRulesResult.getMissingRules().isEmpty()) {
-                fire(FINISH);
-            }
+            fire(NEXT);
         } catch (Exception e) {
             sendException(e);
+        }
+    }
+
+    protected void checkMissingRulesExists(SwitchSyncRulesState from, SwitchSyncRulesState to,
+                                           SwitchSyncRulesEvent event, Object context) {
+        log.info("Key: {}, is missing rules exists", key);
+
+        if (validateRulesResult.getMissingRules().isEmpty()) {
+            fire(NEXT);
+        } else {
+            fire(MISSING_RULES_EXIST);
         }
     }
 
@@ -191,7 +238,8 @@ public class SwitchSyncRulesFsm
         log.info("Key: {}, compute install rules", key);
         try {
             CommandBuilder commandBuilder = new CommandBuilderImpl(persistenceManager);
-            missingRules = commandBuilder.buildCommandsToSyncRules(switchId, validateRulesResult.getMissingRules());
+            missingRules = commandBuilder.buildCommandsToCreateMissingRules(
+                    switchId, validateRulesResult.getMissingRules());
         } catch (Exception e) {
             sendException(e);
         }
@@ -201,7 +249,7 @@ public class SwitchSyncRulesFsm
                                 SwitchSyncRulesEvent event, Object context) {
         log.info("Key: {}, request to install switch rules has been sent", key);
         CommandMessage installCommandMessage = new CommandMessage(
-                new BatchInstallForSwitchManagerRequest(switchId, missingRules), System.currentTimeMillis(), key);
+                new BatchFlowInstallForSwitchManagerRequest(switchId, missingRules), System.currentTimeMillis(), key);
 
         carrier.sendCommand(key, installCommandMessage);
     }
@@ -210,13 +258,62 @@ public class SwitchSyncRulesFsm
                                   SwitchSyncRulesEvent event, Object context) {
         log.info("Key: {}, switch rules installed", key);
         fire(NEXT);
-
     }
 
     protected void installingRulesFailedByTimeout(SwitchSyncRulesState from, SwitchSyncRulesState to,
                                                   SwitchSyncRulesEvent event, Object context) {
         ErrorData errorData = new ErrorData(ErrorType.OPERATION_TIMED_OUT, "Installing rules failed by timeout",
                 "Error when install switch rules");
+        ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
+
+        log.warn(ERROR_LOG_MESSAGE, key, errorData.getErrorMessage());
+        carrier.endProcessing(key);
+        carrier.response(key, errorMessage);
+    }
+
+    protected void checkExcessRulesExists(SwitchSyncRulesState from, SwitchSyncRulesState to,
+                                           SwitchSyncRulesEvent event, Object context) {
+        log.info("Key: {}, is excess rules exists", key);
+
+        if (request.isRemoveExcessRules() && validateRulesResult.getExcessRules().isEmpty()) {
+            fire(NEXT);
+        } else {
+            fire(EXCESS_RULES_EXIST);
+        }
+    }
+
+    protected void computeRemoveRules(SwitchSyncRulesState from, SwitchSyncRulesState to,
+                                       SwitchSyncRulesEvent event, Object context) {
+        log.info("Key: {}, compute remove rules", key);
+        try {
+            CommandBuilder commandBuilder = new CommandBuilderImpl(persistenceManager);
+            excessRules = commandBuilder.buildCommandsToRemoveExcessRules(
+                    switchId, initialFlowEntries, validateRulesResult.getExcessRules());
+        } catch (Exception e) {
+            sendException(e);
+        }
+    }
+
+    protected void removeRules(SwitchSyncRulesState from, SwitchSyncRulesState to,
+                                SwitchSyncRulesEvent event, Object context) {
+        log.info("Key: {}, request to remove switch rules has been sent", key);
+
+        CommandMessage removeCommand = new CommandMessage(
+                new BatchRemoveFlowForSwitchManagerRequest(switchId, excessRules), System.currentTimeMillis(), key);
+
+        carrier.sendCommand(key, removeCommand);
+    }
+
+    protected void removedRules(SwitchSyncRulesState from, SwitchSyncRulesState to,
+                                  SwitchSyncRulesEvent event, Object context) {
+        log.info("Key: {}, switch rules removed", key);
+        fire(NEXT);
+    }
+
+    protected void removingRulesFailedByTimeout(SwitchSyncRulesState from, SwitchSyncRulesState to,
+                                                  SwitchSyncRulesEvent event, Object context) {
+        ErrorData errorData = new ErrorData(ErrorType.OPERATION_TIMED_OUT, "Removing rules failed by timeout",
+                "Error when remove switch rules");
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
 
         log.warn(ERROR_LOG_MESSAGE, key, errorData.getErrorMessage());
@@ -253,8 +350,12 @@ public class SwitchSyncRulesFsm
     public enum SwitchSyncRulesState {
         INITIALIZED,
         RECEIVE_RULES,
+        CHECK_MISSING_RULES,
         COMPUTE_INSTALL_RULES,
         INSTALL_RULES,
+        CHECK_EXCESS_RULES,
+        COMPUTE_REMOVE_RULES,
+        REMOVE_RULES,
         VALIDATE_RULES,
         FINISHED_WITH_ERROR,
         FINISHED
@@ -262,8 +363,11 @@ public class SwitchSyncRulesFsm
 
     public enum SwitchSyncRulesEvent {
         NEXT,
+        MISSING_RULES_EXIST,
+        EXCESS_RULES_EXIST,
         RULES_RECEIVED,
         RULES_INSTALLED,
+        RULES_REMOVED,
         TIMEOUT,
         ERROR,
         FINISH

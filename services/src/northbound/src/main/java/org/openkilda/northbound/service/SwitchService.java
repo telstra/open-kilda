@@ -125,11 +125,13 @@ public interface SwitchService {
 
     /**
      * Synchronize (install) missing flows that should be on the switch but exist only in Neo4J.
+     * Optionally removes excess rules from the switch.
      *
      * @param switchId switch to synchronize rules on.
+     * @param removeExcessRules remove excess rules flag.
      * @return the synchronization result.
      */
-    CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId);
+    CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId, boolean removeExcessRules);
 
     /**
      * Dumps all meters from the switch.
