@@ -56,7 +56,7 @@ from OF async messages - switch-add/remove, port-add/up/down/del.
 This events are wrapped into IslInfoData/PortInfoData messages and pushed into
 storm for processing.
 
-![workflow](workflow.png)
+![workflow](Isl-create.png)
 
 # Processing layers
 
