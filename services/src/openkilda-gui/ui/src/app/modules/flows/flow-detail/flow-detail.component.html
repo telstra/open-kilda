@@ -193,25 +193,12 @@
           </div>
           <div class="tab-pane" [ngClass]="{'active': openedTab == 'validate'}">
             <div class="text-right mb-2">
-                <!-- <button  class="btn btn-dark btn-sm" (click)="pingFlow()">Ping
-                    Flow</button>&nbsp; -->
-              <button *ngIf="commonService.hasPermission('fw_flow_resync')" class="btn btn-dark btn-sm" (click)="resyncFlow()">Resync
+               <button *ngIf="commonService.hasPermission('fw_flow_resync')" class="btn btn-dark btn-sm" (click)="resyncFlow()">Resync
                 Flow</button>&nbsp;
               <button *ngIf="commonService.hasPermission('fw_permission_validate')" class="btn btn-dark btn-sm" (click)="validateFlow()">Validate
                 Flow</button>
             </div>
             <div *ngIf="loading" class="component-loader"></div>
-            <!-- <div *ngIf="flowIs =='ping' && !loading" class="clip-board-wrapper">
-              <div class="row">
-              <div class="col-md-12">
-                <label class="response_flow_label">Ping Flow</label>
-                <button class="btn btn-secondary btn-no-radius pull-right btn-custom-margin" (click)="clearPingedFlow()">Clear</button>
-                <div class="clear clearfix"></div>
-              </div>
-            </div>
-           
-            <pre [contextMenu]="copyPingedFlow" class="code pingedFlow" *ngIf="pingedFlow">{{pingedFlow | json}}</pre>
-            </div> -->
             <div *ngIf="flowIs =='validate' && !loading" class="clip-board-wrapper">
               <div class="row">
               <div class="col-md-12">
@@ -261,13 +248,41 @@
           <div class="text-right mb-2">
               <button  class="btn btn-dark btn-sm" (click)="pingFlow()">Ping Flow</button>
           </div>
-         <svg id="pingGraph" width="800" height="250"></svg>
+          <div id="pingGraphwrapper" class="topology-container" >
+              <svg id="pingGraph" width="1000" height="250"></svg>
+          </div>
+         
       </div>
       </div>
     </div>
   </div>
 </div>
 <!-- End : Switch Tab Section -->
+</div>
+
+<div id="ping-hover-txt" style="display: none; top: 339.089px; left: 596.811px;" class="">
+   <div class="form-wrapper" id="forward_ping_errors" style="display: none;"></div>
+   <div class="form-wrapper" id="reverse_ping_errors" style="display: none;"></div>
+    <div class="form-wrapper" id="switch_hover" style="display: none;">
+
+        <div class="row">
+          <label class="col-sm-3 col-form-label" style="font-weight: bold;">Name:</label>
+          <p class="col-sm-9 switchdetails_div_switch_name"></p>
+        </div>
+        <div class="row">
+          <label class="col-sm-3 col-form-label" style="font-weight: bold;">SwitchId:</label>
+          <p class="col-sm-9 switchdetails_div_switchid"></p>
+        </div>
+        <div class="row">
+          <label class="col-sm-3 col-form-label" style="font-weight: bold;">Port:</label>
+          <p class="col-sm-9 switchdetails_div_port"></p>
+        </div>
+        <div class="row">
+          <label class="col-sm-3 col-form-label" style="font-weight: bold;">VLAN:</label>
+          <p class="col-sm-9 switchdetails_div_vlan"></p>
+        </div>
+       </div>
+
 </div>
 
 <context-menu #copySrcSwitch>

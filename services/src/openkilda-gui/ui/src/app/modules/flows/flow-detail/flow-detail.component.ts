@@ -175,10 +175,18 @@ export class FlowDetailComponent implements OnInit {
   dragEnd = (d: any, i) => {
     if (!d3.event.active) this.forceSimulation.alphaTarget(0);
   };
+
+  horizontallyBound = (parentDiv, childDiv) => {
+    let parentRect: any = parentDiv.getBoundingClientRect();
+    let childRect: any = childDiv.getBoundingClientRect();
+    return (
+      parentRect.left <= childRect.left && parentRect.right >= childRect.right
+    );
+  };
  
   initPingSimulation(){
-    this.nodes = [{ "x": -208.992345, "y": -6556.9998 ,switch_id:this.flowDetail.source_switch+"_"+this.flowDetail.src_port,name:this.flowDetail.source_switch_name},
-                  { "x": 595.98896,  "y":  -6556.9998,switch_id:this.flowDetail.target_switch+"_"+this.flowDetail.dst_port,name:this.flowDetail.target_switch_name }
+    this.nodes = [{ "x": -208.992345, "y": -6556.9998 ,switch_id_value:this.flowDetail.source_switch,switch_id:this.flowDetail.source_switch+"_"+this.flowDetail.src_port,name:this.flowDetail.source_switch_name,port:this.flowDetail.src_port,vlan:this.flowDetail.src_vlan},
+                  { "x": 595.98896,  "y":  -6556.9998,switch_id_value:this.flowDetail.target_switch,switch_id:this.flowDetail.target_switch+"_"+this.flowDetail.dst_port,name:this.flowDetail.target_switch_name,port:this.flowDetail.dst_port,vlan:this.flowDetail.dst_vlan }
                 ];
     this.links = [{
                 source:{switch_id:this.flowDetail.source_switch+"_"+this.flowDetail.src_port,name:this.flowDetail.source_switch_name},
@@ -190,35 +198,15 @@ export class FlowDetailComponent implements OnInit {
                }
             ];
     this.processLinks();
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
     this.svgElement = d3.select("svg");
+    this.width = this.svgElement.attr('width');
+    this.height = this.svgElement.attr('height');
     this.svgElement.style('cursor','move');
     this.svgElement.attr("width",this.width);
     this.svgElement.attr("height",this.height);
     this.g = this.svgElement.append("g");
     this.graphLinkGroup = this.g.append("g").attr("id", `links`).attr("class", "links");
     this.graphNodeGroup = this.g.append('g').attr("class",".nodes").attr("id","nodes");
-    this.zoom = d3
-      .zoom()
-      .scaleExtent([this.min_zoom, this.max_zoom])
-      .extent([[0, 0], [this.width, this.height]])
-      .on("zoom", () => {
-        this.g.attr(
-          "transform",
-          "translate(" +
-            d3.event.transform.x +
-            "," +
-            d3.event.transform.y +
-            ") scale(" +
-            d3.event.transform.k +
-            ")"
-        );
-        this.zoomLevel = Math.round(d3.event.transform.k*100)/100;
-        this.translateX = d3.event.transform.x;
-        this.translateY = d3.event.transform.y;
-        this.isDragMove = true;
-      });
       this.size = d3
       .scalePow()
       .exponent(1)
@@ -241,8 +229,7 @@ export class FlowDetailComponent implements OnInit {
       this.tick();
      });
     this.insertNodes();
-    this.insertLinks();    
-    this.svgElement.call(this.zoom);    
+    this.insertLinks();     
     this.svgElement.on("dblclick.zoom", null);
     this.forceSimulation.restart();
       
@@ -271,6 +258,7 @@ export class FlowDetailComponent implements OnInit {
    }
   }
   insertLinks(){
+    var ref =this;
     let graphLinksData = this.graphLinkGroup.selectAll("path.link").data(this.links);
      let graphNewLink = graphLinksData
       .enter()
@@ -282,6 +270,46 @@ export class FlowDetailComponent implements OnInit {
         return "link" + index;
       }).attr('stroke-width', (d) =>{ return 2.5; }).attr("stroke", function(d, index) {
               return ISL.DISCOVERED;
+      }).attr("cursor","pointer")
+      .on('mouseover',function(d,index){
+        var element = document.getElementById("link" + index);
+        console.log('element',element);
+        var classes = element.getAttribute("class");
+         var rec: any = element.getBoundingClientRect();
+        
+         if(classes.includes("failed_ping_flowline")){
+           if(index ==0){
+            $("#ping-hover-txt").css("display", "block");
+            $('#forward_ping_errors').css('display','block');
+            $('#reverse_ping_errors').css('display','none');
+           }else{
+            $("#ping-hover-txt").css("display", "block");
+            $('#forward_ping_errors').css('display','none');
+            $('#reverse_ping_errors').css('display','block');
+           }
+
+           $(element).on("mousemove", function(e) {
+            $("#ping-hover-txt").css("top", (e.pageY-50) + "px");
+            $("#ping-hover-txt").css("left", (e.pageX) + "px");
+            var bound = ref.horizontallyBound(
+              document.getElementById("pingGraphwrapper"),
+              document.getElementById("ping-hover-txt")
+            );
+
+            if (bound) {
+              $("#ping-hover-txt").removeClass("left");
+            } else {
+              var left = e.pageX; // subtract width of tooltip box + circle radius
+              $("#ping-hover-txt").css("left", left + "px");
+              $("#ping-hover-txt").addClass("left");
+            }
+          });
+          
+         }
+      }).on('mouseout',function(d,index){
+        $("#ping-hover-txt").css("display", "none");
+        $('#forward_ping_errors').css('display','none');
+        $('#reverse_ping_errors').css('display','none');
       });
       graphLinksData.exit().remove();
       this.graphLink = graphNewLink.merge(graphLinksData);
@@ -289,13 +317,8 @@ export class FlowDetailComponent implements OnInit {
   insertNodes(){
     let ref = this;
     let graphNodesData = this.graphNodeGroup.selectAll("g.node").data(this.nodes);
-    let graphNodeElement = graphNodesData.enter().append("g").attr("class", "node").call(
-        d3
-        .drag()
-        .on("start", this.dragStart)
-        .on("drag", this.dragging)
-        .on("end", this.dragEnd)
-    );
+    let graphNodeElement = graphNodesData.enter().append("g").attr("class", "node");
+    
     graphNodesData.exit().remove();
     graphNodeElement.append("circle").attr("r", this.graphOptions.radius)
                       .attr("class", function(d, index) {
@@ -304,29 +327,29 @@ export class FlowDetailComponent implements OnInit {
                       })
                       .attr("id", function(d, index) {
                         return "circle_" + d.index;
-                      })
-                      .style("cursor", "move");
+                      }).style("cursor", "pointer");
+                      
    let text = graphNodeElement
                       .append("text")
                       .attr("dy", ".35em")
                       .style("font-size", this.graphOptions.nominal_text_size + "px")
                       .attr("class", "switchname");
-      if (this.graphOptions.text_center) {
-        text
-          .text(function(d) { console.log('d',d);
-            return d.name;
-          })
-          .style("text-anchor", "middle");
-      } else {
-        text
-          .attr("dx", function(d) {
-            return ref.size(d.size) || ref.graphOptions.nominal_base_node_size;
-          })
-          .text(function(d) {
-            return d.name;
-          });
-      }
-   let images = graphNodeElement.append("svg:image")
+  if (this.graphOptions.text_center) {
+    text
+      .text(function(d) { 
+        return d.name;
+      })
+      .style("text-anchor", "middle");
+  } else {
+    text
+      .attr("dx", function(d) {
+        return ref.size(d.size) || ref.graphOptions.nominal_base_node_size;
+      })
+      .text(function(d) {
+        return d.name;
+      });
+  }
+  let images = graphNodeElement.append("svg:image")
                                 .attr("xlink:href", function(d) {
                                   return environment.assetsPath + "/images/switch.png";
                                 })
@@ -340,7 +363,42 @@ export class FlowDetailComponent implements OnInit {
                                 .attr("width", 58)
                                 .attr("id", function(d, index) {
                                   return "image_" + index;
-                                })
+                                }).attr("cursor","pointer").on('mouseover',function(d,index){
+                                  var element = document.getElementById("circle_" + index);
+                                   var classes = "circle blue hover";
+                                    element.setAttribute("class", classes);
+                                    var rec: any = element.getBoundingClientRect();
+                                    $("#ping-hover-txt,#switch_hover").css("display", "block");
+                                    $("#ping-hover-txt").css("top", rec.y + "px");
+                                    $("#ping-hover-txt").css("left", (rec.x) + "px");
+          
+                                    d3.select(".switchdetails_div_switch_name").html(
+                                      "<span>" + d.name + "</span>"
+                                    );
+                                    d3.select(".switchdetails_div_switchid").html(
+                                      "<span>" + d.switch_id_value + "</span>"
+                                    );
+                                    d3.select(".switchdetails_div_port").html(
+                                      "<span>" + d.port + "</span>"
+                                    );
+                                    d3.select(".switchdetails_div_vlan").html(
+                                      "<span>" + d.vlan + "</span>"
+                                    );
+                                    
+                                    var bound = ref.horizontallyBound(
+                                      document.getElementById("pingGraphwrapper"),
+                                      document.getElementById("ping-hover-txt")
+                                    );
+                                    if (bound) {
+                                      $("#ping-hover-txt").removeClass("left");
+                                    } else {
+                                      var left = rec.x - (300 + 100); 
+                                      $("#ping-hover-txt").css("left", left + "px");
+                                      $("#ping-hover-txt").addClass("left");
+                                    }
+                                }).on('mouseout',function(d,index){
+                                  $("#ping-hover-txt,#switch_hover").css("display", "none");
+                                });
       
      this.graphNode = graphNodeElement.merge(graphNodesData);
                         
@@ -516,14 +574,14 @@ export class FlowDetailComponent implements OnInit {
         setTimeout(() => {
           this.flowService.getFlowStatus(this.flowDetail.flowid).subscribe(
             flowStatus =>{
-              this.flowDetail.status = (flowStatus && flowStatus.status) ?  flowStatus.status : this.flowDetail.status;
+               this.flowDetail.status = (flowStatus && flowStatus.status) ?  flowStatus.status : this.flowDetail.status;
             },
             error => {
               var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: 'No Flow found';
               //this.toaster.error(errorMsg, "Error");
              }
           )
-        }, 100);
+        }, 10000);
       },
       error => {
         this.flowIs  ='';
@@ -602,6 +660,12 @@ export class FlowDetailComponent implements OnInit {
       data => {
         var forward_ping = (data && data['forward'] && data['forward']['ping_success']) ?data['forward']['ping_success'] : false;
         var reverse_ping = (data && data['forward'] && data['forward']['ping_success']) ?data['forward']['ping_success'] : false;
+        if(!forward_ping){
+          $('#forward_ping_errors').html('<p>'+data['forward']['error']+'</p>');
+        }
+        if(!reverse_ping){
+          $('#reverse_ping_errors').html('<p>'+data['reverse']['error']+'</p>');
+        }
         this.removePingFromLinks(forward_ping,reverse_ping);
         this.pingedFlow = data;
         this.clipBoardItems.pingedFlow = data;
