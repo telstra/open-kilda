@@ -176,7 +176,7 @@
           <li *ngIf="storeLinkSetting && (bandWidthDescrepancy || statusDescrepancy)" [ngClass]="{'active': openedTab == 'descrepancy'}">
             <a href="javascript:void(0);" (click)="openTab('descrepancy');">Discrepancy</a>
           </li>
-          <li  [ngClass]="{'active': openedTab == 'ping'}">
+          <li  [ngClass]="{'active': openedTab == 'ping'}"  *ngIf="(storeLinkSetting  && flowDetail.status)  || !(storeLinkSetting)">
             <a href="javascript:void(0);" (click)="openTab('ping');">Ping</a>
           </li>
         </ul>

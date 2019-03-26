@@ -273,8 +273,9 @@ export class FlowDetailComponent implements OnInit {
       }).attr("cursor","pointer")
       .on('mouseover',function(d,index){
         var element = document.getElementById("link" + index);
-        console.log('element',element);
         var classes = element.getAttribute("class");
+        classes = classes + " overlay";
+        element.setAttribute('class',classes);
          var rec: any = element.getBoundingClientRect();
         
          if(classes.includes("failed_ping_flowline")){
@@ -307,6 +308,8 @@ export class FlowDetailComponent implements OnInit {
           
          }
       }).on('mouseout',function(d,index){
+        var element = document.getElementById("link" + index);
+        $('#link' + index).removeClass('overlay');
         $("#ping-hover-txt").css("display", "none");
         $('#forward_ping_errors').css('display','none');
         $('#reverse_ping_errors').css('display','none');
@@ -322,7 +325,7 @@ export class FlowDetailComponent implements OnInit {
     graphNodesData.exit().remove();
     graphNodeElement.append("circle").attr("r", this.graphOptions.radius)
                       .attr("class", function(d, index) {
-                        var classes = "circle blue";
+                        var classes = "circle blue hover";
                         return classes;
                       })
                       .attr("id", function(d, index) {
@@ -365,8 +368,6 @@ export class FlowDetailComponent implements OnInit {
                                   return "image_" + index;
                                 }).attr("cursor","pointer").on('mouseover',function(d,index){
                                   var element = document.getElementById("circle_" + index);
-                                   var classes = "circle blue hover";
-                                    element.setAttribute("class", classes);
                                     var rec: any = element.getBoundingClientRect();
                                     $("#ping-hover-txt,#switch_hover").css("display", "block");
                                     $("#ping-hover-txt").css("top", rec.y + "px");
@@ -413,7 +414,7 @@ export class FlowDetailComponent implements OnInit {
         dy = y2 - y1,
         dr = Math.sqrt(dx * dx + dy * dy),
         drx = dr,
-        dry = dr,
+        dry = dr - 100,
         xRotation = 0, // degrees
         largeArc = 0, // 1 or 0
         sweep = 1; // 1 or 0
@@ -639,15 +640,21 @@ export class FlowDetailComponent implements OnInit {
         if(!forward_ping){
           $('#link'+index).removeClass('flowline').addClass('failed_ping_flowline');
         }else{
-          $('#link'+index).removeClass('flowline').addClass('ping_success_flow');
+          $('#link'+index).removeClass('flowline').removeClass('failed_ping_flowline').addClass('ping_success_flow');
         }
+        setTimeout(function(){
+          $('#link'+index).removeClass('failed_ping_flowline').removeClass('ping_success_flow');
+        },10000);
       }else if(index !=0){
         if(!reverse_ping){
           $('#link'+index).removeClass('flowline').addClass('failed_ping_flowline');
         }else{
-          $('#link'+index).removeClass('flowline').addClass('ping_success_flow');
+          $('#link'+index).removeClass('flowline').removeClass('failed_ping_flowline').addClass('ping_success_flow');
         }
       }
+      setTimeout(function(){
+        $('#link'+index).removeClass('failed_ping_flowline').removeClass('ping_success_flow');
+      },10000);
     })
   }
   /** Ping flow */

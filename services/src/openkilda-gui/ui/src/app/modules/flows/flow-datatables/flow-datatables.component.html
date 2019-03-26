@@ -134,6 +134,18 @@
              </span>
               
         </th>
+        <th >
+            <span title="source_switch">
+                Source Switch
+               </span>
+                
+          </th>
+          <th >
+              <span title="target_switch">
+                  Target Switch
+                 </span>
+                  
+            </th>
         <th class=""><span title="Action">Action</span></th>
       </tr>
     </thead>
@@ -150,6 +162,8 @@
         <td title="{{row.status || row.state ||  '-'}}">{{ row.status || row.state ||  "-"}}</td>
         <td title="{{row.description}}">{{row.description || "-"}}</td>
         <td >{{ descrepancyString(row) }}</td>
+        <td >{{ row.source_switch  }}</td>
+        <td >{{ row.target_switch  }}</td>
         <td ><a class="pull-left" title="Edit Flow" *ngIf="commonService.hasPermission('fw_flow_update') && (!storeLinkSetting || (storeLinkSetting && row.hasOwnProperty('discrepancy') && row['discrepancy'].hasOwnProperty('controller-discrepancy') && !row['discrepancy']['controller-discrepancy']))" [routerLink]="['/flows/edit',row.flowid]"><i class="fa fa-edit"></i></a></td>
       </tr>
     </tbody>
