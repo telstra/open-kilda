@@ -32,8 +32,8 @@ SETUP : enter / save features
 SETUP : enter / setup port FSM for NEW ports
 SETUP : enter / emit online for ALL ports
 SETUP : enter / emit port-del for REMOVED ports
-SETUP : enter / emit port-down for UP->DOWN ports
-SETUP : enter / emit port-up for DOWN->UP ports
+SETUP : enter / emit port-down for DOWN ports
+SETUP : enter / emit port-up for DOWN ports
 SETUP -r-> ONLINE : next
 
 ONLINE : port-add / setup port FSM
@@ -42,7 +42,7 @@ ONLINE : port-add / emit port-up/down
 ONLINE : port-del / kill port FSM
 ONLINE : port-up / proxy
 ONLINE : port-down / proxy
-ONLINE -l-> SETUP : online
+ONLINE : online / update ports status
 ONLINE --> OFFLINE : offline
 
 OFFLINE : enter / update status in DB

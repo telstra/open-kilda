@@ -64,8 +64,6 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private final Set<SpeakerSwitchView.Feature> features = new HashSet<>();
     private final Map<Integer, AbstractPort> portByNumber = new HashMap<>();
 
-    private boolean isOnlineToOnline = false;
-
     private static final StateMachineBuilder<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> builder;
 
     static {
@@ -88,8 +86,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                 .callMethod("setupEnter");
 
         // ONLINE
-        builder.transition().from(SwitchFsmState.ONLINE).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.ONLINE)
-                .callMethod("markOnlineToOnlineTransition");
+        builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.ONLINE)
+                .callMethod("syncState");
         builder.transition().from(SwitchFsmState.ONLINE).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
         builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_ADD)
                 .callMethod("handlePortAdd");
@@ -143,51 +141,14 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     public void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
-        if (!isOnlineToOnline) {
-            logWrapper.onSwitchUpdateStatus(switchId, SwitchFsmEvent.ONLINE.toString());
-        }
+        logWrapper.onSwitchAdd(switchId);
 
         transactionManager.doInTransaction(() -> persistSwitchData(context));
-
-        SpeakerSwitchView speakerData = context.getSpeakerData();
-        // set features for correct port (re)identification
-        updateFeatures(speakerData.getFeatures());
-
-        Set<Integer> removedPorts = new HashSet<>(portByNumber.keySet());
-        for (SpeakerSwitchPortView speakerPort : speakerData.getPorts()) {
-            AbstractPort actualPort = makePortRecord(speakerPort);
-            AbstractPort storedPort = portByNumber.get(speakerPort.getNumber());
-
-            if (storedPort == null) {
-                portAdd(actualPort, context);
-            } else if (!storedPort.isSameKind(actualPort)) {
-                // port kind have been changed, we must recreate port handler
-                portDel(storedPort, context);
-                portAdd(actualPort, context);
-            } else {
-                removedPorts.remove(speakerPort.getNumber());
-            }
-
-            if (!isOnlineToOnline) {
-                updateOnlineStatus(actualPort, context, true);
-            }
-            updatePortLinkMode(actualPort, context);
-        }
-
-        for (Integer portNumber : removedPorts) {
-            portDel(portByNumber.get(portNumber), context);
-        }
-
-        isOnlineToOnline = false;
+        updatePorts(context, true);
     }
 
     public void onlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         initialSwitchSetup(context);
-    }
-
-    public void markOnlineToOnlineTransition(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
-                                             SwitchFsmContext context) {
-        isOnlineToOnline = true;
     }
 
     public void offlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
@@ -198,6 +159,10 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         for (AbstractPort port : portByNumber.values()) {
             updateOnlineStatus(port, context, false);
         }
+    }
+
+    public void syncState(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+        updatePorts(context, false);
     }
 
     public void handlePortAdd(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
@@ -264,6 +229,43 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     // -- private/service methods --
 
+    private void updatePorts(SwitchFsmContext context, boolean isForced) {
+        SpeakerSwitchView speakerData = context.getSpeakerData();
+        // set features for correct port (re)identification
+        updateFeatures(speakerData.getFeatures());
+
+        Set<Integer> removedPorts = new HashSet<>(portByNumber.keySet());
+        for (SpeakerSwitchPortView speakerPort : speakerData.getPorts()) {
+            AbstractPort actualPort = makePortRecord(speakerPort);
+            AbstractPort storedPort = portByNumber.get(speakerPort.getNumber());
+
+            boolean isNewOrRecreated = true;
+            if (storedPort == null) {
+                storedPort = portAdd(actualPort, context);
+            } else if (!storedPort.isSameKind(actualPort)) {
+                // port kind have been changed, we must recreate port handler
+                portDel(storedPort, context);
+                storedPort = portAdd(actualPort, context);
+            } else {
+                removedPorts.remove(speakerPort.getNumber());
+                isNewOrRecreated = false;
+            }
+
+            if (isForced) {
+                updateOnlineStatus(storedPort, context, true);
+                updatePortLinkMode(storedPort, actualPort.getLinkStatus(), context);
+            } else {
+                if (isNewOrRecreated || storedPort.getLinkStatus() != actualPort.getLinkStatus()) {
+                    updatePortLinkMode(storedPort, actualPort.getLinkStatus(), context);
+                }
+            }
+        }
+
+        for (Integer portNumber : removedPorts) {
+            portDel(portByNumber.get(portNumber), context);
+        }
+    }
+
     private void updateFeatures(Set<SpeakerSwitchView.Feature> update) {
         if (!features.equals(update)) {
             log.info("Update features for {} - old:{} new:{}", switchId, features, update);
@@ -272,16 +274,23 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         }
     }
 
-    private void portAdd(AbstractPort port, SwitchFsmContext context) {
+    private AbstractPort portAdd(AbstractPort port, SwitchFsmContext context) {
         portByNumber.put(port.getPortNumber(), port);
         port.portAdd(context.getOutput());
         logWrapper.onPortAdd(switchId, port);
+
+        return port;
     }
 
     private void portDel(AbstractPort port, SwitchFsmContext context) {
         portByNumber.remove(port.getPortNumber());
         port.portDel(context.getOutput());
         logWrapper.onPortDelete(switchId, port);
+    }
+
+    private void updatePortLinkMode(AbstractPort port, LinkStatus status, SwitchFsmContext context) {
+        port.setLinkStatus(status);
+        updatePortLinkMode(port, context);
     }
 
     private void updatePortLinkMode(AbstractPort port, SwitchFsmContext context) {
