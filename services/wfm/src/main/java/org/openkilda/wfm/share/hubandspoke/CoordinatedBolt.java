@@ -42,7 +42,7 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
 
     @Override
     public void execute(Tuple input) {
-        log.debug("{} input tuple from {}:{} size {}",
+        log.trace("{} input tuple from {}:{} size {}",
                 getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(), input.size());
         try {
             if (CoordinatorBolt.ID.equals(input.getSourceComponent())) {

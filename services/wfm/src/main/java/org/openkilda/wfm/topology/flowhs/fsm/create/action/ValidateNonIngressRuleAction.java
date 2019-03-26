@@ -13,42 +13,44 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.action.create;
+package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.flow.request.InstallIngressRule;
+import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.validation.rules.IngressRulesValidator;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.validation.rules.NonIngressRulesValidator;
 import org.openkilda.wfm.topology.flowhs.validation.rules.RulesValidator;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 @Slf4j
-public class ValidateIngressRuleAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+public class ValidateNonIngressRuleAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+
     @Override
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         String commandId = context.getFlowResponse().getCommandId();
 
-        InstallIngressRule expected = stateMachine.getIngressCommands().stream()
+        InstallTransitRule expected = stateMachine.getNonIngressCommands().stream()
                 .filter(rule -> rule.getCommandId().equals(commandId))
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException(format("Failed to find ingress command with id %s",
+                .map(InstallTransitRule.class::cast)
+                .orElseThrow(() -> new IllegalStateException(format("Failed to find non ingress command with id %s",
                         commandId)));
 
-        RulesValidator validator = new IngressRulesValidator(expected, (FlowRuleResponse) context.getFlowResponse());
+        RulesValidator validator = new NonIngressRulesValidator(expected, (FlowRuleResponse) context.getFlowResponse());
         if (!validator.validate()) {
-            stateMachine.fire(Event.Error);
+            stateMachine.fire(Event.ERROR);
         } else {
             stateMachine.getPendingCommands().remove(commandId);
             if (stateMachine.getPendingCommands().isEmpty()) {
-                log.info("Ingress rules have been validated for flow {}", stateMachine.getFlow().getFlowId());
-                stateMachine.fire(Event.Next);
+                log.info("Non ingress rules have been validated for flow {}", stateMachine.getFlow().getFlowId());
+                stateMachine.fire(Event.NEXT);
             }
         }
     }

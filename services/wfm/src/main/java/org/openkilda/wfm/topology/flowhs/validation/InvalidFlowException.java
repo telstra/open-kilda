@@ -13,20 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.bolts;
+package org.openkilda.wfm.topology.flowhs.validation;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
-import org.openkilda.messaging.Message;
+import org.openkilda.messaging.error.ErrorType;
 
-public interface FlowCreateHubCarrier {
-    /**
-     * Sends commands to speaker.
-     * @param command command to be executed.
-     */
-    void sendSpeakerRequest(FlowRequest command);
+import lombok.Getter;
 
-    /**
-     * Sends response to northbound component.
-     */
-    void sendNorthboundResponse(Message message);
+@Getter
+public class InvalidFlowException extends Exception {
+
+    private final ErrorType type;
+
+    public InvalidFlowException(String message, ErrorType type) {
+        super(message);
+        this.type = type;
+    }
+
+    public InvalidFlowException(String message, Throwable cause, ErrorType type) {
+        super(message, cause);
+        this.type = type;
+    }
 }

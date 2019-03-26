@@ -13,20 +13,27 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.bolts;
+package org.openkilda.wfm.topology.flowhs.model;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
-import org.openkilda.messaging.Message;
+import org.openkilda.model.SwitchId;
 
-public interface FlowCreateHubCarrier {
-    /**
-     * Sends commands to speaker.
-     * @param command command to be executed.
-     */
-    void sendSpeakerRequest(FlowRequest command);
+import lombok.Builder;
+import lombok.Data;
 
-    /**
-     * Sends response to northbound component.
-     */
-    void sendNorthboundResponse(Message message);
+@Data
+@Builder
+public class RequestedFlow {
+    private String flowId;
+
+    private SwitchId srcSwitch;
+    private int srcPort;
+    private int srcVlan;
+
+    private SwitchId destSwitch;
+    private int destPort;
+    private int destVlan;
+
+    private long bandwidth;
+    private boolean ignoreBandwidth;
+    private boolean periodicPings;
 }

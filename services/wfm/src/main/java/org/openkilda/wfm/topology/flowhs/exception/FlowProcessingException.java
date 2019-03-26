@@ -13,20 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.bolts;
+package org.openkilda.wfm.topology.flowhs.exception;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
-import org.openkilda.messaging.Message;
+import org.openkilda.messaging.error.ErrorType;
 
-public interface FlowCreateHubCarrier {
-    /**
-     * Sends commands to speaker.
-     * @param command command to be executed.
-     */
-    void sendSpeakerRequest(FlowRequest command);
+import lombok.Getter;
 
-    /**
-     * Sends response to northbound component.
-     */
-    void sendNorthboundResponse(Message message);
+@Getter
+public class FlowProcessingException extends Exception {
+
+    private final ErrorType errorType;
+    private final String errorMessage;
+    private final String errorDescription;
+
+    public FlowProcessingException(ErrorType errorType, String errorMessage, String errorDescription) {
+        super(errorMessage);
+
+        this.errorType = errorType;
+        this.errorMessage = errorMessage;
+        this.errorDescription = errorDescription;
+    }
 }

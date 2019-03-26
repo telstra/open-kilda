@@ -22,8 +22,8 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -47,9 +47,9 @@ public class FlowValidator {
      * Validates the specified flow.
      *
      * @param flow a flow to be validated.
-     * @throws FlowValidationException is thrown if a violation is found.
+     * @throws InvalidFlowException is thrown if a violation is found.
      */
-    public void validate(Flow flow) throws FlowValidationException, SwitchValidationException {
+    public void validate(RequestedFlow flow) throws InvalidFlowException, UnavailableFlowEndpointException {
         checkBandwidth(flow);
         checkFlowForEndpointConflicts(flow);
         checkOneSwitchFlowHasNoConflicts(flow);
@@ -57,9 +57,9 @@ public class FlowValidator {
     }
 
     @VisibleForTesting
-    void checkBandwidth(Flow flow) throws FlowValidationException {
+    void checkBandwidth(RequestedFlow flow) throws InvalidFlowException {
         if (flow.getBandwidth() < 0) {
-            throw new FlowValidationException(
+            throw new InvalidFlowException(
                     format("The flow '%s' has invalid bandwidth %d provided.",
                             flow.getFlowId(),
                             flow.getBandwidth()),
@@ -71,15 +71,15 @@ public class FlowValidator {
      * Checks a flow for endpoints' conflicts.
      *
      * @param flow a flow to be validated.
-     * @throws FlowValidationException is thrown in a case when flow endpoints conflict with existing flows.
+     * @throws InvalidFlowException is thrown in a case when flow endpoints conflict with existing flows.
      */
     @VisibleForTesting
-    void checkFlowForEndpointConflicts(Flow flow) throws FlowValidationException {
-        checkEndpoint(flow.getFlowId(), flow.getSrcSwitch().getSwitchId(), flow.getSrcPort(), flow.getSrcVlan());
-        checkEndpoint(flow.getFlowId(), flow.getDestSwitch().getSwitchId(), flow.getDestPort(), flow.getDestVlan());
+    void checkFlowForEndpointConflicts(RequestedFlow flow) throws InvalidFlowException {
+        checkEndpoint(flow.getFlowId(), flow.getSrcSwitch(), flow.getSrcPort(), flow.getSrcVlan());
+        checkEndpoint(flow.getFlowId(), flow.getDestSwitch(), flow.getDestPort(), flow.getDestVlan());
     }
 
-    private void checkEndpoint(String flowId, SwitchId dpid, int portNo, int vlanId) throws FlowValidationException {
+    private void checkEndpoint(String flowId, SwitchId dpid, int portNo, int vlanId) throws InvalidFlowException {
         Optional<String> conflictedFlowId = flowRepository.findByEndpoint(dpid, portNo)
                 .stream()
                 .filter(flow -> !flowId.equals(flow.getFlowId()))
@@ -94,7 +94,7 @@ public class FlowValidator {
                 .findAny();
 
         if (conflictedFlowId.isPresent()) {
-            throw new FlowValidationException(
+            throw new InvalidFlowException(
                     format("The port %d on the switch '%s' is already occupied by the flow '%s'.",
                             portNo, dpid, flowId),
                     ErrorType.ALREADY_EXISTS);
@@ -108,9 +108,9 @@ public class FlowValidator {
      * @throws SwitchValidationException if switch not found.
      */
     @VisibleForTesting
-    void checkSwitchesExists(Flow flow) throws SwitchValidationException {
-        final SwitchId sourceId = flow.getSrcSwitch().getSwitchId();
-        final SwitchId destinationId = flow.getDestSwitch().getSwitchId();
+    void checkSwitchesExists(RequestedFlow flow) throws UnavailableFlowEndpointException {
+        final SwitchId sourceId = flow.getSrcSwitch();
+        final SwitchId destinationId = flow.getDestSwitch();
 
         boolean source;
         boolean destination;
@@ -123,14 +123,14 @@ public class FlowValidator {
         }
 
         if (!source && !destination) {
-            throw new SwitchValidationException(
+            throw new UnavailableFlowEndpointException(
                     String.format("Source switch %s and Destination switch %s are not connected to the controller",
                             sourceId, destinationId));
         } else if (!source) {
-            throw new SwitchValidationException(
+            throw new UnavailableFlowEndpointException(
                     String.format("Source switch %s is not connected to the controller", sourceId));
         } else if (!destination) {
-            throw new SwitchValidationException(
+            throw new UnavailableFlowEndpointException(
                     String.format("Destination switch %s is not connected to the controller", destinationId));
         }
     }
@@ -139,13 +139,13 @@ public class FlowValidator {
      * Ensure vlans are not equal in the case when there is an attempt to create one-switch flow for a single port.
      */
     @VisibleForTesting
-    void checkOneSwitchFlowHasNoConflicts(Flow requestedFlow) throws SwitchValidationException {
+    void checkOneSwitchFlowHasNoConflicts(RequestedFlow requestedFlow) throws InvalidFlowException {
         if (requestedFlow.getSrcSwitch().equals(requestedFlow.getDestSwitch())
                 && requestedFlow.getSrcPort() == requestedFlow.getDestPort()
                 && requestedFlow.getSrcVlan() == requestedFlow.getDestVlan()) {
 
-            throw new SwitchValidationException(
-                    "It is not allowed to create one-switch flow for the same ports and vlans");
+            throw new InvalidFlowException(
+                    "It is not allowed to create one-switch flow for the same ports and vlans", ErrorType.DATA_INVALID);
         }
     }
 }

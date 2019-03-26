@@ -13,20 +13,16 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.bolts;
+package org.openkilda.wfm.topology.flowhs.validation;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
-import org.openkilda.messaging.Message;
+public class UnavailableFlowEndpointException extends Exception {
 
-public interface FlowCreateHubCarrier {
-    /**
-     * Sends commands to speaker.
-     * @param command command to be executed.
-     */
-    void sendSpeakerRequest(FlowRequest command);
+    public UnavailableFlowEndpointException(String message) {
+        super(message);
+    }
 
-    /**
-     * Sends response to northbound component.
-     */
-    void sendNorthboundResponse(Message message);
+    public UnavailableFlowEndpointException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
 }

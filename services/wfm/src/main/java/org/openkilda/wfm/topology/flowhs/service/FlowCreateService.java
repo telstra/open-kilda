@@ -19,7 +19,6 @@ import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.model.Flow;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
@@ -27,11 +26,13 @@ import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
-import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowCreateHubCarrier;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineLogger;
@@ -64,19 +65,18 @@ public class FlowCreateService {
      * @param dto request data.
      */
     public void handleRequest(String key, CommandContext commandContext, FlowDto dto, FlowCreateHubCarrier carrier) {
-        log.warn("Handling flow create request with key {}", key);
-        Flow request = FlowMapper.INSTANCE.toFlow((dto));
-        FlowCreateFsm fsm = FlowCreateFsm.builder()
-                .withCommandContext(commandContext)
-                .withFlow(request)
-                .withCarrier(carrier)
-                .build(persistenceManager, flowResourcesConfig, pathComputer);
+        log.debug("Handling flow create request with key {}", key);
+        FlowCreateFsm fsm = FlowCreateFsm.newInstance(commandContext, carrier,
+                persistenceManager, flowResourcesConfig, pathComputer);
         fsms.put(key, fsm);
 
         StateMachineLogger fsmLogger = new StateMachineLogger(fsm);
         fsmLogger.startLogging();
 
-        fsm.fire(Event.Next);
+        RequestedFlow request = RequestedFlowMapper.INSTANCE.toRequestedFlow(dto);
+        fsm.fire(Event.NEXT, FlowCreateContext.builder()
+                .flowDetails(request)
+                .build());
     }
 
     /**
@@ -86,17 +86,26 @@ public class FlowCreateService {
     public void handleAsyncResponse(String key, FlowResponse flowResponse) {
         log.debug("Received command completion message {}", flowResponse);
         FlowCreateFsm fsm = fsms.get(key);
+        if (fsm == null) {
+            log.info("Failed to find fsm: received response with key {} for non pending fsm", key);
+            return;
+        }
+
         if (flowResponse.isSuccess()) {
-            fsm.fire(Event.CommandExecuted, FlowCreateContext.builder()
+            fsm.fire(Event.COMMAND_EXECUTED, FlowCreateContext.builder()
                     .flowResponse(flowResponse)
                     .build());
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) flowResponse;
             if (errorResponse.getErrorCode() == ErrorCode.OPERATION_TIMED_OUT) {
-                fsm.fire(Event.Timeout);
+                fsm.fire(Event.TIMEOUT);
             } else {
-                fsm.fire(Event.Error);
+                fsm.fire(Event.ERROR);
             }
+        }
+
+        if (fsm.getCurrentState() == State.FINISHED || fsm.getCurrentState() == State.FINISHED_WITH_ERROR) {
+            fsms.remove(key);
         }
     }
 
@@ -105,6 +114,11 @@ public class FlowCreateService {
      * @param key command identifier.
      */
     public void handleTimeout(String key) {
-        //fsms.get(key).fire(Event.Timeout);
+        FlowCreateFsm fsm = fsms.get(key);
+        fsm.fire(Event.TIMEOUT);
+
+        if (fsm.getCurrentState() == State.FINISHED_WITH_ERROR) {
+            fsms.remove(key);
+        }
     }
 }

@@ -13,18 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.action.create;
+package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 
+import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
-public class RollbackInstalledRulesAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+@Slf4j
+public class OnReceivedInstallResponseAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
     @Override
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
+        stateMachine.getPendingCommands().remove(context.getFlowResponse().getCommandId());
 
+        if (stateMachine.getPendingCommands().isEmpty()) {
+            log.debug("Received responses for all pending commands");
+            stateMachine.fire(Event.NEXT);
+        }
     }
 }

@@ -13,15 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.action.create;
+package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
@@ -38,6 +38,6 @@ public class CompleteFlowCreateAction extends AnonymousAction<FlowCreateFsm, Sta
     @Override
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         flowRepository.updateFlowStatus(stateMachine.getFlow().getFlowId(), FlowStatus.UP);
-        log.debug("Flow {} successfully created", stateMachine.getFlow().getFlowId());
+        log.info("Flow {} successfully created", stateMachine.getFlow().getFlowId());
     }
 }

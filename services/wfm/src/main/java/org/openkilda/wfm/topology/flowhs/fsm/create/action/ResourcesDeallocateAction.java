@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.action.create;
+package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -21,10 +21,10 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
@@ -47,7 +47,8 @@ public class ResourcesDeallocateAction extends AnonymousAction<FlowCreateFsm, St
     @Override
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         resourcesManager.deallocateFlowResources(stateMachine.getFlow(), stateMachine.getFlowResources());
-
         log.info("Flow resources have been deallocated for flow {}", stateMachine.getFlow().getFlowId());
+
+        stateMachine.fire(Event.NEXT);
     }
 }

@@ -52,6 +52,11 @@ public enum ErrorType {
     NOT_IMPLEMENTED("Feature not implemented"),
 
     /**
+     * The error message for trying to execute not allowed operation.
+     */
+    NOT_ALLOWED("Operation is not allowed"),
+
+    /**
      * The error message for object not found.
      */
     NOT_FOUND("Object was not found"),

@@ -13,20 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.action.create;
+package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandFactory;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -47,8 +48,7 @@ public class InstallIngressRulesAction extends AnonymousAction<FlowCreateFsm, St
                 stateMachine.getCommandContext(), stateMachine.getFlow());
         commands.forEach(command -> stateMachine.getCarrier().sendSpeakerRequest(command));
 
-        stateMachine.setIngressCommands(commands);
-
+        stateMachine.setIngressCommands(new HashSet<>(commands));
         Set<String> commandIds = commands.stream()
                 .map(FlowRequest::getCommandId)
                 .collect(Collectors.toSet());

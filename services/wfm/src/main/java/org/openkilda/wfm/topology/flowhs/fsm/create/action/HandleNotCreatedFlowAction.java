@@ -13,12 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.action.create;
+package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateContext;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowCreateFsm.State;
+import org.openkilda.model.FlowStatus;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
@@ -26,8 +29,17 @@ import org.squirrelframework.foundation.fsm.AnonymousAction;
 @Slf4j
 public class HandleNotCreatedFlowAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
+    private final FlowRepository flowRepository;
+
+    public HandleNotCreatedFlowAction(PersistenceManager persistenceManager) {
+        this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+    }
+
     @Override
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         log.warn("Failed to create flow {}", stateMachine.getFlow().getFlowId());
+
+        flowRepository.updateFlowStatus(stateMachine.getFlow().getFlowId(), FlowStatus.DOWN);
+        stateMachine.fire(Event.NEXT);
     }
 }

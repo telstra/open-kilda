@@ -21,6 +21,7 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PA
 
 import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.persistence.PersistenceManager;
@@ -28,6 +29,7 @@ import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
+import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateService;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
@@ -108,8 +110,13 @@ public class FlowCreateHubBolt extends HubBolt {
         }
 
         @Override
-        public void sendNorthboundResponse() {
-
+        public void sendNorthboundResponse(Message message) {
+            try {
+                String key = tuple.getStringByField(MessageTranslator.KEY_FIELD);
+                emit(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), tuple, new Values(key, message));
+            } catch (PipelineException e) {
+                log.error("Failed to send the response to northbound", e);
+            }
         }
     }
 }
