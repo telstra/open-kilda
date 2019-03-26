@@ -8,57 +8,94 @@ as possible route for existing and future flows. Corrupted (temporary or
 permanently) ISLs must be detected too. All flows must be evacuated from such
 ISLs.
 
-Open-Kilda periodically push `discovery` packets into all switch port in "UP"
-state. This `discovery` packet contain information from where it was 
-sent(datapathId + portNumber) and time and some marker to distinguish `discovery`
-packets from other traffic using OF match fields.
+Discovered ISL consist of:
+* datapath + port-number (source)
+* datapath + port-number (dest)
+* link-speed
+* link-latency
+* BFD-support (and other optional capabilities)
 
-On receive of such packet, we got second endpoint (datapathId + portNumber). So
-first endpoint extracted from packet payload and second is a switch+port where
-we have received this packet. Lets name receive of `discovery` - 
-`discovery-event`.
+Open-Kilda produce "discovery" packet (Ethernet+IP+UDP+LLDP), put inside source
+datapath, source port-number, current time and send it using PACKET_OUT OF
+message to the source switch and set as PORT_OUT source port-number in actions.
 
-Because we send `discovery` packets via all active ports - for each ISL we will
-receive 2 `discovery-event` - one for each direction. 
+All switches have OF rule that match and send to controller our "discovery"
+packets (using PACKET_IN message.
 
+When controller receive "discovery" packet via PACKET_IN message it extract
+source datapath and source port-number extract datapath and port-number 
+(from PACKET_IN message) and treat it as destination datapath and destination
+port-number. So now it have both ISL endpoints. Link speed is extracted from
+current port-speed. Latency is calculated as current time minus packet create
+time (extracted from packet) minus source switch latency (calculated by FL
+using echo-request/response OF messages) minus dest switch latency. All
+accumulated data used to create "discovery-event" and pass in into storm for
+further processing.
 
-## Events model
-Events produced by switches via OF:
+This "process" is done for each enabled port of each switch on each N 
+seconds(configuration parameter). As result we will receive 2 discovery
+packets/event for each "link" - one for each direction. And because it repeats
+periodically Open-Kilda can "detect" ISL-fails i.e. link-corruptions. And react
+on them.
+
+Only discovery events is not enough to "discover" all links in network, we need
+to "know" the list of switches and list of their ports. This info is collected
+from OF async messages - switch-add/remove, port-add/up/down/del.
+
+## All events used in discovery process
 * switch-added (ignored - have meaning only in multi-FL environment)
 * switch-activated (alias switch-online)
 * switch-deactivated (alias switch-offline)
 * switch-removed (ignored - have meaning only in multi-FL environment)
 * port-up
 * port-down
-* port-add
+* port-add (collect extra detail - port UP/DOWN status)
 * port-delete
 * port-other-update (ignored - must be translated into port-up/down event)
 
-This set of events must be translated into ISL UP/DOWN events and
-related artifacts(network topology stored into persistent storage).
+This events are wrapped into IslInfoData/PortInfoData messages and pushed into
+storm for processing.
 
 ![workflow](workflow.png)
 
-Whole process can be divided into 3 separate layers - switch layer, port layer
-and ISL layer.
+# Processing layers
 
-To simplify event routing from switch and ports one more 
-layer required - `ISL management`. This layer trace correspondence between 
-endpoints (switch + port) and ISLs.
+Whole event process is slitted into several layers or serveral nested finite
+state machines. Each layer is responsible for some specific "function".
 
-One extra layer of event processing - is SpeakerMonitor - it responsible for
-speaker outage detection. It monitor speaker connection consuming `heart-beat`
-events from speaker. In case of outage it produce `UNMANAGEMENT` notification
-for next layer (switches FSM) and initiate state sync when speaker
-communication restores.
+## Switch layer
+Track switch online/offline status and track port change between switch reconnects.
+Also update DB with swich data.
 
-## First layer - switch events processor
 ![Switch FSM](switch-FSM.png)
 
+## Port anti-flapping layer
+Filter out port flapping events.
 
-## Second layer - port events processor
+![Port AntiFlapping](AF-FSM.png)
+
+## Port events processor
+Track port UP/DOWN state and control discovery poll process.
+ 
 ![Port FSM](port-FSM.png)
 
+## Uni-ISL layer
+Abstract the way how we track ISL status and responsible for ISL-MOVE detection.
 
-# Third layer - ISL events processor
+![Uni-ISL FSM](uni-isl-FSM.png)
+
+## ISL events processor
+Collect both discovery-event for both ISL directions, manage DB representation of
+ISL, emit flows reroute on ISL discovery/fail.
+
 ![ISL FSM](ISL-FSM.png)
+
+## BFD port
+Manage setup/remove BFD sessions
+
+![BFDPort FSM](bfd-port-FSM.png)
+
+## BFD port global toggle
+Responsible for global BFD toggle.
+
+![BFDGlobalToggleFSM](bfd-global-toggle.png)
