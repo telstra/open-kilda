@@ -19,6 +19,7 @@ import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
+import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.pathverification.type.PathType;
 import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
@@ -411,6 +412,11 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         }
 
         try {
+            IOFSwitch inputSwitch = switchService.getSwitch(input.getDpId());
+            if (inputSwitch == null) {
+                throw new SwitchNotFoundException(input.getDpId());
+            }
+
             ByteBuffer portBb = ByteBuffer.wrap(verificationPacket.getPortId().getValue());
             portBb.position(1);
 
@@ -492,10 +498,9 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             PathNode destination = new PathNode(new SwitchId(input.getDpId().getLong()), inPort.getPortNumber(), 1);
             long speed = 0L;
             if (remoteSwitch == null) {
-                speed = getSwitchPortSpeed(input.getDpId(), inPort);
+                speed = getSwitchPortSpeed(inputSwitch, inPort);
             }  else {
-                speed = Math.min(getSwitchPortSpeed(input.getDpId(), inPort),
-                        getSwitchPortSpeed(remoteSwitchId, remotePort));
+                speed = Math.min(getSwitchPortSpeed(inputSwitch, inPort), getSwitchPortSpeed(remoteSwitch, remotePort));
             }
             IslInfoData path = IslInfoData.builder()
                     .latency(latency)
@@ -512,9 +517,9 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             producerService.sendMessageAndTrack(topoDiscoTopic, source.getSwitchId().toString(), message);
             logger.debug("packet_in processed for {}-{}", input.getDpId(), inPort);
 
-        } catch (UnsupportedOperationException exception) {
-            logger.error("could not parse packet_in message: {}", exception.getMessage(),
-                    exception);
+        } catch (UnsupportedOperationException | SwitchNotFoundException exception) {
+            logger.error("could not parse packet_in message: {}", exception.getMessage(), exception);
+
         } catch (Exception exception) {
             logger.error(String.format("Unhandled exception %s", input), exception);
             throw exception;
@@ -532,8 +537,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         return latency;
     }
 
-    private long getSwitchPortSpeed(DatapathId dpId, OFPort inPort) {
-        IOFSwitch sw = switchService.getSwitch(dpId);
+    private long getSwitchPortSpeed(IOFSwitch sw, OFPort inPort) {
         OFPortDesc port = sw.getPort(inPort);
         long speed = -1;
 
