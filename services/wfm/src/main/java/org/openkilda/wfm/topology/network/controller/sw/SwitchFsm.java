@@ -64,6 +64,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private final Set<SpeakerSwitchView.Feature> features = new HashSet<>();
     private final Map<Integer, AbstractPort> portByNumber = new HashMap<>();
 
+    private boolean isOnlineToOnline = false;
+
     private static final StateMachineBuilder<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> builder;
 
     static {
@@ -86,7 +88,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                 .callMethod("setupEnter");
 
         // ONLINE
-        builder.transition().from(SwitchFsmState.ONLINE).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.ONLINE);
+        builder.transition().from(SwitchFsmState.ONLINE).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.ONLINE)
+                .callMethod("markOnlineToOnlineTransition");
         builder.transition().from(SwitchFsmState.ONLINE).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
         builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_ADD)
                 .callMethod("handlePortAdd");
@@ -140,10 +143,13 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     public void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
+        if (!isOnlineToOnline) {
+            logWrapper.onSwitchAdd(switchId);
+        }
+
         transactionManager.doInTransaction(() -> persistSwitchData(context));
 
         SpeakerSwitchView speakerData = context.getSpeakerData();
-        logWrapper.onSwitchAdd(switchId);
         // set features for correct port (re)identification
         updateFeatures(speakerData.getFeatures());
 
@@ -162,18 +168,27 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                 removedPorts.remove(speakerPort.getNumber());
             }
 
-            updateOnlineStatus(actualPort, context, true);
+            if (!isOnlineToOnline) {
+                updateOnlineStatus(actualPort, context, true);
+            }
             updatePortLinkMode(actualPort, context);
         }
 
         for (Integer portNumber : removedPorts) {
             portDel(portByNumber.get(portNumber), context);
         }
+
+        isOnlineToOnline = false;
     }
 
     public void onlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         logWrapper.onSwitchUpdateStatus(switchId, SwitchFsmEvent.ONLINE.toString());
         initialSwitchSetup(context);
+    }
+
+    public void markOnlineToOnlineTransition(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                                             SwitchFsmContext context) {
+        isOnlineToOnline = true;
     }
 
     public void offlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
@@ -272,7 +287,6 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     private void updatePortLinkMode(AbstractPort port, SwitchFsmContext context) {
         port.updatePortLinkMode(context.getOutput());
-        logWrapper.onUpdatePortStatus(switchId, port.getPortNumber(), port.getLinkStatus());
     }
 
     private void updateOnlineStatus(AbstractPort port, SwitchFsmContext context, boolean mode) {
