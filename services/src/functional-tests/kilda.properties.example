@@ -14,9 +14,11 @@ neo.password=
 elasticsearch.endpoint=http://localhost:9200
 elasticsearch.username=kilda
 elasticsearch.password=kilda
+elasticsearch.index.prefix=logstash
 
+environment.naming.prefix=
 kafka.bootstrap.server=kafka.pendev:9092
-kafka.topic.topo.disco=kilda.topo.disco
+kafka.topic.topo.disco=kilda.topo.disco.storm
 
 lab-api.endpoint=http://localhost:8288
 lockkeeper.endpoint=http://localhost:5001

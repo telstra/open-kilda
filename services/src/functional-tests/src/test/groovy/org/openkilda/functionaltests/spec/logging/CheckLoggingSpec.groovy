@@ -11,8 +11,11 @@ import org.openkilda.testing.service.elastic.model.KildaTags
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
+
+import java.text.SimpleDateFormat
 
 @Slf4j
 @Narrative("This specification ensures that all logging facilities are up and running after Kilda deployment")
@@ -21,17 +24,22 @@ class CheckLoggingSpec extends BaseSpecification {
     @Autowired
     ElasticService elastic
 
-    String discoveryMessage = "push discovery package via"
+    @Value('${elasticsearch.index.prefix}')
+    String elasticIndexPrefix
+
+    def discoveryMsg = "push discovery package via"
+    def switchErrorMsg = "Switch $NON_EXISTENT_SWITCH_ID not found"
+    def flowErrorMsg = { "Can not get flow: Flow $it not found" }
 
     def "Check Floodlight logging"() {
-        when: "Retrieve floodlight logs for last 5 minutes"
+        when: "Retrieve Floodlight logs for last 5 minutes"
         def result = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.FLOODLIGHT)
                 .setLevel("INFO").setTimeRange(300).build())
 
         assert result?.hits?.total > 0: "No logs could be found for Floodlight"
 
         then: "There should be discovery messages"
-        result.hits.hits.any { hit -> hit.source.message.toLowerCase().contains(discoveryMessage) }
+        result.hits.hits.any { hit -> hit.source.message.toLowerCase().contains(discoveryMsg) }
     }
 
     def "Check Northbound logging"() {
@@ -40,45 +48,44 @@ class CheckLoggingSpec extends BaseSpecification {
 
         then: "An error is received (404 code)"
         def switchExc = thrown(HttpClientErrorException)
-        def switchErrorMsg = "Switch $NON_EXISTENT_SWITCH_ID not found"
-
         switchExc.rawStatusCode == 404
         switchExc.responseBodyAsString.to(MessageError).errorMessage.contains(switchErrorMsg)
 
         and: "Northbound should log these actions within 30 seconds"
         int timeout = 31
-        Wrappers.wait(timeout, 2) {
-            def nbLogs = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.NORTHBOUND).
-                    setTimeRange(timeout * 2).setLevel("ERROR").setField("message",
-                    String.format('"%s"', switchErrorMsg)).build())
+        Wrappers.wait(timeout, 5) {
+            def nbLogs = elastic.getLogs(new ElasticQueryBuilder()
+                    .setTags(KildaTags.NORTHBOUND).setTimeRange(timeout * 2).setLevel("ERROR")
+                    .setField("_index", "$elasticIndexPrefix-" + new SimpleDateFormat("yyyy.MM.dd").format(new Date()))
+                    .setField("message", String.format('"%s"', switchErrorMsg)).build())
 
             assert nbLogs?.hits?.hits?.any { hit -> hit.source.message.contains(switchErrorMsg) }:
-                    "Northbound should generate an error message about not being able to find the switch"
+                    "Northbound should generate an error message about not being able to find the switch.\n" +
+                            "NB logs: $nbLogs"
         }
     }
 
     def "Check Storm logging"() {
-
         when: "A non-existent flow is requested"
         def flowId = "nonexistentFlowId" + System.currentTimeMillis()
         northbound.getFlow(flowId)
 
         then: "An error is received (404 code)"
         def flowExc = thrown(HttpClientErrorException)
-        def flowErrorMsg = "Can not get flow: Flow $flowId not found"
-
         flowExc.rawStatusCode == 404
-        flowExc.responseBodyAsString.to(MessageError).errorMessage.contains(flowErrorMsg)
+        flowExc.responseBodyAsString.to(MessageError).errorMessage.contains(flowErrorMsg(flowId))
 
         and: "Storm should log these actions within 30 seconds"
         int timeout = 31
-        Wrappers.wait(timeout, 2) {
-            def stormLogs = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.STORM_WORKER).
-                    setTimeRange(timeout * 2).setLevel("WARN").setField("message",
-                    String.format('"%s"', flowErrorMsg)).build())
+        Wrappers.wait(timeout, 5) {
+            def stormLogs = elastic.getLogs(new ElasticQueryBuilder()
+                    .setTags(KildaTags.STORM_WORKER).setTimeRange(timeout * 2).setLevel("WARN")
+                    .setField("_index", "$elasticIndexPrefix-" + new SimpleDateFormat("yyyy.MM.dd").format(new Date()))
+                    .setField("message", String.format('"%s"', flowErrorMsg(flowId))).build())
 
-            assert stormLogs?.hits?.hits?.any { hit -> hit.source.message.contains(flowErrorMsg) }:
-                    "Storm should generate an error message about not being able to find the flow"
+            assert stormLogs?.hits?.hits?.any { hit -> hit.source.message.contains(flowErrorMsg(flowId)) }:
+                    "Storm should generate an error message about not being able to find the flow.\n" +
+                            "Storm logs: $stormLogs"
         }
     }
 }
