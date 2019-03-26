@@ -144,7 +144,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     public void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         if (!isOnlineToOnline) {
-            logWrapper.onSwitchAdd(switchId);
+            logWrapper.onSwitchUpdateStatus(switchId, SwitchFsmEvent.ONLINE.toString());
         }
 
         transactionManager.doInTransaction(() -> persistSwitchData(context));
@@ -182,7 +182,6 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     public void onlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
-        logWrapper.onSwitchUpdateStatus(switchId, SwitchFsmEvent.ONLINE.toString());
         initialSwitchSetup(context);
     }
 

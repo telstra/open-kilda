@@ -195,6 +195,9 @@ public class NetworkSwitchService {
 
     private SwitchFsm locateControllerCreateIfAbsent(SwitchId datapath) {
         return controller.computeIfAbsent(
-                datapath, key -> SwitchFsm.create(persistenceManager, datapath, bfdLogicalPortOffset));
+                datapath, key -> {
+                    logWrapper.onSwitchAdd(key);
+                    return SwitchFsm.create(persistenceManager, datapath, bfdLogicalPortOffset);
+                });
     }
 }
