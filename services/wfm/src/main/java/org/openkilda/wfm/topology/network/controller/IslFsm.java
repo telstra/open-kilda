@@ -234,7 +234,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void downEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
-        logWrapper.onIslUpdateStatus(discoveryFacts.getReference(), to.toString());
         saveStatusTransaction();
     }
 
@@ -252,7 +251,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void upEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
-
         logWrapper.onIslUpdateStatus(discoveryFacts.getReference(), to.toString());
         saveAllTransaction();
 
@@ -268,7 +266,16 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void upExit(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} is no more UP (physical-down:{})",
-                  discoveryFacts.getReference(), to, context.getPhysicalLinkDown());
+                  discoveryFacts.getReference(), context.getPhysicalLinkDown());
+        
+        String nextState = "Unknown";
+        if (event == IslFsmEvent.ISL_DOWN) {
+            nextState = IslFsmState.DOWN.toString();
+        } else if (event == IslFsmEvent.ISL_MOVE) {
+            nextState = IslFsmState.MOVED.toString();
+        }
+
+        logWrapper.onIslUpdateStatus(discoveryFacts.getReference(), nextState);
 
         updateEndpointStatusByEvent(event, context);
         saveStatusAndCostRaiseTransaction(context);
@@ -277,7 +284,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
-        logWrapper.onIslUpdateStatus(discoveryFacts.getReference(), to.toString());
         saveStatusTransaction();
     }
 
