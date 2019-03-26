@@ -56,9 +56,12 @@ import org.mockito.stubbing.Answer;
 import java.net.Inet4Address;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkSwitchServiceTest {
@@ -327,7 +330,6 @@ public class NetworkSwitchServiceTest {
 
     }
 
-
     @Test
     public void switchFromOnlineToOfflineToOnline() {
 
@@ -389,6 +391,111 @@ public class NetworkSwitchServiceTest {
                                            LinkStatus.of(ports2.get(0).getState()));
     }
 
+    @Test
+    public void switchFromOnlineToOnline() {
+        List<SpeakerSwitchPortView> ports = ImmutableList.of(
+                new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP),
+                new SpeakerSwitchPortView(1 + BFD_LOGICAL_PORT_OFFSET, SpeakerSwitchPortView.State.UP),
+                new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.DOWN),
+                new SpeakerSwitchPortView(2 + BFD_LOGICAL_PORT_OFFSET, SpeakerSwitchPortView.State.DOWN),
+
+                new SpeakerSwitchPortView(3, SpeakerSwitchPortView.State.UP),
+                new SpeakerSwitchPortView(3 + BFD_LOGICAL_PORT_OFFSET, SpeakerSwitchPortView.State.UP),
+                new SpeakerSwitchPortView(4, SpeakerSwitchPortView.State.DOWN),
+                new SpeakerSwitchPortView(4 + BFD_LOGICAL_PORT_OFFSET, SpeakerSwitchPortView.State.DOWN));
+
+        SpeakerSwitchView speakerSwitchView = getSpeakerSwitchView().toBuilder()
+                .ports(ports)
+                .build();
+
+        SwitchInfoData switchAddEvent = new SwitchInfoData(
+                alphaDatapath, SwitchChangeType.ACTIVATED,
+                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                speakerInetAddress.toString(),
+                false,
+                speakerSwitchView);
+
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
+                BFD_LOGICAL_PORT_OFFSET);
+
+        // initial switch ADD
+        service.switchEvent(switchAddEvent);
+
+        resetMocks();
+
+        // periodic network sync
+        Iterator<SpeakerSwitchPortView> iter = ports.iterator();
+        List<SpeakerSwitchPortView> ports2 = new ArrayList<>();
+        for (int idx = 0; idx < 4; idx++) {
+            ports2.add(makePortEntryWithOppositeState(iter.next()));
+        }
+        iter.forEachRemaining(ports2::add);
+
+        SpeakerSwitchView periodicSyncEvent = speakerSwitchView.toBuilder().ports(ports2).build();
+        service.switchBecomeManaged(periodicSyncEvent);
+
+        // only changed ports
+        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, 1), LinkStatus.DOWN);
+        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), LinkStatus.DOWN);
+        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, 2), LinkStatus.UP);
+        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, 2 + BFD_LOGICAL_PORT_OFFSET), LinkStatus.UP);
+
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void switchFromOnlineToOnlineWithLostBfdFeature() {
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
+                BFD_LOGICAL_PORT_OFFSET);
+
+        List<SpeakerSwitchPortView> ports = doSpeakerOnline(service, Collections.singleton(Feature.BFD));
+        List<SpeakerSwitchPortView> ports2 = swapBfdPortsState(ports);
+
+        resetMocks();
+
+        service.switchBecomeManaged(getSpeakerSwitchView().toBuilder()
+                .features(Collections.emptySet())
+                .ports(ports2)
+                .build());
+
+        // System.out.println(mockingDetails(carrier).printInvocations());
+
+        verify(carrier).removeBfdPortHandler(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET));
+        verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), null);
+        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), true);
+        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), LinkStatus.DOWN);
+
+        verify(carrier).removeBfdPortHandler(Endpoint.of(alphaDatapath, 2 + BFD_LOGICAL_PORT_OFFSET));
+        verify(carrier).setupPortHandler(Endpoint.of(alphaDatapath, 2 + BFD_LOGICAL_PORT_OFFSET), null);
+        verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, 2 + BFD_LOGICAL_PORT_OFFSET), true);
+        verify(carrier).setPortLinkMode(Endpoint.of(alphaDatapath, 2 + BFD_LOGICAL_PORT_OFFSET), LinkStatus.UP);
+    }
+
+    @Test
+    public void switchFromOnlineToOnlineWithAcquireBfdFeature() {
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
+                BFD_LOGICAL_PORT_OFFSET);
+
+        List<SpeakerSwitchPortView> ports = doSpeakerOnline(service, Collections.emptySet());
+        List<SpeakerSwitchPortView> ports2 = swapBfdPortsState(ports);
+
+        resetMocks();
+
+        service.switchBecomeManaged(getSpeakerSwitchView().toBuilder()
+                .features(Collections.singleton(Feature.BFD))
+                .ports(ports2)
+                .build());
+
+        verify(carrier).removePortHandler(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET));
+        verify(carrier).setupBfdPortHandler(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), 1);
+        verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), true);
+        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), LinkStatus.DOWN);
+
+        verify(carrier).removePortHandler(Endpoint.of(alphaDatapath, 2 + BFD_LOGICAL_PORT_OFFSET));
+        verify(carrier).setupBfdPortHandler(Endpoint.of(alphaDatapath, 2 + BFD_LOGICAL_PORT_OFFSET), 2);
+        verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, 2 + BFD_LOGICAL_PORT_OFFSET), true);
+        verify(carrier).setBfdPortLinkMode(Endpoint.of(alphaDatapath, 2 + BFD_LOGICAL_PORT_OFFSET), LinkStatus.UP);
+    }
 
     @Test
     public void portAddEventOnOnlineSwitch() {
@@ -414,7 +521,6 @@ public class NetworkSwitchServiceTest {
         verify(carrier).setOnlineMode(Endpoint.of(alphaDatapath, 1), true);
         verify(carrier).setBfdPortOnlineMode(Endpoint.of(alphaDatapath, 1 + BFD_LOGICAL_PORT_OFFSET), true);
     }
-
 
     @Test
     public void portUpDownEventsOnOnlineSwitch() {
@@ -571,6 +677,25 @@ public class NetworkSwitchServiceTest {
                                         LinkStatus.of(ports.get(0).getState()));
     }
 
+    private List<SpeakerSwitchPortView> doSpeakerOnline(NetworkSwitchService service, Set<Feature> features) {
+        List<SpeakerSwitchPortView> ports = getSpeakerSwitchPortViews();
+        SpeakerSwitchView speakerSwitchView = getSpeakerSwitchView().toBuilder()
+                .features(features)
+                .ports(ports)
+                .build();
+
+        SwitchInfoData switchAddEvent = new SwitchInfoData(
+                alphaDatapath, SwitchChangeType.ACTIVATED,
+                alphaInetAddress.toString(), alphaInetAddress.toString(), alphaDescription,
+                speakerInetAddress.toString(),
+                false,
+                speakerSwitchView);
+
+        service.switchEvent(switchAddEvent);
+
+        return ports;
+    }
+
     private SpeakerSwitchView getSpeakerSwitchView() {
         return SpeakerSwitchView.builder()
                     .datapath(alphaDatapath)
@@ -596,5 +721,24 @@ public class NetworkSwitchServiceTest {
                 new SpeakerSwitchPortView(1 + BFD_LOGICAL_PORT_OFFSET, State.DOWN),
                 new SpeakerSwitchPortView(2, State.UP),
                 new SpeakerSwitchPortView(2 + BFD_LOGICAL_PORT_OFFSET, State.UP));
+    }
+
+    private List<SpeakerSwitchPortView> swapBfdPortsState(List<SpeakerSwitchPortView> ports) {
+        List<SpeakerSwitchPortView> result = new ArrayList<>();
+        for (SpeakerSwitchPortView entry : ports) {
+            SpeakerSwitchPortView replace = entry;
+            if (BFD_LOGICAL_PORT_OFFSET < entry.getNumber()) {
+                replace = makePortEntryWithOppositeState(entry);
+            }
+            result.add(replace);
+        }
+        return result;
+    }
+
+    private SpeakerSwitchPortView makePortEntryWithOppositeState(SpeakerSwitchPortView port) {
+        return SpeakerSwitchPortView.builder()
+                .number(port.getNumber())
+                .state(port.getState() == State.UP ? State.DOWN : State.UP)
+                .build();
     }
 }
