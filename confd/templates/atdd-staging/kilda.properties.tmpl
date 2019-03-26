@@ -16,6 +16,7 @@ neo.password={{ getv "/kilda_neo4j_password" }}
 elasticsearch.endpoint={{ getv "/kilda_logging_elasticsearch_proto" }}://{{ getv "/kilda_logging_elasticsearch_hosts" }}
 elasticsearch.username={{ getv "/kilda_logging_elasticsearch_user" }}
 elasticsearch.password={{ getv "/kilda_logging_elasticsearch_pass" }}
+elasticsearch.index={{ getv "/kilda_logging_elasticsearch_index" }}
 
 environment.naming.prefix={{ getv "/kilda_environment_naming_prefix" }}
 kafka.bootstrap.server={{ getv "/kilda_kafka_hosts" }}
