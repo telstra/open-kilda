@@ -38,6 +38,6 @@ public interface Neo4jConfig extends Serializable {
     int getConnectionPoolSize();
 
     @Key("indexes.auto")
-    @Default("update")
+    @Default("validate")
     String getIndexesAuto();
 }
