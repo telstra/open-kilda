@@ -52,4 +52,12 @@ public class LogicalBfdPort extends AbstractPort {
     public void updatePortLinkMode(ISwitchCarrier carrier) {
         carrier.setBfdPortLinkMode(getEndpoint(), getLinkStatus());
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getLogIdentifier() {
+        return "logical-BFD";
+    }
 }
