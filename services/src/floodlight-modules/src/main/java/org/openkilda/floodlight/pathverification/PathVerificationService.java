@@ -411,6 +411,12 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         }
 
         try {
+            IOFSwitch destSwitch = switchService.getSwitch(input.getDpId());
+            if (destSwitch == null) {
+                logger.error("Destination switch {} was not found", input.getDpId());
+                return;
+            }
+
             ByteBuffer portBb = ByteBuffer.wrap(verificationPacket.getPortId().getValue());
             portBb.position(1);
 
@@ -492,10 +498,9 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             PathNode destination = new PathNode(new SwitchId(input.getDpId().getLong()), inPort.getPortNumber(), 1);
             long speed = 0L;
             if (remoteSwitch == null) {
-                speed = getSwitchPortSpeed(input.getDpId(), inPort);
+                speed = getSwitchPortSpeed(destSwitch, inPort);
             }  else {
-                speed = Math.min(getSwitchPortSpeed(input.getDpId(), inPort),
-                        getSwitchPortSpeed(remoteSwitchId, remotePort));
+                speed = Math.min(getSwitchPortSpeed(destSwitch, inPort), getSwitchPortSpeed(remoteSwitch, remotePort));
             }
             IslInfoData path = IslInfoData.builder()
                     .latency(latency)
@@ -532,8 +537,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         return latency;
     }
 
-    private long getSwitchPortSpeed(DatapathId dpId, OFPort inPort) {
-        IOFSwitch sw = switchService.getSwitch(dpId);
+    private long getSwitchPortSpeed(IOFSwitch sw, OFPort inPort) {
         OFPortDesc port = sw.getPort(inPort);
         long speed = -1;
 
