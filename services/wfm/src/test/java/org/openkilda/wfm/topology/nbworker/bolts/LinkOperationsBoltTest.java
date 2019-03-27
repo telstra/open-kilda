@@ -67,6 +67,7 @@ public class LinkOperationsBoltTest {
 
         Properties configProps = new Properties();
         configProps.setProperty("neo4j.uri", embeddedNeo4jDb.getConnectionUri());
+        configProps.setProperty("neo4j.indexes.auto", "update");
         PropertiesBasedConfigurationProvider configurationProvider =
                 new PropertiesBasedConfigurationProvider(configProps);
         persistenceManager = new Neo4jPersistenceManager(configurationProvider.getConfiguration(Neo4jConfig.class));

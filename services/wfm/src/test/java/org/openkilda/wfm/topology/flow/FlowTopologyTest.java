@@ -114,6 +114,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         LaunchEnvironment launchEnvironment = makeLaunchEnvironment();
         Properties configOverlay = new Properties();
         configOverlay.setProperty("neo4j.uri", embeddedNeo4jDb.getConnectionUri());
+        configOverlay.setProperty("neo4j.indexes.auto", "update");
         launchEnvironment.setupOverlay(configOverlay);
 
         Neo4jConfig neo4jConfig = launchEnvironment.getConfigurationProvider().getConfiguration(Neo4jConfig.class);
