@@ -250,6 +250,16 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
         return flowIds;
     }
 
+    @Override
+    public void updateFlowStatus(String flowId, FlowStatus flowStatus) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "flow_id", flowId,
+                "flow_status", flowStatusConverter.toGraphProperty(flowStatus));
+
+        getSession().query("MATCH (:switch)-[f:flow{flowid: {flow_id}}]->(:switch) "
+                + "SET f.status = $flow_status", parameters);
+    }
+
     private Flow completeWithPaths(Flow flow) {
         flow.setForwardPath(flowPathRepository.findById(flow.getForwardPathId()).orElse(null));
         flow.setReversePath(flowPathRepository.findById(flow.getReversePathId()).orElse(null));
