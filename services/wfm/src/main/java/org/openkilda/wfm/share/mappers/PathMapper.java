@@ -15,12 +15,15 @@
 
 package org.openkilda.wfm.share.mappers;
 
+import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.pce.Path;
+import org.openkilda.pce.Path.Segment;
+
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Convert {@link org.openkilda.pce.Path} to {@link org.openkilda.messaging.info.network.Path}.
@@ -38,13 +41,26 @@ public abstract class PathMapper {
             return new org.openkilda.messaging.info.network.Path(0L, 0L, new ArrayList<>());
         }
 
-        List<String> edges = path.getSegments().stream()
-                .map(segment -> String.format("%s_%d ===> %s_%d",
-                        segment.getSrcSwitchId(), segment.getSrcPort(),
-                        segment.getDestSwitchId(), segment.getDestPort()))
-                .collect(Collectors.toList());
+        List<PathNodePayload> nodes = new ArrayList<>();
+
+        List<Path.Segment> pathSegments = path.getSegments();
+        if (!pathSegments.isEmpty()) {
+            Segment firstSegment = pathSegments.get(0);
+            nodes.add(new PathNodePayload(firstSegment.getSrcSwitchId(), null, firstSegment.getSrcPort()));
+
+            for (int i = 1; i < pathSegments.size(); i++) {
+                Path.Segment inputNode = pathSegments.get(i - 1);
+                Path.Segment outputNode = pathSegments.get(i);
+
+                nodes.add(new PathNodePayload(inputNode.getDestSwitchId(), inputNode.getDestPort(),
+                        outputNode.getSrcPort()));
+            }
+
+            Segment lastSegment = pathSegments.get(pathSegments.size() - 1);
+            nodes.add(new PathNodePayload(lastSegment.getDestSwitchId(), lastSegment.getDestPort(), null));
+        }
 
         return new org.openkilda.messaging.info.network.Path(path.getMinAvailableBandwidth(),
-                path.getLatency(), edges);
+                path.getLatency(), nodes);
     }
 }

@@ -18,11 +18,15 @@ package org.openkilda.northbound.controller;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
+import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
+import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.flows.PingInput;
 import org.openkilda.northbound.dto.flows.PingOutput;
@@ -51,6 +55,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -92,7 +98,7 @@ public class FlowController {
     @ApiOperation(value = "Creates new flow", response = FlowPayload.class)
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FlowPayload> createFlow(@RequestBody FlowPayload flow) {
+    public CompletableFuture<FlowPayload> createFlow(@RequestBody FlowCreatePayload flow) {
         return flowService.createFlow(flow);
     }
 
@@ -133,8 +139,23 @@ public class FlowController {
     @PutMapping(value = "/{flow-id:.+}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowPayload> updateFlow(@PathVariable(name = "flow-id") String flowId,
-                                                     @RequestBody FlowPayload flow) {
+                                                     @RequestBody FlowUpdatePayload flow) {
         return flowService.updateFlow(flow);
+    }
+
+    /**
+     * Updates max latency or priority of existing flow.
+     *
+     * @param flowPatchDto  flow parameters for update
+     * @param flowId        flow id
+     * @return flow
+     */
+    @ApiOperation(value = "Updates flow", response = FlowPayload.class)
+    @PatchMapping(value = "/{flow-id:.+}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowPayload> patchFlow(@PathVariable(name = "flow-id") String flowId,
+                                                    @RequestBody FlowPatchDto flowPatchDto) {
+        return flowService.patchFlow(flowId, flowPatchDto);
     }
 
     /**
@@ -304,7 +325,7 @@ public class FlowController {
     @DeleteMapping(path = "/cache")
     @ResponseStatus(HttpStatus.OK)
     public void invalidateFlowCache() {
-        flowService.invalidateFlowResourcesCache();
+        //TODO: to be removed
     }
 
     /**
@@ -315,5 +336,24 @@ public class FlowController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowMeterEntries> updateMetersBurst(@PathVariable("flow_id") String flowId) {
         return flowService.modifyMeter(flowId);
+    }
+
+    /**
+     * Gets flow history.
+     */
+    @ApiOperation(value = "Gets history for flow")
+    @GetMapping(path = "/{flow_id}/history")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<List<FlowEventPayload>> getHistory(
+            @PathVariable("flow_id") String flowId,
+            @ApiParam(value = "default: the day before timeTo.", required = false)
+            @RequestParam(value = "timeFrom", required = false) Optional<Long> optionalTimeFrom,
+            @ApiParam(value = "default: now.", required = false)
+            @RequestParam(value = "timeTo", required = false) Optional<Long> optionalTimeTo) {
+        Long timeTo = optionalTimeTo.orElseGet(() -> Instant.now().getEpochSecond());
+        Long timeFrom = optionalTimeFrom.orElseGet(
+                () -> Instant.ofEpochSecond(timeTo).minus(1, ChronoUnit.DAYS).getEpochSecond()
+        );
+        return flowService.listFlowEvents(flowId, timeFrom, timeTo);
     }
 }

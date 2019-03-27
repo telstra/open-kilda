@@ -15,6 +15,12 @@
 
 package org.openkilda.persistence.repositories;
 
+import org.openkilda.persistence.repositories.history.FlowEventRepository;
+import org.openkilda.persistence.repositories.history.FlowHistoryRepository;
+import org.openkilda.persistence.repositories.history.FlowStateRepository;
+import org.openkilda.persistence.repositories.history.HistoryLogRepository;
+import org.openkilda.persistence.repositories.history.StateLogRepository;
+
 /**
  * Factory to create {@link Repository} instances.
  */
@@ -40,4 +46,14 @@ public interface RepositoryFactory {
     TransitVlanRepository createTransitVlanRepository();
 
     FeatureTogglesRepository createFeatureTogglesRepository();
+
+    FlowEventRepository createFlowEventRepository();
+
+    FlowHistoryRepository createFlowHistoryRepository();
+
+    FlowStateRepository createFlowStateRepository();
+
+    HistoryLogRepository createHistoryLogRepository();
+
+    StateLogRepository createStateLogRepository();
 }

@@ -186,7 +186,7 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         OFPortDesc sw2Port1 = EasyMock.createMock(OFPortDesc.class);
         expect(sw2Port1.getHwAddr()).andReturn(MacAddress.of(sw2HwAddrTarget)).anyTimes();
         expect(sw2Port1.getVersion()).andReturn(OFVersion.OF_12).anyTimes();
-        expect(sw2Port1.getCurrSpeed()).andReturn(100000L).anyTimes();
+        expect(sw2Port1.getCurrSpeed()).andReturn(400000L).anyTimes();
         replay(sw1Port1);
         replay(sw2Port1);
 

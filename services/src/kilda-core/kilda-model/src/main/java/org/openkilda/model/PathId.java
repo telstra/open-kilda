@@ -15,6 +15,8 @@
 
 package org.openkilda.model;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import lombok.Value;
 
@@ -24,9 +26,16 @@ import java.io.Serializable;
  * Represents a flow path id.
  */
 @Value
+@AllArgsConstructor
 public class PathId implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @NonNull
-    private final String pathId;
+    private final String id;
+
+    @JsonValue
+    @Override
+    public String toString() {
+        return id;
+    }
 }

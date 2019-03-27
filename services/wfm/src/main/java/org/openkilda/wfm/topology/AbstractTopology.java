@@ -37,6 +37,7 @@ import org.openkilda.wfm.kafka.MessageDeserializer;
 import org.openkilda.wfm.kafka.MessageSerializer;
 import org.openkilda.wfm.topology.utils.AbstractMessageTranslator;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
+import org.openkilda.wfm.topology.utils.KeyValueKafkaRecordTranslator;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -53,6 +54,7 @@ import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
 import org.apache.storm.kafka.spout.KafkaSpoutRetryExponentialBackoff;
 import org.apache.storm.kafka.spout.KafkaSpoutRetryExponentialBackoff.TimeInterval;
+import org.apache.storm.kafka.spout.RecordTranslator;
 import org.apache.storm.thrift.TException;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
@@ -61,6 +63,7 @@ import org.kohsuke.args4j.CmdLineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
@@ -75,6 +78,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     public static final String BOLT_ID_CTRL_ROUTE = "ctrl.route";
     public static final String BOLT_ID_CTRL_OUTPUT = "ctrl.out";
 
+    public static final String KEY_FIELD = "key";
     public static final String MESSAGE_FIELD = "message";
     public static final Fields fieldMessage = new Fields(MESSAGE_FIELD);
     public static final Fields FIELDS_KEY = new Fields(KEY_FIELD);
@@ -223,6 +227,14 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         return new KafkaSpout<>(config);
     }
 
+    protected KafkaSpout<String, String> createKafkaSpout(List<String> topics, String spoutId) {
+        KafkaSpoutConfig<String, String> config = makeKafkaSpoutConfigBuilder(spoutId, topics,
+                new KeyValueKafkaRecordTranslator())
+                .build();
+
+        return new KafkaSpout<>(config);
+    }
+
     /**
      * Creates Kafka spout. Transforms received value to {@link Message}.
      *
@@ -325,12 +337,21 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      */
     @Deprecated
     protected KafkaSpoutConfig.Builder<String, String> makeKafkaSpoutConfigBuilder(String spoutId, String topic) {
+        return makeKafkaSpoutConfigBuilder(spoutId, Collections.singletonList(topic), null);
+    }
+
+    protected KafkaSpoutConfig.Builder<String, String> makeKafkaSpoutConfigBuilder(String spoutId,
+                                                                                   List<String> topics,
+                                                                                   RecordTranslator translator) {
+        if (translator == null) {
+            translator = new KafkaRecordTranslator<>();
+        }
         return new KafkaSpoutConfig.Builder<>(
                 kafkaConfig.getHosts(), StringDeserializer.class, StringDeserializer.class,
-                new CustomNamedSubscription(topic))
+                new CustomNamedSubscription(topics))
 
                 .setGroupId(makeKafkaGroupName(spoutId))
-                .setRecordTranslator(new KafkaRecordTranslator<>())
+                .setRecordTranslator(translator)
 
                 // NB: There is an issue with using the default of "earliest uncommitted message" -
                 //      if we erase the topics, then the committed will be > the latest .. and so

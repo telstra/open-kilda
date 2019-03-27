@@ -103,11 +103,11 @@ public class StatsIntegrationService {
                 return IoUtil.toString(response.getEntity().getContent());
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Inside getFlowStatusById  Exception :", e);
+            LOGGER.error("Error occurred while getting stats", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (IOException ex) {
-            LOGGER.error("Inside getStats Exception is: " + ex.getMessage());
-            throw new IntegrationException(ex);
+        } catch (IOException e) {
+            LOGGER.warn("Error occurred while getting stats", e);
+            throw new IntegrationException(e);
         }
         return null;
     }
@@ -162,7 +162,7 @@ public class StatsIntegrationService {
         if (!statsType.equals(StatsType.ISL)) {
             query.setRate(Boolean.valueOf(OpenTsDb.RATE));
         }
-        if (statsType.equals(StatsType.SWITCH_PORT) && Metrics.PEN_SWITCH_STATE.getDisplayTag().equals(metric)) {
+        if (statsType.equals(StatsType.SWITCH_PORT) && Metrics.SWITCH_STATE.getDisplayTag().equals(metric)) {
             query.setRate(false);
         } else {
             if (validateDownSample(paramDownSample, query)) {
@@ -246,6 +246,7 @@ public class StatsIntegrationService {
         } else if (statsType.equals(StatsType.SWITCH_PORT)) {
             metricList = Metrics.getStartsWith("Switch_");
         }
+
         return metricList;
     }
 
@@ -342,8 +343,8 @@ public class StatsIntegrationService {
     private List<Query> getIslLossPacketsQueries(List<Query> queries, final String downsample, final String flowId,
             final String srcSwitch, final String srcPort, final String dstSwitch, final String dstPort,
             final StatsType statsType, final List<String> metricList) {
-        Map<String, String[]> rxParams = getParam(statsType, null, null, flowId, srcSwitch, srcPort, null, null);
-        Map<String, String[]> txParams = getParam(statsType, null, null, flowId, null, null, dstSwitch, dstPort);
+        Map<String, String[]> txParams = getParam(statsType, null, null, flowId, srcSwitch, srcPort, null, null);
+        Map<String, String[]> rxParams = getParam(statsType, null, null, flowId, null, null, dstSwitch, dstPort);
         if (metricList != null && !metricList.isEmpty()) {
             queries.add(getQuery(downsample, metricList.get(0), rxParams, 0, statsType));
             queries.add(getQuery(downsample, metricList.get(1), txParams, 0, statsType));

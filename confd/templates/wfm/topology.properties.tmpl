@@ -57,8 +57,17 @@ discovery.speaker-failure-timeout = 5
 discovery.dump-request-timeout-seconds=60
 discovery.keep.removed.isl = {{ getv "/kilda_discovery_keep_removed_isl" }}
 
+floodlight.alive.timeout = {{ getv "/kilda_floodlight_alive_timeout" }}
+floodlight.alive.interval = {{ getv "/kilda_floodlight_alive_interval" }}
+floodlight.regions = {{ getv "/kilda_floodlight_regions" }}
+
 local = no
 local.execution.time = 300
 
 pce.strategy = {{ getv "/kilda_pce_strategy" }}
 pce.network.strategy = {{ getv "/kilda_pce_network_strategy" }}
+pce.diversity.isl.weight = {{ getv "/kilda_diversity_isl_weight" }}
+pce.diversity.switch.weight = {{ getv "/kilda_diversity_switch_weight" }}
+
+burst.coefficient = {{ getv "/kilda_floodlight_flow_meter_burst_coefficient" }}
+min.burst.size.in.kbits = 1024

@@ -34,6 +34,8 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.history.FlowEventPayload;
+import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
@@ -91,6 +93,26 @@ public class NorthboundServiceImpl implements NorthboundService {
     public FlowPayload getFlow(String flowId) {
         return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
+    }
+
+    @Override
+    public List<FlowEventPayload> getFlowHistory(String flowId) {
+        return getFlowHistory(flowId, null, null);
+    }
+
+    @Override
+    public List<FlowEventPayload> getFlowHistory(String flowId, Long timeFrom, Long timeTo) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/flows/{flow_id}/history");
+        if (timeFrom != null) {
+            uriBuilder.queryParam("timeFrom", timeFrom);
+        }
+        if (timeTo != null) {
+            uriBuilder.queryParam("timeTo", timeTo);
+        }
+
+        FlowEventPayload[] flowHistory = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowEventPayload[].class, flowId).getBody();
+        return Arrays.asList(flowHistory);
     }
 
     @Override
@@ -487,6 +509,13 @@ public class NorthboundServiceImpl implements NorthboundService {
                 new HttpEntity(buildHeadersWithCorrelationId()), PortDescription.class, switchId, portNo).getBody();
     }
 
+    @Override
+    public PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch) {
+        return restTemplate.exchange(
+                "/api/v1/network/paths?src_switch={src_switch}&dst_switch={dst_switch}", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), PathsDto.class, srcSwitch, dstSwitch).getBody();
+    }
+
     private HttpHeaders buildHeadersWithCorrelationId() {
         HttpHeaders headers = new HttpHeaders();
         headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
@@ -509,6 +538,7 @@ public class NorthboundServiceImpl implements NorthboundService {
                 .actualState(IslChangeType.from(dto.getActualState().toString()))
                 .cost(dto.getCost())
                 .availableBandwidth(dto.getAvailableBandwidth())
+                .maxBandwidth(dto.getMaxBandwidth())
                 .underMaintenance(dto.isUnderMaintenance())
                 .build();
     }

@@ -51,52 +51,42 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
     }
 
     @Override
-    public Optional<FlowPair> findFlowPairById(String flowId) {
+    public Optional<FlowPair> findById(String flowId) {
         return flowRepository.findById(flowId).map(this::toFlowPair);
     }
 
     @Override
-    public Collection<FlowPair> findFlowPairsWithPeriodicPingsEnabled() {
+    public Collection<FlowPair> findByGroupId(String flowGroupId) {
+        return flowRepository.findByGroupId(flowGroupId).stream()
+                .map(this::toFlowPair)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Collection<FlowPair> findWithPeriodicPingsEnabled() {
         return flowRepository.findWithPeriodicPingsEnabled().stream()
                 .map(this::toFlowPair)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public Collection<FlowPair> findFlowIdsByEndpoint(SwitchId switchId, int port) {
+    public Collection<FlowPair> findByEndpoint(SwitchId switchId, int port) {
         return flowRepository.findByEndpoint(switchId, port).stream()
                 .map(this::toFlowPair)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public Collection<String> findActiveFlowIdsWithPortInPath(SwitchId switchId, int port) {
-        return flowRepository.findActiveFlowIdsWithPortInPath(switchId, port);
-    }
-
-    @Override
-    public Collection<String> findDownFlowIds() {
-        return flowRepository.findDownFlowIds();
-    }
-
-    @Override
-    public Collection<FlowPair> findBySrcSwitchId(SwitchId switchId) {
-        return flowRepository.findBySrcSwitchId(switchId).stream()
-                .map(this::toFlowPair)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public Collection<FlowPair> findAllFlowPairsWithSegment(SwitchId srcSwitchId, int srcPort,
-                                                            SwitchId dstSwitchId, int dstPort) {
+    public Collection<FlowPair> findWithSegmentInPath(SwitchId srcSwitchId, int srcPort,
+                                                      SwitchId dstSwitchId, int dstPort) {
         return flowRepository.findWithPathSegment(srcSwitchId, srcPort, dstSwitchId, dstPort).stream()
                 .map(this::toFlowPair)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public Set<String> findFlowIdsBySwitch(SwitchId switchId) {
-        return flowRepository.findFlowIdsBySwitch(switchId);
+    public Set<String> findFlowIdsWithSwitchInPath(SwitchId switchId) {
+        return flowRepository.findFlowIdsWithSwitchInPath(switchId);
     }
 
     @Override
@@ -109,6 +99,7 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
     @Override
     public void createOrUpdate(FlowPair entity) {
         flowRepository.createOrUpdate(entity.getFlowEntity());
+
         if (entity.getForwardTransitVlanEntity() != null) {
             transitVlanRepository.createOrUpdate(entity.getForwardTransitVlanEntity());
         }
@@ -120,6 +111,7 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
     @Override
     public void delete(FlowPair entity) {
         flowRepository.delete(entity.getFlowEntity());
+
         if (entity.getForwardTransitVlanEntity() != null) {
             transitVlanRepository.delete(entity.getForwardTransitVlanEntity());
         }

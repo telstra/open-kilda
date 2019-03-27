@@ -62,22 +62,22 @@ public class SwitchStoreConfigValidator {
         List<OauthConfigEntity> oauthConfigEntityList = oauthConfigRepository
                 .findByAuthType_authTypeId(AuthType.OAUTH_TWO.getAuthTypeEntity().getAuthTypeId());
         if (CollectionUtil.isEmpty(oauthConfigEntityList)) {
-            LOGGER.error(messageUtil.getStoreMustConfigured());
+            LOGGER.warn(messageUtil.getStoreMustConfigured());
             throw new RequestValidationException(messageUtil.getStoreMustConfigured());
         }
         List<String> urls = StoreUrl.getUrlName(StoreType.SWITCH_STORE.getCode());
 
         for (Entry<String, UrlDto> urlEntrySet : switchStoreConfigDto.getUrls().entrySet()) {
             if (!urls.contains(urlEntrySet.getKey())) {
-                LOGGER.error("Validation fail for switch store configuration. Error: "
+                LOGGER.warn("Validation fail for switch store configuration. Error: "
                         + messageUtil.getAttributeNotvalid(urlEntrySet.getKey()));
                 throw new RequestValidationException(messageUtil.getAttributeNotvalid(urlEntrySet.getKey()));
             } else if (ValidatorUtil.isNull(urlEntrySet.getValue().getUrl())) {
-                LOGGER.error("Validation fail for switch store configuration. Error: "
+                LOGGER.warn("Validation fail for switch store configuration. Error: "
                         + messageUtil.getAttributeNotNull("url of " + urlEntrySet.getKey()));
                 throw new RequestValidationException(messageUtil.getAttributeNotNull(urlEntrySet.getKey()));
             } else if (ValidatorUtil.isNull(urlEntrySet.getValue().getMethodType())) {
-                LOGGER.error("Validation fail for switch store configuration. Error: "
+                LOGGER.warn("Validation fail for switch store configuration. Error: "
                         + messageUtil.getAttributeNotNull("method-type of " + urlEntrySet.getKey()));
                 throw new RequestValidationException(
                         messageUtil.getAttributeNotNull("method-type of " + urlEntrySet.getKey()));

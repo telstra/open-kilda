@@ -50,9 +50,9 @@ public enum ComponentType {
     NORTHBOUND_REPLY_BOLT,
 
     /**
-     * Topology Engine kafka bolt. Sends Topology Engine requests.
+     * Flow Topology kafka bolt. Sends Flow Topology requests.
      */
-    TOPOLOGY_ENGINE_KAFKA_BOLT,
+    FLOW_KAFKA_BOLT,
 
     /**
      * OpenFlow Speaker kafka bolt. Sends OpenFlow Speaker requests.
@@ -90,12 +90,12 @@ public enum ComponentType {
     TRANSACTION_BOLT,
 
     /**
-     * Status bolt. Processes status update notifications.
-     */
-    STATUS_BOLT,
-
-    /**
      * Error bolt. Processes errors.
      */
-    ERROR_BOLT
+    ERROR_BOLT,
+
+    /**
+     * History bolt.
+     */
+    HISTORY_BOLT
 }

@@ -34,6 +34,10 @@ public class PropertiesBasedConfigurationProvider implements ConfigurationProvid
     private ConfigurationSource source;
     private ConfigurationFactory factory;
 
+    public PropertiesBasedConfigurationProvider() {
+        this(new Properties());
+    }
+
     public PropertiesBasedConfigurationProvider(Properties properties) {
         source = new PropertiesConfigurationSource(properties);
         factory = new JdkProxyStaticConfigurationFactory();

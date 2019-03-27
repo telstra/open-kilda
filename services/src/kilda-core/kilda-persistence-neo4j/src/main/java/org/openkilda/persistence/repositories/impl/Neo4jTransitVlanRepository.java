@@ -24,12 +24,13 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 
+import com.google.common.collect.ImmutableMap;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -54,20 +55,34 @@ public class Neo4jTransitVlanRepository extends Neo4jGenericRepository<TransitVl
     }
 
     @Override
-    public Optional<Integer> findAvailableVlan() {
-        String query = "MATCH (n:transit_vlan) "
-                + "OPTIONAL MATCH (n1:transit_vlan) "
-                + "WHERE (n.vlan + 1) = n1.vlan "
-                + "WITH n, n1 "
-                + "WHERE n1 IS NULL "
-                + "RETURN n.vlan + 1";
+    public Optional<Integer> findUnassignedTransitVlan(int defaultVlan) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "default_vlan", defaultVlan);
 
-        Iterator<Integer> results = getSession().query(Integer.class, query, Collections.emptyMap()).iterator();
+        // The query returns the default_vlan if it's not used in any transit_vlan,
+        // otherwise locates a gap between / after the values used in transit_vlan entities.
+
+        String query = "UNWIND [$default_vlan] AS vlan "
+                + "OPTIONAL MATCH (n:transit_vlan) "
+                + "WHERE vlan = n.vlan "
+                + "WITH vlan, n "
+                + "WHERE n IS NULL "
+                + "RETURN vlan "
+                + "UNION ALL "
+                + "MATCH (n1:transit_vlan) "
+                + "OPTIONAL MATCH (n2:transit_vlan) "
+                + "WHERE (n1.vlan + 1) = n2.vlan "
+                + "WITH n1, n2 "
+                + "WHERE n2 IS NULL "
+                + "RETURN n1.vlan + 1 AS vlan "
+                + "LIMIT 1";
+
+        Iterator<Integer> results = getSession().query(Integer.class, query, parameters).iterator();
         return results.hasNext() ? Optional.of(results.next()) : Optional.empty();
     }
 
     @Override
-    Class<TransitVlan> getEntityType() {
+    protected Class<TransitVlan> getEntityType() {
         return TransitVlan.class;
     }
 }

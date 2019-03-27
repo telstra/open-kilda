@@ -28,10 +28,12 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Session;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -65,9 +67,8 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
             return Optional.empty();
         }
 
-        FlowPath flowPath = flowPaths.iterator().next();
-        flowPath.setSegments(findPathSegmentsByPathId(flowPath.getPathId()));
-        return Optional.of(flowPath);
+        return Optional.of(flowPaths.iterator().next())
+                .map(this::completeWithSegments);
     }
 
     @Override
@@ -82,16 +83,15 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
             return Optional.empty();
         }
 
-        FlowPath flowPath = flowPaths.iterator().next();
-        flowPath.setSegments(findPathSegmentsByPathId(flowPath.getPathId()));
-        return Optional.of(flowPath);
+        return Optional.of(flowPaths.iterator().next())
+                .map(this::completeWithSegments);
     }
 
     @Override
     public Collection<FlowPath> findAll() {
         Collection<FlowPath> paths = super.findAll();
         //TODO: this is slow and requires optimization
-        paths.forEach(path -> path.setSegments(findPathSegmentsByPathId(path.getPathId())));
+        paths.forEach(this::completeWithSegments);
         return paths;
     }
 
@@ -101,73 +101,98 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
 
         Collection<FlowPath> paths = loadAll(flowIdFilter);
         //TODO: this is slow and requires optimization
-        paths.forEach(path -> path.setSegments(findPathSegmentsByPathId(path.getPathId())));
+        paths.forEach(this::completeWithSegments);
         return paths;
     }
 
-    private List<PathSegment> findPathSegmentsByPathId(PathId pathId) {
-        Filter pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, pathId);
-
-        return getSession().loadAll(PathSegment.class, pathIdFilter, getDepthLoadEntity()).stream()
-                .sorted(Comparator.comparingInt(PathSegment::getSeqId))
-                .collect(Collectors.toList());
-    }
-
     @Override
-    public Collection<PathSegment> findPathSegmentsBySrcSwitchId(SwitchId switchId) {
-        Filter srcSwitchIdFilter = createSrcSwitchFilter(switchId);
+    public Collection<FlowPath> findByFlowGroupId(String flowGroupId) {
+        Map<String, Object> parameters = ImmutableMap.of("flow_group_id", flowGroupId);
+        String query = "MATCH (:switch)-[f:flow {group_id: $flow_group_id}]->(:switch) "
+                + "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
+                + "WHERE fp.flow_id = f.flowid "
+                + "RETURN src, fp, dst";
 
-        return getSession().loadAll(PathSegment.class, srcSwitchIdFilter, getDepthLoadEntity());
-    }
-
-    @Override
-    public Collection<FlowPath> findBySegmentSrcSwitchId(SwitchId switchId) {
+        Collection<FlowPath> paths = Lists.newArrayList(getSession().query(FlowPath.class, query, parameters));
         //TODO: this is slow and requires optimization
-        return findPathSegmentsBySrcSwitchId(switchId).stream()
-                .map(PathSegment::getPathId)
-                .map(this::findById)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
+        paths.forEach(this::completeWithSegments);
+        return paths;
     }
 
     @Override
-    public Collection<PathSegment> findPathSegmentsByDestSwitchId(SwitchId switchId) {
-        Filter destSwitchIdFilter = createDstSwitchFilter(switchId);
+    public Collection<FlowPath> findBySrcSwitch(SwitchId switchId) {
+        Map<String, Object> parameters = ImmutableMap.of("switch_id", switchId.toString());
+        String query = "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
+                + "WHERE src.name = $switch_id "
+                + "RETURN src, fp, dst";
 
-        return getSession().loadAll(PathSegment.class, destSwitchIdFilter, getDepthLoadEntity());
-    }
-
-    @Override
-    public Collection<FlowPath> findBySegmentDestSwitchId(SwitchId switchId) {
+        Collection<FlowPath> paths = Lists.newArrayList(getSession().query(FlowPath.class, query, parameters));
         //TODO: this is slow and requires optimization
-        return findPathSegmentsByDestSwitchId(switchId).stream()
-                .map(PathSegment::getPathId)
-                .map(this::findById)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
+        paths.forEach(this::completeWithSegments);
+        return paths;
+    }
+
+    @Override
+    public Collection<FlowPath> findByEndpointSwitch(SwitchId switchId) {
+        Map<String, Object> parameters = ImmutableMap.of("switch_id", switchId.toString());
+        String query = "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
+                + "WHERE src.name = $switch_id or dst.name = $switch_id "
+                + "RETURN src, fp, dst";
+
+        Collection<FlowPath> paths = Lists.newArrayList(getSession().query(FlowPath.class, query, parameters));
+        //TODO: this is slow and requires optimization
+        paths.forEach(this::completeWithSegments);
+        return paths;
+    }
+
+    @Override
+    public Collection<FlowPath> findBySegmentSwitch(SwitchId switchId) {
+        Map<String, Object> parameters = ImmutableMap.of("switch_id", switchId.toString());
+        String query = "MATCH (ps_src:switch)-[ps:path_segment]->(ps_dst:switch) "
+                + "WHERE ps_src.name = $switch_id OR ps_dst.name = $switch_id "
+                + "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
+                + "WHERE ps.path_id = fp.path_id "
+                + "RETURN src, fp, dst";
+
+        Collection<FlowPath> paths = Lists.newArrayList(getSession().query(FlowPath.class, query, parameters));
+        //TODO: this is slow and requires optimization
+        paths.forEach(this::completeWithSegments);
+        return paths;
+    }
+
+    @Override
+    public Collection<FlowPath> findBySegmentDestSwitch(SwitchId switchId) {
+        Map<String, Object> parameters = ImmutableMap.of("switch_id", switchId.toString());
+        String query = "MATCH (:switch)-[ps:path_segment]->(:switch {name: $switch_id}) "
+                + "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
+                + "WHERE ps.path_id = fp.path_id "
+                + "RETURN src, fp, dst";
+
+        Collection<FlowPath> paths = Lists.newArrayList(getSession().query(FlowPath.class, query, parameters));
+        //TODO: this is slow and requires optimization
+        paths.forEach(this::completeWithSegments);
+        return paths;
     }
 
     @Override
     public void createOrUpdate(FlowPath flowPath) {
         transactionManager.doInTransaction(() -> {
-            createOrUpdate(flowPath.getPathId(), flowPath.getSegments());
+            requireManagedEntity(flowPath.getSrcSwitch());
+            requireManagedEntity(flowPath.getDestSwitch());
+
+            List<PathSegment> currentSegments = findPathSegmentsByPathId(flowPath.getPathId());
+            lockSwitches(getInvolvedSwitches(flowPath, currentSegments));
+
+            createOrUpdateSegments(currentSegments, flowPath.getSegments());
 
             super.createOrUpdate(flowPath);
         });
     }
 
-    private void createOrUpdate(PathId pathId, List<PathSegment> segments) {
-        List<PathSegment> currentSegments = findPathSegmentsByPathId(pathId);
-        Switch[] switches = Stream.concat(currentSegments.stream(), segments.stream())
-                .flatMap(segment -> Stream.of(segment.getSrcSwitch(), segment.getDestSwitch()))
-                .map(this::requireManagedEntity)
-                .toArray(Switch[]::new);
-        lockSwitches(switches);
-
+    private void createOrUpdateSegments(List<PathSegment> currentSegments, List<PathSegment> newSegments) {
         Session session = getSession();
-        Set<Long> updatedEntities = segments.stream()
+
+        Set<Long> updatedEntities = newSegments.stream()
                 .map(session::resolveGraphIdFor)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
@@ -178,8 +203,11 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
             }
         });
 
-        for (int idx = 0; idx < segments.size(); idx++) {
-            PathSegment segment = segments.get(idx);
+        for (int idx = 0; idx < newSegments.size(); idx++) {
+            PathSegment segment = newSegments.get(idx);
+            requireManagedEntity(segment.getSrcSwitch());
+            requireManagedEntity(segment.getDestSwitch());
+
             segment.setSeqId(idx);
             session.save(segment, getDepthCreateUpdateEntity());
         }
@@ -188,20 +216,22 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     @Override
     public void delete(FlowPath flowPath) {
         transactionManager.doInTransaction(() -> {
-            Session session = getSession();
             List<PathSegment> currentSegments = findPathSegmentsByPathId(flowPath.getPathId());
-            Switch[] switches = Stream.concat(currentSegments.stream(), flowPath.getSegments().stream())
-                    .flatMap(segment -> Stream.of(segment.getSrcSwitch(), segment.getDestSwitch()))
-                    .map(this::requireManagedEntity)
-                    .toArray(Switch[]::new);
-            lockSwitches(switches);
+            lockSwitches(getInvolvedSwitches(flowPath, currentSegments));
 
+            Session session = getSession();
             //TODO: this is slow and requires optimization
-            findPathSegmentsByPathId(flowPath.getPathId())
-                    .forEach(session::delete);
+            currentSegments.forEach(session::delete);
 
             super.delete(flowPath);
         });
+    }
+
+    @Override
+    public void lockInvolvedSwitches(FlowPath... flowPaths) {
+        lockSwitches(Arrays.stream(flowPaths)
+                .filter(Objects::nonNull)
+                .flatMap(path -> getInvolvedSwitches(path, findPathSegmentsByPathId(path.getPathId()))));
     }
 
     @Override
@@ -224,8 +254,32 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
                 .orElse(0L);
     }
 
+    private FlowPath completeWithSegments(FlowPath flowPath) {
+        flowPath.setSegments(findPathSegmentsByPathId(flowPath.getPathId()));
+        return flowPath;
+    }
+
+    private List<PathSegment> findPathSegmentsByPathId(PathId pathId) {
+        Filter pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, pathId);
+
+        return getSession().loadAll(PathSegment.class, pathIdFilter, getDepthLoadEntity()).stream()
+                .sorted(Comparator.comparingInt(PathSegment::getSeqId))
+                .collect(Collectors.toList());
+    }
+
+    private Stream<Switch> getInvolvedSwitches(FlowPath flowPath, Collection<PathSegment> additionalSegments) {
+        return Stream.concat(
+                Stream.of(flowPath.getSrcSwitch(), flowPath.getDestSwitch()),
+                Stream.concat(
+                        flowPath.getSegments().stream()
+                                .flatMap(segment -> Stream.of(segment.getSrcSwitch(), segment.getDestSwitch())),
+                        additionalSegments.stream()
+                                .flatMap(segment -> Stream.of(segment.getSrcSwitch(), segment.getDestSwitch()))
+                ));
+    }
+
     @Override
-    Class<FlowPath> getEntityType() {
+    protected Class<FlowPath> getEntityType() {
         return FlowPath.class;
     }
 }

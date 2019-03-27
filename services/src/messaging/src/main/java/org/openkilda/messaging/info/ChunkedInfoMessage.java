@@ -51,4 +51,11 @@ public class ChunkedInfoMessage extends InfoMessage {
         this.messageId = String.join(" : ", String.valueOf(messageIndex), correlationId);
         this.totalMessages = totalMessages;
     }
+
+    public ChunkedInfoMessage(InfoData data, long timestamp, String correlationId,
+                              int messageIndex, int totalMessages, String region) {
+        super(data, timestamp, correlationId, region);
+        this.messageId = String.join(" : ", String.valueOf(messageIndex), correlationId);
+        this.totalMessages = totalMessages;
+    }
 }

@@ -31,20 +31,16 @@ import java.util.Set;
 public interface FlowPairRepository extends Repository<FlowPair> {
     boolean exists(String flowId);
 
-    Optional<FlowPair> findFlowPairById(String flowId);
+    Optional<FlowPair> findById(String flowId);
 
-    Collection<FlowPair> findFlowPairsWithPeriodicPingsEnabled();
+    Collection<FlowPair> findByGroupId(String flowGroupId);
 
-    Collection<FlowPair> findFlowIdsByEndpoint(SwitchId switchId, int port);
+    Collection<FlowPair> findWithPeriodicPingsEnabled();
 
-    Collection<String> findActiveFlowIdsWithPortInPath(SwitchId switchId, int port);
+    Collection<FlowPair> findByEndpoint(SwitchId switchId, int port);
 
-    Collection<String> findDownFlowIds();
+    Collection<FlowPair> findWithSegmentInPath(SwitchId srcSwitchId, int srcPort,
+                                               SwitchId dstSwitchId, int dstPort);
 
-    Collection<FlowPair> findBySrcSwitchId(SwitchId switchId);
-
-    Collection<FlowPair> findAllFlowPairsWithSegment(SwitchId srcSwitchId, int srcPort,
-                                                     SwitchId dstSwitchId, int dstPort);
-
-    Set<String> findFlowIdsBySwitch(SwitchId switchId);
+    Set<String> findFlowIdsWithSwitchInPath(SwitchId switchId);
 }

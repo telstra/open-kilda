@@ -84,7 +84,7 @@ public class UnidirectionalFlow implements Serializable {
     }
 
     public Switch getDestSwitch() {
-        return forward ? flowPath.getDestSwitch() : flow.getSrcSwitch();
+        return forward ? flow.getDestSwitch() : flow.getSrcSwitch();
     }
 
     /**
@@ -254,15 +254,7 @@ public class UnidirectionalFlow implements Serializable {
      * @return boolean flag
      */
     public boolean isForward() {
-        boolean isForward = flowPath.getCookie().isMarkedAsForward();
-        boolean isReversed = flowPath.getCookie().isMarkedAsReversed();
-
-        if (isForward && isReversed) {
-            throw new IllegalArgumentException(
-                    "Invalid cookie flags combinations - it mark as forward and reverse flow at same time.");
-        }
-
-        return isForward;
+        return flowPath.getPathId().equals(flow.getForwardPathId());
     }
 
     /**
@@ -271,7 +263,7 @@ public class UnidirectionalFlow implements Serializable {
      * @return boolean flag
      */
     public boolean isReverse() {
-        return !isForward();
+        return flowPath.getPathId().equals(flow.getReversePathId());
     }
 
     /**
@@ -297,5 +289,37 @@ public class UnidirectionalFlow implements Serializable {
 
     public TransitVlan getTransitVlanEntity() {
         return transitVlan;
+    }
+
+    public String getGroupId() {
+        return flow.getGroupId();
+    }
+
+    public void setGroupId(String groupId) {
+        flow.setGroupId(groupId);
+    }
+
+    public Instant getTimeCreate() {
+        return flow.getTimeCreate();
+    }
+
+    public void setTimeCreate(Instant timeCreate) {
+        flow.setTimeCreate(timeCreate);
+    }
+
+    public Integer getMaxLatency() {
+        return flow.getMaxLatency();
+    }
+
+    public void setMaxLatency(Integer maxLatency) {
+        flow.setMaxLatency(maxLatency);
+    }
+
+    public Integer getPriority() {
+        return flow.getPriority();
+    }
+
+    public void setPriority(Integer priority) {
+        flow.setPriority(priority);
     }
 }

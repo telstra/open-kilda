@@ -41,11 +41,6 @@ public class Neo4jSwitchPortRepository extends Neo4jGenericRepository<Port> impl
         super(sessionFactory, transactionManager);
     }
 
-    int getDepthCreateUpdateEntity() {
-        // this depth allows to link the port entity to a switch.
-        return 1;
-    }
-
     @Override
     public boolean exists(SwitchId switchId, int port) {
         Filter switchIdFilter = new Filter(SWITCH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId);
@@ -67,7 +62,21 @@ public class Neo4jSwitchPortRepository extends Neo4jGenericRepository<Port> impl
     }
 
     @Override
-    Class<Port> getEntityType() {
+    public void createOrUpdate(Port entity) {
+        requireManagedEntity(entity.getTheSwitch());
+
+        super.createOrUpdate(entity);
+    }
+
+    @Override
+    protected Class<Port> getEntityType() {
         return Port.class;
     }
+
+    @Override
+    protected int getDepthCreateUpdateEntity() {
+        // this depth allows to link the port entity to a switch.
+        return 1;
+    }
+
 }

@@ -15,7 +15,6 @@
 
 package org.openkilda.floodlight.service.kafka;
 
-import org.openkilda.floodlight.service.HeartBeatService;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 
@@ -36,14 +35,15 @@ public class KafkaProducerService implements IKafkaProducerService {
 
     private static final Logger logger = LoggerFactory.getLogger(KafkaProducerService.class);
 
-    private HeartBeatService heartBeat;
+
+
+    private int failedSendMessageCounter;
     private Producer<String, String> producer;
     private final Map<String, AbstractWorker> workersMap = new HashMap<>();
     private final ObjectMapper jsonObjectMapper = new ObjectMapper();
 
     @Override
     public void setup(FloodlightModuleContext moduleContext) {
-        heartBeat = moduleContext.getServiceImpl(HeartBeatService.class);
         producer = moduleContext.getServiceImpl(KafkaUtilityService.class).makeProducer();
     }
 
@@ -85,7 +85,7 @@ public class KafkaProducerService implements IKafkaProducerService {
 
     @Override
     public void sendMessageAndTrack(String topic, String key, AbstractMessage message) {
-        produce(encode(topic, key, message), new SendStatusCallback(this, topic, 
+        produce(encode(topic, key, message), new SendStatusCallback(this, topic,
                 message.getMessageContext().getCorrelationId()));
     }
 
@@ -96,7 +96,6 @@ public class KafkaProducerService implements IKafkaProducerService {
      */
     public SendStatus sendMessage(String topic, Message message) {
         SendStatus sendStatus = produce(encode(topic, message), null);
-        postponeHeartBeat();
         return sendStatus;
     }
 
@@ -125,6 +124,14 @@ public class KafkaProducerService implements IKafkaProducerService {
         return encoded;
     }
 
+    /**
+     * get failed sent messages count since last run.
+     * @return
+     */
+    public int getFailedSendMessageCounter() {
+        return failedSendMessageCounter;
+    }
+
     private synchronized AbstractWorker getWorker(String topic) {
         AbstractWorker worker = workersMap.computeIfAbsent(
                 topic, t -> new DefaultWorker(producer));
@@ -133,12 +140,6 @@ public class KafkaProducerService implements IKafkaProducerService {
             workersMap.put(topic, worker);
         }
         return worker;
-    }
-
-    private void postponeHeartBeat() {
-        if (heartBeat != null) {
-            heartBeat.reschedule();
-        }
     }
 
     private static class SendStatusCallback implements Callback {
@@ -158,10 +159,10 @@ public class KafkaProducerService implements IKafkaProducerService {
             logger.debug("{}: {}, {}", this.getClass().getCanonicalName(), metadata, error);
 
             if (exception == null) {
-                service.postponeHeartBeat();
+                service.failedSendMessageCounter = 0;
                 return;
             }
-
+            service.failedSendMessageCounter++;
             logger.error(
                     "Fail to send message(correlationId=\"{}\") in kafka topic={}: {}",
                     correlationId, topic, exception);

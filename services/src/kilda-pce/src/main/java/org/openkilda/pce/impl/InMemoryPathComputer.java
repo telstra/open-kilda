@@ -22,7 +22,6 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory;
-import org.openkilda.pce.AvailableNetworkFactory.BuildStrategy;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathPair;
@@ -55,20 +54,13 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     @Override
-    public PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth)
+    public PathPair getPath(Flow flow, boolean reuseAllocatedFlowResources)
             throws UnroutableFlowException, RecoverableException {
-        return getPath(availableNetworkFactory.getAvailableNetwork(flow, reuseAllocatedFlowBandwidth), flow);
-    }
-
-    @Override
-    public PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth, BuildStrategy buildStrategy)
-            throws UnroutableFlowException, RecoverableException {
-        return getPath(
-                availableNetworkFactory.getAvailableNetwork(flow, reuseAllocatedFlowBandwidth, buildStrategy), flow);
+        return getPath(availableNetworkFactory.getAvailableNetwork(flow, reuseAllocatedFlowResources), flow);
     }
 
     private PathPair getPath(AvailableNetwork network, Flow flow) throws UnroutableFlowException {
-        if (flow.getSrcSwitch().getSwitchId().equals(flow.getDestSwitch().getSwitchId())) {
+        if (flow.isOneSwitchFlow()) {
             log.info("No path computation for one-switch flow");
             SwitchId singleSwitchId = flow.getSrcSwitch().getSwitchId();
             return PathPair.builder()
@@ -96,6 +88,7 @@ public class InMemoryPathComputer implements PathComputer {
     public List<Path> getNPaths(SwitchId srcSwitchId, SwitchId dstSwitchId, int count)
             throws RecoverableException, UnroutableFlowException {
         Flow flow = Flow.builder()
+                .flowId("") // just any id, as not used.
                 .srcSwitch(Switch.builder().switchId(srcSwitchId).build())
                 .destSwitch(Switch.builder().switchId(dstSwitchId).build())
                 .ignoreBandwidth(false)
@@ -109,6 +102,7 @@ public class InMemoryPathComputer implements PathComputer {
         return paths.stream()
                 .map(edges -> convertToPath(srcSwitchId, dstSwitchId, edges))
                 .sorted(Comparator.comparing(Path::getMinAvailableBandwidth)
+                        .reversed()
                         .thenComparing(Path::getLatency))
                 .limit(count)
                 .collect(Collectors.toList());

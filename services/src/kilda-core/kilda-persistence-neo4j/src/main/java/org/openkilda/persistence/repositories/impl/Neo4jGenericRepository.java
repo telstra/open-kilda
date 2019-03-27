@@ -32,10 +32,10 @@ import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.cypher.Filters;
 import org.neo4j.ogm.session.Session;
 
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Stream;
 
 /**
  * Base Neo4J OGM implementation of {@link Repository}.
@@ -52,42 +52,9 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
         this.transactionManager = transactionManager;
     }
 
-    int getDepthLoadEntity() {
-        // the default depth for loading an entity.
-        return 1;
-    }
-
-    int getDepthCreateUpdateEntity() {
-        // the default depth for creating/updating an entity.
-        return 0;
-    }
-
-    Session getSession() {
-        return sessionFactory.getSession();
-    }
-
-    Collection<T> loadAll(Filter filter) {
-        return getSession().loadAll(getEntityType(), filter,
-                getDepthLoadEntity());
-    }
-
-    Collection<T> loadAll(Filters filters) {
-        return getSession().loadAll(getEntityType(), filters,
-                getDepthLoadEntity());
-    }
-
     @Override
     public Collection<T> findAll() {
         return getSession().loadAll(getEntityType(), getDepthLoadEntity());
-    }
-
-    @Override
-    public void delete(T entity) {
-        Session session = getSession();
-        if (session.resolveGraphIdFor(entity) == null) {
-            throw new PersistenceException("Required GraphId wasn't set: " + entity.toString());
-        }
-        session.delete(entity);
     }
 
     @Override
@@ -97,15 +64,55 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
         } catch (ClientException ex) {
             if (ex.code().endsWith("ConstraintValidationFailed")) {
                 throw new ConstraintViolationException(ex.getMessage(), ex);
+            } else {
+                throw ex;
             }
         }
     }
 
-    abstract Class<T> getEntityType();
+    @Override
+    public void delete(T entity) {
+        getSession().delete(requireManagedEntity(entity));
+    }
+
+    protected abstract Class<T> getEntityType();
+
+    protected int getDepthLoadEntity() {
+        // the default depth for loading an entity.
+        return 1;
+    }
+
+    protected int getDepthCreateUpdateEntity() {
+        // the default depth for creating/updating an entity.
+        return 0;
+    }
+
+    protected Session getSession() {
+        return sessionFactory.getSession();
+    }
+
+    protected Collection<T> loadAll(Filter filter) {
+        return getSession().loadAll(getEntityType(), filter, getDepthLoadEntity());
+    }
+
+    protected Collection<T> loadAll(Filters filters) {
+        return getSession().loadAll(getEntityType(), filters, getDepthLoadEntity());
+    }
+
+    protected Filter createSrcSwitchFilter(SwitchId switchId) {
+        Filter srcSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId.toString());
+        srcSwitchFilter.setNestedPath(new Filter.NestedPathSegment(SRC_SWITCH_FIELD, Switch.class));
+        return srcSwitchFilter;
+    }
+
+    protected Filter createDstSwitchFilter(SwitchId switchId) {
+        Filter dstSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId.toString());
+        dstSwitchFilter.setNestedPath(new Filter.NestedPathSegment(DEST_SWITCH_FIELD, Switch.class));
+        return dstSwitchFilter;
+    }
 
     protected <V> V requireManagedEntity(V entity) {
-        Session session = getSession();
-        if (session.resolveGraphIdFor(entity) == null) {
+        if (getSession().resolveGraphIdFor(entity) == null) {
             throw new PersistenceException(
                     format("Entity %s is not managed by Neo4j OGM (forget to reload or save?): ", entity));
         }
@@ -113,7 +120,16 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
         return entity;
     }
 
-    protected void lockSwitch(Switch sw) {
+    protected void lockSwitches(Stream<Switch> switches) {
+        // Lock switches in ascending order of switchId.
+        switches.map(this::requireManagedEntity)
+                .<Map<SwitchId, Switch>>collect(TreeMap::new, (m, e) -> m.put(e.getSwitchId(), e), Map::putAll)
+                .values()
+                .forEach(this::lockSwitch);
+
+    }
+
+    private void lockSwitch(Switch sw) {
         Map<String, Object> parameters = ImmutableMap.of("name", sw.getSwitchId().toString());
         Long updatedEntityId = getSession().queryForObject(Long.class,
                 "MATCH (sw:switch {name: $name}) "
@@ -122,24 +138,5 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
         if (updatedEntityId == null) {
             throw new PersistenceException(format("Switch not found to be locked: %s", sw.getSwitchId()));
         }
-    }
-
-    public void lockSwitches(Switch... switches) {
-        // Lock switches in ascending order of switchId.
-        Arrays.stream(switches)
-                .sorted(Comparator.comparing(Switch::getSwitchId))
-                .forEach(this::lockSwitch);
-    }
-
-    Filter createSrcSwitchFilter(SwitchId switchId) {
-        Filter srcSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId.toString());
-        srcSwitchFilter.setNestedPath(new Filter.NestedPathSegment(SRC_SWITCH_FIELD, Switch.class));
-        return srcSwitchFilter;
-    }
-
-    Filter createDstSwitchFilter(SwitchId switchId) {
-        Filter dstSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId.toString());
-        dstSwitchFilter.setNestedPath(new Filter.NestedPathSegment(DEST_SWITCH_FIELD, Switch.class));
-        return dstSwitchFilter;
     }
 }

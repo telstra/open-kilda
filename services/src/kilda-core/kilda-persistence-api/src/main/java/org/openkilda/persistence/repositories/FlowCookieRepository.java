@@ -22,5 +22,12 @@ import java.util.Optional;
 public interface FlowCookieRepository extends Repository<FlowCookie> {
     Optional<FlowCookie> findByCookie(long unmaskedCookie);
 
-    Optional<Long> findAvailableUnmaskedCookie();
+    /**
+     * Find an unmasked cookie which is not assigned to any flow.
+     * Use the provided {@code defaultCookie} as the first candidate.
+     *
+     * @param defaultCookie the potential cookie to be checked first.
+     * @return an unmasked cookie value or {@link Optional#empty()} if no cookie available.
+     */
+    Optional<Long> findUnassignedCookie(long defaultCookie);
 }

@@ -17,6 +17,7 @@ package org.openkilda.wfm.share.flow.resources.transitvlan;
 
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
@@ -77,7 +78,7 @@ public class TransitVlanPoolTest extends Neo4jBasedTest {
     public void vlanPoolFullTest() {
         for (int i = 100; i <= 111; i++) {
             Flow flow = Flow.builder().flowId(format("flow_%d", i)).srcSwitch(switch1).destSwitch(switch2).build();
-            transitVlanPool.allocate(flow, new PathId(format("path_%d", i))).getTransitVlan().getVlan();
+            assertTrue(transitVlanPool.allocate(flow, new PathId(format("path_%d", i))).getTransitVlan().getVlan() > 0);
         }
     }
 }

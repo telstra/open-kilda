@@ -16,12 +16,13 @@ elasticsearch.username=kilda
 elasticsearch.password=kilda
 
 kafka.bootstrap.server=kafka.pendev:9092
-kafka.topic.topo.disco=kilda.topo.disco
+kafka.topic.topo.disco=kilda.topo.disco.storm
 
 lab-api.endpoint=http://localhost:8288
 lockkeeper.endpoint=http://localhost:5001
 
-otsdb.endpoint=http://localhost:4242
+opentsdb.endpoint=http://localhost:4242
+opentsdb.metric.prefix=kilda.
 
 spring.profiles.active=virtual
 
@@ -42,4 +43,7 @@ burst.coefficient=1.05
 
 bfd.offset=200
 
-opentsdb.metric.prefix=kilda.
+env.hardware.cleanup=false
+
+diversity.isl.weight=1000
+diversity.switch.weight=100

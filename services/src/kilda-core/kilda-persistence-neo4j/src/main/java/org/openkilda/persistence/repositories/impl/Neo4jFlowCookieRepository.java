@@ -22,12 +22,13 @@ import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 
+import com.google.common.collect.ImmutableMap;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -52,20 +53,34 @@ public class Neo4jFlowCookieRepository extends Neo4jGenericRepository<FlowCookie
     }
 
     @Override
-    public Optional<Long> findAvailableUnmaskedCookie() {
-        String query = "MATCH (n:flow_cookie) "
-                + "OPTIONAL MATCH (n1:flow_cookie) "
-                + "WHERE (n.unmasked_cookie + 1) = n1.unmasked_cookie "
-                + "WITH n, n1 "
-                + "WHERE n1 IS NULL "
-                + "RETURN n.unmasked_cookie + 1";
+    public Optional<Long> findUnassignedCookie(long defaultCookie) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "default_cookie", defaultCookie);
 
-        Iterator<Long> results = getSession().query(Long.class, query, Collections.emptyMap()).iterator();
+        // The query returns the default_cookie if it's not used in any flow_cookie,
+        // otherwise locates a gap between / after the values used in flow_cookie entities.
+
+        String query = "UNWIND [$default_cookie] AS cookie "
+                + "OPTIONAL MATCH (n:flow_cookie) "
+                + "WHERE cookie = n.unmasked_cookie "
+                + "WITH cookie, n "
+                + "WHERE n IS NULL "
+                + "RETURN cookie "
+                + "UNION ALL "
+                + "MATCH (n1:flow_cookie) "
+                + "OPTIONAL MATCH (n2:flow_cookie) "
+                + "WHERE (n1.unmasked_cookie + 1) = n2.unmasked_cookie "
+                + "WITH n1, n2 "
+                + "WHERE n2 IS NULL "
+                + "RETURN n1.unmasked_cookie + 1 AS cookie "
+                + "LIMIT 1";
+
+        Iterator<Long> results = getSession().query(Long.class, query, parameters).iterator();
         return results.hasNext() ? Optional.of(results.next()) : Optional.empty();
     }
 
     @Override
-    Class<FlowCookie> getEntityType() {
+    protected Class<FlowCookie> getEntityType() {
         return FlowCookie.class;
     }
 }

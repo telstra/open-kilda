@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.kafka;
 
-import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.service.CommandProcessorService;
@@ -87,18 +87,17 @@ public class KafkaMessageCollector implements IFloodlightModule {
         ExecutorService generalExecutor = buildExecutorWithNoQueue(consumerConfig.getGeneralExecutorCount());
         logger.info("Kafka Consumer: general executor threads = {}", consumerConfig.getGeneralExecutorCount());
 
-        KafkaUtilityService kafkaUtility = moduleContext.getServiceImpl(KafkaUtilityService.class);
-        KafkaTopicsConfig topics = kafkaUtility.getTopics();
-
+        KafkaChannel kafkaChannel = moduleContext.getServiceImpl(KafkaUtilityService.class).getKafkaChannel();
+        logger.info("region: {}", kafkaChannel.getRegion());
         ConsumerLauncher launcher = new ConsumerLauncher(moduleContext, consumerConfig);
-        launcher.launch(generalExecutor, new KafkaConsumerSetup(topics.getSpeakerTopic()));
-        launcher.launch(generalExecutor, new KafkaConsumerSetup(topics.getSpeakerFlowTopic()));
-        launcher.launch(generalExecutor, new KafkaConsumerSetup(topics.getSpeakerFlowPingTopic()));
+        launcher.launch(generalExecutor, new KafkaConsumerSetup(kafkaChannel.getSpeakerTopic()));
+        launcher.launch(generalExecutor, new KafkaConsumerSetup(kafkaChannel.getSpeakerFlowTopic()));
+        launcher.launch(generalExecutor, new KafkaConsumerSetup(kafkaChannel.getSpeakerFlowPingTopic()));
 
         ExecutorService discoCommandExecutor = buildExecutorWithNoQueue(consumerConfig.getDiscoExecutorCount());
         logger.info("Kafka Consumer: disco executor threads = {}", consumerConfig.getDiscoExecutorCount());
 
-        KafkaConsumerSetup kafkaSetup = new KafkaConsumerSetup(topics.getSpeakerDiscoTopic());
+        KafkaConsumerSetup kafkaSetup = new KafkaConsumerSetup(kafkaChannel.getSpeakerDiscoTopic());
         kafkaSetup.offsetResetStrategy(OffsetResetStrategy.LATEST);
         launcher.launch(discoCommandExecutor, kafkaSetup);
     }

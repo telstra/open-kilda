@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.kafka;
 
-import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -27,14 +27,18 @@ public class ConsumerContext {
     private final IPathVerificationService pathVerificationService;
     private final ISwitchManager switchManager;
 
-    private final KafkaTopicsConfig kafkaTopics;
+    private final KafkaChannel kafkaChannel;
 
     public ConsumerContext(FloodlightModuleContext moduleContext) {
         this.moduleContext = moduleContext;
         this.pathVerificationService = moduleContext.getServiceImpl(IPathVerificationService.class);
         this.switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
 
-        kafkaTopics = moduleContext.getServiceImpl(KafkaUtilityService.class).getTopics();
+        kafkaChannel = moduleContext.getServiceImpl(KafkaUtilityService.class).getKafkaChannel();
+    }
+
+    public String getRegion() {
+        return kafkaChannel.getRegion();
     }
 
     public FloodlightModuleContext getModuleContext() {
@@ -50,7 +54,7 @@ public class ConsumerContext {
     }
 
     public String getKafkaFlowTopic() {
-        return kafkaTopics.getFlowTopic();
+        return kafkaChannel.getFlowTopic();
     }
 
     public String getKafkaFlowWorkerTopic() {
@@ -58,22 +62,22 @@ public class ConsumerContext {
     }
 
     public String getKafkaTopoDiscoTopic() {
-        return kafkaTopics.getTopoDiscoTopic();
+        return kafkaChannel.getTopoDiscoTopic();
     }
 
     public String getKafkaStatsTopic() {
-        return kafkaTopics.getStatsTopic();
+        return kafkaChannel.getStatsTopic();
     }
 
     public String getKafkaNorthboundTopic() {
-        return kafkaTopics.getNorthboundTopic();
+        return kafkaChannel.getNorthboundTopic();
     }
 
     public String getKafkaNbWorkerTopic() {
-        return kafkaTopics.getTopoNbTopic();
+        return kafkaChannel.getKafkaNbWorkerTopic();
     }
 
     public String getKafkaSwitchManagerTopic() {
-        return kafkaTopics.getTopoSwitchManagerTopic();
+        return kafkaChannel.getTopoSwitchManagerTopic();
     }
 }

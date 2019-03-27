@@ -80,7 +80,7 @@ public class FlowFetcher extends Abstract {
 
     private void handlePeriodicRequest(Tuple input) throws PipelineException {
         log.debug("Handle periodic ping request");
-        final List<BidirectionalFlowDto> flows = flowPairRepository.findFlowPairsWithPeriodicPingsEnabled().stream()
+        final List<BidirectionalFlowDto> flows = flowPairRepository.findWithPeriodicPingsEnabled().stream()
                 .map(pair -> new BidirectionalFlowDto(FlowMapper.INSTANCE.map(pair)))
                 .collect(Collectors.toList());
 
@@ -102,7 +102,7 @@ public class FlowFetcher extends Abstract {
         FlowPingRequest request = pullOnDemandRequest(input);
         BidirectionalFlowDto flow;
 
-        Optional<FlowPair> flowPair = flowPairRepository.findFlowPairById(request.getFlowId());
+        Optional<FlowPair> flowPair = flowPairRepository.findById(request.getFlowId());
         if (!flowPair.isPresent()) {
             emitOnDemandResponse(input, request, String.format(
                     "Flow %s does not exist", request.getFlowId()));

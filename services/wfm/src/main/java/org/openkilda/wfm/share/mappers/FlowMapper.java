@@ -57,7 +57,7 @@ public abstract class FlowMapper {
     @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
     @Mapping(source = "status", target = "state")
     @Mapping(source = "timeModify", target = "lastUpdated")
-    @Mapping(source = "flowPath", target = "flowPath")
+    @Mapping(source = "timeCreate", target = "createdTime")
     public abstract FlowDto map(UnidirectionalFlow flow);
 
     /**
@@ -79,8 +79,19 @@ public abstract class FlowMapper {
      * <strong>Be careful as it creates a dummy switch objects for srcSwitch and destSwitch properties
      * with only switchId filled.</strong>
      */
-    public UnidirectionalFlow map(FlowDto flow) {
-        return map(flow, true);
+    public UnidirectionalFlow map(FlowDto flowDto) {
+        Flow flow = buildFlow(flowDto);
+
+        FlowPath flowPath = buildPath(flowDto);
+        flow.setForwardPath(flowPath);
+
+        TransitVlan transitVlan = TransitVlan.builder()
+                .flowId(flow.getFlowId())
+                .pathId(flowPath.getPathId())
+                .vlan(flowDto.getTransitVlan())
+                .build();
+
+        return new UnidirectionalFlow(flow, flowPath, transitVlan, true);
     }
 
     /**
@@ -91,54 +102,26 @@ public abstract class FlowMapper {
             return null;
         }
 
-        UnidirectionalFlow forward = map(flowPair.getLeft(), true);
-        UnidirectionalFlow reverse = map(flowPair.getRight(), false);
-        Flow resultFlow = forward.getFlowEntity();
-        resultFlow.setReversePath(reverse.getFlowPath());
-        return new FlowPair(resultFlow, forward.getTransitVlanEntity(), reverse.getTransitVlanEntity());
-    }
+        FlowPath forwardPath = buildPath(flowPair.getLeft());
+        FlowPath reversePath = buildPath(flowPair.getRight());
 
-    private UnidirectionalFlow map(FlowDto flow, boolean forward) {
-        Switch srcSwitch = Switch.builder().switchId(flow.getSourceSwitch()).build();
-        Switch destSwitch = Switch.builder().switchId(flow.getDestinationSwitch()).build();
+        Flow flow = buildFlow(flowPair.getLeft());
+        flow.setForwardPath(forwardPath);
+        flow.setReversePath(reversePath);
 
-        FlowPath flowPath = FlowPath.builder()
-                .srcSwitch(srcSwitch)
-                .destSwitch(destSwitch)
-                .cookie(new Cookie(flow.getCookie()))
-                .bandwidth(flow.getBandwidth())
-                .ignoreBandwidth(flow.isIgnoreBandwidth())
+        TransitVlan forwardTransitVlan = TransitVlan.builder()
                 .flowId(flow.getFlowId())
-                .pathId(new PathId(UUID.randomUUID().toString()))
-                .meterId(flow.getMeterId() != null ? new MeterId(flow.getMeterId()) : null)
-                .segments(Collections.emptyList())
+                .pathId(forwardPath.getPathId())
+                .vlan(flowPair.getLeft().getTransitVlan())
                 .build();
 
-        Flow resultFlow = Flow.builder()
+        TransitVlan reverseTransitVlan = TransitVlan.builder()
                 .flowId(flow.getFlowId())
-                .srcSwitch(forward ? srcSwitch : destSwitch)
-                .destSwitch(forward ? destSwitch : srcSwitch)
-                .srcPort(forward ? flow.getSourcePort() : flow.getDestinationPort())
-                .destPort(forward ? flow.getDestinationPort() : flow.getSourcePort())
-                .srcVlan(forward ? flow.getSourceVlan() : flow.getDestinationVlan())
-                .destVlan(forward ? flow.getDestinationVlan() : flow.getSourceVlan())
-                .status(map(flow.getState()))
-                .description(flow.getDescription())
-                .bandwidth(flow.getBandwidth())
-                .ignoreBandwidth(flow.isIgnoreBandwidth())
-                .periodicPings(flow.isPeriodicPings())
-                .forwardPath(forward ? flowPath : null)
-                .reversePath(forward ? null : flowPath)
-                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathId(reversePath.getPathId())
+                .vlan(flowPair.getRight().getTransitVlan())
                 .build();
 
-        TransitVlan transitVlan = TransitVlan.builder()
-                .flowId(flow.getFlowId())
-                .pathId(flowPath.getPathId())
-                .vlan(flow.getTransitVlan())
-                .build();
-
-        return new UnidirectionalFlow(resultFlow, flowPath, transitVlan, forward);
+        return new FlowPair(flow, forwardTransitVlan, reverseTransitVlan);
     }
 
     /**
@@ -203,27 +186,47 @@ public abstract class FlowMapper {
         }
     }
 
-    /**
-     * Convert {@link FlowDto} to {@link Flow}.
-     */
-    public Flow toFlow(FlowDto dto) {
-        Flow flow = new Flow();
-        flow.setFlowId(dto.getFlowId());
+    private FlowPath buildPath(FlowDto flow) {
+        Switch srcSwitch = Switch.builder().switchId(flow.getSourceSwitch()).build();
+        Switch destSwitch = Switch.builder().switchId(flow.getDestinationSwitch()).build();
 
-        Switch srcSwitch = Switch.builder().switchId(dto.getSourceSwitch()).build();
-        Switch destSwitch = Switch.builder().switchId(dto.getDestinationSwitch()).build();
-        flow.setSrcSwitch(srcSwitch);
-        flow.setSrcPort(dto.getSourcePort());
-        flow.setSrcVlan(dto.getSourceVlan());
+        return FlowPath.builder()
+                .srcSwitch(srcSwitch)
+                .destSwitch(destSwitch)
+                .cookie(new Cookie(flow.getCookie()))
+                .bandwidth(flow.getBandwidth())
+                .ignoreBandwidth(flow.isIgnoreBandwidth())
+                .flowId(flow.getFlowId())
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .meterId(flow.getMeterId() != null ? new MeterId(flow.getMeterId()) : null)
+                .segments(Collections.emptyList())
+                .timeCreate(map(flow.getCreatedTime()))
+                .timeModify(map(flow.getLastUpdated()))
+                .build();
+    }
 
-        flow.setDestSwitch(destSwitch);
-        flow.setDestPort(dto.getDestinationPort());
-        flow.setDestVlan(dto.getDestinationVlan());
+    private Flow buildFlow(FlowDto flow) {
+        Switch srcSwitch = Switch.builder().switchId(flow.getSourceSwitch()).build();
+        Switch destSwitch = Switch.builder().switchId(flow.getDestinationSwitch()).build();
 
-        flow.setBandwidth(dto.getBandwidth());
-        flow.setIgnoreBandwidth(dto.isIgnoreBandwidth());
-        flow.setDescription(dto.getDescription());
-
-        return flow;
+        return Flow.builder()
+                .flowId(flow.getFlowId())
+                .srcSwitch(srcSwitch)
+                .destSwitch(destSwitch)
+                .srcPort(flow.getSourcePort())
+                .destPort(flow.getDestinationPort())
+                .srcVlan(flow.getSourceVlan())
+                .destVlan(flow.getDestinationVlan())
+                .status(map(flow.getState()))
+                .description(flow.getDescription())
+                .bandwidth(flow.getBandwidth())
+                .ignoreBandwidth(flow.isIgnoreBandwidth())
+                .periodicPings(flow.isPeriodicPings())
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .maxLatency(flow.getMaxLatency())
+                .priority(flow.getPriority())
+                .timeCreate(map(flow.getCreatedTime()))
+                .timeModify(map(flow.getLastUpdated()))
+                .build();
     }
 }

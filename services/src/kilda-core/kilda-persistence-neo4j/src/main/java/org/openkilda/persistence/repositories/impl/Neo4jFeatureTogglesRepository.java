@@ -79,7 +79,7 @@ public class Neo4jFeatureTogglesRepository extends Neo4jGenericRepository<Featur
     }
 
     @Override
-    Class<FeatureToggles> getEntityType() {
+    protected Class<FeatureToggles> getEntityType() {
         return FeatureToggles.class;
     }
 }

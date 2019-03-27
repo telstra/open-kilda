@@ -21,6 +21,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.topology.flow.model.FlowPathPairWithEncapsulation;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,7 +31,7 @@ import java.util.Optional;
 @Slf4j
 public class BaseFlowService {
     protected TransactionManager transactionManager;
-    protected FlowPairRepository flowPairRepository;
+    private FlowPairRepository flowPairRepository;
 
     public BaseFlowService(PersistenceManager persistenceManager) {
         transactionManager = persistenceManager.getTransactionManager();
@@ -43,11 +44,22 @@ public class BaseFlowService {
     }
 
     public Optional<FlowPair> getFlowPair(String flowId) {
-        return flowPairRepository.findFlowPairById(flowId);
+        return flowPairRepository.findById(flowId);
     }
 
     public Collection<FlowPair> getFlows() {
         return flowPairRepository.findAll();
+    }
+
+    protected Optional<FlowPathPairWithEncapsulation> getFlowPathPairWithEncapsulation(String flowId) {
+        return flowPairRepository.findById(flowId)
+                .map(flowPair -> FlowPathPairWithEncapsulation.builder()
+                        .flow(flowPair.getFlowEntity())
+                        .forwardPath(flowPair.getForward().getFlowPath())
+                        .reversePath(flowPair.getReverse().getFlowPath())
+                        .forwardTransitVlan(flowPair.getForwardTransitVlanEntity())
+                        .reverseTransitVlan(flowPair.getReverseTransitVlanEntity())
+                        .build());
     }
 
     /**
@@ -57,12 +69,11 @@ public class BaseFlowService {
      * @param status the status to set.
      */
     public void updateFlowStatus(String flowId, FlowStatus status) {
-        transactionManager.doInTransaction(() -> {
-            flowPairRepository.findFlowPairById(flowId)
-                    .ifPresent(flow -> {
-                        flow.setStatus(status);
-                        flowPairRepository.createOrUpdate(flow);
-                    });
-        });
+        transactionManager.doInTransaction(() ->
+                flowPairRepository.findById(flowId)
+                        .ifPresent(flow -> {
+                            flow.setStatus(status);
+                            flowPairRepository.createOrUpdate(flow);
+                        }));
     }
 }

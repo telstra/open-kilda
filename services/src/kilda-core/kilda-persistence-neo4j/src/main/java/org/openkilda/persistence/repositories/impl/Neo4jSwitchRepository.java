@@ -30,6 +30,7 @@ import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Neo4jSession;
 import org.neo4j.ogm.session.Session;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Optional;
 
@@ -89,7 +90,12 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
     }
 
     @Override
-    Class<Switch> getEntityType() {
+    public void lockSwitches(Switch... switches) {
+        lockSwitches(Arrays.stream(switches));
+    }
+
+    @Override
+    protected Class<Switch> getEntityType() {
         return Switch.class;
     }
 }

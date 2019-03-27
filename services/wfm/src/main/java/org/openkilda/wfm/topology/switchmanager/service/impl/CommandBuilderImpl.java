@@ -24,6 +24,7 @@ import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
@@ -61,44 +62,44 @@ public class CommandBuilderImpl implements CommandBuilder {
     public List<BaseInstallFlow> buildCommandsToSyncRules(SwitchId switchId, List<Long> switchRules) {
         List<BaseInstallFlow> commands = new ArrayList<>();
 
-        flowPathRepository.findPathSegmentsByDestSwitchId(switchId).forEach(segment -> {
-            FlowPath flowPath = flowPathRepository.findById(segment.getPathId())
-                    .orElseThrow(() -> new IllegalStateException(format("Abandon PathSegment found: %s", segment)));
-            if (switchRules.contains(flowPath.getCookie().getValue())) {
-                log.info("Rule {} is to be (re)installed on switch {}", flowPath.getCookie(), switchId);
-                commands.addAll(buildInstallCommandFromSegment(flowPath, segment));
-            }
-        });
+        flowPathRepository.findBySegmentDestSwitch(switchId)
+                .forEach(flowPath -> {
+                    if (switchRules.contains(flowPath.getCookie().getValue())) {
+                        PathSegment segment = flowPath.getSegments().stream()
+                                .filter(pathSegment -> pathSegment.getDestSwitch().getSwitchId().equals(switchId))
+                                .findAny()
+                                .orElseThrow(() -> new IllegalStateException(
+                                        format("PathSegment not found, path %s, switch %s", flowPath, switchId)));
+                        log.info("Rule {} is to be (re)installed on switch {}", flowPath.getCookie(), switchId);
+                        commands.addAll(buildInstallCommandFromSegment(flowPath, segment));
+                    }
+                });
 
-        flowRepository.findBySrcSwitchId(switchId).stream()
-                .forEach(flow -> {
-                    flowPathRepository.findByFlowId(flow.getFlowId())
-                            .forEach(flowPath -> {
-                                if (switchRules.contains(flowPath.getCookie())) {
-                                    OutputVlanType outputVlanType = getOutputVlanType(flow);
-
-                                    if (flowPath.isOneSwitchFlow()) {
-                                        log.info("One-switch flow {} is to be (re)installed on switch {}",
-                                                flowPath.getCookie(), switchId);
-                                        commands.add(buildOneSwitchRuleCommand(flow, flowPath, outputVlanType));
-                                    } else {
-                                        log.info("Ingress flow {} is to be (re)installed on switch {}",
-                                                flowPath.getCookie(), switchId);
-                                        if (flowPath.getSegments().isEmpty()) {
-                                            log.warn("Output port was not found for ingress flow rule");
-                                        } else {
-                                            PathSegment foundIngressSegment = flowPath.getSegments().get(0);
-                                            int transitVlan =
-                                                    transitVlanRepository.findByPathId(flowPath.getPathId())
-                                                            .map(TransitVlan::getVlan).orElse(0);
-                                            commands.add(buildInstallIngressRuleCommand(flow, flowPath,
-                                                    foundIngressSegment.getSrcPort(),
-                                                    outputVlanType, transitVlan));
-                                        }
-                                    }
-                                }
-
-                            });
+        flowPathRepository.findByEndpointSwitch(switchId)
+                .forEach(flowPath -> {
+                    if (switchRules.contains(flowPath.getCookie().getValue())) {
+                        Flow flow = flowRepository.findById(flowPath.getFlowId())
+                                .orElseThrow(() ->
+                                        new IllegalStateException(format("Abandon FlowPath found: %s", flowPath)));
+                        if (flowPath.isOneSwitchFlow()) {
+                            log.info("One-switch flow {} is to be (re)installed on switch {}",
+                                    flowPath.getCookie(), switchId);
+                            commands.add(buildOneSwitchRuleCommand(flow, flowPath));
+                        } else if (flowPath.getSrcSwitch().getSwitchId().equals(switchId)) {
+                            log.info("Ingress flow {} is to be (re)installed on switch {}",
+                                    flowPath.getCookie(), switchId);
+                            if (flowPath.getSegments().isEmpty()) {
+                                log.warn("Output port was not found for ingress flow rule");
+                            } else {
+                                PathSegment foundIngressSegment = flowPath.getSegments().get(0);
+                                int transitVlan =
+                                        transitVlanRepository.findByPathId(flowPath.getPathId())
+                                                .map(TransitVlan::getVlan).orElse(0);
+                                commands.add(buildInstallIngressRuleCommand(flow, flowPath,
+                                        transitVlan, foundIngressSegment.getSrcPort()));
+                            }
+                        }
+                    }
                 });
 
         return commands;
@@ -121,11 +122,9 @@ public class CommandBuilderImpl implements CommandBuilder {
                 transitVlanRepository.findByPathId(flowPath.getPathId())
                         .map(TransitVlan::getVlan).orElse(0);
 
-        OutputVlanType outputVlanType = getOutputVlanType(flow);
-
-        if (segment.getDestSwitch().getSwitchId().equals(flow.getDestSwitch().getSwitchId())) {
+        if (segment.getDestSwitch().getSwitchId().equals(flowPath.getDestSwitch().getSwitchId())) {
             return Collections.singletonList(buildInstallEgressRuleCommand(flow, flowPath, segment.getDestPort(),
-                    transitVlan, outputVlanType));
+                    transitVlan));
         } else {
             int segmentIdx = flowPath.getSegments().indexOf(segment);
             if (segmentIdx < 0 || segmentIdx + 1 == flowPath.getSegments().size()) {
@@ -136,47 +135,73 @@ public class CommandBuilderImpl implements CommandBuilder {
 
             PathSegment foundPairedFlowSegment = flowPath.getSegments().get(segmentIdx + 1);
 
-            return Collections.singletonList(buildInstallTransitRuleCommand(flow, flowPath,
+            return Collections.singletonList(buildInstallTransitRuleCommand(flowPath,
                     segment.getDestSwitch().getSwitchId(),
                     segment.getDestPort(), foundPairedFlowSegment.getSrcPort(), transitVlan));
         }
     }
 
-    private InstallIngressFlow buildInstallIngressRuleCommand(Flow flow, FlowPath flowPath, int outputPortNo,
-                                                              OutputVlanType outputVlanType, int transitVlan) {
+    private InstallIngressFlow buildInstallIngressRuleCommand(Flow flow, FlowPath flowPath,
+                                                              int transitVlan, int outputPortNo) {
+        boolean forward = isForward(flow, flowPath);
+        int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
+        int inVlan = forward ? flow.getSrcVlan() : flow.getDestVlan();
+        int outVlan = forward ? flow.getDestVlan() : flow.getSrcVlan();
+        OutputVlanType outputVlanType = getOutputVlanType(inVlan, outVlan);
+
         return new InstallIngressFlow(transactionIdGenerator.generate(), flow.getFlowId(),
-                flowPath.getCookie().getValue(), flow.getSrcSwitch().getSwitchId(), flow.getSrcPort(),
-                outputPortNo, flow.getSrcVlan(), transitVlan, outputVlanType,
-                flow.getBandwidth(), flowPath.getMeterId().getValue());
+                flowPath.getCookie().getValue(), flowPath.getSrcSwitch().getSwitchId(), inPort,
+                outputPortNo, inVlan, transitVlan, outputVlanType,
+                flowPath.getBandwidth(),
+                Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null));
     }
 
-    private InstallTransitFlow buildInstallTransitRuleCommand(Flow flow, FlowPath flowPath, SwitchId switchId,
-                                                              int inputPortNo,
-                                                              int outputPortNo, int transitVlan) {
-        return new InstallTransitFlow(transactionIdGenerator.generate(), flow.getFlowId(),
+    private InstallTransitFlow buildInstallTransitRuleCommand(FlowPath flowPath, SwitchId switchId,
+                                                              int inputPortNo, int outputPortNo, int transitVlan) {
+        return new InstallTransitFlow(transactionIdGenerator.generate(), flowPath.getFlowId(),
                 flowPath.getCookie().getValue(),
                 switchId, inputPortNo, outputPortNo, transitVlan);
     }
 
     private InstallEgressFlow buildInstallEgressRuleCommand(Flow flow, FlowPath flowPath, int inputPortNo,
-                                                            int transitVlan, OutputVlanType outputVlanType) {
-        return new InstallEgressFlow(transactionIdGenerator.generate(), flow.getFlowId(),
-                flowPath.getCookie().getValue(), flow.getDestSwitch().getSwitchId(), inputPortNo, flow.getDestPort(),
-                transitVlan, flow.getDestVlan(), outputVlanType);
+                                                            int transitVlan) {
+        boolean forward = isForward(flow, flowPath);
+        int inVlan = forward ? flow.getSrcVlan() : flow.getDestVlan();
+        int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
+        int outVlan = forward ? flow.getDestVlan() : flow.getSrcVlan();
+        OutputVlanType outputVlanType = getOutputVlanType(inVlan, outVlan);
+
+        return new InstallEgressFlow(transactionIdGenerator.generate(), flowPath.getFlowId(),
+                flowPath.getCookie().getValue(), flowPath.getDestSwitch().getSwitchId(), inputPortNo, outPort,
+                transitVlan, outVlan, outputVlanType);
     }
 
-    private InstallOneSwitchFlow buildOneSwitchRuleCommand(Flow flow, FlowPath flowPath,
-                                                           OutputVlanType outputVlanType) {
+    private InstallOneSwitchFlow buildOneSwitchRuleCommand(Flow flow, FlowPath flowPath) {
+        boolean forward = isForward(flow, flowPath);
+        int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
+        int inVlan = forward ? flow.getSrcVlan() : flow.getDestVlan();
+        int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
+        int outVlan = forward ? flow.getDestVlan() : flow.getSrcVlan();
+        OutputVlanType outputVlanType = getOutputVlanType(inVlan, outVlan);
+
         return new InstallOneSwitchFlow(transactionIdGenerator.generate(),
-                flow.getFlowId(), flowPath.getCookie().getValue(), flow.getSrcSwitch().getSwitchId(), flow.getSrcPort(),
-                flow.getDestPort(), flow.getSrcVlan(), flow.getDestVlan(),
-                outputVlanType, flow.getBandwidth(), flowPath.getMeterId().getValue());
+                flow.getFlowId(), flowPath.getCookie().getValue(), flowPath.getSrcSwitch().getSwitchId(), inPort,
+                outPort, inVlan, outVlan,
+                outputVlanType, flowPath.getBandwidth(),
+                Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null));
     }
 
-    private OutputVlanType getOutputVlanType(Flow flow) {
-        int sourceVlanId = flow.getSrcVlan();
-        int destinationVlanId = flow.getDestVlan();
+    private boolean isForward(Flow flow, FlowPath flowPath) {
+        if (!flowPath.getFlowId().equals(flow.getFlowId())
+                || !flowPath.getPathId().equals(flow.getForwardPathId())
+                && !flowPath.getPathId().equals(flow.getReversePathId())) {
+            throw new IllegalArgumentException(format(
+                    "Flow path %s doesn't correspond to the given flow %s.", flowPath.getPathId(), flow.getFlowId()));
+        }
+        return flowPath.getPathId().equals(flow.getForwardPathId());
+    }
 
+    private OutputVlanType getOutputVlanType(int sourceVlanId, int destinationVlanId) {
         if (sourceVlanId == 0) {
             return destinationVlanId == 0 ? OutputVlanType.NONE : OutputVlanType.PUSH;
         }

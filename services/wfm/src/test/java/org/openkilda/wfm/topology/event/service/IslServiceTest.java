@@ -140,7 +140,8 @@ public class IslServiceTest extends Neo4jBasedTest {
     public void shouldNotFailIslDiscoverOnNotActiveIsl() {
         Isl isl = createIsl();
         isl.setStatus(IslStatus.INACTIVE);
-        islService.createOrUpdateIsl(isl);
+        isl.setActualStatus(IslStatus.INACTIVE);
+        islRepository.createOrUpdate(isl);
 
         Isl foundIsl = islRepository.findByEndpoints(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT,
                 TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT).get();

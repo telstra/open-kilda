@@ -113,6 +113,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         Properties configOverlay = new Properties();
         configOverlay.setProperty("neo4j.uri", embeddedNeo4jDb.getConnectionUri());
         configOverlay.setProperty("opentsdb.metric.prefix", METRIC_PREFIX);
+        configOverlay.setProperty("neo4j.indexes.auto", "update"); // ask to create indexes/constraints if needed
 
         launchEnvironment.setupOverlay(configOverlay);
 
@@ -384,7 +385,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         switchRepository.createOrUpdate(sw);
 
         FlowPairRepository flowPairRepository = repositoryFactory.createFlowPairRepository();
-        FlowPair flowPair = new FlowPair(flowId, sw, 1, 5, sw, 2, 5);
+        FlowPair flowPair = new FlowPair(flowId, sw, 1, 5, sw, 2, 5, 1);
         flowPair.getForward().setCookie(cookie);
         flowPair.getForward().setMeterId(456L);
         flowPairRepository.createOrUpdate(flowPair);
@@ -393,7 +394,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     private void sendStatsMessage(InfoData infoData) throws IOException {
         InfoMessage infoMessage = new InfoMessage(infoData, timestamp, UUID.randomUUID().toString(),
-                Destination.WFM_STATS);
+                Destination.WFM_STATS, null);
         sendMessage(infoMessage, statsTopologyConfig.getKafkaStatsTopic());
     }
 

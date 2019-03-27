@@ -145,7 +145,7 @@ public class Neo4jTransactionManagerTest extends Neo4jBasedTest {
     }
 
     @Test(expected = TestCheckedException.class)
-    public void shouldCheckedExceptionThrown() throws TestCheckedException {
+    public void shouldPassthroughAndCatchCheckedException() throws TestCheckedException {
         TransactionCallbackWithoutResult<TestCheckedException> callback = () -> {
             throw new TestCheckedException();
         };
@@ -156,6 +156,26 @@ public class Neo4jTransactionManagerTest extends Neo4jBasedTest {
         } catch (TestCheckedException ex) {
             throw ex;
         }
+
+        fail();
+    }
+
+    @Test(expected = TestCheckedException.class)
+    public void shouldPassthroughCheckedException() {
+        // when
+        txManager.doInTransaction(() -> {
+            throw new TestCheckedException();
+        });
+
+        fail();
+    }
+
+    @Test(expected = TestCheckedException.class)
+    public void shouldPassthroughCheckedExceptionWithoutResult() throws TestCheckedException {
+        // when
+        txManager.doInTransaction((TransactionCallbackWithoutResult<TestCheckedException>) () -> {
+            throw new TestCheckedException();
+        });
 
         fail();
     }

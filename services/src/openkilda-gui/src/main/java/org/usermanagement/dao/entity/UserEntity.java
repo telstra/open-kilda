@@ -374,9 +374,8 @@ public class UserEntity extends BaseEntity implements Serializable {
      */
     @Override
     public String toString() {
-        return "UserEntity [userId=" + userId + ", username=" + username + ", password=" + password + ", name=" + name
-                + ", email=" + email + ", loginTime=" + loginTime + ", logoutTime=" + logoutTime + ", activeFlag="
-                + activeFlag + ", isAuthorized=" + isAuthorized + ", statusEntity=" + statusEntity + ", roles=" + roles
-                + "]";
+        return "UserEntity [userId=" + userId + ", username=" + username + ", name=" + name + ", email=" + email
+                + ", loginTime=" + loginTime + ", logoutTime=" + logoutTime + ", activeFlag=" + activeFlag
+                + ", isAuthorized=" + isAuthorized + ", statusEntity=" + statusEntity + ", roles=" + roles + "]";
     }
 }

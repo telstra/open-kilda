@@ -42,7 +42,8 @@ public class BaseFlowServiceTest extends Neo4jBasedTest {
         String flowId = "test-flow";
         FlowPair flowPair = new FlowPair(flowId,
                 getOrCreateSwitch(SWITCH_ID_1), 1, 101,
-                getOrCreateSwitch(SWITCH_ID_2), 2, 102);
+                getOrCreateSwitch(SWITCH_ID_2), 2, 102,
+                1);
         flowPair.getForward().setBandwidth(0);
         flowPair.setStatus(FlowStatus.IN_PROGRESS);
 
@@ -50,7 +51,7 @@ public class BaseFlowServiceTest extends Neo4jBasedTest {
 
         flowService.updateFlowStatus(flowId, FlowStatus.UP);
 
-        Optional<FlowPair> foundFlow = flowPairRepository.findFlowPairById(flowId);
+        Optional<FlowPair> foundFlow = flowPairRepository.findById(flowId);
         assertEquals(FlowStatus.UP, foundFlow.get().getForward().getStatus());
     }
 

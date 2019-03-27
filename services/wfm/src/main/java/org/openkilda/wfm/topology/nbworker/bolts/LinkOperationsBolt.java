@@ -77,7 +77,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
     public void init() {
         this.linkOperationsService =
                 new LinkOperationsService(repositoryFactory, transactionManager, islCostWhenUnderMaintenance);
-        this.flowOperationsService = new FlowOperationsService(repositoryFactory);
+        this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
     }
 
     @Override

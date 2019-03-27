@@ -69,6 +69,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     private IThreadPoolService threadPoolService;
     private int interval;
     private String statisticsTopic;
+    private String region;
 
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -103,7 +104,8 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
 
     @Override
     public void startUp(FloodlightModuleContext context) {
-        statisticsTopic = context.getServiceImpl(KafkaUtilityService.class).getTopics().getStatsTopic();
+        statisticsTopic = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getStatsTopic();
+        region = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getRegion();
 
         if (interval > 0) {
             threadPoolService.getScheduledExecutor().scheduleAtFixedRate(
@@ -206,7 +208,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
             try (CorrelationContextClosable closable = CorrelationContext.create(correlationId)) {
 
                 InfoMessage infoMessage = new InfoMessage(transform.apply(data),
-                        System.currentTimeMillis(), correlationId, Destination.WFM_STATS);
+                        System.currentTimeMillis(), correlationId, Destination.WFM_STATS, region);
                 producerService.sendMessageAndTrack(statisticsTopic, infoMessage);
             }
         }

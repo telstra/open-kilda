@@ -265,7 +265,7 @@ class BandwidthSpec extends BaseSpecification {
     private def checkBandwidth(List<PathNode> flowPath, List<IslInfoData> linksBefore, List<IslInfoData> linksAfter,
                                long offset = 0) {
         pathHelper.getInvolvedIsls(flowPath).each { link ->
-            [link, islUtils.reverseIsl(link)].each {
+            [link, link.reversed].each {
                 def bwBefore = islUtils.getIslInfo(linksBefore, it).get().availableBandwidth
                 def bwAfter = islUtils.getIslInfo(linksAfter, it).get().availableBandwidth
                 assert bwAfter == bwBefore + offset

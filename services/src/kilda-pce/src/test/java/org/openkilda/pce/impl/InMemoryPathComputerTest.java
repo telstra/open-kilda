@@ -15,12 +15,13 @@
 
 package org.openkilda.pce.impl;
 
-import static java.util.Collections.emptyMap;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
 import org.openkilda.config.provider.ConfigurationProvider;
+import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
@@ -45,14 +46,13 @@ import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.persistence.spi.PersistenceProvider;
 
-import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
-import com.sabre.oss.conf4j.source.MapConfigurationSource;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -73,9 +73,9 @@ public class InMemoryPathComputerTest {
     static TransactionManager txManager;
     static SwitchRepository switchRepository;
     static IslRepository islRepository;
+    static FlowRepository flowRepository;
     static FlowPathRepository flowPathRepository;
 
-    private static JdkProxyStaticConfigurationFactory configFactory = new JdkProxyStaticConfigurationFactory();
     static PathComputerConfig config;
 
     static AvailableNetworkFactory availableNetworkFactory;
@@ -132,9 +132,10 @@ public class InMemoryPathComputerTest {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
         islRepository = repositoryFactory.createIslRepository();
+        flowRepository = repositoryFactory.createFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
 
-        config = configFactory.createConfiguration(PathComputerConfig.class, new MapConfigurationSource(emptyMap()));
+        config = new PropertiesBasedConfigurationProvider().getConfiguration(PathComputerConfig.class);
 
         availableNetworkFactory = new AvailableNetworkFactory(config, repositoryFactory);
         pathComputerFactory = new PathComputerFactory(config, availableNetworkFactory);
@@ -187,7 +188,6 @@ public class InMemoryPathComputerTest {
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair path = pathComputer.getPath(f);
-
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> only difference is it should now have C as first hop .. since B is inactive
@@ -464,6 +464,78 @@ public class InMemoryPathComputerTest {
         pathComputer.getPath(flow, true);
     }
 
+    @Test
+    public void shouldFindDiversePath() throws RecoverableException, UnroutableFlowException {
+        createDiamondWithDiversity();
+
+        Flow flow = Flow.builder()
+                .flowId("new-flow")
+                .groupId("diverse")
+                .bandwidth(10)
+                .srcSwitch(switchRepository.findById(new SwitchId("00:0A")).get())
+                .destSwitch(switchRepository.findById(new SwitchId("00:0D")).get())
+                .build();
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
+        PathPair diversePath = pathComputer.getPath(flow);
+
+        diversePath.getForward().getSegments().forEach(
+                segment -> {
+                    assertNotEquals(new SwitchId("00:0B"), segment.getSrcSwitchId());
+                    assertNotEquals(new SwitchId("00:0B"), segment.getDestSwitchId());
+                });
+    }
+
+    @Test
+    public void shouldFindTheSameDiversePath() throws RecoverableException, UnroutableFlowException {
+        createDiamondWithDiversity();
+
+        Flow flow = Flow.builder()
+                .flowId("new-flow")
+                .groupId("diverse")
+                .bandwidth(10)
+                .srcSwitch(switchRepository.findById(new SwitchId("00:0A")).get())
+                .srcPort(10)
+                .destSwitch(switchRepository.findById(new SwitchId("00:0D")).get())
+                .destPort(10)
+                .build();
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
+        PathPair diversePath = pathComputer.getPath(flow);
+
+        FlowPath forwardPath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(flow.getSrcSwitch())
+                .destSwitch(flow.getDestSwitch())
+                .flowId(flow.getFlowId())
+                .bandwidth(flow.getBandwidth())
+                .segments(new ArrayList<>())
+                .build();
+        addPathSegments(forwardPath, diversePath.getForward());
+        flow.setForwardPath(forwardPath);
+
+        FlowPath reversePath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(flow.getDestSwitch())
+                .destSwitch(flow.getSrcSwitch())
+                .flowId(flow.getFlowId())
+                .bandwidth(flow.getBandwidth())
+                .segments(new ArrayList<>())
+                .build();
+        addPathSegments(reversePath, diversePath.getReverse());
+        flow.setReversePath(reversePath);
+
+        flowRepository.createOrUpdate(flow);
+
+        PathPair path2 = pathComputer.getPath(flow, true);
+        assertEquals(diversePath, path2);
+    }
+
+    private void addPathSegments(FlowPath flowPath, Path path) {
+        path.getSegments().forEach(segment ->
+                addPathSegment(flowPath, switchRepository.findById(segment.getSrcSwitchId()).get(),
+                        switchRepository.findById(segment.getDestSwitchId()).get(),
+                        segment.getSrcPort(), segment.getDestPort()));
+    }
+
     private void createLinearTopoWithFlowSegments(int cost, String switchStart, int startIndex, long linkBw,
                                                   String flowId, long flowBandwidth) {
         // A - B - C
@@ -478,27 +550,87 @@ public class InMemoryPathComputerTest {
         createIsl(nodeC, nodeB, IslStatus.ACTIVE, IslStatus.ACTIVE, cost, linkBw, 6);
         createIsl(nodeB, nodeA, IslStatus.ACTIVE, IslStatus.ACTIVE, cost, linkBw, 5);
 
-        FlowPath forwardPath = new FlowPath();
-        forwardPath.setSrcSwitch(nodeA);
-        forwardPath.setDestSwitch(nodeC);
-        forwardPath.setPathId(new PathId(UUID.randomUUID().toString()));
-        forwardPath.setFlowId(flowId);
-        forwardPath.setBandwidth(flowBandwidth);
-        forwardPath.setSegments(new ArrayList<>());
+        FlowPath forwardPath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(nodeA)
+                .destSwitch(nodeC)
+                .flowId(flowId)
+                .bandwidth(flowBandwidth)
+                .segments(new ArrayList<>())
+                .build();
         addPathSegment(forwardPath, nodeA, nodeB, 5, 5);
         addPathSegment(forwardPath, nodeB, nodeC, 6, 6);
         flowPathRepository.createOrUpdate(forwardPath);
 
-        FlowPath reversePath = new FlowPath();
-        reversePath.setSrcSwitch(nodeC);
-        reversePath.setDestSwitch(nodeA);
-        reversePath.setPathId(new PathId(UUID.randomUUID().toString()));
-        reversePath.setFlowId(flowId);
-        reversePath.setBandwidth(flowBandwidth);
-        reversePath.setSegments(new ArrayList<>());
+        FlowPath reversePath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(nodeC)
+                .destSwitch(nodeA)
+                .flowId(flowId)
+                .bandwidth(flowBandwidth)
+                .segments(new ArrayList<>())
+                .build();
         addPathSegment(reversePath, nodeC, nodeB, 6, 6);
         addPathSegment(reversePath, nodeB, nodeA, 5, 5);
         flowPathRepository.createOrUpdate(reversePath);
+    }
+
+    // A - B - D    and A-B-D is used in flow group
+    //   + C +
+    private void createDiamondWithDiversity() {
+        Switch nodeA = createSwitch("00:0A");
+        Switch nodeB = createSwitch("00:0B");
+        Switch nodeC = createSwitch("00:0C");
+        Switch nodeD = createSwitch("00:0D");
+
+        IslStatus status = IslStatus.ACTIVE;
+        int cost = 100;
+        createIsl(nodeA, nodeB, status, status, cost, 1000, 1);
+        createIsl(nodeA, nodeC, status, status, cost * 2, 1000, 2);
+        createIsl(nodeB, nodeD, status, status, cost, 1000, 3);
+        createIsl(nodeC, nodeD, status, status, cost * 2, 1000, 4);
+        createIsl(nodeB, nodeA, status, status, cost, 1000, 1);
+        createIsl(nodeC, nodeA, status, status, cost * 2, 1000, 2);
+        createIsl(nodeD, nodeB, status, status, cost, 1000, 3);
+        createIsl(nodeD, nodeC, status, status, cost * 2, 1000, 4);
+
+        int bandwith = 10;
+        String flowId = "existed-flow";
+
+        FlowPath forwardPath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(nodeA)
+                .destSwitch(nodeD)
+                .flowId(flowId)
+                .bandwidth(bandwith)
+                .segments(new ArrayList<>())
+                .build();
+        addPathSegment(forwardPath, nodeA, nodeB, 1, 1);
+        addPathSegment(forwardPath, nodeB, nodeD, 3, 3);
+
+        FlowPath reversePath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(nodeD)
+                .destSwitch(nodeA)
+                .flowId(flowId)
+                .bandwidth(bandwith)
+                .segments(new ArrayList<>())
+                .build();
+        addPathSegment(reversePath, nodeD, nodeB, 3, 3);
+        addPathSegment(reversePath, nodeB, nodeA, 1, 1);
+
+        String groupId = "diverse";
+
+        Flow flow = Flow.builder()
+                .flowId(flowId)
+                .srcSwitch(nodeA).srcPort(15)
+                .destSwitch(nodeD).destPort(16)
+                .groupId(groupId)
+                .bandwidth(bandwith)
+                .forwardPath(forwardPath)
+                .reversePath(reversePath)
+                .build();
+        flowRepository.createOrUpdate(flow);
     }
 
     private void createDiamond(IslStatus pathBstatus, IslStatus pathCstatus, int pathBcost, int pathCcost) {

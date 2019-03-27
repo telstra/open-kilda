@@ -94,7 +94,7 @@ public class CacheBolt extends AbstractBolt {
                         if (flow.getMeterId() != null) {
                             switchAndMeterToFlow.put(
                                     new MeterCacheKey(
-                                            flow.getSrcSwitch().getSwitchId(), new Long(flow.getMeterId())), entry);
+                                            flow.getSrcSwitch().getSwitchId(), flow.getMeterId()), entry);
                         } else {
                             log.warn("Flow {} has no meter ID", flow.getFlowId());
                         }

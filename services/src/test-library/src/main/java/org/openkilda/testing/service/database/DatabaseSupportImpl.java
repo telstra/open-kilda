@@ -24,7 +24,6 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.IslStatus;
-import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.UnidirectionalFlow;
@@ -37,6 +36,7 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
+import com.google.common.collect.ImmutableMap;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
@@ -44,6 +44,8 @@ import org.neo4j.ogm.model.Result;
 import org.neo4j.ogm.session.Session;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -77,7 +79,7 @@ public class DatabaseSupportImpl implements Database {
      * @return true if at least 1 ISL was affected.
      */
     @Override
-    public boolean updateLinkMaxBandwidth(Isl islToUpdate, long value) {
+    public boolean updateIslMaxBandwidth(Isl islToUpdate, long value) {
         return transactionManager.doInTransaction(() -> {
             Optional<org.openkilda.model.Isl> isl = islRepository.findByEndpoints(
                     islToUpdate.getSrcSwitch().getDpId(), islToUpdate.getSrcPort(),
@@ -95,11 +97,11 @@ public class DatabaseSupportImpl implements Database {
      * Updates available_bandwidth property on a certain ISL.
      *
      * @param islToUpdate ISL to be changed
-     * @param value       max bandwidth to set
+     * @param value       available bandwidth to set
      * @return true if at least 1 ISL was affected.
      */
     @Override
-    public boolean updateLinkAvailableBandwidth(Isl islToUpdate, long value) {
+    public boolean updateIslAvailableBandwidth(Isl islToUpdate, long value) {
         return transactionManager.doInTransaction(() -> {
             Optional<org.openkilda.model.Isl> isl = islRepository.findByEndpoints(
                     islToUpdate.getSrcSwitch().getDpId(), islToUpdate.getSrcPort(),
@@ -121,7 +123,7 @@ public class DatabaseSupportImpl implements Database {
      * @return true if at least 1 ISL was affected.
      */
     @Override
-    public boolean updateLinkCost(Isl islToUpdate, int value) {
+    public boolean updateIslCost(Isl islToUpdate, int value) {
         return transactionManager.doInTransaction(() -> {
             Optional<org.openkilda.model.Isl> isl = islRepository.findByEndpoints(
                     islToUpdate.getSrcSwitch().getDpId(), islToUpdate.getSrcPort(),
@@ -142,7 +144,7 @@ public class DatabaseSupportImpl implements Database {
      * @return true if at least 1 ISL was affected
      */
     @Override
-    public boolean revertIslBandwidth(Isl islToUpdate) {
+    public boolean resetIslBandwidth(Isl islToUpdate) {
         return transactionManager.doInTransaction(() -> {
             Optional<org.openkilda.model.Isl> isl = islRepository.findByEndpoints(
                     islToUpdate.getSrcSwitch().getDpId(), islToUpdate.getSrcPort(),
@@ -157,6 +159,11 @@ public class DatabaseSupportImpl implements Database {
         });
     }
 
+    /**
+     * Remove all inactive ISLs.
+     *
+     * @return true if at least 1 ISL was deleted
+     */
     @Override
     public boolean removeInactiveIsls() {
         return transactionManager.doInTransaction(() -> {
@@ -170,6 +177,11 @@ public class DatabaseSupportImpl implements Database {
         });
     }
 
+    /**
+     * Remove all inactive switches.
+     *
+     * @return true if at least 1 switch was deleted
+     */
     @Override
     public boolean removeInactiveSwitches() {
         return transactionManager.doInTransaction(() -> {
@@ -183,18 +195,17 @@ public class DatabaseSupportImpl implements Database {
         });
     }
 
+    /**
+     * Set cost for all ISLs to be equal to DEFAULT_COST value.
+     *
+     * @return true if at least 1 ISL was affected
+     */
     @Override
     public boolean resetCosts() {
-        return transactionManager.doInTransaction(() -> {
-            Collection<org.openkilda.model.Isl> isls = islRepository.findAll();
-            switchRepository.lockSwitches(switchRepository.findAll().toArray(new Switch[0]));
-            isls.forEach(isl -> {
-                isl.setCost(DEFAULT_COST);
-                islRepository.createOrUpdate(isl);
-            });
-
-            return !isls.isEmpty();
-        });
+        Session session = ((Neo4jSessionFactory) transactionManager).getSession();
+        String query = "MATCH ()-[i:isl]->() SET i.cost=$cost";
+        Result result = session.query(query, ImmutableMap.of("cost", DEFAULT_COST));
+        return result.queryStatistics().getPropertiesSet() > 0;
     }
 
     /**
@@ -213,12 +224,24 @@ public class DatabaseSupportImpl implements Database {
                 .orElse(DEFAULT_COST);
     }
 
+    /**
+     * Count all flow records.
+     *
+     * @return the number of flow records
+     */
     @Override
     public int countFlows() {
         //TODO(siakovenko): non optimal and a dedicated method for counting must be introduced.
         return flowPairRepository.findAll().size();
     }
 
+    /**
+     * Get all possible paths between source and destination switches.
+     *
+     * @param src source switch ID
+     * @param dst destination switch ID
+     * @return list of PathInfoData objects
+     */
     @Override
     @SuppressWarnings("unchecked")
     public List<PathInfoData> getPaths(SwitchId src, SwitchId dst) {
@@ -254,17 +277,29 @@ public class DatabaseSupportImpl implements Database {
         return deserializedResults;
     }
 
+    /**
+     * Get flow.
+     *
+     * @param flowId flow ID
+     * @return FlowPair object
+     */
     @Override
     public FlowPairDto<FlowDto, FlowDto> getFlow(String flowId) {
-        Optional<FlowPair> flowPair = flowPairRepository.findFlowPairById(flowId);
+        Optional<FlowPair> flowPair = flowPairRepository.findById(flowId);
         return flowPair
                 .map(flow -> new FlowPairDto<>(convert(flow.getForward()), convert(flow.getReverse())))
                 .orElse(null);
     }
 
+    /**
+     * Update flow bandwidth.
+     *
+     * @param flowId flow ID
+     * @param newBw new bandwidth to be set
+     */
     @Override
     public void updateFlowBandwidth(String flowId, long newBw) {
-        FlowPair flowPair = flowPairRepository.findFlowPairById(flowId)
+        FlowPair flowPair = flowPairRepository.findById(flowId)
                 .orElseThrow(() -> new RuntimeException(format("Unable to find Flow for %s", flowId)));
         flowPair.getForward().setBandwidth(newBw);
         flowPair.getReverse().setBandwidth(newBw);
@@ -287,5 +322,15 @@ public class DatabaseSupportImpl implements Database {
         @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
         @Mapping(source = "status", target = "state")
         FlowDto map(UnidirectionalFlow flow);
+
+        /**
+         * Convert {@link Instant} to {@link String}.
+         */
+        default String map(Instant time) {
+            if (time == null) {
+                return null;
+            }
+            return DateTimeFormatter.ISO_INSTANT.format(time);
+        }
     }
 }

@@ -16,7 +16,6 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
@@ -28,22 +27,23 @@ public interface FlowRepository extends Repository<Flow> {
 
     Optional<Flow> findById(String flowId);
 
+    Collection<Flow> findByGroupId(String flowGroupId);
+
     Collection<Flow> findWithPeriodicPingsEnabled();
 
     Collection<Flow> findByEndpoint(SwitchId switchId, int port);
 
-    Collection<String> findActiveFlowIdsWithPortInPath(SwitchId switchId, int port);
+    Collection<Flow> findByEndpointSwitch(SwitchId switchId);
 
-    Collection<String> findDownFlowIds();
+    Collection<Flow> findActiveFlowsWithPortInPath(SwitchId switchId, int port);
 
-    Collection<Flow> findBySrcSwitchId(SwitchId switchId);
-
-    Collection<Flow> findByDstSwitchId(SwitchId switchId);
+    Collection<Flow> findDownFlows();
 
     Collection<Flow> findWithPathSegment(SwitchId srcSwitchId, int srcPort,
-                                                     SwitchId dstSwitchId, int dstPort);
+                                         SwitchId dstSwitchId, int dstPort);
 
-    Set<String> findFlowIdsBySwitch(SwitchId switchId);
+    Set<String> findFlowIdsWithSwitchInPath(SwitchId switchId);
 
-    void updateFlowStatus(String flowId, FlowStatus flowStatus);
+    Optional<String> getOrCreateFlowGroupId(String flowId);
+
 }

@@ -17,6 +17,7 @@ export class SwitchMetersComponent implements OnInit {
   showMetersJSON: boolean = true;
   jsonViewer = true;
   tabularViewer = false;
+  property = 'jsonViewer';
 
   loading = false;
   clipBoardItems :any= {
@@ -33,12 +34,19 @@ export class SwitchMetersComponent implements OnInit {
       let retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON'));
       this.switch_id =retrievedSwitchObject.switch_id;
       this.tabularViewer = false;
+      this.switchMeters();
   }
 
   switchMeters() {
     this.loading = true;
-    this.tabularViewer = false;
+    if( this.property == 'tabularViewer'){
+      this.tabularViewer = true;
+    this.jsonViewer = false;
+    }else{
+      this.tabularViewer = false;
     this.jsonViewer = true;
+    }
+    
     this.switchService.getSwitchMetersList(this.switch_id).subscribe(
       data => {
         this.switchedMeters = data;
@@ -74,10 +82,16 @@ export class SwitchMetersComponent implements OnInit {
     this.clipboardService.copyFromContent(jQuery('.code').text());
   }
 
-  toggleView(property){
-    this.tabularViewer = false;
-    this.jsonViewer = false ;
-    this[property] = true;
+  toggleView(e){
+   
+    if (e.target.checked) {
+      this.property = 'tabularViewer';
+      this.jsonViewer = false ;
+    } else {
+      this.property = 'jsonViewer';   
+      this.tabularViewer = false;   
+   }
+    this[this.property] = true;
   }
 
 }

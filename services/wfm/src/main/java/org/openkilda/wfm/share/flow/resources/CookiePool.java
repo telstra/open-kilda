@@ -50,16 +50,17 @@ public class CookiePool {
      */
     public long allocate(String flowId) {
         return transactionManager.doInTransaction(() -> {
-            long availableCookie = flowCookieRepository.findAvailableUnmaskedCookie().orElse(minCookie);
+            long availableCookie = flowCookieRepository.findUnassignedCookie(minCookie)
+                    .orElseThrow(() -> new ResourceNotAvailableException("No cookie available"));
             if (availableCookie > maxCookie) {
                 throw new ResourceNotAvailableException("No cookie available");
             }
 
-            FlowCookie forwardFlowCookie = FlowCookie.builder()
+            FlowCookie flowCookie = FlowCookie.builder()
                     .unmaskedCookie(availableCookie)
                     .flowId(flowId)
                     .build();
-            flowCookieRepository.createOrUpdate(forwardFlowCookie);
+            flowCookieRepository.createOrUpdate(flowCookie);
 
             return availableCookie;
         });
@@ -69,9 +70,9 @@ public class CookiePool {
      * Deallocates a cookie.
      */
     public void deallocate(long unmaskedCookie) {
-        transactionManager.doInTransaction(() -> {
-            flowCookieRepository.findByCookie(unmaskedCookie)
-                    .ifPresent(flowCookieRepository::delete);
-        });
+        transactionManager.doInTransaction(() ->
+                flowCookieRepository.findByCookie(unmaskedCookie)
+                        .ifPresent(flowCookieRepository::delete)
+        );
     }
 }

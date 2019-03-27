@@ -22,6 +22,7 @@
         <module>atdd-staging</module>
         <module>kilda-pce</module>
         <module>kilda-utils</module>
+        <module>grpc-speaker</module>
     </modules>
 
     <properties>

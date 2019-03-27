@@ -237,11 +237,12 @@ services:
          - storm-supervisor.pendev
 
 
-  floodlight:
-    container_name: floodlight
+  floodlight_one:
+    container_name: floodlight_one
     build:
       context: services/src/fl-root/floodlight-modules
     image: "kilda/floodlight:${full_build_number:-latest}"
+    command: ["floodlight", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1"]
     ports:
       - "6653:6653"
       - "8180:8080"
@@ -256,7 +257,7 @@ services:
     networks:
       default:
         aliases:
-         - floodlight.pendev
+         - floodlight_one.pendev
 # we use kilda as hostname for FL in atdd topologies
          - kilda
     mem_limit: 1073741824
@@ -281,6 +282,23 @@ services:
       default:
         aliases:
          - northbound.pendev
+    mem_limit: 1073741824
+
+  grpc-speaker:
+    container_name: grpc-speaker
+    build:
+      context: services/src/grpc-speaker/grpc-service/
+    ports:
+    - "8091:8091"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      logstash:
+        condition: service_started
+    networks:
+      default:
+        aliases:
+         - grpc-speaker.pendev
     mem_limit: 1073741824
 
 

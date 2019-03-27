@@ -16,6 +16,7 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
@@ -35,6 +36,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
+import com.google.common.collect.Lists;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -43,12 +45,14 @@ import org.junit.Test;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
+    static final String TEST_GROUP_ID = "test_group";
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
     static final SwitchId TEST_SWITCH_C_ID = new SwitchId(3);
@@ -161,6 +165,16 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void shouldFindFlowByGroupId() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flow.setGroupId(TEST_GROUP_ID);
+        flowRepository.createOrUpdate(flow);
+
+        List<Flow> foundFlow = Lists.newArrayList(flowRepository.findByGroupId(TEST_GROUP_ID));
+        assertThat(foundFlow, Matchers.hasSize(1));
+    }
+
+    @Test
     public void shouldFindFlowIdsByEndpoint() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flowRepository.createOrUpdate(flow);
@@ -171,43 +185,49 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldFindActiveFlowIdsOverSegments() {
+    public void shouldFindActiveFlowsOverSegments() {
         Switch switchC = buildTestSwitch(TEST_SWITCH_C_ID.getId());
         switchRepository.createOrUpdate(switchC);
 
         Flow flow = buildTestFlowWithIntermediate(TEST_FLOW_ID, switchA, switchC, 100, switchB);
         flowRepository.createOrUpdate(flow);
 
-        Collection<String> foundFlowIds = flowRepository.findActiveFlowIdsWithPortInPath(TEST_SWITCH_C_ID, 100);
-        assertThat(foundFlowIds, Matchers.hasSize(1));
+        Collection<Flow> foundFlows = flowRepository.findActiveFlowsWithPortInPath(TEST_SWITCH_C_ID, 100);
+        assertThat(foundFlows, Matchers.hasSize(1));
     }
 
     @Test
-    public void shouldNotFindInactiveFlowIdsByEndpoint() {
+    public void shouldFindActiveFlowsByEndpoint() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
-        flow.setStatus(FlowStatus.DOWN);
-
         flowRepository.createOrUpdate(flow);
 
-        Collection<String> foundFlowIds = flowRepository.findActiveFlowIdsWithPortInPath(TEST_SWITCH_A_ID, 1);
-        assertThat(foundFlowIds, Matchers.empty());
+        Collection<Flow> foundFlows = flowRepository.findActiveFlowsWithPortInPath(TEST_SWITCH_A_ID, 1);
+        assertThat(foundFlows, Matchers.hasSize(1));
+    }
+
+    @Test
+    public void shouldNotFindInactiveFlowsByEndpoint() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flow.setStatus(FlowStatus.DOWN);
+        flowRepository.createOrUpdate(flow);
+
+        Collection<Flow> foundFlows = flowRepository.findActiveFlowsWithPortInPath(TEST_SWITCH_A_ID, 1);
+        assertThat(foundFlows, Matchers.empty());
     }
 
     @Test
     public void shouldFindDownFlowIdsByEndpoint() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flow.setStatus(FlowStatus.DOWN);
-
         flowRepository.createOrUpdate(flow);
 
-        Collection<String> foundFlowIds = flowRepository.findDownFlowIds();
-        assertThat(foundFlowIds, Matchers.hasSize(1));
+        Collection<Flow> foundFlows = flowRepository.findDownFlows();
+        assertThat(foundFlows, Matchers.hasSize(1));
     }
 
     @Test
     public void shouldFindFlowForIsl() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
-
         flowRepository.createOrUpdate(flow);
 
         Collection<Flow> foundFlow = flowRepository.findWithPathSegment(switchA.getSwitchId(), 1,
@@ -215,6 +235,32 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         assertThat(foundFlow, Matchers.hasSize(1));
         assertThat(foundFlow.iterator().next().getForwardPathId(), Matchers.equalTo(flow.getForwardPathId()));
         assertThat(foundFlow.iterator().next().getReversePathId(), Matchers.equalTo(flow.getReversePathId()));
+    }
+
+    @Test
+    public void shouldCreateFlowGroupIdForFlow() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flow.setGroupId(TEST_GROUP_ID);
+        flowRepository.createOrUpdate(flow);
+
+        Optional<String> groupOptional = flowRepository.getOrCreateFlowGroupId(TEST_FLOW_ID);
+
+        assertTrue(groupOptional.isPresent());
+        assertNotNull(groupOptional.get());
+        assertEquals(groupOptional.get(),
+                flowRepository.findById(TEST_FLOW_ID).get().getGroupId());
+    }
+
+    @Test
+    public void shouldGetFlowGroupIdForFlow() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flow.setGroupId(TEST_GROUP_ID);
+        flowRepository.createOrUpdate(flow);
+
+        Optional<String> groupOptional = flowRepository.getOrCreateFlowGroupId(TEST_FLOW_ID);
+
+        assertTrue(groupOptional.isPresent());
+        assertEquals(TEST_GROUP_ID, groupOptional.get());
     }
 
     private Flow buildTestFlow(String flowId, Switch srcSwitch, Switch destSwitch) {

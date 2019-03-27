@@ -36,6 +36,7 @@ import org.neo4j.ogm.cypher.Filters;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * Neo4J OGM implementation of {@link IslRepository}.
@@ -174,14 +175,14 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     @Override
     public void createOrUpdate(Isl link) {
         transactionManager.doInTransaction(() -> {
-            lockSwitches(requireManagedEntity(link.getSrcSwitch()), requireManagedEntity(link.getDestSwitch()));
+            lockSwitches(Stream.of(link.getSrcSwitch(), link.getDestSwitch()));
 
             super.createOrUpdate(link);
         });
     }
 
     @Override
-    Class<Isl> getEntityType() {
+    protected Class<Isl> getEntityType() {
         return Isl.class;
     }
 }

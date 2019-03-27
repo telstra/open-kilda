@@ -642,6 +642,22 @@ div.switch5 > input.switch:focus ~ label:before {
   content: "Kilda";
 }
 
+.onoffswitch-inner-kilda-switch-meter::before{
+  content:'Tabular View';
+  text-align: left;
+}
+.onoffswitch-inner-kilda-switch-meter::after{
+  content:'JSON view';
+  text-align: right;
+}
+
+.onoffswitch-switch-meter {
+   right: 82px; 
+}
+.onoffswitch-meter {
+  width: 110px;
+}
+
 /*End : Switch Css*/
 
 /* Start: User Management CSS */
@@ -1952,4 +1968,18 @@ button:focus{
 }
 .setting .form-control:disabled,.setting .form-control[readonly] {
   background-color: #d1d1d2;
+}
+
+.text-filters .btn-light:hover {
+  background: #f8f9fa !important;
+  border-color: transparent;
+}
+
+.dataTables_wrapper .dataTables_info{
+  padding-top: 5px !important;
+  margin-left: 10px;
+  clear: none !important;
+  border-left: 1px solid;
+  padding-left: 10px;
+  padding-bottom: 5px;
 }

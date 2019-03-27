@@ -181,7 +181,8 @@ public class BestCostAndShortestPathFinderTest {
     @Test
     public void shouldAddIntermediateSwitchWeightOnce() throws UnroutableFlowException {
         AvailableNetwork network = buildTestNetwork();
-        network.getSwitch(SWITCH_ID_A).setCost(100);
+        // shouldn't affect path if added once
+        network.getSwitch(SWITCH_ID_A).setDiversityWeight(100);
 
         BestCostAndShortestPathFinder pathFinder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, WEIGHT_FUNCTION);
         Pair<List<Edge>, List<Edge>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_D, SWITCH_ID_F);

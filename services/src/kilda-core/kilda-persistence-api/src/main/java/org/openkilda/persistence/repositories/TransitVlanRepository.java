@@ -23,5 +23,12 @@ import java.util.Optional;
 public interface TransitVlanRepository extends Repository<TransitVlan> {
     Optional<TransitVlan> findByPathId(PathId pathId);
 
-    Optional<Integer> findAvailableVlan();
+    /**
+     * Find a transit vlan which is not assigned to any flow.
+     * Use the provided defaultVlan as the first candidate.
+     *
+     * @param defaultVlan the potential meter to be checked first.
+     * @return a transit vlan or {@link Optional#empty()} if no vlan available.
+     */
+    Optional<Integer> findUnassignedTransitVlan(int defaultVlan);
 }

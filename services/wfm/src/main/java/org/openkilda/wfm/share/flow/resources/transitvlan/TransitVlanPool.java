@@ -53,8 +53,9 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
     @Override
     public TransitVlanResources allocate(Flow flow, PathId pathId) {
         return transactionManager.doInTransaction(() -> {
-            int availableVlan = transitVlanRepository.findAvailableVlan().orElse(minTransitVlan);
-            if (availableVlan >= maxTransitVlan) {
+            int availableVlan = transitVlanRepository.findUnassignedTransitVlan(minTransitVlan)
+                    .orElseThrow(() -> new ResourceNotAvailableException("No vlan available"));
+            if (availableVlan > maxTransitVlan) {
                 throw new ResourceNotAvailableException("No vlan available");
             }
 

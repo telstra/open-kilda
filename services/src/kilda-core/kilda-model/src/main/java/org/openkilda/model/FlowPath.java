@@ -43,7 +43,7 @@ import java.util.List;
  */
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId", "segments", "minAvailableBandwidth"})
+@EqualsAndHashCode(exclude = {"entityId", "segments"})
 @RelationshipEntity(type = "flow_path")
 public class FlowPath implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -87,8 +87,6 @@ public class FlowPath implements Serializable {
 
     @Property(name = "ignore_bandwidth")
     private boolean ignoreBandwidth;
-
-    private Long minAvailableBandwidth;
 
     @Property(name = "time_create")
     @Convert(InstantStringConverter.class)
@@ -149,32 +147,6 @@ public class FlowPath implements Serializable {
         if (pathId != null) {
             segments.forEach(pathSegment -> pathSegment.setPathId(pathId));
         }
-    }
-
-    /**
-     * Checks whether a flow is forward.
-     *
-     * @return boolean flag
-     */
-    public boolean isForward() {
-        boolean isForward = cookie.isMarkedAsForward();
-        boolean isReversed = cookie.isMarkedAsReversed();
-
-        if (isForward && isReversed) {
-            throw new IllegalArgumentException(
-                    "Invalid cookie flags combinations - it mark as forward and reverse flow at same time.");
-        }
-
-        return isForward;
-    }
-
-    /**
-     * Checks whether a flow is reverse.
-     *
-     * @return boolean flag
-     */
-    public boolean isReverse() {
-        return !isForward();
     }
 
     /**

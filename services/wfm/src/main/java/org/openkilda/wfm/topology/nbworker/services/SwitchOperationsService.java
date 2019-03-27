@@ -39,6 +39,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -175,13 +176,12 @@ public class SwitchOperationsService {
      * @throws IllegalSwitchStateException if switch has Flow relations
      */
     public void checkSwitchHasNoFlows(SwitchId switchId) throws IllegalSwitchStateException {
-        Collection<Flow> outgoingFlows = flowRepository.findBySrcSwitchId(switchId);
-        Collection<Flow> ingoingFlows = flowRepository.findByDstSwitchId(switchId);
+        Collection<Flow> flows = flowRepository.findByEndpointSwitch(switchId);
 
-        if (!outgoingFlows.isEmpty() || !ingoingFlows.isEmpty()) {
-            List<String> flowIds = Stream.concat(ingoingFlows.stream(), outgoingFlows.stream())
+        if (!flows.isEmpty()) {
+            Set<String> flowIds = flows.stream()
                     .map(Flow::getFlowId)
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toSet());
 
             String message = String.format("Switch '%s' has %d assigned flows: %s.",
                     switchId, flowIds.size(), flowIds);
@@ -195,12 +195,11 @@ public class SwitchOperationsService {
      * @throws IllegalSwitchStateException if switch has Flow Segment relations
      */
     public void checkSwitchHasNoFlowSegments(SwitchId switchId) throws IllegalSwitchStateException {
-        Collection<FlowPath> outgoingFlowPaths = flowPathRepository.findBySegmentSrcSwitchId(switchId);
-        Collection<FlowPath> ingoingFlowPaths = flowPathRepository.findBySegmentDestSwitchId(switchId);
+        Collection<FlowPath> flowPaths = flowPathRepository.findBySegmentSwitch(switchId);
 
-        if (!ingoingFlowPaths.isEmpty() || !outgoingFlowPaths.isEmpty()) {
+        if (!flowPaths.isEmpty()) {
             String message = String.format("Switch '%s' has %d assigned rules. It must be freed first.",
-                    switchId, ingoingFlowPaths.size() + outgoingFlowPaths.size());
+                    switchId, flowPaths.size());
             throw new IllegalSwitchStateException(switchId.toString(), message);
         }
     }

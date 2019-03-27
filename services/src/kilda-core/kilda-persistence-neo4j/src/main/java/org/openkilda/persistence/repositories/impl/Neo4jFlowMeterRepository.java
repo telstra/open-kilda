@@ -44,11 +44,6 @@ public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> 
         super(sessionFactory, transactionManager);
     }
 
-    int getDepthCreateUpdateEntity() {
-        // this depth allows to link the meter entity to a switch.
-        return 1;
-    }
-
     @Override
     public Optional<FlowMeter> findByPathId(PathId pathId) {
         Filter pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, pathId);
@@ -61,23 +56,49 @@ public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> 
     }
 
     @Override
-    public Optional<MeterId> findAvailableMeterId(SwitchId switchId) {
+    public Optional<MeterId> findUnassignedMeterId(SwitchId switchId, MeterId defaultMeterId) {
         Map<String, Object> parameters = ImmutableMap.of(
-                "switch_id", switchId.toString());
+                "default_meter", defaultMeterId.getValue(),
+                "switch_id", switchId.toString()
+        );
 
-        String query = "MATCH (n:flow_meter {switch_id: $switch_id}) "
-                + "OPTIONAL MATCH (n1:flow_meter {switch_id: $switch_id}) "
-                + "WHERE (n.meter_id + 1) = n1.meter_id "
-                + "WITH n, n1 "
-                + "WHERE n1 IS NULL "
-                + "RETURN n.meter_id + 1";
+        // The query returns the default_meter if it's not used in any flow_meter,
+        // otherwise locates a gap between / after the values used in flow_meter entities.
+
+        String query = "UNWIND [$default_meter] AS meter "
+                + "OPTIONAL MATCH (n:flow_meter {switch_id: $switch_id}) "
+                + "WHERE meter = n.meter_id "
+                + "WITH meter, n "
+                + "WHERE n IS NULL "
+                + "RETURN meter "
+                + "UNION ALL "
+                + "MATCH (n1:flow_meter {switch_id: $switch_id}) "
+                + "OPTIONAL MATCH (n2:flow_meter {switch_id: $switch_id}) "
+                + "WHERE (n1.meter_id + 1) = n2.meter_id "
+                + "WITH n1, n2 "
+                + "WHERE n2 IS NULL "
+                + "RETURN n1.meter_id + 1 AS meter "
+                + "LIMIT 1";
 
         Iterator<Long> results = getSession().query(Long.class, query, parameters).iterator();
         return results.hasNext() ? Optional.of(results.next()).map(MeterId::new) : Optional.empty();
     }
 
     @Override
-    Class<FlowMeter> getEntityType() {
+    public void createOrUpdate(FlowMeter entity) {
+        requireManagedEntity(entity.getTheSwitch());
+
+        super.createOrUpdate(entity);
+    }
+
+    @Override
+    protected Class<FlowMeter> getEntityType() {
         return FlowMeter.class;
+    }
+
+    @Override
+    protected int getDepthCreateUpdateEntity() {
+        // This is the minimum depth that allows to link the meter entity to a switch.
+        return 1;
     }
 }

@@ -18,6 +18,7 @@ package org.openkilda.model;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.UUID;
 
@@ -51,50 +52,39 @@ public class FlowPair implements Serializable {
 
     @VisibleForTesting
     public FlowPair(Switch srcSwitch, Switch destSwitch) {
-        this(UUID.randomUUID().toString(), srcSwitch, 0, 0, destSwitch, 0, 0);
+        this(UUID.randomUUID().toString(), srcSwitch, 0, 0, destSwitch, 0, 0, 0);
     }
 
     @VisibleForTesting
     public FlowPair(String flowId, Switch srcSwitch, int srcPort, int srcVlan,
-                    Switch destSwitch, int destPort, int destVlan) {
-        PathId forwardPathId = new PathId(UUID.randomUUID().toString());
+                    Switch destSwitch, int destPort, int destVlan, long unmaskedCookie) {
+        FlowPath forwardPath = buildFlowPath(flowId, srcSwitch, destSwitch, Cookie.buildForwardCookie(unmaskedCookie));
+        FlowPath reversePath = buildFlowPath(flowId, destSwitch, srcSwitch, Cookie.buildReverseCookie(unmaskedCookie));
 
-        FlowPath forwardPath = new FlowPath();
-        forwardPath.setFlowId(flowId);
-        forwardPath.setPathId(forwardPathId);
-        forwardPath.setSrcSwitch(srcSwitch);
-        forwardPath.setDestSwitch(destSwitch);
-        forwardPath.setSegments(Collections.emptyList());
+        Flow flow = Flow.builder()
+                .flowId(flowId)
+                .srcSwitch(srcSwitch)
+                .srcPort(srcPort)
+                .srcVlan(srcVlan)
+                .destSwitch(destSwitch)
+                .destPort(destPort)
+                .destVlan(destVlan)
+                .forwardPath(forwardPath)
+                .reversePath(reversePath)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .build();
 
-        PathId reversePathId = new PathId(UUID.randomUUID().toString());
+        TransitVlan forwardTransitVlan = TransitVlan.builder()
+                .flowId(flowId)
+                .pathId(forwardPath.getPathId())
+                .vlan(srcVlan + destVlan + 1)
+                .build();
 
-        FlowPath reversePath = new FlowPath();
-        reversePath.setFlowId(flowId);
-        reversePath.setPathId(reversePathId);
-        reversePath.setSrcSwitch(destSwitch);
-        reversePath.setDestSwitch(srcSwitch);
-        reversePath.setSegments(Collections.emptyList());
-
-        Flow flow = new Flow();
-        flow.setFlowId(flowId);
-        flow.setSrcSwitch(srcSwitch);
-        flow.setSrcPort(srcPort);
-        flow.setSrcVlan(srcVlan);
-        flow.setDestSwitch(destSwitch);
-        flow.setDestPort(destPort);
-        flow.setDestVlan(destVlan);
-        flow.setForwardPath(forwardPath);
-        flow.setReversePath(reversePath);
-
-        TransitVlan forwardTransitVlan = new TransitVlan();
-        forwardTransitVlan.setFlowId(flowId);
-        forwardTransitVlan.setPathId(forwardPathId);
-        forwardTransitVlan.setVlan(srcVlan + destVlan + 1);
-
-        TransitVlan reverseTransitVlan = new TransitVlan();
-        reverseTransitVlan.setFlowId(flowId);
-        reverseTransitVlan.setPathId(reversePathId);
-        reverseTransitVlan.setVlan(srcVlan + destVlan + 2);
+        TransitVlan reverseTransitVlan = TransitVlan.builder()
+                .flowId(flowId)
+                .pathId(reversePath.getPathId())
+                .vlan(srcVlan + destVlan + 2)
+                .build();
 
         forward = new UnidirectionalFlow(flow, forwardPath, forwardTransitVlan, true);
         reverse = new UnidirectionalFlow(flow, reversePath, reverseTransitVlan, false);
@@ -132,5 +122,26 @@ public class FlowPair implements Serializable {
 
     public boolean isActive() {
         return forward.isActive() && reverse.isActive();
+    }
+
+    public void setTimeCreate(Instant timeCreate) {
+        forward.setTimeCreate(timeCreate);
+        reverse.setTimeCreate(timeCreate);
+    }
+
+    public void setTimeModify(Instant timeModify) {
+        forward.setTimeModify(timeModify);
+        reverse.setTimeModify(timeModify);
+    }
+
+    private FlowPath buildFlowPath(String flowId, Switch pathSrc, Switch pathDest, Cookie cookie) {
+        return FlowPath.builder()
+                .flowId(flowId)
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(pathSrc)
+                .destSwitch(pathDest)
+                .segments(Collections.emptyList())
+                .cookie(cookie)
+                .build();
     }
 }
