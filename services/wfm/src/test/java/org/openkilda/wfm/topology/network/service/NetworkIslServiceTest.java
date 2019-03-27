@@ -39,25 +39,32 @@ import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.spi.PersistenceProvider;
+import org.openkilda.wfm.EmbeddedNeo4jDatabase;
 import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.neo4j.ogm.testutil.TestServer;
 
 import java.util.Collections;
 import java.util.Optional;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkIslServiceTest {
+    private static EmbeddedNeo4jDatabase dbTestServer;
+
+    @ClassRule
+    public static TemporaryFolder fsData = new TemporaryFolder();
+
     private final Endpoint endpointAlpha1 = Endpoint.of(new SwitchId(1), 1);
     private final Endpoint endpointBeta2 = Endpoint.of(new SwitchId(2), 2);
 
@@ -107,7 +114,7 @@ public class NetworkIslServiceTest {
     @Test
     @Ignore("incomplete")
     public void initialUp() {
-        TestServer dbTestServer = new TestServer(true, true, 5);
+        dbTestServer = new EmbeddedNeo4jDatabase(fsData.getRoot());
         persistenceManager = PersistenceProvider.getInstance().createPersistenceManager(
                 new ConfigurationProvider() { //NOSONAR
                     @SuppressWarnings("unchecked")
@@ -117,17 +124,17 @@ public class NetworkIslServiceTest {
                             return (T) new Neo4jConfig() {
                                 @Override
                                 public String getUri() {
-                                    return dbTestServer.getUri();
+                                    return dbTestServer.getConnectionUri();
                                 }
 
                                 @Override
                                 public String getLogin() {
-                                    return dbTestServer.getUsername();
+                                    return "";
                                 }
 
                                 @Override
                                 public String getPassword() {
-                                    return dbTestServer.getPassword();
+                                    return "";
                                 }
 
                                 @Override

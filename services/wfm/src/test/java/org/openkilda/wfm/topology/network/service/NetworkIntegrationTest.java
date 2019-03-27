@@ -25,16 +25,18 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
+import org.openkilda.wfm.EmbeddedNeo4jDatabase;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.neo4j.ogm.testutil.TestServer;
 
 import java.net.Inet4Address;
 import java.net.InetSocketAddress;
@@ -45,8 +47,11 @@ import java.util.Set;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkIntegrationTest {
-    private static TestServer dbTestServer;
+    private static EmbeddedNeo4jDatabase dbTestServer;
     private static PersistenceManager persistenceManager;
+
+    @ClassRule
+    public static TemporaryFolder fsData = new TemporaryFolder();
 
     private static final NetworkOptions options = NetworkOptions.builder()
             .bfdEnabled(true)
@@ -87,7 +92,7 @@ public class NetworkIntegrationTest {
 
     @BeforeClass
     public static void setUpOnce() {
-        dbTestServer = new TestServer(true, true, 5);
+        dbTestServer = new EmbeddedNeo4jDatabase(fsData.getRoot());
         persistenceManager = PersistenceProvider.getInstance().createPersistenceManager(
                 new ConfigurationProvider() { //NOSONAR
                     @SuppressWarnings("unchecked")
@@ -97,17 +102,17 @@ public class NetworkIntegrationTest {
                             return (T) new Neo4jConfig() {
                                 @Override
                                 public String getUri() {
-                                    return dbTestServer.getUri();
+                                    return dbTestServer.getConnectionUri();
                                 }
 
                                 @Override
                                 public String getLogin() {
-                                    return dbTestServer.getUsername();
+                                    return "";
                                 }
 
                                 @Override
                                 public String getPassword() {
-                                    return dbTestServer.getPassword();
+                                    return "";
                                 }
 
                                 @Override
