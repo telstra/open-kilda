@@ -78,4 +78,12 @@ public class KafkaChannel implements IFloodlightModule {
         moduleContext.getServiceImpl(IKafkaProducerService.class).setup(moduleContext);
         moduleContext.getServiceImpl(HeartBeatService.class).setup(moduleContext);
     }
+
+    public String getSpeakerWorkerFlowHsTopic() {
+        return formatTopicWithRegion(topics.getFlowSpeakerWorkerTopic());
+    }
+
+    public String getFlowHsTopic() {
+        return formatTopicWithRegion(topics.getFlowHsTopic());
+    }
 }

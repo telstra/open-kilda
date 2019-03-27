@@ -53,8 +53,8 @@ public class ConsumerContext {
         return kafkaTopics.getFlowTopic();
     }
 
-    public String getKafkaFlowWorkerTopic() {
-        return kafkaTopics.getFlowSpeakerWorkerTopic();
+    public String getKafkaFlowHsWorkerTopic() {
+        return kafkaChannel.getSpeakerWorkerFlowHsTopic();
     }
 
     public String getKafkaTopoDiscoTopic() {

@@ -16,7 +16,6 @@
 package org.openkilda.floodlight.command.meter;
 
 import static java.util.Collections.singletonList;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.MAX_CENTEC_SWITCH_BURST_SIZE;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 
 import org.openkilda.floodlight.FloodlightResponse;
@@ -31,8 +30,7 @@ import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
 import org.openkilda.messaging.MessageContext;
-import org.openkilda.messaging.model.Switch;
-import org.openkilda.messaging.model.Switch.Feature;
+import org.openkilda.model.Meter;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -99,14 +97,9 @@ public class InstallMeterCommand extends MeterCommand {
         checkSwitchSupportCommand(sw, featureDetectorService);
 
         if (meterId > 0L) {
-            long burstSize = Math.max(config.getFlowMeterMinBurstSizeInKbits(),
-                    (long) (bandwidth * config.getFlowMeterBurstCoefficient()));
-
-            Set<Switch.Feature> supportedFeatures = featureDetectorService.detectSwitch(sw);
-            if (supportedFeatures.contains(Feature.LIMITED_BURST_SIZE)) {
-                // Burst size > 32 000 Kbit/s is not supported by Centec switches
-                burstSize = Math.min(burstSize, MAX_CENTEC_SWITCH_BURST_SIZE);
-            }
+            long burstSize = Meter.calculateBurstSize(bandwidth, config.getFlowMeterMinBurstSizeInKbits(),
+                    config.getFlowMeterBurstCoefficient(), sw.getSwitchDescription().getManufacturerDescription(),
+                    sw.getSwitchDescription().getSoftwareDescription());
 
             Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
             return getMeter(sw, flags, burstSize);
