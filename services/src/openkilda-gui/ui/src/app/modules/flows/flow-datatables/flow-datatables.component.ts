@@ -82,13 +82,11 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
         { sWidth: '10%' },
         { sWidth: '10%' },
         { sWidth: '1%' ,"bSortable": false},
-        { sWidth: '1%' ,"bSortable": false},
-        { sWidth: '1%' ,"bSortable": false},
         { sWidth: '10%' ,"bSortable": false},
        
        ],
        columnDefs:[
-        { targets: [10], visible: false},{ targets: [11], visible: false},{ targets: [12], visible: false}
+        { targets: [10], visible: false},
       ],
       initComplete:function( settings, json ){
         setTimeout(function(){

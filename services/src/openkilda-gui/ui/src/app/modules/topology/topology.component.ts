@@ -1683,7 +1683,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
   };
 
   showFlowDetails = d => {
-    let url = "flows?src=" + d.source_switch + "&dst=" + d.target_switch;
+    let url = "flows?src=" + d.source_switch_name + "&dst=" + d.target_switch_name;
     window.location.href = url;
   };
 
