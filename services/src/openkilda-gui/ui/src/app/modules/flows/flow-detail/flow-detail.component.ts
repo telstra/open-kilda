@@ -666,7 +666,7 @@ export class FlowDetailComponent implements OnInit {
     this.flowService.pingFlow(this.flowDetail.flowid).subscribe(
       data => {
         var forward_ping = (data && data['forward'] && data['forward']['ping_success']) ?data['forward']['ping_success'] : false;
-        var reverse_ping = (data && data['forward'] && data['forward']['ping_success']) ?data['forward']['ping_success'] : false;
+        var reverse_ping = (data && data['reverse'] && data['reverse']['ping_success']) ?data['reverse']['ping_success'] : false;
         if(!forward_ping){
           $('#forward_ping_errors').html('<p>'+data['forward']['error']+'</p>');
         }
