@@ -21,7 +21,8 @@ class LinkPropertiesSpec extends BaseSpecification {
             new LinkPropsDto("00:00:00:00:00:00:00:01", 1, "00:00:00:00:00:00:00:02", 1, [:]),
             new LinkPropsDto("00:00:00:00:00:00:00:01", 2, "00:00:00:00:00:00:00:02", 1, [:]),
             new LinkPropsDto("00:00:00:00:00:00:00:01", 2, "00:00:00:00:00:00:00:02", 2, [:]),
-            new LinkPropsDto("00:00:00:00:00:00:00:03", 3, "00:00:00:00:00:00:00:03", 3, [:])
+            new LinkPropsDto("00:00:00:00:00:00:00:03", 3, "00:00:00:00:00:00:00:03", 3, [:]),
+            new LinkPropsDto("00:00:00:00:00:00:00:02", 1, "00:00:00:00:00:00:00:01", 1, [:])
     ]
 
     def setupOnce() {
@@ -139,8 +140,8 @@ class LinkPropertiesSpec extends BaseSpecification {
         then: "Cost on ISL is really updated"
         database.getIslCost(isl) == cost.toInteger()
 
-        and: "Cost on reverse ISL is not changed"
-        database.getIslCost(isl.reversed) == Constants.DEFAULT_COST
+        and: "Cost on reverse ISL is changed"
+        database.getIslCost(isl.reversed) == cost.toInteger()
 
         when: "Delete link props"
         northbound.deleteLinkProps(linkProps)
