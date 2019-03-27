@@ -16,6 +16,7 @@
 package org.openkilda.northbound.service;
 
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -32,11 +33,14 @@ import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
 import org.openkilda.messaging.nbtopology.request.LinkPropsRequest;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
+import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.MessageExchanger;
 import org.openkilda.northbound.config.KafkaConfig;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkMaxBandwidthDto;
+import org.openkilda.northbound.dto.links.LinkMaxBandwidthRequest;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkStatus;
 import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
@@ -104,12 +108,20 @@ public class LinkServiceTest {
 
         LinkDto link = result.get(0);
         assertThat(link.getSpeed(), is(0L));
+        assertThat(link.getMaxBandwidth(), is(0L));
+        assertThat(link.getAvailableBandwidth(), is(0L));
+        assertThat(link.getCost(), is(0));
+        assertThat(link.isUnderMaintenance(), is(false));
         assertThat(link.getState(), is(LinkStatus.DISCOVERED));
 
         assertFalse(link.getPath().isEmpty());
         PathDto path = link.getPath().get(0);
         assertThat(path.getSwitchId(), is(switchId.toString()));
         assertThat(path.getPortNo(), is(1));
+
+        path = link.getPath().get(1);
+        assertThat(path.getSwitchId(), is(switchId.toString()));
+        assertThat(path.getPortNo(), is(2));
     }
 
     @Test
@@ -174,6 +186,41 @@ public class LinkServiceTest {
     }
 
     @Test
+    public void updateMaxBandwidth() {
+
+        final String correlationId = "update-max-bw-corrId";
+        Long maxBandwidth = 1000L;
+        SwitchId srcSwitch = new SwitchId("ff:fe:00:00:00:00:00:01");
+        Integer srcPort = 8;
+        SwitchId dstSwitch = new SwitchId("ff:fe:00:00:00:00:00:02");
+        Integer dstPort = 9;
+
+        LinkMaxBandwidthRequest inputRequest = new LinkMaxBandwidthRequest();
+        inputRequest.setMaxBandwidth(maxBandwidth);
+
+        HashMap<String, String> requestProps = new HashMap<>();
+        requestProps.put(LinkProps.MAX_BANDWIDTH_PROP_NAME, String.valueOf(maxBandwidth));
+
+        org.openkilda.messaging.model.LinkPropsDto linkProps = new org.openkilda.messaging.model.LinkPropsDto(
+                new NetworkEndpoint(srcSwitch, srcPort), new NetworkEndpoint(dstSwitch, dstPort), requestProps);
+        LinkPropsRequest request = new LinkPropsPut(linkProps);
+
+        LinkPropsResponse payload = new LinkPropsResponse(request, linkProps, null);
+
+        messageExchanger.mockResponse(correlationId, payload);
+        RequestCorrelationId.create(correlationId);
+
+        LinkMaxBandwidthDto result =
+                linkService.updateLinkBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, inputRequest).join();
+
+        assertEquals(srcSwitch.toString(), result.getSrcSwitch());
+        assertEquals(dstSwitch.toString(), result.getDstSwitch());
+        assertEquals(srcPort, result.getSrcPort());
+        assertEquals(dstPort, result.getDstPort());
+        assertEquals(maxBandwidth, result.getMaxBandwidth());
+    }
+
+    @Test
     public void dropLinkProps() {
         final String correlationId = getClass().getCanonicalName();
 
@@ -206,12 +253,12 @@ public class LinkServiceTest {
     public void testLinkUnderMaintenance() {
         String correlationId = "links-list";
         SwitchId switchId = new SwitchId(1L);
-        boolean underMaintenance = false;
+        boolean underMaintenance = true;
         boolean evacuate = false;
 
         IslInfoData islInfoData = new IslInfoData(
                 new PathNode(switchId, 1, 0), new PathNode(switchId, 2, 1),
-                IslChangeType.DISCOVERED, false);
+                IslChangeType.DISCOVERED, true);
 
         messageExchanger.mockChunkedResponse(correlationId, Collections.singletonList(islInfoData));
         RequestCorrelationId.create(correlationId);
@@ -225,7 +272,7 @@ public class LinkServiceTest {
         assertFalse("List of link shouldn't be empty", result.isEmpty());
 
         LinkDto link = result.get(0);
-        assertThat(link.getSpeed(), is(0L));
+        assertThat(link.isUnderMaintenance(), is(true));
         assertThat(link.getState(), is(LinkStatus.DISCOVERED));
 
         assertFalse(link.getPath().isEmpty());
