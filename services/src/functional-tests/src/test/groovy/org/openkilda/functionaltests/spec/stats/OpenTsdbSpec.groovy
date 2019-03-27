@@ -19,11 +19,8 @@ class OpenTsdbSpec extends BaseSpecification {
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
 
-    @Issue("https://github.com/telstra/open-kilda/issues/1434")
     @Unroll("Stats are being logged for metric:#metric, tags:#tags")
     def "Basic stats are being logged"(metric, tags) {
-        requireProfiles("hardware") //due to #1434
-
         expect: "At least 1 result in the past 2 minutes"
         otsdb.query(2.minutes.ago, metric, tags).dps.size() > 0
 
