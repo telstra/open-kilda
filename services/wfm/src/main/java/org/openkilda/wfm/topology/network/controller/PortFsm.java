@@ -121,7 +121,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
     }
 
     public void upEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
-        logWrapper.onUpdatePortStatus(endpoint.getDatapath(), endpoint.getPortNumber(), LinkStatus.UP);
+        logWrapper.onUpdatePortStatus(endpoint, LinkStatus.UP);
         context.getOutput().enableDiscoveryPoll(endpoint);
     }
 
@@ -134,7 +134,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
     }
 
     public void downEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
-        logWrapper.onUpdatePortStatus(endpoint.getDatapath(), endpoint.getPortNumber(), LinkStatus.DOWN);
+        logWrapper.onUpdatePortStatus(endpoint, LinkStatus.DOWN);
 
         IPortCarrier output = context.getOutput();
         output.disableDiscoveryPoll(endpoint);
