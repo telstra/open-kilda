@@ -62,4 +62,13 @@ public abstract class AbstractPort implements Serializable {
      * @return the type of port.
      */
     public abstract String getLogIdentifier();
+
+    /**
+     * Endpoint of port for dashboard log.
+     *
+     * @return the endpoint.
+     */
+    public String getLogEndpoint() {
+        return endpoint.toString();
+    }
 }
