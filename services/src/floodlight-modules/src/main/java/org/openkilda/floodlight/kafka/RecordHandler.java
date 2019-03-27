@@ -38,6 +38,7 @@ import org.openkilda.floodlight.kafka.dispatcher.CommandDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.PingRequestDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.RemoveBfdSessionDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.SetupBfdSessionDispatcher;
+import org.openkilda.floodlight.kafka.dispatcher.StatsRequestDispatcher;
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -1128,7 +1129,8 @@ class RecordHandler implements Runnable {
         private final List<CommandDispatcher<?>> dispatchers = ImmutableList.of(
                 new PingRequestDispatcher(),
                 new SetupBfdSessionDispatcher(),
-                new RemoveBfdSessionDispatcher());
+                new RemoveBfdSessionDispatcher(),
+                new StatsRequestDispatcher());
 
         public Factory(ConsumerContext context) {
             this.context = context;

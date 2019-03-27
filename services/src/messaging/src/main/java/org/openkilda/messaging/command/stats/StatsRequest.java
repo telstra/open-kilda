@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,16 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.statistics;
+package org.openkilda.messaging.command.stats;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
-import com.sabre.oss.conf4j.annotation.Key;
+import org.openkilda.messaging.command.CommandData;
 
-import javax.validation.constraints.Min;
-
-@Configuration
-public interface StatisticsServiceConfig {
-    @Key("interval")
-    @Min(0)
-    int getInterval();
+public class StatsRequest extends CommandData {
 }

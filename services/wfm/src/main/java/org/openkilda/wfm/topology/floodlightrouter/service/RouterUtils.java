@@ -27,6 +27,7 @@ import org.openkilda.messaging.command.flow.BatchInstallRequest;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.command.stats.StatsRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
@@ -55,7 +56,8 @@ public final class RouterUtils {
         if (message instanceof CommandMessage) {
             CommandData commandData = ((CommandMessage) message).getData();
             if (commandData instanceof PortsCommandData
-                     || commandData instanceof ConnectModeRequest) {
+                     || commandData instanceof ConnectModeRequest
+                     || commandData instanceof StatsRequest) {
                 return true;
             }
         }

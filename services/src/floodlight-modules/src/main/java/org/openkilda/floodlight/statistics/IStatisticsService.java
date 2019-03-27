@@ -15,7 +15,9 @@
 
 package org.openkilda.floodlight.statistics;
 
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightService;
 
 public interface IStatisticsService extends IFloodlightService {
+    void processStatistics(FloodlightModuleContext context);
 }
