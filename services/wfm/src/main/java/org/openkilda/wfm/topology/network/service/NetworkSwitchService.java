@@ -177,7 +177,7 @@ public class NetworkSwitchService {
         if (fsm.isTerminated()) {
             controller.remove(datapath);
             log.debug("Switch service removed FSM {}", datapath);
-            logWrapper.onSwitchDelete(datapath);
+            logWrapper.onSwitchDelete(datapath, context.getSpeakerData().getSwitchSocketAddress().getHostName());
         } else {
             log.error("Switch service remove failed for FSM {}, state: {}", datapath, fsm.getCurrentState());
         }
