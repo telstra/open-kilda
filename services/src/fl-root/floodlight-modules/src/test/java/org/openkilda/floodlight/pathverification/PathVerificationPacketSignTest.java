@@ -24,6 +24,7 @@ import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 
 import org.openkilda.floodlight.model.OfInput;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
 
@@ -91,7 +92,7 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
 
     @Test
     public void testSignPacketPositive() throws Exception {
-        producerService.sendMessageAndTrack(anyObject(), anyObject(), anyObject());
+        producerService.sendMessageAndTrack(anyObject(), anyObject(), anyObject(Message.class));
         expectLastCall().once();
         replay(producerService);
 

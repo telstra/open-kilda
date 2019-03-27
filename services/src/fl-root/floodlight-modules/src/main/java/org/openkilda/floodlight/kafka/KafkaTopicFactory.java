@@ -33,7 +33,7 @@ public class KafkaTopicFactory {
      */
     public String getTopic(FloodlightResponse response) {
         if (response instanceof FlowResponse) {
-            return context.getKafkaFlowWorkerTopic();
+            return context.getKafkaFlowHsWorkerTopic();
         } else {
             throw new UnsupportedOperationException(String.format("Failed to find kafka topic for %s", response));
         }
