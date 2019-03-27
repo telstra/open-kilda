@@ -1127,9 +1127,13 @@ text {
   margin-left: 0px;
 } */
 #topology-hover-txt div.form-wrapper,
-#ping-hover-txt div.form-wrapper,
 #topology-click-txt div.form-wrapper {
   padding: 5px 10px;
+  font-size: 12px;
+}
+
+#ping-hover-txt div.form-wrapper{
+  padding: 12px 10px;
   font-size: 12px;
 }
 
