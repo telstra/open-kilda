@@ -184,6 +184,44 @@ class LinkSpec extends BaseSpecification {
         database.resetCosts()
     }
 
+    def "ISL should immediately fail if the port went down while switch was disconnected"() {
+        requireProfiles("virtual")
+
+        when: "A switch disconnects"
+        def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
+        lockKeeper.knockoutSwitch(isl.srcSwitch.dpId)
+
+        and: "One of its ports goes down"
+        //Bring down port on a-switch, which will lead to a port down on the Kilda switch
+        lockKeeper.portsDown([isl.aswitch.inPort])
+
+        and: "The switch reconnects back with a port being down"
+        lockKeeper.reviveSwitch(isl.srcSwitch.dpId)
+
+        then: "The related ISL immediately goes down"
+        Wrappers.wait(WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
+        }
+
+        when: "The switch disconnects again"
+        lockKeeper.knockoutSwitch(isl.srcSwitch.dpId)
+
+        and: "The DOWN port is brought back to UP state"
+        lockKeeper.portsUp([isl.aswitch.inPort])
+
+        and: "The switch reconnects back with a port being up"
+        lockKeeper.reviveSwitch(isl.srcSwitch.dpId)
+
+        then: "The related ISL is discovered again"
+        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
+        }
+    }
+
     @Unroll
     def "Unable to get flows for NOT existing link (#item doesn't exist) "() {
         when: "Get flows for NOT existing link"
@@ -273,11 +311,9 @@ class LinkSpec extends BaseSpecification {
 
         when: "Try to delete the link"
         def response = northbound.deleteLink(islUtils.toLinkParameters(isl))
-        // TODO(rtretiak): Below line to be removed after #1977 fix
-        northbound.deleteLink(islUtils.toLinkParameters(isl.reversed))
 
         then: "The link is actually deleted"
-        response.deleted
+        response.size() == 2
         !islUtils.getIslInfo(isl)
         !islUtils.getIslInfo(isl.reversed)
 
@@ -293,13 +329,10 @@ class LinkSpec extends BaseSpecification {
         database.resetCosts()
 
         where:
-        [islDescription, isl] << [
-                ["direct", getTopology().islsForActiveSwitches.find { !it.aswitch && !it.bfd }],
-                ["a-switch", getTopology().islsForActiveSwitches.find {
-                    it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd
-                }],
-                ["bfd", getTopology().islsForActiveSwitches.find { it.bfd }]
-        ]
+        islDescription | isl
+        "direct"       | getTopology().islsForActiveSwitches.find { !it.aswitch && !it.bfd }
+        "a-switch"     | getTopology().islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd }
+        "bfd"          | getTopology().islsForActiveSwitches.find { it.bfd }
     }
 
     def "Reroute all flows going through a particular link"() {
@@ -315,6 +348,9 @@ class LinkSpec extends BaseSpecification {
             } && possibleFlowPaths.size() > 1
         } ?: assumeTrue("No suiting switches found", false)
 
+        and: "Make the first path more preferable than others by setting corresponding link props"
+        possibleFlowPaths[1..-1].each { pathHelper.makePathMorePreferable(possibleFlowPaths.first(), it) }
+
         and: "Create a couple of flows going through these switches"
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow1)
@@ -324,10 +360,14 @@ class LinkSpec extends BaseSpecification {
         flowHelper.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
 
-        assert flow1Path == flow2Path
+        assert flow1Path == possibleFlowPaths.first()
+        assert flow2Path == possibleFlowPaths.first()
+
+        and: "Delete link props from all links of alternative paths to allow rerouting flows"
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
 
         and: "Make the current flows path not preferable"
-        pathHelper.makePathMorePreferable(possibleFlowPaths.find { it != flow1Path }, flow1Path)
+        possibleFlowPaths[1..-1].each { pathHelper.makePathMorePreferable(it, possibleFlowPaths.first()) }
 
         when: "Submit request for rerouting flows"
         def isl = pathHelper.getInvolvedIsls(flow1Path).first()
@@ -336,8 +376,9 @@ class LinkSpec extends BaseSpecification {
         then: "Flows are rerouted"
         response.containsAll([flow1, flow2]*.id)
 
-        def flow1PathUpdated = null
-        def flow2PathUpdated = null
+        def flow1PathUpdated
+        def flow2PathUpdated
+
         Wrappers.wait(WAIT_OFFSET) {
             flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.id))
             flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.id))
@@ -453,6 +494,34 @@ class LinkSpec extends BaseSpecification {
         getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
+    }
+
+    def "Isl is able to properly fail when both src and dst switches suddenly disconnect"() {
+        requireProfiles("virtual")
+
+        given: "An ISL under test"
+        def isl = topology.islsForActiveSwitches.first()
+
+        when: "Source and destination switches of the ISL suddenly disconnect"
+        lockKeeper.knockoutSwitch(isl.srcSwitch.dpId)
+        lockKeeper.knockoutSwitch(isl.dstSwitch.dpId)
+
+        then: "ISL gets failed after discovery timeout"
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
+        }
+
+        and: "Restore broken switches and revive ISL"
+        lockKeeper.reviveSwitch(isl.srcSwitch.dpId)
+        lockKeeper.reviveSwitch(isl.dstSwitch.dpId)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            assert northbound.getActiveSwitches()*.switchId.containsAll([isl.srcSwitch.dpId, isl.dstSwitch.dpId])
+            northbound.getAllLinks().each {
+                assert it.state == IslChangeType.DISCOVERED
+            }
+        }
     }
 
     @Memoized

@@ -113,6 +113,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         Properties configOverlay = new Properties();
         configOverlay.setProperty("neo4j.uri", embeddedNeo4jDb.getConnectionUri());
         configOverlay.setProperty("opentsdb.metric.prefix", METRIC_PREFIX);
+        configOverlay.setProperty("neo4j.indexes.auto", "update");
 
         launchEnvironment.setupOverlay(configOverlay);
 

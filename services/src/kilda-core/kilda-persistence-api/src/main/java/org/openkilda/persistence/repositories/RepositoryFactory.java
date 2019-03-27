@@ -46,4 +46,6 @@ public interface RepositoryFactory {
     HistoryLogRepository createHistoryLogRepository();
 
     StateLogRepository createStateLogRepository();
+
+    BfdPortRepository createBfdPortRepository();
 }

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,38 +15,28 @@
 
 package org.openkilda.messaging.model;
 
+import org.openkilda.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
-import lombok.NonNull;
 import lombok.Value;
 
 import java.io.Serializable;
+import java.net.InetAddress;
 
-/**
- * Represent details about physical switch port. Should not be used as independent entity, only as part
- * of {@link Switch} definition.
- */
 @Value
-public class SwitchPort implements Serializable {
-    @JsonProperty(value = "number", required = true)
-    private int number;
+public class SwitchReference implements Serializable {
+    @JsonProperty(value = "datapath", required = true)
+    private SwitchId datapath;
 
-    @NonNull
-    @JsonProperty(value = "state", required = true)
-    private State state;
+    @JsonProperty(value = "inet-address", required = true)
+    private InetAddress inetAddress;
 
-    @Builder
     @JsonCreator
-    public SwitchPort(
-            @JsonProperty("number") int number,
-            @JsonProperty("state") @NonNull State state) {
-        this.number = number;
-        this.state = state;
-    }
-
-    public enum State {
-        UP,
-        DOWN;
+    public SwitchReference(
+            @JsonProperty("datapath") SwitchId datapath,
+            @JsonProperty("inet-address") InetAddress inetAddress) {
+        this.datapath = datapath;
+        this.inetAddress = inetAddress;
     }
 }

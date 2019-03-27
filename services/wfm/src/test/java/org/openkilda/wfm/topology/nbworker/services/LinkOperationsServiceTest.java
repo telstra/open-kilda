@@ -57,7 +57,13 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
         islRepository = repositoryFactory.createIslRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
 
-        linkOperationsService = new LinkOperationsService(persistenceManager.getRepositoryFactory(),
+        ILinkOperationsServiceCarrier carrier = new ILinkOperationsServiceCarrier() {
+            @Override
+            public void islBfdFlagChanged(Isl isl) {
+            }
+        };
+
+        linkOperationsService = new LinkOperationsService(carrier, persistenceManager.getRepositoryFactory(),
                 persistenceManager.getTransactionManager(),
                 islCostWhenUnderMaintenance);
     }

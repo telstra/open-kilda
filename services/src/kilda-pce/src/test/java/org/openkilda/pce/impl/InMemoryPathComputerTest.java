@@ -110,6 +110,11 @@ public class InMemoryPathComputerTest {
                                 public int getConnectionPoolSize() {
                                     return 50;
                                 }
+
+                                @Override
+                                public String getIndexesAuto() {
+                                    return "update";
+                                }
                             };
                         } else {
                             throw new UnsupportedOperationException("Unsupported configurationType "

@@ -25,40 +25,59 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.io.Serializable;
-import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Value
-public class Switch implements Serializable {
+public class SpeakerSwitchView implements Serializable {
     @JsonProperty(value = "datapath", required = true)
     private SwitchId datapath;
 
-    @JsonProperty(value = "ip-address", required = true)
-    private InetAddress ipAddress;
+    @JsonProperty(value = "switch-socket", required = true)
+    private InetSocketAddress switchSocketAddress;
+
+    @JsonProperty(value = "speaker-socket", required = true)
+    private InetSocketAddress speakerSocketAddress;
+
+    // TODO: move to enum
+    @JsonProperty(value = "OF-version")
+    private String ofVersion;
+
+    @JsonProperty(value = "description")
+    private SpeakerSwitchDescription description;
 
     @JsonProperty(value = "features", required = true)
     private Set<Feature> features;
 
     @JsonProperty(value = "ports", required = true)
-    private List<SwitchPort> ports;
+    private List<SpeakerSwitchPortView> ports;
 
     @Builder(toBuilder = true)
     @JsonCreator
-    public Switch(
+    public SpeakerSwitchView(
             @JsonProperty("datapath") SwitchId datapath,
-            @JsonProperty("ip-address") InetAddress ipAddress,
+            @JsonProperty("switch-socket") InetSocketAddress switchSocketAddress,
+            @JsonProperty("speaker-socket") InetSocketAddress speakerSocketAddress,
+            @JsonProperty("OF-version") String ofVersion,
+            @JsonProperty("description") SpeakerSwitchDescription description,
             @JsonProperty("features") Set<Feature> features,
-            @JsonProperty("ports") List<SwitchPort> ports) {
+            @JsonProperty("ports") List<SpeakerSwitchPortView> ports) {
         this.datapath = datapath;
-        this.ipAddress = ipAddress;
-        this.features = ImmutableSet.copyOf(features);
-        this.ports = ImmutableList.copyOf(ports);
+        this.switchSocketAddress = switchSocketAddress;
+        this.speakerSocketAddress = speakerSocketAddress;
+        this.ofVersion = ofVersion;
+        this.description = description;
+
+        this.features = ImmutableSet.copyOf(Optional.ofNullable(features).orElse(Collections.emptySet()));
+        this.ports = ImmutableList.copyOf(Optional.ofNullable(ports).orElse(Collections.emptyList()));
     }
 
     public enum Feature {
         METERS,
         BFD,
-        BFD_REVIEW;
+        BFD_REVIEW
     }
 }

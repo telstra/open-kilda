@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2017 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -46,7 +46,8 @@ import org.openkilda.messaging.info.flow.FlowsResponse;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
-import org.openkilda.messaging.model.Switch;
+import org.openkilda.messaging.model.SpeakerSwitchDescription;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.OutputVlanType;
@@ -57,6 +58,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.Inet4Address;
+import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -459,7 +461,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void eventPortInfoTest() throws IOException, ClassNotFoundException {
-        PortInfoData data = new PortInfoData(SWITCH_ID, INPUT_PORT, 0, PORT_CHANGE);
+        PortInfoData data = new PortInfoData(SWITCH_ID, INPUT_PORT, PORT_CHANGE);
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION,
@@ -480,10 +482,20 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void eventSwitchInfoTest() throws IOException, ClassNotFoundException {
-        Switch switchRecord = new Switch(SWITCH_ID, Inet4Address.getByName("127.0.2.2"),
-                                         Collections.emptySet(), Collections.emptyList());
+        SpeakerSwitchDescription description = new SpeakerSwitchDescription(
+                "OF switch manufacturer",
+                "OF cappable HW",
+                "software",
+                "aabbcc",
+                "datapath description");
+        SpeakerSwitchView switchView = new SpeakerSwitchView(
+                SWITCH_ID,
+                new InetSocketAddress(Inet4Address.getByName("127.1.0.1"), 40001),
+                new InetSocketAddress(Inet4Address.getByName("127.1.0.254"), 6653),
+                "OF_13",
+                description, Collections.emptySet(), Collections.emptyList());
         SwitchInfoData data = new SwitchInfoData(
-                SWITCH_ID, SWITCH_EVENT, "127.0.0.1", "localhost", "sw", "controller", false, switchRecord);
+                SWITCH_ID, SWITCH_EVENT, "127.0.0.1", "localhost", "sw", "controller", false, switchView);
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION, null);
@@ -496,7 +508,6 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         assertTrue(resultInfo.getData() instanceof SwitchInfoData);
 
         SwitchInfoData resultData = (SwitchInfoData) resultInfo.getData();
-        System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
     }

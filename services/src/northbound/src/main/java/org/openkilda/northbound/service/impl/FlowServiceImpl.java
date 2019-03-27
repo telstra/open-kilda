@@ -193,6 +193,11 @@ public class FlowServiceImpl implements FlowService {
                                 public int getConnectionPoolSize() {
                                     return 50;
                                 }
+
+                                @Override
+                                public String getIndexesAuto() {
+                                    return "none";
+                                }
                             };
                         } else {
                             throw new UnsupportedOperationException("Unsupported configurationType "

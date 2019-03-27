@@ -16,7 +16,6 @@
 package org.openkilda.wfm.share.hubandspoke;
 
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt.CoordinatorCommand;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
@@ -55,7 +54,7 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
             log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
             if (autoAck) {
-                getOutput().ack(input);
+                ack(input);
             }
         }
     }
@@ -70,9 +69,9 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
      * Should be called once operation is finished and callback/timer should be cancelled.
      * @param key request's identifier.
      */
-    protected void cancelCallback(String key, Tuple tuple) throws PipelineException {
-        emit(CoordinatorBolt.INCOME_STREAM, tuple,
-                new Values(key, CoordinatorCommand.CANCEL_CALLBACK, 0));
+    protected void cancelCallback(String key, Tuple tuple) {
+        emitWithContext(CoordinatorBolt.INCOME_STREAM, tuple,
+                        new Values(key, CoordinatorCommand.CANCEL_CALLBACK, 0));
     }
 
     /**
@@ -80,7 +79,7 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
      * used.
      * @param key operation identifier.
      */
-    protected void registerCallback(String key, Tuple tuple) throws PipelineException {
+    protected void registerCallback(String key, Tuple tuple) {
         registerCallback(key, defaultTimeout, tuple);
     }
 
@@ -89,8 +88,8 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
      * @param key operation identifier.
      * @param timeout how long coordinator waits for a response. If no response received - timeout error occurs.
      */
-    protected void registerCallback(String key, int timeout, Tuple tuple) throws PipelineException {
-        emit(CoordinatorBolt.INCOME_STREAM, tuple,
-                new Values(key, CoordinatorCommand.REQUEST_CALLBACK, timeout));
+    protected void registerCallback(String key, int timeout, Tuple tuple) {
+        emitWithContext(CoordinatorBolt.INCOME_STREAM, tuple,
+                        new Values(key, CoordinatorCommand.REQUEST_CALLBACK, timeout));
     }
 }

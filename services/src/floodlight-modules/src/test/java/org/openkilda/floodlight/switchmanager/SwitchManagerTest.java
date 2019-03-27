@@ -60,7 +60,7 @@ import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.test.standard.OutputCommands;
 import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
-import org.openkilda.messaging.model.Switch.Feature;
+import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 

@@ -33,13 +33,16 @@ import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
-import org.openkilda.messaging.model.Switch;
-import org.openkilda.messaging.model.SwitchPort;
+import org.openkilda.messaging.model.SpeakerSwitchDescription;
+import org.openkilda.messaging.model.SpeakerSwitchPortView;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.IOFSwitchListener;
+import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.PortChangeType;
+import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -48,6 +51,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -206,8 +210,8 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         if (SwitchChangeType.DEACTIVATED != event && SwitchChangeType.REMOVED != event) {
             try {
                 IOFSwitch sw = switchManager.lookupSwitch(dpId);
-                Switch switchRecord = buildSwitch(sw);
-                message = buildSwitchMessage(sw, switchRecord, event);
+                SpeakerSwitchView switchView = buildSwitch(sw);
+                message = buildSwitchMessage(sw, switchView, event);
             } catch (SwitchNotFoundException e) {
                 logger.error(
                         "Switch {} is not in management state now({}), switch ISL discovery details will be degraded.",
@@ -227,7 +231,39 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         producerService.sendMessageAndTrack(discoveryTopic, dpId.toString(), message);
     }
 
-    private org.openkilda.messaging.info.event.PortChangeType toJsonType(PortChangeType type) {
+    private Boolean obtainPortEnableStatus(DatapathId dpId, OFPort port, PortChangeType changeType) {
+        Boolean result = null;
+        switch (changeType) {
+            case UP:
+                result = true;
+                break;
+            case DOWN:
+                result = false;
+                break;
+            case ADD:
+                result = obtainPortEnableStatus(dpId, port);
+                break;
+            case DELETE:
+                break;
+            default:
+                logger.error("Unable to obtain port-enable-status {}_{} - change-type:{} is not supported",
+                        dpId, port.getPortNumber(), changeType);
+        }
+
+        return result;
+    }
+
+    private Boolean obtainPortEnableStatus(DatapathId dpId, OFPort port) {
+        try {
+            IOFSwitch sw = switchManager.lookupSwitch(dpId);
+            return sw.portEnabled(port);
+        } catch (SwitchNotFoundException e) {
+            logger.error("Unable to obtain port-enable-status {}_{}: {}", dpId, port.getPortNumber(), e.getMessage());
+            return null;
+        }
+    }
+
+    private static org.openkilda.messaging.info.event.PortChangeType mapChangeType(PortChangeType type) {
         switch (type) {
             case ADD:
                 return org.openkilda.messaging.info.event.PortChangeType.ADD;
@@ -249,8 +285,8 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
      * @param eventType type of event
      * @return Message
      */
-    private Message buildSwitchMessage(IOFSwitch sw, Switch switchRecord, SwitchChangeType eventType) {
-        return buildMessage(IofSwitchConverter.buildSwitchInfoData(sw, switchRecord, eventType));
+    private Message buildSwitchMessage(IOFSwitch sw, SpeakerSwitchView switchView, SwitchChangeType eventType) {
+        return buildMessage(IofSwitchConverter.buildSwitchInfoData(sw, switchView, eventType));
     }
 
     /**
@@ -273,8 +309,9 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
      * @return Message
      */
     private Message buildPortMessage(final DatapathId switchId, final OFPort port, final PortChangeType type) {
-        InfoData data = new PortInfoData(new SwitchId(switchId.getLong()), port.getPortNumber(),
-                null, toJsonType(type));
+        InfoData data = new PortInfoData(
+                new SwitchId(switchId.getLong()), port.getPortNumber(), mapChangeType(type),
+                obtainPortEnableStatus(switchId, port, type));
         return buildMessage(data);
     }
 
@@ -288,14 +325,29 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         return new InfoMessage(data, System.currentTimeMillis(), CorrelationContext.getId(), null, region);
     }
 
-    private Switch buildSwitch(IOFSwitch sw) {
-        List<SwitchPort> ports = switchManager.getPhysicalPorts(sw).stream()
-                .map(port -> new SwitchPort(port.getPortNo().getPortNumber(),
-                                            port.isEnabled() ? SwitchPort.State.UP : SwitchPort.State.DOWN))
+    private SpeakerSwitchView buildSwitch(IOFSwitch sw) {
+        SwitchDescription ofDescription = sw.getSwitchDescription();
+        SpeakerSwitchDescription description = SpeakerSwitchDescription.builder()
+                .manufacturer(ofDescription.getManufacturerDescription())
+                .hardware(ofDescription.getHardwareDescription())
+                .software(ofDescription.getSoftwareDescription())
+                .serialNumber(ofDescription.getSerialNumber())
+                .datapath(ofDescription.getDatapathDescription())
+                .build();
+        Set<SpeakerSwitchView.Feature> features = featureDetector.detectSwitch(sw);
+        List<SpeakerSwitchPortView> ports = switchManager.getPhysicalPorts(sw).stream()
+                .map(port -> new SpeakerSwitchPortView(
+                        port.getPortNo().getPortNumber(),
+                        port.isEnabled()
+                                ? SpeakerSwitchPortView.State.UP
+                                : SpeakerSwitchPortView.State.DOWN))
                 .collect(Collectors.toList());
-        Set<Switch.Feature> features = featureDetector.detectSwitch(sw);
-        return new Switch(new SwitchId(sw.getId().getLong()), switchManager.getSwitchIpAddress(sw), features,
-                ports);
+        return new SpeakerSwitchView(new SwitchId(sw.getId().getLong()),
+                                     (InetSocketAddress) sw.getInetAddress(),
+                                     (InetSocketAddress) (sw.getConnectionByCategory(
+                                                     LogicalOFMessageCategory.MAIN).getRemoteInetAddress()),
+                                     sw.getOFFactory().getVersion().toString(),
+                                     description, features, ports);
     }
 
     private void logSwitchEvent(DatapathId dpId, SwitchChangeType event) {

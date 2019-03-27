@@ -20,6 +20,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.DeactivateIslInfoData;
+import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteLinkRequest;
@@ -27,8 +28,8 @@ import org.openkilda.messaging.nbtopology.request.GetLinksRequest;
 import org.openkilda.messaging.nbtopology.request.LinkPropsDrop;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
 import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
+import org.openkilda.messaging.nbtopology.request.UpdateLinkEnableBfdRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateLinkUnderMaintenanceRequest;
-import org.openkilda.messaging.nbtopology.response.DeleteIslResponse;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.model.Flow;
@@ -45,6 +46,7 @@ import org.openkilda.wfm.share.mappers.IslMapper;
 import org.openkilda.wfm.share.mappers.LinkPropsMapper;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
+import org.openkilda.wfm.topology.nbworker.services.ILinkOperationsServiceCarrier;
 import org.openkilda.wfm.topology.nbworker.services.LinkOperationsService;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -59,7 +61,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class LinkOperationsBolt extends PersistenceOperationsBolt {
+public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILinkOperationsServiceCarrier {
     private transient LinkOperationsService linkOperationsService;
     private transient FlowOperationsService flowOperationsService;
 
@@ -75,8 +77,8 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
      */
     @Override
     public void init() {
-        this.linkOperationsService =
-                new LinkOperationsService(repositoryFactory, transactionManager, islCostWhenUnderMaintenance);
+        this.linkOperationsService = new LinkOperationsService(this, repositoryFactory, transactionManager,
+                islCostWhenUnderMaintenance);
         this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
     }
 
@@ -93,9 +95,11 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         } else if (request instanceof LinkPropsDrop) {
             result = Collections.singletonList(dropLinkProps((LinkPropsDrop) request));
         } else if (request instanceof DeleteLinkRequest) {
-            result = Collections.singletonList(deleteLink((DeleteLinkRequest) request, tuple, correlationId));
+            result = deleteLink((DeleteLinkRequest) request);
         } else if (request instanceof UpdateLinkUnderMaintenanceRequest) {
-            result = updateLinkUnderMaintenanceFlag((UpdateLinkUnderMaintenanceRequest) request, tuple, correlationId);
+            result = updateLinkUnderMaintenanceFlag((UpdateLinkUnderMaintenanceRequest) request);
+        } else if (request instanceof UpdateLinkEnableBfdRequest) {
+            result = updateLinkEnableBfdFlag((UpdateLinkEnableBfdRequest) request);
         } else {
             unhandledInput(tuple);
         }
@@ -225,26 +229,28 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
         }
     }
 
-    private DeleteIslResponse deleteLink(DeleteLinkRequest request, Tuple tuple, String correlationId) {
-        boolean deleted;
+    private List<IslInfoData> deleteLink(DeleteLinkRequest request) {
         try {
-            deleted = linkOperationsService.deleteIsl(request.getSrcSwitch(), request.getSrcPort(),
-                                                      request.getDstSwitch(), request.getDstPort());
+            Collection<Isl> operationsResult = linkOperationsService.deleteIsl(request.getSrcSwitch(),
+                    request.getSrcPort(), request.getDstSwitch(), request.getDstPort());
+            List<IslInfoData> responseResult = operationsResult.stream()
+                    .map(IslMapper.INSTANCE::map)
+                    .collect(Collectors.toList());
+
+            for (IslInfoData isl: responseResult) {
+                DeactivateIslInfoData data = new DeactivateIslInfoData(isl.getSource(), isl.getDestination());
+                getOutput().emit(StreamType.DISCO.toString(), getTuple(), new Values(data, getCorrelationId()));
+            }
+
+            return responseResult;
         } catch (IslNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
         } catch (IllegalIslStateException e) {
             throw new MessageException(ErrorType.REQUEST_INVALID, e.getMessage(), "ISL is in illegal state.");
         }
-
-        DeactivateIslInfoData data = new DeactivateIslInfoData(request.getSrcSwitch(), request.getSrcPort());
-        getOutput().emit(StreamType.DISCO.toString(), tuple, new Values(data, correlationId));
-
-        return new DeleteIslResponse(deleted);
     }
 
-    private List<IslInfoData> updateLinkUnderMaintenanceFlag(UpdateLinkUnderMaintenanceRequest request,
-                                                             Tuple tuple,
-                                                             String correlationId) {
+    private List<IslInfoData> updateLinkUnderMaintenanceFlag(UpdateLinkUnderMaintenanceRequest request) {
         SwitchId srcSwitch = request.getSource().getDatapath();
         Integer srcPort = request.getSource().getPortNumber();
         SwitchId dstSwitch = request.getDestination().getDatapath();
@@ -262,8 +268,8 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
                         .map(FlowPair::getForward)
                         .map(Flow::getFlowId).forEach(flowId -> {
                             FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId);
-                            getOutput().emit(StreamType.REROUTE.toString(), tuple, new Values(rerouteRequest,
-                                    correlationId));
+                            getOutput().emit(StreamType.REROUTE.toString(), getTuple(), new Values(rerouteRequest,
+                                    getCorrelationId()));
                         });
             }
 
@@ -276,6 +282,25 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
                 .collect(Collectors.toList());
     }
 
+    private List<? extends InfoData> updateLinkEnableBfdFlag(UpdateLinkEnableBfdRequest request) {
+        SwitchId srcSwitch = request.getSource().getDatapath();
+        Integer srcPort = request.getSource().getPortNumber();
+        SwitchId dstSwitch = request.getDestination().getDatapath();
+        Integer dstPort = request.getDestination().getPortNumber();
+
+        try {
+            return linkOperationsService.updateLinkEnableBfdFlag(
+                    srcSwitch, srcPort,
+                    dstSwitch, dstPort, request.isEnableBfd())
+                    .stream()
+                    .map(IslMapper.INSTANCE::map)
+                    .collect(Collectors.toList());
+
+        } catch (IslNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
+        }
+    }
+
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
@@ -284,5 +309,16 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt {
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.DISCO.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
+    }
+
+    @Override
+    public void islBfdFlagChanged(Isl isl) {
+        IslInfoData islInfoData = IslMapper.INSTANCE.map(isl);
+        IslBfdFlagUpdated data = IslBfdFlagUpdated.builder()
+                .source(islInfoData.getSource())
+                .destination(islInfoData.getDestination())
+                .enableBfd(isl.isEnableBfd())
+                .build();
+        getOutput().emit(StreamType.DISCO.toString(), getTuple(), new Values(data, getCorrelationId()));
     }
 }

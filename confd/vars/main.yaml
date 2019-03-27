@@ -69,6 +69,7 @@ kilda_kafka_te_consumer_group: "kilda-tpe"
 
 # interval in ticks (seconds) between sending disco packets
 kilda_discovery_interval: 3
+kilda_discovery_packet_ttl: 5
 kilda_discovery_timeout: "15"
 # discovery_limit of -1 is forever
 # 28000 is about a day (test every 3 seconds, 20 failures per minute, 1200 per hour ..
@@ -111,6 +112,11 @@ kilda_bfd_port_offset: 200
 
 kilda_pce_strategy: "COST"
 kilda_pce_network_strategy: "SYMMETRIC_COST"
+
+kilda_floodlight_alive_timeout: 20
+kilda_floodlight_request_timeout: 180
+kilda_message_blacklist_timeout: 180
+kilda_floodlight_regions: "1"
 
 kilda_logging_json_file: False
 kilda_logging_logstash: True

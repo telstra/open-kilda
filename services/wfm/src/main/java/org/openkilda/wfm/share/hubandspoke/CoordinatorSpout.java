@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.share.hubandspoke;
 
+import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.CommandContext;
+
 import org.apache.storm.spout.SpoutOutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -30,7 +33,13 @@ import java.util.Map;
 public final class CoordinatorSpout extends BaseRichSpout {
     public static final String ID = "coordinator.spout";
 
+    public static final String FIELD_ID_TIME_MS = "time.ms";
+    public static final String FIELD_ID_CONTEXT = AbstractBolt.FIELD_ID_CONTEXT;
+
     private SpoutOutputCollector collector;
+
+    private long messageId = 0;
+    private boolean emit = true;
 
     @Override
     public void open(Map map, TopologyContext context, SpoutOutputCollector collector) {
@@ -39,12 +48,28 @@ public final class CoordinatorSpout extends BaseRichSpout {
 
     @Override
     public void nextTuple() {
-        collector.emit(new Values(System.currentTimeMillis()));
-        org.apache.storm.utils.Utils.sleep(1L);
+        if (emit) {
+            collector.emit(new Values(System.currentTimeMillis(), new CommandContext()), messageId++);
+            emit = false;
+        } else {
+            org.apache.storm.utils.Utils.sleep(1L);
+        }
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("time"));
+        declarer.declare(new Fields(FIELD_ID_TIME_MS, FIELD_ID_CONTEXT));
+    }
+
+    @Override
+    public void ack(Object msgId) {
+        super.ack(msgId);
+        emit = true;
+    }
+
+    @Override
+    public void fail(Object msgId) {
+        super.fail(msgId);
+        emit = true;
     }
 }

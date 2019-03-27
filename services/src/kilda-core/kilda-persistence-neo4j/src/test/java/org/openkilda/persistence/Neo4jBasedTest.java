@@ -52,6 +52,11 @@ public abstract class Neo4jBasedTest {
             public int getConnectionPoolSize() {
                 return 50;
             }
+
+            @Override
+            public String getIndexesAuto() {
+                return "update";
+            }
         });
 
         txManager = (Neo4jTransactionManager) persistenceManager.getTransactionManager();

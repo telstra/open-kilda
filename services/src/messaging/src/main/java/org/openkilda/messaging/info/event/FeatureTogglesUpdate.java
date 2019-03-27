@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,31 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.model;
+package org.openkilda.messaging.info.event;
+
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.model.system.FeatureTogglesDto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
 import lombok.EqualsAndHashCode;
-import lombok.ToString;
 import lombok.Value;
 
 @Value
-@EqualsAndHashCode(callSuper = true)
-@ToString(callSuper = true)
-public class NoviBfdCatch extends NoviBfdEndpoint {
-    @JsonCreator
-    @Builder(toBuilder = true)
-    public NoviBfdCatch(
-            @JsonProperty("target") Switch target,
-            @JsonProperty("remote") Switch remote,
-            @JsonProperty("physical-port-number") int physicalPortNumber,
-            @JsonProperty("udp-port-number") int udpPortNumber,
-            @JsonProperty("discriminator") int discriminator) {
-        super(target, remote, physicalPortNumber, udpPortNumber, discriminator);
-    }
+@EqualsAndHashCode(callSuper = false)
+public class FeatureTogglesUpdate extends InfoData {
+    @JsonProperty("toggles")
+    private FeatureTogglesDto toggles;
 
-    public enum Errors {
-        SWITCH_RESPONSE_ERROR
+    @JsonCreator
+    public FeatureTogglesUpdate(@JsonProperty("toggles") FeatureTogglesDto toggles) {
+        this.toggles = toggles;
     }
 }

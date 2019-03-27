@@ -12,7 +12,6 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
@@ -55,10 +54,10 @@ class IslReplugSpec extends BaseSpecification {
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
 
         and: "MOVED ISL can be deleted"
-        [newIsl, newIsl.reversed].each { Isl islToRemove ->
-            assert northbound.deleteLink(islUtils.toLinkParameters(islToRemove)).deleted
-            assert Wrappers.wait(WAIT_OFFSET) { !islUtils.getIslInfo(islToRemove).isPresent() }
-
+        assert northbound.deleteLink(islUtils.toLinkParameters(newIsl)).size() == 2
+        Wrappers.wait(WAIT_OFFSET) {
+            assert !islUtils.getIslInfo(newIsl).isPresent()
+            assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
         }
     }
 

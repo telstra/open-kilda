@@ -97,6 +97,12 @@ public class IslInfoData extends CacheTimeTag {
     private PathNode destination;
 
     /**
+     * Packet id.
+     */
+    @JsonProperty("packet_id")
+    private Long packetId;
+
+    /**
      * Copy constructor.
      *
      * @param that {@link IslInfoData} instance
@@ -117,14 +123,15 @@ public class IslInfoData extends CacheTimeTag {
                 that.getTimeModifyMillis(),
                 that.isUnderMaintenance(),
                 that.isEnableBfd(),
-                that.getBfdSessionStatus());
+                that.getBfdSessionStatus(),
+                that.getPacketId());
     }
 
     /**
      * Simple constructor for an ISL with only source/destination and state.
      */
     public IslInfoData(PathNode source, PathNode destination, IslChangeType state, boolean underMaintenance) {
-        this(-1, source, destination, 0, 0, 0, 0, state, null, 0, null, null, underMaintenance, false, null);
+        this(-1, source, destination, 0, 0, 0, 0, state, null, 0, null, null, underMaintenance, false, null, null);
     }
 
     @Builder(toBuilder = true)
@@ -143,7 +150,8 @@ public class IslInfoData extends CacheTimeTag {
                        @JsonProperty("time_modify") Long timeModifyMillis,
                        @JsonProperty("under_maintenance") boolean underMaintenance,
                        @JsonProperty("enable_bfd") boolean enableBfd,
-                       @JsonProperty("bfd_session_status") String bfdSessionStatus) {
+                       @JsonProperty("bfd_session_status") String bfdSessionStatus,
+                       @JsonProperty("packet_id") Long packetId) {
         this.latency = latency;
         this.source = source;
         this.destination = destination;
@@ -160,6 +168,7 @@ public class IslInfoData extends CacheTimeTag {
         this.underMaintenance = underMaintenance;
         this.enableBfd = enableBfd;
         this.bfdSessionStatus = bfdSessionStatus;
+        this.packetId = packetId;
     }
 
     /**

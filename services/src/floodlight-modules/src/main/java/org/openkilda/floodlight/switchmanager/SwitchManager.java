@@ -51,7 +51,7 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.model.Switch.Feature;
+import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.Meter;
 import org.openkilda.model.OutputVlanType;
 
@@ -846,7 +846,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         IOFSwitch sw = lookupSwitch(dpid);
         Set<Feature> features = featureDetectorService.detectSwitch(sw);
         if (!features.contains(Feature.BFD)) {
-            logger.debug("Skip installation of catch flow for switch {}", dpid);
+            logger.debug("Skip installation of universal BFD catch flow for switch {}", dpid);
         } else {
             OFFactory ofFactory = sw.getOFFactory();
 
