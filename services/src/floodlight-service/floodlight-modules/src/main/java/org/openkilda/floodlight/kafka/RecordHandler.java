@@ -70,6 +70,7 @@ import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
 import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
@@ -218,6 +219,8 @@ class RecordHandler implements Runnable {
             doDumpMetersRequest(message);
         } else if (data instanceof DumpMetersForSwitchManagerRequest) {
             doDumpMetersForSwitchManagerRequest(message);
+        } else if (data instanceof DumpMetersForNbworkerRequest) {
+            doDumpMetersForNbworkerRequest(message);
         } else if (data instanceof MeterModifyCommandRequest) {
             doModifyMeterRequest(message);
         } else if (data instanceof AliveRequest) {
@@ -958,6 +961,12 @@ class RecordHandler implements Runnable {
     private void doDumpMetersForSwitchManagerRequest(CommandMessage message) {
         DumpMetersForSwitchManagerRequest request = (DumpMetersForSwitchManagerRequest) message.getData();
         String replyToTopic = context.getKafkaSwitchManagerTopic();
+        dumpMeters(request.getSwitchId(), message.getCorrelationId(), replyToTopic, message.getTimestamp());
+    }
+
+    private void doDumpMetersForNbworkerRequest(CommandMessage message) {
+        DumpMetersForNbworkerRequest request = (DumpMetersForNbworkerRequest) message.getData();
+        String replyToTopic = context.getKafkaNbWorkerTopic();
         dumpMeters(request.getSwitchId(), message.getCorrelationId(), replyToTopic, message.getTimestamp());
     }
 

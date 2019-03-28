@@ -123,7 +123,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .workerComponent(SpeakerWorkerBolt.ID)
                 .timeoutMs(HUB_TIMEOUT_MS)
                 .build();
-        tb.setBolt(FlowValidationHubBolt.ID, new FlowValidationHubBolt(hubConfig, persistenceManager))
+        tb.setBolt(FlowValidationHubBolt.ID, new FlowValidationHubBolt(hubConfig, persistenceManager,
+                topologyConfig.getFlowMeterMinBurstSizeInKbits(), topologyConfig.getFlowMeterBurstCoefficient()))
                 .fieldsGrouping(ROUTER_BOLT_NAME, FlowValidationHubBolt.INCOME_STREAM, FIELDS_KEY)
                 .directGrouping(SpeakerWorkerBolt.ID, FlowValidationHubBolt.INCOME_STREAM)
                 .directGrouping(CoordinatorBolt.ID);

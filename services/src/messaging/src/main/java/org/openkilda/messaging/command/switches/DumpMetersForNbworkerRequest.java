@@ -13,25 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker.bolts;
+package org.openkilda.messaging.command.switches;
 
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.info.InfoData;
+import org.openkilda.model.SwitchId;
 
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
 
-public interface FlowValidationHubCarrier {
+@Value
+public class DumpMetersForNbworkerRequest extends CommandData {
 
-    void sendCommandToSpeakerWorker(String key, CommandData commandData);
+    @JsonProperty("switch_id")
+    private SwitchId switchId;
 
-    void sendToResponseSplitterBolt(String key, List<? extends InfoData> message);
-
-    void sendToMessageEncoder(String key, ErrorData errorData);
-
-    void endProcessing(String key);
-
-    long getFlowMeterMinBurstSizeInKbits();
-
-    double getFlowMeterBurstCoefficient();
+    public DumpMetersForNbworkerRequest(@JsonProperty("switch_id") SwitchId switchId) {
+        this.switchId = switchId;
+    }
 }

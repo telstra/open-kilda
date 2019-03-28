@@ -21,7 +21,6 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
-import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
@@ -47,10 +46,15 @@ public class FlowValidationHubBolt extends HubBolt {
 
     private final PersistenceManager persistenceManager;
     private transient FlowValidationHubService service;
+    private long flowMeterMinBurstSizeInKbits;
+    private double flowMeterBurstCoefficient;
 
-    public FlowValidationHubBolt(Config config, PersistenceManager persistenceManager) {
+    public FlowValidationHubBolt(Config config, PersistenceManager persistenceManager,
+                                 long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
         super(config);
         this.persistenceManager = persistenceManager;
+        this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
+        this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
     }
 
     @Override
@@ -103,9 +107,9 @@ public class FlowValidationHubBolt extends HubBolt {
         }
 
         @Override
-        public void sendCommandToSpeakerWorker(String key, SwitchId switchId) {
+        public void sendCommandToSpeakerWorker(String key, CommandData commandData) {
             emitWithContext(SpeakerWorkerBolt.INCOME_STREAM, tuple,
-                    new Values(KeyProvider.generateChainedKey(key), switchId));
+                        new Values(KeyProvider.generateChainedKey(key), commandData));
         }
 
         @Override
@@ -122,6 +126,16 @@ public class FlowValidationHubBolt extends HubBolt {
         public void endProcessing(String key) {
             cancelCallback(key, tuple);
             removeKeyFromRouterBolt(key);
+        }
+
+        @Override
+        public long getFlowMeterMinBurstSizeInKbits() {
+            return flowMeterMinBurstSizeInKbits;
+        }
+
+        @Override
+        public double getFlowMeterBurstCoefficient() {
+            return flowMeterBurstCoefficient;
         }
 
         private void removeKeyFromRouterBolt(String key) {
