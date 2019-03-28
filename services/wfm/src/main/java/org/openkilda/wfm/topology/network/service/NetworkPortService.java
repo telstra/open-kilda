@@ -18,10 +18,10 @@ package org.openkilda.wfm.topology.network.service;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.share.utils.FsmExecutor;
-import org.openkilda.wfm.topology.network.controller.PortFsm;
-import org.openkilda.wfm.topology.network.controller.PortFsm.PortFsmContext;
-import org.openkilda.wfm.topology.network.controller.PortFsm.PortFsmEvent;
-import org.openkilda.wfm.topology.network.controller.PortFsm.PortFsmState;
+import org.openkilda.wfm.topology.network.controller.port.PortFsm;
+import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmContext;
+import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmEvent;
+import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmState;
 import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 
