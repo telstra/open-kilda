@@ -16,17 +16,22 @@
 package org.openkilda.wfm.topology.nbworker.fsm;
 
 import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationEvent.ERROR;
+import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationEvent.METERS_RECEIVED;
 import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationEvent.NEXT;
 import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationEvent.RULES_RECEIVED;
 import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationState.FINISHED;
 import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationState.FINISHED_WITH_ERROR;
 import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationState.INITIALIZED;
+import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationState.RECEIVE_METERS;
 import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationState.RECEIVE_RULES;
 import static org.openkilda.wfm.topology.nbworker.fsm.FlowValidationFsm.FlowValidationState.VALIDATE_FLOW;
 
+import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
+import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
@@ -58,8 +63,10 @@ public class FlowValidationFsm
     private final PersistenceManager persistenceManager;
     private String flowId;
     private FlowValidationService service;
+    private List<SwitchId> switchIds;
     private int awaitingRequests;
-    private List<SwitchFlowEntries> recievedRules = new ArrayList<>();
+    private List<SwitchFlowEntries> receivedRules = new ArrayList<>();
+    private List<SwitchMeterEntries> receivedMeters = new ArrayList<>();
     private List<FlowValidationResponse> response;
 
     public FlowValidationFsm(FlowValidationHubCarrier carrier, String key, FlowValidationRequest request,
@@ -92,13 +99,18 @@ public class FlowValidationFsm
 
         builder.externalTransition().from(RECEIVE_RULES).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
-        builder.externalTransition().from(RECEIVE_RULES).to(VALIDATE_FLOW).on(NEXT)
+        builder.externalTransition().from(RECEIVE_RULES).to(RECEIVE_METERS).on(NEXT)
+                .callMethod("receiveMeters");
+        builder.internalTransition().within(RECEIVE_METERS).on(METERS_RECEIVED).callMethod("receivedMeters");
+
+        builder.externalTransition().from(RECEIVE_METERS).to(FINISHED_WITH_ERROR).on(ERROR)
+                .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
+        builder.externalTransition().from(RECEIVE_METERS).to(VALIDATE_FLOW).on(NEXT)
                 .callMethod("validateFlow");
 
         builder.externalTransition().from(VALIDATE_FLOW).to(FINISHED_WITH_ERROR).on(ERROR)
                 .callMethod(FINISHED_WITH_ERROR_METHOD_NAME);
-        builder.externalTransition().from(VALIDATE_FLOW).to(FINISHED).on(NEXT)
-                .callMethod(FINISHED_METHOD_NAME);
+        builder.externalTransition().from(VALIDATE_FLOW).to(FINISHED).on(NEXT).callMethod(FINISHED_METHOD_NAME);
 
         return builder;
     }
@@ -111,16 +123,18 @@ public class FlowValidationFsm
                                FlowValidationEvent event, Object context) {
         log.info("Key: {}; FSM initialized", key);
         flowId = request.getFlowId();
-        service = new FlowValidationService(persistenceManager);
+        service = new FlowValidationService(persistenceManager, carrier.getFlowMeterMinBurstSizeInKbits(),
+                carrier.getFlowMeterBurstCoefficient());
     }
 
     protected void receiveRules(FlowValidationState from, FlowValidationState to,
                                 FlowValidationEvent event, Object context) {
         log.info("Key: {}; Send commands to get rules on the switches", key);
         try {
-            List<SwitchId> switchIds = service.getSwitchIdListByFlowId(flowId);
+            switchIds = service.getSwitchIdListByFlowId(flowId);
             awaitingRequests = switchIds.size();
-            switchIds.forEach(switchId -> carrier.sendCommandToSpeakerWorker(key, switchId));
+            switchIds.forEach(switchId ->
+                    carrier.sendCommandToSpeakerWorker(key, new DumpRulesForNbworkerRequest(switchId)));
 
         } catch (FlowNotFoundException e) {
             log.error("Key: {}; Flow {} not found when sending commands to SpeakerWorkerBolt", key, flowId);
@@ -132,7 +146,25 @@ public class FlowValidationFsm
                                  FlowValidationEvent event, Object context) {
         SwitchFlowEntries switchFlowEntries = (SwitchFlowEntries) context;
         log.info("Key: {}; Switch rules received for switch {}", key, switchFlowEntries.getSwitchId());
-        recievedRules.add(switchFlowEntries);
+        receivedRules.add(switchFlowEntries);
+        if (--awaitingRequests == 0) {
+            fire(NEXT);
+        }
+    }
+
+    protected void receiveMeters(FlowValidationState from, FlowValidationState to,
+                                 FlowValidationEvent event, Object context) {
+        log.info("Key: {}; Send commands to get meters on the switches", key);
+        awaitingRequests = switchIds.size();
+        switchIds.forEach(switchId ->
+                carrier.sendCommandToSpeakerWorker(key, new DumpMetersForNbworkerRequest(switchId)));
+    }
+
+    protected void receivedMeters(FlowValidationState from, FlowValidationState to,
+                                  FlowValidationEvent event, Object context) {
+        SwitchMeterEntries switchMeterEntries = (SwitchMeterEntries) context;
+        log.info("Key: {}; Switch meters received for switch {}", key, switchMeterEntries.getSwitchId());
+        receivedMeters.add(switchMeterEntries);
         if (--awaitingRequests == 0) {
             fire(NEXT);
         }
@@ -141,7 +173,7 @@ public class FlowValidationFsm
     protected void validateFlow(FlowValidationState from, FlowValidationState to,
                                 FlowValidationEvent event, Object context) {
         try {
-            response = service.validateFlow(flowId, recievedRules);
+            response = service.validateFlow(flowId, receivedRules, receivedMeters);
         } catch (FlowNotFoundException e) {
             log.error("Key: {}; Flow {} not found during flow validation", key, flowId);
             sendException(e.getMessage(), "Flow validation operation in FlowValidationFsm", ErrorType.NOT_FOUND);
@@ -177,6 +209,7 @@ public class FlowValidationFsm
     public enum FlowValidationState {
         INITIALIZED,
         RECEIVE_RULES,
+        RECEIVE_METERS,
         VALIDATE_FLOW,
         FINISHED_WITH_ERROR,
         FINISHED
@@ -185,6 +218,7 @@ public class FlowValidationFsm
     public enum FlowValidationEvent {
         NEXT,
         RULES_RECEIVED,
+        METERS_RECEIVED,
         ERROR
     }
 }

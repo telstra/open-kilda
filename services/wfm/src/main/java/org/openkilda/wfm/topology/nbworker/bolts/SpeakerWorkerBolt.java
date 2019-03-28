@@ -16,8 +16,8 @@
 package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
@@ -51,8 +51,8 @@ public class SpeakerWorkerBolt extends WorkerBolt {
     @Override
     protected void onHubRequest(Tuple input) throws AbstractException {
         String key = input.getStringByField(MessageTranslator.KEY_FIELD);
-        SwitchId switchId = pullValue(input, MessageTranslator.FIELD_ID_PAYLOAD, SwitchId.class);
-        service.sendCommand(key, switchId, new SpeakerWorkerCarrierImpl(input));
+        CommandData commandData = pullValue(input, MessageTranslator.FIELD_ID_PAYLOAD, CommandData.class);
+        service.sendCommand(key, commandData, new SpeakerWorkerCarrierImpl(input));
     }
 
     @Override

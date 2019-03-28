@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.nbworker.services;
 
 import static java.lang.String.format;
 
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
@@ -25,6 +26,7 @@ import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.nbtopology.response.PathDiscrepancyEntity;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.Meter;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -41,6 +43,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.math.NumberUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -56,10 +59,16 @@ public class FlowValidationService {
     private FlowRepository flowRepository;
     private TransitVlanRepository transitVlanRepository;
 
-    public FlowValidationService(PersistenceManager persistenceManager) {
+    private long flowMeterMinBurstSizeInKbits;
+    private double flowMeterBurstCoefficient;
+
+    public FlowValidationService(PersistenceManager persistenceManager,
+                                 long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.transitVlanRepository = persistenceManager.getRepositoryFactory().createTransitVlanRepository();
+        this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
+        this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
     }
 
     /**
@@ -80,14 +89,27 @@ public class FlowValidationService {
     /**
      * Validate flow.
      */
-    public List<FlowValidationResponse> validateFlow(String flowId, List<SwitchFlowEntries> switchFlowEntries)
+    public List<FlowValidationResponse> validateFlow(String flowId, List<SwitchFlowEntries> switchFlowEntries,
+                                                     List<SwitchMeterEntries> switchMeterEntries)
             throws FlowNotFoundException {
 
         Map<SwitchId, List<SimpleSwitchRule>> switchRules = new HashMap<>();
         int rulesCount = 0;
-        for (SwitchFlowEntries switchEntries : switchFlowEntries) {
-            switchRules.put(switchEntries.getSwitchId(), convertSwitchRules(switchEntries));
-            rulesCount += Optional.ofNullable(switchEntries.getFlowEntries())
+        int metersCount = 0;
+        for (SwitchFlowEntries switchRulesEntries : switchFlowEntries) {
+            SwitchMeterEntries switchMeters = switchMeterEntries.stream()
+                    .filter(meterEntries -> switchRulesEntries.getSwitchId().equals(meterEntries.getSwitchId()))
+                    .findFirst()
+                    .orElse(null);
+
+            List<SimpleSwitchRule> simpleSwitchRules = convertSwitchRules(switchRulesEntries, switchMeters);
+            switchRules.put(switchRulesEntries.getSwitchId(), simpleSwitchRules);
+
+            rulesCount += Optional.ofNullable(switchRulesEntries.getFlowEntries())
+                    .map(List::size)
+                    .orElse(0);
+            metersCount += Optional.ofNullable(switchMeters)
+                    .map(SwitchMeterEntries::getMeterEntries)
                     .map(List::size)
                     .orElse(0);
         }
@@ -117,19 +139,20 @@ public class FlowValidationService {
         List<SimpleSwitchRule> reverseRules =
                 convertFlowToSimpleSwitchRules(flow, flow.getReversePath(), reverseTransitVlan);
 
-        return Lists.newArrayList(compareRules(switchRules, forwardRules, flowId, rulesCount),
-                compareRules(switchRules, reverseRules, flowId, rulesCount));
+        return Lists.newArrayList(compare(switchRules, forwardRules, flowId, rulesCount, metersCount),
+                compare(switchRules, reverseRules, flowId, rulesCount, metersCount));
     }
 
-    private FlowValidationResponse compareRules(Map<SwitchId, List<SimpleSwitchRule>> rulesPerSwitch,
-                                                List<SimpleSwitchRule> rulesFromDb,
-                                                String flowId, int totalSwitchRules) {
+    private FlowValidationResponse compare(Map<SwitchId, List<SimpleSwitchRule>> rulesPerSwitch,
+                                           List<SimpleSwitchRule> rulesFromDb, String flowId,
+                                           int totalSwitchRules, int metersCount) {
 
         List<PathDiscrepancyEntity> discrepancies = new ArrayList<>();
         List<Long> pktCounts = new ArrayList<>();
         List<Long> byteCounts = new ArrayList<>();
         rulesFromDb.forEach(simpleRule -> discrepancies.addAll(
                 findDiscrepancy(simpleRule, rulesPerSwitch.get(simpleRule.getSwitchId()), pktCounts, byteCounts)));
+        int flowMetersCount = (int) rulesFromDb.stream().filter(rule -> rule.getMeterId() != null).count();
 
         return FlowValidationResponse.builder()
                 .flowId(flowId)
@@ -139,6 +162,8 @@ public class FlowValidationService {
                 .byteCounts(byteCounts)
                 .flowRulesTotal(rulesFromDb.size())
                 .switchRulesTotal(totalSwitchRules)
+                .flowMetersTotal(flowMetersCount)
+                .switchMetersTotal(metersCount)
                 .build();
     }
 
@@ -163,6 +188,10 @@ public class FlowValidationService {
                 .inPort(inPort)
                 .inVlan(inVlan)
                 .meterId(flowPath.getMeterId() != null ? flowPath.getMeterId().getValue() : null)
+                .meterRate(flow.getBandwidth())
+                .meterBurstSize(Meter.calculateBurstSize(flow.getBandwidth(), flowMeterMinBurstSizeInKbits,
+                        flowMeterBurstCoefficient, flow.getSrcSwitch().getDescription()))
+                .meterFlags(Meter.getMeterFlags())
                 .build();
 
         if (flow.isOneSwitchFlow()) {
@@ -241,7 +270,7 @@ public class FlowValidationService {
         return flowPath.getPathId().equals(flow.getForwardPathId());
     }
 
-    private List<SimpleSwitchRule> convertSwitchRules(SwitchFlowEntries rules) {
+    private List<SimpleSwitchRule> convertSwitchRules(SwitchFlowEntries rules, SwitchMeterEntries meters) {
         if (rules == null || rules.getFlowEntries() == null) {
             return Collections.emptyList();
         }
@@ -274,8 +303,20 @@ public class FlowValidationService {
                     rule.setOutPort(NumberUtils.toInt(outPort));
                 }
 
-                rule.setMeterId(Optional.ofNullable(switchRule.getInstructions().getGoToMeter())
-                        .orElse(null));
+                Optional.ofNullable(switchRule.getInstructions().getGoToMeter())
+                        .ifPresent(meterId -> {
+                            rule.setMeterId(meterId);
+                            if (meters != null && meters.getMeterEntries() != null) {
+                                meters.getMeterEntries().stream()
+                                        .filter(entry -> meterId == entry.getMeterId())
+                                        .findFirst()
+                                        .ifPresent(entry -> {
+                                            rule.setMeterRate(entry.getRate());
+                                            rule.setMeterBurstSize(entry.getBurstSize());
+                                            rule.setMeterFlags(entry.getFlags());
+                                        });
+                            }
+                        });
             }
 
             simpleRules.add(rule);
@@ -293,7 +334,7 @@ public class FlowValidationService {
             pktCounts.add(-1L);
             byteCounts.add(-1L);
         } else {
-            discrepancies.addAll(getDiscrepancies(expected, matched));
+            discrepancies.addAll(getRuleDiscrepancies(expected, matched));
             pktCounts.add(matched.getPktCount());
             byteCounts.add(matched.getByteCount());
         }
@@ -329,7 +370,7 @@ public class FlowValidationService {
         return matched;
     }
 
-    private List<PathDiscrepancyEntity> getDiscrepancies(SimpleSwitchRule expected, SimpleSwitchRule matched) {
+    private List<PathDiscrepancyEntity> getRuleDiscrepancies(SimpleSwitchRule expected, SimpleSwitchRule matched) {
         List<PathDiscrepancyEntity> discrepancies = new ArrayList<>();
         if (matched.getCookie() != expected.getCookie()) {
             discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "cookie",
@@ -353,9 +394,25 @@ public class FlowValidationService {
         }
         //meters on OF_12 switches are not supported, so skip them.
         if ((matched.getVersion() == null || matched.getVersion().compareTo("OF_12") > 0)
-                && !Objects.equals(matched.getMeterId(), expected.getMeterId())) {
-            discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterId",
-                    String.valueOf(expected.getMeterId()), String.valueOf(matched.getMeterId())));
+                && !(matched.getMeterId() == null && expected.getMeterId() == null)) {
+
+            if (!Objects.equals(matched.getMeterId(), expected.getMeterId())) {
+                discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterId",
+                        String.valueOf(expected.getMeterId()), String.valueOf(matched.getMeterId())));
+            } else {
+                if (!Objects.equals(matched.getMeterRate(), expected.getMeterRate())) {
+                    discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterRate",
+                            String.valueOf(expected.getMeterRate()), String.valueOf(matched.getMeterRate())));
+                }
+                if (!Objects.equals(matched.getMeterBurstSize(), expected.getMeterBurstSize())) {
+                    discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterBurstSize",
+                            String.valueOf(expected.getMeterBurstSize()), String.valueOf(matched.getMeterBurstSize())));
+                }
+                if (!Arrays.equals(matched.getMeterFlags(), expected.getMeterFlags())) {
+                    discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "meterFlags",
+                            Arrays.toString(expected.getMeterFlags()), Arrays.toString(matched.getMeterFlags())));
+                }
+            }
         }
         return discrepancies;
     }
