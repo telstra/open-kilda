@@ -1,0 +1,15 @@
+@startuml
+title Port report FSM
+
+[*] --> INIT
+
+INIT --> UP : port-up
+INIT --> DOWN : port-down
+
+UP -> DOWN : port-down
+UP : enter / report "become UP"
+
+DOWN -> UP : port-up
+DOWN : enter / report "become DOWN"
+
+@enduml
