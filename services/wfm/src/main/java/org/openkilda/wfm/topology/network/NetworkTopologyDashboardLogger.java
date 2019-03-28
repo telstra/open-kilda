@@ -162,4 +162,14 @@ public class NetworkTopologyDashboardLogger extends AbstractLogWrapper {
         data.put(STATE, "delete");
         proceed(Level.INFO, String.format("Switch '%s' has been deleted", switchId), data);
     }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        public NetworkTopologyDashboardLogger build(Logger logger) {
+            return new NetworkTopologyDashboardLogger(logger);
+        }
+    }
 }
