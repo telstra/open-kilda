@@ -19,6 +19,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
+import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
@@ -44,7 +47,8 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
     public static void setUpOnce() {
         FlowValidationTestBase.setUpOnce();
         flowValidationHubService = new FlowValidationHubService(persistenceManager);
-        flowValidationService = new FlowValidationService(persistenceManager);
+        flowValidationService =
+                new FlowValidationService(persistenceManager, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
     }
 
     @Test
@@ -52,9 +56,17 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
         class FlowValidationHubCarrierImpl implements FlowValidationHubCarrier {
 
             @Override
-            public void sendCommandToSpeakerWorker(String key, SwitchId switchId) {
+            public void sendCommandToSpeakerWorker(String key, CommandData commandData) {
                 assertEquals(TEST_KEY, key);
-                assertTrue(Lists.newArrayList(TEST_SWITCH_ID_A, TEST_SWITCH_ID_B, TEST_SWITCH_ID_C).contains(switchId));
+                assertTrue(commandData instanceof DumpRulesForNbworkerRequest
+                        || commandData instanceof DumpMetersForNbworkerRequest);
+
+                List<SwitchId> switchIds = Lists.newArrayList(TEST_SWITCH_ID_A, TEST_SWITCH_ID_B, TEST_SWITCH_ID_C);
+                if (commandData instanceof DumpRulesForNbworkerRequest) {
+                    assertTrue(switchIds.contains(((DumpRulesForNbworkerRequest) commandData).getSwitchId()));
+                } else {
+                    assertTrue(switchIds.contains(((DumpMetersForNbworkerRequest) commandData).getSwitchId()));
+                }
             }
 
             @Override
@@ -62,8 +74,8 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
                 assertEquals(TEST_KEY, key);
                 assertEquals(2, message.size());
                 try {
-                    assertEquals(flowValidationService
-                            .validateFlow(TEST_FLOW_ID_A, getSwitchFlowEntriesFlowA()), message);
+                    assertEquals(flowValidationService.validateFlow(TEST_FLOW_ID_A, getSwitchFlowEntriesFlowA(),
+                            getSwitchMeterEntriesFlowA()), message);
                 } catch (FlowNotFoundException e) {
                     //tested in the FlowValidationServiceTest
                 }
@@ -78,6 +90,16 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
             public void endProcessing(String key) {
                 assertEquals(TEST_KEY, key);
             }
+
+            @Override
+            public long getFlowMeterMinBurstSizeInKbits() {
+                return MIN_BURST_SIZE_IN_KBITS;
+            }
+
+            @Override
+            public double getFlowMeterBurstCoefficient() {
+                return BURST_COEFFICIENT;
+            }
         }
 
         buildFlowA();
@@ -85,6 +107,9 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
                 new FlowValidationHubCarrierImpl());
         getSwitchFlowEntriesFlowA().forEach(switchFlowEntries -> flowValidationHubService.handleAsyncResponse(TEST_KEY,
                 new InfoMessage(switchFlowEntries, System.currentTimeMillis(), TEST_KEY)));
+        getSwitchMeterEntriesFlowA().forEach(switchMeterEntries ->
+                flowValidationHubService.handleAsyncResponse(TEST_KEY, new InfoMessage(switchMeterEntries,
+                        System.currentTimeMillis(), TEST_KEY)));
     }
 
     @Test
@@ -92,9 +117,17 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
         class FlowValidationHubCarrierImpl implements FlowValidationHubCarrier {
 
             @Override
-            public void sendCommandToSpeakerWorker(String key, SwitchId switchId) {
+            public void sendCommandToSpeakerWorker(String key, CommandData commandData) {
                 assertEquals(TEST_KEY, key);
-                assertTrue(Lists.newArrayList(TEST_SWITCH_ID_A, TEST_SWITCH_ID_B, TEST_SWITCH_ID_C).contains(switchId));
+                assertTrue(commandData instanceof DumpRulesForNbworkerRequest
+                        || commandData instanceof DumpMetersForNbworkerRequest);
+
+                List<SwitchId> switchIds = Lists.newArrayList(TEST_SWITCH_ID_A, TEST_SWITCH_ID_B, TEST_SWITCH_ID_C);
+                if (commandData instanceof DumpRulesForNbworkerRequest) {
+                    assertTrue(switchIds.contains(((DumpRulesForNbworkerRequest) commandData).getSwitchId()));
+                } else {
+                    assertTrue(switchIds.contains(((DumpMetersForNbworkerRequest) commandData).getSwitchId()));
+                }
             }
 
             @Override
@@ -112,6 +145,16 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
             public void endProcessing(String key) {
                 assertEquals(TEST_KEY, key);
             }
+
+            @Override
+            public long getFlowMeterMinBurstSizeInKbits() {
+                return MIN_BURST_SIZE_IN_KBITS;
+            }
+
+            @Override
+            public double getFlowMeterBurstCoefficient() {
+                return BURST_COEFFICIENT;
+            }
         }
 
         buildFlowA();
@@ -125,9 +168,17 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
         class FlowValidationHubCarrierImpl implements FlowValidationHubCarrier {
 
             @Override
-            public void sendCommandToSpeakerWorker(String key, SwitchId switchId) {
+            public void sendCommandToSpeakerWorker(String key, CommandData commandData) {
                 assertEquals(TEST_KEY, key);
-                assertTrue(Lists.newArrayList(TEST_SWITCH_ID_A, TEST_SWITCH_ID_B, TEST_SWITCH_ID_C).contains(switchId));
+                assertTrue(commandData instanceof DumpRulesForNbworkerRequest
+                        || commandData instanceof DumpMetersForNbworkerRequest);
+
+                List<SwitchId> switchIds = Lists.newArrayList(TEST_SWITCH_ID_A, TEST_SWITCH_ID_B, TEST_SWITCH_ID_C);
+                if (commandData instanceof DumpRulesForNbworkerRequest) {
+                    assertTrue(switchIds.contains(((DumpRulesForNbworkerRequest) commandData).getSwitchId()));
+                } else {
+                    assertTrue(switchIds.contains(((DumpMetersForNbworkerRequest) commandData).getSwitchId()));
+                }
             }
 
             @Override
@@ -145,6 +196,16 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
             public void endProcessing(String key) {
                 assertEquals(TEST_KEY, key);
             }
+
+            @Override
+            public long getFlowMeterMinBurstSizeInKbits() {
+                return MIN_BURST_SIZE_IN_KBITS;
+            }
+
+            @Override
+            public double getFlowMeterBurstCoefficient() {
+                return BURST_COEFFICIENT;
+            }
         }
 
         buildFlowA();
@@ -156,6 +217,9 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
         flowRepository.delete(flowRepository.findById(TEST_FLOW_ID_A).get());
         getSwitchFlowEntriesFlowA().forEach(switchFlowEntries -> flowValidationHubService.handleAsyncResponse(TEST_KEY,
                 new InfoMessage(switchFlowEntries, System.currentTimeMillis(), TEST_KEY)));
+        getSwitchMeterEntriesFlowA().forEach(switchMeterEntries ->
+                flowValidationHubService.handleAsyncResponse(TEST_KEY, new InfoMessage(switchMeterEntries,
+                        System.currentTimeMillis(), TEST_KEY)));
 
     }
 }

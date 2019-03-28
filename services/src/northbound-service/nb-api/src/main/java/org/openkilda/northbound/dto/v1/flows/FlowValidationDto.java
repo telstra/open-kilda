@@ -51,4 +51,10 @@ public class FlowValidationDto {
 
     @JsonProperty("switch_rules_total")
     private Integer switchRulesTotal;
+
+    @JsonProperty("flow_meters_total")
+    private Integer flowMetersTotal;
+
+    @JsonProperty("switch_meters_total")
+    private Integer switchMetersTotal;
 }

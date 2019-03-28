@@ -50,6 +50,12 @@ public class FlowValidationResponse extends InfoData {
     @JsonProperty("switch_rules_total")
     private Integer switchRulesTotal;
 
+    @JsonProperty("flow_meters_total")
+    private Integer flowMetersTotal;
+
+    @JsonProperty("switch_meters_total")
+    private Integer switchMetersTotal;
+
     @Builder
     @JsonCreator
     public FlowValidationResponse(@JsonProperty("flow_id") String flowId,
@@ -58,7 +64,9 @@ public class FlowValidationResponse extends InfoData {
                                   @JsonProperty("byte_counts") List<Long> byteCounts,
                                   @JsonProperty("discrepancies") List<PathDiscrepancyEntity> discrepancies,
                                   @JsonProperty("flow_rules_total") Integer flowRulesTotal,
-                                  @JsonProperty("switch_rules_total") Integer switchRulesTotal) {
+                                  @JsonProperty("switch_rules_total") Integer switchRulesTotal,
+                                  @JsonProperty("flow_meters_total") Integer flowMetersTotal,
+                                  @JsonProperty("switch_meters_total") Integer switchMetersTotal) {
         this.flowId = flowId;
         this.asExpected = asExpected;
         this.pktCounts = pktCounts;
@@ -66,5 +74,7 @@ public class FlowValidationResponse extends InfoData {
         this.discrepancies = discrepancies;
         this.flowRulesTotal = flowRulesTotal;
         this.switchRulesTotal = switchRulesTotal;
+        this.flowMetersTotal = flowMetersTotal;
+        this.switchMetersTotal = switchMetersTotal;
     }
 }

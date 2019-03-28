@@ -19,6 +19,8 @@ import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.switches.DumpMetersForNbworkerRequest;
+import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -93,9 +95,11 @@ public class SpeakerRequestBolt extends RequestBolt {
                 message.getCorrelationId(), null);
         String errorJson = MAPPER.writeValueAsString(errorMessage);
         Values values = new Values(message.getCorrelationId(), errorJson);
-        if (message.getData() instanceof DumpRulesForNbworkerRequest) {
+        if (message.getData() instanceof DumpRulesForNbworkerRequest
+                || message.getData() instanceof DumpMetersForNbworkerRequest) {
             outputCollector.emit(Stream.NB_WORKER, input, values);
-        } else if (message.getData() instanceof DumpRulesForSwitchManagerRequest) {
+        } else if (message.getData() instanceof DumpRulesForSwitchManagerRequest
+                || message.getData() instanceof DumpMetersForSwitchManagerRequest) {
             outputCollector.emit(Stream.KILDA_SWITCH_MANAGER, input, values);
         } else {
             log.error("Unable to lookup region for message: {}. switch is not tracked.", json);
