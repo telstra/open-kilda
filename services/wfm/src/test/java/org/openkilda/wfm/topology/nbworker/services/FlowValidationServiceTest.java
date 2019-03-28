@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.nbworker.services;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.nbtopology.response.PathDiscrepancyEntity;
@@ -37,7 +38,8 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
     @BeforeClass
     public static void setUpOnce() {
         FlowValidationTestBase.setUpOnce();
-        service = new FlowValidationService(persistenceManager, flowResourcesConfig);
+        service = new FlowValidationService(persistenceManager, flowResourcesConfig,
+                MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
     }
 
     @Test
@@ -64,9 +66,10 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
     }
 
     private void validateFlow(boolean isTransitVlan) throws FlowNotFoundException {
-        List<SwitchFlowEntries> switchEntries =
+        List<SwitchFlowEntries> flowEntries =
                 isTransitVlan ? getSwitchFlowEntriesWithTransitVlan() : getSwitchFlowEntriesWithVxlan();
-        List<FlowValidationResponse> result = service.validateFlow(TEST_FLOW_ID_A, switchEntries);
+        List<SwitchMeterEntries> meterEntries = getSwitchMeterEntries();
+        List<FlowValidationResponse> result = service.validateFlow(TEST_FLOW_ID_A, flowEntries, meterEntries);
         assertEquals(4, result.size());
         assertEquals(0, result.get(0).getDiscrepancies().size());
         assertEquals(0, result.get(1).getDiscrepancies().size());
@@ -81,11 +84,12 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
         assertEquals(10, (int) result.get(2).getSwitchRulesTotal());
         assertEquals(10, (int) result.get(3).getSwitchRulesTotal());
 
-        switchEntries =
+        flowEntries =
                 isTransitVlan ? getWrongSwitchFlowEntriesWithTransitVlan() : getWrongSwitchFlowEntriesWithVxlan();
-        result = service.validateFlow(TEST_FLOW_ID_A, switchEntries);
+        meterEntries = getWrongSwitchMeterEntries();
+        result = service.validateFlow(TEST_FLOW_ID_A, flowEntries, meterEntries);
         assertEquals(4, result.size());
-        assertEquals(3, result.get(0).getDiscrepancies().size());
+        assertEquals(6, result.get(0).getDiscrepancies().size());
         assertEquals(3, result.get(1).getDiscrepancies().size());
         assertEquals(2, result.get(2).getDiscrepancies().size());
         assertEquals(2, result.get(3).getDiscrepancies().size());
@@ -96,6 +100,9 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
         assertTrue(forwardDiscrepancies.contains("cookie"));
         assertTrue(forwardDiscrepancies.contains(isTransitVlan ? "inVlan" : "tunnelId"));
         assertTrue(forwardDiscrepancies.contains("outVlan"));
+        assertTrue(forwardDiscrepancies.contains("meterRate"));
+        assertTrue(forwardDiscrepancies.contains("meterBurstSize"));
+        assertTrue(forwardDiscrepancies.contains("meterFlags"));
 
         List<String> reverseDiscrepancies = result.get(1).getDiscrepancies().stream()
                 .map(PathDiscrepancyEntity::getField)
@@ -120,8 +127,9 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
     @Test
     public void shouldValidateOneSwitchFlow() throws FlowNotFoundException {
         buildOneSwitchPortFlow();
-        List<SwitchFlowEntries> switchEntries = getSwitchFlowEntriesFlowB();
-        List<FlowValidationResponse> result = service.validateFlow(TEST_FLOW_ID_B, switchEntries);
+        List<SwitchFlowEntries> switchEntries = getSwitchFlowEntriesOneSwitchFlow();
+        List<SwitchMeterEntries> meterEntries = getSwitchMeterEntriesOneSwitchFlow();
+        List<FlowValidationResponse> result = service.validateFlow(TEST_FLOW_ID_B, switchEntries, meterEntries);
         assertEquals(2, result.size());
         assertEquals(0, result.get(0).getDiscrepancies().size());
         assertEquals(0, result.get(1).getDiscrepancies().size());
@@ -129,6 +137,6 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
 
     @Test(expected = FlowNotFoundException.class)
     public void shouldValidateFlowUsingNotExistingFlow() throws FlowNotFoundException {
-        service.validateFlow("test", new ArrayList<>());
+        service.validateFlow("test", new ArrayList<>(), new ArrayList<>());
     }
 }

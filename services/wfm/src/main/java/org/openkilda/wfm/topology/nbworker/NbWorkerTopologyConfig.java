@@ -22,6 +22,8 @@ import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Description;
 import com.sabre.oss.conf4j.annotation.Key;
 
+import javax.validation.constraints.Min;
+
 @Configuration
 public interface NbWorkerTopologyConfig extends AbstractTopologyConfig {
 
@@ -58,4 +60,13 @@ public interface NbWorkerTopologyConfig extends AbstractTopologyConfig {
     @Default("20")
     @Description("The timeout for performing H&S operations")
     int getProcessTimeout();
+
+    @Key("burst.coefficient")
+    @Default("1.05")
+    double getFlowMeterBurstCoefficient();
+
+    @Key("min.burst.size.in.kbits")
+    @Default("1024")
+    @Min(0)
+    long getFlowMeterMinBurstSizeInKbits();
 }
