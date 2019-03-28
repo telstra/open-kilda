@@ -15,11 +15,17 @@
 
 package org.openkilda.wfm.topology.network.service;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.when;
 
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
 import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 
@@ -28,11 +34,15 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.slf4j.Logger;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkPortServiceTest {
     @Mock
     private IPortCarrier carrier;
+
+    @Mock
+    private NetworkTopologyDashboardLogger dashboardLogger;
 
     private final SwitchId alphaDatapath = new SwitchId(1);
 
@@ -43,11 +53,12 @@ public class NetworkPortServiceTest {
 
     private void resetMocks() {
         reset(carrier);
+        reset(dashboardLogger);
     }
 
     @Test
     public void newPort() {
-        NetworkPortService service = new NetworkPortService(carrier);
+        NetworkPortService service = makeService();
         Endpoint port1 = Endpoint.of(alphaDatapath, 1);
         Endpoint port2 = Endpoint.of(alphaDatapath, 2);
 
@@ -70,7 +81,7 @@ public class NetworkPortServiceTest {
 
     @Test
     public void inOperationalUpDownPort() {
-        NetworkPortService service = new NetworkPortService(carrier);
+        NetworkPortService service = makeService();
         Endpoint port1 = Endpoint.of(alphaDatapath, 1);
         Endpoint port2 = Endpoint.of(alphaDatapath, 2);
 
@@ -80,6 +91,7 @@ public class NetworkPortServiceTest {
         service.updateOnlineMode(port2, true);
 
         verify(carrier).setupUniIslHandler(Endpoint.of(alphaDatapath, 2), null);
+        verifyZeroInteractions(dashboardLogger);
 
         resetMocks();
 
@@ -87,6 +99,10 @@ public class NetworkPortServiceTest {
 
         service.updateLinkStatus(port1, LinkStatus.UP);
         service.updateLinkStatus(port1, LinkStatus.DOWN);
+
+        verify(dashboardLogger).onUpdatePortStatus(alphaDatapath, 1, LinkStatus.UP);
+        verify(dashboardLogger).onUpdatePortStatus(alphaDatapath, 1, LinkStatus.DOWN);
+        verifyNoMoreInteractions(dashboardLogger);
 
         verify(carrier).enableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
         verify(carrier).disableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
@@ -99,6 +115,10 @@ public class NetworkPortServiceTest {
         service.updateLinkStatus(port2, LinkStatus.DOWN);
         service.updateLinkStatus(port2, LinkStatus.UP);
 
+        verify(dashboardLogger).onUpdatePortStatus(alphaDatapath, 2, LinkStatus.DOWN);
+        verify(dashboardLogger).onUpdatePortStatus(alphaDatapath, 2, LinkStatus.UP);
+        verifyNoMoreInteractions(dashboardLogger);
+
         verify(carrier).notifyPortPhysicalDown(Endpoint.of(alphaDatapath, 2));
         verify(carrier).enableDiscoveryPoll(Endpoint.of(alphaDatapath, 2));
 
@@ -107,7 +127,7 @@ public class NetworkPortServiceTest {
 
     @Test
     public void inUnOperationalUpDownPort() {
-        NetworkPortService service = new NetworkPortService(carrier);
+        NetworkPortService service = makeService();
         Endpoint port1 = Endpoint.of(alphaDatapath, 1);
 
         service.setup(port1, null);
@@ -122,6 +142,8 @@ public class NetworkPortServiceTest {
         service.updateLinkStatus(port1, LinkStatus.UP);
         service.updateLinkStatus(port1, LinkStatus.DOWN);
 
+        verifyZeroInteractions(dashboardLogger);
+
         verify(carrier, never()).enableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
         verify(carrier, never()).disableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
         verify(carrier, never()).notifyPortPhysicalDown(Endpoint.of(alphaDatapath, 1));
@@ -133,10 +155,25 @@ public class NetworkPortServiceTest {
         service.updateLinkStatus(port1, LinkStatus.UP);
         service.updateLinkStatus(port1, LinkStatus.DOWN);
 
+        verify(dashboardLogger).onUpdatePortStatus(alphaDatapath, 1, LinkStatus.UP);
+        verify(dashboardLogger).onUpdatePortStatus(alphaDatapath, 1, LinkStatus.DOWN);
+        verifyNoMoreInteractions(dashboardLogger);
+
         verify(carrier).enableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
         verify(carrier).disableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
         verify(carrier).notifyPortPhysicalDown(Endpoint.of(alphaDatapath, 1));
 
         // System.out.println(mockingDetails(carrier).printInvocations());
+    }
+
+    private NetworkPortService makeService() {
+        NetworkPortService service = new NetworkPortService(carrier);
+
+        NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder = mock(
+                NetworkTopologyDashboardLogger.Builder.class);
+        when(dashboardLoggerBuilder.build(any(Logger.class))).thenReturn(dashboardLogger);
+
+        service.setDashboardLoggerBuilder(dashboardLoggerBuilder);
+        return service;
     }
 }

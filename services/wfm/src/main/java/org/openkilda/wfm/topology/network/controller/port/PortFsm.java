@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,18 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.controller;
+package org.openkilda.wfm.topology.network.controller.port;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
-import org.openkilda.wfm.topology.network.controller.PortFsm.PortFsmContext;
-import org.openkilda.wfm.topology.network.controller.PortFsm.PortFsmEvent;
-import org.openkilda.wfm.topology.network.controller.PortFsm.PortFsmState;
+import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmContext;
+import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmEvent;
+import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmState;
 import org.openkilda.wfm.topology.network.model.Endpoint;
-import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.service.IPortCarrier;
 
 import lombok.Builder;
@@ -34,10 +33,10 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFsmEvent,
         PortFsmContext> {
-    private final NetworkTopologyDashboardLogger logWrapper = new NetworkTopologyDashboardLogger(log);
-
     private final Endpoint endpoint;
     private final Isl history;
+
+    private final PortReportFsm reportFsm;
 
     private static final StateMachineBuilder<PortFsm, PortFsmState, PortFsmEvent, PortFsmContext> builder;
 
@@ -45,7 +44,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
         builder = StateMachineBuilderFactory.create(
                 PortFsm.class, PortFsmState.class, PortFsmEvent.class, PortFsmContext.class,
                 // extra parameters
-                Endpoint.class, Isl.class);
+                NetworkTopologyDashboardLogger.Builder.class, Endpoint.class, Isl.class);
 
         // INIT
         builder.transition()
@@ -105,13 +104,16 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
         return new FsmExecutor<>(PortFsmEvent.NEXT);
     }
 
-    public static PortFsm create(Endpoint endpoint, Isl history) {
-        return builder.newStateMachine(PortFsmState.INIT, endpoint, history);
+    public static PortFsm create(NetworkTopologyDashboardLogger.Builder dashboalrdLoggerBuilder,
+                                 Endpoint endpoint, Isl history) {
+        return builder.newStateMachine(PortFsmState.INIT, dashboalrdLoggerBuilder, endpoint, history);
     }
 
-    public PortFsm(Endpoint endpoint, Isl history) {
+    public PortFsm(NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder, Endpoint endpoint, Isl history) {
         this.endpoint = endpoint;
         this.history = history;
+
+        reportFsm = PortReportFsm.create(dashboardLoggerBuilder, this.endpoint);
     }
 
     // -- FSM actions --
@@ -121,7 +123,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
     }
 
     public void upEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
-        logWrapper.onUpdatePortStatus(endpoint.getDatapath(), endpoint.getPortNumber(), LinkStatus.UP);
+        reportFsm.fire(PortFsmEvent.PORT_UP);
         context.getOutput().enableDiscoveryPoll(endpoint);
     }
 
@@ -134,8 +136,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
     }
 
     public void downEnter(PortFsmState from, PortFsmState to, PortFsmEvent event, PortFsmContext context) {
-        logWrapper.onUpdatePortStatus(endpoint.getDatapath(), endpoint.getPortNumber(), LinkStatus.DOWN);
-
+        reportFsm.fire(PortFsmEvent.PORT_DOWN);
         IPortCarrier output = context.getOutput();
         output.disableDiscoveryPoll(endpoint);
         output.notifyPortPhysicalDown(endpoint);
@@ -148,6 +149,8 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
     }
 
     // -- private/service methods --
+
+    // -- service data types --
 
     @Value
     @Builder
