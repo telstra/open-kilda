@@ -26,24 +26,24 @@ import lombok.Value;
 public class IslDataHolder {
     private long speed;
     private int latency;
-    private long availableBandwidth;
+    private long maximumBandwidth;
 
     public IslDataHolder(IslInfoData speakerData) {
         speed = speakerData.getSpeed();
         latency = (int) speakerData.getLatency();
-        availableBandwidth = speakerData.getAvailableBandwidth();
+        maximumBandwidth = speakerData.getAvailableBandwidth();
     }
 
     public IslDataHolder(Isl entity) {
         speed = entity.getSpeed();
         latency = entity.getLatency();
-        availableBandwidth = entity.getAvailableBandwidth();
+        maximumBandwidth = entity.getMaxBandwidth();
     }
 
     private IslDataHolder(IslDataHolder first, IslDataHolder second) {
         speed = Math.min(first.speed, second.speed);
         latency = Math.max(first.latency, second.latency);
-        availableBandwidth = Math.min(first.availableBandwidth, second.availableBandwidth);
+        maximumBandwidth = Math.min(first.maximumBandwidth, second.maximumBandwidth);
     }
 
     public IslDataHolder merge(IslDataHolder other) {
