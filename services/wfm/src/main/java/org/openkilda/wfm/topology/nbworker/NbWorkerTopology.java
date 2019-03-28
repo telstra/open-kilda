@@ -113,7 +113,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
 
-        tb.setBolt(FlowValidationHubBolt.ID, new FlowValidationHubBolt(ROUTER_BOLT_NAME, persistenceManager))
+        tb.setBolt(FlowValidationHubBolt.ID, new FlowValidationHubBolt(ROUTER_BOLT_NAME, persistenceManager,
+                topologyConfig.getFlowMeterMinBurstSizeInKbits(), topologyConfig.getFlowMeterBurstCoefficient()))
                 .fieldsGrouping(ROUTER_BOLT_NAME, FlowValidationHubBolt.INCOME_STREAM, FIELDS_KEY)
                 .directGrouping(SpeakerWorkerBolt.ID, FlowValidationHubBolt.INCOME_STREAM)
                 .directGrouping(CoordinatorBolt.ID);

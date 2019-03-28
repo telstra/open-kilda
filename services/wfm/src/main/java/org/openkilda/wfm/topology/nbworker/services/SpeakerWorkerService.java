@@ -16,12 +16,11 @@
 package org.openkilda.wfm.topology.nbworker.services;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.nbworker.bolts.SpeakerWorkerCarrier;
 
 import lombok.extern.slf4j.Slf4j;
@@ -31,17 +30,16 @@ import java.util.Map;
 
 @Slf4j
 public class SpeakerWorkerService {
-    private final Map<String, SwitchId> keyToRequest = new HashMap<>();
+    private final Map<String, CommandData> keyToRequest = new HashMap<>();
 
     /**
      * Send command to speaker.
      */
-    public void sendCommand(String key, SwitchId switchId, SpeakerWorkerCarrier carrier) {
-        log.debug("Send a request to get rules for switch {}", switchId);
-        keyToRequest.put(key, switchId);
+    public void sendCommand(String key, CommandData commandData, SpeakerWorkerCarrier carrier) {
+        log.debug("Send a request with data: {}", commandData);
+        keyToRequest.put(key, commandData);
 
-        CommandMessage commandMessage = new CommandMessage(new DumpRulesForNbworkerRequest(switchId),
-                System.currentTimeMillis(), key);
+        CommandMessage commandMessage = new CommandMessage(commandData, System.currentTimeMillis(), key);
         carrier.sendCommand(key, commandMessage);
     }
 
@@ -50,8 +48,8 @@ public class SpeakerWorkerService {
      */
     public void handleResponse(String key, Message message, SpeakerWorkerCarrier carrier) {
         log.debug("Got a response from speaker {}", message);
-        SwitchId switchId = keyToRequest.remove(key);
-        if (switchId != null) {
+        CommandData commandData = keyToRequest.remove(key);
+        if (commandData != null) {
             carrier.sendResponse(key, message);
         }
     }
@@ -61,10 +59,9 @@ public class SpeakerWorkerService {
      */
     public void handleTimeout(String key, SpeakerWorkerCarrier carrier) {
         log.debug("Send timeout error to hub {}", key);
-        SwitchId switchId = keyToRequest.remove(key);
+        keyToRequest.remove(key);
 
-        ErrorData errorData = new ErrorData(ErrorType.OPERATION_TIMED_OUT,
-                String.format("Timeout for waiting response for switch %s", switchId),
+        ErrorData errorData = new ErrorData(ErrorType.OPERATION_TIMED_OUT, "Timeout for waiting response",
                 "Error in SpeakerWorkerService");
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
         carrier.sendResponse(key, errorMessage);

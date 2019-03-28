@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import org.openkilda.messaging.info.meter.MeterEntry;
+import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
@@ -27,6 +29,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.Meter;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -54,6 +57,9 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
     protected static final String TEST_FLOW_ID_A = "test_flow_id_a";
     protected static final String TEST_FLOW_ID_B = "test_flow_id_b";
 
+    protected static final long MIN_BURST_SIZE_IN_KBITS = 1024;
+    protected static final double BURST_COEFFICIENT = 1.05;
+
     private static final int FLOW_A_SRC_PORT = 10;
     private static final int FLOW_A_DST_PORT = 20;
     private static final int FLOW_A_SEGMENT_A_SRC_PORT = 11;
@@ -78,6 +84,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
     private static final long FLOW_A_REVERSE_COOKIE = 1 | Cookie.REVERSE_FLOW_COOKIE_MASK;
     private static final long FLOW_A_FORWARD_COOKIE_PROTECTED = 2 | Cookie.FORWARD_FLOW_COOKIE_MASK;
     private static final long FLOW_A_REVERSE_COOKIE_PROTECTED = 2 | Cookie.REVERSE_FLOW_COOKIE_MASK;
+    private static final long FLOW_A_BANDWIDTH = 10000;
     private static final int FLOW_B_SRC_PORT = 1;
     private static final int FLOW_B_SRC_VLAN = 15;
     private static final int FLOW_B_DST_VLAN = 16;
@@ -85,6 +92,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
     private static final long FLOW_B_REVERSE_COOKIE = 2 | Cookie.REVERSE_FLOW_COOKIE_MASK;
     private static final int FLOW_B_FORWARD_METER_ID = 34;
     private static final int FLOW_B_REVERSE_METER_ID = 35;
+    private static final long FLOW_B_BANDWIDTH = 11000;
 
     private static SwitchRepository switchRepository;
     protected static FlowRepository flowRepository;
@@ -97,13 +105,13 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
     }
 
     protected void buildFlowA() {
-        Switch switchA = Switch.builder().switchId(TEST_SWITCH_ID_A).build();
+        Switch switchA = Switch.builder().switchId(TEST_SWITCH_ID_A).description("").build();
         switchRepository.createOrUpdate(switchA);
-        Switch switchB = Switch.builder().switchId(TEST_SWITCH_ID_B).build();
+        Switch switchB = Switch.builder().switchId(TEST_SWITCH_ID_B).description("").build();
         switchRepository.createOrUpdate(switchB);
-        Switch switchC = Switch.builder().switchId(TEST_SWITCH_ID_C).build();
+        Switch switchC = Switch.builder().switchId(TEST_SWITCH_ID_C).description("").build();
         switchRepository.createOrUpdate(switchC);
-        Switch switchE = Switch.builder().switchId(TEST_SWITCH_ID_E).build();
+        Switch switchE = Switch.builder().switchId(TEST_SWITCH_ID_E).description("").build();
         switchRepository.createOrUpdate(switchE);
 
         Flow flow = Flow.builder()
@@ -115,6 +123,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
                 .destPort(FLOW_A_DST_PORT)
                 .destVlan(FLOW_A_DST_VLAN)
                 .allocateProtectedPath(true)
+                .bandwidth(FLOW_A_BANDWIDTH)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .status(FlowStatus.UP)
                 .timeCreate(Instant.now())
@@ -128,6 +137,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
                 .meterId(new MeterId(FLOW_A_FORWARD_METER_ID))
                 .srcSwitch(switchA)
                 .destSwitch(switchC)
+                .bandwidth(FLOW_A_BANDWIDTH)
                 .status(FlowPathStatus.ACTIVE)
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
@@ -158,6 +168,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
                 .meterId(new MeterId(FLOW_A_FORWARD_METER_ID_PROTECTED))
                 .srcSwitch(switchA)
                 .destSwitch(switchC)
+                .bandwidth(FLOW_A_BANDWIDTH)
                 .status(FlowPathStatus.ACTIVE)
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
@@ -188,6 +199,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
                 .meterId(new MeterId(FLOW_A_REVERSE_METER_ID))
                 .srcSwitch(switchC)
                 .destSwitch(switchA)
+                .bandwidth(FLOW_A_BANDWIDTH)
                 .status(FlowPathStatus.ACTIVE)
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
@@ -218,6 +230,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
                 .meterId(new MeterId(FLOW_A_REVERSE_METER_ID_PROTECTED))
                 .srcSwitch(switchC)
                 .destSwitch(switchA)
+                .bandwidth(FLOW_A_BANDWIDTH)
                 .status(FlowPathStatus.ACTIVE)
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
@@ -277,7 +290,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
     }
 
     protected void buildOneSwitchPortFlowB() {
-        Switch switchD = Switch.builder().switchId(TEST_SWITCH_ID_D).build();
+        Switch switchD = Switch.builder().switchId(TEST_SWITCH_ID_D).description("").build();
         switchRepository.createOrUpdate(switchD);
 
         Flow flow = Flow.builder()
@@ -288,6 +301,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
                 .destSwitch(switchD)
                 .destPort(FLOW_B_SRC_PORT)
                 .destVlan(FLOW_B_DST_VLAN)
+                .bandwidth(FLOW_B_BANDWIDTH)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .status(FlowStatus.UP)
                 .timeCreate(Instant.now())
@@ -301,6 +315,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
                 .meterId(new MeterId(FLOW_B_FORWARD_METER_ID))
                 .srcSwitch(switchD)
                 .destSwitch(switchD)
+                .bandwidth(FLOW_B_BANDWIDTH)
                 .status(FlowPathStatus.ACTIVE)
                 .segments(Collections.emptyList())
                 .timeCreate(Instant.now())
@@ -315,6 +330,7 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
                 .meterId(new MeterId(FLOW_B_REVERSE_METER_ID))
                 .srcSwitch(switchD)
                 .destSwitch(switchD)
+                .bandwidth(FLOW_B_BANDWIDTH)
                 .status(FlowPathStatus.ACTIVE)
                 .segments(Collections.emptyList())
                 .timeCreate(Instant.now())
@@ -365,6 +381,38 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
         return switchEntries;
     }
 
+    protected List<SwitchMeterEntries> getSwitchMeterEntriesFlowA() {
+        List<SwitchMeterEntries> switchMeterEntries = new ArrayList<>();
+        switchMeterEntries.add(SwitchMeterEntries.builder()
+                .switchId(TEST_SWITCH_ID_A)
+                .meterEntries(Collections.singletonList(MeterEntry.builder()
+                        .meterId(FLOW_A_FORWARD_METER_ID)
+                        .rate(FLOW_A_BANDWIDTH)
+                        .burstSize(Meter
+                                .calculateBurstSize(FLOW_A_BANDWIDTH, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
+                        .flags(Meter.getMeterFlags())
+                        .build()))
+                .build());
+
+        switchMeterEntries.add(SwitchMeterEntries.builder()
+                .switchId(TEST_SWITCH_ID_B)
+                .meterEntries(Collections.emptyList())
+                .build());
+
+        switchMeterEntries.add(SwitchMeterEntries.builder()
+                .switchId(TEST_SWITCH_ID_C)
+                .meterEntries(Collections.singletonList(MeterEntry.builder()
+                        .meterId(FLOW_A_REVERSE_METER_ID)
+                        .rate(FLOW_A_BANDWIDTH)
+                        .burstSize(Meter
+                                .calculateBurstSize(FLOW_A_BANDWIDTH, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
+                        .flags(Meter.getMeterFlags())
+                        .build()))
+                .build());
+
+        return switchMeterEntries;
+    }
+
     protected List<SwitchFlowEntries> getWrongSwitchFlowEntriesFlowA() {
         List<SwitchFlowEntries> switchEntries = new ArrayList<>();
 
@@ -401,6 +449,39 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
         return switchEntries;
     }
 
+    protected List<SwitchMeterEntries> getWrongSwitchMeterEntriesFlowA() {
+        List<SwitchMeterEntries> switchMeterEntries = new ArrayList<>();
+        int delta = 5000;
+        switchMeterEntries.add(SwitchMeterEntries.builder()
+                .switchId(TEST_SWITCH_ID_A)
+                .meterEntries(Collections.singletonList(MeterEntry.builder()
+                        .meterId(FLOW_A_FORWARD_METER_ID)
+                        .rate(FLOW_A_BANDWIDTH + delta)
+                        .burstSize(Meter.calculateBurstSize(FLOW_A_BANDWIDTH + delta, MIN_BURST_SIZE_IN_KBITS,
+                                BURST_COEFFICIENT, ""))
+                        .flags(new String[]{"PKTPS", "BURST", "STATS"})
+                        .build()))
+                .build());
+
+        switchMeterEntries.add(SwitchMeterEntries.builder()
+                .switchId(TEST_SWITCH_ID_B)
+                .meterEntries(Collections.emptyList())
+                .build());
+
+        switchMeterEntries.add(SwitchMeterEntries.builder()
+                .switchId(TEST_SWITCH_ID_C)
+                .meterEntries(Collections.singletonList(MeterEntry.builder()
+                        .meterId(FLOW_A_REVERSE_METER_ID)
+                        .rate(FLOW_A_BANDWIDTH)
+                        .burstSize(Meter
+                                .calculateBurstSize(FLOW_A_BANDWIDTH, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
+                        .flags(Meter.getMeterFlags())
+                        .build()))
+                .build());
+
+        return switchMeterEntries;
+    }
+
     protected List<SwitchFlowEntries> getSwitchFlowEntriesFlowB() {
         List<SwitchFlowEntries> switchEntries = new ArrayList<>();
 
@@ -411,6 +492,29 @@ public class FlowValidationTestBase extends Neo4jBasedTest {
                         getFlowSetFieldAction(FLOW_B_SRC_VLAN), (long) FLOW_B_REVERSE_METER_ID)));
 
         return switchEntries;
+    }
+
+    protected List<SwitchMeterEntries> getSwitchMeterEntriesFlowB() {
+        List<MeterEntry> meterEntries = new ArrayList<>();
+        meterEntries.add(MeterEntry.builder()
+                .meterId(FLOW_B_FORWARD_METER_ID)
+                .rate(FLOW_B_BANDWIDTH)
+                .burstSize(Meter
+                        .calculateBurstSize(FLOW_B_BANDWIDTH, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
+                .flags(Meter.getMeterFlags())
+                .build());
+        meterEntries.add(MeterEntry.builder()
+                .meterId(FLOW_B_REVERSE_METER_ID)
+                .rate(FLOW_B_BANDWIDTH)
+                .burstSize(Meter
+                        .calculateBurstSize(FLOW_B_BANDWIDTH, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
+                .flags(Meter.getMeterFlags())
+                .build());
+
+        return Collections.singletonList(SwitchMeterEntries.builder()
+                .switchId(TEST_SWITCH_ID_D)
+                .meterEntries(meterEntries)
+                .build());
     }
 
     private SwitchFlowEntries getSwitchFlowEntries(SwitchId switchId, FlowEntry... flowEntries) {
