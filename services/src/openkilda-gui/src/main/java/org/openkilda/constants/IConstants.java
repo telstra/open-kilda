@@ -40,14 +40,19 @@ public abstract class IConstants {
     
     public static final String SESSION_OBJECT = "sessionObject";
     
-    public static final String APPLICATION_PROPERTIES_FILE = "file:./application.properties";
+    public static final String APPLICATION_PROPERTIES_FILE = "application.properties";
+
+    public static final String FILE_PATH_PREFIX = "file:./";
     
     private static String prefix;
     
     static {
         Properties p = new Properties();
         try {
-            Resource resource = new ClassPathResource(APPLICATION_PROPERTIES_FILE);
+            Resource resource = new ClassPathResource(FILE_PATH_PREFIX + APPLICATION_PROPERTIES_FILE);
+            if (!resource.exists()) {
+                resource = new ClassPathResource(APPLICATION_PROPERTIES_FILE);
+            }
             p.load(new FileReader(resource.getFile()));
             prefix = p.getProperty("opentsdb.metric.prefix");
         } catch (IOException e) {
