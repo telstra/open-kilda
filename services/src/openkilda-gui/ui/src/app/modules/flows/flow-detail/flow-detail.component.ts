@@ -159,6 +159,7 @@ export class FlowDetailComponent implements OnInit {
           this.toaster.error(msg,"Error");
       })  
     }else if(tab =='ping'){
+      this.pingedFlow = null;
       this.initPingSimulation();
     }
   }
@@ -281,7 +282,7 @@ export class FlowDetailComponent implements OnInit {
         element.setAttribute('class',classes);
          var rec: any = element.getBoundingClientRect();
         
-         if(classes.includes("failed_ping_flowline")){
+         if(classes.includes("failed_ping_flowline") || classes.includes("ping_success_flow")){
            if(index ==0){
             $("#ping-hover-txt").css("display", "block");
             $('#forward_ping_errors').css('display','block');
@@ -676,9 +677,13 @@ export class FlowDetailComponent implements OnInit {
         var reverse_ping = (data && data['reverse'] && data['reverse']['ping_success']) ?data['reverse']['ping_success'] : false;
         if(!forward_ping){
           $('#forward_ping_errors').html('<p>'+data['forward']['error']+'</p>');
+        }else{
+          $('#forward_ping_errors').html('<p> Latency: '+data['forward']['latency']+'</p>');
         }
         if(!reverse_ping){
           $('#reverse_ping_errors').html('<p>'+data['reverse']['error']+'</p>');
+        }else{
+          $('#reverse_ping_errors').html('<p> Latency: '+data['reverse']['latency']+'</p>');
         }
         this.removePingFromLinks(forward_ping,reverse_ping);
         this.pingedFlow = data;
