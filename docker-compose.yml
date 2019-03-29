@@ -16,7 +16,7 @@ services:
       default:
         aliases:
         - lab-api.pendev
-    mem_limit: 256741824
+    mem_limit: ${LAB_API_MEM_LIMIT:-0}
 
   neo4j:
     container_name: neo4j
@@ -47,7 +47,7 @@ services:
       default:
         aliases:
          - neo4j.pendev
-    mem_limit: 1073741824
+    mem_limit: ${NEO4J_MEM_LIMIT:-0}
 
 
   zookeeper:
@@ -66,7 +66,7 @@ services:
       default:
         aliases:
          - zookeeper.pendev
-    mem_limit: 1073741824
+    mem_limit: ${ZOOKEEPER_MEM_LIMIT:-0}
 
 
   kafka:
@@ -96,7 +96,7 @@ services:
          - kafka.pendev
     environment:
       KAFKA_HEAP_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XshowSettings:all"
-    mem_limit: 1073741824
+    mem_limit: ${KAFKA_MEM_LIMIT:-0}
 
   wfm:
     container_name: wfm
@@ -142,7 +142,7 @@ services:
       default:
         aliases:
          - hbase.pendev
-    mem_limit: 1073741824
+    mem_limit: ${HBASE_MEM_LIMIT:-0}
 
   storm-nimbus:
     container_name: storm-nimbus
@@ -260,7 +260,7 @@ services:
          - floodlight_one.pendev
 # we use kilda as hostname for FL in atdd topologies
          - kilda
-    mem_limit: 1073741824
+    mem_limit: ${FL_1_MEM_LIMIT:-0}
 
   northbound:
     container_name: openkilda-northbound
@@ -282,7 +282,7 @@ services:
       default:
         aliases:
          - northbound.pendev
-    mem_limit: 1073741824
+    mem_limit: ${NB_MEM_LIMIT:-0}
 
   grpc-speaker:
     container_name: grpc-speaker
@@ -299,7 +299,7 @@ services:
       default:
         aliases:
          - grpc-speaker.pendev
-    mem_limit: 1073741824
+    mem_limit: ${GRPC_MEM_LIMIT:-0}
 
 
   opentsdb:
@@ -318,7 +318,7 @@ services:
       default:
         aliases:
          - opentsdb.pendev
-    mem_limit: 1073741824
+    mem_limit: ${OTSDB_MEM_LIMIT:-0}
 
 
   gui:
@@ -336,7 +336,7 @@ services:
       default:
         aliases:
          - openkilda-gui.pendev
-    mem_limit: 1073741824
+    mem_limit: ${GUI_MEM_LIMIT:-0}
 
   elasticsearch:
     container_name: elasticsearch
@@ -354,7 +354,7 @@ services:
          - elasticsearch.pendev
     environment:
       ES_JAVA_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
-    mem_limit: 1073741824
+    mem_limit: ${ELASTIC_MEM_LIMIT:-0}
 
 
   kibana:
@@ -370,7 +370,7 @@ services:
       default:
         aliases:
          - kibana.pendev
-    mem_limit: 1073741824
+    mem_limit: ${KIBANA_MEM_LIMIT:-0}
 
 
   logstash:
@@ -391,7 +391,7 @@ services:
       LS_OPTS: "--debug-config"
       # remove default 500m heap size in /usr/share/logstash/vendor/jruby/bin/jruby
       JAVA_MEM: " "
-    mem_limit: 1073741824
+    mem_limit: ${LOGSTASH_MEM_LIMIT:-0}
 
 volumes:
   zookeeper_data:

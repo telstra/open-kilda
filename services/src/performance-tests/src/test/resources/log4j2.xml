@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Appenders>
+        <Console name="STDOUT" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{ISO8601} %-5p %c{1}:%L - %m%n"/>
+        </Console>
+        <File name="RequestLogsFile" fileName="target/logs/request_logs.log">
+            <PatternLayout pattern="%d{ISO8601} %-5p %c{1}:%L - %m%n"/>
+        </File>
+        <File name="KildaLogFile" fileName="target/logs/logs.log">
+            <PatternLayout pattern="%d{ISO8601} %-5p %c{1}:%L - %m%n"/>
+        </File>
+        <File name="SkippedTestsFile" fileName="target/logs/skipped_tests.log" append="false">
+            <PatternLayout pattern="%m%n%n"/>
+        </File>
+    </Appenders>
+    <Loggers>
+        <Logger name="org.openkilda" level="DEBUG" additivity="false">
+            <AppenderRef ref="KildaLogFile" level="DEBUG"/>
+            <AppenderRef ref="STDOUT" level="INFO"/>
+        </Logger>
+        <Logger name="org.openkilda.testing.tools.LoggingRequestInterceptor" level="DEBUG" additivity="false">
+            <AppenderRef ref="RequestLogsFile" level="DEBUG"/>
+        </Logger>
+        <Logger name="extension.SkippedTestsLogger" level="DEBUG" additivity="true">
+            <AppenderRef ref="SkippedTestsFile" level="DEBUG"/>
+        </Logger>
+        <Root>
+            <AppenderRef ref="STDOUT" level="ERROR"/>
+        </Root>
+    </Loggers>
+</Configuration>

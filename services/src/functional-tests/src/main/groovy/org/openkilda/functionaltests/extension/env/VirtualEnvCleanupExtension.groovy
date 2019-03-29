@@ -15,8 +15,11 @@ class VirtualEnvCleanupExtension extends EnvCleanupExtension {
         applicationContext.autowireCapableBeanFactory.autowireBean(this)
         if (profile == "virtual") {
             deleteAllFlows()
-            unsetSwitchMaintenance()
             def links = northbound.getAllLinks()
+            deleteInactiveIsls(links)
+            def switches = northbound.getAllSwitches()
+            deleteInactiveSwitches(switches)
+            unsetSwitchMaintenance(switches)
             unsetLinkMaintenance(links)
             deleteLinkProps()
             resetCosts()

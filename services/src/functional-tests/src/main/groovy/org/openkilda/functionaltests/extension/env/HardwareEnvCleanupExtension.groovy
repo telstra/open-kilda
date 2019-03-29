@@ -41,7 +41,7 @@ class HardwareEnvCleanupExtension extends EnvCleanupExtension {
 
             //now switches
             def activeSwitches = northbound.getAllSwitches().findAll { it.state == SwitchChangeType.ACTIVATED }
-            unsetSwitchMaintenance()
+            unsetSwitchMaintenance(activeSwitches)
             removeFlowRules(activeSwitches)
             removeExcessMeters(activeSwitches)
         }
