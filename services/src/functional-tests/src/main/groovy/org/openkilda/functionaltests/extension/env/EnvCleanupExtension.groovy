@@ -8,7 +8,9 @@ import org.openkilda.functionaltests.extension.spring.SpringContextListener
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.IslInfoData
+import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.info.event.SwitchInfoData
+import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
@@ -108,8 +110,8 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
         }
     }
 
-    def unsetSwitchMaintenance() {
-        def maintenanceSwitches = northbound.getAllSwitches().findAll { it.underMaintenance }
+    def unsetSwitchMaintenance(List<SwitchInfoData> switches) {
+        def maintenanceSwitches = switches.findAll { it.underMaintenance }
         if (maintenanceSwitches) {
             log.info("Unset maintenance mode from all affected switches: $maintenanceSwitches")
             maintenanceSwitches.each {
@@ -154,6 +156,28 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
         if (missingAswRules) {
             log.info("Adding missing A-switch rules: $missingAswRules")
             lockKeeper.addFlows(missingAswRules)
+        }
+    }
+
+    def deleteInactiveIsls(List<IslInfoData> allLinks) {
+        def inactiveLinks = allLinks.findAll { it.state != IslChangeType.DISCOVERED }
+
+        if(inactiveLinks) {
+            log.info("Removing inactive ISLs: $inactiveLinks")
+            inactiveLinks.unique { [it.source, it.destination].sort() }.each {
+                northbound.deleteLink(new LinkParametersDto(it.source.switchId.toString(), it.source.portNo,
+                        it.destination.switchId.toString(), it.destination.portNo))
+            }
+        }
+    }
+
+    def deleteInactiveSwitches(List<SwitchInfoData> allSwitches) {
+        def inactiveSwitches = allSwitches.findAll { it.state == SwitchChangeType.DEACTIVATED }
+        if(inactiveSwitches) {
+            log.info("Removing inactive switches: $inactiveSwitches")
+            inactiveSwitches.each {
+                northbound.deleteSwitch(it.switchId, false)
+            }
         }
     }
 }
