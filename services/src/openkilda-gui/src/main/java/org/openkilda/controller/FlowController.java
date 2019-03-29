@@ -277,8 +277,10 @@ public class FlowController extends BaseController {
      */
     @RequestMapping(value = "/{flowId}/ping", method = RequestMethod.PUT)
     @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.FW_FLOW_PING })
     public @ResponseBody String flowPing(@PathVariable final String flowId, @RequestBody final Flow flow) {
         LOGGER.info("Flow ping. Flow id: '" + flowId + "'");
+        activityLogger.log(ActivityType.FLOW_PING, flowId);
         return flowService.flowPing(flowId, flow);
     }
 

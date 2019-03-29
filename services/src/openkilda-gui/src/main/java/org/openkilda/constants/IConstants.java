@@ -37,13 +37,13 @@ import java.util.TreeSet;
 public abstract class IConstants {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IConstants.class);
-
+    
     public static final String SESSION_OBJECT = "sessionObject";
-
+    
     public static final String APPLICATION_PROPERTIES_FILE = "file:./application.properties";
-
+    
     private static String prefix;
-
+    
     static {
         Properties p = new Properties();
         try {
@@ -228,10 +228,12 @@ public abstract class IConstants {
 
         public static final String FW_FLOW_RESYNC = "fw_flow_resync";
         
+        public static final String FW_FLOW_PING = "fw_flow_ping";
+        
         public static final String SW_PORT_CONFIG = "sw_port_config";
         
         public static final String STORE_SETTING = "store_setting";
-
+                
         public static final String APPLICATION_SETTING = "application_setting";
         
         public static final String SW_SWITCH_UPDATE_NAME = "sw_switch_update_name";
