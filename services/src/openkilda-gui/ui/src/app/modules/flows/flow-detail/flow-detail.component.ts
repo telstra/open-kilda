@@ -92,6 +92,7 @@ export class FlowDetailComponent implements OnInit {
   property = 'GraphicalView';
   Rawview = false ; 
   GraphicalView = true;
+  loadingPing = false;
   public reRoutingInProgress = false;
 
   constructor(
@@ -668,7 +669,7 @@ export class FlowDetailComponent implements OnInit {
     this.addPingToLinks();
     this.pingedFlow = null;
     this.flowIs  ='ping';
-    this.loading = true;
+    this.loadingPing = true;
     this.flowService.pingFlow(this.flowDetail.flowid).subscribe(
       data => {
         var forward_ping = (data && data['forward'] && data['forward']['ping_success']) ?data['forward']['ping_success'] : false;
@@ -682,13 +683,16 @@ export class FlowDetailComponent implements OnInit {
         this.removePingFromLinks(forward_ping,reverse_ping);
         this.pingedFlow = data;
         this.clipBoardItems.pingedFlow = data;
-        this.loading = false;
+        this.loadingPing = false;
+        if(this.property == "Rawview"){
+          setTimeout(function(){ $('#onoffflowping').trigger('click')});
+        }
       },
       error => {
         var forward_ping = false,reverse_ping = false;
         this.removePingFromLinks(forward_ping,reverse_ping);
         this.flowIs  ='';
-        this.loading = false;
+        this.loadingPing = false;
         this.toaster.error(error["error-auxiliary-message"], "Error!");
       }
     );

@@ -1673,6 +1673,21 @@ table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTa
   z-index: 1;
 }
 
+.ping-component-loader {
+  position: absolute;
+  border: 7px solid #bfbdbd;
+  border-radius: 50%;
+  border-top: 7px solid #3498db;
+  width: 35px;
+  height: 35px;
+  top: calc(50% - 75px);
+  left: calc(50% - 80px);
+  -webkit-animation: spin 2s linear infinite;
+  animation: spin 2s linear infinite;
+  margin: auto;
+  z-index: 1;
+}
+
 .btn-no-radius {
   border-radius: 0px;
 }
