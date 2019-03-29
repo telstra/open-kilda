@@ -11,8 +11,8 @@ import org.spockframework.runtime.model.SpecInfo
 /**
  * This extension builds the correct order for all 'special' features.
  *
- * @see org.openkilda.functionaltests.extension.spring.PrepareSpringContextDummy
- * @see org.openkilda.functionaltests.extension.healthcheck.HealthCheck
+ * @see PrepareSpringContextDummy
+ * @see HealthCheck
  */
 class FeatureOrderExtension extends AbstractGlobalExtension {
     void visitSpec(SpecInfo spec) {
