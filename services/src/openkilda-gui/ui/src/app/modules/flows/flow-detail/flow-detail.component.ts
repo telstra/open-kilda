@@ -160,6 +160,9 @@ export class FlowDetailComponent implements OnInit {
       })  
     }else if(tab =='ping'){
       this.pingedFlow = null;
+      this.GraphicalView = true;
+      this.Rawview = false;
+      this.property = 'GraphicalView';
       this.initPingSimulation();
     }
   }
@@ -687,7 +690,7 @@ export class FlowDetailComponent implements OnInit {
         }
         this.removePingFromLinks(forward_ping,reverse_ping);
         this.pingedFlow = data;
-        this.clipBoardItems.pingedFlow = data;
+        this.clipBoardItems.pingedFlow = JSON.stringify(data);
         this.loadingPing = false;
         if(this.property == "Rawview"){
           setTimeout(function(){ $('#onoffflowping').trigger('click')});

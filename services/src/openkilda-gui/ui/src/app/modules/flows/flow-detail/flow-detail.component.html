@@ -266,7 +266,7 @@
                   <div *ngIf="Rawview">
                       <div *ngIf="loadingPing" class="ping-component-loader"></div>
                       <pre  *ngIf="!pingedFlow" class="code"  style="height: 250px;"></pre>
-                      <pre  *ngIf="pingedFlow" class="code"  style="height: 250px;">{{pingedFlow | json}}</pre>
+                      <pre  [contextMenu]="copyPingFlow" *ngIf="pingedFlow" class="code"  style="height: 250px;">{{pingedFlow | json}}</pre>
                   </div>
                  
                   <div  [hidden]="!GraphicalView" id="pingGraphwrapper" class="topology-container">
@@ -314,6 +314,12 @@
 
 <context-menu #copySrcSwitch>
   <ng-template contextMenuItem (execute)="copyToClip($event,'sourceSwitch');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>
+
+<context-menu #copyPingFlow>
+  <ng-template contextMenuItem (execute)="copyToClip($event,'pingedFlow');">
     Copy to Clipboard
   </ng-template>
 </context-menu>
