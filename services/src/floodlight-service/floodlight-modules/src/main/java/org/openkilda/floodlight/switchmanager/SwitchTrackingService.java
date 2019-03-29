@@ -17,6 +17,7 @@ package org.openkilda.floodlight.switchmanager;
 
 import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.converter.IofSwitchConverter;
+import org.openkilda.floodlight.converter.OfPortDescConverter;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.service.FeatureDetectorService;
@@ -24,13 +25,13 @@ import org.openkilda.floodlight.service.IService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.FloodlightDashboardLogger;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
-import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
@@ -47,7 +48,6 @@ import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +61,8 @@ import java.util.stream.Collectors;
 
 public class SwitchTrackingService implements IOFSwitchListener, IService {
     private static final Logger logger = LoggerFactory.getLogger(SwitchTrackingService.class);
+
+    private static final FloodlightDashboardLogger logWrapper = new FloodlightDashboardLogger(logger);
 
     private final ReadWriteLock discoveryLock = new ReentrantReadWriteLock();
 
@@ -98,14 +100,14 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     @Override
     @NewCorrelationContextRequired
     public void switchAdded(final DatapathId switchId) {
-        logSwitchEvent(switchId, SwitchChangeType.ADDED);
+        logWrapper.onSwitchEvent(switchId, SwitchChangeType.ADDED);
         switchDiscovery(switchId, SwitchChangeType.ADDED);
     }
 
     @Override
     @NewCorrelationContextRequired
     public void switchRemoved(final DatapathId switchId) {
-        logSwitchEvent(switchId, SwitchChangeType.REMOVED);
+        logWrapper.onSwitchEvent(switchId, SwitchChangeType.REMOVED);
 
         // TODO(surabujin): must figure out events order/set during lost connection
         switchManager.deactivate(switchId);
@@ -115,19 +117,19 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     @Override
     @NewCorrelationContextRequired
     public void switchActivated(final DatapathId switchId) {
-        logSwitchEvent(switchId, SwitchChangeType.ACTIVATED);
+        logWrapper.onSwitchEvent(switchId, SwitchChangeType.ACTIVATED);
 
         try {
             switchManager.activate(switchId);
         } catch (SwitchOperationException e) {
-            logger.error("OF switch event ({} - {}): {}", switchId, SwitchChangeType.ACTIVATED, e.getMessage());
+            logger.error("Switch {} activation have failed", switchId, e);
         }
     }
 
     @Override
     @NewCorrelationContextRequired
     public void switchDeactivated(final DatapathId switchId) {
-        logSwitchEvent(switchId, SwitchChangeType.DEACTIVATED);
+        logWrapper.onSwitchEvent(switchId, SwitchChangeType.DEACTIVATED);
 
         switchManager.deactivate(switchId);
         switchDiscovery(switchId, SwitchChangeType.DEACTIVATED);
@@ -136,17 +138,17 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     @Override
     @NewCorrelationContextRequired
     public void switchChanged(final DatapathId switchId) {
-        logSwitchEvent(switchId, SwitchChangeType.CHANGED);
+        logWrapper.onSwitchEvent(switchId, SwitchChangeType.CHANGED);
         switchDiscovery(switchId, SwitchChangeType.CHANGED);
     }
 
     @Override
     @NewCorrelationContextRequired
     public void switchPortChanged(final DatapathId switchId, final OFPortDesc portDesc, final PortChangeType type) {
-        logPortEvent(switchId, portDesc, type);
+        logWrapper.onPortEvent(switchId, portDesc, type);
 
-        if (ISwitchManager.isPhysicalPort(portDesc)) {
-            portDiscovery(switchId, portDesc.getPortNo(), type);
+        if (! OfPortDescConverter.INSTANCE.isReservedPort(portDesc.getPortNo())) {
+            portDiscovery(switchId, portDesc, type);
         }
     }
 
@@ -196,10 +198,10 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         }
     }
 
-    private void portDiscovery(DatapathId dpId, OFPort port, PortChangeType changeType) {
+    private void portDiscovery(DatapathId dpId, OFPortDesc portDesc, PortChangeType changeType) {
         discoveryLock.readLock().lock();
         try {
-            portDiscoveryAction(dpId, port, changeType);
+            portDiscoveryAction(dpId, portDesc, changeType);
         } finally {
             discoveryLock.readLock().unlock();
         }
@@ -226,57 +228,10 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         producerService.sendMessageAndTrack(discoveryTopic, dpId.toString(), message);
     }
 
-    private void portDiscoveryAction(DatapathId dpId, OFPort port, PortChangeType changeType) {
-        logger.info("Send port discovery ({}-{} - {})", dpId, port, changeType);
-        Message message = buildPortMessage(dpId, port, changeType);
+    private void portDiscoveryAction(DatapathId dpId, OFPortDesc portDesc, PortChangeType changeType) {
+        logger.info("Send port discovery ({}-{} - {})", dpId, portDesc.getPortNo(), changeType);
+        Message message = buildPortMessage(dpId, portDesc, changeType);
         producerService.sendMessageAndTrack(discoveryTopic, dpId.toString(), message);
-    }
-
-    private Boolean obtainPortEnableStatus(DatapathId dpId, OFPort port, PortChangeType changeType) {
-        Boolean result = null;
-        switch (changeType) {
-            case UP:
-                result = true;
-                break;
-            case DOWN:
-                result = false;
-                break;
-            case ADD:
-                result = obtainPortEnableStatus(dpId, port);
-                break;
-            case DELETE:
-                break;
-            default:
-                logger.error("Unable to obtain port-enable-status {}_{} - change-type:{} is not supported",
-                        dpId, port.getPortNumber(), changeType);
-        }
-
-        return result;
-    }
-
-    private Boolean obtainPortEnableStatus(DatapathId dpId, OFPort port) {
-        try {
-            IOFSwitch sw = switchManager.lookupSwitch(dpId);
-            return sw.portEnabled(port);
-        } catch (SwitchNotFoundException e) {
-            logger.error("Unable to obtain port-enable-status {}_{}: {}", dpId, port.getPortNumber(), e.getMessage());
-            return null;
-        }
-    }
-
-    private static org.openkilda.messaging.info.event.PortChangeType mapChangeType(PortChangeType type) {
-        switch (type) {
-            case ADD:
-                return org.openkilda.messaging.info.event.PortChangeType.ADD;
-            case OTHER_UPDATE:
-                return org.openkilda.messaging.info.event.PortChangeType.OTHER_UPDATE;
-            case DELETE:
-                return org.openkilda.messaging.info.event.PortChangeType.DELETE;
-            case UP:
-                return org.openkilda.messaging.info.event.PortChangeType.UP;
-            default:
-                return org.openkilda.messaging.info.event.PortChangeType.DOWN;
-        }
     }
 
     /**
@@ -305,14 +260,12 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
      * Builds a port state change message with port number.
      *
      * @param switchId datapathId of switch
-     * @param port port that triggered the event
+     * @param portDesc port that triggered the event
      * @param type type of port event
      * @return Message
      */
-    private Message buildPortMessage(final DatapathId switchId, final OFPort port, final PortChangeType type) {
-        InfoData data = new PortInfoData(
-                new SwitchId(switchId.getLong()), port.getPortNumber(), mapChangeType(type),
-                obtainPortEnableStatus(switchId, port, type));
+    private Message buildPortMessage(final DatapathId switchId, final OFPortDesc portDesc, final PortChangeType type) {
+        InfoData data = OfPortDescConverter.INSTANCE.toPortInfoData(switchId, portDesc, type);
         return buildMessage(data);
     }
 
@@ -349,13 +302,5 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
                                                      LogicalOFMessageCategory.MAIN).getRemoteInetAddress()),
                                      sw.getOFFactory().getVersion().toString(),
                                      description, features, ports);
-    }
-
-    private void logSwitchEvent(DatapathId dpId, SwitchChangeType event) {
-        logger.info("OF switch event ({} - {})", dpId, event);
-    }
-
-    private void logPortEvent(DatapathId dpId, OFPortDesc portDesc, PortChangeType changeType) {
-        logger.info("OF port event ({}-{} - {}). PortDesc: {}", dpId, portDesc.getPortNo(), changeType, portDesc);
     }
 }

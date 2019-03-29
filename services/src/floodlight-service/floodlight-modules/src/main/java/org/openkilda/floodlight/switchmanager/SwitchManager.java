@@ -38,6 +38,7 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
+import org.openkilda.floodlight.converter.OfPortDescConverter;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.error.OfInstallException;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
@@ -1737,7 +1738,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
 
         return ports.stream()
-                .filter(ISwitchManager::isPhysicalPort)
+                .filter(entry -> !OfPortDescConverter.INSTANCE.isReservedPort(entry.getPortNo()))
                 .collect(Collectors.toList());
     }
 
