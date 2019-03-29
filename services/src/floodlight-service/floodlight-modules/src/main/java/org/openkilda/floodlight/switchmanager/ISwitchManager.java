@@ -29,12 +29,10 @@ import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
-import org.projectfloodlight.openflow.types.OFPort;
 
 import java.net.InetAddress;
 import java.util.List;
 import java.util.Map;
-
 
 public interface ISwitchManager extends IFloodlightService {
     /** OVS software switch manufacturer constant value. */
@@ -327,26 +325,6 @@ public interface ISwitchManager extends IFloodlightService {
      * @throws SwitchOperationException Switch not found.
      */
     List<OFPortDesc> dumpPortsDescription(DatapathId dpid) throws SwitchOperationException;
-
-    /**
-     * Return true if port is physical.
-     *
-     * @param portDesc port.
-     * @return true if port is physical.
-     */
-    static boolean isPhysicalPort(OFPortDesc portDesc) {
-        OFPort p = portDesc.getPortNo();
-        return !(p.equals(OFPort.LOCAL)
-                || p.equals(OFPort.ALL)
-                || p.equals(OFPort.CONTROLLER)
-                || p.equals(OFPort.ANY)
-                || p.equals(OFPort.FLOOD)
-                || p.equals(OFPort.ZERO)
-                || p.equals(OFPort.NO_MASK)
-                || p.equals(OFPort.IN_PORT)
-                || p.equals(OFPort.NORMAL)
-                || p.equals(OFPort.TABLE));
-    }
 
     /**
      * Create a MAC address based on the DPID.

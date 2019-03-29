@@ -925,7 +925,7 @@ class RecordHandler implements Runnable {
         List<OFPortDesc> ofPortsDescriptions =
                 context.getSwitchManager().dumpPortsDescription(DatapathId.of(switchId.toLong()));
         List<PortDescription> portsDescriptions = ofPortsDescriptions.stream()
-                .map(OfPortDescConverter::toPortDescription)
+                .map(OfPortDescConverter.INSTANCE::toPortDescription)
                 .collect(Collectors.toList());
 
         return SwitchPortsDescription.builder()

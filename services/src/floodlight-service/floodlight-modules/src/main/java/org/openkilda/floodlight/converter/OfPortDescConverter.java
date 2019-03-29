@@ -15,21 +15,30 @@
 
 package org.openkilda.floodlight.converter;
 
+import org.openkilda.messaging.info.event.PortChangeType;
+import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.switches.PortDescription;
+import org.openkilda.model.SwitchId;
 
+import org.mapstruct.Mapper;
+import org.mapstruct.factory.Mappers;
 import org.projectfloodlight.openflow.protocol.OFPortConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortFeatures;
 import org.projectfloodlight.openflow.protocol.OFPortState;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
 
-public final class OfPortDescConverter {
+@Mapper
+public abstract class OfPortDescConverter {
+    public static final OfPortDescConverter INSTANCE = Mappers.getMapper(OfPortDescConverter.class);
 
     /**
      * Convert {@link OFPortDesc} to PortDescription.
      * @param ofPortDesc port description to be converted.
      * @return result of transformation.
      */
-    public static PortDescription toPortDescription(OFPortDesc ofPortDesc) {
+    public PortDescription toPortDescription(OFPortDesc ofPortDesc) {
         return PortDescription.builder()
                 .portNumber(ofPortDesc.getPortNo().getPortNumber())
                 .hardwareAddress(ofPortDesc.getHwAddr().toString())
@@ -57,7 +66,52 @@ public final class OfPortDescConverter {
                 .build();
     }
 
-    private OfPortDescConverter() {
-        throw new UnsupportedOperationException();
+    /**
+     * Assemble {@link PortInfoData} from {@link DatapathId} and {@link OFPortDesc}.
+     */
+    public PortInfoData toPortInfoData(DatapathId dpId, OFPortDesc portDesc,
+                                       net.floodlightcontroller.core.PortChangeType type) {
+        return new PortInfoData(
+                new SwitchId(dpId.getLong()), portDesc.getPortNo().getPortNumber(), mapChangeType(type),
+                isPortEnabled(portDesc));
+    }
+
+    /**
+     * Check is port number belong to reserved ports range.
+     */
+    public boolean isReservedPort(OFPort port) {
+        // Due to lack of unsigned numeric types in java... this check must work with "negative values"
+        // (OFPort.MAX == 0xffffff00 ie -256)
+        return OFPort.MAX.getPortNumber() <= port.getPortNumber() && port.getPortNumber() <= -1;
+    }
+
+    /**
+     * Analyse port status and report it's "enabled" state.
+     */
+    public boolean isPortEnabled(OFPortDesc portDesc) {
+        // steal validation logic from {@link net.floodlightcontroller.core.internal.OFSwitch.portEnabled}
+        return (!portDesc.getState().contains(OFPortState.BLOCKED)
+                && !portDesc.getState().contains(OFPortState.LINK_DOWN)
+                && !portDesc.getState().contains(OFPortState.STP_BLOCK));
+    }
+
+    private PortChangeType mapChangeType(net.floodlightcontroller.core.PortChangeType type) {
+        switch (type) {
+            case ADD:
+                return PortChangeType.ADD;
+            case OTHER_UPDATE:
+                return PortChangeType.OTHER_UPDATE;
+            case DELETE:
+                return PortChangeType.DELETE;
+            case UP:
+                return PortChangeType.UP;
+            case DOWN:
+                return org.openkilda.messaging.info.event.PortChangeType.DOWN;
+            default:
+                throw new IllegalArgumentException(
+                        String.format("Can't map %s.%s into %s",
+                                      net.floodlightcontroller.core.PortChangeType.class.getName(),
+                                      type, PortChangeType.class.getName()));
+        }
     }
 }
