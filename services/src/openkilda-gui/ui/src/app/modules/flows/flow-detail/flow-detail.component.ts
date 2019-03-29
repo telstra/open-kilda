@@ -89,7 +89,9 @@ export class FlowDetailComponent implements OnInit {
     }
   }
 
-  
+  property = 'GraphicalView';
+  Rawview = false ; 
+  GraphicalView = true;
   public reRoutingInProgress = false;
 
   constructor(
@@ -541,7 +543,16 @@ export class FlowDetailComponent implements OnInit {
       this.targetCheckedValue = e.target.checked ? true : false;
     }
   }
-
+  toggleGraphView(e){
+    if (e.target.checked) {
+      this.property = 'Rawview';
+      this.GraphicalView = false ;
+    } else {  
+      this.property = 'GraphicalView';   
+      this.Rawview = false;  
+   }
+    this[this.property] = true;
+  }
   /** Validate flow */
   validateFlow() {
     this.validatedFlow = null;
@@ -642,9 +653,6 @@ export class FlowDetailComponent implements OnInit {
         }else{
           $('#link'+index).removeClass('flowline').removeClass('failed_ping_flowline').addClass('ping_success_flow');
         }
-        setTimeout(function(){
-          $('#link'+index).removeClass('failed_ping_flowline').removeClass('ping_success_flow');
-        },10000);
       }else if(index !=0){
         if(!reverse_ping){
           $('#link'+index).removeClass('flowline').addClass('failed_ping_flowline');
@@ -652,9 +660,7 @@ export class FlowDetailComponent implements OnInit {
           $('#link'+index).removeClass('flowline').removeClass('failed_ping_flowline').addClass('ping_success_flow');
         }
       }
-      setTimeout(function(){
-        $('#link'+index).removeClass('failed_ping_flowline').removeClass('ping_success_flow');
-      },10000);
+      
     })
   }
   /** Ping flow */

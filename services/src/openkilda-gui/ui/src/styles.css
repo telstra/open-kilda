@@ -651,6 +651,21 @@ div.switch5 > input.switch:focus ~ label:before {
   text-align: right;
 }
 
+.onoffswitch-inner-kilda-flow-ping::before{
+  content:'Raw View';
+  text-align: left;
+}
+.onoffswitch-inner-kilda-flow-ping::after{
+  content:'Graphical View';
+  text-align: right;
+}
+
+.onoffswitch-flow-ping {
+  right: 93px; 
+}
+.onoffflow-ping {
+ width: 120px;
+}
 .onoffswitch-switch-meter {
    right: 82px; 
 }
@@ -2022,8 +2037,8 @@ button:focus{
   stroke-dasharray: 1000;
   stroke-dashoffset: 1000;
   stroke: #009900;
-  animation: flow 3s linear infinite;
-  -webkit-animation: flow 3s linear infinite;
+  animation: flow 6s linear infinite;
+  -webkit-animation: flow 6s linear infinite;
 }
 
 .ping_success_flow{

@@ -80,7 +80,7 @@ export class FlowsService {
   }
 
   pingFlow(flowId):Observable<any>{
-    return this.httpClient.put(`${environment.apiEndPoint}/flows/${flowId}/ping`,{});
+    return this.httpClient.put(`${environment.apiEndPoint}/flows/${flowId}/ping`,{timeout:3000});
   }
 
   getcontract(flowid):Observable<any>{
