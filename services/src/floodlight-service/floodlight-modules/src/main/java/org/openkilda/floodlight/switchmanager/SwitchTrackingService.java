@@ -24,6 +24,7 @@ import org.openkilda.floodlight.service.IService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.utils.CorrelationContext;
+import org.openkilda.floodlight.utils.FloodlightDashboardLogger;
 import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
@@ -61,6 +62,8 @@ import java.util.stream.Collectors;
 
 public class SwitchTrackingService implements IOFSwitchListener, IService {
     private static final Logger logger = LoggerFactory.getLogger(SwitchTrackingService.class);
+
+    private static final FloodlightDashboardLogger logWrapper = new FloodlightDashboardLogger(logger);
 
     private final ReadWriteLock discoveryLock = new ReentrantReadWriteLock();
 
@@ -120,7 +123,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         try {
             switchManager.activate(switchId);
         } catch (SwitchOperationException e) {
-            logger.error("OF switch event ({} - {}): {}", switchId, SwitchChangeType.ACTIVATED, e.getMessage());
+            logWrapper.onSwitchErrorEvent(e.getMessage(), switchId, SwitchChangeType.ACTIVATED);
         }
     }
 
@@ -353,10 +356,10 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     }
 
     private void logSwitchEvent(DatapathId dpId, SwitchChangeType event) {
-        logger.info("OF switch event ({} - {})", dpId, event);
+        logWrapper.onSwitchEvent(dpId, event);
     }
 
     private void logPortEvent(DatapathId dpId, OFPort port, PortChangeType changeType) {
-        logger.info("OF port event ({}-{} - {})", dpId, port, changeType);
+        logWrapper.onPortEvent(dpId, port.getPortNumber(), changeType);
     }
 }
