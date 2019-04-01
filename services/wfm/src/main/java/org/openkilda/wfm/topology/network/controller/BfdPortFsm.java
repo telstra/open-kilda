@@ -18,12 +18,12 @@ package org.openkilda.wfm.topology.network.controller;
 import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.messaging.model.SwitchReference;
-import org.openkilda.model.BfdPort;
+import org.openkilda.model.BfdSession;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.BfdPortRepository;
+import org.openkilda.persistence.repositories.BfdSessionRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
@@ -60,7 +60,7 @@ public final class BfdPortFsm extends
     private static short bfdFailCycleLimit = 3;  // TODO: use config option
 
     private final SwitchRepository switchRepository;
-    private final BfdPortRepository bfdPortRepository;
+    private final BfdSessionRepository bfdSessionRepository;
 
     private final Random random = new Random();
 
@@ -217,7 +217,7 @@ public final class BfdPortFsm extends
     public BfdPortFsm(PersistenceManager persistenceManager, Endpoint endpoint, Integer physicalPortNumber) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.switchRepository = repositoryFactory.createSwitchRepository();
-        this.bfdPortRepository = repositoryFactory.createBfdPortRepository();
+        this.bfdSessionRepository = repositoryFactory.createBfdPortRepository();
 
         this.logicalEndpoint = endpoint;
         this.physicalEndpoint = Endpoint.of(logicalEndpoint.getDatapath(), physicalPortNumber);
@@ -233,9 +233,9 @@ public final class BfdPortFsm extends
 
     public void consumeHistory(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                BfdPortFsmContext context) {
-        Optional<BfdPort> port = loadBfdSession();
+        Optional<BfdSession> port = loadBfdSession();
         if (port.isPresent()) {
-            BfdPort dbView = port.get();
+            BfdSession dbView = port.get();
             try {
                 sessionDescriptor = BfdDescriptor.builder()
                         .local(makeSwitchReference(dbView.getSwitchId(), dbView.getIpAddress()))
@@ -274,8 +274,8 @@ public final class BfdPortFsm extends
 
     public void releaseResources(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                  BfdPortFsmContext context) {
-        bfdPortRepository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber())
-                .ifPresent(bfdPortRepository::delete);
+        bfdSessionRepository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber())
+                .ifPresent(bfdSessionRepository::delete);
         sessionDescriptor = null;
     }
 
@@ -418,8 +418,8 @@ public final class BfdPortFsm extends
     }
 
     private BfdDescriptor allocateDiscriminator(BfdDescriptor descriptor) {
-        BfdPort dbView = loadBfdSession()
-                .orElseGet(() -> new BfdPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber()));
+        BfdSession dbView = loadBfdSession()
+                .orElseGet(() -> new BfdSession(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber()));
 
         Integer discriminator = dbView.getDiscriminator();
         descriptor.fill(dbView);
@@ -430,14 +430,14 @@ public final class BfdPortFsm extends
                 discriminator = random.nextInt();
                 try {
                     dbView.setDiscriminator(discriminator);
-                    bfdPortRepository.createOrUpdate(dbView);
+                    bfdSessionRepository.createOrUpdate(dbView);
                     break;
                 } catch (ConstraintViolationException ex) {
                     log.warn("ConstraintViolationException on allocate bfd discriminator");
                 }
             }
         } else {
-            bfdPortRepository.createOrUpdate(dbView);
+            bfdSessionRepository.createOrUpdate(dbView);
         }
 
         return descriptor.toBuilder()
@@ -445,8 +445,9 @@ public final class BfdPortFsm extends
                 .build();
     }
 
-    private Optional<BfdPort> loadBfdSession() {
-        return bfdPortRepository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber());
+    private Optional<BfdSession> loadBfdSession() {
+        return bfdSessionRepository.findBySwitchIdAndPort(
+                logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber());
     }
 
     private BfdDescriptor makeSessionDescriptor(IslReference islReference) throws SwitchReferenceLookupException {

@@ -55,5 +55,5 @@ public interface RepositoryFactory {
 
     StateLogRepository createStateLogRepository();
 
-    BfdPortRepository createBfdPortRepository();
+    BfdSessionRepository createBfdPortRepository();
 }

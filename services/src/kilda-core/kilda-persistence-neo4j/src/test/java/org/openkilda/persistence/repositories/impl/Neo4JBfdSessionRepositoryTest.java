@@ -17,96 +17,96 @@ package org.openkilda.persistence.repositories.impl;
 
 import static org.junit.Assert.assertEquals;
 
-import org.openkilda.model.BfdPort;
+import org.openkilda.model.BfdSession;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.Neo4jBasedTest;
-import org.openkilda.persistence.repositories.BfdPortRepository;
+import org.openkilda.persistence.repositories.BfdSessionRepository;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Optional;
 
-public class Neo4jBfdPortRepositoryTest extends Neo4jBasedTest {
+public class Neo4JBfdSessionRepositoryTest extends Neo4jBasedTest {
     static final SwitchId TEST_SWITCH_ID = new SwitchId(1);
     static final Integer TEST_PORT = 100;
     static final int TEST_DISCRIMINATOR = 10001;
 
-    static BfdPortRepository repository;
+    static BfdSessionRepository repository;
 
     @BeforeClass
     public static void setUp() {
-        repository = new Neo4JBfdPortRepository(neo4jSessionFactory, txManager);
+        repository = new Neo4JBfdSessionRepository(neo4jSessionFactory, txManager);
     }
 
     @Test
     public void shouldCreateBfdPort() {
-        BfdPort bfdPort = new BfdPort();
-        bfdPort.setSwitchId(TEST_SWITCH_ID);
-        bfdPort.setPort(TEST_PORT);
-        bfdPort.setDiscriminator(TEST_DISCRIMINATOR);
-        repository.createOrUpdate(bfdPort);
+        BfdSession bfdSession = new BfdSession();
+        bfdSession.setSwitchId(TEST_SWITCH_ID);
+        bfdSession.setPort(TEST_PORT);
+        bfdSession.setDiscriminator(TEST_DISCRIMINATOR);
+        repository.createOrUpdate(bfdSession);
 
         assertEquals(1, repository.findAll().size());
     }
 
     @Test
     public void shouldFindBySwitchIdAndPort() {
-        BfdPort bfdPort = new BfdPort();
-        bfdPort.setSwitchId(TEST_SWITCH_ID);
-        bfdPort.setPort(TEST_PORT);
-        bfdPort.setDiscriminator(TEST_DISCRIMINATOR);
-        repository.createOrUpdate(bfdPort);
+        BfdSession bfdSession = new BfdSession();
+        bfdSession.setSwitchId(TEST_SWITCH_ID);
+        bfdSession.setPort(TEST_PORT);
+        bfdSession.setDiscriminator(TEST_DISCRIMINATOR);
+        repository.createOrUpdate(bfdSession);
 
-        BfdPort foundPort = repository.findBySwitchIdAndPort(TEST_SWITCH_ID, TEST_PORT).get();
-        assertEquals(bfdPort.getDiscriminator(), foundPort.getDiscriminator());
+        BfdSession foundPort = repository.findBySwitchIdAndPort(TEST_SWITCH_ID, TEST_PORT).get();
+        assertEquals(bfdSession.getDiscriminator(), foundPort.getDiscriminator());
     }
 
     @Test
     public void shouldDeleteBfdPort() {
-        BfdPort bfdPort = new BfdPort();
-        bfdPort.setSwitchId(TEST_SWITCH_ID);
-        bfdPort.setPort(TEST_PORT);
-        bfdPort.setDiscriminator(TEST_DISCRIMINATOR);
-        repository.createOrUpdate(bfdPort);
+        BfdSession bfdSession = new BfdSession();
+        bfdSession.setSwitchId(TEST_SWITCH_ID);
+        bfdSession.setPort(TEST_PORT);
+        bfdSession.setDiscriminator(TEST_DISCRIMINATOR);
+        repository.createOrUpdate(bfdSession);
 
         assertEquals(1, repository.findAll().size());
 
-        repository.delete(bfdPort);
+        repository.delete(bfdSession);
 
         assertEquals(0, repository.findAll().size());
     }
 
     @Test(expected = ConstraintViolationException.class)
     public void discriminatorConflict() {
-        BfdPort bfdPort = new BfdPort();
-        bfdPort.setSwitchId(TEST_SWITCH_ID);
-        bfdPort.setPort(TEST_PORT);
-        bfdPort.setDiscriminator(TEST_DISCRIMINATOR);
-        repository.createOrUpdate(bfdPort);
+        BfdSession bfdSession = new BfdSession();
+        bfdSession.setSwitchId(TEST_SWITCH_ID);
+        bfdSession.setPort(TEST_PORT);
+        bfdSession.setDiscriminator(TEST_DISCRIMINATOR);
+        repository.createOrUpdate(bfdSession);
 
-        BfdPort bfdPort2 = new BfdPort();
-        bfdPort2.setSwitchId(TEST_SWITCH_ID);
-        bfdPort2.setPort(TEST_PORT + 1);
-        bfdPort2.setDiscriminator(TEST_DISCRIMINATOR);
-        repository.createOrUpdate(bfdPort2);
+        BfdSession bfdSession2 = new BfdSession();
+        bfdSession2.setSwitchId(TEST_SWITCH_ID);
+        bfdSession2.setPort(TEST_PORT + 1);
+        bfdSession2.setDiscriminator(TEST_DISCRIMINATOR);
+        repository.createOrUpdate(bfdSession2);
     }
 
     private int getDiscriminator(SwitchId switchId, int port, int randomDiscriminator)
             throws ConstraintViolationException {
 
-        Optional<BfdPort> foundPort = repository.findBySwitchIdAndPort(switchId, port);
+        Optional<BfdSession> foundPort = repository.findBySwitchIdAndPort(switchId, port);
         if (foundPort.isPresent()) {
             return foundPort.get().getDiscriminator();
         }
 
-        BfdPort bfdPort = new BfdPort();
-        bfdPort.setSwitchId(switchId);
-        bfdPort.setPort(port);
-        bfdPort.setDiscriminator(randomDiscriminator);
-        repository.createOrUpdate(bfdPort);
-        return bfdPort.getDiscriminator();
+        BfdSession bfdSession = new BfdSession();
+        bfdSession.setSwitchId(switchId);
+        bfdSession.setPort(port);
+        bfdSession.setDiscriminator(randomDiscriminator);
+        repository.createOrUpdate(bfdSession);
+        return bfdSession.getDiscriminator();
     }
 
     @Test(expected = ConstraintViolationException.class)
