@@ -42,7 +42,6 @@ public class NetworkTopologyDashboardLogger extends AbstractLogWrapper {
     private static final String DST_SWITCH_PORT = "dst_switch_port";
     private static final String PORT_TYPE = "port_type";
     private static final String SWITCH_PORT = "switch_port";
-    private static final String HOST = "host_name";
 
     private static final String TAG = "SWITCH_PORT_ISL_DASHBOARD";
 

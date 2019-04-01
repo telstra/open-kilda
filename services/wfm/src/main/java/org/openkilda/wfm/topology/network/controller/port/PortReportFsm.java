@@ -73,10 +73,10 @@ public class PortReportFsm
     // -- FSM actions --
 
     public void becomeUp(PortFsm.PortFsmState from, PortFsm.PortFsmState to, PortFsm.PortFsmEvent event) {
-        dashboardLogger.onUpdatePortStatus(endpoint.getDatapath(), endpoint.getPortNumber(), LinkStatus.UP);
+        dashboardLogger.onUpdatePortStatus(endpoint, LinkStatus.UP);
     }
 
     public void becomeDown(PortFsm.PortFsmState from, PortFsm.PortFsmState to, PortFsm.PortFsmEvent event) {
-        dashboardLogger.onUpdatePortStatus(endpoint.getDatapath(), endpoint.getPortNumber(), LinkStatus.DOWN);
+        dashboardLogger.onUpdatePortStatus(endpoint, LinkStatus.DOWN);
     }
 }

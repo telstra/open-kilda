@@ -24,13 +24,16 @@ import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmContext
 import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmEvent;
 import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmState;
 import org.openkilda.wfm.topology.network.model.Endpoint;
+import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.service.IPortCarrier;
 
 import lombok.Builder;
 import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
+@Slf4j
 public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFsmEvent,
         PortFsmContext> {
     private final Endpoint endpoint;
@@ -39,6 +42,7 @@ public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFs
     private final PortReportFsm reportFsm;
 
     private static final StateMachineBuilder<PortFsm, PortFsmState, PortFsmEvent, PortFsmContext> builder;
+    private final NetworkTopologyDashboardLogger logWrapper = new NetworkTopologyDashboardLogger(log);
 
     static {
         builder = StateMachineBuilderFactory.create(
