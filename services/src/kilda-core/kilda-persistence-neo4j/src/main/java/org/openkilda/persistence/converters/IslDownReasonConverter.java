@@ -13,23 +13,29 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.storm.bolt.isl.command;
+package org.openkilda.persistence.converters;
 
 import org.openkilda.model.IslDownReason;
-import org.openkilda.wfm.topology.network.model.Endpoint;
-import org.openkilda.wfm.topology.network.model.IslReference;
-import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 
-public class IslDownCommand extends IslCommand {
-    private final IslDownReason reason;
+import org.neo4j.ogm.typeconversion.AttributeConverter;
 
-    public IslDownCommand(Endpoint endpoint, IslReference reference, IslDownReason reason) {
-        super(endpoint, reference);
-        this.reason = reason;
+/**
+ * Case-insensitive converter to convert {@link IslDownReasonConverter} to {@link String} and back.
+ */
+public class IslDownReasonConverter implements AttributeConverter<IslDownReason, String> {
+    @Override
+    public String toGraphProperty(IslDownReason value) {
+        if (value == null) {
+            return null;
+        }
+        return value.name().toLowerCase();
     }
 
     @Override
-    public void apply(IslHandler handler) {
-        handler.processIslDown(getEndpoint(), getReference(), reason);
+    public IslDownReason toEntityAttribute(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return IslDownReason.valueOf(value.toUpperCase());
     }
 }

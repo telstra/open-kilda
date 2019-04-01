@@ -266,8 +266,6 @@ public class NetworkIslServiceTest {
                 endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
                 endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber())).thenReturn(10L);
 
-        when(featureTogglesRepository.find()).thenReturn(Optional.empty());
-
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
         service.islSetupFromHistory(endpointAlpha1, reference, islAlphaBeta);
 

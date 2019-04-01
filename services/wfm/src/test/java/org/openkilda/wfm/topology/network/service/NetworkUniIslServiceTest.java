@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.network.service;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -25,6 +25,7 @@ import static org.mockito.Mockito.verify;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslDownReason;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.mappers.IslMapper;
@@ -86,7 +87,6 @@ public class NetworkUniIslServiceTest {
         verify(carrier).setupIslFromHistory(endpoint2, IslReference.of(islAtoB2), islAtoB2);
     }
 
-
     @Test
     public void newIslFromUnknownToDownNoRemote() {
         NetworkUniIslService service = new NetworkUniIslService(carrier);
@@ -100,7 +100,7 @@ public class NetworkUniIslServiceTest {
         service.uniIslPhysicalDown(endpoint2);
 
         System.out.println(mockingDetails(carrier).printInvocations());
-        verify(carrier, never()).notifyIslDown(any(Endpoint.class), any(IslReference.class), anyBoolean());
+        verify(carrier, never()).notifyIslDown(any(Endpoint.class), any(IslReference.class), isA(IslDownReason.class));
     }
 
 
@@ -136,8 +136,8 @@ public class NetworkUniIslServiceTest {
 
         System.out.println(mockingDetails(carrier).printInvocations());
 
-        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islAtoB), false);
-        verify(carrier).notifyIslDown(endpoint2, IslReference.of(islAtoB2), true);
+        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islAtoB), IslDownReason.POLL_TIMEOUT);
+        verify(carrier).notifyIslDown(endpoint2, IslReference.of(islAtoB2), IslDownReason.PORT_DOWN);
     }
 
     @Test
@@ -265,8 +265,8 @@ public class NetworkUniIslServiceTest {
 
         //System.out.println(mockingDetails(carrier).printInvocations());
 
-        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islA1toB1), false);
-        verify(carrier).notifyIslDown(endpoint2, IslReference.of(islA2toB2), true);
+        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islA1toB1), IslDownReason.POLL_TIMEOUT);
+        verify(carrier).notifyIslDown(endpoint2, IslReference.of(islA2toB2), IslDownReason.PORT_DOWN);
     }
 
     @Test
@@ -329,8 +329,8 @@ public class NetworkUniIslServiceTest {
 
         //System.out.println(mockingDetails(carrier).printInvocations());
 
-        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islA1toB1), true);
+        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islA1toB1), IslDownReason.PORT_DOWN);
         verify(carrier, times(2)).notifyIslUp(endpoint1, IslReference.of(islA1toB1), new IslDataHolder(islA1toB1));
-        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islA1toB1), false);
+        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islA1toB1), IslDownReason.BFD_DOWN);
     }
 }

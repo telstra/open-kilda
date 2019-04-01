@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslDownReason;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.controller.IslFsm;
@@ -85,11 +86,11 @@ public class NetworkIslService {
     /**
      * .
      */
-    public void islDown(Endpoint endpoint, IslReference reference, boolean isPhysicalDown) {
+    public void islDown(Endpoint endpoint, IslReference reference, IslDownReason reason) {
         log.debug("ISL service receive FAIL notification for {} (on {})", reference, endpoint);
         IslFsm islFsm = locateController(reference);
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint)
-                .physicalLinkDown(isPhysicalDown)
+                .downReason(reason)
                 .build();
         controllerExecutor.fire(islFsm, IslFsmEvent.ISL_DOWN, context);
     }
