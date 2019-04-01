@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.network.model;
 
 import org.openkilda.messaging.model.SwitchReference;
-import org.openkilda.model.BfdPort;
+import org.openkilda.model.BfdSession;
 
 import lombok.Builder;
 import lombok.Value;
@@ -31,7 +31,7 @@ public class BfdDescriptor {
     /**
      * Fill DB record with data stored in this descriptor.
      */
-    public void fill(BfdPort dbView) {
+    public void fill(BfdSession dbView) {
         dbView.setSwitchId(local.getDatapath());
         dbView.setIpAddress(local.getInetAddress().getHostAddress());
 
