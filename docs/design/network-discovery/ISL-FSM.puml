@@ -21,19 +21,19 @@ title ISL FSM
 
 [*] --> INIT
 
-INIT --> DOWN : isl-up / set endpoint-(A||B)-(status && facts)\nisl-down / set endpoint-(A||B)-status
+INIT --> DOWN : isl-up / set endpoint-(A||B)-status = UP\nisl-down / set endpoint-(A||B)-status = DOWN
 INIT --> DOWN : history [history-down]
 INIT --> UP : history [history-up]
-INIT --> MOVED : history [history-moved]\nisl-move / set endpoint-(A||B)-status
+INIT --> MOVED : history [history-moved]\nisl-move / set endpoint-(A||B)-status = MOVED
 
 state upAttempt <<choice>>
 state deleteAttempt <<choice>>
 deleteAttempt --> DELETED : [endpoint-(A&B)-status == DOWN]
 
-DOWN --> upAttempt : isl-up / set endpoint-(A||B)-(status && discovery-data)
+DOWN --> upAttempt : isl-up / set endpoint-(A||B)-status = DOWN && discovery-data
 DOWN --> MOVED : isl-move
 DOWN : enter / persist DB state
-DOWN : isl-down / set endpoint-(A||B)-status
+DOWN : isl-down / set endpoint-(A||B)-status = DOWN
 DOWN : isl-down / persist DB state
 DOWN -> deleteAttempt : isl-remove
 
@@ -44,20 +44,20 @@ UP --> DOWN : isl-down
 UP --> MOVED : isl-move
 UP : enter / persist DB state
 UP : enter / emit bisl-up
-UP : enter [bfd-up && global-bfd-up] / emit bisl-bfd-enable
-UP : exit / set endpoint-(A|B)-status
+UP : enter [enable_bfd in DB is set] / emit bisl-bfd-enable
+UP : exit / set endpoint-(A|B)-status = !UP (determine by event)
 UP : exit / persist DB state
 UP : exit [physical-down] / raise ISL(uni) cost
 UP : exit / emit bisl-down
 UP : bfd-update [bfd-up] / emit bisl-bfd-enable
 UP : bfd-update [bfd-down] / emit bisl-bfd-disable
 
-MOVED --> upAttempt : isl-up / set endpoint-(A|B)-status
+MOVED --> upAttempt : isl-up / set endpoint-(A|B)-status = UP
 MOVED --> deleteAttempt : isl-remove
 MOVED : enter / persist DB state
 MOVED : enter / emit isl-move
-MOVED : enter / set endpoint-(A|B)-status
-MOVED : isl-down / set endpoint-(A|B)-status
+MOVED : enter / set endpoint-(A|B)-status = MOVED
+MOVED : isl-down / set endpoint-(A|B)-status = DOWN
 MOVED : isl-down / persist DB state
 
 DELETED -> [*]
