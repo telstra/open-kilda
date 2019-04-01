@@ -15,14 +15,14 @@
 
 package org.openkilda.persistence.repositories;
 
-import org.openkilda.model.BfdPort;
+import org.openkilda.model.BfdSession;
 import org.openkilda.model.SwitchId;
 
 import java.util.Optional;
 
-public interface BfdPortRepository extends Repository<BfdPort> {
+public interface BfdSessionRepository extends Repository<BfdSession> {
 
     boolean exists(SwitchId switchId, Integer port);
 
-    Optional<BfdPort> findBySwitchIdAndPort(SwitchId switchId, Integer port);
+    Optional<BfdSession> findBySwitchIdAndPort(SwitchId switchId, Integer port);
 }

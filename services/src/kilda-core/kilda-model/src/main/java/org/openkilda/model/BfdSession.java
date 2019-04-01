@@ -28,8 +28,8 @@ import org.neo4j.ogm.annotation.typeconversion.Convert;
 
 @Data
 @NoArgsConstructor
-@NodeEntity(label = "port_bfd")
-public class BfdPort {
+@NodeEntity(label = "bfd_session")
+public class BfdSession {
 
     public static final String SWITCH_PROPERTY_NAME = "switch";
     public static final String IP_ADDRESS_PROPERTY_NAME = "ip_address";
@@ -65,7 +65,7 @@ public class BfdPort {
     @Index(unique = true)
     Integer discriminator;
 
-    public BfdPort(SwitchId switchId, Integer port) {
+    public BfdSession(SwitchId switchId, Integer port) {
         this.switchId = switchId;
         this.port = port;
     }

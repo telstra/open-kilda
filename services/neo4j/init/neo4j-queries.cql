@@ -15,8 +15,8 @@ CREATE CONSTRAINT ON (`history_log`:`history_log`) ASSERT `history_log`.`entityI
 CREATE CONSTRAINT ON (`isl`:`isl`) ASSERT `isl`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`link_props`:`link_props`) ASSERT `link_props`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`path_segment`:`path_segment`) ASSERT `path_segment`.`entityId` IS UNIQUE;
-CREATE CONSTRAINT ON ( port_bfd:port_bfd ) ASSERT port_bfd.discriminator IS UNIQUE;
-CREATE CONSTRAINT ON ( port_bfd:port_bfd ) ASSERT port_bfd.entityId IS UNIQUE;
+CREATE CONSTRAINT ON ( bfd_session:bfd_session ) ASSERT bfd_session.discriminator IS UNIQUE;
+CREATE CONSTRAINT ON ( bfd_session:bfd_session ) ASSERT bfd_session.entityId IS UNIQUE;
 CREATE CONSTRAINT ON (`port`:`port`) ASSERT `port`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`state_log`:`state_log`) ASSERT `state_log`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`switch`:`switch`) ASSERT `switch`.`entityId` IS UNIQUE;
