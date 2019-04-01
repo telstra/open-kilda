@@ -19,6 +19,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.reroute.RerouteFlows;
 import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslDownReason;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.AbstractException;
@@ -139,8 +140,8 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
         service.islMove(endpoint, reference);
     }
 
-    public void processIslDown(Endpoint endpoint, IslReference reference, boolean physicalDown) {
-        service.islDown(endpoint, reference, physicalDown);
+    public void processIslDown(Endpoint endpoint, IslReference reference, IslDownReason reason) {
+        service.islDown(endpoint, reference, reason);
     }
 
     public void processBfdEnableDisable(IslReference reference, IslBfdFlagUpdated payload) {

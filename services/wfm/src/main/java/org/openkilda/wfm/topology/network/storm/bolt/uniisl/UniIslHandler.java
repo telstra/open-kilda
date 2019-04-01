@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.network.storm.bolt.uniisl;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslDownReason;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
@@ -88,8 +89,8 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
     }
 
     @Override
-    public void notifyIslDown(Endpoint endpoint, IslReference reference, boolean isPhysicalDown) {
-        emit(getCurrentTuple(), makeDefaultTuple(new IslDownCommand(endpoint, reference, isPhysicalDown)));
+    public void notifyIslDown(Endpoint endpoint, IslReference reference, IslDownReason reason) {
+        emit(getCurrentTuple(), makeDefaultTuple(new IslDownCommand(endpoint, reference, reason)));
     }
 
     @Override
