@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslDownReason;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.Switch;
@@ -256,8 +257,6 @@ public class NetworkIslServiceTest {
                 endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
                 endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber())).thenReturn(10L);
 
-        when(featureTogglesRepository.find()).thenReturn(Optional.empty());
-
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
         service.islSetupFromHistory(endpointAlpha1, reference, islAlphaBeta);
 
@@ -335,7 +334,7 @@ public class NetworkIslServiceTest {
                                  makeLinkProps(endpointAlpha1, endpointBeta2).cost(10).build());
 
         // isl fail by PORT DOWN
-        service.islDown(endpointAlpha1, reference, true);
+        service.islDown(endpointAlpha1, reference, IslDownReason.PORT_DOWN);
 
         // ensure we have stored cost update
         verify(islRepository, atLeastOnce()).createOrUpdate(argThat(
