@@ -13,23 +13,31 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.storm.bolt.isl.command;
+package org.openkilda.wfm.topology.network.model;
 
 import org.openkilda.model.IslDownReason;
-import org.openkilda.wfm.topology.network.model.Endpoint;
-import org.openkilda.wfm.topology.network.model.IslReference;
-import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 
-public class IslDownCommand extends IslCommand {
-    private final IslDownReason reason;
+import lombok.Getter;
+import lombok.Value;
 
-    public IslDownCommand(Endpoint endpoint, IslReference reference, IslDownReason reason) {
-        super(endpoint, reference);
-        this.reason = reason;
+@Value
+public class IslEndpointStatus {
+    @Getter
+    private Status status;
+
+    @Getter
+    private IslDownReason downReason;
+
+    public IslEndpointStatus(Status status) {
+        this(status, null);
     }
 
-    @Override
-    public void apply(IslHandler handler) {
-        handler.processIslDown(getEndpoint(), getReference(), reason);
+    public IslEndpointStatus(Status status, IslDownReason downReason) {
+        this.status = status;
+        this.downReason = downReason;
+    }
+
+    public enum Status {
+        UP, DOWN, MOVED
     }
 }

@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Isl.IslBuilder;
+import org.openkilda.model.IslDownReason;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.Switch;
@@ -44,6 +45,7 @@ import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmState;
 import org.openkilda.wfm.topology.network.model.BiIslDataHolder;
 import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
+import org.openkilda.wfm.topology.network.model.IslEndpointStatus;
 import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.facts.DiscoveryFacts;
@@ -71,7 +73,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     private final int costRaiseOnPhysicalDown;
     private final int islCostWhenUnderMaintenance;
-    private final BiIslDataHolder<DiscoveryEndpointStatus> endpointStatus;
+    private final BiIslDataHolder<IslEndpointStatus> endpointStatus;
 
     private final DiscoveryFacts discoveryFacts;
 
@@ -192,7 +194,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         costRaiseOnPhysicalDown = options.getIslCostRaiseOnPhysicalDown();
         islCostWhenUnderMaintenance = options.getIslCostWhenUnderMaintenance();
         endpointStatus = new BiIslDataHolder<>(reference);
-        endpointStatus.putBoth(DiscoveryEndpointStatus.DOWN);
+        endpointStatus.putBoth(new IslEndpointStatus(IslEndpointStatus.Status.DOWN));
 
         discoveryFacts = new DiscoveryFacts(reference);
     }
@@ -203,7 +205,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         applyHistory(context.getHistory());
 
         IslFsmEvent route;
-        DiscoveryEndpointStatus status = getAggregatedStatus();
+        IslEndpointStatus.Status status = getAggregatedStatus();
         switch (status) {
             case UP:
                 route = IslFsmEvent._HISTORY_UP;
@@ -247,7 +249,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         updateLinkData(context.getEndpoint(), context.getIslData());
 
         IslFsmEvent route;
-        if (getAggregatedStatus() == DiscoveryEndpointStatus.UP) {
+        if (getAggregatedStatus() == IslEndpointStatus.Status.UP) {
             route = IslFsmEvent._UP_ATTEMPT_SUCCESS;
         } else {
             route = IslFsmEvent._UP_ATTEMPT_FAIL;
@@ -265,15 +267,16 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             triggerDownFlowReroute(context);
         }
 
-        if (shouldUseBfd()) {
+        if (shouldSetupBfd()) {
             emitBfdEnableRequest(context);
         }
     }
 
     public void upExit(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        log.info("ISL {} is no more UP (physical-down:{})",
-                  discoveryFacts.getReference(), context.getPhysicalLinkDown());
+        log.info("ISL {} is no more UP (reason:{})",
+                  discoveryFacts.getReference(), context.getDownReason());
 
+        // FIXME(surabujin): extract logging logic into separate(nested) FSM
         String nextState = "Unknown";
         if (event == IslFsmEvent.ISL_DOWN) {
             nextState = IslFsmState.DOWN.toString();
@@ -303,7 +306,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public void removeAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         // FIXME(surabujin): this check is always true, because it is called from DOWN or MOVED state
-        if (getAggregatedStatus() != DiscoveryEndpointStatus.UP) {
+        if (getAggregatedStatus() != IslEndpointStatus.Status.UP) {
             fire(IslFsmEvent._ISL_REMOVE_SUCESS);
         }
     }
@@ -325,16 +328,16 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     private void updateEndpointStatusByEvent(IslFsmEvent event, IslFsmContext context) {
-        DiscoveryEndpointStatus status;
+        IslEndpointStatus status;
         switch (event) {
             case ISL_UP:
-                status = DiscoveryEndpointStatus.UP;
+                status = new IslEndpointStatus(IslEndpointStatus.Status.UP);
                 break;
             case ISL_DOWN:
-                status = DiscoveryEndpointStatus.DOWN;
+                status = new IslEndpointStatus(IslEndpointStatus.Status.DOWN, context.getDownReason());
                 break;
             case ISL_MOVE:
-                status = DiscoveryEndpointStatus.MOVED;
+                status = new IslEndpointStatus(IslEndpointStatus.Status.MOVED);
                 break;
             default:
                 throw new IllegalStateException(String.format("Unexpected event %s for %s.handleSourceDestUpState",
@@ -350,7 +353,9 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         if (potentialIsl.isPresent()) {
             Isl isl = potentialIsl.get();
             Endpoint endpoint = Endpoint.of(isl.getDestSwitch().getSwitchId(), isl.getDestPort());
-            endpointStatus.put(endpoint, mapStatus(isl.getStatus()));
+
+            IslEndpointStatus status = new IslEndpointStatus(mapStatus(isl.getStatus()), isl.getDownReason());
+            endpointStatus.put(endpoint, status);
             discoveryFacts.put(endpoint, new IslDataHolder(isl));
         } else {
             log.error("There is no persistent ISL data {} ==> {} (possible race condition during topology "
@@ -361,15 +366,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private void triggerAffectedFlowReroute(IslFsmContext context) {
         Endpoint source = discoveryFacts.getReference().getSource();
 
-        IslStatus status = mapStatus(getAggregatedStatus());
-        IslReference reference = discoveryFacts.getReference();
-        String reason;
-        if (context.getPhysicalLinkDown() != null && context.getPhysicalLinkDown()) {
-            reason = String.format("ISL %s become %s due to physical link DOWN event on %s",
-                                   reference, status, context.getEndpoint());
-        } else {
-            reason = String.format("ISL %s status become %s", reference, status);
-        }
+        String reason = makeRerouteReason(context.getEndpoint(), context.getDownReason());
 
         // FIXME (surabujin): why do we send only one ISL endpoint here?
         PathNode pathNode = new PathNode(source.getDatapath(), source.getPortNumber(), 0);
@@ -421,7 +418,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 Instant timeNow = Instant.now();
 
                 saveStatus(timeNow);
-                if (context.getPhysicalLinkDown() != null && context.getPhysicalLinkDown()) {
+                if (IslDownReason.PORT_DOWN == context.getDownReason()) {
                     raiseCostOnPhysicalDown(timeNow);
                 }
             });
@@ -437,7 +434,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         saveAll(socket.getDest(), socket.getSource(), timeNow, endpointStatus.getReverse());
     }
 
-    private void saveAll(Anchor source, Anchor dest, Instant timeNow, DiscoveryEndpointStatus uniStatus) {
+    private void saveAll(Anchor source, Anchor dest, Instant timeNow, IslEndpointStatus endpointData) {
         Isl link = loadOrCreateIsl(source, dest, timeNow);
 
         link.setTimeModify(timeNow);
@@ -445,7 +442,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         applyIslGenericData(link);
         applyIslMaxBandwidth(link, source.getEndpoint(), dest.getEndpoint());
         applyIslAvailableBandwidth(link, source.getEndpoint(), dest.getEndpoint());
-        applyIslStatus(link, uniStatus, timeNow);
+        applyIslStatus(link, endpointData, timeNow);
 
         pushIslChanges(link);
     }
@@ -456,10 +453,10 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         saveStatus(socket.getDest(), socket.getSource(), timeNow, endpointStatus.getReverse());
     }
 
-    private void saveStatus(Anchor source, Anchor dest, Instant timeNow, DiscoveryEndpointStatus uniStatus) {
+    private void saveStatus(Anchor source, Anchor dest, Instant timeNow, IslEndpointStatus endpointData) {
         Isl link = loadOrCreateIsl(source, dest, timeNow);
 
-        applyIslStatus(link, uniStatus, timeNow);
+        applyIslStatus(link, endpointData, timeNow);
         pushIslChanges(link);
     }
 
@@ -556,14 +553,15 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         }
     }
 
-    private void applyIslStatus(Isl link, DiscoveryEndpointStatus uniStatus, Instant timeNow) {
-        IslStatus become = mapStatus(uniStatus);
+    private void applyIslStatus(Isl link, IslEndpointStatus endpointData, Instant timeNow) {
+        IslStatus become = mapStatus(endpointData.getStatus());
         IslStatus aggStatus = mapStatus(getAggregatedStatus());
         if (link.getActualStatus() != become || link.getStatus() != aggStatus) {
             link.setTimeModify(timeNow);
 
             link.setActualStatus(become);
             link.setStatus(aggStatus);
+            link.setDownReason(endpointData.getDownReason());
         }
     }
 
@@ -649,36 +647,26 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         return result;
     }
 
-    private DiscoveryEndpointStatus getAggregatedStatus() {
-        DiscoveryEndpointStatus forward = endpointStatus.getForward();
-        DiscoveryEndpointStatus reverse = endpointStatus.getReverse();
+    private IslEndpointStatus.Status getAggregatedStatus() {
+        IslEndpointStatus.Status forward = endpointStatus.getForward().getStatus();
+        IslEndpointStatus.Status reverse = endpointStatus.getReverse().getStatus();
         if (forward == reverse) {
             return forward;
         }
 
-        if (forward == DiscoveryEndpointStatus.MOVED || reverse == DiscoveryEndpointStatus.MOVED) {
-            return DiscoveryEndpointStatus.MOVED;
+        if (forward == IslEndpointStatus.Status.MOVED || reverse == IslEndpointStatus.Status.MOVED) {
+            return IslEndpointStatus.Status.MOVED;
         }
 
-        return DiscoveryEndpointStatus.DOWN;
+        return IslEndpointStatus.Status.DOWN;
     }
 
-    private boolean shouldUseBfd() {
+    private boolean shouldSetupBfd() {
         // TODO(surabujin): ensure the switch is BFD capable
-
-        if (!isGlobalBfdToggleEnabled()) {
-            return false;
-        }
 
         IslReference reference = discoveryFacts.getReference();
         return isPerIslBfdToggleEnabled(reference.getSource(), reference.getDest())
-                && isPerIslBfdToggleEnabled(reference.getDest(), reference.getSource());
-    }
-
-    private boolean isGlobalBfdToggleEnabled() {
-        return featureTogglesRepository.find()
-                .map(FeatureToggles::getUseBfdForIslIntegrityCheck)
-                .orElse(FeatureToggles.DEFAULTS.getUseBfdForIslIntegrityCheck());
+                || isPerIslBfdToggleEnabled(reference.getDest(), reference.getSource());
     }
 
     private boolean isPerIslBfdToggleEnabled(Endpoint source, Endpoint dest) {
@@ -695,13 +683,43 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 .orElse(FeatureToggles.DEFAULTS.getFlowsRerouteOnIslDiscoveryEnabled());
     }
 
+    private String makeRerouteReason(Endpoint endpoint, IslDownReason reason) {
+        IslStatus status = mapStatus(getAggregatedStatus());
+        IslReference reference = discoveryFacts.getReference();
+        if (reason == null) {
+            return String.format("ISL %s status become %s", reference, status);
+        }
+
+        String humanReason;
+        switch (reason) {
+            case PORT_DOWN:
+                humanReason = String.format("ISL %s become %s due to physical link DOWN event on %s",
+                                            reference, status, endpoint);
+                break;
+            case POLL_TIMEOUT:
+                humanReason = String.format("ISL %s become %s because of FAIL TIMEOUT (endpoint:%s)",
+                                            reference, status, endpoint);
+                break;
+            case BFD_DOWN:
+                humanReason = String.format("ISL %s become %s because BFD detect link failure (endpoint:%s)",
+                                            reference, status, endpoint);
+                break;
+
+            default:
+                humanReason = String.format("ISL %s become %s (endpoint:%s, reason:%s)",
+                                            reference, status, endpoint, reason);
+        }
+
+        return humanReason;
+    }
+
     private void logDbException(Exception e) {
         log.error(
                 String.format("Error in DB transaction for ISL %s: %s", discoveryFacts.getReference(), e.getMessage()),
                 e);
     }
 
-    private static IslStatus mapStatus(DiscoveryEndpointStatus status) {
+    private static IslStatus mapStatus(IslEndpointStatus.Status status) {
         switch (status) {
             case UP:
                 return IslStatus.ACTIVE;
@@ -711,31 +729,27 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 return IslStatus.MOVED;
             default:
                 throw new IllegalArgumentException(
-                        makeInvalidMappingMessage(DiscoveryEndpointStatus.class, IslStatus.class, status));
+                        makeInvalidMappingMessage(IslEndpointStatus.Status.class, IslStatus.class, status));
         }
     }
 
-    private static DiscoveryEndpointStatus mapStatus(IslStatus status) {
+    private static IslEndpointStatus.Status mapStatus(IslStatus status) {
         switch (status) {
             case ACTIVE:
-                return DiscoveryEndpointStatus.UP;
+                return IslEndpointStatus.Status.UP;
             case INACTIVE:
-                return DiscoveryEndpointStatus.DOWN;
+                return IslEndpointStatus.Status.DOWN;
             case MOVED:
-                return DiscoveryEndpointStatus.MOVED;
+                return IslEndpointStatus.Status.MOVED;
             default:
                 throw new IllegalArgumentException(
-                        makeInvalidMappingMessage(IslStatus.class, DiscoveryEndpointStatus.class, status));
+                        makeInvalidMappingMessage(IslStatus.class, IslEndpointStatus.Status.class, status));
         }
     }
 
     private static String makeInvalidMappingMessage(Class<?> from, Class<?> to, Object value) {
         return String.format("There is no mapping defined between %s and %s for %s", from.getName(),
                              to.getName(), value);
-    }
-
-    private enum DiscoveryEndpointStatus {
-        UP, DOWN, MOVED
     }
 
     @Value
@@ -759,7 +773,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         private Isl history;
         private IslDataHolder islData;
 
-        private Boolean physicalLinkDown;
+        private IslDownReason downReason;
 
         private Boolean bfdEnable;
 

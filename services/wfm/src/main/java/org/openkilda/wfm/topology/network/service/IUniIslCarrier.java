@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslDownReason;
 import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.IslReference;
@@ -26,7 +27,7 @@ public interface IUniIslCarrier {
     void notifyIslUp(Endpoint endpoint, IslReference reference,
                      IslDataHolder islData);
 
-    void notifyIslDown(Endpoint endpoint, IslReference reference, boolean isPhysicalDown);
+    void notifyIslDown(Endpoint endpoint, IslReference reference, IslDownReason reason);
 
     void notifyIslMove(Endpoint endpoint, IslReference reference);
 
