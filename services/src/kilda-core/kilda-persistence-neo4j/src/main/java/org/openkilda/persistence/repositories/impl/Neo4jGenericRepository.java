@@ -39,6 +39,7 @@ import java.util.stream.Stream;
 
 /**
  * Base Neo4J OGM implementation of {@link Repository}.
+ * Provides basic implementation of findAll, createOrUpdate and delete methods.
  */
 abstract class Neo4jGenericRepository<T> implements Repository<T> {
     private static final String SRC_SWITCH_FIELD = "srcSwitch";
