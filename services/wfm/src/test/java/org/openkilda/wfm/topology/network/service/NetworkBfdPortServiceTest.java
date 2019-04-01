@@ -23,12 +23,12 @@ import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.messaging.model.NoviBfdSession;
-import org.openkilda.model.BfdPort;
+import org.openkilda.model.BfdSession;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.BfdPortRepository;
+import org.openkilda.persistence.repositories.BfdSessionRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.network.model.Endpoint;
@@ -69,7 +69,7 @@ public class NetworkBfdPortServiceTest {
     private SwitchRepository switchRepository;
 
     @Mock
-    private BfdPortRepository bfdPortRepository;
+    private BfdSessionRepository bfdSessionRepository;
 
     @Mock
     private IBfdPortCarrier carrier;
@@ -81,7 +81,7 @@ public class NetworkBfdPortServiceTest {
         RepositoryFactory repositoryFactory = Mockito.mock(RepositoryFactory.class);
 
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
-        when(repositoryFactory.createBfdPortRepository()).thenReturn(bfdPortRepository);
+        when(repositoryFactory.createBfdSessionRepository()).thenReturn(bfdSessionRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
         service = new NetworkBfdPortService(carrier, persistenceManager);
@@ -93,7 +93,7 @@ public class NetworkBfdPortServiceTest {
         String betaAddress = "192.168.1.2";
         final String removeCallKey = "bfd-remove-speaker-key";
 
-        when(bfdPortRepository.findBySwitchIdAndPort(alphaEndpoint.getDatapath(), alphaEndpoint.getPortNumber()))
+        when(bfdSessionRepository.findBySwitchIdAndPort(alphaEndpoint.getDatapath(), alphaEndpoint.getPortNumber()))
                 .thenReturn(Optional.empty());
         when(switchRepository.findById(alphaEndpoint.getDatapath())).thenReturn(
                 Optional.of(Switch.builder()
@@ -108,7 +108,7 @@ public class NetworkBfdPortServiceTest {
 
         service.setup(alphaLogicalEndpoint, alphaEndpoint.getPortNumber());
 
-        reset(bfdPortRepository);
+        reset(bfdSessionRepository);
 
         // setup BFD session
         IslReference islReference = new IslReference(alphaEndpoint, betaEndpoint);
@@ -116,13 +116,13 @@ public class NetworkBfdPortServiceTest {
 
         service.updateLinkStatus(alphaLogicalEndpoint, LinkStatus.UP);
 
-        verify(bfdPortRepository).findBySwitchIdAndPort(
+        verify(bfdSessionRepository).findBySwitchIdAndPort(
                 alphaLogicalEndpoint.getDatapath(), alphaLogicalEndpoint.getPortNumber());
 
-        ArgumentCaptor<BfdPort> bfdSessionCreateArgument = ArgumentCaptor.forClass(BfdPort.class);
-        verify(bfdPortRepository).createOrUpdate(bfdSessionCreateArgument.capture());
+        ArgumentCaptor<BfdSession> bfdSessionCreateArgument = ArgumentCaptor.forClass(BfdSession.class);
+        verify(bfdSessionRepository).createOrUpdate(bfdSessionCreateArgument.capture());
 
-        BfdPort bfdSessionDb = bfdSessionCreateArgument.getValue();
+        BfdSession bfdSessionDb = bfdSessionCreateArgument.getValue();
         Assert.assertEquals(alphaLogicalEndpoint.getDatapath(), bfdSessionDb.getSwitchId());
         Assert.assertEquals((Integer) alphaLogicalEndpoint.getPortNumber(), bfdSessionDb.getPort());
         Assert.assertNotNull(bfdSessionDb.getDiscriminator());
@@ -143,10 +143,10 @@ public class NetworkBfdPortServiceTest {
         verify(carrier).bfdUpNotification(alphaEndpoint);
 
         verifyNoMoreInteractions(carrier);
-        verifyNoMoreInteractions(bfdPortRepository);
+        verifyNoMoreInteractions(bfdSessionRepository);
 
         reset(carrier);
-        reset(bfdPortRepository);
+        reset(bfdSessionRepository);
 
         // remove BFD session
         when(carrier.removeBfdSession(any(NoviBfdSession.class))).thenReturn(removeCallKey);
@@ -162,13 +162,13 @@ public class NetworkBfdPortServiceTest {
         Assert.assertEquals(speakerBfdSetup, speakerBfdRemove);
 
         verifyNoMoreInteractions(carrier);
-        verifyNoMoreInteractions(bfdPortRepository);
+        verifyNoMoreInteractions(bfdSessionRepository);
 
         reset(carrier);
 
         // remove confirmation
 
-        when(bfdPortRepository.findBySwitchIdAndPort(alphaLogicalEndpoint.getDatapath(),
+        when(bfdSessionRepository.findBySwitchIdAndPort(alphaLogicalEndpoint.getDatapath(),
                                                      alphaLogicalEndpoint.getPortNumber()))
                 .thenReturn(Optional.of(bfdSessionDb));
 
@@ -176,11 +176,11 @@ public class NetworkBfdPortServiceTest {
         service.speakerResponse(removeCallKey, alphaLogicalEndpoint, speakerResponse);
         service.updateLinkStatus(alphaLogicalEndpoint, LinkStatus.DOWN);
 
-        verify(bfdPortRepository).findBySwitchIdAndPort(alphaLogicalEndpoint.getDatapath(),
+        verify(bfdSessionRepository).findBySwitchIdAndPort(alphaLogicalEndpoint.getDatapath(),
                                                         alphaLogicalEndpoint.getPortNumber());
-        verify(bfdPortRepository).delete(bfdSessionDb);
+        verify(bfdSessionRepository).delete(bfdSessionDb);
 
         verifyNoMoreInteractions(carrier);
-        verifyNoMoreInteractions(bfdPortRepository);
+        verifyNoMoreInteractions(bfdSessionRepository);
     }
 }
