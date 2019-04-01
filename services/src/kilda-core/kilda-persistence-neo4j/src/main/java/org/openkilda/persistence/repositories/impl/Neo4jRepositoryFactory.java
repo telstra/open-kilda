@@ -16,7 +16,7 @@
 package org.openkilda.persistence.repositories.impl;
 
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.BfdPortRepository;
+import org.openkilda.persistence.repositories.BfdSessionRepository;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.FlowSegmentRepository;
@@ -99,7 +99,7 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     }
 
     @Override
-    public BfdPortRepository createBfdPortRepository() {
-        return new Neo4JBfdPortRepository(sessionFactory, transactionManager);
+    public BfdSessionRepository createBfdPortRepository() {
+        return new Neo4JBfdSessionRepository(sessionFactory, transactionManager);
     }
 }
