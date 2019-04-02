@@ -651,6 +651,21 @@ div.switch5 > input.switch:focus ~ label:before {
   text-align: right;
 }
 
+.onoffswitch-inner-kilda-flow-ping::before{
+  content:'Raw View';
+  text-align: left;
+}
+.onoffswitch-inner-kilda-flow-ping::after{
+  content:'Graphical View';
+  text-align: right;
+}
+
+.onoffswitch-flow-ping {
+  right: 93px; 
+}
+.onoffflow-ping {
+ width: 120px;
+}
 .onoffswitch-switch-meter {
    right: 82px; 
 }
@@ -1014,7 +1029,7 @@ text {
 }
 
 
-#topology-hover-txt,
+#topology-hover-txt,#ping-hover-txt,
 #topology-click-txt {
   width: 300px;
   position: fixed;
@@ -1023,6 +1038,17 @@ text {
   border: 1px solid #ccc;
   margin: 0 0 0 85px;
   display: none;
+}
+#ping-hover-txt:after,
+#ping-hover-txt:before{
+  right: 100%;
+  top: 25px;
+  border: solid transparent;
+  content: " ";
+  height: 0;
+  width: 0;
+  position: absolute;
+  pointer-events: none;
 }
 #topology-hover-txt:after,
 #topology-hover-txt:before,
@@ -1039,6 +1065,7 @@ text {
 }
 
 #topology-hover-txt:after,
+#ping-hover-txt:after,
 #topology-click-txt:after {
   border-color: rgba(255, 255, 255, 0);
   border-right-color: #fff;
@@ -1046,6 +1073,7 @@ text {
   margin-top: -10px;
 }
 #topology-hover-txt:before,
+#ping-hover-txt:before,
 #topology-click-txt:before {
   border-color: rgba(204, 204, 204, 0);
   border-right-color: #ccc;
@@ -1053,8 +1081,20 @@ text {
   margin-top: -11px;
 }
 #topology-hover-txt .form-wrapper,
+#ping-hover-txt .form-wrapper,
 #topology-click-txt .form-wrapper {
   border: none;
+}
+#ping-hover-txt.left:after,
+#ping-hover-txt.left:before{
+  left: 100%;
+  top: 25px;
+  border: solid transparent;
+  content: " ";
+  height: 0;
+  width: 0;
+  position: absolute;
+  pointer-events: none;
 }
 #topology-hover-txt.left:after,
 #topology-hover-txt.left:before,
@@ -1071,6 +1111,7 @@ text {
 }
 
 #topology-hover-txt.left:after,
+#ping-hover-txt.left:after,
 #topology-click-txt.after {
   border-color: rgba(255, 255, 255, 0);
   border-left-color: #fff;
@@ -1078,19 +1119,18 @@ text {
   margin-top: -10px;
 }
 #topology-hover-txt.left:before,
+#ping-hover-txt.left:before,
 #topology-click-txt.left:before {
   border-color: rgba(204, 204, 204, 0);
   border-left-color: #ccc;
   border-width: 11px;
   margin-top: -11px;
 }
-#topology-hover-txt .form-wrapper,
-#topology-click-txt .form-wrapper {
-  border: none;
-}
 
 #topology-hover-txt label,
 #topology-hover-txt p,
+#ping-hover-txt label,
+#ping-hover-txt p,
 #topology-click-txt label,
 #topology-click-txt p {
   padding: 0px 15px;
@@ -1104,6 +1144,11 @@ text {
 #topology-hover-txt div.form-wrapper,
 #topology-click-txt div.form-wrapper {
   padding: 5px 10px;
+  font-size: 12px;
+}
+
+#ping-hover-txt div.form-wrapper{
+  padding: 12px 10px;
   font-size: 12px;
 }
 
@@ -1628,6 +1673,21 @@ table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTa
   z-index: 1;
 }
 
+.ping-component-loader {
+  position: absolute;
+  border: 7px solid #bfbdbd;
+  border-radius: 50%;
+  border-top: 7px solid #3498db;
+  width: 35px;
+  height: 35px;
+  top: calc(50% - 75px);
+  left: calc(50% - 80px);
+  -webkit-animation: spin 2s linear infinite;
+  animation: spin 2s linear infinite;
+  margin: auto;
+  z-index: 1;
+}
+
 .btn-no-radius {
   border-radius: 0px;
 }
@@ -1982,4 +2042,40 @@ button:focus{
   border-left: 1px solid;
   padding-left: 10px;
   padding-bottom: 5px;
+}
+
+.failed_ping_flowline{
+  stroke: #d93923;
+  stroke-width: 2.5 !important;
+}
+.flowline {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  stroke: #009900;
+  animation: flow 6s linear infinite;
+  -webkit-animation: flow 6s linear infinite;
+}
+
+.ping_success_flow{
+  stroke: #009900!important;
+}
+
+@keyframes flow {
+  from {
+    stroke-dashoffset: 1000;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@-webkit-keyframes flow {
+  from {
+    stroke-dashoffset: 1000;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
 }

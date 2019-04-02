@@ -107,7 +107,7 @@ public class DatabaseConfigurator {
                 }
             }
         } catch (IOException e) {
-            LOGGER.error("Failed to load db scripts", e);
+            LOGGER.debug("Failed to load db scripts", e);
         }
         return filesByName;
     }
