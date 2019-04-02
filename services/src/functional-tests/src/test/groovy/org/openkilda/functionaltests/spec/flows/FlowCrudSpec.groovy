@@ -12,6 +12,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.model.SwitchId
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -33,6 +34,11 @@ class FlowCrudSpec extends BaseSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider
+
+    @Shared
+    def getPortViolationError = { String action, int port, SwitchId swId ->
+        "Could not $action flow: The port $port on the switch '$swId' is occupied by an ISL."
+    }
 
     @Unroll("Valid #data.description has traffic and no rule discrepancies \
 (#flow.source.datapath - #flow.destination.datapath)")
@@ -424,6 +430,81 @@ class FlowCrudSpec extends BaseSpecification {
                 assert rules.properRules.empty
             }
         }
+    }
+
+    @Unroll
+    def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {
+        given: "An isl"
+        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
+        assert isl
+
+        when: "Try to create a flow using isl port"
+        def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
+        flow."$data.switchType".portNumber = isl."$data.port"
+        flowHelper.addFlow(flow)
+
+        then: "Flow is not created"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage == data.message(isl)
+
+        where:
+        data << [
+                [
+                        switchType: "source",
+                        port      : "srcPort",
+                        message   : { Isl violatedIsl ->
+                            getPortViolationError("create", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
+                        }
+                ],
+                [
+                        switchType: "destination",
+                        port      : "dstPort",
+                        message   : { Isl violatedIsl ->
+                            getPortViolationError("create", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
+                        }
+                ]
+        ]
+    }
+
+    @Unroll
+    def "Unable to update a flow in case new port is an isl port on a #data.switchType switch"() {
+        given: "An isl"
+        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
+        assert isl
+
+        and: "A flow"
+        def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
+        flowHelper.addFlow(flow)
+
+        when: "Try to edit port to isl port"
+        flowHelper.updateFlow(flow.id, flow.tap { it."$data.switchType".portNumber = isl."$data.port" })
+
+        then:
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage == data.message(isl)
+
+        and: "Cleanup: delete the flow"
+        flowHelper.deleteFlow(flow.id)
+
+        where:
+        data << [
+                [
+                        switchType: "source",
+                        port      : "srcPort",
+                        message   : { Isl violatedIsl ->
+                            getPortViolationError("update", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
+                        }
+                ],
+                [
+                        switchType: "destination",
+                        port      : "dstPort",
+                        message   : { Isl violatedIsl ->
+                            getPortViolationError("update", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
+                        }
+                ]
+        ]
     }
 
     @Shared
