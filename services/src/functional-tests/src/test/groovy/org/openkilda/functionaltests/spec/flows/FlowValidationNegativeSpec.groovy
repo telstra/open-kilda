@@ -11,7 +11,6 @@ import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.util.logging.Slf4j
-import org.junit.Assume
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Unroll
