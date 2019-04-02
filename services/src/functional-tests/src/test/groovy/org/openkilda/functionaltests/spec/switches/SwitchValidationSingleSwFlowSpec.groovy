@@ -2,20 +2,33 @@ package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.Message
+import org.openkilda.messaging.command.CommandData
+import org.openkilda.messaging.command.CommandMessage
+import org.openkilda.messaging.command.flow.InstallEgressFlow
+import org.openkilda.messaging.command.flow.InstallIngressFlow
+import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.Cookie
+import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.switches.SwitchValidationResult
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.transform.Memoized
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Unroll
@@ -27,7 +40,12 @@ Description of fields:
 - excess - those meters/rules, which are present on a switch, but are NOT present in db
 - proper - meters/rules values are the same on a switch and in db
 """)
-class MetersValidationSingleSwFlowSpec extends BaseSpecification {
+class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
+    @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
+    String flowTopic
+    @Autowired
+    @Qualifier("kafkaProducerProperties")
+    Properties producerProps
     @Autowired
     SwitchHelper switchHelper
 
@@ -40,7 +58,7 @@ class MetersValidationSingleSwFlowSpec extends BaseSpecification {
 
         when: "Create a flow"
         def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
-        def meterIds = createdMeterIds(sw.dpId)
+        def meterIds = getCreatedMeterIds(sw.dpId)
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
 
         then: "Two meters are automatically created."
@@ -50,38 +68,38 @@ class MetersValidationSingleSwFlowSpec extends BaseSpecification {
         def switchValidateInfo = northbound.switchValidate(sw.dpId)
         switchValidateInfo.meters.proper.collect { it.meterId }.containsAll(meterIds)
 
-        def createdCookies = сookiesWithMeter(sw.dpId)
+        def createdCookies = getCookiesWithMeter(sw.dpId)
         switchValidateInfo.meters.proper*.cookie.containsAll(createdCookies)
 
         switchValidateInfo.meters.proper.each {
             assert it.rate == flow.maximumBandwidth
             assert it.flowId == flow.id
-            assert flagsOnSwitch.containsAll(it.flags)
-            burstSizeIsCorrect(burstSize, it.burstSize)
+            assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
+            verifyBurstSizeIsCorrect(burstSize, it.burstSize)
         }
 
-        meterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
+        verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
 
         and: "Created rules are stored in the 'proper' section"
         switchValidateInfo.rules.proper.containsAll(createdCookies)
 
         and: "The rest fields in the 'rule' section are empty"
-        ruleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
+        verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
 
-        then: "Delete the flow"
+        when: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
 
-        and: "Check that switch validate info is also deleted"
+        then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
             def switchValidateInfoAfterDelete = northbound.switchValidate(sw.dpId)
-            ruleSectionsAreEmpty(switchValidateInfoAfterDelete)
-            meterSectionsAreEmpty(switchValidateInfoAfterDelete)
+            verifyRuleSectionsAreEmpty(switchValidateInfoAfterDelete)
+            verifyMeterSectionsAreEmpty(switchValidateInfoAfterDelete)
         }
 
         where:
-        switchType   | switches               | flagsOnSwitch
-        "Centec"     | getCentecSwitches()    | ["KBPS", "BURST", "STATS"]
-        "non-Centec" | getNonCentecSwitches() | ["KBPS", "BURST", "STATS"]
+        switchType   | switches
+        "Centec"     | getCentecSwitches()
+        "non-Centec" | getNonCentecSwitches()
     }
 
     @Unroll
@@ -93,37 +111,38 @@ class MetersValidationSingleSwFlowSpec extends BaseSpecification {
 
         when: "Create a flow"
         def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
-        def meterIds = createdMeterIds(sw.dpId)
+        def meterIds = getCreatedMeterIds(sw.dpId)
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
 
         and: "Change bandwidth for the created flow directly in DB"
-        def newBandwidth = northbound.getSwitchRules(sw.dpId).flowEntries*.instructions.goToMeter.max() + 100
+        def newBandwidth = flow.maximumBandwidth + 100
         /** at this point meters are set for given flow. Now update flow bandwidth directly via DB,
          it is done just for moving meters from the 'proper' section into the 'misconfigured'*/
         database.updateFlowBandwidth(flow.id, newBandwidth)
         //at this point existing meters do not correspond with the flow
 
-        then: "Meters info are moved into the 'misconfigured' section"
+        then: "Meters info is moved into the 'misconfigured' section"
         def switchValidateInfo = northbound.switchValidate(sw.dpId)
-        def createdCookies = сookiesWithMeter(sw.dpId)
+        def createdCookies = getCookiesWithMeter(sw.dpId)
+        switchValidateInfo.meters.misconfigured.meterId.size() == 2
         switchValidateInfo.meters.misconfigured*.meterId.containsAll(meterIds)
 
         switchValidateInfo.meters.misconfigured*.cookie.containsAll(createdCookies)
         switchValidateInfo.meters.misconfigured.each {
             assert it.rate == flow.maximumBandwidth
             assert it.flowId == flow.id
-            assert flagsOnSwitch.containsAll(it.flags)
-            burstSizeIsCorrect(burstSize, it.burstSize)
+            assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
+            verifyBurstSizeIsCorrect(burstSize, it.burstSize)
         }
 
         and: "Reason is specified why meters are misconfigured"
         switchValidateInfo.meters.misconfigured.each {
-            it.actual.rate == flow.maximumBandwidth
-            it.expected.rate == newBandwidth
+            assert it.actual.rate == flow.maximumBandwidth
+            assert it.expected.rate == newBandwidth
         }
 
         and: "The rest fields are empty"
-        meterSectionsAreEmpty(switchValidateInfo, ["missing", "proper", "excess"])
+        verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "proper", "excess"])
 
         and: "Created rules are still stored in the 'proper' section"
         switchValidateInfo.rules.proper.containsAll(createdCookies)
@@ -134,22 +153,22 @@ class MetersValidationSingleSwFlowSpec extends BaseSpecification {
         then: "Misconfigured meters are moved into the 'proper' section"
         def switchValidateInfoRestored = northbound.switchValidate(sw.dpId)
         switchValidateInfoRestored.meters.proper*.meterId.containsAll(meterIds)
-        meterSectionsAreEmpty(switchValidateInfoRestored, ["missing", "misconfigured", "excess"])
+        verifyMeterSectionsAreEmpty(switchValidateInfoRestored, ["missing", "misconfigured", "excess"])
 
         when: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
 
-        then: "Check that switch validate info is also deleted"
+        then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
             def switchValidateInfoAfterDelete = northbound.switchValidate(sw.dpId)
-            ruleSectionsAreEmpty(switchValidateInfoAfterDelete)
-            meterSectionsAreEmpty(switchValidateInfoAfterDelete)
+            verifyRuleSectionsAreEmpty(switchValidateInfoAfterDelete)
+            verifyMeterSectionsAreEmpty(switchValidateInfoAfterDelete)
         }
 
         where:
-        switchType   | switches               | flagsOnSwitch
-        "Centec"     | getCentecSwitches()    | ["KBPS", "BURST", "STATS"]
-        "non-Centec" | getNonCentecSwitches() | ["KBPS", "BURST", "STATS"]
+        switchType   | switches
+        "Centec"     | getCentecSwitches()
+        "non-Centec" | getNonCentecSwitches()
     }
 
     @Unroll
@@ -161,7 +180,7 @@ class MetersValidationSingleSwFlowSpec extends BaseSpecification {
 
         when: "Create a flow"
         def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
-        def meterIds = createdMeterIds(sw.dpId)
+        def meterIds = getCreatedMeterIds(sw.dpId)
 
         and: "Remove created meter"
         northbound.deleteMeter(sw.dpId, meterIds[0])
@@ -170,35 +189,37 @@ class MetersValidationSingleSwFlowSpec extends BaseSpecification {
         then: "Meters info/rules are moved into the 'missing' section"
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
         def switchValidateInfo = northbound.switchValidate(sw.dpId)
-        def createdCookies = сookiesWithMeter(sw.dpId)
-        switchValidateInfo.rules.missing.collect { it }.containsAll(createdCookies)
+        def createdCookies = getCookiesWithMeter(sw.dpId)
+        switchValidateInfo.meters.missing.meterId.size() == 2
+        switchValidateInfo.rules.missing.containsAll(createdCookies)
         switchValidateInfo.meters.missing*.meterId.containsAll(meterIds)
         switchValidateInfo.meters.missing*.cookie.containsAll(createdCookies)
         switchValidateInfo.meters.missing.each {
             assert it.rate == flow.maximumBandwidth
             assert it.flowId == flow.id
-            assert flagsOnSwitch.containsAll(it.flags)
-            burstSizeIsCorrect(burstSize, it.burstSize)
+            assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
+            verifyBurstSizeIsCorrect(burstSize, it.burstSize)
         }
 
         and: "The rest fields are empty"
-        ruleSectionsAreEmpty(switchValidateInfo, ["proper", "excess"])
-        meterSectionsAreEmpty(switchValidateInfo, ["misconfigured", "proper", "excess"])
+        verifyRuleSectionsAreEmpty(switchValidateInfo, ["proper", "excess"])
+        verifyMeterSectionsAreEmpty(switchValidateInfo, ["misconfigured", "proper", "excess"])
 
+        // TODO(andriidovhan) add synchronizeSwitch and check that rule inflo is moved back into the 'proper' section
         when: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
 
-        then: "Check that switch validate info is also deleted"
+        then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
             def switchValidateInfoAfterDelete = northbound.switchValidate(sw.dpId)
-            ruleSectionsAreEmpty(switchValidateInfoAfterDelete)
-            meterSectionsAreEmpty(switchValidateInfoAfterDelete)
+            verifyRuleSectionsAreEmpty(switchValidateInfoAfterDelete)
+            verifyMeterSectionsAreEmpty(switchValidateInfoAfterDelete)
         }
 
         where:
-        switchType   | switches               | flagsOnSwitch
-        "Centec"     | getCentecSwitches()    | ["KBPS", "BURST", "STATS"]
-        "non-Centec" | getNonCentecSwitches() | ["KBPS", "BURST", "STATS"]
+        switchType   | switches
+        "Centec"     | getCentecSwitches()
+        "non-Centec" | getNonCentecSwitches()
     }
 
     @Unroll
@@ -210,53 +231,59 @@ class MetersValidationSingleSwFlowSpec extends BaseSpecification {
 
         when: "Create a flow"
         def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
-        def metersIds = createdMeterIds(sw.dpId)
+        def metersIds = getCreatedMeterIds(sw.dpId)
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
 
-        and: "Update meterId for created flow directly via db"
+        then: "Rules and meters are created"
+        def swValidateInfo = northbound.switchValidate(sw.dpId)
+        swValidateInfo.meters.proper.meterId.size() == 2
+        swValidateInfo.rules.proper.size() == 2
+
+        when: "Update meterId for created flow directly via db"
         def newMeterId = 100
         database.updateFlowMeterId(flow.id, newMeterId)
 
-        then: "Meters info are moved into the 'excess' section"
+        then: "Origin meters are moved into the 'excess' section"
         def switchValidateInfo = northbound.switchValidate(sw.dpId)
+        switchValidateInfo.meters.excess.meterId.size() == 2
         switchValidateInfo.meters.excess.collect { it.meterId }.containsAll(metersIds)
         switchValidateInfo.meters.excess.each {
             assert it.rate == flow.maximumBandwidth
-            assert flagsOnSwitch.containsAll(it.flags)
-            burstSizeIsCorrect(burstSize, it.burstSize)
+            assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
+            verifyBurstSizeIsCorrect(burstSize, it.burstSize)
         }
 
-        and: "Meters info is also stored in the 'missing' section"
-        def createdCookies = сookiesWithMeter(sw.dpId)
+        and: "Updated meters are stored in the 'missing' section"
+        def createdCookies = getCookiesWithMeter(sw.dpId)
         switchValidateInfo.meters.missing.collect { it.cookie }.containsAll(createdCookies)
         switchValidateInfo.meters.missing.each {
             assert it.rate == flow.maximumBandwidth
             assert it.flowId == flow.id
             assert it.meterId == newMeterId
-            assert flagsOnSwitch.containsAll(it.flags)
-            burstSizeIsCorrect(burstSize, it.burstSize)
+            assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
+            verifyBurstSizeIsCorrect(burstSize, it.burstSize)
         }
 
-        and: "Rules are still exist in the 'proper' section"
-        ruleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
+        and: "Rules still exist in the 'proper' section"
+        verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
 
         when: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
 
-        and: "Delete created meters on a switch"
+        and: "Delete excess meters"
         metersIds.each { northbound.deleteMeter(sw.dpId, it) }
 
-        then: "Check that switch validate info is also deleted"
+        then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
             def switchValidateInfoAfterDelete = northbound.switchValidate(sw.dpId)
-            ruleSectionsAreEmpty(switchValidateInfoAfterDelete)
-            meterSectionsAreEmpty(switchValidateInfoAfterDelete)
+            verifyRuleSectionsAreEmpty(switchValidateInfoAfterDelete)
+            verifyMeterSectionsAreEmpty(switchValidateInfoAfterDelete)
         }
 
         where:
-        switchType   | switches               | flagsOnSwitch
-        "Centec"     | getCentecSwitches()    | ["KBPS", "BURST", "STATS"]
-        "non-Centec" | getNonCentecSwitches() | ["KBPS", "BURST", "STATS"]
+        switchType   | switches
+        "Centec"     | getCentecSwitches()
+        "non-Centec" | getNonCentecSwitches()
     }
 
     @Unroll
@@ -268,7 +295,7 @@ class MetersValidationSingleSwFlowSpec extends BaseSpecification {
 
         when: "Create a flow"
         def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
-        def createdCookies = сookiesWithMeter(sw.dpId)
+        def createdCookies = getCookiesWithMeter(sw.dpId)
 
         and: "Delete created rules"
         northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
@@ -278,17 +305,17 @@ class MetersValidationSingleSwFlowSpec extends BaseSpecification {
         switchValidateInfo.rules.missing.containsAll(createdCookies)
 
         and: "The rest fields in the 'rule' section are empty"
-        ruleSectionsAreEmpty(switchValidateInfo, ["proper", "excess"])
+        verifyRuleSectionsAreEmpty(switchValidateInfo, ["proper", "excess"])
 
+        // TODO(andriidovhan) add synchronizeSwitch and check that rule inflo is moved back into the 'proper' section
         when: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
 
-        then: "Check that rules validate info is also deleted"
+        then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
             def switchValidateInfoAfterDelete = northbound.switchValidate(sw.dpId)
-            println(sw.dpId)
-            ruleSectionsAreEmpty(switchValidateInfoAfterDelete)
-            meterSectionsAreEmpty(switchValidateInfoAfterDelete)
+            verifyRuleSectionsAreEmpty(switchValidateInfoAfterDelete)
+            verifyMeterSectionsAreEmpty(switchValidateInfoAfterDelete)
         }
 
         where:
@@ -301,35 +328,55 @@ class MetersValidationSingleSwFlowSpec extends BaseSpecification {
     def "Switch validation is able to detect rule info into the 'excess' section on a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
-        setup: "Select a #switchType switch and retrieve default meters"
+        setup: "Select a #switchType switch and no meters/rules exist on a switch"
         def sw = switches.first()
+        def switchValidateInfoInitState = northbound.switchValidate(sw.dpId)
+        verifyRuleSectionsAreEmpty(switchValidateInfoInitState)
+        verifyMeterSectionsAreEmpty(switchValidateInfoInitState)
 
-        when: "Create a flow"
-        def flow = flowHelper.addFlow(flowHelper.singleSwitchFlow(sw))
-        def createdCookies = сookiesWithMeter(sw.dpId)
+        when: "Create excess rules directly via kafka"
+        Long fakeBandwidth = 333
+        Long burstSize = switchHelper.getExpectedBurst(sw.dpId, fakeBandwidth)
+        def producer = new KafkaProducer(producerProps)
+        //pick a meter id which is not yet used on src switch
+        def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
+                .meterEntries*.meterId).first()
+        producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
+                new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1, 1,
+                        OutputVlanType.REPLACE)).toJson()))
+        producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
+                new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 3)).toJson()))
+        producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
+                new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 5, 3,
+                        OutputVlanType.REPLACE, fakeBandwidth, excessMeterId)).toJson()))
 
-        and: "Change cookies for the created flow directly in DB"
-        def newFlowCookies = [createdCookies[0] + 1, createdCookies[1] + 1]
-        /** at this point rules are set for given flow. Now update flow cookie directly via DB,
-         it is done just for moving rules from the 'proper' section into the 'excess' section*/
-        database.updateFlowCookie(flow.id, newFlowCookies[0], newFlowCookies[1])
+        then: "System detects created rules as excess rules"
+        //excess egress/ingress/transit rules are not added yet
+        //they will be added after the next line
+        def switchValidateInfo
+        Wrappers.wait(WAIT_OFFSET){
+            switchValidateInfo = northbound.switchValidate(sw.dpId)
+            //excess egress/ingress/transit rules are added
+            switchValidateInfo.rules.excess.size() == 3
+        }
 
-        then: "Rule validate info(original cookies) is moved into the 'excess' section"
-        def switchValidateInfo = northbound.switchValidate(sw.dpId)
-        switchValidateInfo.rules.excess.collect { it }.containsAll(createdCookies)
+        and: "System detects one meter as excess"
+        switchValidateInfo.meters.excess.size() == 1
+        switchValidateInfo.meters.excess.each {
+            assert it.rate == fakeBandwidth
+            assert it.meterId == excessMeterId
+            assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
+            verifyBurstSizeIsCorrect(burstSize, it.burstSize)
+        }
 
-        and: "Rule validate info(new cookies) is moved into the 'excess' section"
-        switchValidateInfo.rules.missing.collect { it }.containsAll(newFlowCookies)
-        ruleSectionsAreEmpty(switchValidateInfo, ["proper"])
-
-        when: "Delete the flow"
-        flowHelper.deleteFlow(flow.id)
-
-        then: "Check that rules validate info is also deleted"
+        // TODO(andriidovhan) add synchronizeSwitch and check that rule inflo is moved back into the 'proper' section
+        and: "Cleanup: delete the excess rules"
+        northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
+        northbound.deleteMeter(sw.dpId, excessMeterId)
         Wrappers.wait(WAIT_OFFSET) {
             def switchValidateInfoAfterDelete = northbound.switchValidate(sw.dpId)
-            ruleSectionsAreEmpty(switchValidateInfoAfterDelete)
-            meterSectionsAreEmpty(switchValidateInfoAfterDelete)
+            verifyRuleSectionsAreEmpty(switchValidateInfoAfterDelete)
+            verifyMeterSectionsAreEmpty(switchValidateInfoAfterDelete)
         }
 
         where:
@@ -340,9 +387,8 @@ class MetersValidationSingleSwFlowSpec extends BaseSpecification {
 
     def "Not able to get the switch validate info on a NOT supported switch"() {
         given: "Not supported switch"
-        def switches = topology.activeSwitches.findAll { it.ofVersion == "OF_12" }
-        assumeTrue("Unable to find required switches in topology", switches as boolean)
-        def sw = switches.first()
+        def sw = topology.activeSwitches.find { it.ofVersion == "OF_12" }
+        assumeTrue("Unable to find required switches in topology", sw as boolean)
 
         when: "Try to invoke the switch validate request"
         northbound.switchValidate(sw.dpId)
@@ -364,43 +410,37 @@ class MetersValidationSingleSwFlowSpec extends BaseSpecification {
         topology.getActiveSwitches().findAll { it.centec }
     }
 
-    @Memoized
-    List<Switch> getSwitchNotSupportedMeter() {
-        topology.activeSwitches.findAll { it.ofVersion == "OF_12" }
+    List<Integer> getCreatedMeterIds(SwitchId switchId) {
+        return northbound.getAllMeters(switchId).meterEntries.findAll {
+            it.meterId > MAX_SYSTEM_RULE_METER_ID
+        }*.meterId
     }
 
-    List<Integer> createdMeterIds(SwitchId switchId) {
-        def meterIds = northbound.getAllMeters(switchId).meterEntries.findAll { it.meterId > MAX_SYSTEM_RULE_METER_ID }.collect {
-            it.meterId
-        }
-        return meterIds
+    List<Long> getCookiesWithMeter(SwitchId switchId) {
+        return northbound.getSwitchRules(switchId).flowEntries.findAll {
+            !Cookie.isDefaultRule(it.cookie) && it.instructions.goToMeter
+        }*.cookie
     }
 
-    List<Long> сookiesWithMeter(SwitchId switchId) {
-        def cookies = northbound.getSwitchRules(switchId).flowEntries.collect {
-            if (!Cookie.isDefaultRule(it.cookie) && it.instructions.goToMeter) {
-                it.cookie
-            }
-        }
-        cookies.removeAll([null])
-        return cookies
-    }
-
-    void meterSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
-                               List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
+    void verifyMeterSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
+                                     List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
         sections.each {
             assert switchValidateInfo.meters."$it".empty
         }
     }
 
-    void ruleSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
-                              List<String> sections = ["missing", "proper", "excess"]) {
+    void verifyRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
+                                    List<String> sections = ["missing", "proper", "excess"]) {
         sections.each {
             assert switchValidateInfo.rules."$it".empty
         }
     }
 
-    void burstSizeIsCorrect(Long expected, Long actual) {
+    void verifyBurstSizeIsCorrect(Long expected, Long actual) {
         assert Math.abs(expected - actual) <= 1
+    }
+
+    private static Message buildMessage(final CommandData data) {
+        return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null);
     }
 }

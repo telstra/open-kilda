@@ -56,6 +56,8 @@ public interface Database {
 
     void updateFlowBandwidth(String flowId, long newBw);
 
+    void updateFlowMeterId(String flowId, int newMeterId);
+
     //misc
 
     List<Object> dumpAllNodes();

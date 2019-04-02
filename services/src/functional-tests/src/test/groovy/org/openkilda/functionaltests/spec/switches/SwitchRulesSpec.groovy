@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeFalse
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -82,13 +83,8 @@ class SwitchRulesSpec extends BaseSpecification {
         requireProfiles("virtual")
 
         given: "A switch with some rules installed (including default) and not connected to the controller"
-        def srcSwitchDefaultMeters = northbound.getAllMeters(srcSwitch.dpId)
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
-
-        def srcSwitchCreatedMetersIds = northbound.getAllMeters(srcSwitch.dpId).meterEntries.findAll {
-            !srcSwitchDefaultMeters.meterEntries*.meterId.contains(it.meterId)
-        }.collect { it.meterId }
 
         def defaultPlusFlowRules = []
         Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -109,7 +105,9 @@ class SwitchRulesSpec extends BaseSpecification {
 
         and: "Delete previously installed rules and meters on the srcSwitch"
         northbound.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
-        srcSwitchCreatedMetersIds.each { northbound.deleteMeter(srcSwitch.dpId, it) }
+        northbound.getAllMeters(srcSwitch.dpId).meterEntries*.meterId.findAll { it >= MIN_FLOW_METER_ID }.each {
+            northbound.deleteMeter(srcSwitch.dpId, it)
+        }
         Wrappers.wait(RULES_DELETION_TIME) {
             assert northbound.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwitch.defaultCookies.size()
         }
