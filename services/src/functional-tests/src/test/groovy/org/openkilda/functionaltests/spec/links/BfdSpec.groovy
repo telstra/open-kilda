@@ -7,7 +7,10 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 
+import spock.lang.Ignore
+
 class BfdSpec extends BaseSpecification {
+    @Ignore("Feature pending")
     def "Interruption in BFD connection instantly leads to ISL failure"() {
         given: "An ISL through a-switch with a BFD session up"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort && it.bfd }

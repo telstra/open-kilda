@@ -32,7 +32,7 @@ class StormHeavyLoadSpec extends BaseSpecification {
     def r = new Random()
 
     /**
-     * Test produces multiple port up/down and IslInfoData messages to the topo.disco kafka topic,
+     * Test produces multiple port up/down messages to the topo.disco kafka topic,
      * expecting that Storm will be able to swallow them and continue to operate.
      */
     def "Storm does not fail under heavy load of topo.disco topic"() {
@@ -40,21 +40,19 @@ class StormHeavyLoadSpec extends BaseSpecification {
 
         when: "Produce massive amount of messages into topo.disco topic"
         def messages = 100000 //total sum of messages of all types produced
-        def operations = 3 //discovery, port up, port down
+        def operations = 2 //port up, port down
         def threads = 10
         def producers = (1..threads).collect { new KafkaProducer<>(producerProps) }
         def isl = topology.islsForActiveSwitches[0]
-        def islData = northbound.getAllLinks().findAll { it.state == IslChangeType.DISCOVERED }
         withPool(threads) {
             messages.intdiv(threads * operations).times {
                 def sw = isl.srcSwitch.dpId
                 producers.eachParallel {
                     it.send(new ProducerRecord(topoDiscoTopic, sw.toString(),
                             buildMessage(new PortInfoData(sw, isl.srcPort, null, PortChangeType.DOWN)).toJson()))
+                    sleep(1)
                     it.send(new ProducerRecord(topoDiscoTopic, sw.toString(),
                             buildMessage(new PortInfoData(sw, isl.srcPort, null, PortChangeType.UP)).toJson()))
-                    it.send(new ProducerRecord(topoDiscoTopic,
-                            buildMessage(islData[r.nextInt(islData.size())]).toJson()))
                 }
             }
         }
