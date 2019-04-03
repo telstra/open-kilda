@@ -50,8 +50,8 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoDiscoTopic();
     }
 
-    default String getKafkaSpeakerTopic() {
-        return getKafkaTopics().getSpeakerTopic();
+    default String getKafkaSpeakerDiscoTopic() {
+        return getKafkaTopics().getSpeakerDiscoTopic();
     }
 
     default String getKafkaTopoRerouteTopic() {
