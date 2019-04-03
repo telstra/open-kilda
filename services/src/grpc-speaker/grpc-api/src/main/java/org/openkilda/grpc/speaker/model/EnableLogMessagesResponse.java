@@ -19,9 +19,13 @@ import org.openkilda.messaging.model.grpc.OnOffState;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Value
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
 public class EnableLogMessagesResponse {
 

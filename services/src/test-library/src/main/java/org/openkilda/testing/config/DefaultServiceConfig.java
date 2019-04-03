@@ -81,6 +81,14 @@ public class DefaultServiceConfig {
         return buildLoggingRestTemplate(endpoint);
     }
 
+    @Bean(name = "grpcRestTemplate")
+    public RestTemplate grpcRestTemplate(
+            @Value("${grpc.endpoint}") String endpoint,
+            @Value("${grpc.username}") String username,
+            @Value("${grpc.password}") String password) {
+        return buildRestTemplateWithAuth(endpoint, username, password);
+    }
+
     private RestTemplate buildLoggingRestTemplate(String endpoint) {
         final RestTemplate restTemplate = buildLoggingRestTemplate();
         restTemplate.setUriTemplateHandler(new DefaultUriBuilderFactory(endpoint));
