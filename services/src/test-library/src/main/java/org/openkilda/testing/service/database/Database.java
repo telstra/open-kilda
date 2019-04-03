@@ -22,6 +22,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import java.util.List;
+import java.util.Map;
 
 public interface Database {
 
@@ -54,4 +55,10 @@ public interface Database {
     FlowPairDto<FlowDto, FlowDto> getFlow(String flowId);
 
     void updateFlowBandwidth(String flowId, long newBw);
+
+    //misc
+
+    List<Object> dumpAllNodes();
+
+    List<Map<String, Object>> dumpAllRelations();
 }

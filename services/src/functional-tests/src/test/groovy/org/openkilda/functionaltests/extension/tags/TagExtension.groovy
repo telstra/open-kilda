@@ -1,8 +1,8 @@
 package org.openkilda.functionaltests.extension.tags
 
+import static org.openkilda.functionaltests.extension.ExtensionHelper.isFeatureSpecial
+
 import groovy.util.logging.Slf4j
-import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
-import org.openkilda.functionaltests.extension.spring.PrepareSpringContextDummy
 import org.spockframework.runtime.extension.AbstractGlobalExtension
 import org.spockframework.runtime.model.MethodInfo
 import org.spockframework.runtime.model.SpecInfo
@@ -29,8 +29,7 @@ class TagExtension extends AbstractGlobalExtension {
         if (includeTags != [null]) {
             spec.excluded = true
             spec.getAllFeatures().each { feature ->
-                def annotations = feature.featureMethod.getAnnotations()*.annotationType()
-                if (!annotations.any { it in [HealthCheck, PrepareSpringContextDummy] }) {
+                if (!isFeatureSpecial(feature)) {
                     feature.excluded = true
                 }
             }

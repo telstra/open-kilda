@@ -12,7 +12,6 @@ import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.model.SwitchId
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Value
@@ -34,7 +33,7 @@ class ChaosSpec extends BaseSpecification {
         def flowsAmount = topology.activeSwitches.size() * 15
         List<FlowPayload> flows = []
         flowsAmount.times {
-            def flow = flowHelper.randomFlow(*randomSwitchPair, false, flows)
+            def flow = flowHelper.randomFlow(*topologyHelper.randomSwitchPair, false, flows)
             northbound.addFlow(flow)
             flows << flow
         }
@@ -99,18 +98,5 @@ class ChaosSpec extends BaseSpecification {
     def blinkPort(SwitchId swId, int port) {
         northbound.portDown(swId, port)
         northbound.portUp(swId, port)
-    }
-
-    /**
-     * Get a switch pair with random switches.
-     * Src and dst are guaranteed to be different switches
-     */
-    Tuple2<Switch, Switch> getRandomSwitchPair() {
-        def randomSwitch = { List<Switch> switches ->
-            switches[new Random().nextInt(switches.size())]
-        }
-        def src = randomSwitch(topology.activeSwitches)
-        def dst = randomSwitch(topology.activeSwitches - src)
-        return new Tuple2(src, dst)
     }
 }
