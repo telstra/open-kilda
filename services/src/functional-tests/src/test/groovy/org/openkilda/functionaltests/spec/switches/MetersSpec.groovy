@@ -212,30 +212,21 @@ on a #switchType switch"() {
 
     @Unroll
     def "Source/destination switches have meters only in flow ingress rule and intermediate switches don't have \
-meters in flow rules at all (#flowType flow)"() {
-        assumeTrue("Unable to find required switches in topology", switches.size() > 1)
-
-        given: "Two active not neighboring switches (#flowType)"
-        def allLinks = northbound.getAllLinks()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allLinks.every { link -> !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId) } &&
-                    (flowType == "Centec-nonCentec" ? (src.centec && !dst.centec) || (!src.centec && dst.centec) : true)
-        } ?: assumeTrue("No suiting switch pair with intermediate switch found", false)
-
-        when: "Create a flow between these switches"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+meters in flow rules at all (#data.flowType flow)"() {
+        assumeTrue("Unable to find required switch pair in topology", data.potentialFlow != null)
+        when: "Create a flow between given switches"
+        def flow = flowHelper.randomFlow(data.potentialFlow)
         flowHelper.addFlow(flow)
 
         then: "The source and destination switches have only one meter in the flow's ingress rule"
-        def srcSwFlowMeters = northbound.getAllMeters(srcSwitch.dpId).meterEntries.findAll(flowMeters)
-        def dstSwFlowMeters = northbound.getAllMeters(dstSwitch.dpId).meterEntries.findAll(flowMeters)
+        def srcSwFlowMeters = northbound.getAllMeters(flow.source.datapath).meterEntries.findAll(flowMeters)
+        def dstSwFlowMeters = northbound.getAllMeters(flow.destination.datapath).meterEntries.findAll(flowMeters)
 
         srcSwFlowMeters.size() == 1
         dstSwFlowMeters.size() == 1
 
-        def srcSwitchRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries
-        def dstSwitchRules = northbound.getSwitchRules(dstSwitch.dpId).flowEntries
+        def srcSwitchRules = northbound.getSwitchRules(flow.source.datapath).flowEntries
+        def dstSwitchRules = northbound.getSwitchRules(flow.destination.datapath).flowEntries
         def srcSwFlowIngressRule = filterRules(srcSwitchRules, flow.source.portNumber, flow.source.vlanId, null)[0]
         def dstSwFlowIngressRule = filterRules(dstSwitchRules, flow.destination.portNumber, flow.destination.vlanId,
                 null)[0]
@@ -262,10 +253,26 @@ meters in flow rules at all (#flowType flow)"() {
         flowHelper.deleteFlow(flow.id)
 
         where:
-        flowType              | switches
-        "Centec-Centec"       | getCentecSwitches()
-        "nonCentec-nonCentec" | getNonCentecSwitches()
-        "Centec-nonCentec"    | getCentecSwitches() + getNonCentecSwitches()
+        data << [
+                [
+                        flowType: "Centec-Centec",
+                        potentialFlow: getTopologyHelper().findAllNonNeighbors().find { it.src.centec && it.dst.centec }
+                ],
+                [
+                        flowType: "nonCentec-nonCentec",
+                        potentialFlow: getTopologyHelper().findAllNonNeighbors().find { 
+                            !it.src.centec && it.src.ofVersion == "OF_13" && 
+                            !it.dst.centec && it.dst.ofVersion == "OF_13"
+                            }
+                ],
+                [
+                        flowType: "Centec-nonCentec",
+                        potentialFlow: getTopologyHelper().findAllNonNeighbors().find { 
+                            (it.src.centec && !it.dst.centec && it.dst.ofVersion == "OF_13") || 
+                            (!it.src.centec && it.src.ofVersion == "OF_13" && it.dst.centec) 
+                        }
+                ]
+        ]
     }
 
     @Unroll

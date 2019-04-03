@@ -467,15 +467,11 @@ class SwitchRulesSpec extends BaseSpecification {
     @Unroll
     def "Able to synchronize rules for #description on a switch (install missing rules)"() {
         given: "Two active not neighboring switches"
-        def switches = topology.getActiveSwitches()
-        def allLinks = northbound.getAllLinks()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allLinks.every { link -> !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId) }
-        } ?: assumeTrue("No suiting switches found", false)
+        def potentialFlow = topologyHelper.findNonNeighbors() ?: 
+                assumeTrue("No suiting switches found", false)
 
         and: "Create a transit-switch flow going through these switches"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelper.randomFlow(potentialFlow)
         flow.maximumBandwidth = maximumBandwidth
         flow.ignoreBandwidth = maximumBandwidth ? false : true
         flowHelper.addFlow(flow)
