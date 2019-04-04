@@ -433,6 +433,8 @@ public class FlowService extends BaseFlowService {
         RerouteResult result =
                 transactionManager.doInTransaction(() -> doReroute(flowId, forceToReroute, pathIds));
 
+        log.warn("Rerouted flow with new path: {}", result.getToCreateFlow());
+
         // Assemble a command batch with InstallXXXRule, RemoveRule commands and a resource deallocation request.
         List<CommandGroup> commandGroups = new ArrayList<>();
 
@@ -694,10 +696,14 @@ public class FlowService extends BaseFlowService {
                 pairedFlowPath = flow.getReversePath();
             } else if (pathId.equals(flow.getReversePathId())) {
                 pairedFlowPath = flow.getForwardPath();
+            } else if (pathId.equals(flow.getProtectedForwardPathId())) {
+                pairedFlowPath = flow.getProtectedForwardPath();
+            } else if (pathId.equals(flow.getProtectedReversePathId())) {
+                pairedFlowPath = flow.getProtectedReversePath();
             }
 
             if (pairedFlowPath == null) {
-                // The path is not active for the flow or it has no paired path. Skip it.
+                log.info("The path {} is not active for the flow {} or it has no paired path", pathId, flowId);
                 return;
             }
 

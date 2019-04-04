@@ -561,7 +561,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
         } catch (FlowValidationException e) {
-            logger.warn("Flow path swap failure with reason: ", e.getMessage());
+            logger.warn("Flow path swap failure with reason: {}", e.getMessage());
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
         } catch (Exception e) {
