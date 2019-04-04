@@ -62,23 +62,31 @@ public class MeterPool {
      */
     public MeterId allocate(SwitchId switchId, String flowId, PathId pathId) {
         return transactionManager.doInTransaction(() -> {
-            String noMetersErrorMessage = format("No meter available for switch %s", switchId);
+            Switch theSwitch = switchRepository.findById(switchId)
+                    .orElseThrow(() ->
+                            new ResourceNotAvailableException(format("No switch for meter allocation: %s", switchId)));
+            return allocate(theSwitch, flowId, pathId);
+        });
+    }
 
-            MeterId availableMeterId = flowMeterRepository.findUnassignedMeterId(switchId, minMeterId)
+    /**
+     * Allocates a meter for the flow path.
+     */
+    public MeterId allocate(Switch theSwitch, String flowId, PathId pathId) {
+        return transactionManager.doInTransaction(() -> {
+            String noMetersErrorMessage = format("No meter available for switch %s", theSwitch);
+
+            MeterId availableMeterId = flowMeterRepository.findUnassignedMeterId(theSwitch.getSwitchId(), minMeterId)
                     .orElseThrow(() -> new ResourceNotAvailableException(noMetersErrorMessage));
             if (availableMeterId.compareTo(maxMeterId) > 0) {
                 throw new ResourceNotAvailableException(noMetersErrorMessage);
             }
 
-            Switch theSwitch = switchRepository.findById(switchId)
-                    .orElseThrow(() ->
-                            new ResourceNotAvailableException(format("No switch for meter allocation: %s", switchId)));
-
             FlowMeter flowMeter = FlowMeter.builder()
                     .meterId(availableMeterId)
+                    .theSwitch(theSwitch)
                     .flowId(flowId)
                     .pathId(pathId)
-                    .theSwitch(theSwitch)
                     .build();
             flowMeterRepository.createOrUpdate(flowMeter);
 

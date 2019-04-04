@@ -15,9 +15,9 @@
 
 package org.openkilda.floodlight.feature;
 
-import static org.openkilda.messaging.model.Switch.Feature.RESET_COUNTS_FLAG;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.RESET_COUNTS_FLAG;
 
-import org.openkilda.messaging.model.Switch.Feature;
+import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.commons.lang3.StringUtils;

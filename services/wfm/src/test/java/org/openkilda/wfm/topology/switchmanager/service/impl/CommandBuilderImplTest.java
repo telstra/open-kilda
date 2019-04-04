@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
@@ -111,7 +112,7 @@ public class CommandBuilderImplTest {
                     .vlan(transitVlan)
                     .build();
             when(transitVlanRepository.findByPathId(eq(flowPath.getPathId())))
-                    .thenReturn(Optional.of(transitVlanEntity));
+                    .thenReturn(singleton(transitVlanEntity));
 
             return flowPath;
         }

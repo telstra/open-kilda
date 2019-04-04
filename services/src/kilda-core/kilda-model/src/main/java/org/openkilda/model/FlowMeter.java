@@ -52,13 +52,6 @@ public class FlowMeter implements Serializable {
     @Getter(AccessLevel.NONE)
     private Long entityId;
 
-    // Hidden as set by the theSwitch field setter.
-    @Property(name = "switch_id")
-    @Setter(AccessLevel.NONE)
-    @Getter(AccessLevel.NONE)
-    @Convert(graphPropertyType = String.class)
-    private SwitchId switchId;
-
     @NonNull
     @Relationship(type = "owned_by")
     private Switch theSwitch;
@@ -82,6 +75,7 @@ public class FlowMeter implements Serializable {
     @Setter(AccessLevel.NONE)
     @Getter(AccessLevel.NONE)
     @Property(name = "unique_index")
+    @Index(unique = true)
     private String uniqueIndex;
 
     @Builder(toBuilder = true)
@@ -91,14 +85,6 @@ public class FlowMeter implements Serializable {
         this.meterId = meterId;
         this.flowId = flowId;
         this.pathId = pathId;
-        setTheSwitch(theSwitch);
-    }
-
-    /**
-     * Set the meter and update related index(es).
-     */
-    public void setMeterId(@NonNull MeterId meterId) {
-        this.meterId = meterId;
         calculateUniqueIndex();
     }
 
@@ -107,11 +93,18 @@ public class FlowMeter implements Serializable {
      */
     public final void setTheSwitch(@NonNull Switch theSwitch) {
         this.theSwitch = theSwitch;
-        this.switchId = theSwitch.getSwitchId();
+        calculateUniqueIndex();
+    }
+
+    /**
+     * Set the meter and update related index(es).
+     */
+    public final void setMeterId(@NonNull MeterId meterId) {
+        this.meterId = meterId;
         calculateUniqueIndex();
     }
 
     private void calculateUniqueIndex() {
-        uniqueIndex = format("%s_%d", switchId, meterId != null ? meterId.getValue() : null);
+        uniqueIndex = format("%s_%d", theSwitch.getSwitchId(), meterId != null ? meterId.getValue() : null);
     }
 }

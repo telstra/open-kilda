@@ -148,7 +148,7 @@ class SwitchDeleteSpec extends BaseSpecification {
         }
 
         // delete all ISLs on switch
-        swIsls.collectMany { [it, it.reversed] }.each {
+        swIsls.each {
             northbound.deleteLink(islUtils.toLinkParameters(it))
         }
 

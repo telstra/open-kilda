@@ -19,7 +19,7 @@ import org.openkilda.floodlight.command.OfCommand;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.messaging.MessageContext;
-import org.openkilda.messaging.model.Switch.Feature;
+import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.SwitchId;
 
 import lombok.AllArgsConstructor;

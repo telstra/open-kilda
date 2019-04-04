@@ -35,8 +35,8 @@ import org.openkilda.messaging.nbtopology.request.LinkPropsDrop;
 import org.openkilda.messaging.nbtopology.request.LinkPropsGet;
 import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
 import org.openkilda.messaging.nbtopology.request.RerouteFlowsForIslRequest;
+import org.openkilda.messaging.nbtopology.request.UpdateLinkEnableBfdRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateLinkUnderMaintenanceRequest;
-import org.openkilda.messaging.nbtopology.response.DeleteIslResponse;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -46,10 +46,10 @@ import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.converter.LinkPropsMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkEnableBfdDto;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
-import org.openkilda.northbound.dto.switches.DeleteLinkResult;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.LinkService;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
@@ -236,7 +236,7 @@ public class LinkServiceImpl implements LinkService {
     }
 
     @Override
-    public CompletableFuture<DeleteLinkResult> deleteLink(LinkParametersDto linkParameters) {
+    public CompletableFuture<List<LinkDto>> deleteLink(LinkParametersDto linkParameters) {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Delete link request received: {}", linkParameters);
 
@@ -252,12 +252,10 @@ public class LinkServiceImpl implements LinkService {
 
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
         return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
-                .thenApply(response -> new DeleteLinkResult(
-                        response.stream()
-                                .map(DeleteIslResponse.class::cast)
-                                .findFirst()
-                                .get()
-                                .isDeleted()));
+                .thenApply(response -> response.stream()
+                        .map(IslInfoData.class::cast)
+                        .map(linkMapper::toLinkDto)
+                        .collect(Collectors.toList()));
     }
 
     @Override
@@ -275,6 +273,31 @@ public class LinkServiceImpl implements LinkService {
             logger.error("Can not parse arguments: {}", e.getMessage());
             throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
                     e.getMessage(), "Can not parse arguments when create 'update ISL Under maintenance' request");
+        }
+
+        CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
+                .thenApply(response -> response.stream()
+                        .map(IslInfoData.class::cast)
+                        .map(linkMapper::toLinkDto)
+                        .collect(Collectors.toList()));
+    }
+
+    @Override
+    public CompletableFuture<List<LinkDto>> updateLinkEnableBfd(LinkEnableBfdDto link) {
+
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Update enable bfd link request processing");
+        UpdateLinkEnableBfdRequest data = null;
+        try {
+            data = new UpdateLinkEnableBfdRequest(
+                    new NetworkEndpoint(new SwitchId(link.getSrcSwitch()), link.getSrcPort()),
+                    new NetworkEndpoint(new SwitchId(link.getDstSwitch()), link.getDstPort()),
+                    link.isEnableBfd());
+        } catch (IllegalArgumentException e) {
+            logger.error("Can not parse arguments: {}", e.getMessage());
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments when create 'update ISL enable bfd' request");
         }
 
         CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);

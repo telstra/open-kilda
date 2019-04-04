@@ -93,7 +93,8 @@ public class CommandBuilderImpl implements CommandBuilder {
                             } else {
                                 PathSegment foundIngressSegment = flowPath.getSegments().get(0);
                                 int transitVlan =
-                                        transitVlanRepository.findByPathId(flowPath.getPathId())
+                                        transitVlanRepository.findByPathId(flowPath.getPathId()).stream()
+                                                .findAny()
                                                 .map(TransitVlan::getVlan).orElse(0);
                                 commands.add(buildInstallIngressRuleCommand(flow, flowPath,
                                         transitVlan, foundIngressSegment.getSrcPort()));
@@ -119,7 +120,8 @@ public class CommandBuilderImpl implements CommandBuilder {
         Flow flow = foundFlow.get();
 
         int transitVlan =
-                transitVlanRepository.findByPathId(flowPath.getPathId())
+                transitVlanRepository.findByPathId(flowPath.getPathId()).stream()
+                        .findAny()
                         .map(TransitVlan::getVlan).orElse(0);
 
         if (segment.getDestSwitch().getSwitchId().equals(flowPath.getDestSwitch().getSwitchId())) {

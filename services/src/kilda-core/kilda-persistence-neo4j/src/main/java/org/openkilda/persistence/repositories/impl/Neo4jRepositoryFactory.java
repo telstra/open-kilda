@@ -16,6 +16,7 @@
 package org.openkilda.persistence.repositories.impl;
 
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.BfdPortRepository;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
@@ -25,7 +26,6 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchPortRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
@@ -83,11 +83,6 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     }
 
     @Override
-    public SwitchPortRepository createSwitchPortRepository() {
-        return new Neo4jSwitchPortRepository(sessionFactory, transactionManager);
-    }
-
-    @Override
     public SwitchRepository createSwitchRepository() {
         return new Neo4jSwitchRepository(sessionFactory, transactionManager);
     }
@@ -125,5 +120,10 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public StateLogRepository createStateLogRepository() {
         return new Neo4jStateLogRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public BfdPortRepository createBfdPortRepository() {
+        return new Neo4JBfdPortRepository(sessionFactory, transactionManager);
     }
 }

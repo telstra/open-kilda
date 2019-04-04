@@ -117,7 +117,7 @@ public class InMemoryPathComputerTest {
 
                                 @Override
                                 public String getIndexesAuto() {
-                                    return null;
+                                    return "update";
                                 }
                             };
                         } else {

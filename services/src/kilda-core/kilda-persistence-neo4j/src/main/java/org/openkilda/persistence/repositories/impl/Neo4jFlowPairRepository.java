@@ -100,6 +100,7 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
     public void createOrUpdate(FlowPair entity) {
         flowRepository.createOrUpdate(entity.getFlowEntity());
 
+        //TODO: hard-coded encapsulation will be removed in Flow H&S
         if (entity.getForwardTransitVlanEntity() != null) {
             transitVlanRepository.createOrUpdate(entity.getForwardTransitVlanEntity());
         }
@@ -112,6 +113,7 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
     public void delete(FlowPair entity) {
         flowRepository.delete(entity.getFlowEntity());
 
+        //TODO: hard-coded encapsulation will be removed in Flow H&S
         if (entity.getForwardTransitVlanEntity() != null) {
             transitVlanRepository.delete(entity.getForwardTransitVlanEntity());
         }
@@ -121,8 +123,10 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
     }
 
     private FlowPair toFlowPair(Flow flow) {
-        TransitVlan forwardTransitVlan = transitVlanRepository.findByPathId(flow.getForwardPathId()).orElse(null);
-        TransitVlan reverseTransitVlan = transitVlanRepository.findByPathId(flow.getReversePathId()).orElse(null);
+        TransitVlan forwardTransitVlan = transitVlanRepository.findByPathId(flow.getForwardPathId()).stream()
+                .findAny().orElse(null);
+        TransitVlan reverseTransitVlan = transitVlanRepository.findByPathId(flow.getReversePathId()).stream()
+                .findAny().orElse(null);
 
         return new FlowPair(flow, forwardTransitVlan, reverseTransitVlan);
     }

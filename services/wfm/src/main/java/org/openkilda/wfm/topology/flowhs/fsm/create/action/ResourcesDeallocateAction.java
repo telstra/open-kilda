@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
+import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
@@ -46,8 +47,12 @@ public class ResourcesDeallocateAction extends AnonymousAction<FlowCreateFsm, St
 
     @Override
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        resourcesManager.deallocateFlowResources(stateMachine.getFlow(), stateMachine.getFlowResources());
-        log.info("Flow resources have been deallocated for flow {}", stateMachine.getFlow().getFlowId());
+        Flow flow = stateMachine.getFlow();
+        resourcesManager.deallocatePathResources(flow.getForwardPathId(),
+                flow.getForwardPath().getCookie().getUnmaskedValue(), flow.getEncapsulationType());
+        resourcesManager.deallocatePathResources(flow.getReversePathId(),
+                flow.getReversePath().getCookie().getUnmaskedValue(), flow.getEncapsulationType());
+        log.info("Flow resources have been deallocated for flow {}", flow.getFlowId());
 
         stateMachine.fire(Event.NEXT);
     }

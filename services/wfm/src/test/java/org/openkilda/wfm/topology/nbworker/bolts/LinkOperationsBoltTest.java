@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.nbworker.bolts;
 
 import static org.junit.Assert.assertNotNull;
+import static org.mockito.Mockito.when;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.model.LinkPropsDto;
@@ -31,15 +32,21 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.EmbeddedNeo4jDatabase;
 import org.openkilda.wfm.error.AbstractException;
 
+import org.apache.storm.task.TopologyContext;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Collections;
 import java.util.Properties;
 
+@RunWith(MockitoJUnitRunner.class)
 public class LinkOperationsBoltTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId SWITCH_ID_2 = new SwitchId("00:00:00:00:00:00:00:02");
@@ -51,6 +58,9 @@ public class LinkOperationsBoltTest {
     private static EmbeddedNeo4jDatabase embeddedNeo4jDb;
     private static PersistenceManager persistenceManager;
 
+    @Mock
+    private TopologyContext topologyContext;
+
     @BeforeClass
     public static void setupOnce() {
         embeddedNeo4jDb = new EmbeddedNeo4jDatabase(fsData.getRoot());
@@ -61,6 +71,11 @@ public class LinkOperationsBoltTest {
         PropertiesBasedConfigurationProvider configurationProvider =
                 new PropertiesBasedConfigurationProvider(configProps);
         persistenceManager = new Neo4jPersistenceManager(configurationProvider.getConfiguration(Neo4jConfig.class));
+    }
+
+    @Before
+    public void setUp() throws Exception {
+        when(topologyContext.getThisTaskId()).thenReturn(1);
     }
 
     @AfterClass
@@ -76,7 +91,7 @@ public class LinkOperationsBoltTest {
         switchRepository.createOrUpdate(Switch.builder().switchId(SWITCH_ID_2).build());
 
         LinkOperationsBolt bolt = new LinkOperationsBolt(persistenceManager, ISL_COST_WHEN_UNDER_MAINTENANCE);
-        bolt.prepare(null, null, null);
+        bolt.prepare(null, topologyContext, null);
         LinkPropsPut linkPropsPutRequest = new LinkPropsPut(new LinkPropsDto(
                 new NetworkEndpoint(SWITCH_ID_1, 1),
                 new NetworkEndpoint(SWITCH_ID_2, 1),

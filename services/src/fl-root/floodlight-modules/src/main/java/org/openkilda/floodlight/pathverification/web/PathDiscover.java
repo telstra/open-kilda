@@ -46,9 +46,10 @@ public class PathDiscover extends ServerResource {
         if (dstSwitch == null) {
             DatapathId d = DatapathId.of(srcSwitch);
             int p = Integer.parseInt(port);
-            pvs.sendDiscoveryMessage(d, OFPort.of(p));
+            pvs.sendDiscoveryMessage(d, OFPort.of(p), null);
         } else {
-            pvs.sendDiscoveryMessage(DatapathId.of(srcSwitch), OFPort.of(new Integer(port)), DatapathId.of(dstSwitch));
+            pvs.sendDiscoveryMessage(DatapathId.of(srcSwitch), OFPort.of(new Integer(port)), DatapathId.of(dstSwitch),
+                    null);
         }
         return null;
     }

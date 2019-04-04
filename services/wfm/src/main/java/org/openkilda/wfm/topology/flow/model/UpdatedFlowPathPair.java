@@ -19,11 +19,11 @@ import lombok.Getter;
 
 @Getter
 public class UpdatedFlowPathPair extends FlowPathPairWithEncapsulation {
-    private FlowPathPairWithEncapsulation oldFlowPair;
+    private final FlowPathPairWithEncapsulation oldFlowPair;
 
     public UpdatedFlowPathPair(FlowPathPairWithEncapsulation oldFlowPair, FlowPathPairWithEncapsulation newFlowPair) {
         super(newFlowPair.getFlow(), newFlowPair.getForwardPath(), newFlowPair.getReversePath(),
-                newFlowPair.getForwardTransitVlan(), newFlowPair.getReverseTransitVlan());
+                newFlowPair.getForwardEncapsulation(), newFlowPair.getReverseEncapsulation());
         this.oldFlowPair = oldFlowPair;
     }
 
@@ -34,7 +34,7 @@ public class UpdatedFlowPathPair extends FlowPathPairWithEncapsulation {
         return FlowPathWithEncapsulation.builder()
                 .flow(oldFlowPair.getFlow())
                 .flowPath(oldFlowPair.getForwardPath())
-                .transitVlan(oldFlowPair.getForwardTransitVlan())
+                .encapsulation(oldFlowPair.getForwardEncapsulation())
                 .build();
     }
 
@@ -45,7 +45,7 @@ public class UpdatedFlowPathPair extends FlowPathPairWithEncapsulation {
         return FlowPathWithEncapsulation.builder()
                 .flow(oldFlowPair.getFlow())
                 .flowPath(oldFlowPair.getReversePath())
-                .transitVlan(oldFlowPair.getReverseTransitVlan())
+                .encapsulation(oldFlowPair.getReverseEncapsulation())
                 .build();
     }
 }

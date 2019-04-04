@@ -19,7 +19,6 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 import org.openkilda.wfm.error.AbstractException;
-import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import lombok.Builder;
@@ -64,31 +63,28 @@ public abstract class WorkerBolt extends CoordinatedBolt {
     @Override
     protected void handleInput(Tuple input) throws AbstractException {
         String key = input.getStringByField(MessageTranslator.KEY_FIELD);
-        String sourceComponent = input.getSourceComponent();
+        String sender = input.getSourceComponent();
 
-        if (workerConfig.getHubComponent().equals(sourceComponent)) {
+        if (workerConfig.getHubComponent().equals(sender)) {
             pendingTasks.put(key, input);
             registerCallback(key, input);
 
             onHubRequest(input);
-        } else if (pendingTasks.containsKey(key)) {
-            if (workerConfig.getWorkerSpoutComponent().equals(sourceComponent)) {
-                onAsyncResponse(input);
-            } else if (CoordinatorBolt.ID.equals(sourceComponent)) {
-                log.warn("Timeout occurred while waiting for a response for {}", key);
-                onTimeout(key, input);
-            }
+        } else if (pendingTasks.containsKey(key) && workerConfig.getWorkerSpoutComponent().equals(sender)) {
+            // TODO(surabujin): it whould be great to get initial request together with response i.e.
+            // onAsyncResponse(input, pendingTasks.get(key)
+            onAsyncResponse(input);
         } else {
             unhandledInput(input);
         }
     }
 
     /**
-     * Send response to the hub bolt. Note: the operation's key is required.
+     * Send response to hub bolt once all required responses are received.
      * @param input received tuple.
      * @param values response to be sent to the hub.
      */
-    protected void emitResponseToHub(Tuple input, Values values) throws PipelineException {
+    protected void emitResponseToHub(Tuple input, Values values) {
         String key = input.getStringByField(MessageTranslator.KEY_FIELD);
         cancelCallback(key, input);
 

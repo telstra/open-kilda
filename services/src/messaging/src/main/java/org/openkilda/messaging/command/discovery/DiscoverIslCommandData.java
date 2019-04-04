@@ -45,6 +45,12 @@ public class DiscoverIslCommandData extends CommandData {
     private int portNumber;
 
     /**
+     * Packet id.
+     */
+    @JsonProperty("packetId")
+    private Long packetId;
+
+    /**
      * Instance constructor.
      *
      * @param switchId switch id
@@ -52,8 +58,10 @@ public class DiscoverIslCommandData extends CommandData {
      */
     @JsonCreator
     public DiscoverIslCommandData(@JsonProperty("switch_id") final SwitchId switchId,
-                                  @JsonProperty("port_number") final int portNumber) {
+                                  @JsonProperty("port_number") final int portNumber,
+                                  @JsonProperty("packetId") final Long packetId) {
         this.switchId = switchId;
         this.portNumber = portNumber;
+        this.packetId = packetId;
     }
 }

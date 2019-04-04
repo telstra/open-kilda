@@ -39,7 +39,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         def untilIslShouldFail = { timeSwitchesBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
         and: "ISL between those switches looses connection"
-        lockKeeper.portsDown([isl.aswitch.inPort, isl.aswitch.outPort])
+        lockKeeper.removeFlows([isl.aswitch])
 
         and: "Switches go back up"
         lockKeeper.reviveSwitch(isl.srcSwitch.dpId)
@@ -64,7 +64,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         }
 
         and: "Cleanup: restore connection, remove the flow"
-        lockKeeper.portsUp([isl.aswitch.inPort, isl.aswitch.outPort])
+        lockKeeper.addFlows([isl.aswitch])
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }

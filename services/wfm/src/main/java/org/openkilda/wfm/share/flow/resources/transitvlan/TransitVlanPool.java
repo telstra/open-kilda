@@ -27,11 +27,14 @@ import org.openkilda.wfm.share.flow.resources.ResourceNotAvailableException;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Collection;
+import java.util.Optional;
+
 /**
  * The resource pool is responsible for transit vlan de-/allocation.
  */
 @Slf4j
-public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVlanResources> {
+public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVlanEncapsulation> {
     private final TransactionManager transactionManager;
     private final TransitVlanRepository transitVlanRepository;
 
@@ -51,7 +54,7 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
      * Allocates a vlan for the flow path.
      */
     @Override
-    public TransitVlanResources allocate(Flow flow, PathId pathId) {
+    public TransitVlanEncapsulation allocate(Flow flow, PathId pathId) {
         return transactionManager.doInTransaction(() -> {
             int availableVlan = transitVlanRepository.findUnassignedTransitVlan(minTransitVlan)
                     .orElseThrow(() -> new ResourceNotAvailableException("No vlan available"));
@@ -66,7 +69,7 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
                     .build();
             transitVlanRepository.createOrUpdate(transitVlan);
 
-            return TransitVlanResources.builder()
+            return TransitVlanEncapsulation.builder()
                     .transitVlan(transitVlan)
                     .build();
         });
@@ -79,6 +82,17 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
     public void deallocate(PathId pathId) {
         transactionManager.doInTransaction(() ->
                 transitVlanRepository.findByPathId(pathId)
-                        .ifPresent(transitVlanRepository::delete));
+                        .forEach(transitVlanRepository::delete));
+    }
+
+    /**
+     * Get allocated transit vlan(s) of the flow path.
+     */
+    @Override
+    public Optional<TransitVlanEncapsulation> get(PathId pathId) {
+        Collection<TransitVlan> transitVlans = transitVlanRepository.findByPathId(pathId);
+        return transitVlans.stream()
+                .findAny()
+                .map(transitVlan -> TransitVlanEncapsulation.builder().transitVlan(transitVlan).build());
     }
 }

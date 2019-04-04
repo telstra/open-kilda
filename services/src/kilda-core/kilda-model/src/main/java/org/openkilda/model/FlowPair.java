@@ -74,6 +74,7 @@ public class FlowPair implements Serializable {
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build();
 
+        //TODO: hard-coded encapsulation will be removed in Flow H&S
         TransitVlan forwardTransitVlan = TransitVlan.builder()
                 .flowId(flowId)
                 .pathId(forwardPath.getPathId())

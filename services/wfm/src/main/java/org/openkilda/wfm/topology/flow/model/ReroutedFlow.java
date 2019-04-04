@@ -23,6 +23,6 @@ import lombok.Value;
 @Value
 @AllArgsConstructor
 public class ReroutedFlow {
-    UnidirectionalFlow oldFlow;
-    UnidirectionalFlow newFlow;
+    private final UnidirectionalFlow oldFlow;
+    private final UnidirectionalFlow newFlow;
 }

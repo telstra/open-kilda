@@ -25,6 +25,6 @@ import lombok.Getter;
 @Builder(toBuilder = true)
 @Getter
 public class FlowPathPair {
-    private FlowPath forward;
-    private FlowPath reverse;
+    private final FlowPath forward;
+    private final FlowPath reverse;
 }

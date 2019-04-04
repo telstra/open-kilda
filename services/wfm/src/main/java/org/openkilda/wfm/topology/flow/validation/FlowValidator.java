@@ -38,7 +38,6 @@ public class FlowValidator {
 
     private final FlowPairRepository flowPairRepository;
     private final FlowRepository flowRepository;
-
     private final SwitchRepository switchRepository;
 
     public FlowValidator(RepositoryFactory repositoryFactory) {

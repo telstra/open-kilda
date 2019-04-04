@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.flow.model;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.TransitVlan;
+import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,7 +27,7 @@ import lombok.Getter;
 @Builder(toBuilder = true)
 @Getter
 public class FlowPathWithEncapsulation {
-    Flow flow;
-    FlowPath flowPath;
-    TransitVlan transitVlan;
+    private final Flow flow;
+    private final FlowPath flowPath;
+    private final EncapsulationResources encapsulation;
 }

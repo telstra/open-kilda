@@ -78,7 +78,7 @@ public class RouterService {
                 }
                 return;
             } else if (infoData instanceof NetworkDumpSwitchData) {
-                switchId = ((NetworkDumpSwitchData) infoData).getSwitchRecord().getDatapath();
+                switchId = ((NetworkDumpSwitchData) infoData).getSwitchView().getDatapath();
             } else if (infoData instanceof SwitchInfoData) {
                 switchId = ((SwitchInfoData) infoData).getSwitchId();
             } else if (infoData instanceof PortInfoData) {
@@ -125,7 +125,13 @@ public class RouterService {
         }
     }
 
-    private String sendNetworkRequest(MessageSender routerMessageSender, String region) {
+    /**
+     * Send network dump requests for target region.
+     * @param routerMessageSender sender
+     * @param region target
+     * @return requested correlation id
+     */
+    public String sendNetworkRequest(MessageSender routerMessageSender, String region) {
         String correlationId = UUID.randomUUID().toString();
         CommandMessage command = new CommandMessage(new NetworkCommandData(),
                 System.currentTimeMillis(), correlationId,

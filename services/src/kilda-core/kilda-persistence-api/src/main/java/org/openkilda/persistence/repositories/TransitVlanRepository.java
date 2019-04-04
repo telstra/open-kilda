@@ -18,16 +18,17 @@ package org.openkilda.persistence.repositories;
 import org.openkilda.model.PathId;
 import org.openkilda.model.TransitVlan;
 
+import java.util.Collection;
 import java.util.Optional;
 
 public interface TransitVlanRepository extends Repository<TransitVlan> {
-    Optional<TransitVlan> findByPathId(PathId pathId);
+    Collection<TransitVlan> findByPathId(PathId pathId);
 
     /**
      * Find a transit vlan which is not assigned to any flow.
      * Use the provided defaultVlan as the first candidate.
      *
-     * @param defaultVlan the potential meter to be checked first.
+     * @param defaultVlan the potential vlan to be checked first.
      * @return a transit vlan or {@link Optional#empty()} if no vlan available.
      */
     Optional<Integer> findUnassignedTransitVlan(int defaultVlan);

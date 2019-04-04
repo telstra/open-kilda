@@ -15,11 +15,8 @@
 
 package org.openkilda.persistence.repositories.impl;
 
-import static java.lang.String.format;
-
 import org.openkilda.model.PathId;
 import org.openkilda.model.TransitVlan;
-import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
@@ -44,14 +41,10 @@ public class Neo4jTransitVlanRepository extends Neo4jGenericRepository<TransitVl
     }
 
     @Override
-    public Optional<TransitVlan> findByPathId(PathId pathId) {
+    public Collection<TransitVlan> findByPathId(PathId pathId) {
         Filter pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, pathId);
 
-        Collection<TransitVlan> vlans = loadAll(pathIdFilter);
-        if (vlans.size() > 1) {
-            throw new PersistenceException(format("Found more that 1 Vlan entity by (%s)", pathId));
-        }
-        return vlans.isEmpty() ? Optional.empty() : Optional.of(vlans.iterator().next());
+        return loadAll(pathIdFilter);
     }
 
     @Override

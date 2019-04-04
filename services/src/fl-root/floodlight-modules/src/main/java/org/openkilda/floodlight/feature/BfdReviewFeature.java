@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.feature;
 
-import org.openkilda.messaging.model.Switch;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.OFVersion;
@@ -24,17 +24,17 @@ import java.util.Optional;
 
 public class BfdReviewFeature extends BfdFeature {
     @Override
-    public Optional<Switch.Feature> discover(IOFSwitch sw) {
-        Optional<Switch.Feature> empty = Optional.empty();
+    public Optional<SpeakerSwitchView.Feature> discover(IOFSwitch sw) {
+        Optional<SpeakerSwitchView.Feature> empty = Optional.empty();
         if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_14) < 0) {
             return empty;
         }
 
-        Optional<Switch.Feature> commonBfdSupport = super.discover(sw);
+        Optional<SpeakerSwitchView.Feature> commonBfdSupport = super.discover(sw);
         if (!commonBfdSupport.isPresent()) {
             return empty;
         }
 
-        return Optional.of(Switch.Feature.BFD_REVIEW);
+        return Optional.of(SpeakerSwitchView.Feature.BFD_REVIEW);
     }
 }

@@ -15,9 +15,9 @@
 
 package org.openkilda.floodlight.feature;
 
-import static org.openkilda.messaging.model.Switch.Feature.LIMITED_BURST_SIZE;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.LIMITED_BURST_SIZE;
 
-import org.openkilda.messaging.model.Switch.Feature;
+import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.commons.lang3.StringUtils;

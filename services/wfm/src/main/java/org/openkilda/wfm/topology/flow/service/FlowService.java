@@ -58,7 +58,7 @@ import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
-import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanResources;
+import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flow.model.FlowPathPairWithEncapsulation;
 import org.openkilda.wfm.topology.flow.model.FlowPathWithEncapsulation;
@@ -419,7 +419,7 @@ public class FlowService extends BaseFlowService {
      * @param encapsulationType determine the encapsulation type used for resource allocation.
      */
     public void deallocateResources(PathId pathId, long unmaskedCookie, FlowEncapsulationType encapsulationType) {
-        flowResourcesManager.deallocatePathPairResources(pathId, unmaskedCookie, encapsulationType);
+        flowResourcesManager.deallocatePathResources(pathId, unmaskedCookie, encapsulationType);
     }
 
     /**
@@ -646,63 +646,81 @@ public class FlowService extends BaseFlowService {
     }
 
     private FlowPair buildFlowPair(FlowPathPairWithEncapsulation flowPath) {
-        return new FlowPair(flowPath.getFlow(), flowPath.getForwardTransitVlan(), flowPath.getReverseTransitVlan());
+        //TODO: hard-coded encapsulation will be removed in Flow H&S
+        TransitVlan forwardTransitVlan =
+                Optional.ofNullable((TransitVlanEncapsulation) flowPath.getForwardEncapsulation())
+                        .map(TransitVlanEncapsulation::getTransitVlan)
+                        .orElse(null);
+        TransitVlan reverseTransitVlan =
+                Optional.ofNullable((TransitVlanEncapsulation) flowPath.getReverseEncapsulation())
+                        .map(TransitVlanEncapsulation::getTransitVlan)
+                        .orElse(null);
+
+        return new FlowPair(flowPath.getFlow(), forwardTransitVlan, reverseTransitVlan);
     }
 
     private UnidirectionalFlow buildForwardUnidirectionalFlow(FlowPathWithEncapsulation flowPath) {
-        return new UnidirectionalFlow(flowPath.getFlow(), flowPath.getFlowPath(), flowPath.getTransitVlan(), true);
+        //TODO: hard-coded encapsulation will be removed in Flow H&S
+        TransitVlan transitVlan =
+                Optional.ofNullable((TransitVlanEncapsulation) flowPath.getEncapsulation())
+                        .map(TransitVlanEncapsulation::getTransitVlan)
+                        .orElse(null);
+
+        return new UnidirectionalFlow(flowPath.getFlow(), flowPath.getFlowPath(), transitVlan, true);
     }
 
     private FlowPathPairWithEncapsulation buildFlowPathsWithEncapsulation(Flow flow, FlowPathPair flowPathPair,
                                                                           FlowResources flowResources) {
-        //TODO: hard-coded encapsulation will be removed in Flow H&S
-        TransitVlan forwardTransitVlan =
-                Optional.ofNullable((TransitVlanResources) flowResources.getForward().getEncapsulationResources())
-                        .map(TransitVlanResources::getTransitVlan)
-                        .orElse(null);
-        TransitVlan reverseTransitVlan =
-                Optional.ofNullable((TransitVlanResources) flowResources.getReverse().getEncapsulationResources())
-                        .map(TransitVlanResources::getTransitVlan)
-                        .orElse(null);
-
         return FlowPathPairWithEncapsulation.builder()
                 .flow(flow)
                 .forwardPath(flowPathPair.getForward())
                 .reversePath(flowPathPair.getReverse())
-                .forwardTransitVlan(forwardTransitVlan)
-                .reverseTransitVlan(reverseTransitVlan)
+                .forwardEncapsulation(flowResources.getForward().getEncapsulationResources())
+                .reverseEncapsulation(flowResources.getReverse().getEncapsulationResources())
                 .build();
     }
 
     private FlowPathWithEncapsulation getFlowPathWithEncapsulation(Flow flow, FlowPath flowPath) {
         //TODO: hard-coded encapsulation will be removed in Flow H&S
-        TransitVlan transitVlan = transitVlanRepository.findByPathId(flowPath.getPathId()).orElse(null);
+        TransitVlan transitVlan = transitVlanRepository.findByPathId(flowPath.getPathId()).stream()
+                .findAny().orElse(null);
 
         return FlowPathWithEncapsulation.builder()
                 .flow(flow)
                 .flowPath(flowPath)
-                .transitVlan(transitVlan)
+                .encapsulation(TransitVlanEncapsulation.builder().transitVlan(transitVlan).build())
                 .build();
     }
 
     private List<CommandGroup> createInstallRulesGroups(FlowPathPairWithEncapsulation pathsToInstall) {
         List<CommandGroup> commandGroups = new ArrayList<>();
 
+        //TODO: hard-coded encapsulation will be removed in Flow H&S
+        TransitVlan forwardTransitVlan =
+                Optional.ofNullable((TransitVlanEncapsulation) pathsToInstall.getForwardEncapsulation())
+                        .map(TransitVlanEncapsulation::getTransitVlan)
+                        .orElse(null);
+        TransitVlan reverseTransitVlan =
+                Optional.ofNullable((TransitVlanEncapsulation) pathsToInstall.getReverseEncapsulation())
+                        .map(TransitVlanEncapsulation::getTransitVlan)
+                        .orElse(null);
+
         createInstallTransitAndEgressRules(pathsToInstall.getFlow(), pathsToInstall.getForwardPath(),
-                pathsToInstall.getForwardTransitVlan()).ifPresent(commandGroups::add);
+                forwardTransitVlan).ifPresent(commandGroups::add);
         createInstallTransitAndEgressRules(pathsToInstall.getFlow(), pathsToInstall.getReversePath(),
-                pathsToInstall.getReverseTransitVlan()).ifPresent(commandGroups::add);
+                reverseTransitVlan).ifPresent(commandGroups::add);
         // The ingress rule must be installed after the egress and transit ones.
         commandGroups.add(createInstallIngressRules(pathsToInstall.getFlow(), pathsToInstall.getForwardPath(),
-                pathsToInstall.getForwardTransitVlan()));
+                forwardTransitVlan));
         commandGroups.add(createInstallIngressRules(pathsToInstall.getFlow(), pathsToInstall.getReversePath(),
-                pathsToInstall.getReverseTransitVlan()));
+                reverseTransitVlan));
 
         return commandGroups;
     }
 
     private Optional<CommandGroup> createInstallTransitAndEgressRules(Flow flow, FlowPath flowPath,
                                                                       TransitVlan transitVlan) {
+        //TODO: hard-coded encapsulation will be removed in Flow H&S
         List<InstallTransitFlow> rules = flowCommandFactory.createInstallTransitAndEgressRulesForFlow(flow, flowPath,
                 transitVlan);
         return !rules.isEmpty() ? Optional.of(new CommandGroup(rules, FailureReaction.ABORT_BATCH))
@@ -718,9 +736,15 @@ public class FlowService extends BaseFlowService {
     private List<CommandGroup> createRemoveRulesGroups(FlowPathWithEncapsulation pathToRemove) {
         List<CommandGroup> commandGroups = new ArrayList<>();
 
+        //TODO: hard-coded encapsulation will be removed in Flow H&S
+        TransitVlan transitVlan =
+                Optional.ofNullable((TransitVlanEncapsulation) pathToRemove.getEncapsulation())
+                        .map(TransitVlanEncapsulation::getTransitVlan)
+                        .orElse(null);
+
         commandGroups.add(createRemoveIngressRules(pathToRemove.getFlow(), pathToRemove.getFlowPath()));
         createRemoveTransitAndEgressRules(pathToRemove.getFlow(), pathToRemove.getFlowPath(),
-                pathToRemove.getTransitVlan()).ifPresent(commandGroups::add);
+                transitVlan).ifPresent(commandGroups::add);
 
         return commandGroups;
     }

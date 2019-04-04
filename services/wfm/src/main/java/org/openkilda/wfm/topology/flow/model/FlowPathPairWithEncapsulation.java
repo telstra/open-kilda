@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.flow.model;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.TransitVlan;
+import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,11 +27,11 @@ import lombok.Getter;
 @Builder(toBuilder = true)
 @Getter
 public class FlowPathPairWithEncapsulation {
-    private Flow flow;
-    private FlowPath forwardPath;
-    private FlowPath reversePath;
-    private TransitVlan forwardTransitVlan;
-    private TransitVlan reverseTransitVlan;
+    private final Flow flow;
+    private final FlowPath forwardPath;
+    private final FlowPath reversePath;
+    private final EncapsulationResources forwardEncapsulation;
+    private final EncapsulationResources reverseEncapsulation;
 
     /**
      * Returns the forward path of the flow.
@@ -40,7 +40,7 @@ public class FlowPathPairWithEncapsulation {
         return FlowPathWithEncapsulation.builder()
                 .flow(flow)
                 .flowPath(forwardPath)
-                .transitVlan(forwardTransitVlan)
+                .encapsulation(forwardEncapsulation)
                 .build();
     }
 
@@ -51,7 +51,7 @@ public class FlowPathPairWithEncapsulation {
         return FlowPathWithEncapsulation.builder()
                 .flow(flow)
                 .flowPath(reversePath)
-                .transitVlan(reverseTransitVlan)
+                .encapsulation(reverseEncapsulation)
                 .build();
     }
 }

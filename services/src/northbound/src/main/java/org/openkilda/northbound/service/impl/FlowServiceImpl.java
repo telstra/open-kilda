@@ -195,7 +195,7 @@ public class FlowServiceImpl implements FlowService {
 
                                 @Override
                                 public String getIndexesAuto() {
-                                    return null;
+                                    return "none";
                                 }
                             };
                         } else {

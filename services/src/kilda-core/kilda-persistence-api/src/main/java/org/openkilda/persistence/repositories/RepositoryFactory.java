@@ -39,8 +39,6 @@ public interface RepositoryFactory {
 
     LinkPropsRepository createLinkPropsRepository();
 
-    SwitchPortRepository createSwitchPortRepository();
-
     SwitchRepository createSwitchRepository();
 
     TransitVlanRepository createTransitVlanRepository();
@@ -56,4 +54,6 @@ public interface RepositoryFactory {
     HistoryLogRepository createHistoryLogRepository();
 
     StateLogRepository createStateLogRepository();
+
+    BfdPortRepository createBfdPortRepository();
 }

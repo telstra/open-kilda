@@ -20,6 +20,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.links.LinkDto;
+import org.openkilda.northbound.dto.links.LinkEnableBfdDto;
 import org.openkilda.northbound.dto.links.LinkParametersDto;
 import org.openkilda.northbound.dto.links.LinkPropsDto;
 import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
@@ -90,7 +91,7 @@ public class LinkController {
     @ApiOperation(value = "Delete link.", response = DeleteLinkResult.class)
     @DeleteMapping(path = "/links")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<DeleteLinkResult> deleteLink(@RequestBody LinkParametersDto linkParameters) {
+    public CompletableFuture<List<LinkDto>> deleteLink(@RequestBody LinkParametersDto linkParameters) {
         return linkService.deleteLink(linkParameters);
     }
 
@@ -183,5 +184,19 @@ public class LinkController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<LinkDto>> updateLinkUnderMaintenance(@RequestBody LinkUnderMaintenanceDto link) {
         return linkService.updateLinkUnderMaintenance(link);
+    }
+
+    /**
+     * Update "enable bfd" flag in the link.
+     *
+     * @return updated link.
+     */
+    @ApiOperation(value = "Update \"enable bfd\" flag for the link.", response = LinkDto.class,
+            responseContainer = "List")
+    @PatchMapping(path = "/links/enable-bfd",
+            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<List<LinkDto>> updateLinkEnableBfd(@RequestBody LinkEnableBfdDto link) {
+        return linkService.updateLinkEnableBfd(link);
     }
 }

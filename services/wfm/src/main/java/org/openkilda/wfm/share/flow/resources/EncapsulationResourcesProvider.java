@@ -18,6 +18,8 @@ package org.openkilda.wfm.share.flow.resources;
 import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
 
+import java.util.Optional;
+
 public interface EncapsulationResourcesProvider<T extends EncapsulationResources> {
     /**
      * Allocates flow encapsulation resources for the flow path.
@@ -30,4 +32,9 @@ public interface EncapsulationResourcesProvider<T extends EncapsulationResources
      * Deallocates flow encapsulation resources of the path.
      */
     void deallocate(PathId pathId);
+
+    /**
+     * Get allocated encapsulation resources of the flow path.
+     */
+    Optional<T> get(PathId pathId);
 }

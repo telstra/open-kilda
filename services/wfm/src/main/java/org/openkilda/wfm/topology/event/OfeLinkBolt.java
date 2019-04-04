@@ -42,8 +42,8 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.NetworkEndpoint;
-import org.openkilda.messaging.model.Switch;
-import org.openkilda.messaging.model.SwitchPort;
+import org.openkilda.messaging.model.SpeakerSwitchPortView;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.OfeMessageUtils;
 import org.openkilda.wfm.ctrl.CtrlAction;
@@ -129,6 +129,8 @@ public class OfeLinkBolt
 
     @VisibleForTesting
     State state = State.MAIN;
+
+    long packetId = 0;
 
     /**
      * Default constructor .. default health check frequency
@@ -248,7 +250,7 @@ public class OfeLinkBolt
      * Helper method for sending an ISL Discovery Message.
      */
     private void sendDiscoveryMessage(Tuple tuple, NetworkEndpoint node, String correlationId) throws IOException {
-        DiscoverIslCommandData data = new DiscoverIslCommandData(node.getDatapath(), node.getPortNumber());
+        DiscoverIslCommandData data = new DiscoverIslCommandData(node.getDatapath(), node.getPortNumber(), packetId++);
         CommandMessage message = new CommandMessage(data, System.currentTimeMillis(),
                 correlationId, Destination.CONTROLLER);
         logger.debug("LINK: Send ISL discovery command: {}", message);
@@ -300,11 +302,12 @@ public class OfeLinkBolt
         InfoData data = message.getData();
         if (data instanceof DeactivateIslInfoData) {
             DeactivateIslInfoData deactivateIslInfoData = (DeactivateIslInfoData) data;
-            discovery.handleFailed(deactivateIslInfoData.getSrcSwitchId(), deactivateIslInfoData.getSrcPort());
+            discovery.handleFailed(deactivateIslInfoData.getSource().getSwitchId(),
+                    deactivateIslInfoData.getSource().getPortNo());
         }
     }
 
-    private Switch cleanUpLogicalPorts(Switch originalSwitch) {
+    private SpeakerSwitchView cleanUpLogicalPorts(SpeakerSwitchView originalSwitch) {
         if (originalSwitch == null) {
             return null;
         }
@@ -323,15 +326,15 @@ public class OfeLinkBolt
             unmanagedSwitches.add(notification.getSwitchId());
         } else if (data instanceof NetworkDumpSwitchData) {
             NetworkDumpSwitchData networkDumpSwitchData = (NetworkDumpSwitchData) data;
-            Switch switchWithNoBfdPorts = cleanUpLogicalPorts(networkDumpSwitchData.getSwitchRecord());
+            SpeakerSwitchView switchWithNoBfdPorts = cleanUpLogicalPorts(networkDumpSwitchData.getSwitchView());
             unmanagedSwitches.remove(switchWithNoBfdPorts.getDatapath());
             logger.info("Event/WFM Sync: switch {}", data);
             discovery.registerSwitch(switchWithNoBfdPorts);
         } else if (data instanceof SwitchInfoData) {
             SwitchInfoData switchData = (SwitchInfoData) infoMessage.getData();
             unmanagedSwitches.remove(switchData.getSwitchId());
-            Switch switchWithNoBfdPorts = cleanUpLogicalPorts(switchData.getSwitchRecord());
-            SwitchInfoData switchDataWithNoBfdPorts = switchData.toBuilder().switchRecord(switchWithNoBfdPorts).build();
+            SpeakerSwitchView switchWithNoBfdPorts = cleanUpLogicalPorts(switchData.getSwitchView());
+            SwitchInfoData switchDataWithNoBfdPorts = switchData.toBuilder().switchView(switchWithNoBfdPorts).build();
             InfoMessage cleanedInfoMessage = infoMessage.toBuilder().data(switchDataWithNoBfdPorts).build();
             handleSwitchEvent(tuple, cleanedInfoMessage);
             passToNetworkTopologyBolt(tuple, infoMessage);
@@ -358,8 +361,9 @@ public class OfeLinkBolt
             handleSentDiscoPacket(confirmation);
         } else if (data instanceof DeactivateIslInfoData) {
             DeactivateIslInfoData deactivateIslInfoData = (DeactivateIslInfoData) data;
-            unmanagedSwitches.remove(((DeactivateIslInfoData) data).getSrcSwitchId());
-            discovery.handleFailed(deactivateIslInfoData.getSrcSwitchId(), deactivateIslInfoData.getSrcPort());
+            unmanagedSwitches.remove(((DeactivateIslInfoData) data).getSource().getSwitchId());
+            discovery.handleFailed(deactivateIslInfoData.getSource().getSwitchId(),
+                    deactivateIslInfoData.getSource().getPortNo());
         } else {
             reportInvalidEvent(data);
         }
@@ -385,12 +389,12 @@ public class OfeLinkBolt
             // It's possible that we get duplicated switch up events .. particulary if
             // FL goes down and then comes back up; it'll rebuild its switch / port information.
             // NB: need to account for this, and send along to TE to be conservative.
-            discovery.registerSwitch(switchData.getSwitchRecord());
+            discovery.registerSwitch(switchData.getSwitchView());
 
             // Produce port UP log records to match with current behavior i.e. switch-ADD event is a predecessor
             // for set of port-UP events.
-            for (SwitchPort port : switchData.getSwitchRecord().getPorts()) {
-                if (SwitchPort.State.UP == port.getState()) {
+            for (SpeakerSwitchPortView port : switchData.getSwitchView().getPorts()) {
+                if (SpeakerSwitchPortView.State.UP == port.getState()) {
                     logger.info("DISCO: Port Event: switch={} port={} state={}",
                                 switchId, port.getNumber(), PortChangeType.UP);
                 }

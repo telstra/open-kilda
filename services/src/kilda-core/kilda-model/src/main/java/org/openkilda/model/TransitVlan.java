@@ -55,7 +55,7 @@ public class TransitVlan implements Serializable {
 
     @NonNull
     @Property(name = "path_id")
-    @Index(unique = true)
+    @Index
     @Convert(graphPropertyType = String.class)
     private PathId pathId;
 

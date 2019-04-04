@@ -66,14 +66,14 @@ public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> 
         // otherwise locates a gap between / after the values used in flow_meter entities.
 
         String query = "UNWIND [$default_meter] AS meter "
-                + "OPTIONAL MATCH (n:flow_meter {switch_id: $switch_id}) "
+                + "OPTIONAL MATCH (:switch {name: $switch_id})-[]-(n:flow_meter) "
                 + "WHERE meter = n.meter_id "
                 + "WITH meter, n "
                 + "WHERE n IS NULL "
                 + "RETURN meter "
                 + "UNION ALL "
-                + "MATCH (n1:flow_meter {switch_id: $switch_id}) "
-                + "OPTIONAL MATCH (n2:flow_meter {switch_id: $switch_id}) "
+                + "MATCH (:switch {name: $switch_id})-[]-(n1:flow_meter) "
+                + "OPTIONAL MATCH (:switch {name: $switch_id})-[]-(n2:flow_meter) "
                 + "WHERE (n1.meter_id + 1) = n2.meter_id "
                 + "WITH n1, n2 "
                 + "WHERE n2 IS NULL "

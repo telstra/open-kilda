@@ -134,7 +134,8 @@ public class FlowCommandFactory {
 
     private InstallMultiSwitchIngressRule buildInstallIngressRule(CommandContext context, FlowPath flowPath,
                                                                   int inputPort, int inputVlanId, int outputVlanId) {
-        TransitVlan transitVlan = transitVlanRepository.findByPathId(flowPath.getPathId())
+        TransitVlan transitVlan = transitVlanRepository.findByPathId(flowPath.getPathId()).stream()
+                .findAny()
                 .orElseThrow(() ->
                         new IllegalStateException(format("Transit vlan should be present for path %s for flow %s",
                                 flowPath.getPathId(), flowPath.getFlowId())));
@@ -336,7 +337,8 @@ public class FlowCommandFactory {
     }
 
     private int getTransitVlan(PathId pathId) {
-        return transitVlanRepository.findByPathId(pathId)
+        return transitVlanRepository.findByPathId(pathId).stream()
+                .findAny()
                 .map(TransitVlan::getVlan)
                 .orElseThrow(() ->
                         new IllegalStateException(format("No flow path found for flow %s", pathId)));

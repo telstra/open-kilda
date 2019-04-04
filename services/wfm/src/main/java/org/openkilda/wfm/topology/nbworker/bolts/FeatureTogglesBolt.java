@@ -18,27 +18,36 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.event.FeatureTogglesUpdate;
 import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.CreateOrUpdateFeatureTogglesRequest;
 import org.openkilda.messaging.nbtopology.request.GetFeatureTogglesRequest;
 import org.openkilda.messaging.nbtopology.response.FeatureTogglesResponse;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.FeatureTogglesNotFoundException;
 import org.openkilda.wfm.share.mappers.FeatureTogglesMapper;
+import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FeatureTogglesService;
+import org.openkilda.wfm.topology.nbworker.services.IFeatureTogglesCarrier;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
+import org.apache.storm.tuple.Values;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class FeatureTogglesBolt extends PersistenceOperationsBolt {
+public class FeatureTogglesBolt extends PersistenceOperationsBolt implements IFeatureTogglesCarrier {
+    public static final String STREAM_NOTIFICATION_ID = StreamType.NOTIFICATION.toString();
+    public static final Fields STREAM_NOTIFICATION_FIELDS = new Fields(
+            DiscoveryEncoderBolt.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
+
     private transient FeatureTogglesService featureTogglesService;
 
     public FeatureTogglesBolt(PersistenceManager persistenceManager) {
@@ -48,7 +57,7 @@ public class FeatureTogglesBolt extends PersistenceOperationsBolt {
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         super.prepare(stormConf, context, collector);
-        featureTogglesService = new FeatureTogglesService(repositoryFactory, transactionManager);
+        featureTogglesService = new FeatureTogglesService(this, repositoryFactory, transactionManager);
     }
 
     @Override
@@ -77,10 +86,27 @@ public class FeatureTogglesBolt extends PersistenceOperationsBolt {
                 .createOrUpdateFeatureToggles(FeatureTogglesMapper.INSTANCE.map(featureTogglesDto)));
     }
 
+    // -- carrier --
+
+    @Override
+    public void featureTogglesUpdateNotification(FeatureToggles toggles) {
+        FeatureTogglesUpdate payload = new FeatureTogglesUpdate(FeatureTogglesMapper.INSTANCE.map(toggles));
+        emit(STREAM_NOTIFICATION_ID, getCurrentTuple(), makeNotificationTuple(payload));
+    }
+
+    // -- private --
+
+    private Values makeNotificationTuple(InfoData payload) {
+        return new Values(payload, getCommandContext());
+    }
+
+    // -- storm API --
+
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
         declarer.declare(
                 new Fields(ResponseSplitterBolt.FIELD_ID_RESPONSE, ResponseSplitterBolt.FIELD_ID_CORELLATION_ID));
+        declarer.declareStream(STREAM_NOTIFICATION_ID, STREAM_NOTIFICATION_FIELDS);
     }
 }

@@ -25,8 +25,8 @@ import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.messaging.MessageContext;
-import org.openkilda.messaging.model.Switch;
-import org.openkilda.messaging.model.Switch.Feature;
+import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -106,7 +106,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
     final OFFlowMod getInstallRuleCommand(IOFSwitch sw, FeatureDetectorService featureDetectorService) {
         List<OFAction> actionList = new ArrayList<>();
         OFFactory ofFactory = sw.getOFFactory();
-        Set<Switch.Feature> supportedFeatures = featureDetectorService.detectSwitch(sw);
+        Set<SpeakerSwitchView.Feature> supportedFeatures = featureDetectorService.detectSwitch(sw);
 
         // build meter instruction
         OFInstructionMeter meter = getMeterInstructions(supportedFeatures, ofFactory, actionList);

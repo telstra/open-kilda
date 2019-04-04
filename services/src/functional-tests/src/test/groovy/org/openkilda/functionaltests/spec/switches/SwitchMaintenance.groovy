@@ -16,6 +16,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 
 class SwitchMaintenance extends BaseSpecification {
 
@@ -162,6 +163,8 @@ class SwitchMaintenance extends BaseSpecification {
         database.resetCosts()
     }
 
+    // That logic will be reworked to fit new use cases
+    @Ignore("Not implemented in new discovery-topology")
     def "System is correctly handling actions performing on a maintained switch disconnected from the controller"() {
         requireProfiles("virtual")
 

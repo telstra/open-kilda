@@ -34,6 +34,7 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -62,7 +63,10 @@ public class FlowResourcesManager {
     }
 
     /**
-     * Allocate resources for the flow.
+     * Allocate resources for the flow paths.
+     * <p/>
+     * Provided two flows are considered as paired (forward and reverse),
+     * so some resources can be shared among them.
      */
     public FlowResources allocateFlowResources(Flow flow) throws ResourceAllocationException {
         log.debug("Allocate flow resources for {}.", flow);
@@ -127,43 +131,28 @@ public class FlowResourcesManager {
     }
 
     /**
-     * Deallocate the flow resources.
+     * Deallocate the flow path resources.
+     * <p/>
+     * Shared resources are to be deallocated with no usage checks.
      */
-    public void deallocateFlowResources(Flow flow, FlowResources flowResources) {
-        log.debug("Deallocate flow resources for {}: {}.", flow, flowResources);
-
-        transactionManager.doInTransaction(() -> {
-            cookiePool.deallocate(flowResources.getUnmaskedCookie());
-
-            switchRepository.lockSwitches(flow.getSrcSwitch(), flow.getDestSwitch());
-
-            meterPool.deallocate(flowResources.getForward().getPathId());
-            meterPool.deallocate(flowResources.getReverse().getPathId());
-
-            EncapsulationResourcesProvider encapsulationResourcesProvider =
-                    getEncapsulationResourcesProvider(flow.getEncapsulationType());
-            encapsulationResourcesProvider.deallocate(flowResources.getForward().getPathId());
-            encapsulationResourcesProvider.deallocate(flowResources.getReverse().getPathId());
-        });
-    }
-
-    /**
-     * Deallocate the flow resources.
-     */
-    public void deallocatePathPairResources(PathId pathId,
-                                            long unmaskedCookie,
-                                            FlowEncapsulationType encapsulationType) {
-        log.debug("Deallocate flow resources for path {}, cookie: {}.",
-                pathId, unmaskedCookie);
+    public void deallocatePathResources(PathId pathId, long unmaskedCookie, FlowEncapsulationType encapsulationType) {
+        log.debug("Deallocate flow resources for path {}, cookie: {}.", pathId, unmaskedCookie);
 
         transactionManager.doInTransaction(() -> {
             cookiePool.deallocate(unmaskedCookie);
-
             meterPool.deallocate(pathId);
 
             EncapsulationResourcesProvider encapsulationResourcesProvider =
                     getEncapsulationResourcesProvider(encapsulationType);
             encapsulationResourcesProvider.deallocate(pathId);
         });
+    }
+
+    /**
+     * Get allocated encapsulation resources of the flow path.
+     */
+    public Optional<EncapsulationResources> getEncapsulationResources(PathId pathId,
+                                                                      FlowEncapsulationType encapsulationType) {
+        return getEncapsulationResourcesProvider(encapsulationType).get(pathId);
     }
 }
