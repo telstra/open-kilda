@@ -43,7 +43,7 @@ public class CommonRequestHandlerController extends BaseController {
         return new ModelAndView("forward:/ui/index.html");
     }
     
-    @RequestMapping(value = { "/details/*/*/*"}, method = RequestMethod.GET)
+    @RequestMapping(value = { "/details/*/*/*","/switch/isl/*/*/*/*"}, method = RequestMethod.GET)
     public ModelAndView childChildRoutes(final HttpServletRequest request) {
         return new ModelAndView("forward:/./ui/index.html");
     }

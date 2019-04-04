@@ -2,7 +2,7 @@ import { Component, OnInit, EventEmitter, Output, AfterViewInit, OnDestroy } fro
 import { HttpClient } from "@angular/common/http";
 import { IslDetailModel } from '../../../common/data-models/isl-detail-model';
 import { Observable } from "rxjs";
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { IslModel } from "../../../common/data-models/isl-model";
 import { SwitchidmaskPipe } from "../../../common/pipes/switchidmask.pipe";
 import { IslListService } from '../../../common/services/isl-list.service';
@@ -74,7 +74,6 @@ import { CommonService } from '../../../common/services/common.service';
         
   }
 
-    //@Output() autoreloadStatus: EventEmitter<boolean> = new EventEmitter();
     @Output() hideToValue: EventEmitter<any> = new EventEmitter();
     newMessageDetail(){
     this.islDataService.changeMessage(this.currentGraphData)
@@ -84,6 +83,7 @@ import { CommonService } from '../../../common/services/common.service';
     constructor(private httpClient:HttpClient,
       private route: ActivatedRoute,
       private maskPipe: SwitchidmaskPipe,
+      private router:Router,
       private islListService:IslListService,
       private toastr: ToastrService,
       private dygraphService:DygraphService,
@@ -98,7 +98,7 @@ import { CommonService } from '../../../common/services/common.service';
       private islDetailService : IslDetailService,
     ) {
       
-      this.loaderService.show("Loading ISL detail");
+     
     }
     ngOnInit() {
     this.titleService.setTitle('OPEN KILDA - View ISL');
@@ -109,6 +109,16 @@ import { CommonService } from '../../../common/services/common.service';
     var toEndDate = moment(date).format("YYYY/MM/DD HH:mm:ss");
     let dateRange = this.getDateRange(); 
 
+    this.route.params.subscribe(params => {
+      this.src_switch = params['src_switch'];
+      this.src_port = params['src_port'];
+      this.dst_switch = params['dst_switch'];
+      this.dst_port = params['dst_port'];
+      this.src_switch_kilda = this.maskPipe.transform(this.src_switch,'legacy');
+      this.dst_switch_kilda = this.maskPipe.transform(this.dst_switch,'legacy');
+      this.getIslDetailData(this.src_switch,this.src_port,this.dst_switch,this.dst_port);
+    });
+   
     this.filterForm = this.formBuiler.group({
       timezone: ["LOCAL"],
       fromDate: [dateRange.from],
@@ -119,58 +129,71 @@ import { CommonService } from '../../../common/services/common.service';
       auto_reload: [""],
       auto_reload_time: ["", Validators.compose([Validators.pattern("[0-9]*")])]
     });
+    this.graphMetrics = this.dygraphService.getPortMetricData();
 
-    
+    }
 
-      this.graphMetrics = this.dygraphService.getPortMetricData();
-
-      var retrievedObject = localStorage.getItem('linkData');
-
-      this.src_switch =JSON.parse(retrievedObject).source_switch;
-      this.src_switch_name =JSON.parse(retrievedObject).source_switch_name;
-      this.src_port =JSON.parse(retrievedObject).src_port;
-      this.dst_switch =JSON.parse(retrievedObject).target_switch;
-      this.dst_switch_name =JSON.parse(retrievedObject).target_switch_name;
-      this.dst_port =JSON.parse(retrievedObject).dst_port;
-      this.speed = JSON.parse(retrievedObject).speed;
-      this.latency = JSON.parse(retrievedObject).latency;
-      this.state = JSON.parse(retrievedObject).state;
-      this.available_bandwidth = JSON.parse(retrievedObject).available_bandwidth;
-      this.clipBoardItems = Object.assign(this.clipBoardItems,{
+    getIslDetailData(src_switch,src_port,dst_switch,dst_port){
+      this.loaderService.show("Loading ISL detail");
+      this.islListService.getISLDetailData(src_switch, src_port, dst_switch, dst_port).subscribe((linkData:any) =>{
+        if(linkData && linkData.length){
+          this.loaderService.hide();
+          var retrievedObject = linkData[linkData.length-1];
+          this.src_switch =retrievedObject.source_switch;
+          this.src_switch_name =retrievedObject.source_switch_name;
+          this.src_port =retrievedObject.src_port;
+          this.dst_switch =retrievedObject.target_switch;
+          this.dst_switch_name =retrievedObject.target_switch_name;
+          this.dst_port =retrievedObject.dst_port;
+          this.speed = retrievedObject.speed;
+          this.latency = retrievedObject.latency;
+          this.state = retrievedObject.state;
+          this.available_bandwidth = retrievedObject.available_bandwidth;
+          this.clipBoardItems = Object.assign(this.clipBoardItems,{
+              
+              sourceSwitchName: retrievedObject.source_switch_name,
+              sourceSwitch: retrievedObject.source_switch,
+              targetSwitchName: retrievedObject.target_switch_name,
+              targetSwitch: retrievedObject.target_switch
+            });
+            
           
-          sourceSwitchName: JSON.parse(retrievedObject).source_switch_name,
-          sourceSwitch: JSON.parse(retrievedObject).source_switch,
-          targetSwitchName: JSON.parse(retrievedObject).target_switch_name,
-          targetSwitch: JSON.parse(retrievedObject).target_switch
-        });
-
-
-      this.src_switch_kilda = this.maskPipe.transform(this.src_switch,'legacy');
-      this.dst_switch_kilda = this.maskPipe.transform(this.dst_switch,'legacy');
-      this.islListService.getIslDetail(this.src_switch, this.src_port, this.dst_switch, this.dst_port).subscribe((data : any) =>{
-      if(data!= null){
-        this.detailDataObservable = data;
-          this.islForm = this.islFormBuiler.group({
-          cost: [this.detailDataObservable.cost, Validators.min(0)],
-        });
-      }
-      else{
-        this.detailDataObservable = {
-          "props": {
-          "cost": "-"
+          this.islListService.getIslDetail(this.src_switch, this.src_port, this.dst_switch, this.dst_port).subscribe((data : any) =>{
+          if(data!= null){
+            this.detailDataObservable = data;
+              this.islForm = this.islFormBuiler.group({
+              cost: [this.detailDataObservable.cost, Validators.min(0)],
+            });
           }
-          };
-
-            this.islForm = this.islFormBuiler.group({
-        cost: [this.detailDataObservable.cost, Validators.min(0)],
-        });
-      }
-     },error=>{
-       this.toastr.error("API did not return Cost data.",'Error');
-     });
-
+          else{
+            this.detailDataObservable = {
+              "props": {
+              "cost": "-"
+              }
+              };
     
-
+                this.islForm = this.islFormBuiler.group({
+            cost: [this.detailDataObservable.cost, Validators.min(0)],
+            });
+          }
+         },error=>{
+           this.toastr.error("API did not return Cost data.",'Error');
+         });
+        }else{
+          this.loaderService.hide();
+          this.toastr.error("No ISL Found",'Error');
+          this.router.navigate([
+            "/isl"
+          ]);  
+        }
+        this.loadGraphData();       
+      },error =>{
+        this.loaderService.hide();
+          this.toastr.error("No ISL Found",'Error');
+          this.router.navigate([
+            "/isl"
+          ]);  
+      })
     }
     refreshIslFlows(){
         this.getIslFlowList();
@@ -444,12 +467,12 @@ get f() {
           this.islDataService.currentMessage.subscribe(message => this.message = message)
           this.loaderService.hide();
        },error=>{
-        this.loaderService.hide();
+         this.loaderService.hide();
          this.toastr.error("Forward Graph API did not return data.",'Error');
        });
        },error=>{
-        this.loaderService.hide();
-         this.toastr.error("Backward Graph API did not return data.",'Error');
+          this.loaderService.hide();
+          this.toastr.error("Backward Graph API did not return data.",'Error');
          
       });
                               

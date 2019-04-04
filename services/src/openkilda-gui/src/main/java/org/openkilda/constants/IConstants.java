@@ -133,6 +133,7 @@ public abstract class IConstants {
         public static final String GET_FLOW_VALIDATE = GET_FLOW + "/{flow_id}/validate";
         public static final String GET_PATH_FLOW = GET_FLOW + "/path";
         public static final String GET_SWITCHES = "/switches";
+        public static final String GET_SWITCH = GET_SWITCHES + "/{switch_id}";
         public static final String GET_SWITCH_RULES = GET_SWITCHES + "/{switch_id}/rules";
         public static final String GET_LINKS = "/links";
         public static final String GET_LINK_PROPS = "/link/props";
