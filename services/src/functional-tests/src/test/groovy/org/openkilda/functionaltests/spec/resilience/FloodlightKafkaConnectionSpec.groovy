@@ -31,10 +31,10 @@ class FloodlightKafkaConnectionSpec extends BaseSpecification {
         kafkaBreaker.restore(KafkaBreakTarget.FLOODLIGHT_CONSUMER)
 
         then: "Topology state is unchanged"
-        northbound.activeSwitches.size() == topology.activeSwitches.size()
         northbound.getAllLinks().findAll {
             it.state == IslChangeType.DISCOVERED
         }.size() == topology.islsForActiveSwitches.size() * 2
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.size() == topology.activeSwitches.size() }
 
         and: "System is able to successfully create a flow"
         def flow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
