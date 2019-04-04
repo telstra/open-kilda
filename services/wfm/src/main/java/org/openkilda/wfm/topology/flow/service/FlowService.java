@@ -463,6 +463,8 @@ public class FlowService extends BaseFlowService {
         log.warn("Reroute finished. Paths to create: {}. Paths to remove: {}",
                 result.getToCreateFlow(), result.getToRemoveFlow());
 
+        log.warn("Rerouted flow with new path: {}", result.getToCreateFlow());
+
         // Assemble a command batch with InstallXXXRule, RemoveRule commands and a resource deallocation request.
         List<CommandGroup> commandGroups = new ArrayList<>();
 
