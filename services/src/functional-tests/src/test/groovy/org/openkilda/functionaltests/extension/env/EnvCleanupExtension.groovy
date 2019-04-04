@@ -93,7 +93,8 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
     def resetBandwidth(List<IslInfoData> links) {
         def topoIsls = topology.isls.collectMany { [it, it.reversed] }
         links.each { link ->
-            if (link.maxBandwidth != link.availableBandwidth || link.maxBandwidth != link.speed) {
+            if (link.availableBandwidth != link.speed || link.maxBandwidth != link.speed
+                    || link.defaultMaxBandwidth != link.speed) {
                 def isl = topoIsls.find {
                     it.srcSwitch.dpId == link.source.switchId && it.srcPort == link.source.portNo &&
                             it.dstSwitch.dpId == link.destination.switchId && it.dstPort == link.destination.portNo

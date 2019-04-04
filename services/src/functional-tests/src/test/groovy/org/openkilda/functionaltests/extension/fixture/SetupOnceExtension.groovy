@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.extension.fixture
 
+import static org.openkilda.functionaltests.extension.ExtensionHelper.isFeatureSpecial
+
 import groovy.util.logging.Slf4j
 import org.spockframework.runtime.extension.AbstractGlobalExtension
 import org.spockframework.runtime.extension.IMethodInterceptor
@@ -17,20 +19,38 @@ import org.spockframework.runtime.model.SpecInfo
 @Slf4j
 class SetupOnceExtension extends AbstractGlobalExtension {
     void visitSpec(SpecInfo specInfo) {
+        def setupOnceInterceptor = new SetupOnceInterceptor()
+        //if there is a 'setup' method, run 'setupOnce' before 'setup'
+        specInfo.fixtureMethods.find { it.kind == MethodKind.SETUP }?.addInterceptor(setupOnceInterceptor)
+
+        //if there is no 'setup', run 'setupOnce' right before the first feature
+        specInfo.allFeaturesInExecutionOrder.findAll { !isFeatureSpecial(it) }.featureMethod
+                *.addInterceptor(setupOnceInterceptor)
+    }
+
+    class SetupOnceInterceptor implements IMethodInterceptor {
         def setupRan = false
-        specInfo.allFixtureMethods*.addInterceptor new IMethodInterceptor() {
-            @Override
-            void intercept(IMethodInvocation invocation) throws Throwable {
-                if (!setupRan && invocation.method.kind == MethodKind.SETUP) {
-                    def spec = invocation.sharedInstance
-                    if (spec instanceof SetupOnce) {
-                        log.debug "Running fixture: setupOnce"
+        def setupThrowed = null
+
+        @Override
+        void intercept(IMethodInvocation invocation) throws Throwable {
+            if (setupThrowed) {
+                throw setupThrowed
+            }
+            if (!setupRan) {
+                def spec = invocation.sharedInstance
+                if (spec instanceof SetupOnce) {
+                    log.debug "Running fixture: setupOnce"
+                    setupRan = true
+                    try {
                         spec.setupOnce()
-                        setupRan = true
+                    } catch (Throwable t) {
+                        setupThrowed = t
+                        throw t
                     }
                 }
-                invocation.proceed()
             }
+            invocation.proceed()
         }
     }
 }

@@ -187,6 +187,69 @@ class IntentionalRerouteSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    def "Should be able to reroute to a path with not enough bandwidth available in case ignoreBandwidth=true"() {
+        given: "A flow with alternate paths available"
+        def switches = topology.getActiveSwitches()
+        List<List<PathNode>> allPaths = []
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
+            allPaths = database.getPaths(src.dpId, dst.dpId)*.path
+            allPaths.size() > 1
+        } ?: assumeTrue("No suiting switches found", false)
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.maximumBandwidth = 10000
+        flow.ignoreBandwidth = true
+        flowHelper.addFlow(flow)
+        def currentPath = PathHelper.convert(northbound.getFlowPath(flow.id))
+
+        when: "Make the current path less preferable than alternatives"
+        def alternativePaths = allPaths.findAll { it != currentPath }
+        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
+
+        and: "Make all alternative paths to have not enough bandwidth to handle the flow"
+        def currentIsls = pathHelper.getInvolvedIsls(currentPath)
+        def newBw = flow.maximumBandwidth - 1
+        def changedIsls = alternativePaths.collect { altPath ->
+            def thinIsl = pathHelper.getInvolvedIsls(altPath).find {
+                !currentIsls.contains(it) && !currentIsls.contains(it.reversed)
+            }
+            [thinIsl, thinIsl.reversed].each {
+                database.updateIslMaxBandwidth(it, newBw)
+                database.updateIslAvailableBandwidth(it, newBw)
+            }
+            thinIsl
+        }
+
+        and: "Init a reroute to a more preferable path"
+        def rerouteResponse = northbound.rerouteFlow(flow.id)
+
+        then: "The flow is rerouted because ignoreBandwidth=true"
+        int seqId = 0
+
+        rerouteResponse.rerouted
+        rerouteResponse.path.path != currentPath
+        rerouteResponse.path.path.each { assert it.seqId == seqId++ }
+
+        def updatedPath = PathHelper.convert(northbound.getFlowPath(flow.id))
+        updatedPath != currentPath
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+
+        and: "Available bandwidth was not changed while rerouting due to ignoreBandwidth=true"
+        def allLinks = northbound.getAllLinks()
+        changedIsls.each {
+            islUtils.getIslInfo(allLinks, it).each {
+                assert it.value.availableBandwidth == newBw
+            }
+        }
+
+        and: "Remove the flow, restore the bandwidth on ISLs, reset costs"
+        flowHelper.deleteFlow(flow.id)
+        changedIsls.each {
+            database.resetIslBandwidth(it)
+            database.resetIslBandwidth(it.reversed)
+        }
+    }
+
     def cleanup() {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
