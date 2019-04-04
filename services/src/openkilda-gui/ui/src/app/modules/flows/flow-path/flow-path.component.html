@@ -10,7 +10,7 @@
     <div  *ngFor="let path of forwardPathData" class="path">
       <div class="number" ngbTooltip="{{path.switch_name}}">{{path.input_port}}</div>
       <div class="line"></div>
-      <div class="text cursor-pointer" id="switch-name" (click)="loadSwitchDetail(path.switch_name)">{{path.switch_name}}</div>
+      <div class="text cursor-pointer" id="switch-name" (click)="loadSwitchDetail(path.switch_id)">{{path.switch_name}}</div>
       <div class="line"></div>
       <div class="number" ngbTooltip="{{path.switch_name}}">{{path.output_port}}</div>
       <div class="line islPath"  (click)="loadIslDetail('forward')"></div>
@@ -35,7 +35,7 @@
     <div  *ngFor="let path of reversePathData" class="path">
       <div class="number" ngbTooltip="{{path.switch_name}}">{{path.input_port}}</div>
       <div class="line"></div>
-      <div class="text cursor-pointer"  id="switch-name" (click)="loadSwitchDetail(path.switch_name)">{{path.switch_name}}</div>
+      <div class="text cursor-pointer"  id="switch-name" (click)="loadSwitchDetail(path.switch_id)">{{path.switch_name}}</div>
       <div class="line"></div>
       <div class="number" ngbTooltip="{{path.switch_name}}">{{path.output_port}}</div>
       <div class="line islPath"  (click)="loadIslDetail('reverse')"></div>
