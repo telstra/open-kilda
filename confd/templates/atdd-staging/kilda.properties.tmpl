@@ -6,6 +6,8 @@ floodlight.endpoint={{ getv "/kilda_floodlight_endpoint" }}:{{ getv "/kilda_floo
 floodlight.username={{ getv "/kilda_floodlight_username" }}
 floodlight.password={{ getv "/kilda_floodlight_password" }}
 floodlight.controller.uri={{ getv "/kilda_floodlight_controller_uri" }}
+floodlight.alive.timeout={{ getv "/kilda_floodlight_alive_timeout" }}
+floodlight.alive.interval={{ getv "/kilda_floodlight_alive_interval" }}
 
 neo.uri=bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
 neo.user={{ getv "/kilda_neo4j_user" }}
