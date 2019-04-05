@@ -106,7 +106,7 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
                     break;
             }
         } catch (Exception e) {
-            logger.error("Failed to process message {}", message);
+            logger.error("Failed to process message {}", message, e);
         } finally {
             outputCollector.ack(input);
         }
