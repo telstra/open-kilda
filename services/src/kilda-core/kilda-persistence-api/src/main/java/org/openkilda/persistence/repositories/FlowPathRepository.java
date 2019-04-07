@@ -32,15 +32,29 @@ public interface FlowPathRepository extends Repository<FlowPath> {
 
     Collection<FlowPath> findByFlowGroupId(String flowGroupId);
 
+    /**
+     * Finds paths that starts with passed {@param switchId} switch.
+     * NB. This method does not return protected paths with src {@param switchId} switch.
+     *
+     * @param switchId the src switch
+     * @return collection of paths
+     */
     Collection<FlowPath> findBySrcSwitch(SwitchId switchId);
 
-    Collection<FlowPath> findByEndpointSwitchForRules(SwitchId switchId);
+    /**
+     * Finds paths that have passed {@param switchId} switch in endpoints.
+     * NB. This method does not return protected paths with src {@param switchId} switch.
+     *
+     * @param switchId the endpoint switch
+     * @return collection of paths
+     */
+    Collection<FlowPath> findByEndpointSwitch(SwitchId switchId);
 
     Collection<FlowPath> findBySegmentSwitch(SwitchId switchId);
 
     Collection<FlowPath> findBySegmentDestSwitch(SwitchId switchId);
 
-    Collection<FlowPath> findPathsWithSwitch(SwitchId switchId);
+    Collection<FlowPath> findPathsWithSwitchInSegments(SwitchId switchId);
 
     Collection<FlowPath> findWithPathSegment(SwitchId srcSwitchId, int srcPort,
                                              SwitchId dstSwitchId, int dstPort);

@@ -59,18 +59,19 @@ import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath;
-import org.openkilda.messaging.payload.flow.FlowPathSwapPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
-import org.openkilda.model.FlowPair;
-import org.openkilda.model.PathId;
+import org.openkilda.model.Cookie;
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.UnidirectionalFlow;
+import org.openkilda.model.TransitVlan;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.PathMapper;
 import org.openkilda.northbound.dto.BatchResults;
@@ -86,7 +87,8 @@ import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowPairRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.spi.PersistenceProvider;
 
 import org.apache.commons.lang3.math.NumberUtils;
@@ -125,7 +127,8 @@ public class FlowServiceImpl implements FlowService {
      */
     private static final Long IGNORE_COOKIE_FILTER = 0L;
 
-    private FlowPairRepository flowPairRepository;
+    private FlowRepository flowRepository;
+    private TransitVlanRepository transitVlanRepository;
 
     /**
      * The kafka topic for the flow topology.
@@ -215,7 +218,8 @@ public class FlowServiceImpl implements FlowService {
                         }
                     }
                 });
-        flowPairRepository = persistenceManager.getRepositoryFactory().createFlowPairRepository();
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        transitVlanRepository = persistenceManager.getRepositoryFactory().createTransitVlanRepository();
     }
 
     /**
@@ -518,15 +522,11 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowPayload> swapFlowPaths(FlowPathSwapPayload input) {
+    public CompletableFuture<FlowPayload> swapFlowPaths(String flowId) {
         final String correlationId = RequestCorrelationId.getId();
-        logger.info("Swapping paths for flow : {}", input.getFlowId());
+        logger.info("Swapping paths for flow : {}", flowId);
 
-        PathId pathId = Optional.ofNullable(input.getPathId())
-                .map(PathId::new)
-                .orElse(null);
-
-        FlowPathSwapRequest payload = new FlowPathSwapRequest(input.getFlowId(), pathId);
+        FlowPathSwapRequest payload = new FlowPathSwapRequest(flowId, null);
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
@@ -558,7 +558,7 @@ public class FlowServiceImpl implements FlowService {
         private int outPort;
         private int inVlan;
         private int outVlan;
-        private Integer meterId;
+        private Long meterId;
         private long pktCount;   // only set from switch rules, not flow rules
         private long byteCount;  // only set from switch rules, not flow rules
         private String version;
@@ -575,31 +575,48 @@ public class FlowServiceImpl implements FlowService {
         /**
          * Will convert from the Flow .. FlowPath format to a series of SimpleSwitchRules,
          */
-        private static final List<SimpleSwitchRule> convertFlow(UnidirectionalFlow flow) {
+        private static List<SimpleSwitchRule> convertFlowPath(Flow flow, FlowPath path, TransitVlan transitVlan) {
+
+            boolean forward = flow.isForward(path);
+            final int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
+            final int inVlan = forward ? flow.getSrcVlan() : flow.getDestVlan();
+            final int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
+            final int outVlan = forward ? flow.getDestVlan() : flow.getSrcVlan();
+
+            Long pathCookie = Optional.ofNullable(path.getCookie())
+                    .map(Cookie::getValue)
+                    .filter(cookie -> !cookie.equals(NumberUtils.LONG_ZERO))
+                    .orElse(0L);
+
+            boolean isProtected = Objects.equals(flow.getProtectedForwardPathId(), path.getPathId())
+                    || Objects.equals(flow.getProtectedReversePathId(), path.getPathId());
+
+            final List<SimpleSwitchRule> result = new ArrayList<>();
+            List<PathSegment> pathSegments = path.getSegments();
+
             /*
              * Start with Ingress
              */
-            SimpleSwitchRule rule = new SimpleSwitchRule();
-            rule.switchId = flow.getSrcSwitch().getSwitchId();
-            rule.cookie = flow.getCookie();
-            rule.inPort = flow.getSrcPort();
-            rule.inVlan = flow.getSrcVlan();
-            rule.meterId = Optional.ofNullable(flow.getMeterId()).map(Long::intValue).orElse(null);
-            List<PathSegment> pathSegments = flow.getFlowPath().getSegments();
-            // TODO: ensure path is sorted by sequence
-            if (pathSegments.isEmpty()) {
-                // single switch rule.
-                rule.outPort = flow.getDestPort();
-                rule.outVlan = flow.getDestVlan();
-            } else {
-                // flows with two switches or more will have at least 2 in getPath()
-                rule.outPort = pathSegments.get(0).getSrcPort();
-                rule.outVlan = flow.getTransitVlan();
-                // OPTIONAL - for sanity check, we should confirm switch ID and cookie match.
-            }
+            if (!isProtected) {
+                SimpleSwitchRule rule = new SimpleSwitchRule();
+                rule.switchId = path.getSrcSwitch().getSwitchId();
+                rule.cookie = path.getCookie().getValue();
+                rule.inPort = inPort;
+                rule.inVlan = inVlan;
+                rule.meterId = Optional.ofNullable(path.getMeterId()).map(MeterId::getValue).orElse(null);
 
-            List<SimpleSwitchRule> result = new ArrayList<>();
-            result.add(rule);
+                if (pathSegments.isEmpty()) {
+                    // single switch rule.
+                    rule.outPort = outPort;
+                    rule.outVlan = outVlan;
+                } else {
+                    // flows with two switches or more will have at least 2 in getPath()
+                    rule.outPort = pathSegments.get(0).getSrcPort();
+                    rule.outVlan = transitVlan.getVlan();
+                }
+
+                result.add(rule);
+            }
 
             /*
              * Now Transits
@@ -612,14 +629,12 @@ public class FlowServiceImpl implements FlowService {
                     // eg .. size 4, means 1 transit .. start at 1,2 .. don't process 3
                     PathSegment inSegment = pathSegments.get(i - 1);
 
-                    rule = new SimpleSwitchRule();
+                    SimpleSwitchRule rule = new SimpleSwitchRule();
                     rule.switchId = inSegment.getDestSwitch().getSwitchId();
                     rule.inPort = inSegment.getDestPort();
 
-                    rule.cookie = Optional.ofNullable(flow.getCookie())
-                            .filter(cookie -> !cookie.equals(NumberUtils.LONG_ZERO))
-                            .orElse(flow.getCookie());
-                    rule.inVlan = flow.getTransitVlan();
+                    rule.cookie = pathCookie;
+                    rule.inVlan = transitVlan.getVlan();
                     //TODO: out vlan is not set for transit flows. Is it correct behavior?
                     //rule.outVlan = flow.getTransitVlan();
 
@@ -631,25 +646,24 @@ public class FlowServiceImpl implements FlowService {
                 /*
                  * Now Egress .. only if we have a path. Otherwise it is one switch.
                  */
-                rule = new SimpleSwitchRule();
-                rule.switchId = flow.getDestSwitch().getSwitchId();
-                rule.outPort = flow.getDestPort();
-                rule.outVlan = flow.getDestVlan();
-                rule.inVlan = flow.getTransitVlan();
+                SimpleSwitchRule rule = new SimpleSwitchRule();
+                rule.switchId = path.getDestSwitch().getSwitchId();
+                rule.outPort = outPort;
+                rule.outVlan = outVlan;
+                rule.inVlan = transitVlan.getVlan();
                 rule.inPort = pathSegments.get(pathSegments.size() - 1).getDestPort();
-                rule.cookie = Optional.ofNullable(flow.getCookie())
-                        .filter(cookie -> !cookie.equals(NumberUtils.LONG_ZERO))
-                        .orElse(flow.getCookie());
+                rule.cookie = pathCookie;
                 result.add(rule);
             }
 
             return result;
         }
 
+
         /**
          * Convert switch rules to simple rules, as much as we can.
          */
-        public static final List<SimpleSwitchRule> convertSwitchRules(SwitchFlowEntries rules) {
+        public static List<SimpleSwitchRule> convertSwitchRules(SwitchFlowEntries rules) {
             List<SimpleSwitchRule> result = new ArrayList<>();
             if (rules == null || rules.getFlowEntries() == null) {
                 return result;
@@ -676,7 +690,6 @@ public class FlowServiceImpl implements FlowService {
                     }
 
                     rule.meterId = Optional.ofNullable(switchRule.getInstructions().getGoToMeter())
-                            .map(Long::intValue)
                             .orElse(null);
                 }
                 rule.pktCount = switchRule.getPacketCount();
@@ -791,12 +804,11 @@ public class FlowServiceImpl implements FlowService {
          * 3) Do the comparison
          */
 
-        Optional<FlowPair> flow = flowPairRepository.findById(flowId);
-        if (!flow.isPresent()) {
-            final String correlationId = RequestCorrelationId.getId();
-            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.NOT_FOUND,
-                    String.format("Could not validate flow: Flow %s not found", flowId), "Flow not found");
-        }
+        Flow flow = flowRepository.findById(flowId)
+                .orElseThrow(() -> new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
+                        ErrorType.NOT_FOUND,
+                        String.format("Could not validate flow: Flow %s not found", flowId), "Flow not found"));
+
         logger.debug("VALIDATE FLOW: Found Flows: {}", flow);
 
         /*
@@ -805,26 +817,55 @@ public class FlowServiceImpl implements FlowService {
         List<List<SimpleSwitchRule>> simpleFlowRules = new ArrayList<>();
         Set<SwitchId> switches = new HashSet<>();
 
-        UnidirectionalFlow forward = flow.get().getForward();
-        if (forward.getFlowPath() != null) {
-            simpleFlowRules.add(SimpleSwitchRule.convertFlow(forward));
-            switches.add(forward.getSrcSwitch().getSwitchId());
-            switches.add(forward.getDestSwitch().getSwitchId());
-            forward.getFlowPath().getSegments()
+        if (flow.getForwardPath() != null) {
+            FlowPath path = flow.getForwardPath();
+            TransitVlan transitVlan = transitVlanRepository.findByPathId(path.getPathId()).stream()
+                    .findAny().orElse(null);
+
+            simpleFlowRules.add(SimpleSwitchRule.convertFlowPath(flow, path, transitVlan));
+            switches.add(path.getSrcSwitch().getSwitchId());
+            switches.add(path.getDestSwitch().getSwitchId());
+            path.getSegments()
                     .forEach(pathSegment -> switches.add(pathSegment.getDestSwitch().getSwitchId()));
         } else {
             throw new InvalidPathException(flowId, "Forward path was not returned.");
         }
 
-        UnidirectionalFlow reverse = flow.get().getReverse();
-        if (reverse.getFlowPath() != null) {
-            simpleFlowRules.add(SimpleSwitchRule.convertFlow(reverse));
-            switches.add(reverse.getSrcSwitch().getSwitchId());
-            switches.add(reverse.getDestSwitch().getSwitchId());
-            reverse.getFlowPath().getSegments()
+        if (flow.getReversePath() != null) {
+            FlowPath path = flow.getReversePath();
+            TransitVlan transitVlan = transitVlanRepository.findByPathId(path.getPathId()).stream()
+                    .findAny().orElse(null);
+
+            simpleFlowRules.add(SimpleSwitchRule.convertFlowPath(flow, path, transitVlan));
+            switches.add(path.getSrcSwitch().getSwitchId());
+            switches.add(path.getDestSwitch().getSwitchId());
+            path.getSegments()
                     .forEach(pathSegment -> switches.add(pathSegment.getDestSwitch().getSwitchId()));
         } else {
-            throw new InvalidPathException(flowId, "Reverse path was not returned.");
+            throw new InvalidPathException(flowId, "Forward path was not returned.");
+        }
+
+        if (flow.getProtectedForwardPath() != null) {
+            FlowPath path = flow.getProtectedForwardPath();
+            TransitVlan transitVlan = transitVlanRepository.findByPathId(path.getPathId()).stream()
+                    .findAny().orElse(null);
+
+            simpleFlowRules.add(SimpleSwitchRule.convertFlowPath(flow, path, transitVlan));
+            switches.add(path.getSrcSwitch().getSwitchId());
+            switches.add(path.getDestSwitch().getSwitchId());
+            path.getSegments()
+                    .forEach(pathSegment -> switches.add(pathSegment.getDestSwitch().getSwitchId()));
+        }
+        if (flow.getProtectedReversePath() != null) {
+            FlowPath path = flow.getProtectedReversePath();
+            TransitVlan transitVlan = transitVlanRepository.findByPathId(path.getPathId()).stream()
+                    .findAny().orElse(null);
+
+            simpleFlowRules.add(SimpleSwitchRule.convertFlowPath(flow, path, transitVlan));
+            switches.add(path.getSrcSwitch().getSwitchId());
+            switches.add(path.getDestSwitch().getSwitchId());
+            path.getSegments()
+                    .forEach(pathSegment -> switches.add(pathSegment.getDestSwitch().getSwitchId()));
         }
 
         /*
