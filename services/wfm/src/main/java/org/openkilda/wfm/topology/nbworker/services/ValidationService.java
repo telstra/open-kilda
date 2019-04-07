@@ -55,7 +55,7 @@ public class ValidationService {
                 .map(Cookie::getValue)
                 .collect(Collectors.toSet());
 
-        flowPathRepository.findByEndpointSwitchForRules(switchId).stream()
+        flowPathRepository.findByEndpointSwitch(switchId).stream()
                 .map(FlowPath::getCookie)
                 .map(Cookie::getValue)
                 .forEach(expectedCookies::add);

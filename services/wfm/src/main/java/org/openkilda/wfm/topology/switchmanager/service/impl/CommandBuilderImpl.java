@@ -200,3 +200,4 @@ public class CommandBuilderImpl implements CommandBuilder {
         return destinationVlanId == 0 ? OutputVlanType.POP : OutputVlanType.REPLACE;
     }
 }
+

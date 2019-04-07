@@ -193,7 +193,7 @@ public class ValidationServiceImplTest {
                 flowPaths.add(flowPath);
             }
             when(flowPathRepository.findBySegmentDestSwitch(any())).thenReturn(pathsBySegment);
-            when(flowPathRepository.findByEndpointSwitchForRules(any())).thenReturn(flowPaths);
+            when(flowPathRepository.findByEndpointSwitch(any())).thenReturn(flowPaths);
 
             Switch switchA = Switch.builder()
                     .switchId(SWITCH_ID_A)

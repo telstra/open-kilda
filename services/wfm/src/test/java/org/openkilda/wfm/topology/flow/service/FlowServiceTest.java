@@ -90,6 +90,10 @@ public class FlowServiceTest extends Neo4jBasedTest {
                     Path.Segment.builder().srcSwitchId(SWITCH_ID_2).srcPort(11).latency(1L)
                             .destSwitchId(SWITCH_ID_1).destPort(11).build()))
                     .build()).build();
+    private static String FLOW_ID = "test-flow";
+
+    private FlowService flowService;
+    private PathComputer pathComputer;
 
     private static String FLOW_ID = "test-flow";
 

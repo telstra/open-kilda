@@ -131,7 +131,7 @@ public abstract class FlowPathMapper {
     public List<PathNodePayload> mapToPathNodes(Flow flow, FlowPath flowPath) {
         List<PathNodePayload> resultList = new ArrayList<>();
 
-        boolean forward = isForward(flow, flowPath);
+        boolean forward = flow.isForward(flowPath);
         int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
         int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
 
@@ -157,10 +157,5 @@ public abstract class FlowPathMapper {
         }
 
         return resultList;
-    }
-
-    private static boolean isForward(Flow flow, FlowPath flowPath) {
-        return flowPath.getPathId().equals(flow.getForwardPathId())
-                || flowPath.getPathId().equals(flow.getProtectedForwardPathId());
     }
 }

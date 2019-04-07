@@ -649,6 +649,23 @@ public class FlowService extends BaseFlowService {
                 toCreateBuilder.flow(flow).build(), toRemoveBuilder.build());
     }
 
+    private void revertProtectedPath(Flow flow, FlowPath currentForwardPath, FlowPath currentReversePath) {
+        // neo4j lacks creating new objects with the entityId that have been deleted in the same transaction
+        currentForwardPath = currentForwardPath.toBuilder().build();
+        currentForwardPath.setSegments(currentForwardPath.getSegments().stream()
+                .map(e -> e.toBuilder().build()).collect(Collectors.toList()));
+        currentReversePath = currentReversePath.toBuilder().build();
+        currentReversePath.setSegments(currentReversePath.getSegments().stream()
+                .map(e -> e.toBuilder().build()).collect(Collectors.toList()));
+
+        flow.setProtectedForwardPath(currentForwardPath);
+        flow.setProtectedReversePath(currentReversePath);
+
+        flowRepository.createOrUpdate(flow);
+        updateIslsForFlowPath(currentForwardPath);
+        updateIslsForFlowPath(currentReversePath);
+    }
+
     /**
      * Swaps primary path for the flow with protected paths.
      *

@@ -29,6 +29,7 @@ import java.util.Optional;
  */
 @ToString
 @Deprecated
+@ToString
 public class UnidirectionalFlow implements Serializable {
     private static final long serialVersionUID = 1L;
 
