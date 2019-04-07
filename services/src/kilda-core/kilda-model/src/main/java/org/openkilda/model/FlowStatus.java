@@ -17,18 +17,20 @@ package org.openkilda.model;
 
 /**
  * Represents flow statuses.
+ * </p>
+ * IMPORTANT: definition order is significant, corresponds with disorder level.
  */
 public enum FlowStatus {
-
-    /**
-     * Flow is in creating/deleting state.
-     */
-    IN_PROGRESS,
 
     /**
      * Flow is in UP state.
      */
     UP,
+
+    /**
+     * Flow is in creating/deleting state.
+     */
+    IN_PROGRESS,
 
     /**
      * Flow is in down state.
