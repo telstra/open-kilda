@@ -121,7 +121,7 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldFindByEndpointSwitchForRules() {
+    public void shouldFindByEndpointSwitch() {
         FlowPath primaryForward = buildTestFlowPath(TEST_FLOW_ID, switchA, switchB);
         FlowPath primaryReverse = buildTestFlowPath(TEST_FLOW_ID, switchB, switchA);
 
@@ -129,12 +129,12 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
         flowPathRepository.createOrUpdate(primaryReverse);
         flowRepository.createOrUpdate(buildFlow(TEST_FLOW_ID, switchA, switchB, primaryForward, primaryReverse, null));
 
-        Collection<FlowPath> paths = flowPathRepository.findByEndpointSwitchForRules(switchA.getSwitchId());
+        Collection<FlowPath> paths = flowPathRepository.findByEndpointSwitch(switchA.getSwitchId());
         assertThat(paths, containsInAnyOrder(primaryForward, primaryReverse));
     }
 
     @Test
-    public void shouldNotFindProtectedIngressByEndpointSwitchForRules() {
+    public void shouldNotFindProtectedIngressByEndpointSwitch() {
         FlowPath primaryForward = buildTestFlowPath(TEST_FLOW_ID, switchA, switchB);
         FlowPath primaryReverse = buildTestFlowPath(TEST_FLOW_ID, switchB, switchA);
         FlowPath protect = buildTestFlowPath(TEST_FLOW_ID, switchA, switchB);
@@ -145,8 +145,21 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
         flowRepository.createOrUpdate(
                 buildFlow(TEST_FLOW_ID, switchA, switchB, primaryForward, primaryReverse, protect));
 
-        Collection<FlowPath> paths = flowPathRepository.findByEndpointSwitchForRules(switchA.getSwitchId());
+        Collection<FlowPath> paths = flowPathRepository.findByEndpointSwitch(switchA.getSwitchId());
         assertThat(paths, containsInAnyOrder(primaryForward, primaryReverse));
+    }
+
+    @Test
+    public void shouldFindBySrcSwitch() {
+        FlowPath primaryForward = buildTestFlowPath(TEST_FLOW_ID, switchA, switchB);
+        FlowPath primaryReverse = buildTestFlowPath(TEST_FLOW_ID, switchB, switchA);
+
+        flowPathRepository.createOrUpdate(primaryForward);
+        flowPathRepository.createOrUpdate(primaryReverse);
+        flowRepository.createOrUpdate(buildFlow(TEST_FLOW_ID, switchA, switchB, primaryForward, primaryReverse, null));
+
+        Collection<FlowPath> paths = flowPathRepository.findBySrcSwitch(switchA.getSwitchId());
+        assertThat(paths, containsInAnyOrder(primaryForward));
     }
 
     @Test

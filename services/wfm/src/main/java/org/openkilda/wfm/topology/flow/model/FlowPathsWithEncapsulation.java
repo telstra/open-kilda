@@ -22,11 +22,13 @@ import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.ToString;
 
+@Getter
+@ToString
 @AllArgsConstructor
 @Builder(toBuilder = true)
-@Getter
-public class FlowPathPairWithEncapsulation {
+public class FlowPathsWithEncapsulation {
     private final Flow flow;
     private final FlowPath forwardPath;
     private final FlowPath reversePath;

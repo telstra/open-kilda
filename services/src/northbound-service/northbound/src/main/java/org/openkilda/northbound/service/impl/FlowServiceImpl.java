@@ -59,7 +59,6 @@ import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath;
-import org.openkilda.messaging.payload.flow.FlowPathSwapPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -67,7 +66,6 @@ import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.model.FlowPair;
-import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
@@ -518,15 +516,11 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowPayload> swapFlowPaths(FlowPathSwapPayload input) {
+    public CompletableFuture<FlowPayload> swapFlowPaths(String flowId) {
         final String correlationId = RequestCorrelationId.getId();
-        logger.info("Swapping paths for flow : {}", input.getFlowId());
+        logger.info("Swapping paths for flow : {}", flowId);
 
-        PathId pathId = Optional.ofNullable(input.getPathId())
-                .map(PathId::new)
-                .orElse(null);
-
-        FlowPathSwapRequest payload = new FlowPathSwapRequest(input.getFlowId(), pathId);
+        FlowPathSwapRequest payload = new FlowPathSwapRequest(flowId, null);
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 

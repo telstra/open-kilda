@@ -15,6 +15,8 @@
 
 package org.openkilda.model;
 
+import lombok.ToString;
+
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Optional;
@@ -26,6 +28,7 @@ import java.util.Optional;
  * {@link org.openkilda.model.FlowPath}
  */
 @Deprecated
+@ToString
 public class UnidirectionalFlow implements Serializable {
     private static final long serialVersionUID = 1L;
 

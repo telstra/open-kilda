@@ -61,11 +61,11 @@ import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
 import org.openkilda.wfm.share.service.IntersectionComputer;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
-import org.openkilda.wfm.topology.flow.model.FlowPathPairWithEncapsulation;
-import org.openkilda.wfm.topology.flow.model.FlowPathPairWithEncapsulation.FlowPathPairWithEncapsulationBuilder;
 import org.openkilda.wfm.topology.flow.model.FlowPathWithEncapsulation;
+import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
+import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation.FlowPathsWithEncapsulationBuilder;
 import org.openkilda.wfm.topology.flow.model.ReroutedFlow;
-import org.openkilda.wfm.topology.flow.model.UpdatedFlowPathPair;
+import org.openkilda.wfm.topology.flow.model.UpdatedFlowPathsWithEncapsulation;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
@@ -74,6 +74,11 @@ import com.google.common.base.Preconditions;
 import lombok.NonNull;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.FailsafeException;
+import net.jodah.failsafe.RetryPolicy;
+import net.jodah.failsafe.SyncFailsafe;
+import org.neo4j.driver.v1.exceptions.TransientException;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -88,6 +93,9 @@ import java.util.stream.Stream;
 
 @Slf4j
 public class FlowService extends BaseFlowService {
+
+    private static final int MAX_TRANSACTION_RETRY_COUNT = 3;
+
     private final SwitchRepository switchRepository;
     private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
@@ -137,41 +145,47 @@ public class FlowService extends BaseFlowService {
             flow.setGroupId(getOrCreateFlowGroupId(diverseFlowId));
         }
 
-        // TODO: the strategy is defined either per flow or system-wide.
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair pathPair = pathComputer.getPath(flow);
+        FlowPathsWithEncapsulation result = null;
+        try {
+            result = (FlowPathsWithEncapsulation) getFailsafe().get(
+                () -> transactionManager.doInTransaction(() -> {
+                    // TODO: the strategy is defined either per flow or system-wide.
+                    PathComputer pathComputer = pathComputerFactory.getPathComputer();
+                    PathPair pathPair = pathComputer.getPath(flow);
 
-        //TODO: hard-coded encapsulation will be removed in Flow H&S
-        flow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
+                    //TODO: hard-coded encapsulation will be removed in Flow H&S
+                    flow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
 
-        FlowPathPairWithEncapsulation result = transactionManager.doInTransaction(() -> {
-            FlowResources flowResources = flowResourcesManager.allocateFlowResources(flow);
+                    FlowResources flowResources = flowResourcesManager.allocateFlowResources(flow);
 
-            Instant timestamp = Instant.now();
-            // Build and store the flow with a path pair, use allocated resources for paths.
-            FlowPathPair flowPathPair =
-                    buildFlowPathPair(flow, pathPair, flowResources, FlowPathStatus.IN_PROGRESS, timestamp);
+                    Instant timestamp = Instant.now();
+                    // Build and store the flow with a path pair, use allocated resources for paths.
+                    FlowPathPair flowPathPair =
+                            buildFlowPathPair(flow, pathPair, flowResources, FlowPathStatus.IN_PROGRESS, timestamp);
 
-            Flow flowWithPaths = buildFlowWithPaths(flow, flowPathPair, FlowStatus.IN_PROGRESS, timestamp);
-            flowWithPaths.setTimeCreate(timestamp);
+                    Flow flowWithPaths = buildFlowWithPaths(flow, flowPathPair, FlowStatus.IN_PROGRESS, timestamp);
+                    flowWithPaths.setTimeCreate(timestamp);
 
-            log.info("Creating the flow: {}", flowWithPaths);
+                    log.info("Creating the flow: {}", flowWithPaths);
 
-            flowPathRepository.lockInvolvedSwitches(flowPathPair.getForward(), flowPathPair.getReverse());
+                    flowPathRepository.lockInvolvedSwitches(flowPathPair.getForward(), flowPathPair.getReverse());
 
-            // Store the flow and both paths
-            flowRepository.createOrUpdate(flowWithPaths);
+                    // Store the flow and both paths
+                    flowRepository.createOrUpdate(flowWithPaths);
 
-            updateIslsForFlowPath(flowPathPair.getForward());
-            updateIslsForFlowPath(flowPathPair.getReverse());
+                    updateIslsForFlowPath(flowPathPair.getForward());
+                    updateIslsForFlowPath(flowPathPair.getReverse());
 
-            FlowResources protectedFlowResources = null;
-            if (flowWithPaths.isAllocateProtectedPath()) {
-                protectedFlowResources = createProtectedPath(flowWithPaths, timestamp);
-            }
+                    FlowResources protectedFlowResources = null;
+                    if (flowWithPaths.isAllocateProtectedPath()) {
+                        protectedFlowResources = createProtectedPath(flowWithPaths, timestamp);
+                    }
 
-            return buildFlowPathsWithEncapsulation(flowWithPaths, flowResources, protectedFlowResources);
-        });
+                    return buildFlowPathsWithEncapsulation(flowWithPaths, flowResources, protectedFlowResources);
+                }));
+        } catch (FailsafeException e) {
+            unwrapCrudFaisafeException(e);
+        }
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
         sender.sendFlowCommands(flow.getFlowId(),
@@ -187,7 +201,7 @@ public class FlowService extends BaseFlowService {
             FlowValidationException {
         if (flow.isOneSwitchFlow()) {
             throw new FlowValidationException("Couldn't setup protected path for one-switch flow",
-                    ErrorType.NOT_IMPLEMENTED);
+                    ErrorType.PARAMETERS_INVALID);
         }
 
         flow.setGroupId(
@@ -233,7 +247,7 @@ public class FlowService extends BaseFlowService {
 
         // Store the flow, use allocated resources for paths.
 
-        FlowPathPairWithEncapsulation result = transactionManager.doInTransaction(() -> {
+        FlowPathsWithEncapsulation result = transactionManager.doInTransaction(() -> {
             Instant timestamp = Instant.now();
             FlowPathPair flowPathPair = buildFlowPathPair(flowPair, flowResources, timestamp);
 
@@ -329,7 +343,7 @@ public class FlowService extends BaseFlowService {
         flowValidator.validate(updatingFlow);
 
         String flowId = updatingFlow.getFlowId();
-        FlowPathPairWithEncapsulation currentFlow =
+        FlowPathsWithEncapsulation currentFlow =
                 getFlowPathPairWithEncapsulation(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
         if (diverseFlowId == null) {
@@ -339,66 +353,74 @@ public class FlowService extends BaseFlowService {
             updatingFlow.setGroupId(getOrCreateFlowGroupId(diverseFlowId));
         }
 
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair pathPair = pathComputer.getPath(updatingFlow, true);
-
-        log.info("Updating the flow with {} and path: {}", updatingFlow, pathPair);
-
-        UpdatedFlowPathPair result = updateFlowAndPaths(currentFlow, updatingFlow, pathPair, sender);
+        UpdatedFlowPathsWithEncapsulation result = updateFlowAndPaths(currentFlow, updatingFlow, sender);
 
         return buildFlowPair(result);
     }
 
-    private UpdatedFlowPathPair updateFlowAndPaths(FlowPathPairWithEncapsulation currentFlow, Flow updatingFlow,
-                                                   PathPair newPathPair, FlowCommandSender sender)
-            throws ResourceAllocationException {
+    private UpdatedFlowPathsWithEncapsulation updateFlowAndPaths(FlowPathsWithEncapsulation currentFlow,
+                                                                 Flow updatingFlow, FlowCommandSender sender)
+            throws ResourceAllocationException, UnroutableFlowException, RecoverableException, FlowNotFoundException,
+            FlowValidationException {
 
-        //TODO: hard-coded encapsulation will be removed in Flow H&S
-        updatingFlow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
+        UpdatedFlowPathsWithEncapsulation result = null;
+        try {
+            result = (UpdatedFlowPathsWithEncapsulation) getFailsafe().get(
+                    () -> transactionManager.doInTransaction(() -> {
+                        PathComputer pathComputer = pathComputerFactory.getPathComputer();
+                        PathPair newPathPair = pathComputer.getPath(updatingFlow, true);
 
-        UpdatedFlowPathPair result = transactionManager.doInTransaction(() -> {
-            FlowResources flowResources = flowResourcesManager.allocateFlowResources(updatingFlow);
+                        log.info("Updating the flow with {} and path: {}", updatingFlow, newPathPair);
 
-            // Recreate the flow, use allocated resources for new paths.
-            Instant timestamp = Instant.now();
-            FlowPathPair newFlowPathPair =
-                    buildFlowPathPair(updatingFlow, newPathPair, flowResources, FlowPathStatus.IN_PROGRESS, timestamp);
+                        //TODO: hard-coded encapsulation will be removed in Flow H&S
+                        updatingFlow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
 
-            Flow newFlowWithPaths =
-                    buildFlowWithPaths(updatingFlow, newFlowPathPair, FlowStatus.IN_PROGRESS, timestamp);
+                        FlowResources flowResources = flowResourcesManager.allocateFlowResources(updatingFlow);
 
-            FlowPath currentForwardPath = currentFlow.getForwardPath();
-            FlowPath currentReversePath = currentFlow.getReversePath();
-            FlowPath newForwardPath = newFlowWithPaths.getForwardPath();
-            FlowPath newReversePath = newFlowWithPaths.getReversePath();
+                        // Recreate the flow, use allocated resources for new paths.
+                        Instant timestamp = Instant.now();
+                        FlowPathPair newFlowPathPair =
+                                buildFlowPathPair(updatingFlow, newPathPair, flowResources, FlowPathStatus.IN_PROGRESS,
+                                        timestamp);
 
-            flowPathRepository.lockInvolvedSwitches(currentForwardPath, currentReversePath,
-                    newForwardPath, newReversePath);
+                        Flow newFlowWithPaths =
+                                buildFlowWithPaths(updatingFlow, newFlowPathPair, FlowStatus.IN_PROGRESS, timestamp);
 
-            flowRepository.delete(currentFlow.getFlow());
+                        FlowPath currentForwardPath = currentFlow.getForwardPath();
+                        FlowPath currentReversePath = currentFlow.getReversePath();
+                        FlowPath newForwardPath = newFlowWithPaths.getForwardPath();
+                        FlowPath newReversePath = newFlowWithPaths.getReversePath();
 
-            updateIslsForFlowPath(currentForwardPath);
-            updateIslsForFlowPath(currentReversePath);
-            if (currentFlow.getProtectedForwardPath() != null) {
-                updateIslsForFlowPath(currentFlow.getProtectedForwardPath());
-            }
-            if (currentFlow.getProtectedReversePath() != null) {
-                updateIslsForFlowPath(currentFlow.getProtectedReversePath());
-            }
+                        flowPathRepository.lockInvolvedSwitches(currentForwardPath, currentReversePath,
+                                newForwardPath, newReversePath);
 
-            flowRepository.createOrUpdate(newFlowWithPaths);
+                        flowRepository.delete(currentFlow.getFlow());
 
-            updateIslsForFlowPath(newForwardPath);
-            updateIslsForFlowPath(newReversePath);
+                        updateIslsForFlowPath(currentForwardPath);
+                        updateIslsForFlowPath(currentReversePath);
+                        if (currentFlow.getProtectedForwardPath() != null) {
+                            updateIslsForFlowPath(currentFlow.getProtectedForwardPath());
+                        }
+                        if (currentFlow.getProtectedReversePath() != null) {
+                            updateIslsForFlowPath(currentFlow.getProtectedReversePath());
+                        }
 
-            FlowResources protectedResources = null;
-            if (newFlowWithPaths.isAllocateProtectedPath()) {
-                protectedResources = createProtectedPath(newFlowWithPaths, timestamp);
-            }
+                        flowRepository.createOrUpdate(newFlowWithPaths);
 
-            return new UpdatedFlowPathPair(currentFlow,
-                    buildFlowPathsWithEncapsulation(newFlowWithPaths, flowResources, protectedResources));
-        });
+                        updateIslsForFlowPath(newForwardPath);
+                        updateIslsForFlowPath(newReversePath);
+
+                        FlowResources protectedResources = null;
+                        if (newFlowWithPaths.isAllocateProtectedPath()) {
+                            protectedResources = createProtectedPath(newFlowWithPaths, timestamp);
+                        }
+
+                        return new UpdatedFlowPathsWithEncapsulation(currentFlow,
+                                buildFlowPathsWithEncapsulation(newFlowWithPaths, flowResources, protectedResources));
+                    }));
+        } catch (FailsafeException e) {
+            unwrapCrudFaisafeException(e);
+        }
 
         // Assemble a command batch with InstallXXXRule, RemoveRule commands and a resource deallocation request.
 
@@ -430,10 +452,16 @@ public class FlowService extends BaseFlowService {
     public ReroutedFlow rerouteFlow(String flowId, boolean forceToReroute, Set<PathId> pathIds,
                                     FlowCommandSender sender) throws RecoverableException, UnroutableFlowException,
             FlowNotFoundException, ResourceAllocationException {
-        RerouteResult result =
-                transactionManager.doInTransaction(() -> doReroute(flowId, forceToReroute, pathIds));
+        RerouteResult result = null;
+        try {
+            result = (RerouteResult) getFailsafe().get(() ->
+                    transactionManager.doInTransaction(() -> doReroute(flowId, forceToReroute, pathIds)));
+        } catch (FailsafeException e) {
+            unwrapFaisafeException(e);
+        }
 
-        log.warn("Rerouted flow with new path: {}", result.getToCreateFlow());
+        log.warn("Reroute finished. Paths to create: {}. Paths to remove: {}",
+                result.getToCreateFlow(), result.getToRemoveFlow());
 
         // Assemble a command batch with InstallXXXRule, RemoveRule commands and a resource deallocation request.
         List<CommandGroup> commandGroups = new ArrayList<>();
@@ -455,13 +483,13 @@ public class FlowService extends BaseFlowService {
 
     private RerouteResult doReroute(String flowId, boolean forceToReroute, Set<PathId> pathIds)
             throws FlowNotFoundException, RecoverableException, UnroutableFlowException, ResourceAllocationException {
-        FlowPathPairWithEncapsulation currentFlow =
+        FlowPathsWithEncapsulation currentFlow =
                 getFlowPathPairWithEncapsulation(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
         Flow flow = currentFlow.getFlow();
         Flow initialFlow = flow.toBuilder().build();
-        FlowPathPairWithEncapsulationBuilder toCreateBuilder = FlowPathPairWithEncapsulation.builder();
-        FlowPathPairWithEncapsulationBuilder toRemoveBuilder = currentFlow.toBuilder();
+        FlowPathsWithEncapsulationBuilder toCreateBuilder = FlowPathsWithEncapsulation.builder();
+        FlowPathsWithEncapsulationBuilder toRemoveBuilder = currentFlow.toBuilder();
         Instant timestamp = Instant.now();
 
         boolean reroutePrimary = pathIds.isEmpty() || pathIds.contains(flow.getForwardPathId())
@@ -535,12 +563,17 @@ public class FlowService extends BaseFlowService {
         if (rerouteProtected) {
             log.warn("Origin flow {} protected path: {}", flowId, flow.getProtectedForwardPath());
 
-            // remove first
-            final FlowPath currentForwardPath = flow.getProtectedForwardPath();
-            final FlowPath currentReversePath = flow.getProtectedReversePath();
+            // find current protected paths with segments
+            FlowPath currentForwardPath = flowPathRepository.findById(flow.getProtectedForwardPathId())
+                    .orElseThrow(() -> new FlowNotFoundException(format("Flow path with id %s was not found",
+                            flow.getProtectedForwardPathId())));
+            FlowPath currentReversePath = flowPathRepository.findById(flow.getProtectedReversePathId())
+                    .orElseThrow(() -> new FlowNotFoundException(format("Flow path with id %s was not found",
+                            flow.getProtectedForwardPathId())));
 
             flowPathRepository.lockInvolvedSwitches(currentForwardPath, currentReversePath);
 
+            // remove first
             flowPathRepository.delete(currentForwardPath);
             flowPathRepository.delete(currentReversePath);
             updateIslsForFlowPath(currentForwardPath);
@@ -555,10 +588,11 @@ public class FlowService extends BaseFlowService {
             boolean isFoundNewPath = !isSamePath(pathPair.getForward(), currentFlow.getProtectedForwardPath())
                     || !isSamePath(pathPair.getReverse(), currentFlow.getProtectedReversePath());
 
-            //no need to emit changes if path wasn't changed and flow is active.
-            //force means to update flow even if path is not changed.
             if (!isFoundNewPath && flow.isActive() && !forceToReroute) {
                 log.warn("Reroute {} is unsuccessful: can't find new protected path.", flowId);
+
+                // need revert protected path deletion
+                revertProtectedPath(flow, currentForwardPath, currentReversePath);
                 toRemoveBuilder.protectedForwardPath(null).protectedReversePath(null);
             } else {
                 FlowResources flowResources = flowResourcesManager.allocateFlowResources(flow);
@@ -572,31 +606,52 @@ public class FlowService extends BaseFlowService {
                 flow.setProtectedForwardPath(newFlowPathPair.getForward());
                 flow.setProtectedReversePath(newFlowPathPair.getReverse());
 
-                checkProtectedPathsDontOverlapsWithPrimary(flow);
+                if (isProtectedPathsDontOverlapsWithPrimary(flow)) {
+                    FlowPath newForwardPath = flow.getProtectedForwardPath();
+                    FlowPath newReversePath = flow.getProtectedReversePath();
 
-                FlowPath newForwardPath = flow.getProtectedForwardPath();
-                FlowPath newReversePath = flow.getProtectedReversePath();
+                    flowPathRepository.lockInvolvedSwitches(newForwardPath, newReversePath);
 
-                flowPathRepository.lockInvolvedSwitches(newForwardPath, newReversePath);
+                    flowRepository.createOrUpdate(flow);
+                    updateIslsForFlowPath(newForwardPath);
+                    updateIslsForFlowPath(newReversePath);
 
-                flowRepository.createOrUpdate(flow);
-                updateIslsForFlowPath(newForwardPath);
-                updateIslsForFlowPath(newReversePath);
-
-                toCreateBuilder.protectedForwardPath(newForwardPath)
-                        .protectedReversePath(newReversePath)
-                        .protectedForwardEncapsulation(flowResources.getForward().getEncapsulationResources())
-                        .protectedReverseEncapsulation(flowResources.getReverse().getEncapsulationResources());
+                    toCreateBuilder.protectedForwardPath(newForwardPath)
+                            .protectedReversePath(newReversePath)
+                            .protectedForwardEncapsulation(flowResources.getForward().getEncapsulationResources())
+                            .protectedReverseEncapsulation(flowResources.getReverse().getEncapsulationResources());
+                } else {
+                    // need revert protected path deletion
+                    revertProtectedPath(flow, currentForwardPath, currentReversePath);
+                    toRemoveBuilder.protectedForwardPath(null).protectedReversePath(null);
+                }
             }
         } else {
             toRemoveBuilder.protectedForwardPath(null).protectedReversePath(null);
         }
 
-        FlowPathPairWithEncapsulation updatedFlow =
+        FlowPathsWithEncapsulation updatedFlow =
                 getFlowPathPairWithEncapsulation(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
         return new RerouteResult(currentFlow.toBuilder().flow(initialFlow).build(), updatedFlow,
                 toCreateBuilder.flow(flow).build(), toRemoveBuilder.build());
+    }
+
+    private void revertProtectedPath(Flow flow, FlowPath currentForwardPath, FlowPath currentReversePath) {
+        // neo4j lacks creating new objects with the entityId that have been deleted in the same transaction
+        currentForwardPath = currentForwardPath.toBuilder().build();
+        currentForwardPath.setSegments(currentForwardPath.getSegments().stream()
+                .map(e -> e.toBuilder().build()).collect(Collectors.toList()));
+        currentReversePath = currentReversePath.toBuilder().build();
+        currentReversePath.setSegments(currentReversePath.getSegments().stream()
+                .map(e -> e.toBuilder().build()).collect(Collectors.toList()));
+
+        flow.setProtectedForwardPath(currentForwardPath);
+        flow.setProtectedReversePath(currentReversePath);
+
+        flowRepository.createOrUpdate(flow);
+        updateIslsForFlowPath(currentForwardPath);
+        updateIslsForFlowPath(currentReversePath);
     }
 
     /**
@@ -609,8 +664,8 @@ public class FlowService extends BaseFlowService {
      */
     public UnidirectionalFlow pathSwap(String flowId, PathId pathId, FlowCommandSender sender)
             throws FlowNotFoundException, FlowValidationException {
-        FlowPathPairWithEncapsulation result = transactionManager.doInTransaction(() -> {
-            FlowPathPairWithEncapsulation currentFlow =
+        FlowPathsWithEncapsulation result = transactionManager.doInTransaction(() -> {
+            FlowPathsWithEncapsulation currentFlow =
                     getFlowPathPairWithEncapsulation(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
             Flow flow = currentFlow.getFlow();
@@ -628,12 +683,13 @@ public class FlowService extends BaseFlowService {
             if (FlowPathStatus.ACTIVE != flow.getProtectedForwardPath().getStatus()
                     || FlowPathStatus.ACTIVE != flow.getProtectedReversePath().getStatus()) {
                 throw new FlowValidationException(
-                        format("Protected flow path %s is not in ACTIVE state", flowId), ErrorType.INTERNAL_ERROR);
+                        format("Protected flow path %s is not in ACTIVE state", flowId), ErrorType.PARAMETERS_INVALID);
             }
 
             log.info("Swapping path with id {} in flow {}", pathId, flow);
 
             flow.setStatus(FlowStatus.IN_PROGRESS);
+            flow.setTimeModify(Instant.now());
 
             FlowPath oldPrimaryForward = flow.getForwardPath();
             FlowPath oldPrimaryReverse = flow.getReversePath();
@@ -883,7 +939,7 @@ public class FlowService extends BaseFlowService {
             FlowValidationException {
         if (targetFlow.isOneSwitchFlow()) {
             throw new FlowValidationException("Couldn't add one-switch flow into diverse group",
-                    ErrorType.NOT_IMPLEMENTED);
+                    ErrorType.PARAMETERS_INVALID);
         }
 
         Flow diverseFlow = flowRepository.findById(flowId)
@@ -891,11 +947,19 @@ public class FlowService extends BaseFlowService {
 
         if (diverseFlow.isOneSwitchFlow()) {
             throw new FlowValidationException("Couldn't create diverse group with one-switch flow",
-                    ErrorType.NOT_IMPLEMENTED);
+                    ErrorType.PARAMETERS_INVALID);
         }
     }
 
     private void checkProtectedPathsDontOverlapsWithPrimary(Flow flow) throws UnroutableFlowException {
+        if (!isProtectedPathsDontOverlapsWithPrimary(flow)) {
+            log.warn("Couldn't find non overlapping protected path. Result flow state: {}", flow);
+            throw new UnroutableFlowException("Couldn't find non overlapping protected path",
+                    flow.getFlowId());
+        }
+    }
+
+    private boolean isProtectedPathsDontOverlapsWithPrimary(Flow flow) {
         List<PathSegment> segments = union(flow.getProtectedForwardPath().getSegments(),
                 flow.getProtectedReversePath().getSegments());
 
@@ -904,14 +968,10 @@ public class FlowService extends BaseFlowService {
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
 
-        if (IntersectionComputer.isProtectedPathOverlaps(primaryFlowSegments, segments)) {
-            log.warn("Couldn't find non overlapping protected path. Result flow state: {}", flow);
-            throw new UnroutableFlowException("Couldn't find non overlapping protected path",
-                    flow.getFlowId());
-        }
+        return !IntersectionComputer.isProtectedPathOverlaps(primaryFlowSegments, segments);
     }
 
-    private FlowPair buildFlowPair(FlowPathPairWithEncapsulation flowPath) {
+    private FlowPair buildFlowPair(FlowPathsWithEncapsulation flowPath) {
         //TODO: hard-coded encapsulation will be removed in Flow H&S
         TransitVlan forwardTransitVlan = mapTransitVlan(flowPath.getForwardEncapsulation());
         TransitVlan reverseTransitVlan = mapTransitVlan(flowPath.getReverseEncapsulation());
@@ -926,11 +986,11 @@ public class FlowService extends BaseFlowService {
         return new UnidirectionalFlow(flowPath.getFlow(), flowPath.getFlowPath(), transitVlan, true);
     }
 
-    private FlowPathPairWithEncapsulation buildFlowPathsWithEncapsulation(Flow flow, FlowResources primaryResources,
-                                                                          FlowResources protectedResources) {
+    private FlowPathsWithEncapsulation buildFlowPathsWithEncapsulation(Flow flow, FlowResources primaryResources,
+                                                                       FlowResources protectedResources) {
         //TODO: hard-coded encapsulation will be removed in Flow H&S
-        FlowPathPairWithEncapsulationBuilder builder =
-                FlowPathPairWithEncapsulation.builder()
+        FlowPathsWithEncapsulationBuilder builder =
+                FlowPathsWithEncapsulation.builder()
                         .flow(flow)
                         .forwardPath(flow.getForwardPath())
                         .reversePath(flow.getReversePath())
@@ -965,7 +1025,7 @@ public class FlowService extends BaseFlowService {
                 .build();
     }
 
-    private List<CommandGroup> createSwapIngressCommand(FlowPathPairWithEncapsulation pathsToSwap) {
+    private List<CommandGroup> createSwapIngressCommand(FlowPathsWithEncapsulation pathsToSwap) {
         Flow flow = pathsToSwap.getFlow();
         Preconditions.checkArgument(flow.isAllocateProtectedPath());
 
@@ -980,7 +1040,7 @@ public class FlowService extends BaseFlowService {
         return commandGroups;
     }
 
-    private List<CommandGroup> createInstallRulesGroups(FlowPathPairWithEncapsulation pathsToInstall) {
+    private List<CommandGroup> createInstallRulesGroups(FlowPathsWithEncapsulation pathsToInstall) {
         List<CommandGroup> commandGroups = new ArrayList<>();
         Flow flow = pathsToInstall.getFlow();
 
@@ -1034,7 +1094,7 @@ public class FlowService extends BaseFlowService {
                 FailureReaction.ABORT_BATCH);
     }
 
-    private List<CommandGroup> createRemoveRulesGroups(FlowPathPairWithEncapsulation pathsToRemove) {
+    private List<CommandGroup> createRemoveRulesGroups(FlowPathsWithEncapsulation pathsToRemove) {
         List<CommandGroup> commandGroups = new ArrayList<>();
 
         if (pathsToRemove.getForwardPath() != null) {
@@ -1089,7 +1149,7 @@ public class FlowService extends BaseFlowService {
                 : Optional.empty();
     }
 
-    private List<CommandGroup> createDeallocateResourcesGroups(FlowPathPairWithEncapsulation pathsToDeallocate) {
+    private List<CommandGroup> createDeallocateResourcesGroups(FlowPathsWithEncapsulation pathsToDeallocate) {
         List<FlowPathWithEncapsulation> flowPaths = new ArrayList<>();
 
         if (pathsToDeallocate.getForwardPath() != null) {
@@ -1121,7 +1181,7 @@ public class FlowService extends BaseFlowService {
         return singletonList(new CommandGroup(deallocationCommands, FailureReaction.IGNORE));
     }
 
-    private List<UpdateFlowPathStatusRequest> createFlowPathStatusRequests(FlowPathPairWithEncapsulation pathPair,
+    private List<UpdateFlowPathStatusRequest> createFlowPathStatusRequests(FlowPathsWithEncapsulation pathPair,
                                                                            FlowPathStatus status) {
         String flowId = pathPair.getFlow().getFlowId();
         List<UpdateFlowPathStatusRequest> commands = new ArrayList<>();
@@ -1145,11 +1205,52 @@ public class FlowService extends BaseFlowService {
         return commands;
     }
 
+    private SyncFailsafe getFailsafe() {
+        return Failsafe.with(new RetryPolicy()
+                .retryOn(RecoverableException.class)
+                .retryOn(ResourceAllocationException.class)
+                .retryOn(TransientException.class)
+                .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT))
+                .onRetry(e -> log.warn("Retrying transaction finished with exception", e))
+                .onRetriesExceeded(e -> log.warn("TX retry attempts exceed with error", e));
+    }
+
+    private void unwrapFaisafeException(FailsafeException e) throws UnroutableFlowException,
+            ResourceAllocationException, FlowNotFoundException {
+        unwrapBaseFaisafeException(e);
+        throw e;
+    }
+
+    private void unwrapCrudFaisafeException(FailsafeException e) throws UnroutableFlowException,
+            ResourceAllocationException, FlowNotFoundException, FlowValidationException {
+        unwrapBaseFaisafeException(e);
+
+        Throwable cause = e.getCause();
+        if (cause instanceof FlowValidationException) {
+            throw (FlowValidationException) cause;
+        }
+        throw e;
+    }
+
+    private void unwrapBaseFaisafeException(FailsafeException e) throws UnroutableFlowException,
+            ResourceAllocationException, FlowNotFoundException {
+        Throwable cause = e.getCause();
+        if (cause instanceof UnroutableFlowException) {
+            throw (UnroutableFlowException) cause;
+        }
+        if (cause instanceof ResourceAllocationException) {
+            throw (ResourceAllocationException) cause;
+        }
+        if (cause instanceof FlowNotFoundException) {
+            throw (FlowNotFoundException) cause;
+        }
+    }
+
     @Value
     private class RerouteResult {
-        FlowPathPairWithEncapsulation initialFlow;
-        FlowPathPairWithEncapsulation updatedFlow;
-        FlowPathPairWithEncapsulation toCreateFlow;
-        FlowPathPairWithEncapsulation toRemoveFlow;
+        FlowPathsWithEncapsulation initialFlow;
+        FlowPathsWithEncapsulation updatedFlow;
+        FlowPathsWithEncapsulation toCreateFlow;
+        FlowPathsWithEncapsulation toRemoveFlow;
     }
 }

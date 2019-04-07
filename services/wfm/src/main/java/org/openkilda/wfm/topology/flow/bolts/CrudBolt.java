@@ -433,7 +433,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                     ErrorType.ALREADY_EXISTS, errorType, e.getMessage());
         } catch (UnroutableFlowException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found : " + e.getMessage());
+                    ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found. " + e.getMessage());
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, "The flow not found :  " + e.getMessage());
@@ -514,16 +514,15 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             ReroutedFlow reroutedFlow = flowService.rerouteFlow(flowId, request.isForce(), request.getPathIds(),
                     new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
-            logger.warn("Rerouted flow: {}", reroutedFlow);
+            logger.warn("Rerouted flow with new path: {}", reroutedFlow.getNewFlow());
             handleReroute(message, tuple, reroutedFlow);
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
         } catch (UnroutableFlowException e) {
-            logger.warn("There is no path available for the flow {} {}", flowId, request.getPathIds());
             flowService.updateFlowStatus(flowId, FlowStatus.DOWN, request.getPathIds());
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.NOT_FOUND, errorType, "Path was not found");
+                    ErrorType.NOT_FOUND, errorType, "Path was not found. " + e.getMessage());
         } catch (Exception e) {
             logger.error("Unexpected error", e);
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -532,13 +531,10 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
     }
 
     private void handleReroute(CommandMessage message, Tuple tuple, ReroutedFlow reroutedFlow) {
-        PathInfoData currentPath = FlowPathMapper.INSTANCE.map(reroutedFlow.getOldFlow()
+        PathInfoData updatedPath = FlowPathMapper.INSTANCE.map(reroutedFlow.getNewFlow()
                 .getFlowPath());
-        PathInfoData resultPath = Optional.ofNullable(reroutedFlow.getNewFlow())
-                .map(flow -> FlowPathMapper.INSTANCE.map(flow.getFlowPath()))
-                .orElse(currentPath);
 
-        FlowRerouteResponse response = new FlowRerouteResponse(resultPath, !resultPath.equals(currentPath));
+        FlowRerouteResponse response = new FlowRerouteResponse(updatedPath, reroutedFlow.isRerouted());
         Values values = new Values(new InfoMessage(response, message.getTimestamp(),
                 message.getCorrelationId(), Destination.NORTHBOUND, null));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
@@ -563,7 +559,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         } catch (FlowValidationException e) {
             logger.warn("Flow path swap failure with reason: {}", e.getMessage());
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
+                    e.getType(), errorType, e.getMessage());
         } catch (Exception e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
@@ -603,7 +599,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
         } catch (UnroutableFlowException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found");
+                    ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found. " + e.getMessage());
         } catch (Exception e) {
             logger.error("Unexpected error", e);
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),

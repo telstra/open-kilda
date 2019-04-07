@@ -109,7 +109,7 @@ public class FlowOperationsService {
      * @return all flow paths for a switch.
      */
     public Collection<FlowPath> getFlowIdsForSwitch(SwitchId switchId) {
-        return flowPathRepository.findPathsWithSwitch(switchId);
+        return flowPathRepository.findPathsWithSwitchInSegments(switchId);
     }
 
     /**
