@@ -34,7 +34,6 @@ import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 import org.openkilda.wfm.topology.reroute.service.RerouteService;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
-import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.storm.task.OutputCollector;
@@ -102,11 +101,11 @@ public class RerouteBolt extends AbstractBolt {
 
         } else if (commandData instanceof RerouteInactiveFlows) {
             RerouteInactiveFlows rerouteInactiveFlows = (RerouteInactiveFlows) commandData;
-            Collection<Flow> inactiveFlows = rerouteService.getInactiveFlows();
+            Map<Flow, Set<PathId>> flowsForRerouting = rerouteService.getInactiveFlowsForRerouting();
 
-            for (Flow flow : inactiveFlows) {
-                // TODO need to fill pathId properly
-                emitRerouteCommand(tuple, message.getCorrelationId(), flow, Sets.newHashSet(),
+            for (Entry<Flow, Set<PathId>> entry : flowsForRerouting.entrySet()) {
+
+                emitRerouteCommand(tuple, message.getCorrelationId(), entry.getKey(), entry.getValue(),
                         rerouteInactiveFlows.getReason());
             }
 

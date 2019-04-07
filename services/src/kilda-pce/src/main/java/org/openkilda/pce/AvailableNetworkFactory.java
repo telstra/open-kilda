@@ -84,7 +84,7 @@ public class AvailableNetworkFactory {
         }
 
         if (flow.getGroupId() != null) {
-            log.info("Filling AvailableNetwork diverse weighs for group with id ", flow.getGroupId());
+            log.info("Filling AvailableNetwork diverse weighs for group with id {}", flow.getGroupId());
 
             Collection<FlowPath> flowPaths = flowPathRepository.findByFlowGroupId(flow.getGroupId());
             if (reuseAllocatedFlowResources) {

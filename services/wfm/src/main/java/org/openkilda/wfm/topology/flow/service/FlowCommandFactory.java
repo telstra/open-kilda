@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flow.service;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
+import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
@@ -158,6 +159,19 @@ public class FlowCommandFactory {
         }
 
         return buildRemoveIngressFlow(flow, flowPath, ingressSegment.getSrcPort());
+    }
+
+    /**
+     * Generates delete meter command.
+     *
+     * @param flowPath  flow path to delete meter on
+     * @return delete meter command
+     */
+    public DeleteMeterRequest createDeleteMeter(FlowPath flowPath) {
+        if (flowPath.getMeterId() == null) {
+            throw new IllegalArgumentException("Trying delete null meter");
+        }
+        return new DeleteMeterRequest(flowPath.getSrcSwitch().getSwitchId(), flowPath.getMeterId().getValue());
     }
 
     private void requireSegments(List<PathSegment> segments) {

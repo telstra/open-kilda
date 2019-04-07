@@ -29,7 +29,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
-import org.openkilda.wfm.topology.flow.model.FlowPathPairWithEncapsulation;
+import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -67,11 +67,11 @@ public class BaseFlowService {
         return flowPairRepository.findAll();
     }
 
-    protected Optional<FlowPathPairWithEncapsulation> getFlowPathPairWithEncapsulation(String flowId) {
+    protected Optional<FlowPathsWithEncapsulation> getFlowPathPairWithEncapsulation(String flowId) {
         return flowPairRepository.findById(flowId)
                 .map(flowPair -> {
                     Flow flow = flowPair.getFlowEntity();
-                    return FlowPathPairWithEncapsulation.builder()
+                    return FlowPathsWithEncapsulation.builder()
                             .flow(flow)
                             .forwardPath(flow.getForwardPath())
                             .reversePath(flow.getReversePath())

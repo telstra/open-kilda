@@ -20,7 +20,6 @@ import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
-import org.openkilda.messaging.payload.flow.FlowPathSwapPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
@@ -271,12 +270,11 @@ public class FlowController extends BaseController {
      * @param flowId id of flow to swap paths.
      * @return flow payload.
      */
-    @ApiOperation(value = "Swap paths", response = FlowPayload.class)
+    @ApiOperation(value = "Swap paths for flow with protected path", response = FlowPayload.class)
     @PatchMapping(path = "/{flow_id}/swap")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FlowPayload> swapFlowPaths(@PathVariable("flow_id") String flowId,
-                                                        @RequestBody FlowPathSwapPayload request) {
-        return flowService.swapFlowPaths(request);
+    public CompletableFuture<FlowPayload> swapFlowPaths(@PathVariable("flow_id") String flowId) {
+        return flowService.swapFlowPaths(flowId);
     }
 
     /**

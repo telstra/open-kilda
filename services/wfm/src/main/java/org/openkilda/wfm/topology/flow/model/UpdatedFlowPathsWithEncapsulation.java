@@ -18,10 +18,11 @@ package org.openkilda.wfm.topology.flow.model;
 import lombok.Getter;
 
 @Getter
-public class UpdatedFlowPathPair extends FlowPathPairWithEncapsulation {
-    private final FlowPathPairWithEncapsulation oldFlowPair;
+public class UpdatedFlowPathsWithEncapsulation extends FlowPathsWithEncapsulation {
+    private final FlowPathsWithEncapsulation oldFlowPair;
 
-    public UpdatedFlowPathPair(FlowPathPairWithEncapsulation oldFlowPair, FlowPathPairWithEncapsulation newFlowPair) {
+    public UpdatedFlowPathsWithEncapsulation(FlowPathsWithEncapsulation oldFlowPair,
+                                             FlowPathsWithEncapsulation newFlowPair) {
         super(newFlowPair.getFlow(), newFlowPair.getForwardPath(), newFlowPair.getReversePath(),
                 newFlowPair.getProtectedForwardPath(), newFlowPair.getProtectedReversePath(),
                 newFlowPair.getForwardEncapsulation(), newFlowPair.getReverseEncapsulation(),

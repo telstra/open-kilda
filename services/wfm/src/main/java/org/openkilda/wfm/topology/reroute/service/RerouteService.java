@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -28,12 +29,13 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class RerouteService {
@@ -93,10 +95,24 @@ public class RerouteService {
     }
 
     /**
-     * Get set of inactive flows.
+     * Returns map with inactive flow and flow pathId set for rerouting.
      */
-    public Collection<Flow> getInactiveFlows() {
+    public Map<Flow, Set<PathId>> getInactiveFlowsForRerouting() {
         log.info("Get inactive flows");
-        return flowRepository.findDownFlows();
+        return flowRepository.findDownFlows().stream()
+                .collect(Collectors.toMap(Function.identity(),
+                        flow -> Stream.of(flow.getForwardPathId(), flow.getReversePathId(),
+                                flow.getProtectedForwardPathId(), flow.getProtectedReversePathId())
+                    .filter(Objects::nonNull)
+                    .map(pathId -> pathRepository.findById(pathId)
+                            .orElseGet(() -> {
+                                log.warn("Path with id {} was not found", pathId);
+                                return null;
+                            }))
+                    .filter(Objects::nonNull)
+                    .filter(path -> FlowPathStatus.INACTIVE.equals(path.getStatus()))
+                    .map(FlowPath::getPathId)
+                    .collect(Collectors.toSet()))
+                );
     }
 }
