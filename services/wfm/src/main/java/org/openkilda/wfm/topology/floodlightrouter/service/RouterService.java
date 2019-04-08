@@ -101,7 +101,7 @@ public class RouterService {
      * @param message message to be handled and resend
      */
     public void processDiscoSpeakerRequest(MessageSender routerMessageSender, Message message) {
-        SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
+        SwitchId switchId = RouterUtils.lookupSwitchId(message);
         if (switchId != null) {
             String region = floodlightTracker.lookupRegion(switchId);
             if (region == null) {

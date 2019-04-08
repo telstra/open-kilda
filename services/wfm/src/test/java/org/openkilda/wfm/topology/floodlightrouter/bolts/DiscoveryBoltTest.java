@@ -141,7 +141,6 @@ public class DiscoveryBoltTest {
         subject = new DiscoveryBolt(persistenceManager, regions,
                                     ALIVE_TIMEOUT, ALIVE_INTERVAL, DUMP_INTERVAL);
         subject.prepare(topologyConfig, topologyContext, outputCollector);
-        subject.initState(subjectStateStorage);
     }
 
     @Test

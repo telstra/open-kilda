@@ -27,15 +27,9 @@ public class BroadcastRequestBolt extends RequestBolt {
     }
 
     @Override
-    public void execute(Tuple input) {
-        try {
-            for (String region : regions) {
-                proxyRequestToSpeaker(input, region);
-            }
-        } catch (Exception e) {
-            log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
-        } finally {
-            outputCollector.ack(input);
+    public void handleInput(Tuple input) {
+        for (String region : regions) {
+            proxyRequestToSpeaker(input, region);
         }
     }
 }
