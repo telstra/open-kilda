@@ -19,7 +19,7 @@ import org.openkilda.messaging.Message;
 
 
 public interface MessageSender {
-    void send(Message message, String outputStream);
+    void send(Message message, String outputStream, boolean lookupKey);
 
     void send(Object payload, String outputStream);
 

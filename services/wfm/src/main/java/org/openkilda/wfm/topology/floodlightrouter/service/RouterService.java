@@ -51,7 +51,7 @@ public class RouterService {
             AliveRequest request = new AliveRequest();
             CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), UUID.randomUUID()
                     .toString());
-            routerMessageSender.send(message, Stream.formatWithRegion(Stream.SPEAKER_DISCO, region));
+            routerMessageSender.send(message, Stream.formatWithRegion(Stream.SPEAKER_DISCO, region), false);
 
         }
         floodlightTracker.checkTimeouts();
@@ -90,7 +90,7 @@ public class RouterService {
                 routerMessageSender.send(new SwitchMapping(switchId, region), Stream.REGION_NOTIFICATION);
             }
         }
-        routerMessageSender.send(message, Stream.KILDA_TOPO_DISCO);
+        routerMessageSender.send(message, Stream.KILDA_TOPO_DISCO, true);
     }
 
 
@@ -109,7 +109,7 @@ public class RouterService {
                 log.error("Received command message for the untracked switch: {} {}", switchId, message);
             } else {
                 String stream = Stream.formatWithRegion(Stream.SPEAKER_DISCO, region);
-                routerMessageSender.send(message, stream);
+                routerMessageSender.send(message, stream, false);
             }
         } else {
             log.warn("Received message without target switch from SPEAKER_DISCO stream: {}", message);
@@ -140,7 +140,7 @@ public class RouterService {
         log.info(
                 "Send network dump request (correlation-id: {})",
                 correlationId);
-        routerMessageSender.send(command, Stream.formatWithRegion(Stream.SPEAKER_DISCO, region));
+        routerMessageSender.send(command, Stream.formatWithRegion(Stream.SPEAKER_DISCO, region), false);
         return correlationId;
     }
 }
