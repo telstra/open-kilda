@@ -23,7 +23,7 @@ import static org.junit.Assert.assertThat;
 import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
-import org.openkilda.northbound.dto.links.LinkPropsDto;
+import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 import org.openkilda.testing.service.northbound.NorthboundService;
 
