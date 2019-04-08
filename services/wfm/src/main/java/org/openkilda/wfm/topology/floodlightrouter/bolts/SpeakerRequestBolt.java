@@ -48,57 +48,49 @@ public class SpeakerRequestBolt extends RequestBolt {
     }
 
     @Override
-    public void execute(Tuple input) {
-        try {
-            if (Stream.REGION_NOTIFICATION.equals(input.getSourceStreamId())) {
-                updateSwitchMapping((SwitchMapping) input.getValueByField(
-                        AbstractTopology.MESSAGE_FIELD));
+    public void handleInput(Tuple input) throws Exception {
+        if (Stream.REGION_NOTIFICATION.equals(input.getSourceStreamId())) {
+            updateSwitchMapping((SwitchMapping) input.getValueByField(
+                    AbstractTopology.MESSAGE_FIELD));
+        } else {
+            String json = pullRequest(input);
+            Message message = MAPPER.readValue(json, Message.class);
+            if (RouterUtils.isBroadcast(message)) {
+                for (String region : regions) {
+                    proxyRequestToSpeaker(input, region);
+                }
             } else {
-                String json = pullRequest(input);
-                Message message = MAPPER.readValue(json, Message.class);
-                if (RouterUtils.isBroadcast(message)) {
-                    for (String region : regions) {
+                SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
+                if (switchId != null) {
+                    String region = switchTracker.lookupRegion(switchId);
+                    if (region != null) {
                         proxyRequestToSpeaker(input, region);
-                    }
-                } else {
-                    SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
-                    if (switchId != null) {
-                        String region = switchTracker.lookupRegion(switchId);
-                        if (region != null) {
-                            proxyRequestToSpeaker(input, region);
-                        } else {
-                            if (message instanceof CommandMessage) {
-                                processNotFoundError((CommandMessage) message, switchId, input, json);
-                            }
-
+                    } else {
+                        if (message instanceof CommandMessage) {
+                            processNotFoundError((CommandMessage) message, switchId, input, json);
                         }
 
-                    } else {
-                        log.error("Unable to lookup region for message: {}", json);
                     }
+
+                } else {
+                    log.error("Unable to lookup region for message: {}", json);
                 }
             }
-        } catch (Exception e) {
-            log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
-        } finally {
-            outputCollector.ack(input);
         }
     }
 
-    private void processNotFoundError(CommandMessage message, SwitchId switchId, Tuple input,
+    private void processNotFoundError(CommandMessage commandMessage, SwitchId switchId, Tuple input,
                                       String json) throws JsonProcessingException {
-        CommandMessage commandMessage = (CommandMessage) message;
-
         String errorDetails = String.format("Switch %s was not found", switchId.toString());
         ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, errorDetails, errorDetails);
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(),
-                message.getCorrelationId(), null);
+                commandMessage.getCorrelationId(), null);
         String errorJson = MAPPER.writeValueAsString(errorMessage);
         Values values = new Values(errorJson);
         if (commandMessage.getData() instanceof ValidateRulesRequest) {
-            outputCollector.emit(Stream.NORTHBOUND_REPLY, input, values);
+            getOutput().emit(Stream.NORTHBOUND_REPLY, input, values);
         } else if (commandMessage.getData() instanceof DumpRulesForSwitchManagerRequest) {
-            outputCollector.emit(Stream.NB_WORKER, input, values);
+            getOutput().emit(Stream.NB_WORKER, input, values);
         } else {
             log.error("Unable to lookup region for message: {}. switch is not tracked.", json);
         }

@@ -19,7 +19,7 @@ import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.model.SwitchId;
-
+import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.service.RouterUtils;
@@ -29,27 +29,19 @@ import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
-import org.apache.storm.state.InMemoryKeyValueState;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.Map;
 import java.util.Set;
 
 @Slf4j
-public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, SwitchTracker>> {
-    private static final String SWITCH_TRACKER_KEY = "SWITCH_TRACKER_KEY";
-    protected String outputStream;
+public class RequestBolt extends AbstractBolt {
+    protected final String outputStream;
     protected final Set<String> regions;
 
     protected transient SwitchTracker switchTracker;
-
-    protected OutputCollector outputCollector;
 
     public RequestBolt(String outputStream, Set<String> regions) {
         this.outputStream = outputStream;
@@ -58,32 +50,26 @@ public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, 
     }
 
     @Override
-    public void execute(Tuple input) {
-        try {
-            if (Stream.REGION_NOTIFICATION.equals(input.getSourceStreamId())) {
-                updateSwitchMapping((SwitchMapping) input.getValueByField(
-                        AbstractTopology.MESSAGE_FIELD));
-            } else {
-                String json = pullRequest(input);
-                Message message = MAPPER.readValue(json, Message.class);
+    public void handleInput(Tuple input) throws Exception {
+        if (Stream.REGION_NOTIFICATION.equals(input.getSourceStreamId())) {
+            updateSwitchMapping((SwitchMapping) input.getValueByField(
+                    AbstractTopology.MESSAGE_FIELD));
+        } else {
+            String json = pullRequest(input);
+            Message message = MAPPER.readValue(json, Message.class);
 
-                SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
-                if (switchId != null) {
-                    String region = switchTracker.lookupRegion(switchId);
-                    if (region != null) {
-                        proxyRequestToSpeaker(input, region);
-                    } else {
-                        log.error("Unable to lookup region for message: {}", json);
-                    }
-
+            SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
+            if (switchId != null) {
+                String region = switchTracker.lookupRegion(switchId);
+                if (region != null) {
+                    proxyRequestToSpeaker(input, region);
                 } else {
-                    log.error("Unable to lookup switch for message: {}", json);
+                    log.error("Unable to lookup region for message: {}", json);
                 }
+
+            } else {
+                log.error("Unable to lookup switch for message: {}", json);
             }
-        } catch (Exception e) {
-            log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
-        } finally {
-            outputCollector.ack(input);
         }
     }
 
@@ -91,7 +77,7 @@ public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, 
         String targetStream = Stream.formatWithRegion(outputStream, region);
         String key = pullRequestKey(input);
         String value = pullRequest(input);
-        outputCollector.emit(targetStream, input, makeSpeakerTuple(key, value));
+        getOutput().emit(targetStream, input, makeSpeakerTuple(key, value));
     }
 
     protected String pullRequest(Tuple input) {
@@ -106,22 +92,8 @@ public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, 
         return new Values(key, json);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
-        this.outputCollector = outputCollector;
-    }
-
-    @Override
-    public void initState(InMemoryKeyValueState<String, SwitchTracker> state) {
-        SwitchTracker tracker = state.get(SWITCH_TRACKER_KEY);
-        if (tracker == null) {
-            tracker = new SwitchTracker();
-            state.put(SWITCH_TRACKER_KEY, tracker);
-        }
-        switchTracker = tracker;
+    protected void init() {
+        switchTracker = new SwitchTracker();
     }
 
     protected void updateSwitchMapping(SwitchMapping mapping) {
