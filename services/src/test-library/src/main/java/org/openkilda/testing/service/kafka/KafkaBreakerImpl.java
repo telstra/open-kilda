@@ -49,6 +49,7 @@ public class KafkaBreakerImpl implements KafkaBreaker {
     }
 
     private void setState(KafkaBreakTarget target, KafkaBreakerAction action) throws KafkaBreakException {
+        log.info("Target: {}, action: {}", target.toString(), action.toString());
         String topic;
 
         switch (target) {

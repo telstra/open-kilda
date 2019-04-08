@@ -48,7 +48,7 @@ class FlowHelper {
      * will delegate the job to the correct algo based on src and dst switches passed.
      */
     FlowCreatePayload randomFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
-            List<FlowCreatePayload> existingFlows = []) {
+            List<FlowPayload> existingFlows = []) {
         if (srcSwitch.dpId == dstSwitch.dpId) {
             return singleSwitchFlow(srcSwitch, useTraffgenPorts, existingFlows)
         } else {
@@ -62,7 +62,7 @@ class FlowHelper {
     }
 
     FlowCreatePayload randomMultiSwitchFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
-            List<FlowCreatePayload> existingFlows = []) {
+            List<FlowPayload> existingFlows = []) {
         Wrappers.retry(3, 0) {
             def newFlow = new FlowCreatePayload(generateFlowId(), getFlowEndpoint(srcSwitch, useTraffgenPorts),
                     getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, "autotest flow", null, null, null,
@@ -81,7 +81,7 @@ class FlowHelper {
      * examination certain switch should have at least 2 traffgens connected to different ports.
      */
     FlowCreatePayload singleSwitchFlow(Switch sw, boolean useTraffgenPorts = true,
-            List<FlowCreatePayload> existingFlows = []) {
+            List<FlowPayload> existingFlows = []) {
         def allowedPorts = topology.getAllowedPortsForSwitch(sw)
         Wrappers.retry(3, 0) {
             def srcEndpoint = getFlowEndpoint(sw, allowedPorts, useTraffgenPorts)
@@ -180,9 +180,7 @@ class FlowHelper {
      * @return true if passed flow conflicts with any of the flows in the list
      */
     static boolean flowConflicts(FlowPayload newFlow, List<FlowPayload> existingFlows) {
-        List<FlowEndpointPayload> existingEndpoints = existingFlows.inject([]) { r, flow ->
-            r << flow.source << flow.destination
-        }
+        List<FlowEndpointPayload> existingEndpoints = existingFlows.collectMany { [it.source, it.destination] }
         [newFlow.source, newFlow.destination].any { newEp ->
             existingEndpoints.find {
                 newEp.datapath == it.datapath && newEp.portNumber == it.portNumber &&
