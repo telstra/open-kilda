@@ -88,7 +88,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
         getOutput().emit(stream, input, payload);
     }
 
-    protected abstract void handleInput(Tuple input) throws AbstractException;
+    protected abstract void handleInput(Tuple input) throws AbstractException, IOException;
 
     protected void handleException(Exception e) throws Exception {
         throw e;

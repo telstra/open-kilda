@@ -37,6 +37,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.io.IOException;
 import java.util.Set;
 
 @Slf4j
@@ -47,44 +48,38 @@ public class SpeakerRequestBolt extends RequestBolt {
     }
 
     @Override
-    public void execute(Tuple input) {
-        try {
-            if (Stream.REGION_NOTIFICATION.equals(input.getSourceStreamId())) {
-                updateSwitchMapping((SwitchMapping) input.getValueByField(
-                        AbstractTopology.MESSAGE_FIELD));
+    public void handleInput(Tuple input) throws IOException {
+        if (Stream.REGION_NOTIFICATION.equals(input.getSourceStreamId())) {
+            updateSwitchMapping((SwitchMapping) input.getValueByField(
+                    AbstractTopology.MESSAGE_FIELD));
+        } else {
+            String json = input.getValueByField(AbstractTopology.MESSAGE_FIELD).toString();
+            Message message = MAPPER.readValue(json, Message.class);
+            if (RouterUtils.isBroadcast(message)) {
+                for (String region : regions) {
+                    String targetStream = Stream.formatWithRegion(outputStream, region);
+                    Values values = new Values(json);
+                    getOutput().emit(targetStream, input, values);
+                }
             } else {
-                String json = input.getValueByField(AbstractTopology.MESSAGE_FIELD).toString();
-                Message message = MAPPER.readValue(json, Message.class);
-                if (RouterUtils.isBroadcast(message)) {
-                    for (String region : regions) {
+                SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
+                if (switchId != null) {
+                    String region = switchTracker.lookupRegion(switchId);
+                    if (region != null) {
                         String targetStream = Stream.formatWithRegion(outputStream, region);
                         Values values = new Values(json);
-                        outputCollector.emit(targetStream, input, values);
-                    }
-                } else {
-                    SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
-                    if (switchId != null) {
-                        String region = switchTracker.lookupRegion(switchId);
-                        if (region != null) {
-                            String targetStream = Stream.formatWithRegion(outputStream, region);
-                            Values values = new Values(json);
-                            outputCollector.emit(targetStream, input, values);
-                        } else {
-                            if (message instanceof CommandMessage) {
-                                processNotFoundError((CommandMessage) message, switchId, input, json);
-                            }
-
+                        getOutput().emit(targetStream, input, values);
+                    } else {
+                        if (message instanceof CommandMessage) {
+                            processNotFoundError((CommandMessage) message, switchId, input, json);
                         }
 
-                    } else {
-                        log.error("Unable to lookup region for message: {}", json);
                     }
+
+                } else {
+                    log.error("Unable to lookup region for message: {}", json);
                 }
             }
-        } catch (Exception e) {
-            log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
-        } finally {
-            outputCollector.ack(input);
         }
     }
 
@@ -99,9 +94,9 @@ public class SpeakerRequestBolt extends RequestBolt {
         String errorJson = MAPPER.writeValueAsString(errorMessage);
         Values values = new Values(errorJson);
         if (commandMessage.getData() instanceof ValidateRulesRequest) {
-            outputCollector.emit(Stream.NORTHBOUND_REPLY, input, values);
+            getOutput().emit(Stream.NORTHBOUND_REPLY, input, values);
         } else if (commandMessage.getData() instanceof DumpRulesForSwitchManagerRequest) {
-            outputCollector.emit(Stream.NB_WORKER, input, values);
+            getOutput().emit(Stream.NB_WORKER, input, values);
         } else {
             log.error("Unable to lookup region for message: {}. switch is not tracked.", json);
         }
