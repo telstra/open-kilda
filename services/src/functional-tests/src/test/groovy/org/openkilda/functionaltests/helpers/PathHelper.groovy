@@ -143,6 +143,28 @@ class PathHelper {
     }
 
     /**
+     * Converts FlowPathPayload$FlowProtectedPath path representation to a List<PathNode> representation
+     */
+    static List<PathNode> convert(FlowProtectedPath pathPayload, pathToConvert = "forwardPath") {
+        def path = pathPayload."$pathToConvert"
+        if (path.empty) {
+            throw new IllegalArgumentException("Path cannot be empty. " +
+                    "This should be impossible for valid FlowPathPayload")
+        }
+        List<PathNode> pathNodes = []
+        path.each { pathEntry ->
+            pathNodes << new PathNode(pathEntry.switchId, pathEntry.inputPort == null ? 0 : pathEntry.inputPort, 0)
+            pathNodes << new PathNode(pathEntry.switchId, pathEntry.outputPort == null ? 0 : pathEntry.outputPort, 0)
+        }
+        def seqId = 0
+        if (pathNodes.size() > 2) {
+            pathNodes = pathNodes.dropRight(1).tail() //remove first and last elements (not used in PathNode view)
+        }
+        pathNodes.each { it.seqId = seqId++ } //set valid seqId indexes
+        return pathNodes
+    }
+
+    /**
      * Get list of switches involved in a given path.
      */
     List<Switch> getInvolvedSwitches(List<PathNode> path) {
