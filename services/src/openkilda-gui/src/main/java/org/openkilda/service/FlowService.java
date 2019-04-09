@@ -347,6 +347,17 @@ public class FlowService {
         activityLogger.log(ActivityType.RESYNC_FLOW, flowId);
         return flowsIntegrationService.resyncFlow(flowId);
     }
+    
+    /**
+     * Flow ping.
+     *
+     * @param flowId the flow id
+     * @param flow the flow
+     * @return the string
+     */
+    public String flowPing(String flowId, Flow flow) {
+        return flowsIntegrationService.flowPing(flow, flowId);
+    }
 
     /**
      * Process inventory flow.

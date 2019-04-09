@@ -22,7 +22,6 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.BfdPortRepository;
-import org.openkilda.persistence.repositories.SwitchRepository;
 
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
@@ -32,7 +31,7 @@ import java.util.Collection;
 import java.util.Optional;
 
 /**
- * Neo4J OGM implementation of {@link SwitchRepository}.
+ * Neo4J OGM implementation of {@link BfdPortRepository}.
  */
 public class Neo4JBfdPortRepository extends Neo4jGenericRepository<BfdPort> implements BfdPortRepository {
 

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.extension
 
+import static org.openkilda.functionaltests.extension.ExtensionHelper.isFeatureSpecial
+
 import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.extension.spring.PrepareSpringContextDummy
 
@@ -29,8 +31,6 @@ class FeatureOrderExtension extends AbstractGlobalExtension {
         healthchecks.each { it.executionOrder = orderIndex++ }
 
         //run others
-        features.findAll {
-            !(healthchecks + dummy).contains(it)
-        }.each { it.executionOrder = orderIndex++ }
+        features.findAll { !isFeatureSpecial(it) }.each { it.executionOrder = orderIndex++ }
     }
 }

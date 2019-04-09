@@ -54,7 +54,7 @@ public class KafkaBreakerImpl implements KafkaBreaker {
         switch (target) {
             case FLOODLIGHT_CONSUMER:
             case FLOODLIGHT_PRODUCER:
-                topic = "kilda.speaker";  // FIXME(surabujin) - wait till @nmarchenko push kafka related stuff for ATDD
+                topic = "kilda.speaker_1"; //TODO(rtretiak): read from config
                 break;
             default:
                 throw new KafkaBreakException(String.format("Unsupported target: %s", target.toString()));

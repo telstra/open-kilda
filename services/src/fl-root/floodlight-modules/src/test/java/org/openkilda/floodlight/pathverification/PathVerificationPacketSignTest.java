@@ -38,6 +38,7 @@ import net.floodlightcontroller.packet.PacketParsingException;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.easymock.EasyMockRunner;
+import org.easymock.IAnswer;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -98,6 +99,21 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
 
         pvs.handlePacketIn(new OfInput(sw2, ofPacketIn, context));
         verify(producerService);
+    }
+
+    @Test
+    public void testInputSwitchNotFound() {
+        producerService.sendMessageAndTrack(anyObject(), anyObject(), anyObject(Message.class));
+        expectLastCall().andAnswer((IAnswer) () -> {
+            Assert.fail();
+            return null;
+        }).anyTimes();
+        replay(producerService);
+
+        IOFSwitch sw = buildMockIoFSwitch(13L, null, factory, swDescription, dstIpTarget);
+        replay(sw);
+
+        pvs.handlePacketIn(new OfInput(sw, ofPacketIn, context));
     }
 
     @Test

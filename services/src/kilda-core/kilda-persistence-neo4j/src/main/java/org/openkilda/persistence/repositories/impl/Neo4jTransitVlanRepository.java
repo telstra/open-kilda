@@ -18,7 +18,6 @@ package org.openkilda.persistence.repositories.impl;
 import org.openkilda.model.PathId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 
 import com.google.common.collect.ImmutableMap;
@@ -31,7 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Neo4J OGM implementation of {@link FlowMeterRepository}.
+ * Neo4J OGM implementation of {@link TransitVlanRepository}.
  */
 public class Neo4jTransitVlanRepository extends Neo4jGenericRepository<TransitVlan> implements TransitVlanRepository {
     static final String PATH_ID_PROPERTY_NAME = "path_id";

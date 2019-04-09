@@ -98,25 +98,25 @@ public class FlowCreateHubBolt extends HubBolt {
 
         @Override
         public void sendSpeakerRequest(FlowRequest command) {
-            try {
-                String key = tuple.getStringByField(MessageTranslator.KEY_FIELD);
-                String commandKey = KeyProvider.joinKeys(command.getCommandId(), key);
+            //try {
+            String key = tuple.getStringByField(MessageTranslator.KEY_FIELD);
+            String commandKey = KeyProvider.joinKeys(command.getCommandId(), key);
 
-                Values values = new Values(commandKey, command);
-                emit(HUB_TO_SPEAKER_WORKER.name(), tuple, values);
-            } catch (PipelineException e) {
-                log.error("Failed to send install commands", e);
-            }
+            Values values = new Values(commandKey, command);
+            emit(HUB_TO_SPEAKER_WORKER.name(), tuple, values);
+            //} catch (PipelineException e) {
+            //    log.error("Failed to send install commands", e);
+            //}
         }
 
         @Override
         public void sendNorthboundResponse(Message message) {
-            try {
-                String key = tuple.getStringByField(MessageTranslator.KEY_FIELD);
-                emit(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), tuple, new Values(key, message));
-            } catch (PipelineException e) {
-                log.error("Failed to send the response to northbound", e);
-            }
+            //try {
+            String key = tuple.getStringByField(MessageTranslator.KEY_FIELD);
+            emit(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), tuple, new Values(key, message));
+            //} catch (PipelineException e) {
+            //    log.error("Failed to send the response to northbound", e);
+            //}
         }
     }
 }

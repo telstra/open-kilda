@@ -67,7 +67,7 @@ public class PortServiceTest extends Neo4jBasedTest {
         createIsl(TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT, TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT, cost);
 
         Port port = new Port();
-        port.setTheSwitch(Switch.builder().switchId(TEST_SWITCH_B_ID).build());
+        port.setSwitchId(TEST_SWITCH_B_ID);
         port.setPortNo(TEST_SWITCH_A_PORT);
 
         portService.processWhenPortIsDown(port);

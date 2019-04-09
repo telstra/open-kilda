@@ -44,7 +44,11 @@ burst.coefficient={{ getv "/kilda_floodlight_flow_meter_burst_coefficient" }}
 
 bfd.offset={{ getv "/kilda_bfd_port_offset" }}
 
-grpc.endpoint={{ getv "/kilda_grpc_endpoint" }}:{{ getv "/kilda_grpc_rest_port" }}
-
 diversity.isl.weight={{ getv "/kilda_diversity_isl_weight" }}
 diversity.switch.weight={{ getv "/kilda_diversity_switch_weight" }}
+
+grpc.endpoint={{ getv "/kilda_grpc_endpoint" }}:{{ getv "/kilda_grpc_rest_port" }}
+grpc.username={{ getv "/kilda_grpc_username" }}
+grpc.password={{ getv "/kilda_grpc_password" }}
+grpc.remote.log.server.ip={{ getv "/kilda_grpc_remote_log_server_ip" }}
+grpc.remote.log.server.port={{ getv "/kilda_grpc_remote_log_server_port" }}

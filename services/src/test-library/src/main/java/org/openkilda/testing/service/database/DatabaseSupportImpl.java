@@ -16,6 +16,8 @@
 package org.openkilda.testing.service.database;
 
 import static java.lang.String.format;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 import static org.openkilda.testing.Constants.DEFAULT_COST;
 
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -37,10 +39,13 @@ import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
+import org.neo4j.ogm.model.Property;
 import org.neo4j.ogm.model.Result;
+import org.neo4j.ogm.response.model.RelationshipModel;
 import org.neo4j.ogm.session.Session;
 import org.springframework.stereotype.Component;
 
@@ -48,11 +53,11 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Component
 public class DatabaseSupportImpl implements Database {
@@ -152,6 +157,7 @@ public class DatabaseSupportImpl implements Database {
             isl.ifPresent(link -> {
                 link.setMaxBandwidth(link.getSpeed());
                 link.setAvailableBandwidth(link.getSpeed());
+                link.setDefaultMaxBandwidth(link.getSpeed());
                 islRepository.createOrUpdate(link);
             });
 
@@ -170,7 +176,7 @@ public class DatabaseSupportImpl implements Database {
             //TODO(siakovenko): non optimal and a dedicated method for fetching inactive entities must be introduced.
             Collection<org.openkilda.model.Isl> inactiveIsls = islRepository.findAll().stream()
                     .filter(isl -> isl.getStatus() != IslStatus.ACTIVE)
-                    .collect(Collectors.toList());
+                    .collect(toList());
 
             inactiveIsls.forEach(islRepository::delete);
             return !inactiveIsls.isEmpty();
@@ -188,7 +194,7 @@ public class DatabaseSupportImpl implements Database {
             //TODO(siakovenko): non optimal and a dedicated method for fetching inactive entities must be introduced.
             Collection<org.openkilda.model.Switch> inactiveSwitches = switchRepository.findAll().stream()
                     .filter(isl -> isl.getStatus() != SwitchStatus.ACTIVE)
-                    .collect(Collectors.toList());
+                    .collect(toList());
 
             inactiveSwitches.forEach(switchRepository::delete);
             return !inactiveSwitches.isEmpty();
@@ -304,6 +310,26 @@ public class DatabaseSupportImpl implements Database {
         flowPair.getForward().setBandwidth(newBw);
         flowPair.getReverse().setBandwidth(newBw);
         flowPairRepository.createOrUpdate(flowPair);
+    }
+
+    @Override
+    public List<Object> dumpAllNodes() {
+        Session session = ((Neo4jSessionFactory) transactionManager).getSession();
+        String query = "MATCH (n) return n";
+        Result result = session.query(query, Collections.emptyMap());
+        return Lists.newArrayList(result.queryResults()).stream()
+                .map(n -> n.get("n")).collect(toList());
+    }
+
+    @Override
+    public List<Map<String, Object>> dumpAllRelations() {
+        Session session = ((Neo4jSessionFactory) transactionManager).getSession();
+        String query = "MATCH ()-[r]->() return r";
+        Result result = session.query(query, Collections.emptyMap());
+        return Lists.newArrayList(result.queryResults()).stream()
+                .map(r -> ((RelationshipModel) r.get("r")).getPropertyList().stream()
+                        .collect(toMap(Property::getKey, Property::getValue)))
+                .collect(toList());
     }
 
     private FlowDto convert(UnidirectionalFlow flow) {

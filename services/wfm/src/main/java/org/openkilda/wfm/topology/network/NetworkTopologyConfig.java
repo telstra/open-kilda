@@ -50,8 +50,8 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoDiscoTopic();
     }
 
-    default String getKafkaSpeakerTopic() {
-        return getKafkaTopics().getSpeakerTopic();
+    default String getKafkaSpeakerDiscoTopic() {
+        return getKafkaTopics().getSpeakerDiscoTopic();
     }
 
     default String getKafkaTopoRerouteTopic() {
@@ -69,6 +69,7 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
     int getIslCostWhenUnderMaintenance();
 
     @Key("speaker.io.timeout.seconds")
+    @Default("60")
     int getSpeakerIoTimeoutSeconds();
 
     @Key("port.up.down.throttling.delay.seconds.min")

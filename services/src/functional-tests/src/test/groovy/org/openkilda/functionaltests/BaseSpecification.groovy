@@ -8,12 +8,14 @@ import org.openkilda.functionaltests.extension.fixture.SetupOnce
 import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightService
+import org.openkilda.testing.service.grpc.GrpcService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.otsdb.OtsdbQueryService
@@ -51,7 +53,13 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
     FlowHelper flowHelper
 
     @Autowired
+    TopologyHelper topologyHelper
+
+    @Autowired
     PathHelper pathHelper
+
+    @Autowired
+    GrpcService grpc
 
     @Value('${spring.profiles.active}')
     String profile

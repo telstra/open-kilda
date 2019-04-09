@@ -61,9 +61,9 @@ public class CommandContext implements Serializable {
     }
 
     /**
-     * Merge data from other MessageContext object.
+     * Merge data from other CommandContext object.
      *
-     * <p>Become useful when part of processing is done in external "branch" and separate MessageContext was
+     * <p>Become useful when part of processing is done in external "branch" and separate CommandContext was
      * created.
      */
     public void merge(CommandContext other) { }

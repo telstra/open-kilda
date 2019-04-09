@@ -58,6 +58,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
                       getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(),
                       formatTuplePayload(input));
         }
+
         try {
             currentTuple = input;
             commandContext = setupCommandContext();

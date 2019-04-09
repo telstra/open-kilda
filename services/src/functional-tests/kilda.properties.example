@@ -47,3 +47,10 @@ env.hardware.cleanup=false
 
 diversity.isl.weight=1000
 diversity.switch.weight=100
+
+grpc.endpoint=http://localhost:8091
+grpc.username=kilda
+grpc.password=kilda
+#please use the correct ip address and port for the remote log server
+grpc.remote.log.server.ip=1.1.1.1
+grpc.remote.log.server.port=321
