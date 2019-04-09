@@ -145,11 +145,11 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
 
 
     @Override
-    public void send(Message message, String outputStream) {
+    public void send(Message message, String outputStream, boolean lookupKey) {
         try {
             String json = MAPPER.writeValueAsString(message);
             Values values;
-            if (currentTuple.getFields().contains(AbstractTopology.KEY_FIELD)
+            if (lookupKey && currentTuple.getFields().contains(AbstractTopology.KEY_FIELD)
                     && currentTuple.getValueByField(AbstractTopology.KEY_FIELD) != null) {
                 values = new Values(currentTuple.getStringByField(AbstractTopology.KEY_FIELD), json);
             } else {
