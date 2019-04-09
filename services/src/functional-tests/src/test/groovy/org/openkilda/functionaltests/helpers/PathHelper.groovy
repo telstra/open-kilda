@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.helpers
 
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
+import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -109,6 +110,21 @@ class PathHelper {
      */
     static List<PathNode> convert(FlowPathPayload pathPayload, pathToConvert = "forwardPath") {
         def path = pathPayload."$pathToConvert"
+        getPathNodes(path)
+    }
+
+    /**
+     * Converts FlowPathPayload$FlowProtectedPath path representation to a List<PathNode> representation
+     */
+    static List<PathNode> convert(FlowProtectedPath pathPayload, pathToConvert = "forwardPath") {
+        def path = pathPayload."$pathToConvert"
+        getPathNodes(path)
+    }
+
+    /**
+     * Returns a List<PathNode> representation of a path
+     */
+    static List<PathNode> getPathNodes(path) {
         if (path.empty) {
             throw new IllegalArgumentException("Path cannot be empty. " +
                     "This should be impossible for valid FlowPathPayload")
@@ -138,6 +154,13 @@ class PathHelper {
      */
     List<Switch> getInvolvedSwitches(String flowId) {
         return getInvolvedSwitches(convert(northbound.getFlowPath(flowId)))
+    }
+
+    /**
+     * Get list of switches involved in an existing flow for protected path.
+     */
+    List<Switch> getInvolvedSwitchesForProtectedPath(String flowId) {
+        return getInvolvedSwitches(convert(northbound.getFlowPath(flowId).protectedPath))
     }
 
     /**

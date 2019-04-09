@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.messaging.info.rule.FlowEntry
+import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.model.Cookie
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch

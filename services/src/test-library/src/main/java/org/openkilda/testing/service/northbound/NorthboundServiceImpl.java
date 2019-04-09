@@ -288,6 +288,12 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public FlowPayload swapFlowPath(String flowId) {
+        return restTemplate.exchange("/api/v1/flows/{flowId}/swap", HttpMethod.PATCH,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
+    }
+
+    @Override
     public SwitchFlowEntries getSwitchRules(SwitchId switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/rules", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchFlowEntries.class, switchId).getBody();
