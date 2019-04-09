@@ -284,15 +284,12 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             ByteBuffer portBb = ByteBuffer.wrap(portId, 1, 2);
             portBb.putShort(port.getShortPortNumber());
 
-            VerificationPacket vp = new VerificationPacket();
-            vp.setChassisId(
-                    new LLDPTLV().setType((byte) 1).setLength((short) chassisId.length).setValue(chassisId));
-
-            vp.setPortId(new LLDPTLV().setType((byte) 2).setLength((short) portId.length).setValue(portId));
-
             byte[] ttlValue = new byte[]{0, 0x78};
-            vp.setTtl(
-                    new LLDPTLV().setType((byte) 3).setLength((short) ttlValue.length).setValue(ttlValue));
+            VerificationPacket vp = VerificationPacket.builder()
+                    .chassisId(new LLDPTLV().setType((byte) 1).setLength((short) chassisId.length).setValue(chassisId))
+                    .portId(new LLDPTLV().setType((byte) 2).setLength((short) portId.length).setValue(portId))
+                    .ttl(new LLDPTLV().setType((byte) 3).setLength((short) ttlValue.length).setValue(ttlValue))
+                    .build();
 
             LLDPTLV dpidTlv = new LLDPTLV().setType((byte) 127).setLength((short) dpidTlvValue.length)
                     .setValue(dpidTlvValue);
@@ -409,7 +406,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             return;
         }
 
-        VerificationPacket verificationPacket = null;
+        VerificationPacket verificationPacket;
         try {
             verificationPacket = deserialize(input.getPacketInPayload());
         } catch (Exception exception) {
