@@ -13,7 +13,7 @@ import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.links.LinkParametersDto
+import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 

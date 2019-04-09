@@ -7,7 +7,7 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.model.FlowDto
 import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.flows.FlowValidationDto
+import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.util.logging.Slf4j

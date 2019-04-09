@@ -10,9 +10,9 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.northbound.dto.flows.PingInput
-import org.openkilda.northbound.dto.flows.PingOutput.PingOutputBuilder
-import org.openkilda.northbound.dto.flows.UniFlowPingOutput
+import org.openkilda.northbound.dto.v1.flows.PingInput
+import org.openkilda.northbound.dto.v1.flows.PingOutput.PingOutputBuilder
+import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput
 import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
