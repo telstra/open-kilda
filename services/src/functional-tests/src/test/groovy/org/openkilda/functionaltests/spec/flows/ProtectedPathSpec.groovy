@@ -403,7 +403,95 @@ class ProtectedPathSpec extends BaseSpecification {
         }
     }
 
-//    test new API swap
+    def "System is able to recalculate protected path when port is down"() {
+        given: "All Isls"
+        def allIsls = northbound.getAllLinks()
+
+        and: "Source and destination switches"
+        def switches = topology.getActiveSwitches()
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            allIsls.every { link -> !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId) }
+        } ?: assumeTrue("No suiting switches found", false)
+
+        when: "Create a flow with protected bandwidth"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.allocateProtectedPath = true
+        flowHelper.addFlow(flow)
+
+        then: "Flow is created with protected path"
+        northbound.getFlowPath(flow.id).protectedPath
+        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+
+        and: "Current path is not equal to protected path"
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
+        def currentProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
+        currentPath != currentProtectedPath
+
+        and: "Bandwidth is reserved for protected path on involved isls"
+        def protectedIsls = pathHelper.getInvolvedIsls(currentProtectedPath)
+        def protectedIslsInfo = protectedIsls.collect { islUtils.getIslInfo(it).get() }
+
+        allIsls.each { originIsl ->
+            protectedIslsInfo.each { newIsl ->
+                if (originIsl.id == newIsl.id) {
+                    assert originIsl.availableBandwidth - newIsl.availableBandwidth == flow.maximumBandwidth
+                }
+            }
+        }
+
+        when: "Switch some port to DOWN state on the protected path to init the recalculate procedure"
+        def currentIsls = pathHelper.getInvolvedIsls(currentPath)
+        def islToBreakProtectedPath = protectedIsls.find { !currentIsls.contains(it) }
+        northbound.portDown(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
+
+        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+            assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.FAILED
+        }
+
+        then: "Protected path is recalculated"
+        def newProtectedPath
+        Wrappers.wait(WAIT_OFFSET) {
+            newProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
+            newProtectedPath != currentProtectedPath
+        }
+
+        and: "Bandwidth is reserved for new protected path on involved isls"
+        def newProtectedIsls = pathHelper.getInvolvedIsls(newProtectedPath)
+        def newProtectedIslsInfo = newProtectedIsls.collect { islUtils.getIslInfo(it).get() }
+
+        allIsls.each { originIsl ->
+            newProtectedIslsInfo.each { newIsl ->
+                if (originIsl.id == newIsl.id) {
+                    assert originIsl.availableBandwidth - newIsl.availableBandwidth == flow.maximumBandwidth
+                }
+            }
+        }
+
+        and: "Reservation is deleted on the broken isl"
+        def originInfoBrokenIsl = allIsls.find {
+            it.destination.switchId == islToBreakProtectedPath.dstSwitch.dpId &&
+                    it.destination.portNo == islToBreakProtectedPath.dstPort
+        }
+        def currentInfoBrokenIsl = islUtils.getIslInfo(islToBreakProtectedPath).get()
+
+        originInfoBrokenIsl.availableBandwidth == currentInfoBrokenIsl.availableBandwidth
+
+        when: "Restore port status"
+        northbound.portUp(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
+        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+            assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.DISCOVERED
+        }
+
+        then: "Path is not recalculated again"
+        pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath) == newProtectedPath
+
+        and: "Cleanup: revert system to original state"
+        flowHelper.deleteFlow(flow.id)
+        database.resetCosts()
+    }
+
+//    test new API swap, no any mention about it in ticket
 //    update chaosSpec
 //    test isl/switch maintenance
 //    run tests related to the validateRule action
