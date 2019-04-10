@@ -642,6 +642,11 @@ public class CrudBolt
         Integer fwdMeterId = flowPair.getForward().getMeterId();
         Integer rvsMeterId = flowPair.getReverse().getMeterId();
 
+        if (fwdMeterId == null || rvsMeterId == null) {
+            throw new MessageException(inMessage.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.REQUEST_INVALID, "Can't update meter", String.format("Flow '%s' is unmetered", flowId));
+        }
+
         MeterModifyCommandRequest request = new MeterModifyCommandRequest(fwdSwitchId, fwdMeterId,
                 rvsSwitchId, rvsMeterId, bandwidth);
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), inMessage.getCorrelationId());
