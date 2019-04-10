@@ -172,12 +172,9 @@ class ProtectedPathSpec extends BaseSpecification {
         flow.allocateProtectedPath = true
         flowHelper.addFlow(flow)
 
-//       ("HttpServerErrorException -> HttpClientErrorException") 500 -> 400
         then: "Human readable error is returned"
-//        def exc = thrown(HttpClientErrorException)
-//        exc.rawStatusCode == 400
-        def exc = thrown(HttpServerErrorException)
-        exc.rawStatusCode == 500
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not create flow: Couldn't setup protected path for one-switch flow"
     }
@@ -194,8 +191,8 @@ class ProtectedPathSpec extends BaseSpecification {
         northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
 
         then: "Human readable error is returned"
-        def exc = thrown(HttpServerErrorException)
-        exc.rawStatusCode == 500
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not update flow: Couldn't setup protected path for one-switch flow"
     }
@@ -292,10 +289,10 @@ class ProtectedPathSpec extends BaseSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        // TODO 404 ?
         exc.rawStatusCode == 404
         exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found : Couldn't find non overlapping protected path"
+                "Could not create flow: Not enough bandwidth found or path not found. " +
+                "Couldn't find non overlapping protected path"
 
         and: "Cleanup: delete the flow and restore available bandwidth"
         isls.each { database.resetIslBandwidth(it) }
@@ -324,10 +321,10 @@ class ProtectedPathSpec extends BaseSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        // TODO 404 ?
         exc.rawStatusCode == 404
         exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not update flow: Not enough bandwidth found or path not found"
+                "Could not update flow: Not enough bandwidth found or path not found. " +
+                "Couldn't find non overlapping protected path"
 
         and: "Cleanup: delete the flow and restore available bandwidth"
         isls.each { database.resetIslBandwidth(it) }
@@ -534,8 +531,8 @@ class ProtectedPathSpec extends BaseSpecification {
         exc.rawStatusCode == 404
         //TODO investigate error message
         exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found :" +
-                " Failed to find path with requested bandwidth=$bandwidth: " +
+                "Could not create flow: Not enough bandwidth found or path not found. " +
+                "Failed to find path with requested bandwidth=$bandwidth: " +
                 "Switch $srcSwitch.dpId doesn't have links with enough bandwidth"
 
         and: "Restore topology, delete flows and reset costs"
@@ -591,7 +588,9 @@ class ProtectedPathSpec extends BaseSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
         exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not update flow: Not enough bandwidth found or path not found"
+                "Could not update flow: Not enough bandwidth found or path not found. " +
+                "Failed to find path with requested bandwidth=$bandwidth: " +
+                "Switch $srcSwitch.dpId doesn't have links with enough bandwidth"
 
         and: "Restore topology, delete flows and reset costs"
         broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
@@ -618,5 +617,8 @@ class ProtectedPathSpec extends BaseSpecification {
 //    run and update tests related to the flow validate action
 //    error message/code will be fixed
 //    port anti flap ??
+//    port anti flap ??
+//    VLAN=0
+//    extend flow validation tests to show their ability to detect problems in protected paths
 }
 
