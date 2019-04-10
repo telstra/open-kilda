@@ -10,7 +10,7 @@ security.rest.password.default={{ getv "/kilda_northbound_username" }}
 
 kafka.hosts={{ getv "/kilda_kafka_hosts" }}
 
-server.contextPath=/api/v1
+server.contextPath=/api
 
 topology.engine.rest.endpoint={{ getv "/kilda_topology_engine_rest_endpoint" }}:{{ getv "/kilda_topology_engine_rest_port" }}
 northbound.messages.expiration.minutes=15

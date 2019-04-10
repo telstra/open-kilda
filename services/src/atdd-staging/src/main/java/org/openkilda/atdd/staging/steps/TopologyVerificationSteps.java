@@ -29,7 +29,7 @@ import org.openkilda.atdd.staging.helpers.TopologyChecker.SwitchMatcher;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.SwitchId;
-import org.openkilda.northbound.dto.switches.RulesValidationResult;
+import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 import org.openkilda.testing.service.floodlight.FloodlightService;

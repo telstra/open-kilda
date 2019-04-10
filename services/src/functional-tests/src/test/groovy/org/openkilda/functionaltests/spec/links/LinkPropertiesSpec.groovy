@@ -7,7 +7,7 @@ import org.openkilda.functionaltests.extension.fixture.TestFixture
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.links.LinkPropsDto
+import org.openkilda.northbound.dto.v1.links.LinkPropsDto
 import org.openkilda.testing.Constants
 
 import spock.lang.Ignore

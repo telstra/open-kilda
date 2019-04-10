@@ -44,7 +44,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.SwitchId;
-import org.openkilda.northbound.dto.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.database.Database;
