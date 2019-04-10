@@ -7,6 +7,7 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -489,6 +490,121 @@ class ProtectedPathSpec extends BaseSpecification {
         and: "Cleanup: revert system to original state"
         flowHelper.deleteFlow(flow.id)
         database.resetCosts()
+    }
+
+
+    @Unroll
+    def "Unable to create protected path on #flowDescription flow on the same path"() {
+        given: "Two active neighboring switches with two not overlapping paths at least"
+        def switches = topology.getActiveSwitches()
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            database.getPaths(src.dpId, dst.dpId)*.path.collect {
+                pathHelper.getInvolvedIsls(it)
+            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "A flow without protected bandwidth"
+        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flowHelper.addFlow(flow1)
+
+        and: "All alternative paths are unavailable (bring ports down on the source switch)"
+        List<PathNode> broughtDownPorts = []
+        database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.findAll { it != flow1 }.unique {
+            it.first()
+        }.each { path ->
+            def src = path.first()
+            broughtDownPorts.add(src)
+            northbound.portDown(src.switchId, src.portNo)
+        }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == IslChangeType.FAILED
+            }.size() == broughtDownPorts.size() * 2
+        }
+
+        when: "Try to create a new flow with protected path"
+        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow2.allocateProtectedPath = true
+        flow2.maximumBandwidth = bandwidth
+        flowHelper.addFlow(flow2)
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 404
+        //TODO investigate error message
+        exc.responseBodyAsString.to(MessageError).errorMessage ==
+                "Could not create flow: Not enough bandwidth found or path not found :" +
+                " Failed to find path with requested bandwidth=$bandwidth: " +
+                "Switch $srcSwitch.dpId doesn't have links with enough bandwidth"
+
+        and: "Restore topology, delete flows and reset costs"
+        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        flowHelper.deleteFlow(flow1.id)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+        }
+        database.resetCosts()
+
+        where:
+        flowDescription | bandwidth
+        "a metered"     | 1000
+        "an unmetered"  | 0
+    }
+
+    @Unroll
+    def "Unable to enable protected path on #flowDescription flow on the same path"() {
+        given: "Two active neighboring switches with two not overlapping paths at least"
+        def switches = topology.getActiveSwitches()
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            database.getPaths(src.dpId, dst.dpId)*.path.collect {
+                pathHelper.getInvolvedIsls(it)
+            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "A flow without protected bandwidth"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.allocateProtectedPath = false
+        flow.maximumBandwidth = bandwidth
+        flowHelper.addFlow(flow)
+
+        and: "All alternative paths are unavailable (bring ports down on the source switch)"
+        List<PathNode> broughtDownPorts = []
+        database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.findAll { it != flow }.unique {
+            it.first()
+        }.each { path ->
+            def src = path.first()
+            broughtDownPorts.add(src)
+            northbound.portDown(src.switchId, src.portNo)
+        }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == IslChangeType.FAILED
+            }.size() == broughtDownPorts.size() * 2
+        }
+
+        when: "Update flow: enable protected path(allocateProtectedPath=true)"
+        northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 404
+        exc.responseBodyAsString.to(MessageError).errorMessage ==
+                "Could not update flow: Not enough bandwidth found or path not found"
+
+        and: "Restore topology, delete flows and reset costs"
+        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        flowHelper.deleteFlow(flow.id)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+        }
+        database.resetCosts()
+
+        where:
+        flowDescription | bandwidth
+        "a metered"     | 1000
+        "an unmetered"  | 0
     }
 
 //    test new API swap, no any mention about it in ticket
