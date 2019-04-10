@@ -493,9 +493,13 @@ class ProtectedPathSpec extends BaseSpecification {
 
 //    test new API swap, no any mention about it in ticket
 //    update chaosSpec
+//    A-B-C/A=B=C will the protected path be created?
+//    What is the correct behaviour in case isl is down on the protected path and new protected path can't be found
+//    update chaosSpec
 //    test isl/switch maintenance
-//    run tests related to the validateRule action
-//    run tests related to the synchronize action
+//    run and update tests related to the validateRule action
+//    run and update tests related to the synchronize action
+//    run and update tests related to the flow validate action
 //    error message/code will be fixed
 //    port anti flap ??
 }
