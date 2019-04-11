@@ -8,8 +8,11 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.model.Cookie
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.web.client.HttpClientErrorException
@@ -29,37 +32,21 @@ class ProtectedPathSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         then: "Flow is created with protected path"
+        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
         northbound.getFlowPath(flow.id).protectedPath
 
         and: "Rules for protected path are created"
+        def mainFlowPath = northbound.getFlowPath(flow.id).forwardPath
+        def protectedFlowPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
+        def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
         Wrappers.wait(WAIT_OFFSET) {
-            [srcSwitch, dstSwitch].each {
-                def rules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
-                    !Cookie.isDefaultRule(it.cookie)
-                }
-                /** 2 - egress, 1 - ingress
-                 * protected path creates an egress rule only*/
-                assert rules.size() == 3
-                assert rules.findAll { it.flags.contains("RESET_COUNTS") }.size() == 1
-                assert rules.findAll { !it.flags.contains("RESET_COUNTS") }.size() == 2
-            }
+            verifyRulesOnCommonNodes(commonNodeIds, srcSwitch.dpId, dstSwitch.dpId, mainFlowPath, protectedFlowPath)
         }
 
-        pathHelper.getInvolvedSwitches(flow.id)[1..-2].each { sw ->
-            def rules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                !Cookie.isDefaultRule(it.cookie)
-            }
-            assert rules.size() == 2
-            assert rules.findAll { !it.flags.contains("RESET_COUNTS") }.size() == 2
+        def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
+            !commonNodeIds.contains(it.switchId)
         }
-
-        pathHelper.getInvolvedSwitchesForProtectedPath(flow.id)[1..-2].each { sw ->
-            def rules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                !Cookie.isDefaultRule(it.cookie)
-            }
-            assert rules.size() == 2
-            assert rules.findAll { !it.flags.contains("RESET_COUNTS") }.size() == 2
-        }
+        verifyRulesOnUniqueSwitches(uniqueNodes)
 
         and: "Cleanup: delete the flow"
         flowHelper.deleteFlow(flow.id)
@@ -93,36 +80,17 @@ class ProtectedPathSpec extends BaseSpecification {
         northbound.getFlowPath(flow.id).protectedPath
 
         and: "Rules are updated  on the main path"
+        def mainFlowPath = northbound.getFlowPath(flow.id).forwardPath
+        def protectedFlowPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
+        def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
         Wrappers.wait(WAIT_OFFSET) {
-            [srcSwitch, dstSwitch].each {
-                def rules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
-                    !Cookie.isDefaultRule(it.cookie)
-                }
-                /** 2 - egress, 1 - ingress
-                 * protected path creates an egress rule only*/
-                assert rules.size() == 3
-                assert rules.findAll { it.flags.contains("RESET_COUNTS") }.size() == 1
-                assert rules.findAll { !it.flags.contains("RESET_COUNTS") }.size() == 2
-            }
+            verifyRulesOnCommonNodes(commonNodeIds, srcSwitch.dpId, dstSwitch.dpId, mainFlowPath, protectedFlowPath)
         }
 
-        pathHelper.getInvolvedSwitches(flow.id)[1..-2].each { sw ->
-            def rules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                !Cookie.isDefaultRule(it.cookie)
-            }
-            assert rules.size() == 2
-            assert rules.findAll { !it.flags.contains("RESET_COUNTS") }.size() == 2
+        def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
+            !commonNodeIds.contains(it.switchId)
         }
-
-        and: "Rules updated on the protected path"
-        def transitSwitchesProtectedPath = pathHelper.getInvolvedSwitchesForProtectedPath(flow.id)[1..-2]
-        transitSwitchesProtectedPath.each { sw ->
-            def rules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                !Cookie.isDefaultRule(it.cookie)
-            }
-            assert rules.size() == 2
-            assert rules.findAll { !it.flags.contains("RESET_COUNTS") }.size() == 2
-        }
+        verifyRulesOnUniqueSwitches(uniqueNodes)
 
         when: "Update flow: disable protected path(allocateProtectedPath=false)"
         northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = false })
@@ -132,20 +100,35 @@ class ProtectedPathSpec extends BaseSpecification {
 
         and: "Rules for protected path are deleted"
         Wrappers.wait(WAIT_OFFSET) {
-            [srcSwitch, dstSwitch].each {
-                def rules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+            commonNodeIds.each { sw ->
+                def rules = northbound.getSwitchRules(sw).flowEntries.findAll {
                     !Cookie.isDefaultRule(it.cookie)
                 }
-                assert rules.size() == 2
-                assert rules.findAll { it.flags.contains("RESET_COUNTS") }.size() == 1
-                assert rules.findAll { !it.flags.contains("RESET_COUNTS") }.size() == 1
+                if (sw == srcSwitch.dpId || sw == dstSwitch.dpId) {
+                    assert rules.size() == 2
+
+                    def mainNode = mainFlowPath.find { it.switchId == sw }
+                    assert filterRules(rules, mainNode, true, false).size() == 1
+                    assert filterRules(rules, mainNode, false, true).size() == 1
+                }
             }
         }
 
-        transitSwitchesProtectedPath.each { sw ->
-            assert northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
+        uniqueNodes.each { sw ->
+            def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
                 !Cookie.isDefaultRule(it.cookie)
-            }.size() == 0
+            }
+            def mainNode = mainFlowPath.find { it.switchId == sw.switchId }
+            if (mainNode) {
+                assert rules.size() == 2
+                assert filterRules(rules, sw, true, false).size() == 1
+                assert filterRules(rules, sw, false, true).size() == 1
+            }
+
+            def protectedNode = protectedFlowPath.find { it.switchId == sw.switchId }
+            if (protectedNode) {
+                assert rules.size() == 0
+            }
         }
 
         and: "Cleanup: delete the flow"
@@ -744,10 +727,77 @@ class ProtectedPathSpec extends BaseSpecification {
                 !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId)
             } && possibleFlowPaths.size() >= minPossiblePath
         } ?: assumeTrue("No suiting switches found", false)
+
+        return [srcSwitch, dstSwitch]
     }
+
+    List<FlowEntry> filterRules(List<FlowEntry> rules, PathNodePayload node, Boolean ingress, Boolean egress) {
+        if (ingress) {
+            rules = rules.findAll {
+                it.match.inPort == node.inputPort.toString() &&
+                        it.instructions.applyActions.flowOutput == node.outputPort.toString()
+            }
+        }
+        if (egress) {
+            rules = rules.findAll {
+                it.instructions?.applyActions?.flowOutput == node.inputPort.toString() &&
+                        it.match.inPort == node.outputPort.toString()
+            }
+        }
+
+        return rules
+    }
+
+    void verifyRulesOnCommonNodes(List<SwitchId> nodeIds, SwitchId srcSwitchId, SwitchId dstSwitchId,
+                                  List<PathNodePayload> mainFlowPath, List<PathNodePayload> protectedFlowPath) {
+        nodeIds.each { sw ->
+            def rules = northbound.getSwitchRules(sw).flowEntries.findAll {
+                !Cookie.isDefaultRule(it.cookie)
+            }
+            if (sw == srcSwitchId || sw == dstSwitchId) {
+                assert rules.size() == 3
+
+                def mainNode = mainFlowPath.find { it.switchId == sw }
+                assert filterRules(rules, mainNode, true, false).size() == 1
+                assert filterRules(rules, mainNode, false, true).size() == 1
+                def protectedNode = protectedFlowPath.find { it.switchId == sw }
+                //protected path creates an egress rule only
+                if (protectedNode.switchId == srcSwitchId) {
+                    assert filterRules(rules, protectedNode, true, false).size() == 0
+                    assert filterRules(rules, protectedNode, false, true).size() == 1
+                } else {
+                    assert filterRules(rules, protectedNode, true, false).size() == 1
+                    assert filterRules(rules, protectedNode, false, true).size() == 0
+                }
+            } else {
+                assert rules.size() == 4
+
+                def mainNode = mainFlowPath.find { it.switchId == sw }
+                assert filterRules(rules, mainNode, true, false).size() == 1
+                assert filterRules(rules, mainNode, false, true).size() == 1
+
+                def protectedNode = protectedFlowPath.find { it.switchId == sw }
+                assert filterRules(rules, protectedNode, true, false).size() == 1
+                assert filterRules(rules, protectedNode, false, true).size() == 1
+            }
+        }
+    }
+
+    void verifyRulesOnUniqueSwitches(List<PathNodePayload> nodes) {
+        nodes.each { sw ->
+            def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
+                !Cookie.isDefaultRule(it.cookie)
+            }
+            assert rules.size() == 2
+
+            assert filterRules(rules, sw, true, false).size() == 1
+            assert filterRules(rules, sw, false, true).size() == 1
+        }
+    }
+
 //    test new API swap, no any mention about it in ticket
 //    update chaosSpec
-//    A-B-C/A=B=C will the protected path be created?
+//    A-B-C/A=B=C will the protected path be created? - done (unable to create protectedPath on the same path)
 //    What is the correct behaviour in case isl is down on the protected path and new protected path can't be found
 //    update chaosSpec
 //    test isl/switch maintenance
