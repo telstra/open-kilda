@@ -170,6 +170,9 @@ public class Flow implements Serializable {
     @Convert(InstantStringConverter.class)
     private Instant timeModify;
 
+    @Property(name = "manual")
+    private Boolean manual;
+
     /**
      * Constructor used by the builder only and needed to copy srcSwitch to srcSwitchId, destSwitch to destSwitchId.
      */
@@ -178,7 +181,8 @@ public class Flow implements Serializable {
             Switch srcSwitch, Switch destSwitch, int srcPort, int srcVlan, int destPort, int destVlan,
             FlowPath flowPath, long bandwidth, String description, int transitVlan,
             Integer meterId, String groupId, boolean ignoreBandwidth, boolean periodicPings,
-            FlowStatus status, Integer maxLatency, Integer priority, Instant timeCreate, Instant timeModify) {
+            FlowStatus status, Integer maxLatency, Integer priority, Instant timeCreate, Instant timeModify,
+            Boolean manual) {
         this.flowId = flowId;
         this.cookie = cookie;
         setSrcSwitch(srcSwitch);
@@ -199,6 +203,7 @@ public class Flow implements Serializable {
         this.maxLatency = maxLatency;
         this.priority = priority;
         this.timeCreate = timeCreate;
+        this.manual = manual;
         setTimeModify(timeModify);
     }
 

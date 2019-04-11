@@ -29,17 +29,9 @@ import lombok.Value;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class RerouteAffectedFlows extends RerouteFlows {
 
-    @JsonProperty("path_node")
-    private PathNode pathNode;
-
     @JsonCreator
     public RerouteAffectedFlows(@NonNull @JsonProperty("path_node") PathNode pathNode,
                                 @NonNull @JsonProperty("reason") String reason) {
-        super(reason);
-        this.pathNode = pathNode;
-    }
-
-    public PathNode getPathNode() {
-        return pathNode;
+        super(pathNode, reason);
     }
 }

@@ -148,6 +148,9 @@ public class FlowDto implements Serializable {
     @JsonProperty("priority")
     private Integer priority;
 
+    @JsonProperty("manual")
+    private boolean manual;
+
     public FlowDto() {
     }
 
@@ -195,7 +198,8 @@ public class FlowDto implements Serializable {
                    @JsonProperty(Utils.FLOW_PATH) final PathInfoData flowPath,
                    @JsonProperty("state") FlowState state,
                    @JsonProperty("max_latency") Integer maxLatency,
-                   @JsonProperty("priority") Integer priority) {
+                   @JsonProperty("priority") Integer priority,
+                   @JsonProperty("manual") boolean manual) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
@@ -216,6 +220,7 @@ public class FlowDto implements Serializable {
         this.state = state;
         this.maxLatency = maxLatency;
         this.priority = priority;
+        this.manual = manual;
     }
 
     /**
@@ -241,7 +246,8 @@ public class FlowDto implements Serializable {
                 flow.getFlowPath(),
                 flow.getState(),
                 flow.getMaxLatency(),
-                flow.getPriority());
+                flow.getPriority(),
+                flow.isManual());
     }
 
     /**
@@ -263,7 +269,7 @@ public class FlowDto implements Serializable {
                    boolean ignoreBandwidth,
                    String description,
                    SwitchId sourceSwitch, int sourcePort, int sourceVlan,
-                   SwitchId destinationSwitch, int destinationPort, int destinationVlan) {
+                   SwitchId destinationSwitch, int destinationPort, int destinationVlan, boolean manual) {
         this(flowId,
                 bandwidth,
                 ignoreBandwidth,
@@ -277,7 +283,7 @@ public class FlowDto implements Serializable {
                 destinationPort,
                 sourceVlan,
                 destinationVlan,
-                null, 0, null, null, null, null);
+                null, 0, null, null, null, null, manual);
     }
 
     public FlowDto(FlowPayload input) {
@@ -296,7 +302,8 @@ public class FlowDto implements Serializable {
                 input.getDestination().getVlanId(),
                 null, 0, null, null,
                 input.getMaxLatency(),
-                input.getPriority());
+                input.getPriority(),
+                input.isManual());
     }
 
     /**

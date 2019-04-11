@@ -16,22 +16,77 @@
 package org.openkilda.wfm.topology.reroute.service;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowSegment;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 
 import lombok.extern.slf4j.Slf4j;
+import org.openkilda.wfm.topology.flow.service.BaseFlowService;
+import org.openkilda.wfm.topology.reroute.bolts.SendRerouteRequestCarrier;
+import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 
+import java.util.Collection;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class RerouteService {
+public class RerouteService extends BaseFlowService {
 
-    private FlowRepository flowRepository;
+    private SendRerouteRequestCarrier carrier;
+    protected FlowSegmentRepository flowSegmentRepository;
 
-    public RerouteService(RepositoryFactory repositoryFactory) {
-        this.flowRepository = repositoryFactory.createFlowRepository();
+    public RerouteService(PersistenceManager persistenceManager, SendRerouteRequestCarrier carrier) {
+        super(persistenceManager);
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
+        this.carrier = carrier;
+    }
+
+
+    public void processRerouteOnIslDown(SwitchId switchId, int port, String reason, String correlationId) {
+        Set<Flow> affectedFlows = getAffectedFlows(switchId, port);
+        for (Flow flow : affectedFlows) {
+            if (flow.getManual() != true) {
+                carrier.sendRerouteRequest(flow.getFlowId(),
+                        new FlowThrottlingData(correlationId, flow.getPriority(), flow.getTimeCreate()),
+                        reason);
+            } else {
+                Collection<FlowSegment> flowSegments = flowSegmentRepository.findFlowSegmentsByEndpoint(flow.getFlowId(),
+                        switchId, port);
+                for (FlowSegment fs : flowSegments) {
+                    fs.setFailed(true);
+                    flowSegmentRepository.createOrUpdate(fs);
+                }
+                updateFlowStatus(flow.getFlowId(), FlowStatus.DOWN);
+            }
+        }
+    }
+
+    public void processRerouteOnIslUp(SwitchId switchId, int port, String reason, String correlationId) {
+        Set<Flow> inactiveFlows = getInactiveFlows();
+        for (Flow flow : inactiveFlows) {
+            if (flow.getManual() != true) {
+                carrier.sendRerouteRequest(flow.getFlowId(),
+                        new FlowThrottlingData(correlationId, flow.getPriority(), flow.getTimeCreate()),
+                        reason);
+            } else {
+                Collection<FlowSegment> flowSegments = flowSegmentRepository.findFlowSegmentsByEndpoint(
+                        flow.getFlowId(), switchId, port);
+                for (FlowSegment fs : flowSegments) {
+                    fs.setFailed(false);
+                    flowSegmentRepository.createOrUpdate(fs);
+                }
+                Collection<FlowSegment> failedSegments = flowSegmentRepository.findFailedSegmnetsForFlow(
+                        flow.getFlowId());
+                if (failedSegments.isEmpty()) {
+                    updateFlowStatus(flow.getFlowId(), FlowStatus.UP);
+                }
+            }
+        }
     }
 
     /**
@@ -41,7 +96,7 @@ public class RerouteService {
      * @param port     port.
      * @return set of active flows with affected path.
      */
-    public Set<Flow> getAffectedFlows(SwitchId switchId, int port) {
+    private Set<Flow> getAffectedFlows(SwitchId switchId, int port) {
         log.info("Get affected flows by node {}_{}", switchId, port);
         return flowRepository.findActiveFlowIdsWithPortInPathOverSegments(switchId, port).stream()
                 .filter(Flow::isForward)
@@ -51,7 +106,7 @@ public class RerouteService {
     /**
      * Get set of inactive flows.
      */
-    public Set<Flow> getInactiveFlows() {
+    private Set<Flow> getInactiveFlows() {
         log.info("Get inactive flows");
         return flowRepository.findDownFlows().stream()
                 .filter(Flow::isForward)

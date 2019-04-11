@@ -42,13 +42,17 @@ public class Neo4jFlowSegmentRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID2 = "test_flow_2";
     static final SwitchId TEST_SWITCH_A_ID = new SwitchId(1);
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
-
+    static final SwitchId TEST_SWITCH_C_ID = new SwitchId(3);
+    static final int TEST_PORT_A = 1;
+    static final int TEST_PORT_B = 2;
+    static final int TEST_PORT_C = 3;
     static FlowSegmentRepository flowSegmentRepository;
     static FlowRepository flowRepository;
     static SwitchRepository switchRepository;
 
     private Switch switchA;
     private Switch switchB;
+    private Switch switchC;
 
     @BeforeClass
     public static void setUp() {
@@ -64,6 +68,9 @@ public class Neo4jFlowSegmentRepositoryTest extends Neo4jBasedTest {
 
         switchB = Switch.builder().switchId(TEST_SWITCH_B_ID).build();
         switchRepository.createOrUpdate(switchB);
+
+        switchC = Switch.builder().switchId(TEST_SWITCH_C_ID).build();
+        switchRepository.createOrUpdate(switchC);
     }
 
     @Test
@@ -187,5 +194,87 @@ public class Neo4jFlowSegmentRepositoryTest extends Neo4jBasedTest {
         assertThat(
                 segments.stream().map(FlowSegment::getFlowId).collect(Collectors.toSet()),
                 Matchers.contains(TEST_FLOW_ID, TEST_FLOW_ID2));
+    }
+
+    @Test
+    public void shouldFindBothFlowSegmentsForEndpoint() {
+        FlowSegment forwardSegment = FlowSegment.builder()
+                .srcSwitch(switchA)
+                .srcPort(TEST_PORT_A)
+                .destSwitch(switchB)
+                .destPort(TEST_PORT_B)
+                .cookie(1)
+                .build();
+        forwardSegment.setFlowId(TEST_FLOW_ID);
+
+
+        flowSegmentRepository.createOrUpdate(forwardSegment);
+
+        FlowSegment reverseSegment = FlowSegment.builder()
+                .srcSwitch(switchB)
+                .srcPort(TEST_PORT_B)
+                .destSwitch(switchA)
+                .destPort(TEST_PORT_A)
+                .cookie(1)
+                .build();
+        reverseSegment.setFlowId(TEST_FLOW_ID);
+
+
+        flowSegmentRepository.createOrUpdate(reverseSegment);
+
+
+        List<FlowSegment> foundSegment = Lists.newArrayList(
+                flowSegmentRepository.findFlowSegmentsByEndpoint(TEST_FLOW_ID, TEST_SWITCH_A_ID, TEST_PORT_A));
+        assertThat(foundSegment, Matchers.hasSize(2));
+    }
+
+    @Test
+    public void shouldFindOnlyFailedSegments() {
+        FlowSegment forwardSegment1 = FlowSegment.builder()
+                .srcSwitch(switchA)
+                .srcPort(TEST_PORT_A)
+                .destSwitch(switchB)
+                .destPort(TEST_PORT_B)
+                .failed(true)
+                .cookie(1)
+                .build();
+        forwardSegment1.setFlowId(TEST_FLOW_ID);
+        flowSegmentRepository.createOrUpdate(forwardSegment1);
+
+        FlowSegment reverseSegment1 = FlowSegment.builder()
+                .srcSwitch(switchB)
+                .srcPort(TEST_PORT_B)
+                .destSwitch(switchA)
+                .destPort(TEST_PORT_A)
+                .failed(true)
+                .cookie(1)
+                .build();
+        reverseSegment1.setFlowId(TEST_FLOW_ID);
+        flowSegmentRepository.createOrUpdate(reverseSegment1);
+
+        FlowSegment forwardSegment2 = FlowSegment.builder()
+                .srcSwitch(switchB)
+                .srcPort(TEST_PORT_B)
+                .destSwitch(switchC)
+                .destPort(TEST_PORT_C)
+                .failed(false)
+                .cookie(1)
+                .build();
+        forwardSegment2.setFlowId(TEST_FLOW_ID);
+        flowSegmentRepository.createOrUpdate(forwardSegment2);
+
+        FlowSegment reverseSegment2 = FlowSegment.builder()
+                .srcSwitch(switchC)
+                .srcPort(TEST_PORT_C)
+                .destSwitch(switchB)
+                .destPort(TEST_PORT_B)
+                .failed(false)
+                .cookie(1)
+                .build();
+        reverseSegment2.setFlowId(TEST_FLOW_ID);
+        flowSegmentRepository.createOrUpdate(reverseSegment2);
+
+        Collection<FlowSegment> failedSegments = flowSegmentRepository.findFailedSegmentsForFlow(TEST_FLOW_ID);
+        assertThat(failedSegments, Matchers.hasSize(2));
     }
 }

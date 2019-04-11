@@ -23,18 +23,28 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
+import org.openkilda.messaging.info.event.PathNode;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class RerouteFlows extends CommandData {
 
+    @JsonProperty("path_node")
+    private PathNode pathNode;
+
     @JsonProperty("reason")
     private String reason;
 
     @JsonCreator
-    public RerouteFlows(@NonNull @JsonProperty("reason") String reason) {
+    public RerouteFlows(@NonNull @JsonProperty("path_node") PathNode pathNode,
+                        @NonNull @JsonProperty("reason") String reason) {
+        this.pathNode = pathNode;
         this.reason = reason;
+    }
+
+    public PathNode getPathNode() {
+        return pathNode;
     }
 
     public String getReason() {

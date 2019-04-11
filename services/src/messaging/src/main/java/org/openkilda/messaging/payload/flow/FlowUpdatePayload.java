@@ -61,9 +61,10 @@ public class FlowUpdatePayload extends FlowPayload {
                              @JsonProperty("diverse-flowid") String diverseFlowId,
                              @JsonProperty("status") String status,
                              @JsonProperty("max-latency") Integer maxLatency,
-                             @JsonProperty("priority") Integer priority) {
+                             @JsonProperty("priority") Integer priority,
+                             @JsonProperty("manual") Boolean manual) {
         super(id, source, destination, maximumBandwidth, ignoreBandwidth, periodicPings, description, created,
-                lastUpdated, status, maxLatency, priority);
+                lastUpdated, status, maxLatency, priority, manual);
         this.diverseFlowId = diverseFlowId;
     }
 }

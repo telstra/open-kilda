@@ -38,7 +38,8 @@ public final class FlowPayloadToFlowConverter {
                 flowPayload.getSource().getVlanId(),
                 flowPayload.getDestination().getSwitchDpId(),
                 flowPayload.getDestination().getPortId(),
-                flowPayload.getDestination().getVlanId());
+                flowPayload.getDestination().getVlanId(),
+                flowPayload.isManual());
     }
 
     private FlowPayloadToFlowConverter() {

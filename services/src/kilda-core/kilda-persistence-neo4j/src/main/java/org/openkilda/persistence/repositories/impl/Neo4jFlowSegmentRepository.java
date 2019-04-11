@@ -72,6 +72,33 @@ public class Neo4jFlowSegmentRepository extends Neo4jGenericRepository<FlowSegme
     }
 
     @Override
+    public Collection<FlowSegment> findFlowSegmentsByEndpoint(String flowId, SwitchId switchId, int port) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "flowid", flowId,
+                "src_switch", switchId.toString(),
+                "src_port", port,
+                "dst_switch", switchId.toString(),
+                "dst_port", port);
+        String query = "MATCH (src: switch) - [fs: flow_segment] -> (dst: switch) WHERE "
+                + "fs.flowid = $flowid AND "
+                + "((fs.src_switch = $src_switch AND fs.src_port = $src_port) OR "
+                + "(fs.dst_switch = $dst_switch AND fs.dst_port = $dst_port)) "
+                + "RETURN src, fs, dst";
+        return Lists.newArrayList(getSession().query(FlowSegment.class, query, parameters));
+    }
+
+    @Override
+    public Collection<FlowSegment> findFailedSegmentsForFlow(String flowId) {
+        Map<String, Object> parameners = ImmutableMap.of(
+                "flowid", flowId
+        );
+        String query = "MATCH (src: switch) - [fs: flow_segment] -> (dst: switch) WHERE "
+                + "fs.flowid = $flowid AND fs.failed = true "
+                + "RETURN src, fs, dst";
+        return Lists.newArrayList(getSession().query(FlowSegment.class, query, parameners));
+    }
+
+    @Override
     public void createOrUpdate(FlowSegment segment) {
         transactionManager.doInTransaction(() -> {
             lockSwitches(requireManagedEntity(segment.getSrcSwitch()), requireManagedEntity(segment.getDestSwitch()));

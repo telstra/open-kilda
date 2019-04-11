@@ -76,6 +76,9 @@ public class FlowPayload implements Serializable {
     @JsonProperty("priority")
     private Integer priority;
 
+    @JsonProperty("manual")
+    private boolean manual;
+
     /**
      * Instance constructor.
      *
@@ -105,7 +108,8 @@ public class FlowPayload implements Serializable {
                        @JsonProperty("last-updated") String lastUpdated,
                        @JsonProperty("status") String status,
                        @JsonProperty("max-latency") Integer maxLatency,
-                       @JsonProperty("priority") Integer priority) {
+                       @JsonProperty("priority") Integer priority,
+                       @JsonProperty("manual") Boolean manual) {
         setId(id);
         setSource(source);
         setDestination(destination);
@@ -116,6 +120,10 @@ public class FlowPayload implements Serializable {
         }
         if (periodicPings != null) {
             this.periodicPings = periodicPings;
+        }
+
+        if (manual != null) {
+            this.manual = manual;
         }
 
         this.description = description;

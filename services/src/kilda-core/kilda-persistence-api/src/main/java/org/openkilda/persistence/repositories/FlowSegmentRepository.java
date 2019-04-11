@@ -30,6 +30,10 @@ public interface FlowSegmentRepository extends Repository<FlowSegment> {
 
     Collection<FlowSegment> findBySrcSwitchId(SwitchId switchId);
 
+    Collection<FlowSegment> findFlowSegmentsByEndpoint(String flowId, SwitchId switchId, int port);
+
+    Collection<FlowSegment> findFailedSegmentsForFlow(String flowId);
+
     long getUsedBandwidthBetweenEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
 
     /**

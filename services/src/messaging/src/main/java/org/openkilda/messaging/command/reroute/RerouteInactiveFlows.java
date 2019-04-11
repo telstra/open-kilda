@@ -21,6 +21,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.Value;
+import org.openkilda.messaging.info.event.PathNode;
 
 @Value
 @EqualsAndHashCode(callSuper = false)
@@ -28,7 +29,8 @@ import lombok.Value;
 public class RerouteInactiveFlows extends RerouteFlows {
 
     @JsonCreator
-    public RerouteInactiveFlows(@NonNull @JsonProperty("reason") String reason) {
-        super(reason);
+    public RerouteInactiveFlows(@NonNull @JsonProperty("path_node") PathNode pathNode,
+                                @NonNull @JsonProperty("reason") String reason) {
+        super(pathNode, reason);
     }
 }

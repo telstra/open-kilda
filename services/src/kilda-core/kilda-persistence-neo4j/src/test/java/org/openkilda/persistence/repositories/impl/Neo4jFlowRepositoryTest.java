@@ -327,6 +327,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destVlan(11)
                 .status(FlowStatus.UP)
                 .cookie(1 | Flow.FORWARD_FLOW_COOKIE_MASK)
+                .manual(false)
                 .build();
 
         Flow reverseFlow = Flow.builder()
@@ -339,6 +340,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .destVlan(10)
                 .status(FlowStatus.UP)
                 .cookie(1 | Flow.REVERSE_FLOW_COOKIE_MASK)
+                .manual(false)
                 .build();
 
         flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
@@ -355,6 +357,53 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         Collection<Flow> foundFlowIds = flowRepository
                 .findActiveFlowIdsWithPortInPathOverSegments(TEST_SWITCH_C_ID, 100);
         assertThat(foundFlowIds, Matchers.hasSize(2));
+    }
+
+    @Test
+    public void shouldNotFindActiveManualFlowsOverSegments() {
+        Switch switchC = Switch.builder().switchId(TEST_SWITCH_C_ID).build();
+        switchRepository.createOrUpdate(switchC);
+
+        Flow forwardFlow = Flow.builder()
+                .flowId(TEST_FLOW_ID)
+                .srcSwitch(switchA)
+                .srcPort(1)
+                .srcVlan(10)
+                .destSwitch(switchB)
+                .destPort(2)
+                .destVlan(11)
+                .status(FlowStatus.UP)
+                .cookie(1 | Flow.FORWARD_FLOW_COOKIE_MASK)
+                .manual(true)
+                .build();
+
+        Flow reverseFlow = Flow.builder()
+                .flowId(TEST_FLOW_ID)
+                .srcSwitch(switchB)
+                .srcPort(2)
+                .srcVlan(11)
+                .destSwitch(switchA)
+                .destPort(1)
+                .destVlan(10)
+                .status(FlowStatus.UP)
+                .cookie(1 | Flow.REVERSE_FLOW_COOKIE_MASK)
+                .manual(true)
+                .build();
+
+        flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
+
+        FlowSegment segment = FlowSegment.builder()
+                .flowId(TEST_FLOW_ID)
+                .srcSwitch(switchB)
+                .srcPort(1)
+                .destSwitch(switchC)
+                .destPort(100)
+                .build();
+        flowSegmentRepository.createOrUpdate(segment);
+
+        Collection<Flow> foundFlowIds = flowRepository
+                .findActiveFlowIdsWithPortInPathOverSegments(TEST_SWITCH_C_ID, 100);
+        assertThat(foundFlowIds, Matchers.hasSize(0));
     }
 
     @Test

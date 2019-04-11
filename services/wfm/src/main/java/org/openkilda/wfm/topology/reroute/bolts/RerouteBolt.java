@@ -20,9 +20,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
@@ -37,12 +35,11 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
+
 
 @Slf4j
-public class RerouteBolt extends AbstractBolt {
+public class RerouteBolt extends AbstractBolt implements SendRerouteRequestCarrier {
 
     public static final String FLOW_ID_FIELD = "flow-id";
     public static final String THROTTLING_DATA_FIELD = "throttling-data";
@@ -50,7 +47,7 @@ public class RerouteBolt extends AbstractBolt {
     private PersistenceManager persistenceManager;
     private transient RerouteService rerouteService;
 
-
+    private Tuple currentTuple;
 
     public RerouteBolt(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
@@ -61,8 +58,7 @@ public class RerouteBolt extends AbstractBolt {
      */
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        this.rerouteService = new RerouteService(repositoryFactory);
+        this.rerouteService = new RerouteService(persistenceManager, this);
         super.prepare(stormConf, context, collector);
     }
 
@@ -71,45 +67,35 @@ public class RerouteBolt extends AbstractBolt {
      */
     @Override
     protected void handleInput(Tuple tuple) throws PipelineException {
+        currentTuple = tuple;
         CommandMessage message = pullValue(tuple, MessageTranslator.FIELD_ID_PAYLOAD, CommandMessage.class);
         CommandData commandData = message.getData();
 
         if (commandData instanceof RerouteAffectedFlows) {
             RerouteAffectedFlows rerouteAffectedFlows = (RerouteAffectedFlows) commandData;
             PathNode pathNode = rerouteAffectedFlows.getPathNode();
-            Set<Flow> affectedFlows
-                    = rerouteService.getAffectedFlows(pathNode.getSwitchId(), pathNode.getPortNo());
-
-            emitRerouteCommands(tuple, affectedFlows, message.getCorrelationId(),
-                    rerouteAffectedFlows.getReason());
-
+            rerouteService.processRerouteOnIslDown(pathNode.getSwitchId(), pathNode.getPortNo(),
+                    rerouteAffectedFlows.getReason(), message.getCorrelationId());
         } else if (commandData instanceof RerouteInactiveFlows) {
             RerouteInactiveFlows rerouteInactiveFlows = (RerouteInactiveFlows) commandData;
-            Set<Flow> inactiveFlows = rerouteService.getInactiveFlows();
-
-            emitRerouteCommands(tuple, inactiveFlows, message.getCorrelationId(),
-                    rerouteInactiveFlows.getReason());
-
+            PathNode pathNode = rerouteInactiveFlows.getPathNode();
+            rerouteService.processRerouteOnIslUp(pathNode.getSwitchId(), pathNode.getPortNo(),
+                    rerouteInactiveFlows.getReason(), message.getCorrelationId());
         } else {
             log.warn("Skip undefined message type {}", message);
         }
 
     }
 
-    private void emitRerouteCommands(Tuple tuple, Collection<Flow> flows,
-                                     String correlationId, String reason) {
-        for (Flow flow : flows) {
-
-            getOutput().emit(tuple, new Values(flow.getFlowId(),
-                    new FlowThrottlingData(correlationId, flow.getPriority(), flow.getTimeCreate())));
-
-            log.warn("Flow {} reroute command message sent with correlationId {}, reason \"{}\"",
-                    flow.getFlowId(), correlationId, reason);
-        }
-    }
-
     @Override
     public void declareOutputFields(OutputFieldsDeclarer output) {
         output.declare(new Fields(FLOW_ID_FIELD, THROTTLING_DATA_FIELD));
+    }
+
+    @Override
+    public void sendRerouteRequest(String flowId, FlowThrottlingData payload, String reason) {
+        getOutput().emit(currentTuple, new Values(flowId,payload));
+        log.warn("Flow {} reroute command message sent with correlationId {}, reason \"{}\"",
+                flowId, payload.getCorrelationId(), reason);
     }
 }

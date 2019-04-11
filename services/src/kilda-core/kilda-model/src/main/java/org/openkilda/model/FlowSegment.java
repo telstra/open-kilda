@@ -118,13 +118,17 @@ public class FlowSegment implements Serializable {
     @Property(name = "segment_latency")
     private Long latency;
 
+    @Property(name = "failed")
+    private boolean failed;
+
     /**
      * Constructor used by the builder only and needed to copy srcSwitch to srcSwitchId, destSwitch to destSwitchId.
      */
     @Builder(toBuilder = true)
     FlowSegment(String flowId, long cookie, //NOSONAR
                 Switch srcSwitch, Switch destSwitch, int srcPort, int destPort,
-                long bandwidth, boolean ignoreBandwidth, int seqId, Long latency) {
+                long bandwidth, boolean ignoreBandwidth, int seqId, Long latency,
+                boolean failed) {
         this.flowId = flowId;
         this.cookie = cookie;
         setSrcSwitch(srcSwitch);
@@ -135,6 +139,7 @@ public class FlowSegment implements Serializable {
         this.ignoreBandwidth = ignoreBandwidth;
         this.seqId = seqId;
         this.latency = latency;
+        this.failed = failed;
     }
 
     public final void setSrcSwitch(Switch srcSwitch) {
