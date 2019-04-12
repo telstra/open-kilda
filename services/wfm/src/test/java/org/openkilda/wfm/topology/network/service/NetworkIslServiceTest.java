@@ -35,7 +35,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionCallbackWithoutResult;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -94,7 +94,7 @@ public class NetworkIslServiceTest {
     @Mock
     private LinkPropsRepository linkPropsRepository;
     @Mock
-    private FlowSegmentRepository flowSegmentRepository;
+    private FlowPathRepository flowPathRepository;
     @Mock
     private FeatureTogglesRepository featureTogglesRepository;
 
@@ -108,7 +108,7 @@ public class NetworkIslServiceTest {
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
         when(repositoryFactory.createLinkPropsRepository()).thenReturn(linkPropsRepository);
-        when(repositoryFactory.createFlowSegmentRepository()).thenReturn(flowSegmentRepository);
+        when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
         when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
 
         doAnswer(invocation -> {
@@ -259,10 +259,10 @@ public class NetworkIslServiceTest {
                                                  endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber()))
                 .thenReturn(Collections.emptyList());
 
-        when(flowSegmentRepository.getUsedBandwidthBetweenEndpoints(
+        when(flowPathRepository.getUsedBandwidthBetweenEndpoints(
                 endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
                 endpointBeta2.getDatapath(), endpointBeta2.getPortNumber())).thenReturn(10L);
-        when(flowSegmentRepository.getUsedBandwidthBetweenEndpoints(
+        when(flowPathRepository.getUsedBandwidthBetweenEndpoints(
                 endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
                 endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber())).thenReturn(10L);
 
@@ -300,7 +300,7 @@ public class NetworkIslServiceTest {
         when(linkPropsRepository.findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
                                                  endpointBeta2.getDatapath(), endpointBeta2.getPortNumber()))
                 .thenReturn(Collections.emptyList());
-        when(flowSegmentRepository.getUsedBandwidthBetweenEndpoints(
+        when(flowPathRepository.getUsedBandwidthBetweenEndpoints(
                 endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
                 endpointBeta2.getDatapath(), endpointBeta2.getPortNumber())).thenReturn(0L);
     }

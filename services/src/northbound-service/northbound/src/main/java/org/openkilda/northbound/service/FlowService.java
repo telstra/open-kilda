@@ -40,7 +40,7 @@ public interface FlowService {
     /**
      * Creates flow.
      *
-     * @param flow          flow
+     * @param flow flow
      * @return created flow
      */
     CompletableFuture<FlowPayload> createFlow(final FlowCreatePayload flow);
@@ -48,7 +48,7 @@ public interface FlowService {
     /**
      * Deletes flow.
      *
-     * @param id            flow id
+     * @param id flow id
      * @return deleted flow
      */
     CompletableFuture<FlowPayload> deleteFlow(final String id);
@@ -56,7 +56,7 @@ public interface FlowService {
     /**
      * Updates flow.
      *
-     * @param flow          flow
+     * @param flow flow
      * @return updated flow
      */
     CompletableFuture<FlowPayload> updateFlow(final FlowUpdatePayload flow);
@@ -64,8 +64,8 @@ public interface FlowService {
     /**
      * Patch flow.
      *
-     * @param flowId        flow id
-     * @param flowPatchDto  flow parameters for update
+     * @param flowId       flow id
+     * @param flowPatchDto flow parameters for update
      * @return updated flow
      */
     CompletableFuture<FlowPayload> patchFlow(final String flowId, final FlowPatchDto flowPatchDto);
@@ -73,7 +73,7 @@ public interface FlowService {
     /**
      * Gets flow by id.
      *
-     * @param id            flow id
+     * @param id flow id
      * @return flow
      */
     CompletableFuture<FlowPayload> getFlow(final String id);
@@ -96,7 +96,7 @@ public interface FlowService {
     /**
      * Gets flow status by id.
      *
-     * @param id            flow id
+     * @param id flow id
      * @return flow status
      */
     CompletableFuture<FlowIdStatusPayload> statusFlow(final String id);
@@ -104,7 +104,7 @@ public interface FlowService {
     /**
      * Gets flow path by id.
      *
-     * @param id            flow id
+     * @param id flow id
      * @return Flow path
      */
     CompletableFuture<FlowPathPayload> pathFlow(final String id);
@@ -112,11 +112,9 @@ public interface FlowService {
     /**
      * Use this to push flows that may not be in the database / caches but they should be.
      *
-     * @param externalFlows   the list of flows to push.
-     * @param propagate if true, the path/rules will be propagated to the switch
-     * @param verify if true, we'll wait up to poll seconds to confirm if rules have been applied
-     *
-     * @return
+     * @param externalFlows the list of flows to push.
+     * @param propagate     if true, the path/rules will be propagated to the switch
+     * @param verify        if true, we'll wait up to poll seconds to confirm if rules have been applied
      */
     CompletableFuture<BatchResults> pushFlows(final List<FlowInfoData> externalFlows, Boolean propagate,
                                               Boolean verify);
@@ -124,10 +122,9 @@ public interface FlowService {
     /**
      * Use this to unpush flows .. ie undo a push
      *
-     * @param externalFlows   the list of flows to unpush.
-     * @param propagate if true, the path/rules will be propagated to the switch
-     * @param verify if true, we'll wait up to poll seconds to confirm if rules have been applied
-     * @return
+     * @param externalFlows the list of flows to unpush.
+     * @param propagate     if true, the path/rules will be propagated to the switch
+     * @param verify        if true, we'll wait up to poll seconds to confirm if rules have been applied
      */
     CompletableFuture<BatchResults> unpushFlows(final List<FlowInfoData> externalFlows, Boolean propagate,
                                                 Boolean verify);
@@ -155,7 +152,7 @@ public interface FlowService {
      * @param flowId id of the flow
      * @return the results of the comparison
      * @throws org.openkilda.messaging.error.MessageException if the flow doesn't exist
-     * @throws java.nio.file.InvalidPathException if the flow doesn't return a path and it should.
+     * @throws java.nio.file.InvalidPathException             if the flow doesn't return a path and it should.
      */
     CompletableFuture<List<FlowValidationDto>> validateFlow(final String flowId);
 
@@ -163,15 +160,11 @@ public interface FlowService {
 
     /**
      * Modify burst size on switch.
+     *
      * @param flowId id of the flow
      * @return the meter entry
      */
     CompletableFuture<FlowMeterEntries> modifyMeter(String flowId);
-
-    /**
-     * Invalidate FlowResourcesCache in the flow topology.
-     */
-    void invalidateFlowResourcesCache();
 
     CompletableFuture<List<FlowEventPayload>> listFlowEvents(String flowId,
                                                              long timestampFrom,

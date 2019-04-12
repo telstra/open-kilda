@@ -27,7 +27,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
-import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanResources;
+import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 
 import org.junit.Before;
@@ -82,11 +82,11 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
         FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
 
         assertEquals(1, flowResources.getUnmaskedCookie());
-        assertEquals(2, ((TransitVlanResources) flowResources.getForward().getEncapsulationResources())
+        assertEquals(2, ((TransitVlanEncapsulation) flowResources.getForward().getEncapsulationResources())
                 .getTransitVlan().getVlan());
         assertEquals(32, flowResources.getForward().getMeterId().getValue());
 
-        assertEquals(3, ((TransitVlanResources) flowResources.getReverse().getEncapsulationResources())
+        assertEquals(3, ((TransitVlanEncapsulation) flowResources.getReverse().getEncapsulationResources())
                 .getTransitVlan().getVlan());
         assertEquals(32, flowResources.getReverse().getMeterId().getValue());
     }
@@ -95,16 +95,19 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
     public void shouldNotImmediatelyReuseResources() throws ResourceAllocationException {
         Flow flow = convertFlow(firstFlow);
         FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
-        resourcesManager.deallocateFlowResources(flow, flowResources);
+        resourcesManager.deallocatePathResources(flowResources.getForward().getPathId(),
+                flowResources.getUnmaskedCookie(), flow.getEncapsulationType());
+        resourcesManager.deallocatePathResources(flowResources.getReverse().getPathId(),
+                flowResources.getUnmaskedCookie(), flow.getEncapsulationType());
 
         flowResources = resourcesManager.allocateFlowResources(flow);
 
         assertEquals(1, flowResources.getUnmaskedCookie());
-        assertEquals(2, ((TransitVlanResources) flowResources.getForward().getEncapsulationResources())
+        assertEquals(2, ((TransitVlanEncapsulation) flowResources.getForward().getEncapsulationResources())
                 .getTransitVlan().getVlan());
         assertEquals(32, flowResources.getForward().getMeterId().getValue());
 
-        assertEquals(3, ((TransitVlanResources) flowResources.getReverse().getEncapsulationResources())
+        assertEquals(3, ((TransitVlanEncapsulation) flowResources.getReverse().getEncapsulationResources())
                 .getTransitVlan().getVlan());
         assertEquals(32, flowResources.getReverse().getMeterId().getValue());
     }
@@ -115,11 +118,11 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
         FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
 
         assertEquals(1, flowResources.getUnmaskedCookie());
-        assertEquals(2, ((TransitVlanResources) flowResources.getForward().getEncapsulationResources())
+        assertEquals(2, ((TransitVlanEncapsulation) flowResources.getForward().getEncapsulationResources())
                 .getTransitVlan().getVlan());
         assertNull(flowResources.getForward().getMeterId());
 
-        assertEquals(3, ((TransitVlanResources) flowResources.getReverse().getEncapsulationResources())
+        assertEquals(3, ((TransitVlanEncapsulation) flowResources.getReverse().getEncapsulationResources())
                 .getTransitVlan().getVlan());
         assertNull(flowResources.getReverse().getMeterId());
     }
@@ -156,7 +159,7 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
     }
 
     private Flow convertFlow(FlowDto flowDto) {
-        Flow flow = FlowMapper.INSTANCE.map(flowDto);
+        Flow flow = FlowMapper.INSTANCE.map(flowDto).getFlowEntity();
         flow.setSrcSwitch(switchRepository.reload(flow.getSrcSwitch()));
         flow.setDestSwitch(switchRepository.reload(flow.getDestSwitch()));
 
