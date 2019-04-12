@@ -30,8 +30,6 @@ import org.openkilda.wfm.topology.nbworker.services.PathsService;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 import java.util.List;
@@ -55,7 +53,7 @@ public class PathsBolt extends PersistenceOperationsBolt {
 
     @Override
     @SuppressWarnings("unchecked")
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request, String correlationId) {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
         List<? extends InfoData> result = null;
         if (request instanceof GetPathsRequest) {
             result = getPaths((GetPathsRequest) request);
@@ -80,12 +78,5 @@ public class PathsBolt extends PersistenceOperationsBolt {
                     String.format("Couldn't found any path from switch '%s' to switch '%s'.",
                             request.getSrcSwitchId(), request.getDstSwitchId()));
         }
-    }
-
-    @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        super.declareOutputFields(declarer);
-        declarer.declare(new Fields(ResponseSplitterBolt.FIELD_ID_RESPONSE,
-                ResponseSplitterBolt.FIELD_ID_CORELLATION_ID));
     }
 }

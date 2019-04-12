@@ -42,10 +42,9 @@ public class ResponseSplitterBolt extends AbstractBolt {
     @Override
     protected void handleInput(Tuple input) throws PipelineException {
         List<InfoData> responses = pullValue(input, FIELD_ID_RESPONSE, List.class);
-        String correlationId = pullValue(input, FIELD_ID_CORELLATION_ID, String.class);
-        log.debug("Received response correlationId {}", correlationId);
+        log.debug("Received response correlationId {}", getCommandContext().getCorrelationId());
 
-        sendChunkedResponse(responses, input, correlationId);
+        sendChunkedResponse(responses, input, getCommandContext().getCorrelationId());
     }
 
     private void sendChunkedResponse(List<InfoData> responses, Tuple input, String requestId) {

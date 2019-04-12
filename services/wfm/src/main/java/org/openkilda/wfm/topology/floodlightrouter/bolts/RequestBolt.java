@@ -15,16 +15,14 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
-import static org.openkilda.messaging.Utils.MAPPER;
-
 import org.openkilda.messaging.Message;
 import org.openkilda.model.SwitchId;
-
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.service.RouterUtils;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMapping;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchTracker;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.state.InMemoryKeyValueState;
@@ -43,16 +41,14 @@ import java.util.Set;
 public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, SwitchTracker>> {
     private static final String SWITCH_TRACKER_KEY = "SWITCH_TRACKER_KEY";
     protected String outputStream;
-    protected final Set<String> regions;
+    protected final transient Set<String> regions;
 
     protected transient SwitchTracker switchTracker;
-
-    protected OutputCollector outputCollector;
+    protected transient OutputCollector outputCollector;
 
     public RequestBolt(String outputStream, Set<String> regions) {
         this.outputStream = outputStream;
         this.regions = regions;
-
     }
 
     @Override
@@ -62,22 +58,21 @@ public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, 
                 updateSwitchMapping((SwitchMapping) input.getValueByField(
                         AbstractTopology.MESSAGE_FIELD));
             } else {
-                String json = input.getValueByField(AbstractTopology.MESSAGE_FIELD).toString();
-                Message message = MAPPER.readValue(json, Message.class);
+                Message message = (Message) input.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
 
                 SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
                 if (switchId != null) {
                     String region = switchTracker.lookupRegion(switchId);
                     if (region != null) {
                         String targetStream = Stream.formatWithRegion(outputStream, region);
-                        Values values = new Values(json);
+                        Values values = new Values(message);
                         outputCollector.emit(targetStream, input, values);
                     } else {
-                        log.error("Unable to lookup region for message: {}", json);
+                        log.error("Unable to lookup region for message: {}", message);
                     }
 
                 } else {
-                    log.error("Unable to lookup switch for message: {}", json);
+                    log.error("Unable to lookup switch for message: {}", message);
                 }
             }
         } catch (Exception e) {

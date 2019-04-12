@@ -33,6 +33,7 @@ import org.openkilda.messaging.nbtopology.request.GetPathsRequest;
 import org.openkilda.messaging.nbtopology.request.LinksBaseRequest;
 import org.openkilda.messaging.nbtopology.request.SwitchesBaseRequest;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 
@@ -54,57 +55,57 @@ public class RouterBolt extends AbstractBolt {
 
             if (data instanceof BaseRequest) {
                 BaseRequest baseRequest = (BaseRequest) data;
-                processRequest(input, baseRequest, message.getCorrelationId());
+                processRequest(input, baseRequest, getCommandContext());
             }
         } else if (message instanceof InfoMessage) {
             log.debug("Received info message {}", message);
             InfoMessage info = (InfoMessage) message;
             InfoData data = info.getData();
-            processRequest(input, data, message.getCorrelationId());
+            processRequest(input, data, getCommandContext());
         } else if (message instanceof ErrorMessage) {
             log.debug("Received error message {}", message);
             ErrorMessage error = (ErrorMessage) message;
             ErrorData data = error.getData();
-            processRequest(input, data, message.getCorrelationId());
+            processRequest(input, data, getCommandContext());
         } else {
             unhandledInput(input);
         }
     }
 
-    private void processRequest(Tuple input, BaseRequest request, String correlationId) {
+    private void processRequest(Tuple input, BaseRequest request, CommandContext context) {
         if (request instanceof SwitchesBaseRequest) {
-            getOutput().emit(StreamType.SWITCH.toString(), input, new Values(request, correlationId));
+            getOutput().emit(StreamType.SWITCH.toString(), input, new Values(request, context));
         } else if (request instanceof LinksBaseRequest) {
-            getOutput().emit(StreamType.ISL.toString(), input, new Values(request, correlationId));
+            getOutput().emit(StreamType.ISL.toString(), input, new Values(request, context));
         } else if (request instanceof FlowsBaseRequest) {
-            getOutput().emit(StreamType.FLOW.toString(), input, new Values(request, correlationId));
+            getOutput().emit(StreamType.FLOW.toString(), input, new Values(request, context));
         } else if (request instanceof FeatureTogglesBaseRequest) {
-            getOutput().emit(StreamType.FEATURE_TOGGLES.toString(), input, new Values(request, correlationId));
+            getOutput().emit(StreamType.FEATURE_TOGGLES.toString(), input, new Values(request, context));
         } else if (request instanceof GetPathsRequest) {
-            getOutput().emit(StreamType.PATHS.toString(), input, new Values(request, correlationId));
+            getOutput().emit(StreamType.PATHS.toString(), input, new Values(request, context));
         } else if (request instanceof GetFlowHistoryRequest) {
-            getOutput().emit(StreamType.HISTORY.toString(), input, new Values(request, correlationId));
+            getOutput().emit(StreamType.HISTORY.toString(), input, new Values(request, context));
         } else {
             unhandledInput(input);
         }
     }
 
-    private void processRequest(Tuple input, InfoData data, String correlationId) {
+    private void processRequest(Tuple input, InfoData data, CommandContext context) {
         if (data instanceof SwitchFlowEntries) {
-            getOutput().emit(StreamType.VALIDATION.toString(), input, new Values(data, correlationId));
+            getOutput().emit(StreamType.VALIDATION.toString(), input, new Values(data, context));
         } else {
             unhandledInput(input);
         }
     }
 
-    private void processRequest(Tuple input, ErrorData data, String correlationId) {
-        getOutput().emit(StreamType.ERROR.toString(), input, new Values(data, correlationId));
+    private void processRequest(Tuple input, ErrorData data, CommandContext context) {
+        getOutput().emit(StreamType.ERROR.toString(), input, new Values(data, context));
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         Fields fields = new Fields(PersistenceOperationsBolt.FIELD_ID_REQUEST,
-                PersistenceOperationsBolt.FIELD_ID_CORELLATION_ID);
+                PersistenceOperationsBolt.FIELD_ID_CONTEXT);
         declarer.declareStream(StreamType.SWITCH.toString(), fields);
         declarer.declareStream(StreamType.ISL.toString(), fields);
         declarer.declareStream(StreamType.FLOW.toString(), fields);
@@ -113,8 +114,7 @@ public class RouterBolt extends AbstractBolt {
         declarer.declareStream(StreamType.HISTORY.toString(), fields);
 
         declarer.declareStream(StreamType.VALIDATION.toString(),
-                new Fields(SwitchValidationsBolt.FIELD_ID_REQUEST,
-                        SwitchValidationsBolt.FIELD_ID_CORELLATION_ID));
+                new Fields(SwitchValidationsBolt.FIELD_ID_REQUEST, SwitchValidationsBolt.FIELD_ID_CONTEXT));
 
         declarer.declareStream(StreamType.ERROR.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));

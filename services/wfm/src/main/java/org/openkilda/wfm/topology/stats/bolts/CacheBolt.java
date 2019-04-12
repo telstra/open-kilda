@@ -32,6 +32,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.MeasurePoint;
@@ -56,7 +57,7 @@ public class CacheBolt extends AbstractBolt {
     public static final String METER_CACHE_FIELD = "meter_cache";
 
     public static final Fields statsWithCacheFields =
-            new Fields(STATS_FIELD, TIMESTAMP, COOKIE_CACHE_FIELD, METER_CACHE_FIELD);
+            new Fields(STATS_FIELD, TIMESTAMP, COOKIE_CACHE_FIELD, METER_CACHE_FIELD, FIELD_ID_CONTEXT);
     /**
      * The logger.
      */
@@ -130,6 +131,7 @@ public class CacheBolt extends AbstractBolt {
 
     private void handleGetDataFromCache(Tuple tuple) throws PipelineException {
         InfoData data = pullValue(tuple, STATS_FIELD, InfoData.class);
+        CommandContext commandContext = pullContext(tuple);
         Map<Long, CacheFlowEntry> cookieDataCache = null;
         Map<MeterCacheKey, CacheFlowEntry> meterDataCache = null;
         String streamId;
@@ -147,7 +149,8 @@ public class CacheBolt extends AbstractBolt {
             return;
         }
 
-        Values values = new Values(data, tuple.getLongByField(TIMESTAMP), cookieDataCache, meterDataCache);
+        Values values =
+                new Values(data, tuple.getLongByField(TIMESTAMP), cookieDataCache, meterDataCache, commandContext);
         getOutput().emit(streamId, tuple, values);
     }
 
