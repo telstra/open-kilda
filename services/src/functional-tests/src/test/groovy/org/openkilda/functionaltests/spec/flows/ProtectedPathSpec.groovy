@@ -840,6 +840,75 @@ class ProtectedPathSpec extends BaseSpecification {
 
     }
 
+    def "Unable to swap an inactive flow"() {
+        given: "Two active neighboring switches with two not overlapping paths at least"
+        def switches = topology.getActiveSwitches()
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            database.getPaths(src.dpId, dst.dpId)*.path.collect {
+                pathHelper.getInvolvedIsls(it)
+            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "A flow with protected path"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.allocateProtectedPath = true
+        flowHelper.addFlow(flow)
+        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+
+        and: "All alternative paths are unavailable (bring ports down on the source switch)"
+        List<PathNode> broughtDownPorts = []
+        database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.findAll { it != flow }.unique {
+            it.first()
+        }.each { path ->
+            def src = path.first()
+            broughtDownPorts.add(src)
+            northbound.portDown(src.switchId, src.portNo)
+        }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == IslChangeType.FAILED
+            }.size() == broughtDownPorts.size() * 2
+        }
+
+        when: "Switch some port to DOWN state for changing the flow state to down"
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
+        def currentProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
+        def protectedIsls = pathHelper.getInvolvedIsls(currentProtectedPath)
+        def currentIsls = pathHelper.getInvolvedIsls(currentPath)
+        northbound.portDown(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
+        northbound.portDown(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
+
+        then: "Flow state is changed to down"
+        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
+
+        when: "Try to swap the inactive flow"
+        northbound.swapFlowPath(flow.id)
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpServerErrorException)
+        exc.rawStatusCode == 500
+//        def exc = thrown(HttpClientErrorException)
+//        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage ==
+                "Could not swap paths: Protected flow path $flow.id is not in ACTIVE state"
+
+        and: "Restore topology, delete flows and reset costs"
+        //TODO investigate I think I have choosen switch pair incorrectly
+        // possibly i have to choose switch pair without a-switch
+        northbound.portUp(currentIsls[0].srcSwitch.dpId, currentIsls[0].srcPort)
+        northbound.portUp(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
+        Wrappers.wait(WAIT_OFFSET * 2) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        northbound.portUp(protectedIsls[0].srcSwitch.dpId, protectedIsls[0].srcPort)
+        northbound.portUp(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
+        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        flowHelper.deleteFlow(flow.id)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+        }
+        database.resetCosts()
+    }
+
     List<Switch> getNotNeighboringSwitchPair(minPossiblePath) {
         def switches = topology.getActiveSwitches()
         def allLinks = northbound.getAllLinks()
