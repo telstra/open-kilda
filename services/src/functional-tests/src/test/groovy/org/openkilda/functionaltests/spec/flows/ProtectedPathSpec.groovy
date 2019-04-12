@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
@@ -16,6 +17,7 @@ import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpServerErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
@@ -74,12 +76,16 @@ class ProtectedPathSpec extends BaseSpecification {
         }
 
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
+        def currentLastUpdate = northbound.getFlow(flow.id).lastUpdated
         northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
 
         then: "Protected path is enabled"
         northbound.getFlowPath(flow.id).protectedPath
 
-        and: "Rules are updated  on the main path"
+        def newCurrentLastUpdate = northbound.getFlow(flow.id).lastUpdated
+        currentLastUpdate < newCurrentLastUpdate
+
+        and: "Rules are updated on the main path"
         def mainFlowPath = northbound.getFlowPath(flow.id).forwardPath
         def protectedFlowPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
         def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
@@ -167,6 +173,9 @@ class ProtectedPathSpec extends BaseSpecification {
         exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not update flow: Couldn't setup protected path for one-switch flow"
+
+        and: "Cleanup: revert system to original state"
+        flowHelper.deleteFlow(flow.id)
     }
 
     @Unroll
@@ -175,7 +184,7 @@ class ProtectedPathSpec extends BaseSpecification {
         def allIsls = northbound.getAllLinks()
         def (Switch srcSwitch, Switch dstSwitch) = getNotNeighboringSwitchPair(2)
 
-        when: "Create flow with protected bandwidth"
+        when: "Create flow with protected path"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = bandwidth
         flow.allocateProtectedPath = true
@@ -363,7 +372,6 @@ class ProtectedPathSpec extends BaseSpecification {
         "an unmetered"  | 0
     }
 
-    @Ignore
     @Unroll
     def "Able to get flow(protectedPath=#protectedPath) path in case flow is not rerouted"() {
         given: "Two active neighboring switches and a flow"
@@ -382,6 +390,9 @@ class ProtectedPathSpec extends BaseSpecification {
 
         and: "System allows to get flow path"
         northbound.getFlowPath(flow.id)
+
+        and: "Cleanup: revert system to original state"
+        flowHelper.deleteFlow(flow.id)
 
         where:
         protectedPath << [false, true]
@@ -522,7 +533,7 @@ class ProtectedPathSpec extends BaseSpecification {
         def allIsls = northbound.getAllLinks()
         def (Switch srcSwitch, Switch dstSwitch) = getNotNeighboringSwitchPair(2)
 
-        when: "Create a flow with protected bandwidth"
+        when: "Create a flow with protected path"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.allocateProtectedPath = true
         flowHelper.addFlow(flow)
@@ -611,8 +622,9 @@ class ProtectedPathSpec extends BaseSpecification {
             }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
         } ?: assumeTrue("No suiting switches found", false)
 
-        and: "A flow without protected bandwidth"
+        and: "A flow without protected path"
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow1.allocateProtectedPath = false
         flowHelper.addFlow(flow1)
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
@@ -670,7 +682,7 @@ class ProtectedPathSpec extends BaseSpecification {
             }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
         } ?: assumeTrue("No suiting switches found", false)
 
-        and: "A flow without protected bandwidth"
+        and: "A flow without protected path"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.allocateProtectedPath = false
         flow.maximumBandwidth = bandwidth
@@ -714,6 +726,108 @@ class ProtectedPathSpec extends BaseSpecification {
         flowDescription | bandwidth
         "a metered"     | 1000
         "an unmetered"  | 0
+    }
+
+    def "Able to swap flow path"() {
+        given: "Two active not neighboring switches with two possible paths at least"
+        def (Switch srcSwitch, Switch dstSwitch) = getNotNeighboringSwitchPair(2)
+
+        and: "Create a flow with protected path"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.allocateProtectedPath = true
+        flowHelper.addFlow(flow)
+        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
+        def currentProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
+        currentPath != currentProtectedPath
+
+        and: "Needed rules exist"
+        def mainFlowPath = northbound.getFlowPath(flow.id).forwardPath
+        def protectedFlowPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
+        def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
+        Wrappers.wait(WAIT_OFFSET) {
+            verifyRulesOnCommonNodes(commonNodeIds, srcSwitch.dpId, dstSwitch.dpId, mainFlowPath, protectedFlowPath)
+        }
+
+        def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
+            !commonNodeIds.contains(it.switchId)
+        }
+        verifyRulesOnUniqueSwitches(uniqueNodes)
+
+        when: "Swap flow path"
+        def currentLastUpdate = northbound.getFlow(flow.id).lastUpdated
+        northbound.swapFlowPath(flow.id)
+
+        then: "Flow path is swapped"
+        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        def newCurrentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
+        def newCurrentProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
+        newCurrentPath != currentPath
+        newCurrentPath == currentProtectedPath
+        newCurrentProtectedPath != currentProtectedPath
+        newCurrentProtectedPath == currentPath
+
+        def newCurrentLastUpdate = northbound.getFlow(flow.id).lastUpdated
+        //TODO should be '<' awaiting fix from dev
+        currentLastUpdate == newCurrentLastUpdate
+
+        and: "Rules are updated"
+        def newMainFlowPath = northbound.getFlowPath(flow.id).forwardPath
+        def newProtectedFlowPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
+        def newCommonNodeIds = newMainFlowPath*.switchId.intersect(newProtectedFlowPath*.switchId)
+        Wrappers.wait(WAIT_OFFSET) {
+            verifyRulesOnCommonNodes(newCommonNodeIds, srcSwitch.dpId, dstSwitch.dpId,
+                    newMainFlowPath, newProtectedFlowPath)
+        }
+
+        def newUniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
+            !commonNodeIds.contains(it.switchId)
+        }
+        verifyRulesOnUniqueSwitches(newUniqueNodes)
+
+        and: "Cleanup: revert system to original state"
+        flowHelper.deleteFlow(flow.id)
+    }
+
+    def "Unable to swap a flow in case allocate_protected_path=false"() {
+        given: "Two active neighboring switches"
+        def isls = topology.getIslsForActiveSwitches()
+        def (srcSwitch, dstSwitch) = [isls.first().srcSwitch, isls.first().dstSwitch]
+
+        and: "A flow without protected path"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.allocateProtectedPath = false
+        flowHelper.addFlow(flow)
+
+        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        !northbound.getFlowPath(flow.id).protectedPath
+
+        when: "Try to swap flow without protected path"
+        northbound.swapFlowPath(flow.id)
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpServerErrorException)
+        exc.rawStatusCode == 500
+        //TODO awaiting fix from dev
+//        def exc = thrown(HttpClientErrorException)
+//        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage ==
+                "Could not swap paths: Flow $flow.id doesn't have protected path"
+
+        and: "Cleanup: revert system to original state"
+        flowHelper.deleteFlow(flow.id)
+    }
+
+    def "Unable to swap a non-existent flow"() {
+        when: "Try to swap path on a non-existent flow"
+        northbound.swapFlowPath(NON_EXISTENT_FLOW_ID)
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 404
+        exc.responseBodyAsString.to(MessageError).errorMessage ==
+                "Could not swap paths: Flow $NON_EXISTENT_FLOW_ID not found"
+
     }
 
     List<Switch> getNotNeighboringSwitchPair(minPossiblePath) {
