@@ -64,7 +64,7 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
         // Setup spout and bolt for TOPO_DISCO_SPOUT line
         String topoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
         logger.debug("connecting to {} topic", topoDiscoTopic);
-        builder.setSpout(TOPO_DISCO_SPOUT, createKafkaSpout(topoDiscoTopic, TOPO_DISCO_SPOUT));
+        builder.setSpout(TOPO_DISCO_SPOUT, buildKafkaSpout(topoDiscoTopic, TOPO_DISCO_SPOUT));
 
         TopoDiscoParseBolt topoDiscoParseBolt = new TopoDiscoParseBolt();
         builder.setBolt(TOPO_DISCO_PARSE_BOLT_NAME, topoDiscoParseBolt, topologyConfig.getParallelism())
@@ -83,7 +83,7 @@ public class PortStateTopology extends AbstractTopology<PortStateTopologyConfig>
         // Setup spout and bolt for WFM_STATS_SPOUT line
         String wfmStatsTopic = topologyConfig.getKafkaStatsTopic();
         logger.debug("connecting to {} topic", wfmStatsTopic);
-        builder.setSpout(WFM_STATS_SPOUT, createKafkaSpout(wfmStatsTopic, WFM_STATS_SPOUT));
+        builder.setSpout(WFM_STATS_SPOUT, buildKafkaSpout(wfmStatsTopic, WFM_STATS_SPOUT));
         
         WfmStatsParseBolt wfmStatsParseBolt = new WfmStatsParseBolt();
         builder.setBolt(WFM_STATS_PARSE_BOLT_NAME, wfmStatsParseBolt, topologyConfig.getParallelism())

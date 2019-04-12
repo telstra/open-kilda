@@ -15,11 +15,14 @@
 
 package org.openkilda.wfm.topology.opentsdb;
 
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.kafka.InfoDataDeserializer;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.opentsdb.OpenTsdbTopologyConfig.OpenTsdbConfig;
 import org.openkilda.wfm.topology.opentsdb.bolts.DatapointParseBolt;
 import org.openkilda.wfm.topology.opentsdb.bolts.OpenTSDBFilterBolt;
+import org.openkilda.wfm.topology.utils.InfoDataTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
@@ -87,10 +90,14 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
         OpenTsdbConfig openTsdbConfig = topologyConfig.getOpenTsdbConfig();
 
-        KafkaSpoutConfig<String, String> spoutConfig = makeKafkaSpoutConfigBuilder(OTSDB_SPOUT_ID, otsdbTopic)
+        //FIXME: We have to use the Message class for messaging.
+        KafkaSpoutConfig<String, InfoData> config = getKafkaSpoutConfigBuilder(otsdbTopic, OTSDB_SPOUT_ID)
+                .setValue(InfoDataDeserializer.class)
+                .setRecordTranslator(new InfoDataTranslator())
                 .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_EARLIEST)
                 .build();
-        KafkaSpout kafkaSpout = new KafkaSpout<>(spoutConfig);
+
+        KafkaSpout kafkaSpout = new KafkaSpout<>(config);
         topology.setSpout(OTSDB_SPOUT_ID, kafkaSpout, openTsdbConfig.getNumSpouts());
     }
 

@@ -68,14 +68,14 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
 
     @Override
     @SuppressWarnings("unchecked")
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request, String correlationId) {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
         List<? extends InfoData> result = null;
         if (request instanceof GetFlowsForIslRequest) {
             result = processGetFlowsForLinkRequest((GetFlowsForIslRequest) request);
         } else if (request instanceof RerouteFlowsForIslRequest) {
             result = processRerouteFlowsForLinkRequest((RerouteFlowsForIslRequest) request, tuple);
         } else if (request instanceof GetFlowPathRequest) {
-            result = processGetFlowPathRequest((GetFlowPathRequest) request, correlationId);
+            result = processGetFlowPathRequest((GetFlowPathRequest) request);
         } else if (request instanceof FlowPatchRequest) {
             result = processFlowPatchRequest((FlowPatchRequest) request);
         } else {
@@ -137,8 +137,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         return Collections.singletonList(new FlowsResponse(flowIds));
     }
 
-    private List<GetFlowPathResponse> processGetFlowPathRequest(GetFlowPathRequest request, String correlationId) {
-        final String errorType = "Could not get flow path";
+    private List<GetFlowPathResponse> processGetFlowPathRequest(GetFlowPathRequest request) {
+        final String errorDescription = "Could not get flow path";
 
         try {
             return flowOperationsService.getFlowPath(request.getFlowId())
@@ -146,11 +146,9 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
                     .map(GetFlowPathResponse::new)
                     .collect(Collectors.toList());
         } catch (FlowNotFoundException e) {
-            throw new MessageException(correlationId, System.currentTimeMillis(),
-                    ErrorType.NOT_FOUND, errorType, e.getMessage());
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), errorDescription);
         } catch (Exception e) {
-            throw new MessageException(correlationId, System.currentTimeMillis(),
-                    ErrorType.INTERNAL_ERROR, errorType, e.getMessage());
+            throw new MessageException(ErrorType.INTERNAL_ERROR, e.getMessage(), errorDescription);
         }
     }
 
@@ -169,7 +167,6 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declare(new Fields("response", "correlationId"));
         declarer.declareStream(StreamType.REROUTE.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
     }
