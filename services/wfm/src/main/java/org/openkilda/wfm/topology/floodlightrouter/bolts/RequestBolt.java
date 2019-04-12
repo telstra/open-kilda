@@ -15,11 +15,8 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
-import static org.openkilda.messaging.Utils.MAPPER;
-
 import org.openkilda.messaging.Message;
 import org.openkilda.model.SwitchId;
-
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.service.RouterUtils;
@@ -45,27 +42,23 @@ import java.util.Set;
 public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, SwitchTracker>> {
     private static final String SWITCH_TRACKER_KEY = "SWITCH_TRACKER_KEY";
     protected String outputStream;
-    protected final Set<String> regions;
+    protected final transient Set<String> regions;
 
     protected transient SwitchTracker switchTracker;
-
-    protected OutputCollector outputCollector;
+    protected transient OutputCollector outputCollector;
 
     public RequestBolt(String outputStream, Set<String> regions) {
         this.outputStream = outputStream;
         this.regions = regions;
-
     }
 
     @Override
     public void execute(Tuple input) {
         try {
             if (Stream.REGION_NOTIFICATION.equals(input.getSourceStreamId())) {
-                updateSwitchMapping((SwitchMapping) input.getValueByField(
-                        AbstractTopology.MESSAGE_FIELD));
+                updateSwitchMapping((SwitchMapping) input.getValueByField(AbstractTopology.MESSAGE_FIELD));
             } else {
-                String json = pullRequest(input);
-                Message message = MAPPER.readValue(json, Message.class);
+                Message message = pullMessage(input);
 
                 SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
                 if (switchId != null) {
@@ -73,11 +66,11 @@ public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, 
                     if (region != null) {
                         proxyRequestToSpeaker(input, region);
                     } else {
-                        log.error("Unable to lookup region for message: {}", json);
+                        log.error("Unable to lookup region for message: {}", message);
                     }
 
                 } else {
-                    log.error("Unable to lookup switch for message: {}", json);
+                    log.error("Unable to lookup switch for message: {}", message);
                 }
             }
         } catch (Exception e) {
@@ -90,20 +83,20 @@ public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, 
     protected void proxyRequestToSpeaker(Tuple input, String region) {
         String targetStream = Stream.formatWithRegion(outputStream, region);
         String key = pullRequestKey(input);
-        String value = pullRequest(input);
+        Message value = pullMessage(input);
         outputCollector.emit(targetStream, input, makeSpeakerTuple(key, value));
     }
 
-    protected String pullRequest(Tuple input) {
-        return input.getStringByField(KafkaRecordTranslator.FIELD_ID_PAYLOAD);
+    protected Message pullMessage(Tuple input) {
+        return (Message) input.getValueByField(KafkaRecordTranslator.FIELD_ID_PAYLOAD);
     }
 
     protected String pullRequestKey(Tuple input) {
         return input.getStringByField(KafkaRecordTranslator.FIELD_ID_KEY);
     }
 
-    protected Values makeSpeakerTuple(String key, String json) {
-        return new Values(key, json);
+    protected Values makeSpeakerTuple(String key, Message message) {
+        return new Values(key, message);
     }
 
     /**

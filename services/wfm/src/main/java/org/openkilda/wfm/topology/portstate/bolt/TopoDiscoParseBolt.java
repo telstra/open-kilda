@@ -15,11 +15,13 @@
 
 package org.openkilda.wfm.topology.portstate.bolt;
 
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.wfm.error.MessageException;
 import org.openkilda.wfm.topology.portstate.PortStateTopology;
 import org.openkilda.wfm.topology.utils.AbstractKafkaParserBolt;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -27,8 +29,6 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 public class TopoDiscoParseBolt extends AbstractKafkaParserBolt {
     private static final Logger logger = LoggerFactory.getLogger(TopoDiscoParseBolt.class);
@@ -47,15 +47,14 @@ public class TopoDiscoParseBolt extends AbstractKafkaParserBolt {
     }
 
     private void doParseMessage(Tuple tuple) {
+        Message message = (Message) tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
         try {
-            InfoData infoData = getInfoData(tuple);
+            InfoData infoData = getInfoData(message);
             if (infoData instanceof PortInfoData) {
                 collector.emit(TOPO_TO_PORT_INFO_STREAM, new Values((PortInfoData) infoData));
             }
-        } catch (IOException e) {
-            logger.error("Error processing: {}", tuple.toString(), e);
         } catch (MessageException e) {
-            // don't really have to do anything but exception is thrown so catch it
+            logger.error("Not an InfoMessage in queue message={}", message);
         } finally {
             collector.ack(tuple);
         }

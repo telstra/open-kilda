@@ -33,8 +33,6 @@ public class SwitchValidationsBolt extends AbstractBolt {
     private final PersistenceManager persistenceManager;
     private transient ValidationService validationService;
 
-    public static final String FIELD_ID_CORELLATION_ID = "correlationId";
-
     public static final String FIELD_ID_REQUEST = "request";
 
     public SwitchValidationsBolt(PersistenceManager persistenceManager) {
@@ -50,14 +48,13 @@ public class SwitchValidationsBolt extends AbstractBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(
-                new Fields(ResponseSplitterBolt.FIELD_ID_RESPONSE, ResponseSplitterBolt.FIELD_ID_CORELLATION_ID));
+                new Fields(ResponseSplitterBolt.FIELD_ID_RESPONSE, ResponseSplitterBolt.FIELD_ID_CONTEXT));
     }
 
     @Override
     protected void handleInput(Tuple input) throws PipelineException {
         SwitchFlowEntries request = pullValue(input, FIELD_ID_REQUEST, SwitchFlowEntries.class);
-        final String correlationId = pullValue(input, FIELD_ID_CORELLATION_ID, String.class);
 
-        getOutput().emit(input, new Values(ImmutableList.of(validationService.validate(request)), correlationId));
+        getOutput().emit(input, new Values(ImmutableList.of(validationService.validate(request)), getCommandContext()));
     }
 }

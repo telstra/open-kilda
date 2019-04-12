@@ -70,14 +70,6 @@ public class IslStatsBolt extends BaseRichBolt {
         return tsdbTuple(metricFormatter.format("isl.latency"), timestamp, data.getLatency(), tags);
     }
 
-    private String getJson(Tuple tuple) {
-        return tuple.getStringByField(KafkaRecordTranslator.FIELD_ID_PAYLOAD);
-    }
-
-    public Message getMessage(String json) throws IOException {
-        return Utils.MAPPER.readValue(json, Message.class);
-    }
-
     InfoData getInfoData(Message message) {
         if (!(message instanceof InfoMessage)) {
             throw new IllegalArgumentException(message.getClass().getName() + " is not an InfoMessage");
@@ -95,15 +87,12 @@ public class IslStatsBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
         logger.debug("tuple: {}", tuple);
-        String json = getJson(tuple);
         try {
-            Message message = getMessage(json);
+            Message message = (Message) tuple.getValueByField(KafkaRecordTranslator.FIELD_ID_PAYLOAD);
             IslInfoData data = getIslInfoData(getInfoData(message));
             List<Object> results = buildTsdbTuple(data, message.getTimestamp());
             logger.debug("emit: {}", results);
             collector.emit(results);
-        } catch (IOException e) {
-            logger.error("Could not deserialize message={}", json, e);
         } catch (Exception e) {
             // TODO: has to be a cleaner way to do this?
         } finally {
