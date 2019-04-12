@@ -111,10 +111,10 @@ public class HistoryService {
     }
 
     public List<FlowHistory> listFlowHistory(String taskId) {
-        return new ArrayList<>(flowHistoryRepository.listFlowHistoryByTaskId(taskId));
+        return new ArrayList<>(flowHistoryRepository.findByTaskId(taskId));
     }
 
     public List<FlowDump> listFlowDump(String taskId) {
-        return new ArrayList<>(flowStateRepository.listFlowDumpByTaskId(taskId));
+        return new ArrayList<>(flowStateRepository.findFlowDumpByTaskId(taskId));
     }
 }

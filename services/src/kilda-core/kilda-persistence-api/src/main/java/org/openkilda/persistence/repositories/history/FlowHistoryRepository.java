@@ -21,5 +21,5 @@ import org.openkilda.persistence.repositories.Repository;
 import java.util.Collection;
 
 public interface FlowHistoryRepository extends Repository<FlowHistory> {
-    Collection<FlowHistory> listFlowHistoryByTaskId(String taskId);
+    Collection<FlowHistory> findByTaskId(String taskId);
 }

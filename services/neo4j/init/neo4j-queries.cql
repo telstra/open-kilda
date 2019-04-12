@@ -6,11 +6,11 @@ CREATE CONSTRAINT ON (`flow_event`:`flow_event`) ASSERT `flow_event`.`entityId` 
 CREATE CONSTRAINT ON (`flow`:`flow`) ASSERT `flow`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow`:`flow`) ASSERT `flow`.`flowid` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_history`:`flow_history`) ASSERT `flow_history`.`entityId` IS UNIQUE;
+CREATE CONSTRAINT ON (`flow_meter`:`flow_meter`) ASSERT `flow_meter`.`unique_index` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_meter`:`flow_meter`) ASSERT `flow_meter`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_meter`:`flow_meter`) ASSERT `flow_meter`.`path_id` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_path`:`flow_path`) ASSERT `flow_path`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_path`:`flow_path`) ASSERT `flow_path`.`path_id` IS UNIQUE;
-CREATE CONSTRAINT ON ( flow_segment:flow_segment ) ASSERT flow_segment.entityId IS UNIQUE;
 CREATE CONSTRAINT ON (`history_log`:`history_log`) ASSERT `history_log`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`isl`:`isl`) ASSERT `isl`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`link_props`:`link_props`) ASSERT `link_props`.`entityId` IS UNIQUE;
@@ -22,7 +22,7 @@ CREATE CONSTRAINT ON (`state_log`:`state_log`) ASSERT `state_log`.`entityId` IS 
 CREATE CONSTRAINT ON (`switch`:`switch`) ASSERT `switch`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`switch`:`switch`) ASSERT `switch`.`name` IS UNIQUE;
 CREATE CONSTRAINT ON (`transit_vlan`:`transit_vlan`) ASSERT `transit_vlan`.`entityId` IS UNIQUE;
-CREATE CONSTRAINT ON (`transit_vlan`:`transit_vlan`) ASSERT `transit_vlan`.`path_id` IS UNIQUE;
 CREATE CONSTRAINT ON (`transit_vlan`:`transit_vlan`) ASSERT `transit_vlan`.`vlan` IS UNIQUE;
 CREATE INDEX ON :`flow_path`(`flow_id`);
 CREATE INDEX ON :`path_segment`(`path_id`);
+CREATE INDEX ON :`transit_vlan`(`path_id`);

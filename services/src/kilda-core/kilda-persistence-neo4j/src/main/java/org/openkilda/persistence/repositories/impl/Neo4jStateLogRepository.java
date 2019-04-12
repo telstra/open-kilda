@@ -25,7 +25,7 @@ public class Neo4jStateLogRepository extends Neo4jGenericRepository<StateLog> im
     }
 
     @Override
-    Class<StateLog> getEntityType() {
+    protected Class<StateLog> getEntityType() {
         return StateLog.class;
     }
 }
