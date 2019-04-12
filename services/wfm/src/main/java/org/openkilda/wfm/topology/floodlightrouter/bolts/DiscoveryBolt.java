@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
-import static org.openkilda.messaging.Utils.MAPPER;
-
 import org.openkilda.messaging.Message;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.persistence.PersistenceManager;
@@ -28,8 +26,8 @@ import org.openkilda.wfm.topology.floodlightrouter.service.FloodlightTracker;
 import org.openkilda.wfm.topology.floodlightrouter.service.MessageSender;
 import org.openkilda.wfm.topology.floodlightrouter.service.RouterService;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -92,8 +90,7 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
         currentTuple = input;
         Message message = null;
         try {
-            String json = input.getValueByField(AbstractTopology.MESSAGE_FIELD).toString();
-            message = MAPPER.readValue(json, Message.class);
+            message = (Message) input.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
             switch (sourceComponent) {
                 case ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT:
                     routerService.processSpeakerDiscoResponse(this, message);
@@ -146,30 +143,20 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
 
     @Override
     public void send(Message message, String outputStream, boolean lookupKey) {
-        try {
-            String json = MAPPER.writeValueAsString(message);
-            Values values;
-            if (lookupKey && currentTuple.getFields().contains(AbstractTopology.KEY_FIELD)
-                    && currentTuple.getValueByField(AbstractTopology.KEY_FIELD) != null) {
-                values = new Values(currentTuple.getStringByField(AbstractTopology.KEY_FIELD), json);
-            } else {
-                values = new Values(json);
-            }
-            outputCollector.emit(outputStream, currentTuple, values);
-        } catch (JsonProcessingException e) {
-            logger.error("failed to serialize message {}", message);
+        Values values;
+        if (lookupKey && currentTuple.getFields().contains(AbstractTopology.KEY_FIELD)
+                && currentTuple.getValueByField(AbstractTopology.KEY_FIELD) != null) {
+            values = new Values(currentTuple.getStringByField(AbstractTopology.KEY_FIELD), message);
+        } else {
+            values = new Values(message);
         }
+        outputCollector.emit(outputStream, currentTuple, values);
     }
 
     @Override
     public void send(String key, Message message, String outputStream) {
-        try {
-            String json = MAPPER.writeValueAsString(message);
-            Values values = new Values(key, json);
-            outputCollector.emit(outputStream, currentTuple, values);
-        } catch (JsonProcessingException e) {
-            logger.error("failed to serialize message {}", message);
-        }
+        Values values = new Values(key, message);
+        outputCollector.emit(outputStream, currentTuple, values);
     }
 
     @Override

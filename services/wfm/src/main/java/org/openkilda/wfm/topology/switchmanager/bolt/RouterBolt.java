@@ -21,9 +21,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.AbstractException;
-import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.switchmanager.command.RemoveKeyRouterBolt;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
@@ -63,9 +61,8 @@ public class RouterBolt extends AbstractBolt {
         }
     }
 
-    private void emit(String stream, Tuple input, String key, Message message) throws PipelineException {
-        CommandContext context = pullContext(input);
-        getOutput().emit(stream, input, new Values(key, message, context));
+    private void emit(String stream, Tuple input, String key, Message message) {
+        getOutput().emit(stream, input, new Values(key, message, getCommandContext()));
     }
 
     @Override
