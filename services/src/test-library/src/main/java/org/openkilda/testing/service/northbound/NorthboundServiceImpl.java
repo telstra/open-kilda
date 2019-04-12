@@ -287,7 +287,7 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public FlowPayload swapFlowPath(String flowId){
+    public FlowPayload swapFlowPath(String flowId) {
         return restTemplate.exchange("/api/v1/flows/{flowId}/swap", HttpMethod.PATCH,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
     }

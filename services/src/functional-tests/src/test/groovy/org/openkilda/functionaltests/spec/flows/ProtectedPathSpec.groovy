@@ -53,6 +53,12 @@ class ProtectedPathSpec extends BaseSpecification {
         }
         verifyRulesOnUniqueSwitches(uniqueNodes)
 
+
+        and: "Validation of flow must be succeed"
+        northbound.validateFlow(flow.id).each { direction ->
+            assert direction.discrepancies.empty
+        }
+
         and: "Cleanup: delete the flow"
         flowHelper.deleteFlow(flow.id)
 
@@ -988,8 +994,7 @@ class ProtectedPathSpec extends BaseSpecification {
         }
     }
 
-//    test new API swap, no any mention about it in ticket
-//    update chaosSpec
+//    test new API swap, no any mention about it in ticket - done
 //    A-B-C/A=B=C will the protected path be created? - done (unable to create protectedPath on the same path)
 //    What is the correct behaviour in case isl is down on the protected path and new protected path can't be found
 //    update chaosSpec
@@ -997,11 +1002,10 @@ class ProtectedPathSpec extends BaseSpecification {
 //    run and update tests related to the validateRule action
 //    run and update tests related to the synchronize action
 //    run and update tests related to the flow validate action
-//    port anti flap ??
+//    port anti flap - not necessary
 //    VLAN=0 - done
 //    extend flow validation tests to show their ability to detect problems in protected paths
 //    unable create protected path on the same path - done
 //    error message/code will be fixed - done
 //    ignore preferable path and reroute to protected path - done
 }
-
