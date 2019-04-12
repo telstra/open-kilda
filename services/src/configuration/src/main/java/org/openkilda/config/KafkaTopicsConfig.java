@@ -119,6 +119,10 @@ public interface KafkaTopicsConfig {
     @Default("kilda.speaker.flow.storm")
     String getSpeakerFlowTopic();
 
+    @Key("speaker.flowhs")
+    @Default("kilda.speaker.flowhs.storm")
+    String getSpeakerFlowHsTopic();
+
     @Key("speaker.flow.region")
     @FallbackKey("kafka.speaker.flow.region")
     @Default("kilda.speaker.flow")

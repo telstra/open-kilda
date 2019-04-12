@@ -36,13 +36,13 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.floodlightrouter.ComponentType;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.service.RouterService;
-import org.openkilda.wfm.topology.utils.KeyValueKafkaRecordTranslator;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Value;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
@@ -80,17 +80,16 @@ public class DiscoveryBoltTest {
 
     public static final String FIELD_ID_KEY = "key";
     public static final String FIELD_ID_MESSAGE = "message";
+    public static final String FIELD_ID_CONTEXT = "context";
     private static final Fields STREAM_SPEAKER_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_MESSAGE);
     private static final Fields STREAM_CONSUMER_FIELDS = STREAM_SPEAKER_FIELDS;
-    private static final Fields STREAM_REGION_NOTIFICATION_FIELDS = new Fields(FIELD_ID_MESSAGE);
+    private static final Fields STREAM_REGION_NOTIFICATION_FIELDS = new Fields(FIELD_ID_MESSAGE, FIELD_ID_CONTEXT);
 
     private static final InMemoryKeyValueState<String, RouterService> subjectStateStorage
             = new InMemoryKeyValueState<>();
     private static final Map<String, Integer> componentNameToTaskId = new HashMap<>();
     private static final Map<Integer, String> taskIdToComponentName = new HashMap<>();
     private static final Map<StreamDescriptor, Fields> streamFields = new HashMap<>();
-
-    private static final ObjectMapper JsonMapper = new ObjectMapper();
 
     static {
         int idx = 0;
@@ -99,7 +98,7 @@ public class DiscoveryBoltTest {
 
         componentNameToTaskId.forEach((key, value) -> taskIdToComponentName.put(value, key));
 
-        Fields kafkaSpoutFields = KeyValueKafkaRecordTranslator.FIELDS;
+        Fields kafkaSpoutFields = MessageTranslator.STREAM_FIELDS;
         streamFields.put(new StreamDescriptor(ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT, Utils.DEFAULT_STREAM_ID),
                          kafkaSpoutFields);
         streamFields.put(new StreamDescriptor(ComponentType.SPEAKER_DISCO_KAFKA_SPOUT, Utils.DEFAULT_STREAM_ID),
@@ -157,7 +156,7 @@ public class DiscoveryBoltTest {
     }
 
     @Test
-    public void verifyConsumerToSpeakerTupleFormat() throws JsonProcessingException {
+    public void verifyConsumerToSpeakerTupleFormat() {
         injectSwitch();
 
         CommandMessage discoveryRequest = new CommandMessage(
@@ -170,7 +169,7 @@ public class DiscoveryBoltTest {
 
         verify(outputCollector).emit(eq(Stream.formatWithRegion(Stream.SPEAKER_DISCO, REGION_ONE)),
                                      eq(discoveryRequestTuple),
-                                     argThat(values -> verifyConsumerTupleFormat(values)));
+                                     argThat(this::verifyConsumerTupleFormat));
 
         verify(outputCollector).ack(any(Tuple.class));
         verifyNoMoreInteractions(outputCollector);
@@ -178,7 +177,7 @@ public class DiscoveryBoltTest {
     }
 
     @Test
-    public void verifySpeakerToConsumerTupleFormat() throws JsonProcessingException {
+    public void verifySpeakerToConsumerTupleFormat() {
         injectSwitch();
 
         InfoMessage discoveryConfirmation = new InfoMessage(
@@ -191,7 +190,7 @@ public class DiscoveryBoltTest {
         subject.doWork(discoveryConfirmationTuple);
 
         verify(outputCollector).emit(eq(Stream.KILDA_TOPO_DISCO), eq(discoveryConfirmationTuple),
-                                     argThat(values -> verifyConsumerTupleFormat(values)));
+                                     argThat(this::verifyConsumerTupleFormat));
         verify(outputCollector).ack(any(Tuple.class));
         verifyNoMoreInteractions(outputCollector);
 
@@ -219,7 +218,7 @@ public class DiscoveryBoltTest {
     }
 
     @Test
-    public void verifySpeakerToConsumerKeyPropagation() throws JsonProcessingException {
+    public void verifySpeakerToConsumerKeyPropagation() {
         injectSwitch();
 
         InfoMessage discoveryConfirmation = new InfoMessage(
@@ -238,7 +237,7 @@ public class DiscoveryBoltTest {
         verifyNoMoreInteractions(outputCollector);
     }
 
-    private void injectSwitch() throws JsonProcessingException {
+    private void injectSwitch() {
         // populate switch-to-region map
         InfoMessage switchInfo = new InfoMessage(new SwitchInfoData(switchAlpha, SwitchChangeType.ACTIVATED),
                                                  1, "init-sw-map", REGION_ONE);
@@ -260,11 +259,7 @@ public class DiscoveryBoltTest {
     }
 
     private boolean verifyConsumerTupleFormat(List<Object> payload, String expectKey) {
-        return payload.size() == 2 && isNullOrString(payload.get(0), expectKey) && isNullOrString(payload.get(1));
-    }
-
-    private boolean isNullOrString(Object value) {
-        return isNullOrString(value, null);
+        return payload.size() == 2 && isNullOrString(payload.get(0), expectKey) && isNullOrMessage(payload.get(1));
     }
 
     private boolean isNullOrString(Object value, String expect) {
@@ -274,18 +269,21 @@ public class DiscoveryBoltTest {
         return value == null || value instanceof String;
     }
 
+    private boolean isNullOrMessage(Object value) {
+        return value == null || value instanceof Message;
+    }
+
     private Tuple makeTuple(Values payload, String component, String stream) {
         Integer taskId = componentNameToTaskId.get(component);
         return new TupleImpl(topologyContext, payload, taskId, stream);
     }
 
-    private Values makeConsumerTuple(String key, Message payload) throws JsonProcessingException {
+    private Values makeConsumerTuple(String key, Message payload) {
         return makeSpeakerTuple(key, payload);
     }
 
-    private Values makeSpeakerTuple(String key, Message payload) throws JsonProcessingException {
-        String json = JsonMapper.writeValueAsString(payload);
-        return new Values(key, json);
+    private Values makeSpeakerTuple(String key, Message payload) {
+        return new Values(key, payload, new CommandContext());
     }
 
     @Value

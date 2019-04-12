@@ -36,25 +36,17 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class PersistenceOperationsBolt extends AbstractBolt {
-    public static final String FIELD_ID_CORELLATION_ID = "correlationId";
     public static final String FIELD_ID_REQUEST = "request";
     private final PersistenceManager persistenceManager;
     protected transient RepositoryFactory repositoryFactory;
     protected transient TransactionManager transactionManager;
-    private String correlationId;
-    // TODO(surabujin): should be replaced with currentTuple provided by AbstractBolt
-    private Tuple tuple;
 
     PersistenceOperationsBolt(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
     }
 
-    public String getCorrelationId() {
-        return correlationId;
-    }
-
-    public Tuple getTuple() {
-        return tuple;
+    protected String getCorrelationId() {
+        return getCommandContext().getCorrelationId();
     }
 
     @Override
@@ -66,24 +58,23 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
 
     protected void handleInput(Tuple input) throws Exception {
         BaseRequest request = pullValue(input, FIELD_ID_REQUEST, BaseRequest.class);
-        correlationId = pullValue(input, FIELD_ID_CORELLATION_ID, String.class);
-        tuple = input;
         log.debug("Received operation request");
 
         try {
-            List<InfoData> result = processRequest(input, request, correlationId);
-            getOutput().emit(input, new Values(result, correlationId));
+            List<InfoData> result = processRequest(input, request);
+            getOutput().emit(input, new Values(result, getCommandContext()));
         } catch (MessageException e) {
             ErrorData data = new ErrorData(e.getErrorType(), e.getMessage(), e.getErrorDescription());
-            getOutput().emit(StreamType.ERROR.toString(), input, new Values(data, correlationId));
+            getOutput().emit(StreamType.ERROR.toString(), input, new Values(data, getCommandContext()));
         }
     }
 
-    abstract List<InfoData> processRequest(Tuple tuple, BaseRequest request, String correlationId);
+    abstract List<InfoData> processRequest(Tuple tuple, BaseRequest request);
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declareStream(StreamType.ERROR.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
+        declarer.declare(new Fields(ResponseSplitterBolt.FIELD_ID_RESPONSE, ResponseSplitterBolt.FIELD_ID_CONTEXT));
     }
 }

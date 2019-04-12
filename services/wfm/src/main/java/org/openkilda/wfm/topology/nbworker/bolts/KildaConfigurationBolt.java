@@ -27,8 +27,6 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.mappers.KildaConfigurationMapper;
 import org.openkilda.wfm.topology.nbworker.services.KildaConfigurationService;
 
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 import java.util.Collections;
@@ -47,7 +45,7 @@ public class KildaConfigurationBolt extends PersistenceOperationsBolt {
     }
 
     @Override
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request, String correlationId) {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
         KildaConfigurationDto kildaConfigurationDto = null;
         if (request instanceof KildaConfigurationGetRequest) {
             kildaConfigurationDto = getKildaConfiguration();
@@ -72,12 +70,5 @@ public class KildaConfigurationBolt extends PersistenceOperationsBolt {
         } catch (IllegalArgumentException e) {
             throw new MessageException(ErrorType.PARAMETERS_INVALID, e.getMessage(), "Update kilda configuration.");
         }
-    }
-
-    @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        super.declareOutputFields(declarer);
-        declarer.declare(
-                new Fields(ResponseSplitterBolt.FIELD_ID_RESPONSE, ResponseSplitterBolt.FIELD_ID_CORELLATION_ID));
     }
 }

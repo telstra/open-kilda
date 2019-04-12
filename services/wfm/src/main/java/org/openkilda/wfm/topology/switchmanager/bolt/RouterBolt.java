@@ -20,13 +20,10 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.switchmanager.command.RemoveKeyRouterBolt;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
@@ -41,7 +38,7 @@ public class RouterBolt extends AbstractBolt {
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        String key = input.getStringByField(MessageTranslator.KEY_FIELD);
+        String key = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
         Message message = pullValue(input, MessageTranslator.FIELD_ID_PAYLOAD, Message.class);
 
         if (message instanceof CommandMessage) {
@@ -58,14 +55,12 @@ public class RouterBolt extends AbstractBolt {
         }
     }
 
-    private void emit(String stream, Tuple input, String key, Message message) throws PipelineException {
-        CommandContext context = pullContext(input);
-        getOutput().emit(stream, input, new Values(key, message, context));
+    private void emit(String stream, Tuple input, String key, Message message) {
+        getOutput().emit(stream, input, new Values(key, message, getCommandContext()));
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        Fields fields = new Fields(MessageTranslator.KEY_FIELD, MessageTranslator.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
-        declarer.declareStream(SwitchValidateManager.INCOME_STREAM, fields);
+        declarer.declareStream(SwitchValidateManager.INCOME_STREAM, MessageTranslator.STREAM_FIELDS);
     }
 }

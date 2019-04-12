@@ -17,19 +17,14 @@ package org.openkilda.wfm.topology.event;
 
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
-import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.error.StreamNameCollisionException;
 import org.openkilda.wfm.topology.AbstractTopology;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
-import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * OFEventWFMTopology creates the topology to manage these key aspects of OFEvents.
@@ -78,7 +73,7 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
 
         TopologyBuilder builder = new TopologyBuilder();
 
-        builder.setSpout(DISCO_SPOUT_ID, createKafkaSpout(kafkaTopoDiscoTopic, DISCO_SPOUT_ID));
+        builder.setSpout(DISCO_SPOUT_ID, buildKafkaSpout(kafkaTopoDiscoTopic, DISCO_SPOUT_ID));
 
         PortEventRouterBolt portEventRouterBolt = new PortEventRouterBolt();
         builder.setBolt(PORT_EVENT_ROUTER_BOLT_ID, portEventRouterBolt, topologyConfig.getParallelism())
@@ -116,13 +111,9 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
                 .shuffleGrouping(NETWORK_TOPOLOGY_BOLT_ID, NetworkTopologyBolt.REROUTE_STREAM);
 
         OfeLinkBolt ofeLinkBolt = new OfeLinkBolt(topologyConfig);
-        BoltDeclarer bd = builder.setBolt(DISCO_BOLT_ID, ofeLinkBolt, topologyConfig.getParallelism())
+        builder.setBolt(DISCO_BOLT_ID, ofeLinkBolt, topologyConfig.getParallelism())
                 .shuffleGrouping(PORT_EVENT_ROUTER_BOLT_ID, PortEventRouterBolt.DEFAULT_STREAM)
                 .shuffleGrouping(PORT_EVENT_THROTTLING_BOLT_ID);
-        List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
-        // TODO: verify this ctrlTarget after refactoring.
-        ctrlTargets.add(new CtrlBoltRef(DISCO_BOLT_ID, ofeLinkBolt, bd));
-        createCtrlBranch(builder, ctrlTargets);
 
         return builder.createTopology();
     }

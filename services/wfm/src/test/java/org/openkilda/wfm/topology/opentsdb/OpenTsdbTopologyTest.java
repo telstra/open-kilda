@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.opentsdb;
 
 import static org.mockserver.integration.ClientAndServer.startClientAndServer;
-import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.wfm.StableAbstractStormTest;
@@ -68,7 +67,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
             OpenTsdbTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
 
             sources.addMockData(OpenTsdbTopology.OTSDB_SPOUT_ID,
-                    new Values(MAPPER.writeValueAsString(datapoint), null));
+                    new Values(null, datapoint));
             completeTopologyParam.setMockedSources(sources);
 
             StormTopology stormTopology = topology.createTopology();
@@ -83,7 +82,6 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     @Test
     public void shouldSendDatapointRequestsOnlyOnce() throws Exception {
         Datapoint datapoint = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
-        String jsonDatapoint = MAPPER.writeValueAsString(datapoint);
 
         MockedSources sources = new MockedSources();
 
@@ -91,7 +89,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
             OpenTsdbTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
 
             sources.addMockData(OpenTsdbTopology.OTSDB_SPOUT_ID,
-                    new Values(jsonDatapoint, null), new Values(jsonDatapoint, null));
+                    new Values(null, datapoint), new Values(null, datapoint));
             completeTopologyParam.setMockedSources(sources);
 
             StormTopology stormTopology = topology.createTopology();
@@ -105,10 +103,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     @Test
     public void shouldSendDatapointRequestsTwice() throws Exception {
         Datapoint datapoint1 = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
-        String jsonDatapoint1 = MAPPER.writeValueAsString(datapoint1);
-
         Datapoint datapoint2 = new Datapoint("metric", timestamp, Collections.emptyMap(), 456);
-        String jsonDatapoint2 = MAPPER.writeValueAsString(datapoint2);
 
         MockedSources sources = new MockedSources();
 
@@ -116,7 +111,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
             OpenTsdbTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
 
             sources.addMockData(OpenTsdbTopology.OTSDB_SPOUT_ID,
-                    new Values(jsonDatapoint1, null), new Values(jsonDatapoint2, null));
+                    new Values(null, datapoint1), new Values(null, datapoint2));
             completeTopologyParam.setMockedSources(sources);
 
             StormTopology stormTopology = topology.createTopology();

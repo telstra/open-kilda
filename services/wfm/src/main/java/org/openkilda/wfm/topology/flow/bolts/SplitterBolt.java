@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology.flow.bolts;
 
-import static org.openkilda.messaging.Utils.MAPPER;
-
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
@@ -37,6 +35,7 @@ import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -64,28 +63,15 @@ public class SplitterBolt extends BaseRichBolt {
     private OutputCollector outputCollector;
 
     /**
-     * Parse incoming message. Return null on parse failure.
-     */
-    private Message tryMessage(String json) {
-        Message result = null;
-        try {
-            result = MAPPER.readValue(json, Message.class);
-        } catch (Exception e) {
-            /* do nothing */
-        }
-        return result;
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override
     public void execute(Tuple tuple) {
-        String request = tuple.getString(0);
-        Values values = new Values(request);
+        Message message = null;
 
         try {
-            Message message = tryMessage(request);
+            message = (Message) tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
+
             if (message == null
                     || !(message instanceof CommandMessage || message instanceof InfoMessage)) {
                 /*
@@ -119,7 +105,7 @@ public class SplitterBolt extends BaseRichBolt {
                     FlowInfoData fid = (FlowInfoData) data;
                     String flowId = fid.getFlowId();
 
-                    values = new Values(message, flowId);
+                    Values values = new Values(message, flowId);
                     logger.info("Flow {} message: operation={} values={}", flowId, fid.getOperation(), values);
                     if (fid.getOperation() == FlowOperation.PUSH
                             || fid.getOperation() == FlowOperation.PUSH_PROPAGATE) {
@@ -145,55 +131,55 @@ public class SplitterBolt extends BaseRichBolt {
             if (data instanceof FlowCreateRequest) {
                 String flowId = ((FlowCreateRequest) data).getPayload().getFlowId();
 
+                Values values = new Values(message, flowId);
                 logger.info("Flow {} create message: values={}", flowId, values);
 
-                values = new Values(message, flowId);
                 outputCollector.emit(StreamType.CREATE.toString(), tuple, values);
 
             } else if (data instanceof FlowDeleteRequest) {
                 String flowId = ((FlowDeleteRequest) data).getPayload().getFlowId();
 
+                Values values = new Values(message, flowId);
                 logger.info("Flow {} delete message: values={}", flowId, values);
 
-                values = new Values(message, flowId);
                 outputCollector.emit(StreamType.DELETE.toString(), tuple, values);
 
             } else if (data instanceof FlowUpdateRequest) {
                 String flowId = ((FlowUpdateRequest) data).getPayload().getFlowId();
 
+                Values values = new Values(message, flowId);
                 logger.info("Flow {} update message: values={}", flowId, values);
 
-                values = new Values(message, flowId);
                 outputCollector.emit(StreamType.UPDATE.toString(), tuple, values);
 
             } else if (data instanceof FlowRerouteRequest) {
                 String flowId = ((FlowRerouteRequest) data).getFlowId();
 
+                Values values = new Values(message, flowId);
                 logger.info("Flow {} reroute message: values={}", flowId, values);
 
-                values = new Values(message, flowId);
                 outputCollector.emit(StreamType.REROUTE.toString(), tuple, values);
 
             } else if (data instanceof FlowPathSwapRequest) {
                 String flowId = ((FlowPathSwapRequest) data).getFlowId();
 
+                Values values = new Values(message, flowId);
                 logger.info("Flow {} path swap message: values={}", flowId, values);
 
-                values = new Values(message, flowId);
                 outputCollector.emit(StreamType.PATH_SWAP.toString(), tuple, values);
 
             } else if (data instanceof FlowReadRequest) {
                 String flowId = ((FlowReadRequest) data).getFlowId();
 
+                Values values = new Values(message, flowId);
                 logger.info("Flow {} read message: values={}", flowId, values);
 
-                values = new Values(message, flowId);
                 outputCollector.emit(StreamType.READ.toString(), tuple, values);
 
             } else if (data instanceof FlowsDumpRequest) {
+                Values values = new Values(message, null);
                 logger.info("Flows dump message: values={}", values);
 
-                values = new Values(message, null);
                 outputCollector.emit(StreamType.DUMP.toString(), tuple, values);
 
             } else if (data instanceof MeterModifyRequest) {
@@ -201,7 +187,7 @@ public class SplitterBolt extends BaseRichBolt {
 
                 logger.info("Update meter for flow {}", flowId);
 
-                values = new Values(message, flowId);
+                Values values = new Values(message, flowId);
                 outputCollector.emit(StreamType.METER_MODE.toString(), tuple, values);
 
             } else if (data instanceof DeallocateFlowResourcesRequest) {
@@ -209,14 +195,14 @@ public class SplitterBolt extends BaseRichBolt {
 
                 logger.info("Deallocate resources for flow {}", flowId);
 
-                values = new Values(message, flowId);
+                Values values = new Values(message, flowId);
                 outputCollector.emit(StreamType.DEALLOCATE_RESOURCES.toString(), tuple, values);
             } else if (data instanceof UpdateFlowPathStatusRequest) {
                 String flowId = ((UpdateFlowPathStatusRequest) data).getFlowId();
 
                 logger.info("Update status for flow {}", flowId);
 
-                values = new Values(message, flowId);
+                Values values = new Values(message, flowId);
                 outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
             } else {
                 logger.debug("Skip undefined CommandMessage: {}={}", Utils.CORRELATION_ID, message.getCorrelationId());
@@ -227,8 +213,8 @@ public class SplitterBolt extends BaseRichBolt {
         } finally {
             outputCollector.ack(tuple);
 
-            logger.debug("Splitter message ack: component={}, stream={}, tuple={}, values={}",
-                    tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, values);
+            logger.debug("Splitter message ack: component={}, stream={}, tuple={}, message={}",
+                    tuple.getSourceComponent(), tuple.getSourceStreamId(), tuple, message);
         }
     }
 

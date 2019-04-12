@@ -39,7 +39,9 @@ public final class ComponentType {
     public static final String KILDA_FLOW_KAFKA_SPOUT = "KILDA_FLOW_KAFKA_SPOUT";
     public static final String KILDA_FLOW_HS_KAFKA_SPOUT = "KILDA_FLOW_HS_KAFKA_SPOUT";
     public static final String SPEAKER_FLOW_KAFKA_BOLT = "SPEAKER_FLOW_KAFKA_BOLT";
+    public static final String SPEAKER_FLOW_HS_KAFKA_BOLT = "SPEAKER_FLOW_HS_KAFKA_BOLT";
     public static final String SPEAKER_FLOW_KAFKA_SPOUT = "ROUTER_SPEAKER_FLOW_KAFKA_SPOUT";
+    public static final String SPEAKER_FLOW_HS_KAFKA_SPOUT = "ROUTER_SPEAKER_FLOW_HS_KAFKA_SPOUT";
     public static final String SPEAKER_PING_KAFKA_SPOUT = "SPEAKER_PING_KAFKA_SPOUT";
     public static final String SPEAKER_PING_KAFKA_BOLT = "SPEAKER_PING_KAFKA_BOLT";
     public static final String KILDA_PING_KAFKA_SPOUT = "KILDA_PING_KAFKA_SPOUT";
