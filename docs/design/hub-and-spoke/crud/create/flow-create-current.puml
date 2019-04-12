@@ -1,0 +1,98 @@
+@startuml
+title FLOW create
+
+control kilda.flow
+participant SplitterBolt as SplitterBolt
+participant SpeakerBolt as SpeakerBolt
+participant CrudBolt as CrudBolt
+participant TransactionBolt
+participant ErrorBolt
+participant NorthboundReplyBolt
+participant StatusBolt
+control kilda.northbound
+control kilda.speaker.flow
+
+kilda.flow -> SplitterBolt: CommandMessage\nFlowCreateRequest
+SplitterBolt -> CrudBolt: CommandMessage\nFlowCreateRequest
+== Flow verification ==
+activate CrudBolt
+CrudBolt -> CrudBolt: Validate the flow
+alt Flow already exists?
+    CrudBolt -> ErrorBolt: Flow with requested id already exists
+    ErrorBolt -> NorthboundReplyBolt: Error message
+    NorthboundReplyBolt -> kilda.northbound: Error message
+end
+
+CrudBolt -> CrudBolt: Calculate a path
+alt Path is not found
+    CrudBolt -> ErrorBolt: No path available for requested flow
+    ErrorBolt -> NorthboundReplyBolt: Error message
+    NorthboundReplyBolt -> kilda.northbound: Error message
+end
+
+== Flow creation ==
+CrudBolt -> CrudBolt: Allocate resources
+note right: Allocation of cookies, vlans and \nmeters occurs in ResourceCache
+
+CrudBolt -> CrudBolt: Set status to FlowStatus.IN_PROGRESS
+
+CrudBolt -> CrudBolt: Save the flow
+CrudBolt -> CrudBolt: Save flow segments
+CrudBolt -> CrudBolt: Update ISLs' available bandwidth
+
+loop in forward, reverse
+    loop in segments
+        CrudBolt -> CrudBolt: Create install command
+        note right: Two groups of commands is created: \negress/transit (1st stage) and ingress (2nd stage)
+    end
+end
+
+CrudBolt -> TransactionBolt: Flow installation commands
+activate TransactionBolt
+
+CrudBolt -> NorthboundReplyBolt: Flow creation response
+NorthboundReplyBolt -> kilda.northbound: Flow creation response
+deactivate CrudBolt
+
+TransactionBolt -> TransactionBolt: Register the batch with \nconfigured expiration time
+
+== Rules installation ==
+loop for each command in the 1st group
+    TransactionBolt -> kilda.speaker.flow: Forward the command to Speaker
+    TransactionBolt -> TransactionBolt: Register as a transaction for the 1st group
+end
+deactivate TransactionBolt
+
+loop for each installed
+    kilda.flow -> SplitterBolt: CommandMessage\nBaseFlow
+    SplitterBolt -> SpeakerBolt: CommandMessage\nBaseFlow
+    SpeakerBolt -> TransactionBolt: CommandMessage\nBaseFlow
+    activate TransactionBolt
+    TransactionBolt -> TransactionBolt: Mark corresponding transaction as completed
+	opt Are all transit/egress rules installed?
+        TransactionBolt -> TransactionBolt: Mark 1st group as completed
+
+         loop for each command in the next group
+            TransactionBolt -> kilda.speaker.flow: Forward the command to Speaker
+            TransactionBolt -> TransactionBolt: Register as a transaction for the next stage \n(installing ingress rules)
+        end
+	end
+	opt Are all groups of a batch completed?
+        TransactionBolt -> StatusBolt: Update the flow status to FlowStatus.UP
+        StatusBolt -> StatusBolt: Set the flow status
+	end
+end
+deactivate TransactionBolt
+
+== Handling expired batches ==
+
+ TransactionBolt -> TransactionBolt: Periodic tick tuple
+activate TransactionBolt
+loop for each expired batch
+    TransactionBolt -> TransactionBolt: Remove all pending groups
+    TransactionBolt -> StatusBolt: Update the flow status to FlowStatus.DOWN
+    StatusBolt -> StatusBolt: Set the flow status
+end
+deactivate TransactionBolt
+
+@enduml

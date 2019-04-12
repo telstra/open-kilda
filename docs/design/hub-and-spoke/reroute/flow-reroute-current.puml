@@ -1,0 +1,124 @@
+@startuml
+title FLOW reroute
+
+control kilda.topo.reroute
+box "Reroute Topology" #LightGreen
+    participant RerouteBolt
+    participant FlowThrottlingBolt
+end box
+control kilda.flow
+box "Flow Topology" #LightBlue
+    participant SplitterBolt
+    participant CrudBolt
+    participant TransactionBolt
+    participant ErrorBolt
+    participant NorthboundReplyBolt
+    participant StatusBolt
+    participant SpeakerBolt
+end box
+control kilda.northbound
+control kilda.speaker.flow
+
+kilda.topo.reroute -> RerouteBolt : CommandMessage\n-RerouteAffectedFlows\n-RerouteInactiveFlows
+activate RerouteBolt
+
+RerouteBolt -> RerouteBolt : get affected / inactive flows
+loop for each flow
+    RerouteBolt -> FlowThrottlingBolt : a command with flow_id
+    activate FlowThrottlingBolt
+    FlowThrottlingBolt -> kilda.flow : CommandMessage\nFlowRerouteRequest
+    deactivate FlowThrottlingBolt
+end
+
+deactivate RerouteBolt
+
+== Flow reroute ==
+kilda.flow -> SplitterBolt: CommandMessage\nFlowRerouteRequest
+SplitterBolt -> CrudBolt: CommandMessage\nFlowRerouteRequest
+activate CrudBolt
+
+CrudBolt -> CrudBolt: Get the flow from DB
+
+alt No flow found
+    CrudBolt -> ErrorBolt: Requested flow doesn't exist
+    ErrorBolt -> NorthboundReplyBolt: Error message
+    NorthboundReplyBolt -> kilda.northbound: Error message
+end
+
+CrudBolt -> CrudBolt: Calculate a path for the flow
+alt No path found
+    CrudBolt -> ErrorBolt: No path available for the flow
+    ErrorBolt -> NorthboundReplyBolt: Error message
+    NorthboundReplyBolt -> kilda.northbound: Error message
+else Found path is the same as the current, and forced reroute is NOT requested
+    CrudBolt -> NorthboundReplyBolt: Flow reroute response (rerouted=false)
+    NorthboundReplyBolt -> kilda.northbound: Flow reroute response
+end
+
+CrudBolt -> CrudBolt: Allocate resources for rerouted flow
+note right: Allocation of cookies, vlans and \nmeters occurs in ResourceCache
+
+CrudBolt -> CrudBolt: Remove old flow
+CrudBolt -> CrudBolt: Remove old flow segments
+CrudBolt -> CrudBolt: Release used bandwidth on ISLs
+
+CrudBolt -> CrudBolt: Change status to FlowStatus.IN_PROGRESS
+
+CrudBolt -> CrudBolt: Save rerouted flow
+CrudBolt -> CrudBolt: Save rerouted flow segments
+CrudBolt -> CrudBolt: Update ISLs' available bandwidth
+
+CrudBolt -> CrudBolt: Deallocate resources used by old flow
+
+CrudBolt -> CrudBolt: Create install/delete commands
+note right: 4 groups of commands is created: \n1. Install egress/transit \n2. Install ingress \n3. Remove old ingress \n4. Remove old transit/egress.
+
+CrudBolt -> TransactionBolt: Flow installation/deletion commands
+activate TransactionBolt
+
+CrudBolt -> NorthboundReplyBolt: Flow reroute response  (rerouted=true)
+NorthboundReplyBolt -> kilda.northbound: Flow reroute response
+deactivate CrudBolt
+
+== Rules installation ==
+TransactionBolt -> TransactionBolt: Register the batch with \nconfigured expiration time
+
+loop for each command in the 1st group
+    TransactionBolt -> kilda.speaker.flow: Forward the command to Speaker
+    TransactionBolt -> TransactionBolt: Register as a transaction for the 1st group
+end
+deactivate TransactionBolt
+
+loop for each installed
+    kilda.flow -> SplitterBolt: CommandMessage\nBaseFlow
+    SplitterBolt -> SpeakerBolt: CommandMessage\nBaseFlow
+    SpeakerBolt -> TransactionBolt: CommandMessage\nBaseFlow
+    activate TransactionBolt
+    TransactionBolt -> TransactionBolt: Mark corresponding transaction as completed
+	opt Are all transactions of the current group completed?
+        TransactionBolt -> TransactionBolt: Mark the group as completed
+
+         loop for each command in the next group
+            TransactionBolt -> kilda.speaker.flow: Forward the command to Speaker
+            TransactionBolt -> TransactionBolt: Register as a transaction for the next stage
+        end
+	end
+	opt Are all groups of a batch completed?
+        TransactionBolt -> StatusBolt: Update the flow status to FlowStatus.UP
+        StatusBolt -> StatusBolt: Set the flow status
+	end
+end
+deactivate TransactionBolt
+
+== Handling expired batches ==
+
+ TransactionBolt -> TransactionBolt: Periodic tick tuple
+activate TransactionBolt
+loop for each expired batch
+    TransactionBolt -> TransactionBolt: Remove all pending groups
+    TransactionBolt -> StatusBolt: Update the flow status to FlowStatus.DOWN
+    StatusBolt -> StatusBolt: Set the flow status
+end
+deactivate TransactionBolt
+
+@enduml
