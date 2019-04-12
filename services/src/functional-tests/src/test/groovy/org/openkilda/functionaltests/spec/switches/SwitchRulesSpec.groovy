@@ -23,6 +23,7 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
+import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
@@ -540,6 +541,79 @@ class SwitchRulesSpec extends BaseSpecification {
         action        | method
         "synchronize" | "synchronizeSwitchRules"
         "validate"    | "validateSwitchRules"
+    }
+
+    def "Able to synchronize rules for a flow with protected path"() {
+        given: "Two active not neighboring switches"
+        def switches = topology.getActiveSwitches()
+        def allLinks = northbound.getAllLinks()
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            allLinks.every { link -> !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId) }
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "Create a flow with protected path"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.allocateProtectedPath = true
+        flowHelper.addFlow(flow)
+
+        flowHelper.verifyRulesOnProtectedFlow(flow.id)
+        def flowPathInfo = northbound.getFlowPath(flow.id)
+        def mainFlowPath = flowPathInfo.forwardPath
+        def protectedFlowPath = flowPathInfo.protectedPath.forwardPath
+        def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
+        def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
+            !commonNodeIds.contains(it.switchId)
+        }
+
+        and: "Delete flow rules(for main and protected paths) on involved switches for creating missing rules"
+        def amountOfRules = { SwitchId switchId ->
+            (switchId == srcSwitch.dpId || switchId == dstSwitch.dpId) ? 3 : 4
+        }
+        commonNodeIds.each { northbound.deleteSwitchRules(it, DeleteRulesAction.IGNORE_DEFAULTS) }
+        uniqueNodes.each { northbound.deleteSwitchRules(it.switchId, DeleteRulesAction.IGNORE_DEFAULTS) }
+
+        commonNodeIds.each { switchId ->
+            assert northbound.validateSwitchRules(switchId).missingRules.size() == amountOfRules(switchId)
+        }
+
+        uniqueNodes.each { assert northbound.validateSwitchRules(it.switchId).missingRules.size() == 2 }
+
+        when: "Synchronize rules on switches"
+        commonNodeIds.each {
+            def response = northbound.synchronizeSwitchRules(it)
+            assert response.missingRules.size() == amountOfRules(it)
+            assert response.installedRules.sort() == response.missingRules.sort()
+            assert response.properRules.empty
+            assert response.excessRules.empty
+        }
+        uniqueNodes.each {
+            def response = northbound.synchronizeSwitchRules(it.switchId)
+            assert response.missingRules.size() == 2
+            assert response.installedRules.sort() == response.missingRules.sort()
+            assert response.properRules.empty
+            assert response.excessRules.empty
+        }
+
+        then: "No missing rules were found after rules synchronization"
+        commonNodeIds.each { switchId ->
+            verifyAll(northbound.validateSwitchRules(switchId)) {
+                properRules.size() == amountOfRules(switchId)
+                missingRules.empty
+                excessRules.empty
+            }
+        }
+
+        uniqueNodes.each {
+            verifyAll(northbound.validateSwitchRules(it.switchId)) {
+                properRules.size() == 2
+                missingRules.empty
+                excessRules.empty
+            }
+        }
+
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     def "Traffic counters in ingress rule are reset on flow rerouting"() {
