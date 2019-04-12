@@ -87,6 +87,8 @@ public interface NorthboundService {
 
     FlowMeterEntries resetMeters(String flowId);
 
+    FlowPayload swapFlowPath(String flowId);
+
     //switches
 
     SwitchFlowEntries getSwitchRules(SwitchId switchId);
