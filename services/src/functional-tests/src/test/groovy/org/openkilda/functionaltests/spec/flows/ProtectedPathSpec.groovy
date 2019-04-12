@@ -24,13 +24,16 @@ import spock.lang.Unroll
 
 @Narrative("TBD")
 class ProtectedPathSpec extends BaseSpecification {
-    def "Able to create flow with the 'protected path' option"() {
+    @Unroll
+    def "Able to create flow with the 'protected path' option in case maximumBandwidth=#bandwidth, vlan=#vlanId"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def (Switch srcSwitch, Switch dstSwitch) = getNotNeighboringSwitchPair(2)
 
         when: "Create flow with protected path"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.allocateProtectedPath = true
+        flow.maximumBandwidth = bandwidth
+        flow.source.vlanId = vlanId
         flowHelper.addFlow(flow)
 
         then: "Flow is created with protected path"
@@ -52,6 +55,13 @@ class ProtectedPathSpec extends BaseSpecification {
 
         and: "Cleanup: delete the flow"
         flowHelper.deleteFlow(flow.id)
+
+        where:
+        bandwidth | vlanId
+        1000      | 3378
+        0         | 3378
+        1000      | 0
+        0         | 0
     }
 
     def "Able to update the 'protected path' option"() {
@@ -919,7 +929,7 @@ class ProtectedPathSpec extends BaseSpecification {
 //    run and update tests related to the synchronize action
 //    run and update tests related to the flow validate action
 //    port anti flap ??
-//    VLAN=0
+//    VLAN=0 - done
 //    extend flow validation tests to show their ability to detect problems in protected paths
 //    unable create protected path on the same path - done
 //    error message/code will be fixed - done
