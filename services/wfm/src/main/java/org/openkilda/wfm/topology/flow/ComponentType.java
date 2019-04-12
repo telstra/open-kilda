@@ -25,9 +25,9 @@ public enum ComponentType {
     NETWORK_CACHE_SPOUT,
 
     /**
-     * Northbound kafka spout. Receives Northbound requests.
+     * Flow kafka spout. Receives Northbound requests.
      */
-    NORTHBOUND_KAFKA_SPOUT,
+    FLOW_KAFKA_SPOUT,
 
     /**
      * Topology Engine kafka spout. Receives Topology Engine responses.

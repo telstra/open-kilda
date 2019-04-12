@@ -68,13 +68,12 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
 
     @Override
     @SuppressWarnings("unchecked")
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request, String correlationId) {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
         List<? extends InfoData> result = null;
         if (request instanceof GetSwitchesRequest) {
             result = getSwitches();
         } else if (request instanceof UpdateSwitchUnderMaintenanceRequest) {
-            result = updateSwitchUnderMaintenanceFlag((UpdateSwitchUnderMaintenanceRequest) request,
-                    tuple, correlationId);
+            result = updateSwitchUnderMaintenanceFlag((UpdateSwitchUnderMaintenanceRequest) request, tuple);
         } else if (request instanceof GetSwitchRequest) {
             result = getSwitch((GetSwitchRequest) request);
         } else if (request instanceof DeleteSwitchRequest) {
@@ -101,8 +100,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
     }
 
     private List<SwitchInfoData> updateSwitchUnderMaintenanceFlag(UpdateSwitchUnderMaintenanceRequest request,
-                                                                  Tuple tuple,
-                                                                  String correlationId) {
+                                                                  Tuple tuple) {
         SwitchId switchId = request.getSwitchId();
         boolean underMaintenance = request.isUnderMaintenance();
         boolean evacuate = request.isEvacuate();
@@ -117,7 +115,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         if (underMaintenance && evacuate) {
             flowOperationsService.getFlowIdsForSwitch(switchId).forEach(flowId -> {
                 FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId);
-                getOutput().emit(StreamType.REROUTE.toString(), tuple, new Values(rerouteRequest, correlationId));
+                getOutput().emit(StreamType.REROUTE.toString(), tuple, new Values(rerouteRequest, getCorrelationId()));
             });
         }
 
@@ -149,7 +147,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
 
         if (deleted) {
             DeactivateSwitchInfoData data = new DeactivateSwitchInfoData(switchId);
-            getOutput().emit(StreamType.DISCO.toString(), getTuple(), new Values(data, getCorrelationId()));
+            getOutput().emit(StreamType.DISCO.toString(), getCurrentTuple(), new Values(data, getCorrelationId()));
         }
 
         log.info("{} deletion of switch '{}'", deleted ? "Successful" : "Unsuccessful", switchId);
@@ -159,7 +157,6 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declare(new Fields("response", "correlationId"));
         declarer.declareStream(StreamType.REROUTE.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.DISCO.toString(),

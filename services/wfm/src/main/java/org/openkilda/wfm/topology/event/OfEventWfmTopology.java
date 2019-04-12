@@ -78,7 +78,7 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
 
         TopologyBuilder builder = new TopologyBuilder();
 
-        builder.setSpout(DISCO_SPOUT_ID, createKafkaSpout(kafkaTopoDiscoTopic, DISCO_SPOUT_ID));
+        builder.setSpout(DISCO_SPOUT_ID, buildKafkaSpout(kafkaTopoDiscoTopic, DISCO_SPOUT_ID));
 
         PortEventRouterBolt portEventRouterBolt = new PortEventRouterBolt();
         builder.setBolt(PORT_EVENT_ROUTER_BOLT_ID, portEventRouterBolt, topologyConfig.getParallelism())
@@ -122,7 +122,6 @@ public class OfEventWfmTopology extends AbstractTopology<OFEventWfmTopologyConfi
         List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
         // TODO: verify this ctrlTarget after refactoring.
         ctrlTargets.add(new CtrlBoltRef(DISCO_BOLT_ID, ofeLinkBolt, bd));
-        createCtrlBranch(builder, ctrlTargets);
 
         return builder.createTopology();
     }

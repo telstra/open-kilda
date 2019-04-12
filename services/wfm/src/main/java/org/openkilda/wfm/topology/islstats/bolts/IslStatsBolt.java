@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -69,14 +70,6 @@ public class IslStatsBolt extends BaseRichBolt {
         return tsdbTuple(metricFormatter.format("isl.latency"), timestamp, data.getLatency(), tags);
     }
 
-    private String getJson(Tuple tuple) {
-        return tuple.getString(0);
-    }
-
-    public Message getMessage(String json) throws IOException {
-        return Utils.MAPPER.readValue(json, Message.class);
-    }
-
     InfoData getInfoData(Message message) {
         if (!(message instanceof InfoMessage)) {
             throw new IllegalArgumentException(message.getClass().getName() + " is not an InfoMessage");
@@ -94,15 +87,12 @@ public class IslStatsBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
         logger.debug("tuple: {}", tuple);
-        String json = getJson(tuple);
         try {
-            Message message = getMessage(json);
+            Message message = (Message) tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
             IslInfoData data = getIslInfoData(getInfoData(message));
             List<Object> results = buildTsdbTuple(data, message.getTimestamp());
             logger.debug("emit: {}", results);
             collector.emit(results);
-        } catch (IOException e) {
-            logger.error("Could not deserialize message={}", json, e);
         } catch (Exception e) {
             // TODO: has to be a cleaner way to do this?
         } finally {

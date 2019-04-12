@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology.flow.bolts;
 
-import static org.openkilda.messaging.Utils.MAPPER;
-
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
@@ -26,6 +24,7 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.rule.FlowCommandErrorData;
 import org.openkilda.wfm.topology.flow.FlowTopology;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -36,7 +35,6 @@ import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -45,7 +43,7 @@ import java.util.Map;
 public class SpeakerBolt extends BaseRichBolt {
     private static final Logger logger = LoggerFactory.getLogger(SpeakerBolt.class);
 
-    private OutputCollector outputCollector;
+    private transient OutputCollector outputCollector;
 
     /**
      * {@inheritDoc}
@@ -54,10 +52,8 @@ public class SpeakerBolt extends BaseRichBolt {
     public void execute(Tuple tuple) {
         logger.debug("Request tuple={}", tuple);
 
-        String request = tuple.getString(0);
-
         try {
-            Message message = MAPPER.readValue(request, Message.class);
+            Message message = (Message) tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
             if (!Destination.WFM_TRANSACTION.equals(message.getDestination())) {
                 return;
             }
@@ -81,8 +77,6 @@ public class SpeakerBolt extends BaseRichBolt {
             } else {
                 logger.error("Skip undefined message: {}", message);
             }
-        } catch (IOException e) {
-            logger.error("Could not deserialize message: {}", request, e);
         } catch (Exception e) {
             logger.error("Unhandled exception", e);
         } finally {

@@ -17,12 +17,14 @@ package org.openkilda.wfm.topology.portstate.bolt;
 
 import static org.openkilda.model.PortStatus.UP;
 
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.wfm.error.MessageException;
 import org.openkilda.wfm.topology.utils.AbstractKafkaParserBolt;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -31,8 +33,6 @@ import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-
 public class WfmStatsParseBolt extends AbstractKafkaParserBolt {
     private static final Logger logger = LoggerFactory.getLogger(WfmStatsParseBolt.class);
     public static final String WFM_TO_PARSE_PORT_INFO_STREAM = "wfm.to.parse.port.info.stream";
@@ -40,20 +40,17 @@ public class WfmStatsParseBolt extends AbstractKafkaParserBolt {
     @Override
     public void execute(Tuple tuple) {
         logger.debug("Ingoing tuple: {}", tuple);
-        String request = tuple.getString(0);
+        Message message = (Message) tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
         try {
-            InfoData data = getInfoData(tuple);
+            InfoData data = getInfoData(message);
             if (data instanceof SwitchPortStatusData) {
                 doParseSwitchPortsData((SwitchPortStatusData) data);
             }
         } catch (MessageException e) {
-            logger.error("Not an InfoMessage in queue message={}", request);
-        } catch (IOException exception) {
-            logger.error("Could not deserialize message={} exception={}", request,
-                    exception.getMessage());
+            logger.error("Not an InfoMessage in queue message={}", message);
         } finally {
             collector.ack(tuple);
-            logger.debug("Message ack: {}", request);
+            logger.debug("Message ack: {}", message);
         }
     }
 

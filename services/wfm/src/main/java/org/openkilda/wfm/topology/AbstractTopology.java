@@ -20,19 +20,15 @@ import static java.lang.String.format;
 import org.openkilda.config.KafkaConfig;
 import org.openkilda.config.naming.KafkaNamingStrategy;
 import org.openkilda.messaging.Message;
-import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.config.naming.TopologyNamingStrategy;
 import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
-import org.openkilda.wfm.ctrl.RouteBolt;
 import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.error.NameCollisionException;
-import org.openkilda.wfm.error.StreamNameCollisionException;
 import org.openkilda.wfm.kafka.CustomNamedSubscription;
 import org.openkilda.wfm.kafka.MessageDeserializer;
 import org.openkilda.wfm.kafka.MessageSerializer;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
-import org.openkilda.wfm.topology.utils.KeyValueKafkaRecordTranslator;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -47,10 +43,7 @@ import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
-import org.apache.storm.kafka.spout.RecordTranslator;
 import org.apache.storm.thrift.TException;
-import org.apache.storm.topology.BoltDeclarer;
-import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 import org.kohsuke.args4j.CmdLineException;
 import org.slf4j.Logger;
@@ -205,38 +198,25 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     /**
-     * Creates Kafka spout.
-     *
-     * @param topic Kafka topic
-     * @return {@link KafkaSpout}
-     * @deprecated should be replaced by {@link AbstractTopology#buildKafkaSpout(String, String)}.
-     */
-    @Deprecated
-    protected KafkaSpout<String, String> createKafkaSpout(String topic, String spoutId) {
-        KafkaSpoutConfig<String, String> config = makeKafkaSpoutConfigBuilder(spoutId, topic)
-                .build();
-
-        return new KafkaSpout<>(config);
-    }
-
-    protected KafkaSpout<String, String> createKafkaSpout(List<String> topics, String spoutId) {
-        KafkaSpoutConfig<String, String> config = makeKafkaSpoutConfigBuilder(spoutId, topics,
-                new KeyValueKafkaRecordTranslator())
-                .build();
-
-        return new KafkaSpout<>(config);
-    }
-
-    /**
      * Creates Kafka spout. Transforms received value to {@link Message}.
      *
      * @param topic Kafka topic
      * @return {@link KafkaSpout}
      */
     protected KafkaSpout<String, Message> buildKafkaSpout(String topic, String spoutId) {
-        KafkaSpoutConfig<String, Message> config = getKafkaSpoutConfigBuilder(topic, spoutId).build();
+        return buildKafkaSpout(Collections.singletonList(topic), spoutId);
+    }
+
+    /**
+     * Creates Kafka spout with list of topics. Transforms received value to {@link Message}.
+     *
+     * @param topics Kafka topic
+     * @return {@link KafkaSpout}
+     */
+    protected KafkaSpout<String, Message> buildKafkaSpout(List<String> topics, String spoutId) {
+        KafkaSpoutConfig<String, Message> config = getKafkaSpoutConfigBuilder(topics, spoutId).build();
         logger.info("Setup kafka spout: id={}, group={}, subscriptions={}",
-                    spoutId, config.getConsumerGroupId(), config.getSubscription().getTopicsString());
+                spoutId, config.getConsumerGroupId(), config.getSubscription().getTopicsString());
         return new KafkaSpout<>(config);
     }
 
@@ -271,29 +251,6 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
     }
 
-    protected void createCtrlBranch(TopologyBuilder builder, List<CtrlBoltRef> targets)
-            throws StreamNameCollisionException {
-        String ctrlTopic = topologyConfig.getKafkaCtrlTopic();
-
-        KafkaSpout kafkaSpout;
-        kafkaSpout = createKafkaSpout(ctrlTopic, SPOUT_ID_CTRL);
-        builder.setSpout(SPOUT_ID_CTRL, kafkaSpout);
-
-        RouteBolt route = new RouteBolt(topologyName);
-        builder.setBolt(BOLT_ID_CTRL_ROUTE, route)
-                .shuffleGrouping(SPOUT_ID_CTRL);
-
-        KafkaBolt kafkaBolt = createKafkaBolt(ctrlTopic);
-        BoltDeclarer outputSetup = builder.setBolt(BOLT_ID_CTRL_OUTPUT, kafkaBolt)
-                .shuffleGrouping(BOLT_ID_CTRL_ROUTE, RouteBolt.STREAM_ID_ERROR);
-
-        for (CtrlBoltRef ref : targets) {
-            String boltId = ref.getBoltId();
-            ref.getDeclarer().allGrouping(BOLT_ID_CTRL_ROUTE, route.registerEndpoint(boltId));
-            outputSetup.shuffleGrouping(boltId, ref.getBolt().getCtrlStreamId());
-        }
-    }
-
     /**
      * Creates kafka spout config.
      * @param spoutId spout identifier.
@@ -303,21 +260,12 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
      */
     @Deprecated
     protected KafkaSpoutConfig.Builder<String, String> makeKafkaSpoutConfigBuilder(String spoutId, String topic) {
-        return makeKafkaSpoutConfigBuilder(spoutId, Collections.singletonList(topic), null);
-    }
-
-    protected KafkaSpoutConfig.Builder<String, String> makeKafkaSpoutConfigBuilder(String spoutId,
-                                                                                   List<String> topics,
-                                                                                   RecordTranslator translator) {
-        if (translator == null) {
-            translator = new KafkaRecordTranslator<>();
-        }
         return new KafkaSpoutConfig.Builder<>(
                 kafkaConfig.getHosts(), StringDeserializer.class, StringDeserializer.class,
-                new CustomNamedSubscription(topics))
+                new CustomNamedSubscription(topic))
 
                 .setGroupId(makeKafkaGroupName(spoutId))
-                .setRecordTranslator(translator)
+                .setRecordTranslator(new KafkaRecordTranslator<>())
 
                 // NB: There is an issue with using the default of "earliest uncommitted message" -
                 //      if we erase the topics, then the committed will be > the latest .. and so
@@ -327,8 +275,13 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     protected KafkaSpoutConfig.Builder<String, Message> getKafkaSpoutConfigBuilder(String topic, String spoutId) {
+        return getKafkaSpoutConfigBuilder(Collections.singletonList(topic), spoutId);
+    }
+
+    protected KafkaSpoutConfig.Builder<String, Message> getKafkaSpoutConfigBuilder(List<String> topics,
+                                                                                   String spoutId) {
         KafkaSpoutConfig.Builder<String, Message> config = new KafkaSpoutConfig.Builder<>(kafkaConfig.getHosts(),
-                StringDeserializer.class, MessageDeserializer.class, new CustomNamedSubscription(topic));
+                StringDeserializer.class, MessageDeserializer.class, new CustomNamedSubscription(topics));
 
         config.setGroupId(makeKafkaGroupName(spoutId))
                 .setRecordTranslator(new MessageTranslator())
