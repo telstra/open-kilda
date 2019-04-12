@@ -16,7 +16,7 @@
 package org.openkilda.simulator.bolts;
 
 import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
@@ -29,7 +29,6 @@ import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.model.SwitchId;
 import org.openkilda.simulator.SimulatorTopology;
 import org.openkilda.simulator.classes.Commands;
-import org.openkilda.wfm.OfeMessageUtils;
 import org.openkilda.wfm.topology.AbstractTopology;
 
 import org.apache.storm.task.OutputCollector;
@@ -54,22 +53,7 @@ public class CommandBolt extends BaseRichBolt {
         this.collector = outputCollector;
     }
 
-    protected String getType(String json) throws Exception {
-        try {
-            Map<String, ?> root = OfeMessageUtils.fromJson(json);
-            return ((String) root.get("type")).toLowerCase();
-        } catch (Exception e) {
-            logger.error("error getting type in: {}", json);
-            throw e;
-        }
-    }
-
-    protected String getJson(Tuple tuple) {
-        return tuple.getStringByField(AbstractTopology.MESSAGE_FIELD);
-    }
-
-    protected void processCommand(Tuple tuple) throws Exception {
-        CommandMessage command = Utils.MAPPER.readValue(getJson(tuple), CommandMessage.class);
+    protected void processCommand(Tuple tuple, CommandMessage command) throws Exception {
         if (command.getDestination() == Destination.CONTROLLER) {
             CommandData data = command.getData();
             Commands switchCommand;
@@ -108,13 +92,10 @@ public class CommandBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
         try {
-            String json = getJson(tuple);
-            switch (getType(json)) {
-                case "command":
-                    processCommand(tuple);
-                    break;
-                default:
-                    break;
+            Message message = (Message) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
+            if (message instanceof CommandMessage) {
+                processCommand(tuple, (CommandMessage) message);
+
             }
         } catch (Exception e) {
             logger.error("Could not parse tuple: {}", tuple.toString(), e);

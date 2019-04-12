@@ -15,10 +15,10 @@
 
 package org.openkilda.wfm.topology.stats.bolts;
 
-import static org.openkilda.messaging.Utils.MAPPER;
+import static org.openkilda.wfm.AbstractBolt.FIELD_ID_CONTEXT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
 
-import org.openkilda.messaging.BaseMessage;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.BaseFlow;
@@ -26,7 +26,9 @@ import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.stats.MeasurePoint;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -38,7 +40,6 @@ import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Map;
 
 public class CacheFilterBolt extends BaseRichBolt {
@@ -64,7 +65,8 @@ public class CacheFilterBolt extends BaseRichBolt {
                     FieldsNames.SWITCH.name(),
                     FieldsNames.COOKIE.name(),
                     FieldsNames.METER.name(),
-                    FieldsNames.MEASURE_POINT.name());
+                    FieldsNames.MEASURE_POINT.name(),
+                    FIELD_ID_CONTEXT);
 
 
     private static final Logger logger = LoggerFactory.getLogger(CacheFilterBolt.class);
@@ -87,14 +89,11 @@ public class CacheFilterBolt extends BaseRichBolt {
      */
     @Override
     public void execute(Tuple tuple) {
-
-        String json = tuple.getString(0);
-
         try {
-            BaseMessage bm = MAPPER.readValue(json, BaseMessage.class);
-            if (bm instanceof CommandMessage) {
-                CommandMessage message = (CommandMessage) bm;
-                CommandData data = message.getData();
+            Message message = (Message) tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
+            if (message instanceof CommandMessage) {
+                CommandMessage commandMessage = (CommandMessage) message;
+                CommandData data = commandMessage.getData();
                 if (data instanceof InstallIngressFlow) {
                     InstallIngressFlow command = (InstallIngressFlow) data;
                     logMatchedRecord(command);
@@ -114,8 +113,6 @@ public class CacheFilterBolt extends BaseRichBolt {
                     emit(tuple, Commands.REMOVE, command);
                 }
             }
-        } catch (IOException exception) {
-            logger.error("Could not deserialize message {}", tuple, exception);
         } catch (Exception e) {
             logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
@@ -132,13 +129,15 @@ public class CacheFilterBolt extends BaseRichBolt {
     }
 
     private void emit(Tuple tuple, Commands action, BaseFlow command, Long meterId, MeasurePoint point) {
+        CommandContext commandContext = (CommandContext) tuple.getValueByField(FIELD_ID_CONTEXT);
         Values values = new Values(
                 action,
                 command.getId(),
                 command.getSwitchId(),
                 command.getCookie(),
                 meterId,
-                point);
+                point,
+                commandContext);
         outputCollector.emit(CACHE_UPDATE.name(), tuple, values);
     }
 

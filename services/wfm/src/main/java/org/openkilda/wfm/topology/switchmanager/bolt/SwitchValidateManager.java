@@ -127,7 +127,7 @@ public class SwitchValidateManager extends HubBolt implements SwitchValidationCa
     private void removeKeyFromRouterBolt(String key) {
         CommandMessage commandMessage =
                 new CommandMessage(new RemoveKeyRouterBolt(key), System.currentTimeMillis(), key);
-        getOutput().emit(RouterBolt.INCOME_STREAM, new Values(key, commandMessage));
+        getOutput().emit(RouterBolt.INCOME_STREAM, new Values(key, commandMessage, getCommandContext()));
     }
 
     @Override
@@ -147,7 +147,7 @@ public class SwitchValidateManager extends HubBolt implements SwitchValidationCa
         Fields fields = new Fields(MessageTranslator.KEY_FIELD, MessageTranslator.FIELD_ID_PAYLOAD);
         declarer.declareStream(StreamType.TO_NORTHBOUND.toString(), fields);
         declarer.declareStream(StreamType.TO_FLOODLIGHT.toString(), fields);
-        declarer.declareStream(RouterBolt.INCOME_STREAM, fields);
+        declarer.declareStream(RouterBolt.INCOME_STREAM, MessageTranslator.STREAM_FIELDS);
 
     }
 }

@@ -16,10 +16,9 @@
 package org.openkilda.wfm.topology.event;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
-import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 
-import org.openkilda.messaging.BaseMessage;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortInfoData;
@@ -30,8 +29,6 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-
-import java.io.IOException;
 
 public class PortEventRouterBolt extends AbstractBolt {
 
@@ -46,14 +43,7 @@ public class PortEventRouterBolt extends AbstractBolt {
     }
 
     private boolean handlePortEvent(Tuple tuple) {
-        String json = tuple.getStringByField(AbstractTopology.MESSAGE_FIELD);
-        BaseMessage message;
-        try {
-            message = MAPPER.readValue(json, BaseMessage.class);
-        } catch (IOException e) {
-            log.error("Unknown Message type={}", json);
-            return false;
-        }
+        Message message = (Message) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
         if (message instanceof InfoMessage) {
             InfoMessage infoMessage = (InfoMessage) message;
             InfoData data = infoMessage.getData();
