@@ -55,36 +55,7 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
   expandedUnidirectional : boolean = false;
 
   showIslDetail = function(data) {
-    var flowData = {
-      source_switch: "",
-      src_port: "",
-      source_switch_name: "",
-      target_switch: "",
-      dst_port: "",
-      target_switch_name: "",
-      available_bandwidth: "",
-      speed: "",
-      state: "",
-      latency: "",
-      unidirectional: "",
-      cost: 0
-    };
-
-    flowData.source_switch_name = data.source_switch_name;
-    flowData.source_switch = data.source_switch;
-
-    flowData.src_port = data.src_port;
-    flowData.target_switch_name = data.target_switch_name;
-    flowData.target_switch = data.target_switch;
-    flowData.dst_port = data.dst_port;
-    flowData.state = data.state;
-    flowData.speed = data.speed;
-    flowData.available_bandwidth = data.available_bandwidth;
-    flowData.latency = this.checkValue(data.latency);
-    flowData.unidirectional = data.unidirectional;
-
-    localStorage.setItem("linkData", JSON.stringify(flowData));
-    this.router.navigate(["/isl/switch/isl"]);
+     this.router.navigate(["/isl/switch/isl/"+data.source_switch+"/"+data.src_port+"/"+data.target_switch+"/"+data.dst_port]);
   };
 
   constructor(
