@@ -15,9 +15,9 @@
 
 package org.openkilda.wfm.topology.opentsdb.bolts;
 
-import static org.openkilda.messaging.Utils.MAPPER;
-
 import org.openkilda.messaging.info.Datapoint;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -35,7 +35,7 @@ import java.util.stream.Stream;
 
 public class DatapointParseBolt extends BaseRichBolt {
     private static final Logger LOGGER = LoggerFactory.getLogger(DatapointParseBolt.class);
-    private OutputCollector collector;
+    private transient OutputCollector collector;
 
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector) {
@@ -44,15 +44,17 @@ public class DatapointParseBolt extends BaseRichBolt {
 
     @Override
     public void execute(Tuple tuple) {
-        final String data = tuple.getString(0);
-        LOGGER.debug("Processing datapoint: " + data);
+        InfoData data = (InfoData) tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
+        LOGGER.debug("Processing datapoint: {}", data);
         try {
-            Datapoint datapoint = MAPPER.readValue(data, Datapoint.class);
-            List<Object> stream = Stream.of(datapoint.simpleHashCode(), datapoint)
-                    .collect(Collectors.toList());
-            collector.emit(stream);
+            if (data instanceof Datapoint) {
+                Datapoint datapoint = (Datapoint) data;
+                List<Object> stream = Stream.of(datapoint.simpleHashCode(), datapoint)
+                        .collect(Collectors.toList());
+                collector.emit(stream);
+            }
         } catch (Exception e) {
-            LOGGER.error("Failed reading data: " + data, e);
+            LOGGER.error("Failed process data: {}", data, e);
         } finally {
             collector.ack(tuple);
         }

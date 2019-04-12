@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.opentsdb;
 
 import static org.mockserver.integration.ClientAndServer.startClientAndServer;
-import static org.openkilda.messaging.Utils.MAPPER;
 
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.wfm.StableAbstractStormTest;
@@ -68,7 +67,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
             OpenTsdbTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
 
             sources.addMockData(OpenTsdbTopology.OTSDB_SPOUT_ID,
-                    new Values(MAPPER.writeValueAsString(datapoint)));
+                    new Values("key", datapoint));
             completeTopologyParam.setMockedSources(sources);
 
             StormTopology stormTopology = topology.createTopology();
@@ -83,7 +82,6 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     @Test
     public void shouldSendDatapointRequestsOnlyOnce() throws Exception {
         Datapoint datapoint = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
-        String jsonDatapoint = MAPPER.writeValueAsString(datapoint);
 
         MockedSources sources = new MockedSources();
 
@@ -91,7 +89,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
             OpenTsdbTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
 
             sources.addMockData(OpenTsdbTopology.OTSDB_SPOUT_ID,
-                    new Values(jsonDatapoint), new Values(jsonDatapoint));
+                    new Values("key_a", datapoint), new Values("key_b", datapoint));
             completeTopologyParam.setMockedSources(sources);
 
             StormTopology stormTopology = topology.createTopology();
@@ -105,10 +103,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     @Test
     public void shouldSendDatapointRequestsTwice() throws Exception {
         Datapoint datapoint1 = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
-        String jsonDatapoint1 = MAPPER.writeValueAsString(datapoint1);
-
         Datapoint datapoint2 = new Datapoint("metric", timestamp, Collections.emptyMap(), 456);
-        String jsonDatapoint2 = MAPPER.writeValueAsString(datapoint2);
 
         MockedSources sources = new MockedSources();
 
@@ -116,7 +111,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
             OpenTsdbTopology topology = new TestingTargetTopology(new TestingKafkaBolt());
 
             sources.addMockData(OpenTsdbTopology.OTSDB_SPOUT_ID,
-                    new Values(jsonDatapoint1), new Values(jsonDatapoint2));
+                    new Values("key_a", datapoint1), new Values("key_a", datapoint2));
             completeTopologyParam.setMockedSources(sources);
 
             StormTopology stormTopology = topology.createTopology();

@@ -56,10 +56,10 @@ public class SimulatorTopology extends AbstractTopology<SimulatorTopologyConfig>
         logger.debug("Building SimulatorTopology - {}", topologyName);
 
         logger.debug("connecting to {} topic", simulatorTopic);
-        builder.setSpout(SIMULATOR_SPOUT, createKafkaSpout(simulatorTopic, SIMULATOR_SPOUT));
+        builder.setSpout(SIMULATOR_SPOUT, buildKafkaSpout(simulatorTopic, SIMULATOR_SPOUT));
 
         logger.debug("connecting to {} topic", inputTopic);
-        builder.setSpout(COMMAND_SPOUT, createKafkaSpout(inputTopic, COMMAND_SPOUT));
+        builder.setSpout(COMMAND_SPOUT, buildKafkaSpout(inputTopic, COMMAND_SPOUT));
 
         CommandBolt commandBolt = new CommandBolt();
         logger.debug("starting " + COMMAND_BOLT + " bolt");

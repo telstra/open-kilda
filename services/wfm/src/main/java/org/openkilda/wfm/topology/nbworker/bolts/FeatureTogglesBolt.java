@@ -61,7 +61,7 @@ public class FeatureTogglesBolt extends PersistenceOperationsBolt implements IFe
     }
 
     @Override
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request, String correlationId) {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
         FeatureTogglesDto featureTogglesDto = null;
         if (request instanceof GetFeatureTogglesRequest) {
             featureTogglesDto = getFeatureToggles();
@@ -105,8 +105,6 @@ public class FeatureTogglesBolt extends PersistenceOperationsBolt implements IFe
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declare(
-                new Fields(ResponseSplitterBolt.FIELD_ID_RESPONSE, ResponseSplitterBolt.FIELD_ID_CORELLATION_ID));
         declarer.declareStream(STREAM_NOTIFICATION_ID, STREAM_NOTIFICATION_FIELDS);
     }
 }

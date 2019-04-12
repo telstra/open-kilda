@@ -57,7 +57,7 @@ public class CacheBolt extends AbstractBolt {
     public static final String METER_CACHE_FIELD = "meter_cache";
 
     public static final Fields statsWithCacheFields =
-            new Fields(STATS_FIELD, TIMESTAMP, COOKIE_CACHE_FIELD, METER_CACHE_FIELD);
+            new Fields(STATS_FIELD, TIMESTAMP, COOKIE_CACHE_FIELD, METER_CACHE_FIELD, FIELD_ID_CONTEXT);
     /**
      * The logger.
      */
@@ -148,7 +148,8 @@ public class CacheBolt extends AbstractBolt {
             return;
         }
 
-        Values values = new Values(data, tuple.getLongByField(TIMESTAMP), cookieDataCache, meterDataCache);
+        Values values = new Values(data, tuple.getLongByField(TIMESTAMP), cookieDataCache, meterDataCache,
+                getCommandContext());
         getOutput().emit(streamId, tuple, values);
     }
 

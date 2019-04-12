@@ -24,7 +24,6 @@ import org.openkilda.wfm.topology.opentsdb.bolts.OpenTSDBFilterBolt;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.spout.KafkaSpout;
-import org.apache.storm.kafka.spout.KafkaSpoutConfig;
 import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
 import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.opentsdb.client.OpenTsdbClient;
@@ -87,10 +86,7 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
         OpenTsdbConfig openTsdbConfig = topologyConfig.getOpenTsdbConfig();
 
-        KafkaSpoutConfig<String, String> spoutConfig = makeKafkaSpoutConfigBuilder(OTSDB_SPOUT_ID, otsdbTopic)
-                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_EARLIEST)
-                .build();
-        KafkaSpout kafkaSpout = new KafkaSpout<>(spoutConfig);
+        KafkaSpout kafkaSpout = buildKafkaOtsdbSpout(otsdbTopic, OTSDB_SPOUT_ID);
         topology.setSpout(OTSDB_SPOUT_ID, kafkaSpout, openTsdbConfig.getNumSpouts());
     }
 
