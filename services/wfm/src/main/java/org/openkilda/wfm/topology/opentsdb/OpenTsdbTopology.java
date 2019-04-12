@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.opentsdb;
 
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.opentsdb.OpenTsdbTopologyConfig.OpenTsdbConfig;
@@ -87,10 +88,10 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
 
         OpenTsdbConfig openTsdbConfig = topologyConfig.getOpenTsdbConfig();
 
-        KafkaSpoutConfig<String, String> spoutConfig = makeKafkaSpoutConfigBuilder(OTSDB_SPOUT_ID, otsdbTopic)
-                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_EARLIEST)
-                .build();
-        KafkaSpout kafkaSpout = new KafkaSpout<>(spoutConfig);
+        KafkaSpoutConfig<String, InfoData> config =
+                getKafkaSpoutConfigBuilderWithUncommittedEarliestStrategy(otsdbTopic, OTSDB_SPOUT_ID).build();
+
+        KafkaSpout kafkaSpout = new KafkaSpout<>(config);
         topology.setSpout(OTSDB_SPOUT_ID, kafkaSpout, openTsdbConfig.getNumSpouts());
     }
 

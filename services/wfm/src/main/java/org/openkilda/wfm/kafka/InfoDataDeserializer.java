@@ -17,8 +17,8 @@ package org.openkilda.wfm.kafka;
 
 import static java.lang.String.format;
 
-import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.info.InfoData;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -28,14 +28,14 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 
 @Slf4j
-public class MessageDeserializer extends Deserializer<Message> {
+public class InfoDataDeserializer extends Deserializer<InfoData> {
 
     @Override
-    public Message deserialize(String topic, byte[] data) {
+    public InfoData deserialize(String topic, byte[] data) {
         try {
-            return Utils.MAPPER.readValue(data, Message.class);
+            return Utils.MAPPER.readValue(data, InfoData.class);
         } catch (IOException e) {
-            log.error(format("Failed to deserialize message: %s from topic %s",
+            log.error(format("Failed to deserialize data: %s from topic %s",
                     StringUtils.toEncodedString(data, Charset.defaultCharset()), topic), e);
             throw new SerializationException(e.getMessage());
         }
