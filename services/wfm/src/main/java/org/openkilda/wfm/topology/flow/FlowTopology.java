@@ -21,7 +21,6 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
-import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.share.bolt.HistoryBolt;
@@ -37,13 +36,8 @@ import org.openkilda.wfm.topology.flow.bolts.TransactionBolt;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.spout.KafkaSpout;
-import org.apache.storm.kafka.spout.KafkaSpoutConfig;
-import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Flow topology.
@@ -66,17 +60,14 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         logger.info("Creating FlowTopology - {}", topologyName);
 
         TopologyBuilder builder = new TopologyBuilder();
-        final List<CtrlBoltRef> ctrlTargets = new ArrayList<>();
         Integer parallelism = topologyConfig.getParallelism();
 
         /*
          * Spout receives all Northbound requests.
          */
-
-        KafkaSpoutConfig<String, String> kafkaSpoutConfig = makeKafkaSpoutConfigBuilder(
-                ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), topologyConfig.getKafkaFlowTopic()).build();
-        KafkaSpout<String, String> kafkaSpout = new KafkaSpout<>(kafkaSpoutConfig);
-        builder.setSpout(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), kafkaSpout, parallelism);
+        KafkaSpout flowKafkaSpout = buildKafkaSpout(
+                topologyConfig.getKafkaFlowTopic(), ComponentType.FLOW_KAFKA_SPOUT.toString());
+        builder.setSpout(ComponentType.FLOW_KAFKA_SPOUT.toString(), flowKafkaSpout, parallelism);
 
         /*
          * Bolt splits requests on streams.
@@ -84,7 +75,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
          */
         SplitterBolt splitterBolt = new SplitterBolt();
         builder.setBolt(ComponentType.SPLITTER_BOLT.toString(), splitterBolt, parallelism)
-                .shuffleGrouping(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString());
+                .shuffleGrouping(ComponentType.FLOW_KAFKA_SPOUT.toString());
 
         /*
          * Bolt handles flow CRUD operations.
@@ -95,7 +86,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
         CrudBolt crudBolt = new CrudBolt(persistenceManager, pathComputerConfig, flowResourcesConfig);
-        BoltDeclarer boltSetup = builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
+        builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.READ.toString(), fieldFlowId)
                 .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.DUMP.toString())
@@ -111,33 +102,23 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.DEALLOCATE_RESOURCES.toString(),
                         fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId);
-        ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
-
-        /*
-         * Spout receives Speaker responses
-         */
-        // FIXME(surabujin): can be replaced with NORTHBOUND_KAFKA_SPOUT (same topic)
-        KafkaSpout speakerKafkaSpout = createKafkaSpout(
-                topologyConfig.getKafkaFlowTopic(), ComponentType.SPEAKER_KAFKA_SPOUT.toString());
-        builder.setSpout(ComponentType.SPEAKER_KAFKA_SPOUT.toString(), speakerKafkaSpout, parallelism);
 
         /*
          * Bolt processes Speaker responses, groups by flow-id field
          */
         SpeakerBolt speakerBolt = new SpeakerBolt();
         builder.setBolt(ComponentType.SPEAKER_BOLT.toString(), speakerBolt, parallelism)
-                .shuffleGrouping(ComponentType.SPEAKER_KAFKA_SPOUT.toString());
+                .shuffleGrouping(ComponentType.FLOW_KAFKA_SPOUT.toString());
 
         /*
          * Transaction bolt.
          */
         TransactionBolt transactionBolt = new TransactionBolt(topologyConfig.getCommandTransactionExpirationTime());
-        boltSetup = builder.setBolt(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, parallelism)
+        builder.setBolt(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, parallelism)
                 .fieldsGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.UPDATE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), fieldFlowId);
-        ctrlTargets.add(new CtrlBoltRef(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, boltSetup));
 
         /*
          * Bolt sends Speaker requests
@@ -184,8 +165,6 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         HistoryBolt historyBolt = new HistoryBolt(persistenceManager);
         builder.setBolt(ComponentType.HISTORY_BOLT.toString(), historyBolt, parallelism)
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.HISTORY.toString());
-
-        createCtrlBranch(builder, ctrlTargets);
 
         return builder.createTopology();
     }

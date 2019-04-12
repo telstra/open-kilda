@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -89,7 +89,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
 
     @Override
     @SuppressWarnings("unchecked")
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request, String correlationId) {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
         List<? extends InfoData> result = null;
         if (request instanceof GetLinksRequest) {
             result = getAllLinks((GetLinksRequest) request);
@@ -286,7 +286,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
 
             for (IslInfoData isl : responseResult) {
                 DeactivateIslInfoData data = new DeactivateIslInfoData(isl.getSource(), isl.getDestination());
-                getOutput().emit(StreamType.DISCO.toString(), getTuple(), new Values(data, getCorrelationId()));
+                getOutput().emit(StreamType.DISCO.toString(), getCurrentTuple(), new Values(data, getCorrelationId()));
             }
 
             return responseResult;
@@ -315,7 +315,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                         flowOperationsService.getFlowPathsForLink(srcSwitch, srcPort, dstSwitch, dstPort)
                 ).forEach((flowId, pathIds) -> {
                     FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds);
-                    getOutput().emit(StreamType.REROUTE.toString(), getTuple(), new Values(rerouteRequest,
+                    getOutput().emit(StreamType.REROUTE.toString(), getCurrentTuple(), new Values(rerouteRequest,
                             getCorrelationId()));
                 });
             }
@@ -351,7 +351,6 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declare(new Fields("response", "correlationId"));
         declarer.declareStream(StreamType.REROUTE.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.DISCO.toString(),
@@ -366,6 +365,6 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                 .destination(islInfoData.getDestination())
                 .enableBfd(isl.isEnableBfd())
                 .build();
-        getOutput().emit(StreamType.DISCO.toString(), getTuple(), new Values(data, getCorrelationId()));
+        getOutput().emit(StreamType.DISCO.toString(), getCurrentTuple(), new Values(data, getCorrelationId()));
     }
 }
