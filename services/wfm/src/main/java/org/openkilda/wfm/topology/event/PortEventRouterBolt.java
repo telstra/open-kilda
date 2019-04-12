@@ -16,14 +16,14 @@
 package org.openkilda.wfm.topology.event;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
-import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.messaging.Utils.PAYLOAD;
 
-import org.openkilda.messaging.BaseMessage;
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.AbstractTopology;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -31,29 +31,20 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.io.IOException;
-
 public class PortEventRouterBolt extends AbstractBolt {
 
     public static final String PORT_EVENT_STREAM = "port-event-stream";
     public static final String DEFAULT_STREAM = "default-stream";
 
     @Override
-    protected void handleInput(Tuple tuple) {
+    protected void handleInput(Tuple tuple) throws PipelineException {
         if (!handlePortEvent(tuple)) {
-            getOutput().emit(DEFAULT_STREAM, tuple, new Values(tuple.getString(0)));
+            getOutput().emit(DEFAULT_STREAM, tuple, new Values(tuple.getStringByField(AbstractTopology.MESSAGE_FIELD)));
         }
     }
 
-    private boolean handlePortEvent(Tuple tuple) {
-        String json = tuple.getStringByField(AbstractTopology.MESSAGE_FIELD);
-        BaseMessage message;
-        try {
-            message = MAPPER.readValue(json, BaseMessage.class);
-        } catch (IOException e) {
-            log.error("Unknown Message type={}", json);
-            return false;
-        }
+    private boolean handlePortEvent(Tuple tuple) throws PipelineException {
+        Message message = pullValue(tuple, AbstractTopology.MESSAGE_FIELD, Message.class);
         if (message instanceof InfoMessage) {
             InfoMessage infoMessage = (InfoMessage) message;
             InfoData data = infoMessage.getData();

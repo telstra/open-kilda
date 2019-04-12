@@ -15,7 +15,6 @@
 
 package org.openkilda.simulator.bolts;
 
-import org.openkilda.messaging.Utils;
 import org.openkilda.simulator.SimulatorTopology;
 import org.openkilda.simulator.classes.SimulatorCommands;
 import org.openkilda.simulator.messages.SwitchMessage;
@@ -25,6 +24,7 @@ import org.openkilda.simulator.messages.simulator.command.AddSwitchCommand;
 import org.openkilda.simulator.messages.simulator.command.PortModMessage;
 import org.openkilda.simulator.messages.simulator.command.SwitchModMessage;
 import org.openkilda.simulator.messages.simulator.command.TopologyMessage;
+import org.openkilda.wfm.topology.AbstractTopology;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -45,12 +45,8 @@ public class SimulatorCommandBolt extends BaseRichBolt {
     private static final Logger logger = LoggerFactory.getLogger(SimulatorCommandBolt.class);
     private OutputCollector collector;
 
-    protected String getJson(Tuple tuple) {
-        return tuple.getString(0);
-    }
-
     protected Map<String, Object> doCommand(Tuple tuple) throws Exception {
-        SimulatorMessage message = Utils.MAPPER.readValue(getJson(tuple), SimulatorMessage.class);
+        SimulatorMessage message = (SimulatorMessage) tuple.getValueByField(AbstractTopology.MESSAGE_FIELD);
         List<Values> values = new ArrayList<>();
         String stream = "";
         if (message instanceof SwitchModMessage) {

@@ -462,7 +462,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                 .taskId(correlationId)
                 .timestamp(Instant.now())
                 .build();
-        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowEvent));
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowEvent, correlationId));
     }
 
     private void saveHistory(String action, String details, String correlationId, Tuple tuple) {
@@ -472,7 +472,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                 .taskId(correlationId)
                 .timestamp(Instant.now())
                 .build();
-        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowHistory));
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowHistory, correlationId));
     }
 
     private void saveHistory(Optional<FlowPair> optionalFlowPair, String type, String correlationId, Tuple tuple)
@@ -514,7 +514,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                 .forwardStatus(forward.getStatus())
                 .reverseStatus(reverse.getStatus())
                 .build();
-        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowDump));
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowDump, correlationId));
     }
 
     private void handleRerouteRequest(CommandMessage message, Tuple tuple) {

@@ -42,7 +42,6 @@ import org.openkilda.wfm.topology.floodlightrouter.service.RouterService;
 import org.openkilda.wfm.topology.utils.KeyValueKafkaRecordTranslator;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Value;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
@@ -89,8 +88,6 @@ public class DiscoveryBoltTest {
     private static final Map<String, Integer> componentNameToTaskId = new HashMap<>();
     private static final Map<Integer, String> taskIdToComponentName = new HashMap<>();
     private static final Map<StreamDescriptor, Fields> streamFields = new HashMap<>();
-
-    private static final ObjectMapper JsonMapper = new ObjectMapper();
 
     static {
         int idx = 0;
@@ -261,18 +258,18 @@ public class DiscoveryBoltTest {
     }
 
     private boolean verifyConsumerTupleFormat(List<Object> payload, String expectKey) {
-        return payload.size() == 2 && isNullOrString(payload.get(0), expectKey) && isNullOrString(payload.get(1));
+        return payload.size() == 2 && isNullOrMessage(payload.get(0), expectKey) && isNullOrMessage(payload.get(1));
     }
 
-    private boolean isNullOrString(Object value) {
-        return isNullOrString(value, null);
+    private boolean isNullOrMessage(Object value) {
+        return isNullOrMessage(value, null);
     }
 
-    private boolean isNullOrString(Object value, String expect) {
+    private boolean isNullOrMessage(Object value, String expect) {
         if (expect != null) {
             return expect.equals(value);
         }
-        return value == null || value instanceof String;
+        return value == null || value instanceof Message;
     }
 
     private Tuple makeTuple(Values payload, String component, String stream) {
@@ -284,9 +281,8 @@ public class DiscoveryBoltTest {
         return makeSpeakerTuple(key, payload);
     }
 
-    private Values makeSpeakerTuple(String key, Message payload) throws JsonProcessingException {
-        String json = JsonMapper.writeValueAsString(payload);
-        return new Values(key, json);
+    private Values makeSpeakerTuple(String key, Message payload) {
+        return new Values(key, payload);
     }
 
     @Value

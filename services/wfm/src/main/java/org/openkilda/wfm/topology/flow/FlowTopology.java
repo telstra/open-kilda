@@ -37,7 +37,6 @@ import org.openkilda.wfm.topology.flow.bolts.TransactionBolt;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.spout.KafkaSpout;
-import org.apache.storm.kafka.spout.KafkaSpoutConfig;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
@@ -72,11 +71,9 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         /*
          * Spout receives all Northbound requests.
          */
-
-        KafkaSpoutConfig<String, String> kafkaSpoutConfig = makeKafkaSpoutConfigBuilder(
-                ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), topologyConfig.getKafkaFlowTopic()).build();
-        KafkaSpout<String, String> kafkaSpout = new KafkaSpout<>(kafkaSpoutConfig);
-        builder.setSpout(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString(), kafkaSpout, parallelism);
+        KafkaSpout flowKafkaSpout = buildKafkaSpout(
+                topologyConfig.getKafkaFlowTopic(), ComponentType.FLOW_KAFKA_SPOUT.toString());
+        builder.setSpout(ComponentType.FLOW_KAFKA_SPOUT.toString(), flowKafkaSpout, parallelism);
 
         /*
          * Bolt splits requests on streams.
@@ -84,7 +81,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
          */
         SplitterBolt splitterBolt = new SplitterBolt();
         builder.setBolt(ComponentType.SPLITTER_BOLT.toString(), splitterBolt, parallelism)
-                .shuffleGrouping(ComponentType.NORTHBOUND_KAFKA_SPOUT.toString());
+                .shuffleGrouping(ComponentType.FLOW_KAFKA_SPOUT.toString());
 
         /*
          * Bolt handles flow CRUD operations.
@@ -113,19 +110,11 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
 
         /*
-         * Spout receives Speaker responses
-         */
-        // FIXME(surabujin): can be replaced with NORTHBOUND_KAFKA_SPOUT (same topic)
-        KafkaSpout speakerKafkaSpout = createKafkaSpout(
-                topologyConfig.getKafkaFlowTopic(), ComponentType.SPEAKER_KAFKA_SPOUT.toString());
-        builder.setSpout(ComponentType.SPEAKER_KAFKA_SPOUT.toString(), speakerKafkaSpout, parallelism);
-
-        /*
          * Bolt processes Speaker responses, groups by flow-id field
          */
         SpeakerBolt speakerBolt = new SpeakerBolt();
         builder.setBolt(ComponentType.SPEAKER_BOLT.toString(), speakerBolt, parallelism)
-                .shuffleGrouping(ComponentType.SPEAKER_KAFKA_SPOUT.toString());
+                .shuffleGrouping(ComponentType.FLOW_KAFKA_SPOUT.toString());
 
         /*
          * Transaction bolt.
@@ -183,8 +172,6 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         HistoryBolt historyBolt = new HistoryBolt(persistenceManager);
         builder.setBolt(ComponentType.HISTORY_BOLT.toString(), historyBolt, parallelism)
                 .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.HISTORY.toString());
-
-        createCtrlBranch(builder, ctrlTargets);
 
         return builder.createTopology();
     }
