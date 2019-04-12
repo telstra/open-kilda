@@ -908,11 +908,5 @@ public class FlowTopologyTest extends AbstractStormTest {
         CtrlRequest request = new CtrlRequest("flowtopology/" + ComponentType.CRUD_BOLT.toString(),
                 new RequestData("clearState"), 1, "clear-state-correlation-id", Destination.WFM_CTRL);
         sendMessage(request, topologyConfig.getKafkaCtrlTopic());
-
-        ConsumerRecord<String, String> raw = ctrlConsumer.pollMessage();
-        if (raw != null) {
-            CtrlResponse response = (CtrlResponse) objectMapper.readValue(raw.value(), Message.class);
-            assertEquals(request.getCorrelationId(), response.getCorrelationId());
-        }
     }
 }

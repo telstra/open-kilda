@@ -22,7 +22,6 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.JsonDecodeException;
 import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.AbstractTopology;
@@ -34,7 +33,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -69,19 +67,9 @@ public class IslStatsBolt extends AbstractBolt {
         return tsdbTuple(metricFormatter.format("isl.latency"), timestamp, data.getLatency(), tags);
     }
 
-    private Message getMessage(Tuple input) throws JsonDecodeException {
-        String json = input.getStringByField(KafkaRecordTranslator.FIELD_ID_PAYLOAD);
-        try {
-            return Utils.MAPPER.readValue(json, Message.class);
-        } catch (IOException e) {
-            log.error(String.format("Could not deserialize message = %s", json), e);
-            throw new JsonDecodeException(Message.class, json, e);
-        }
-    }
-
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        Message message = getMessage(input);
+        Message message = pullValue(input, KafkaRecordTranslator.FIELD_ID_PAYLOAD, Message.class);
 
         if (message instanceof InfoMessage) {
             InfoData data = ((InfoMessage) message).getData();

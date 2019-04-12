@@ -31,7 +31,7 @@ public class HistoryBolt extends AbstractBolt {
     private final PersistenceManager persistenceManager;
     private transient HistoryService historyService;
 
-    public static final Fields FIELDS_HISTORY = new Fields(Utils.PAYLOAD);
+    public static final Fields FIELDS_HISTORY = new Fields(Utils.PAYLOAD, FIELD_ID_CONTEXT);
 
     public HistoryBolt(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
