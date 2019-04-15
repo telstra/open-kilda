@@ -426,6 +426,27 @@ class FlowCrudSpec extends BaseSpecification {
         }
     }
 
+    def "Able to validate flow with protected path"() {
+        given: "A flow with protected path"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.allocateProtectedPath = true
+
+        when: "Create a flow with protected path"
+        flowHelper.addFlow(flow)
+
+        then: "Flow with protected path is created"
+        northbound.getFlowPath(flow.id).protectedPath
+
+        and: "Validation of flow with protected path must be succeed"
+        northbound.validateFlow(flow.id).each { direction ->
+            assert direction.discrepancies.empty
+        }
+
+        and: "Cleanup: delete the flow"
+        flowHelper.deleteFlow(flow.id)
+    }
+
     @Shared
     def errorMessage = { String operation, FlowPayload flow, String endpoint, FlowPayload conflictingFlow,
                          String conflictingEndpoint ->
