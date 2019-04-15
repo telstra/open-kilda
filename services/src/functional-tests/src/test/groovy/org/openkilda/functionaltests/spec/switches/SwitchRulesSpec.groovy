@@ -257,6 +257,82 @@ class SwitchRulesSpec extends BaseSpecification {
         ]
     }
 
+    def "Able to validate switch rules in case flow is created with protected path"() {
+        given: "A switch and a flow with protected path"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.allocateProtectedPath = true
+        flowHelper.addFlow(flow)
+        // protected path creates the 'egress' rule only on src and dst switches
+        // and creates 2 rules(input/output) on transit switches
+        // so, if (switchId == src/dst): 2 rules for main flow path + 1 egress for protected path = 3
+        // in case (switchId != src/dst): 2 rules for main flow path + 2 rules for protected path = 4
+        def amountOfRules = { SwitchId switchId ->
+            (switchId == srcSwitch.dpId || switchId == dstSwitch.dpId) ? 3 : 4
+        }
+        def flowInfo = northbound.getFlowPath(flow.id)
+        assert flowInfo.protectedPath
+
+        when: "Validate rules on the switches"
+        def mainFlowPath = flowInfo.forwardPath
+        def protectedFlowPath = flowInfo.protectedPath.forwardPath
+        def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
+
+        then: "Rules are stored in the 'proper' section"
+        commonNodeIds.each { switchId ->
+            def rules = northbound.validateSwitchRules(switchId)
+            assert rules.properRules.size() == amountOfRules(switchId)
+            assert rules.missingRules.empty
+            assert rules.excessRules.empty
+        }
+
+        def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
+            !commonNodeIds.contains(it.switchId)
+        }
+        uniqueNodes.each { sw ->
+            def rules = northbound.validateSwitchRules(sw.switchId)
+            assert rules.properRules.size() == 2
+            assert rules.missingRules.empty
+            assert rules.excessRules.empty
+        } || true
+
+        when: "Delete rule of protected path on the srcSwitch"
+        def protectedPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
+        def srcSwitchRules = northbound.getSwitchRules(commonNodeIds[0]).flowEntries.findAll {
+            !Cookie.isDefaultRule(it.cookie)
+        }
+
+        def ruleToDelete = srcSwitchRules.find {
+            it.instructions?.applyActions?.flowOutput == protectedPath[0].inputPort.toString() &&
+                    it.match.inPort == protectedPath[0].outputPort.toString()
+        }.cookie
+
+        northbound.deleteSwitchRules(commonNodeIds[0], ruleToDelete)
+
+        then: "Deleted rule is moved to the 'missing' section on the srcSwitch"
+        def srcSwitchValidateRules = northbound.validateSwitchRules(commonNodeIds[0])
+        srcSwitchValidateRules.properRules.size() == 2
+        srcSwitchValidateRules.missingRules.size() == 1
+        srcSwitchValidateRules.missingRules == [ruleToDelete]
+        srcSwitchValidateRules.excessRules.empty
+
+        and: "Rest switches are not affected by deleting the rule on the srcSwitch"
+        commonNodeIds[1..-1].each { switchId ->
+            def rules = northbound.validateSwitchRules(switchId)
+            assert rules.properRules.size() == amountOfRules(switchId)
+            assert rules.missingRules.empty
+            assert rules.excessRules.empty
+        }
+        uniqueNodes.each { sw ->
+            def rules = northbound.validateSwitchRules(sw.switchId)
+            assert rules.properRules.size() == 2
+            assert rules.missingRules.empty
+            assert rules.excessRules.empty
+        } || true
+
+        and: "Cleanup: delete the flow"
+        flowHelper.deleteFlow(flow.id)
+    }
+
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to delete default rule from an #sw.ofVersion switch (#sw.dpId, delete-action=#data.deleteRulesAction)"() {
