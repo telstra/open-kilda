@@ -18,9 +18,10 @@ import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.Cookie
+import org.openkilda.model.MeterId
 import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.switches.SwitchValidationResult
+import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.transform.Memoized
@@ -115,7 +116,7 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
 
         and: "Change bandwidth for the created flow directly in DB"
-        def newBandwidth = flow.maximumBandwidth + 100
+        Long newBandwidth = flow.maximumBandwidth + 100
         /** at this point meters are set for given flow. Now update flow bandwidth directly via DB,
          it is done just for moving meters from the 'proper' section into the 'misconfigured'*/
         database.updateFlowBandwidth(flow.id, newBandwidth)
@@ -240,7 +241,7 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
         swValidateInfo.rules.proper.size() == 2
 
         when: "Update meterId for created flow directly via db"
-        def newMeterId = 100
+        MeterId newMeterId = new MeterId(100)
         database.updateFlowMeterId(flow.id, newMeterId)
 
         then: "Origin meters are moved into the 'excess' section"
@@ -259,7 +260,7 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
         switchValidateInfo.meters.missing.each {
             assert it.rate == flow.maximumBandwidth
             assert it.flowId == flow.id
-            assert it.meterId == newMeterId
+            assert it.meterId == newMeterId.value
             assert ["KBPS", "BURST", "STATS"].containsAll(it.flags)
             verifyBurstSizeIsCorrect(burstSize, it.burstSize)
         }
@@ -354,7 +355,7 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
         //excess egress/ingress/transit rules are not added yet
         //they will be added after the next line
         def switchValidateInfo
-        Wrappers.wait(WAIT_OFFSET){
+        Wrappers.wait(WAIT_OFFSET) {
             switchValidateInfo = northbound.switchValidate(sw.dpId)
             //excess egress/ingress/transit rules are added
             switchValidateInfo.rules.excess.size() == 3

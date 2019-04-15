@@ -17,9 +17,10 @@ import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.model.Cookie
+import org.openkilda.model.MeterId
 import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.switches.SwitchValidationResult
+import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.transform.Memoized
@@ -282,7 +283,7 @@ class SwitchValidationSpec extends BaseSpecification {
         def dstSwitchCreatedMeterIds = getCreatedMeterIds(dstSwitch.dpId)
 
         and: "Update meterId for created flow directly via db"
-        def newMeterId = 100
+        MeterId newMeterId = new MeterId(100)
         database.updateFlowMeterId(flow.id, newMeterId)
 
         then: "Origin meters are moved into the 'excess' section on the src and dst switches"
@@ -307,7 +308,7 @@ class SwitchValidationSpec extends BaseSpecification {
 
         and: "Updated meters are moved in the 'missing' section on the src and dst switches"
         def srcSwitchCreatedCookies = getCookiesWithMeter(srcSwitch.dpId)
-        srcSwitchValidateInfo.meters.missing*.meterId[0] == newMeterId
+        srcSwitchValidateInfo.meters.missing*.meterId[0] == newMeterId.value
         srcSwitchValidateInfo.meters.missing*.cookie.containsAll(srcSwitchCreatedCookies)
 
         srcSwitchValidateInfo.meters.missing.each {
@@ -318,7 +319,7 @@ class SwitchValidationSpec extends BaseSpecification {
         }
 
         def dstSwitchCreatedCookies = getCookiesWithMeter(dstSwitch.dpId)
-        dstSwitchValidateInfo.meters.missing*.meterId[0] == newMeterId
+        dstSwitchValidateInfo.meters.missing*.meterId[0] == newMeterId.value
         dstSwitchValidateInfo.meters.missing*.cookie.containsAll(dstSwitchCreatedCookies)
 
         dstSwitchValidateInfo.meters.missing.each {

@@ -18,6 +18,7 @@ package org.openkilda.testing.service.database;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
@@ -56,7 +57,7 @@ public interface Database {
 
     void updateFlowBandwidth(String flowId, long newBw);
 
-    void updateFlowMeterId(String flowId, int newMeterId);
+    void updateFlowMeterId(String flowId, MeterId newMeterId);
 
     //misc
 
