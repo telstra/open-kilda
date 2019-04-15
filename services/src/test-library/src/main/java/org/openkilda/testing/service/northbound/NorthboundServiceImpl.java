@@ -29,6 +29,8 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.model.HealthCheck;
+import org.openkilda.messaging.model.SpeakerSwitchDescription;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
@@ -545,6 +547,15 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     private SwitchInfoData convertToSwitchInfoData(SwitchDto dto) {
+        SpeakerSwitchView switchView = SpeakerSwitchView.builder()
+                .ofVersion(dto.getOfVersion())
+                .description(SpeakerSwitchDescription.builder()
+                        .hardware(dto.getHardware())
+                        .manufacturer(dto.getManufacturer())
+                        .serialNumber(dto.getSerialNumber())
+                        .software(dto.getSoftware())
+                        .build())
+                .build();
         return new SwitchInfoData(
                 new SwitchId(dto.getSwitchId()),
                 SwitchChangeType.from(dto.getState()),
@@ -552,6 +563,7 @@ public class NorthboundServiceImpl implements NorthboundService {
                 dto.getHostname(),
                 dto.getDescription(),
                 KILDA_CONTROLLER,
-                dto.isUnderMaintenance());
+                dto.isUnderMaintenance(),
+                switchView);
     }
 }
