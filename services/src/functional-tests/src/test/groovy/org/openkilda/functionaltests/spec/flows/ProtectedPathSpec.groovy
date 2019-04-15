@@ -17,7 +17,6 @@ import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.web.client.HttpClientErrorException
-import org.springframework.web.client.HttpServerErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
@@ -132,6 +131,8 @@ class ProtectedPathSpec extends BaseSpecification {
                     def mainNode = mainFlowPath.find { it.switchId == sw }
                     assert filterRules(rules, mainNode, true, false).size() == 1
                     assert filterRules(rules, mainNode, false, true).size() == 1
+                }else{
+                    assert rules.size() == 4
                 }
             }
         }
@@ -993,9 +994,9 @@ class ProtectedPathSpec extends BaseSpecification {
 //    What is the correct behaviour in case isl is down on the protected path and new protected path can't be found
 //    update chaosSpec
 //    test isl/switch maintenance
-//    run and update tests related to the validateRule action
-//    run and update tests related to the synchronize action
-//    run and update tests related to the flow validate action
+//    run and update tests related to the validateRule action - PR 2264
+//    run and update tests related to the synchronize action - PR 2261
+//    run and update tests related to the flow validate action - PR 2262
 //    port anti flap - not necessary
 //    VLAN=0 - done
 //    extend flow validation tests to show their ability to detect problems in protected paths
