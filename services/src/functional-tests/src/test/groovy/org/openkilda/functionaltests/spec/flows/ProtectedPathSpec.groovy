@@ -784,8 +784,7 @@ class ProtectedPathSpec extends BaseSpecification {
         newCurrentProtectedPath == currentPath
 
         def newCurrentLastUpdate = northbound.getFlow(flow.id).lastUpdated
-        //TODO should be '<' awaiting fix from dev
-        currentLastUpdate == newCurrentLastUpdate
+        currentLastUpdate < newCurrentLastUpdate
 
         and: "Rules are updated"
         def newMainFlowPath = northbound.getFlowPath(flow.id).forwardPath
@@ -822,11 +821,8 @@ class ProtectedPathSpec extends BaseSpecification {
         northbound.swapFlowPath(flow.id)
 
         then: "Human readable error is returned"
-        def exc = thrown(HttpServerErrorException)
-        exc.rawStatusCode == 500
-        //TODO awaiting fix from dev
-//        def exc = thrown(HttpClientErrorException)
-//        exc.rawStatusCode == 400
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not swap paths: Flow $flow.id doesn't have protected path"
 
@@ -892,10 +888,8 @@ class ProtectedPathSpec extends BaseSpecification {
         northbound.swapFlowPath(flow.id)
 
         then: "Human readable error is returned"
-        def exc = thrown(HttpServerErrorException)
-        exc.rawStatusCode == 500
-//        def exc = thrown(HttpClientErrorException)
-//        exc.rawStatusCode == 400
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not swap paths: Protected flow path $flow.id is not in ACTIVE state"
 
