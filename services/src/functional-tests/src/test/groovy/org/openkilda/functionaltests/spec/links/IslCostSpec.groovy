@@ -22,8 +22,9 @@ class IslCostSpec extends BaseSpecification {
     @Unroll
     def "Cost of #description ISL is increased due to bringing port down on a switch \
 (ISL cost < isl.cost.when.port.down)"() {
-        given: "An active ISL"
-        int islCost = database.getIslCost(isl)
+        given: "An active ISL with created link props"
+        int islCost = islUtils.getIslInfo(isl).get().cost
+        northbound.updateLinkProps([isl, isl.reversed].collect{ islUtils.toLinkProps(it, [cost: islCost.toString()]) })
 
         when: "Bring port down on the source switch"
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
@@ -32,15 +33,20 @@ class IslCostSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
 
         and: "Cost of forward and reverse ISLs after bringing port down is increased"
-        database.getIslCost(isl) == islCostWhenPortDown + islCost
-        database.getIslCost(isl.reversed) == islCostWhenPortDown + islCost
+        def newCost = islCostWhenPortDown + islCost
+        def isls = northbound.getAllLinks()
+        islUtils.getIslInfo(isls, isl).get().cost == newCost
+        islUtils.getIslInfo(isls, isl.reversed).get().cost == newCost
+
+        and: "Cost on corresponding link props is increased as well"
+        northbound.getAllLinkProps()*.props.cost == [newCost, newCost]*.toString()
 
         and: "Bring port up on the source switch and reset costs"
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
 
         where:
         isl                                                                                    | description
@@ -51,11 +57,12 @@ class IslCostSpec extends BaseSpecification {
     @Unroll
     def "Cost of #data.description ISL is NOT increased due to bringing port down on a switch \
 (ISL cost #data.condition isl.cost.when.port.down)"() {
-        given: "An active ISL"
-        def linkProps = [islUtils.toLinkProps(data.isl, ["cost": data.cost.toString()])]
+        given: "An active ISL with created link props"
+        //TODO(rtretiak): After #1954 is merged use only one-direction prop
+        def linkProps = [data.isl, data.isl.reversed]
+                .collect{ islUtils.toLinkProps(it, ["cost": data.cost.toString()]) }
         northbound.updateLinkProps(linkProps)
-
-        int islCost = database.getIslCost(data.isl)
+        int islCost = islUtils.getIslInfo(data.isl).get().cost
 
         when: "Bring port down on the source switch"
         northbound.portDown(data.isl.srcSwitch.dpId, data.isl.srcPort)
@@ -64,17 +71,19 @@ class IslCostSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(data.isl).get().state == IslChangeType.FAILED }
 
         and: "Cost of forward and reverse ISLs after bringing port down is NOT increased"
-        database.getIslCost(data.isl) == islCost
-        //TODO(ylobankov): Uncomment the check once issue #1954 is merged.
-        //database.getIslCost(data.isl.reversed) == islCost
+        def isls = northbound.getAllLinks()
+        islUtils.getIslInfo(isls, data.isl).get().cost == islCost
+        islUtils.getIslInfo(isls, data.isl.reversed).get().cost == islCost
 
-        and: "Bring port up on the source switch, delete link props and reset costs"
+        and: "Cost on corresponding link props is NOT increased as well"
+        northbound.getAllLinkProps()*.props.cost == [islCost, islCost]*.toString()
+
+        and: "Cleanup: Bring port up on the source switch, delete link props and reset costs"
         northbound.portUp(data.isl.srcSwitch.dpId, data.isl.srcPort)
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(data.isl).get().state == IslChangeType.DISCOVERED
         }
-        database.resetCosts()
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
 
         where:
         data << [
@@ -110,13 +119,14 @@ class IslCostSpec extends BaseSpecification {
     }
 
     def "ISL cost is NOT increased due to failing connection between switches (not port down)"() {
-        given: "ISL going through a-switch"
+        given: "ISL going through a-switch with link props created"
         def isl = topology.islsForActiveSwitches.find {
             it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd
         } ?: assumeTrue("Wasn't able to find suitable ISL", false)
-
-        int islCost = database.getIslCost(isl)
-        assert database.getIslCost(isl.reversed) == islCost
+        def isls = northbound.getAllLinks()
+        int islCost = islUtils.getIslInfo(isls, isl).get().cost
+        assert islUtils.getIslInfo(isls, isl.reversed).get().cost == islCost
+        northbound.updateLinkProps([isl, isl.reversed].collect{ islUtils.toLinkProps(it, [cost: islCost.toString()]) })
 
         when: "Remove a-switch rules to break link between switches"
         def rulesToRemove = [isl.aswitch, isl.aswitch.reversed]
@@ -130,8 +140,12 @@ class IslCostSpec extends BaseSpecification {
         }
 
         and: "Cost of forward and reverse ISLs after failing connection is not increased"
-        database.getIslCost(isl) == islCost
-        database.getIslCost(isl.reversed) == islCost
+        def islsAfterFail = northbound.getAllLinks()
+        islUtils.getIslInfo(islsAfterFail, isl).get().cost == islCost
+        islUtils.getIslInfo(islsAfterFail, isl.reversed).get().cost == islCost
+
+        and: "Cost on link props is not increased as well"
+        northbound.getAllLinkProps()*.props.cost == [islCost, islCost]*.toString()
 
         and: "Add a-switch rules to restore connection"
         lockKeeper.addFlows(rulesToRemove)
