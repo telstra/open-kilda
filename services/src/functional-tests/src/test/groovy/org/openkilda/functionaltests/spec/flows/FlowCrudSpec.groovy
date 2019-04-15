@@ -11,6 +11,7 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
@@ -427,8 +428,26 @@ class FlowCrudSpec extends BaseSpecification {
     }
 
     def "Able to validate flow with protected path"() {
-        given: "A flow with protected path"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        given: "Two active not neighboring switches with two possible paths at least"
+        def switches = topology.getActiveSwitches()
+        def allLinks = northbound.getAllLinks()
+        List<List<PathNode>> possibleFlowPaths = []
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
+            List<List<Switch>> pathSwitches = possibleFlowPaths.collect { pathHelper.getInvolvedSwitches(it) }
+            Integer numberOfDifferentSwitchInPath = 0
+            for (int i = 0; i < pathSwitches.size() - 1; i++) {
+                if (!pathSwitches[i][1..-2].containsAll(pathSwitches[i + 1][1..-2])) {
+                    numberOfDifferentSwitchInPath += 1
+                }
+            }
+            allLinks.every { link ->
+                !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId)
+            } && possibleFlowPaths.size() >= 2 && numberOfDifferentSwitchInPath >= 2
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "Create a flow with protected path"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.allocateProtectedPath = true
 
@@ -436,12 +455,46 @@ class FlowCrudSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         then: "Flow with protected path is created"
-        northbound.getFlowPath(flow.id).protectedPath
+        def flowPathInfo = northbound.getFlowPath(flow.id)
+        flowPathInfo.protectedPath
 
-        and: "Validation of flow with protected path must be succeed"
-        northbound.validateFlow(flow.id).each { direction ->
-            assert direction.discrepancies.empty
+        and: "Validation of flow with protected path must be successful"
+        northbound.validateFlow(flow.id).each { assert it.discrepancies.empty }
+
+        and: "No rule discrepancies on every switch of the flow on the main path"
+        def mainPath = PathHelper.convert(flowPathInfo)
+        def mainSwitches = pathHelper.getInvolvedSwitches(mainPath)
+        if (flow.source.datapath == flow.destination.datapath) {
+            mainSwitches << topology.activeSwitches.find { it.dpId == flow.source.datapath }
         }
+        mainSwitches.each { verifySwitchRules(it.dpId) }
+
+        and: "No rule discrepancies on every switch of the flow on the protected path)"
+        def protectedPath = PathHelper.convert(flowPathInfo.protectedPath)
+        def protectedSwitches = pathHelper.getInvolvedSwitches(protectedPath)
+        protectedSwitches.each { verifySwitchRules(it.dpId) }
+
+        when: "Swap path on the flow"
+        northbound.swapFlowPath(flow.id)
+
+        then: "Flow is swapped"
+        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        def newFlowPathInfo = northbound.getFlowPath(flow.id)
+        def newMainPath = PathHelper.convert(newFlowPathInfo)
+        def newProtectedPath = PathHelper.convert(newFlowPathInfo.protectedPath)
+        mainPath == newProtectedPath
+        protectedPath == newMainPath
+
+        and: "Validation of flow after swapping path must be successful"
+        northbound.validateFlow(flow.id).each { assert it.discrepancies.empty }
+
+        and: "No rule discrepancies on every switch of the flow on the main path"
+        def newMainSwitches = pathHelper.getInvolvedSwitches(newMainPath)
+        newMainSwitches.each { verifySwitchRules(it.dpId) }
+
+        and: "No rule discrepancies on every switch of the flow on the protected path)"
+        def newProtectedSwitches = pathHelper.getInvolvedSwitches(newProtectedPath)
+        newProtectedSwitches.each { verifySwitchRules(it.dpId) }
 
         and: "Cleanup: delete the flow"
         flowHelper.deleteFlow(flow.id)
