@@ -40,19 +40,9 @@ class ProtectedPathSpec extends BaseSpecification {
         northbound.getFlowPath(flow.id).protectedPath
 
         and: "Rules for protected path are created"
-        def mainFlowPath = northbound.getFlowPath(flow.id).forwardPath
-        def protectedFlowPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
-        def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
         Wrappers.wait(WAIT_OFFSET) {
-            switchHelper.verifyRulesOnProtectedPathCmnNodes(commonNodeIds, srcSwitch.dpId, dstSwitch.dpId, mainFlowPath,
-                    protectedFlowPath)
+            switchHelper.verifyRulesOnProtectedFlow(flow.id)
         }
-
-        def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
-            !commonNodeIds.contains(it.switchId)
-        }
-        switchHelper.verifyRulesOnProtectedPathUniqueNodes(uniqueNodes)
-
 
         and: "Validation of flow must be succeed"
         northbound.validateFlow(flow.id).each { direction ->
@@ -102,26 +92,20 @@ class ProtectedPathSpec extends BaseSpecification {
         currentLastUpdate < newCurrentLastUpdate
 
         and: "Rules are updated on the main path"
-        def mainFlowPath = northbound.getFlowPath(flow.id).forwardPath
-        def protectedFlowPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
-        def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
         Wrappers.wait(WAIT_OFFSET) {
-            switchHelper.verifyRulesOnProtectedPathCmnNodes(commonNodeIds, srcSwitch.dpId, dstSwitch.dpId, mainFlowPath,
-                    protectedFlowPath)
+            switchHelper.verifyRulesOnProtectedFlow(flow.id)
         }
-
-        def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
-            !commonNodeIds.contains(it.switchId)
-        }
-        switchHelper.verifyRulesOnProtectedPathUniqueNodes(uniqueNodes)
 
         when: "Update flow: disable protected path(allocateProtectedPath=false)"
+        def mainFlowPath = northbound.getFlowPath(flow.id).forwardPath
+        def protectedFlowPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
         northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = false })
 
         then: "Protected path is disabled"
         !northbound.getFlowPath(flow.id).protectedPath
 
         and: "Rules for protected path are deleted"
+        def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
         Wrappers.wait(WAIT_OFFSET) {
             commonNodeIds.each { sw ->
                 def rules = northbound.getSwitchRules(sw).flowEntries.findAll {
@@ -131,14 +115,17 @@ class ProtectedPathSpec extends BaseSpecification {
                     assert rules.size() == 2
 
                     def mainNode = mainFlowPath.find { it.switchId == sw }
-                    assert switchHelper.filterRulesForProtectedPath(rules, mainNode, true, false).size() == 1
-                    assert switchHelper.filterRulesForProtectedPath(rules, mainNode, false, true).size() == 1
+                    assert switchHelper.findInputRules(rules, mainNode).size() == 1
+                    assert switchHelper.findOutputRules(rules, mainNode).size() == 1
                 }else{
                     assert rules.size() == 4
                 }
             }
         }
 
+        def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
+            !commonNodeIds.contains(it.switchId)
+        }
         uniqueNodes.each { sw ->
             def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
                 !Cookie.isDefaultRule(it.cookie)
@@ -146,8 +133,8 @@ class ProtectedPathSpec extends BaseSpecification {
             def mainNode = mainFlowPath.find { it.switchId == sw.switchId }
             if (mainNode) {
                 assert rules.size() == 2
-                assert switchHelper.filterRulesForProtectedPath(rules, sw, true, false).size() == 1
-                assert switchHelper.filterRulesForProtectedPath(rules, sw, false, true).size() == 1
+                assert switchHelper.findInputRules(rules, sw).size() == 1
+                assert switchHelper.findOutputRules(rules, sw).size() == 1
             }
 
             def protectedNode = protectedFlowPath.find { it.switchId == sw.switchId }
@@ -761,18 +748,9 @@ class ProtectedPathSpec extends BaseSpecification {
         currentPath != currentProtectedPath
 
         and: "Needed rules exist"
-        def mainFlowPath = northbound.getFlowPath(flow.id).forwardPath
-        def protectedFlowPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
-        def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
         Wrappers.wait(WAIT_OFFSET) {
-            switchHelper.verifyRulesOnProtectedPathCmnNodes(commonNodeIds, srcSwitch.dpId, dstSwitch.dpId, mainFlowPath,
-                    protectedFlowPath)
+            switchHelper.verifyRulesOnProtectedFlow(flow.id)
         }
-
-        def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
-            !commonNodeIds.contains(it.switchId)
-        }
-        switchHelper.verifyRulesOnProtectedPathUniqueNodes(uniqueNodes)
 
         when: "Swap flow path"
         def currentLastUpdate = northbound.getFlow(flow.id).lastUpdated
@@ -791,18 +769,9 @@ class ProtectedPathSpec extends BaseSpecification {
         currentLastUpdate < newCurrentLastUpdate
 
         and: "Rules are updated"
-        def newMainFlowPath = northbound.getFlowPath(flow.id).forwardPath
-        def newProtectedFlowPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
-        def newCommonNodeIds = newMainFlowPath*.switchId.intersect(newProtectedFlowPath*.switchId)
         Wrappers.wait(WAIT_OFFSET) {
-            switchHelper.verifyRulesOnProtectedPathCmnNodes(newCommonNodeIds, srcSwitch.dpId, dstSwitch.dpId,
-                    newMainFlowPath, newProtectedFlowPath)
+            switchHelper.verifyRulesOnProtectedFlow(flow.id)
         }
-
-        def newUniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
-            !commonNodeIds.contains(it.switchId)
-        }
-        switchHelper.verifyRulesOnProtectedPathUniqueNodes(newUniqueNodes)
 
         and: "Cleanup: revert system to original state"
         flowHelper.deleteFlow(flow.id)

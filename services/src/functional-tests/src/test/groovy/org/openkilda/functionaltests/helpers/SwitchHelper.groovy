@@ -3,7 +3,6 @@ package org.openkilda.functionaltests.helpers
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.model.Cookie
-import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundService
 
@@ -61,68 +60,87 @@ class SwitchHelper {
         sw.description.toLowerCase().contains("nicira")
     }
 
-    static void verifyRulesOnProtectedPathCmnNodes(List<SwitchId> nodeIds, SwitchId srcSwitchId, SwitchId dstSwitchId,
-                                                   List<PathNodePayload> mainFlowPath, List<PathNodePayload> protectedFlowPath) {
-        nodeIds.each { sw ->
-            def rules = northbound.getSwitchRules(sw).flowEntries.findAll {
-                !Cookie.isDefaultRule(it.cookie)
-            }
-            if (sw == srcSwitchId || sw == dstSwitchId) {
-                assert rules.size() == 3
+    static void verifyRulesOnProtectedFlow(String flowId) {
+        def mainFlowPath = northbound.getFlowPath(flowId).forwardPath
+        def srcMainNode = mainFlowPath[0]
+        def dstMainNode = mainFlowPath[-1]
+        def mainFlowTransitNodes = mainFlowPath[1..-2]
+        def protectedFlowPath = northbound.getFlowPath(flowId).protectedPath.forwardPath
+        def srcProtectedNode = protectedFlowPath[0]
+        def dstProtectedNode = protectedFlowPath[-1]
+        def protectedFlowTransitNodes = protectedFlowPath[1..-2]
 
-                def mainNode = mainFlowPath.find { it.switchId == sw }
-                assert filterRulesForProtectedPath(rules, mainNode, true, false).size() == 1
-                assert filterRulesForProtectedPath(rules, mainNode, false, true).size() == 1
-                def protectedNode = protectedFlowPath.find { it.switchId == sw }
-                //protected path creates an egress rule only
-                if (protectedNode.switchId == srcSwitchId) {
-                    assert filterRulesForProtectedPath(rules, protectedNode, true, false).size() == 0
-                    assert filterRulesForProtectedPath(rules, protectedNode, false, true).size() == 1
-                } else {
-                    assert filterRulesForProtectedPath(rules, protectedNode, true, false).size() == 1
-                    assert filterRulesForProtectedPath(rules, protectedNode, false, true).size() == 0
+        def commonNodes = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
+        def commonTransitSwitches = mainFlowTransitNodes*.switchId.intersect(protectedFlowTransitNodes*.switchId)
+
+        def rulesOnSrcSwitch = northbound.getSwitchRules(srcMainNode.switchId).flowEntries.findAll {
+            !Cookie.isDefaultRule(it.cookie)
+        }
+        assert rulesOnSrcSwitch.size() == 3
+        //rules for main path
+        assert findInputRules(rulesOnSrcSwitch, srcMainNode).size() == 1
+        assert findOutputRules(rulesOnSrcSwitch, srcMainNode).size() == 1
+        //rule for protected path
+        assert findInputRules(rulesOnSrcSwitch, srcProtectedNode).size() == 0
+        assert findOutputRules(rulesOnSrcSwitch, srcProtectedNode).size() == 1
+
+        def rulesOnDstSwitch = northbound.getSwitchRules(dstMainNode.switchId).flowEntries.findAll {
+            !Cookie.isDefaultRule(it.cookie)
+        }
+        assert rulesOnDstSwitch.size() == 3
+        //rules for main path
+        assert findInputRules(rulesOnDstSwitch, dstMainNode).size() == 1
+        assert findOutputRules(rulesOnDstSwitch, dstMainNode).size() == 1
+        //rule for protected path
+        //dst switch contain egress rule for protected, but it looks like ingress
+        assert findInputRules(rulesOnDstSwitch, dstProtectedNode).size() == 1
+        assert findOutputRules(rulesOnDstSwitch, dstProtectedNode).size() == 0
+
+        if (commonTransitSwitches) {
+            commonTransitSwitches.each { sw ->
+                def rules = northbound.getSwitchRules(sw).flowEntries.findAll {
+                    !Cookie.isDefaultRule(it.cookie)
                 }
-            } else {
                 assert rules.size() == 4
 
-                def mainNode = mainFlowPath.find { it.switchId == sw }
-                assert filterRulesForProtectedPath(rules, mainNode, true, false).size() == 1
-                assert filterRulesForProtectedPath(rules, mainNode, false, true).size() == 1
+                def mainNode = mainFlowTransitNodes.find { it.switchId == sw }
+                assert findInputRules(rules, mainNode).size() == 1
+                assert findOutputRules(rules, mainNode).size() == 1
 
-                def protectedNode = protectedFlowPath.find { it.switchId == sw }
-                assert filterRulesForProtectedPath(rules, protectedNode, true, false).size() == 1
-                assert filterRulesForProtectedPath(rules, protectedNode, false, true).size() == 1
+                def protectedNode = protectedFlowTransitNodes.find { it.switchId == sw }
+                assert findInputRules(rules, protectedNode).size() == 1
+                assert findOutputRules(rules, protectedNode).size() == 1
             }
+        }
+
+        def uniqueTransitNodes = protectedFlowTransitNodes.findAll { !commonNodes.contains(it.switchId) } +
+                mainFlowTransitNodes.findAll { !commonNodes.contains(it.switchId) }
+
+        if (uniqueTransitNodes) {
+            uniqueTransitNodes.each { node ->
+                def rules = northbound.getSwitchRules(node.switchId).flowEntries.findAll {
+                    !Cookie.isDefaultRule(it.cookie)
+                }
+                assert rules.size() == 2
+
+                assert findInputRules(rules, node).size() == 1
+                assert findOutputRules(rules, node).size() == 1
+            }
+        }
+
+    }
+
+    static List<FlowEntry> findInputRules(List<FlowEntry> rules, PathNodePayload node) {
+        return rules.findAll {
+            it.match.inPort == node.inputPort.toString() &&
+                    it.instructions.applyActions.flowOutput == node.outputPort.toString()
         }
     }
 
-    static void verifyRulesOnProtectedPathUniqueNodes(List<PathNodePayload> nodes) {
-        nodes.each { sw ->
-            def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
-                !Cookie.isDefaultRule(it.cookie)
-            }
-            assert rules.size() == 2
-
-            assert filterRulesForProtectedPath(rules, sw, true, false).size() == 1
-            assert filterRulesForProtectedPath(rules, sw, false, true).size() == 1
+    static List<FlowEntry> findOutputRules(List<FlowEntry> rules, PathNodePayload node) {
+        return rules.findAll {
+            it.instructions?.applyActions?.flowOutput == node.inputPort.toString() &&
+                    it.match.inPort == node.outputPort.toString()
         }
-    }
-
-    static List<FlowEntry> filterRulesForProtectedPath(List<FlowEntry> rules, PathNodePayload node, Boolean ingress,
-                                                       Boolean egress) {
-        if (ingress) {
-            rules = rules.findAll {
-                it.match.inPort == node.inputPort.toString() &&
-                        it.instructions.applyActions.flowOutput == node.outputPort.toString()
-            }
-        }
-        if (egress) {
-            rules = rules.findAll {
-                it.instructions?.applyActions?.flowOutput == node.inputPort.toString() &&
-                        it.match.inPort == node.outputPort.toString()
-            }
-        }
-
-        return rules
     }
 }
