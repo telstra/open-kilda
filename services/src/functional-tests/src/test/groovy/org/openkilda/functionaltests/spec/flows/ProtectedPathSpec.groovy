@@ -917,9 +917,19 @@ class ProtectedPathSpec extends BaseSpecification {
         def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
                 .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
             possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
+            /**just for sure that we have non overlapping path available
+             * and we make assumption that parallel links won't be used by a flow
+             * because another switch is available */
+            List<List<Switch>> pathSwitches = possibleFlowPaths.collect { pathHelper.getInvolvedSwitches(it) }
+            Integer numberOfDifferentSwitchInPath = 0
+            for (int i = 0; i < pathSwitches.size() - 1; i++) {
+                if (!pathSwitches[i][1..-2].containsAll(pathSwitches[i + 1][1..-2])){
+                    numberOfDifferentSwitchInPath += 1
+                }
+            }
             allLinks.every { link ->
                 !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId)
-            } && possibleFlowPaths.size() >= minPossiblePath
+            } && possibleFlowPaths.size() >= minPossiblePath && numberOfDifferentSwitchInPath >= 2
         } ?: assumeTrue("No suiting switches found", false)
 
         return [srcSwitch, dstSwitch]
@@ -991,6 +1001,7 @@ class ProtectedPathSpec extends BaseSpecification {
 
 //    test new API swap, no any mention about it in ticket - done
 //    A-B-C/A=B=C will the protected path be created? - done (unable to create protectedPath on the same path)
+//    A=B - try to create a flow with protected path
 //    What is the correct behaviour in case isl is down on the protected path and new protected path can't be found
 //    update chaosSpec
 //    test isl/switch maintenance
