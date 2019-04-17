@@ -5,7 +5,6 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
@@ -21,8 +20,6 @@ import spock.lang.Unroll
 
 @Narrative("TBD")
 class ProtectedPathSpec extends BaseSpecification {
-    static SwitchHelper switchHelper
-
     @Unroll
     def "Able to create flow with the 'protected path' option in case maximumBandwidth=#bandwidth, vlan=#vlanId"() {
         given: "Two active not neighboring switches with two possible paths at least"
@@ -41,7 +38,7 @@ class ProtectedPathSpec extends BaseSpecification {
 
         and: "Rules for protected path are created"
         Wrappers.wait(WAIT_OFFSET) {
-            switchHelper.verifyRulesOnProtectedFlow(flow.id)
+            flowHelper.verifyRulesOnProtectedFlow(flow.id)
         }
 
         and: "Validation of flow must be succeed"
@@ -93,7 +90,7 @@ class ProtectedPathSpec extends BaseSpecification {
 
         and: "Rules are updated on the main path"
         Wrappers.wait(WAIT_OFFSET) {
-            switchHelper.verifyRulesOnProtectedFlow(flow.id)
+            flowHelper.verifyRulesOnProtectedFlow(flow.id)
         }
 
         when: "Update flow: disable protected path(allocateProtectedPath=false)"
@@ -115,9 +112,9 @@ class ProtectedPathSpec extends BaseSpecification {
                     assert rules.size() == 2
 
                     def mainNode = mainFlowPath.find { it.switchId == sw }
-                    assert switchHelper.findInputRules(rules, mainNode).size() == 1
-                    assert switchHelper.findOutputRules(rules, mainNode).size() == 1
-                }else{
+                    assert flowHelper.findForwardPathRules(rules, mainNode).size() == 1
+                    assert flowHelper.findReversePathRules(rules, mainNode).size() == 1
+                } else {
                     assert rules.size() == 4
                 }
             }
@@ -133,8 +130,8 @@ class ProtectedPathSpec extends BaseSpecification {
             def mainNode = mainFlowPath.find { it.switchId == sw.switchId }
             if (mainNode) {
                 assert rules.size() == 2
-                assert switchHelper.findInputRules(rules, sw).size() == 1
-                assert switchHelper.findOutputRules(rules, sw).size() == 1
+                assert flowHelper.findForwardPathRules(rules, sw).size() == 1
+                assert flowHelper.findReversePathRules(rules, sw).size() == 1
             }
 
             def protectedNode = protectedFlowPath.find { it.switchId == sw.switchId }
@@ -749,7 +746,7 @@ class ProtectedPathSpec extends BaseSpecification {
 
         and: "Needed rules exist"
         Wrappers.wait(WAIT_OFFSET) {
-            switchHelper.verifyRulesOnProtectedFlow(flow.id)
+            flowHelper.verifyRulesOnProtectedFlow(flow.id)
         }
 
         when: "Swap flow path"
@@ -770,7 +767,7 @@ class ProtectedPathSpec extends BaseSpecification {
 
         and: "Rules are updated"
         Wrappers.wait(WAIT_OFFSET) {
-            switchHelper.verifyRulesOnProtectedFlow(flow.id)
+            flowHelper.verifyRulesOnProtectedFlow(flow.id)
         }
 
         and: "Cleanup: revert system to original state"
