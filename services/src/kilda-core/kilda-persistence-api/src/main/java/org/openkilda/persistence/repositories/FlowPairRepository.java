@@ -29,6 +29,8 @@ import java.util.Set;
  */
 @Deprecated
 public interface FlowPairRepository extends Repository<FlowPair> {
+    long countFlows();
+    
     boolean exists(String flowId);
 
     Optional<FlowPair> findById(String flowId);
