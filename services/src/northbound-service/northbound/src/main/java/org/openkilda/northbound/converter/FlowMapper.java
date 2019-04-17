@@ -26,6 +26,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.SwapFlowPayload;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput;
@@ -46,6 +47,22 @@ public interface FlowMapper {
     @Mapping(target = "status", source = "state")
     @Mapping(target = "created", source = "createdTime")
     FlowPayload toFlowOutput(FlowDto f);
+
+    @Mapping(target = "id", source = "flowId")
+    @Mapping(target = "source",
+            expression = "java(new FlowEndpointPayload(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
+    @Mapping(target = "destination",
+            expression = "java(new FlowEndpointPayload(f.getDestinationSwitch(), f.getDestinationPort(), "
+                    + "f.getDestinationVlan()))")
+    SwapFlowPayload toSwapOutput(FlowDto f);
+
+    @Mapping(target = "id", source = "flowId")
+    @Mapping(target = "source",
+            expression = "java(new FlowEndpointPayload(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
+    @Mapping(target = "destination",
+            expression = "java(new FlowEndpointPayload(f.getDestinationSwitch(), f.getDestinationPort(), "
+                    + "f.getDestinationVlan()))")
+    SwapFlowPayload toSwapFlow(FlowDto f);
 
     FlowDto toFlowDto(FlowPatchDto flowPatchDto);
 

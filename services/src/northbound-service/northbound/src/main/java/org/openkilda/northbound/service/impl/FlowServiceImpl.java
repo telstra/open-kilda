@@ -30,6 +30,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
 import org.openkilda.messaging.command.flow.MeterModifyRequest;
+import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoMessage;
@@ -41,6 +42,7 @@ import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
+import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
@@ -64,6 +66,7 @@ import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
+import org.openkilda.messaging.payload.flow.SwapFlowEndpointPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
@@ -993,6 +996,27 @@ public class FlowServiceImpl implements FlowService {
         return messagingChannel.sendAndGet(nbWorkerTopic, command)
                 .thenApply(FlowHistoryData.class::cast)
                 .thenApply(FlowHistoryData::getPayload);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<SwapFlowEndpointPayload> swapFlowEndpoint(SwapFlowEndpointPayload input) {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.info("Swap endpoints for flow {} and {}", input.getFirstFlow().getId(), input.getSecondFlow().getId());
+
+        SwapFlowEndpointRequest payload =
+                new SwapFlowEndpointRequest(new FlowDto(input.getFirstFlow()), new FlowDto(input.getSecondFlow()));
+
+        CommandMessage request = new CommandMessage(
+                payload, System.currentTimeMillis(), correlationId, Destination.WFM);
+
+        return messagingChannel.sendAndGet(topic, request)
+                .thenApply(SwapFlowResponse.class::cast)
+                .thenApply(response -> new SwapFlowEndpointPayload(
+                        flowMapper.toSwapOutput(response.getFirstFlow().getPayload()),
+                        flowMapper.toSwapOutput(response.getSecondFlow().getPayload())));
     }
 
 }
