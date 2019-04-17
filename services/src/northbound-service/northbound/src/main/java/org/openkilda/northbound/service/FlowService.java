@@ -23,6 +23,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
+import org.openkilda.messaging.payload.flow.SwapFlowEndpointPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
@@ -177,4 +178,12 @@ public interface FlowService {
     CompletableFuture<List<FlowEventPayload>> listFlowEvents(String flowId,
                                                              long timestampFrom,
                                                              long timestampTo);
+
+    /**
+     * Swaps a flow endpoint.
+     *
+     * @param input a payload.
+     * @return the list of updated flows.
+     */
+    CompletableFuture<SwapFlowEndpointPayload> swapFlowEndpoint(SwapFlowEndpointPayload input);
 }

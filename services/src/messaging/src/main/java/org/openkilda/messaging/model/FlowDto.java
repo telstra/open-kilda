@@ -19,6 +19,7 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.SwapFlowPayload;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -280,6 +281,16 @@ public class FlowDto implements Serializable {
                 null, 0, null, null,
                 input.getMaxLatency(),
                 input.getPriority());
+    }
+
+    public FlowDto(SwapFlowPayload input) {
+        this(input.getId(), 0L, false, null,
+                input.getSource().getDatapath(),
+                input.getSource().getPortNumber(),
+                input.getSource().getVlanId(),
+                input.getDestination().getDatapath(),
+                input.getDestination().getPortNumber(),
+                input.getDestination().getVlanId());
     }
 
     @JsonIgnore
