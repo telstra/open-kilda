@@ -165,6 +165,18 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void shouldFind2SegmentFlowById() {
+        Switch switchC = buildTestSwitch(TEST_SWITCH_C_ID.getId());
+        switchRepository.createOrUpdate(switchC);
+
+        Flow flow = buildTestFlowWithIntermediate(TEST_FLOW_ID, switchA, switchC, 100, switchB);
+        flowRepository.createOrUpdate(flow);
+
+        Optional<Flow> foundFlow = flowRepository.findById(TEST_FLOW_ID);
+        assertTrue(foundFlow.isPresent());
+    }
+
+    @Test
     public void shouldFindFlowByGroupId() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flow.setGroupId(TEST_GROUP_ID);
@@ -175,7 +187,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldFindFlowIdsByEndpoint() {
+    public void shouldFindFlowByEndpoint() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flowRepository.createOrUpdate(flow);
 
@@ -185,7 +197,17 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldFindActiveFlowsOverSegments() {
+    public void shouldFindFlowBySwitchEndpoint() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flowRepository.createOrUpdate(flow);
+
+        Collection<Flow> foundFlows = flowRepository.findByEndpointSwitch(TEST_SWITCH_A_ID);
+        Set<String> foundFlowIds = foundFlows.stream().map(foundFlow -> flow.getFlowId()).collect(Collectors.toSet());
+        assertThat(foundFlowIds, Matchers.hasSize(1));
+    }
+
+    @Test
+    public void shouldActiveFlowsWithPortInPath() {
         Switch switchC = buildTestSwitch(TEST_SWITCH_C_ID.getId());
         switchRepository.createOrUpdate(switchC);
 
@@ -235,6 +257,18 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         assertThat(foundFlow, Matchers.hasSize(1));
         assertThat(foundFlow.iterator().next().getForwardPathId(), Matchers.equalTo(flow.getForwardPathId()));
         assertThat(foundFlow.iterator().next().getReversePathId(), Matchers.equalTo(flow.getReversePathId()));
+    }
+
+    @Test
+    public void shouldFindActiveFlowsOverSegments() {
+        Switch switchC = buildTestSwitch(TEST_SWITCH_C_ID.getId());
+        switchRepository.createOrUpdate(switchC);
+
+        Flow flow = buildTestFlowWithIntermediate(TEST_FLOW_ID, switchA, switchC, 100, switchB);
+        flowRepository.createOrUpdate(flow);
+
+        Collection<String> foundFlows = flowRepository.findFlowIdsWithSwitchInPath(TEST_SWITCH_C_ID);
+        assertThat(foundFlows, Matchers.hasSize(1));
     }
 
     @Test
