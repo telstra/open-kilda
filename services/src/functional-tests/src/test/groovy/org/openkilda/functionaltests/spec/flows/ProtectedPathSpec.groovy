@@ -36,7 +36,7 @@ class ProtectedPathSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         then: "Flow is created with protected path"
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         northbound.getFlowPath(flow.id).protectedPath
 
         and: "Rules for protected path are created"
@@ -131,7 +131,7 @@ class ProtectedPathSpec extends BaseSpecification {
                     def mainNode = mainFlowPath.find { it.switchId == sw }
                     assert filterRules(rules, mainNode, true, false).size() == 1
                     assert filterRules(rules, mainNode, false, true).size() == 1
-                }else{
+                } else {
                     assert rules.size() == 4
                 }
             }
@@ -209,7 +209,7 @@ class ProtectedPathSpec extends BaseSpecification {
 
         then: "Flow is created with protected path"
         northbound.getFlowPath(flow.id).protectedPath
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Current path is not equal to protected path"
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
@@ -279,7 +279,7 @@ class ProtectedPathSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         northbound.getFlowPath(flow.id).protectedPath
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
         def currentProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
@@ -337,7 +337,7 @@ class ProtectedPathSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         northbound.getFlowPath(flow.id).protectedPath
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
         def currentProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
@@ -557,7 +557,7 @@ class ProtectedPathSpec extends BaseSpecification {
 
         then: "Flow is created with protected path"
         northbound.getFlowPath(flow.id).protectedPath
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Current path is not equal to protected path"
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
@@ -753,7 +753,7 @@ class ProtectedPathSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.allocateProtectedPath = true
         flowHelper.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
         def currentProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
         currentPath != currentProtectedPath
@@ -776,7 +776,7 @@ class ProtectedPathSpec extends BaseSpecification {
         northbound.swapFlowPath(flow.id)
 
         then: "Flow path is swapped"
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         def newCurrentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
         def newCurrentProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
         newCurrentPath != currentPath
@@ -815,7 +815,7 @@ class ProtectedPathSpec extends BaseSpecification {
         flow.allocateProtectedPath = false
         flowHelper.addFlow(flow)
 
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         !northbound.getFlowPath(flow.id).protectedPath
 
         when: "Try to swap flow without protected path"
@@ -857,7 +857,7 @@ class ProtectedPathSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.allocateProtectedPath = true
         flowHelper.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
         List<PathNode> broughtDownPorts = []
@@ -899,7 +899,7 @@ class ProtectedPathSpec extends BaseSpecification {
         // possibly i have to choose switch pair without a-switch
         northbound.portUp(currentIsls[0].srcSwitch.dpId, currentIsls[0].srcPort)
         northbound.portUp(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
-        Wrappers.wait(WAIT_OFFSET * 2) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(WAIT_OFFSET * 2) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         northbound.portUp(protectedIsls[0].srcSwitch.dpId, protectedIsls[0].srcPort)
         northbound.portUp(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
         broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
@@ -923,7 +923,7 @@ class ProtectedPathSpec extends BaseSpecification {
             List<List<Switch>> pathSwitches = possibleFlowPaths.collect { pathHelper.getInvolvedSwitches(it) }
             Integer numberOfDifferentSwitchInPath = 0
             for (int i = 0; i < pathSwitches.size() - 1; i++) {
-                if (!pathSwitches[i][1..-2].containsAll(pathSwitches[i + 1][1..-2])){
+                if (!pathSwitches[i][1..-2].containsAll(pathSwitches[i + 1][1..-2])) {
                     numberOfDifferentSwitchInPath += 1
                 }
             }
