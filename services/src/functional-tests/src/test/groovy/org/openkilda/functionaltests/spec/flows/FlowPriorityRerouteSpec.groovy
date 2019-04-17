@@ -12,9 +12,10 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 
 import spock.lang.Ignore
+import spock.lang.Unroll
 
 class FlowPriorityRerouteSpec extends BaseSpecification {
-
+    @Unroll
     def "System is able to reroute(automatically) flow in the correct order based on the priority field"() {
         given: "Three flows on the same path, with alt paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -26,6 +27,7 @@ class FlowPriorityRerouteSpec extends BaseSpecification {
         3.times {
             def flow = flowHelper.randomFlow(switchPair)
             flow.maximumBandwidth = 10000
+            flow.allocateProtectedPath = protectedPath
             flow.priority = newPriority
             flowHelper.addFlow(flow)
             newPriority -= 100
@@ -57,7 +59,11 @@ class FlowPriorityRerouteSpec extends BaseSpecification {
         }
 
         and: "Reroute procedure was done based on the priority field"
-        flows.sort { it.priority }*.id == northbound.getAllFlows().sort { it.lastUpdated }*.id
+        // for a flow with protected path we use a little bit different logic for rerouting then for simple flow
+        // that's why we use WAIT_OFFSET here
+        Wrappers.wait(WAIT_OFFSET) {
+            flows.sort { it.priority }*.id == northbound.getAllFlows().sort { it.lastUpdated }*.id
+        }
 
         and: "Cleanup: revert system to original state"
         northbound.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
@@ -68,9 +74,16 @@ class FlowPriorityRerouteSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
+        database.resetCosts()
+
+        where:
+        info                     | protectedPath
+        "without protected path" | false
+        "with protected path"    | true
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2211")
+    @Unroll
     def "System is able to reroute(intentional) flow in the correct order based on the priority field"() {
         given: "Three flows on the same path, with alt paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -82,6 +95,7 @@ class FlowPriorityRerouteSpec extends BaseSpecification {
         3.times {
             def flow = flowHelper.randomFlow(switchPair)
             flow.maximumBandwidth = 10000
+            flow.allocateProtectedPath = protectedPath
             flow.priority = newPriority
             flowHelper.addFlow(flow)
             newPriority -= 100
@@ -109,12 +123,18 @@ class FlowPriorityRerouteSpec extends BaseSpecification {
         }
 
         and: "Reroute procedure was done based on the priority field"
-        flows.sort { it.priority }*.id == northbound.getAllFlows().sort { it.lastUpdated }*.id
-
+        Wrappers.wait(WAIT_OFFSET) {
+            flows.sort { it.priority }*.id == northbound.getAllFlows().sort { it.lastUpdated }*.id
+        }
         and: "Cleanup: revert system to original state"
         flows.each { flowHelper.deleteFlow(it.id) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
+
+        where:
+        info                     | protectedPath
+        "without protected path" | false
+        "with protected path"    | true
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {
