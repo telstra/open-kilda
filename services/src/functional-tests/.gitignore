@@ -1,5 +1,2 @@
-.idea/ 
-target/
-*.iml
-topology.yaml
-kilda.properties
+/topology.yaml
+/kilda.properties

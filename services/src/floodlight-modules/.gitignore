@@ -1,5 +1,1 @@
-target/
-*.classpath
-.project
-.settings/
-*.pom
+/dependency-reduced-pom.xml
