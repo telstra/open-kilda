@@ -16,6 +16,8 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
 
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPath;
@@ -25,17 +27,22 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.converters.CookieConverter;
+import org.openkilda.persistence.converters.PathIdConverter;
+import org.openkilda.persistence.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
+import org.apache.commons.lang3.StringUtils;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
+import org.neo4j.ogm.model.Result;
 import org.neo4j.ogm.session.Session;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -49,129 +56,134 @@ import java.util.stream.Stream;
  */
 public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> implements FlowPathRepository {
     static final String PATH_ID_PROPERTY_NAME = "path_id";
-    static final String FLOW_ID_PROPERTY_NAME = "flowid";
-    static final String COOKIE_PROPERTY_NAME = "cookie";
+
+    private final CookieConverter cookieConverter = new CookieConverter();
+    private final PathIdConverter pathIdConverter = new PathIdConverter();
+    private final SwitchIdConverter switchIdConverter = new SwitchIdConverter();
 
     public Neo4jFlowPathRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
     }
 
     @Override
-    public Optional<FlowPath> findById(PathId pathId) {
-        Filter pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, pathId);
+    public Collection<FlowPath> findAll() {
+        return loadFlowPathsWithSegments("", emptyMap());
+    }
 
-        Collection<FlowPath> flowPaths = loadAll(pathIdFilter);
+    @Override
+    public Optional<FlowPath> findById(PathId pathId) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "path_id", pathIdConverter.toGraphProperty(pathId));
+
+        Collection<FlowPath> flowPaths = loadFlowPathsWithSegments("flow_path.path_id = $path_id", parameters);
         if (flowPaths.size() > 1) {
             throw new PersistenceException(format("Found more that 1 FlowPath entity by (%s)", pathId));
         } else if (flowPaths.isEmpty()) {
             return Optional.empty();
         }
 
-        return Optional.of(flowPaths.iterator().next())
-                .map(this::completeWithSegments);
+        return Optional.of(flowPaths.iterator().next());
     }
 
     @Override
     public Optional<FlowPath> findByFlowIdAndCookie(String flowId, Cookie cookie) {
-        Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
-        Filter cookieFilter = new Filter(COOKIE_PROPERTY_NAME, ComparisonOperator.EQUALS, cookie);
+        Map<String, Object> parameters = ImmutableMap.of(
+                "flow_id", flowId,
+                "cookie", cookieConverter.toGraphProperty(cookie));
 
-        Collection<FlowPath> flowPaths = loadAll(flowIdFilter.and(cookieFilter));
+        Collection<FlowPath> flowPaths = loadFlowPathsWithSegments("flow_path.flow_id = $flow_id "
+                + "AND flow_path.cookie = $cookie", parameters);
         if (flowPaths.size() > 1) {
             throw new PersistenceException(format("Found more that 1 FlowPath entity by (%s, %s)", flowId, cookie));
         } else if (flowPaths.isEmpty()) {
             return Optional.empty();
         }
 
-        return Optional.of(flowPaths.iterator().next())
-                .map(this::completeWithSegments);
-    }
-
-    @Override
-    public Collection<FlowPath> findAll() {
-        Collection<FlowPath> paths = super.findAll();
-        //TODO: this is slow and requires optimization
-        paths.forEach(this::completeWithSegments);
-        return paths;
+        return Optional.of(flowPaths.iterator().next());
     }
 
     @Override
     public Collection<FlowPath> findByFlowId(String flowId) {
-        Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
+        Map<String, Object> parameters = ImmutableMap.of(
+                "flow_id", flowId);
 
-        Collection<FlowPath> paths = loadAll(flowIdFilter);
-        //TODO: this is slow and requires optimization
-        paths.forEach(this::completeWithSegments);
-        return paths;
+        return loadFlowPathsWithSegments("flow_path.flow_id = $flow_id", parameters);
     }
 
     @Override
     public Collection<FlowPath> findByFlowGroupId(String flowGroupId) {
         Map<String, Object> parameters = ImmutableMap.of("flow_group_id", flowGroupId);
-        String query = "MATCH (:switch)-[f:flow {group_id: $flow_group_id}]->(:switch) "
-                + "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
-                + "WHERE fp.flow_id = f.flowid "
-                + "RETURN src, fp, dst";
 
-        Collection<FlowPath> paths = Lists.newArrayList(getSession().query(FlowPath.class, query, parameters));
-        //TODO: this is slow and requires optimization
-        paths.forEach(this::completeWithSegments);
-        return paths;
+        Set<String> flowIds = new HashSet<>();
+        getSession().query(String.class, "MATCH ()-[f:flow {group_id: $flow_group_id}]->() "
+                + "RETURN f.flowid", parameters).forEach(flowIds::add);
+
+        if (flowIds.isEmpty()) {
+            return emptyList();
+        }
+
+        String pathFilter = flowIds.stream()
+                .map(flow -> "flow_path.flow_id=\"" + flow + "\"")
+                .collect(Collectors.joining(" OR "));
+
+        return loadFlowPathsWithSegments(pathFilter, emptyMap());
     }
 
     @Override
     public Collection<FlowPath> findBySrcSwitch(SwitchId switchId) {
-        Map<String, Object> parameters = ImmutableMap.of("switch_id", switchId.toString());
-        String query = "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
-                + "WHERE src.name = $switch_id "
-                + "RETURN src, fp, dst";
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_id", switchIdConverter.toGraphProperty(switchId));
 
-        Collection<FlowPath> paths = Lists.newArrayList(getSession().query(FlowPath.class, query, parameters));
-        //TODO: this is slow and requires optimization
-        paths.forEach(this::completeWithSegments);
-        return paths;
+        return loadFlowPathsWithSegments("src.name = $switch_id", parameters);
     }
 
     @Override
     public Collection<FlowPath> findByEndpointSwitch(SwitchId switchId) {
-        Map<String, Object> parameters = ImmutableMap.of("switch_id", switchId.toString());
-        String query = "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
-                + "WHERE src.name = $switch_id or dst.name = $switch_id "
-                + "RETURN src, fp, dst";
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_id", switchIdConverter.toGraphProperty(switchId));
 
-        Collection<FlowPath> paths = Lists.newArrayList(getSession().query(FlowPath.class, query, parameters));
-        //TODO: this is slow and requires optimization
-        paths.forEach(this::completeWithSegments);
-        return paths;
+        return loadFlowPathsWithSegments("src.name = $switch_id OR dst.name = $switch_id", parameters);
     }
 
     @Override
     public Collection<FlowPath> findBySegmentSwitch(SwitchId switchId) {
-        Map<String, Object> parameters = ImmutableMap.of("switch_id", switchId.toString());
-        String query = "MATCH (ps_src:switch)-[ps:path_segment]->(ps_dst:switch) "
-                + "WHERE ps_src.name = $switch_id OR ps_dst.name = $switch_id "
-                + "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
-                + "WHERE ps.path_id = fp.path_id "
-                + "RETURN src, fp, dst";
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_id", switchIdConverter.toGraphProperty(switchId));
 
-        Collection<FlowPath> paths = Lists.newArrayList(getSession().query(FlowPath.class, query, parameters));
-        //TODO: this is slow and requires optimization
-        paths.forEach(this::completeWithSegments);
-        return paths;
+        Set<PathId> pathIds = new HashSet<>();
+        getSession().query(PathId.class, "MATCH (ps_src:switch)-[ps:path_segment]->(ps_dst:switch) "
+                + "WHERE ps_src.name = $switch_id OR ps_dst.name = $switch_id "
+                + "RETURN ps.path_id", parameters).forEach(pathIds::add);
+
+        if (pathIds.isEmpty()) {
+            return emptyList();
+        }
+
+        String pathFilter = pathIds.stream()
+                .map(pathId -> "flow_path.path_id=\"" + pathIdConverter.toGraphProperty(pathId) + "\"")
+                .collect(Collectors.joining(" OR "));
+
+        return loadFlowPathsWithSegments(pathFilter, emptyMap());
     }
 
     @Override
     public Collection<FlowPath> findBySegmentDestSwitch(SwitchId switchId) {
-        Map<String, Object> parameters = ImmutableMap.of("switch_id", switchId.toString());
-        String query = "MATCH (:switch)-[ps:path_segment]->(:switch {name: $switch_id}) "
-                + "MATCH (src:switch)-[fp:flow_path]->(dst:switch) "
-                + "WHERE ps.path_id = fp.path_id "
-                + "RETURN src, fp, dst";
+        Map<String, Object> parameters = ImmutableMap.of("switch_id", switchIdConverter.toGraphProperty(switchId));
 
-        Collection<FlowPath> paths = Lists.newArrayList(getSession().query(FlowPath.class, query, parameters));
-        //TODO: this is slow and requires optimization
-        paths.forEach(this::completeWithSegments);
-        return paths;
+        Set<PathId> pathIds = new HashSet<>();
+        getSession().query(PathId.class, "MATCH (:switch)-[ps:path_segment]->(ps_dst:switch) "
+                + "WHERE ps_dst.name = $switch_id "
+                + "RETURN ps.path_id", parameters).forEach(pathIds::add);
+
+        if (pathIds.isEmpty()) {
+            return emptyList();
+        }
+
+        String pathFilter = pathIds.stream()
+                .map(pathId -> "flow_path.path_id=\"" + pathIdConverter.toGraphProperty(pathId) + "\"")
+                .collect(Collectors.joining(" OR "));
+
+        return loadFlowPathsWithSegments(pathFilter, emptyMap());
     }
 
     @Override
@@ -237,9 +249,9 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     @Override
     public long getUsedBandwidthBetweenEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort) {
         Map<String, Object> parameters = ImmutableMap.of(
-                "src_switch", srcSwitchId.toString(),
+                "src_switch", switchIdConverter.toGraphProperty(srcSwitchId),
                 "src_port", srcPort,
-                "dst_switch", dstSwitchId.toString(),
+                "dst_switch", switchIdConverter.toGraphProperty(dstSwitchId),
                 "dst_port", dstPort);
 
         String query = "MATCH (src:switch {name: $src_switch}), (dst:switch {name: $dst_switch}) "
@@ -252,11 +264,6 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
 
         return Optional.ofNullable(getSession().queryForObject(Long.class, query, parameters))
                 .orElse(0L);
-    }
-
-    private FlowPath completeWithSegments(FlowPath flowPath) {
-        flowPath.setSegments(findPathSegmentsByPathId(flowPath.getPathId()));
-        return flowPath;
     }
 
     private List<PathSegment> findPathSegmentsByPathId(PathId pathId) {
@@ -276,6 +283,34 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
                         additionalSegments.stream()
                                 .flatMap(segment -> Stream.of(segment.getSrcSwitch(), segment.getDestSwitch()))
                 ));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Collection<FlowPath> loadFlowPathsWithSegments(String flowPathFilter, Map<String, Object> parameters) {
+        Result queryResult = getSession().query(
+                "MATCH (src:switch)-[flow_path:flow_path]->(dst:switch) "
+                        + (StringUtils.isNotBlank(flowPathFilter) ? "WHERE " + flowPathFilter : "")
+                        + " WITH src, flow_path, dst "
+                        + "OPTIONAL MATCH (segment_src:switch)-[path_segment:path_segment]->() "
+                        + "WHERE path_segment.path_id = flow_path.path_id "
+                        + "RETURN src, flow_path, dst, collect(segment_src), "
+                        + "collect(path_segment) as path_segments", parameters);
+
+        Set<FlowPath> result = new HashSet<>();
+        for (Map<String, Object> record : queryResult.queryResults()) {
+            FlowPath flowPath = (FlowPath) record.get("flow_path");
+            if (record.get("path_segments") instanceof List) {
+                List<PathSegment> pathSegments = ((List<PathSegment>) record.get("path_segments")).stream()
+                        .sorted(Comparator.comparingInt(PathSegment::getSeqId))
+                        .collect(Collectors.toList());
+                flowPath.setSegments(pathSegments);
+            } else {
+                flowPath.setSegments(emptyList());
+            }
+
+            result.add(flowPath);
+        }
+        return result;
     }
 
     @Override

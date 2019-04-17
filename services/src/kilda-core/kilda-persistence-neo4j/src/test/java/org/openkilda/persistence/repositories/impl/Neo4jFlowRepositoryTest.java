@@ -165,6 +165,18 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void shouldFind2SegmentFlowById() {
+        Switch switchC = buildTestSwitch(TEST_SWITCH_C_ID.getId());
+        switchRepository.createOrUpdate(switchC);
+
+        Flow flow = buildTestFlowWithIntermediate(TEST_FLOW_ID, switchA, switchC, 1, switchB);
+        flowRepository.createOrUpdate(flow);
+
+        Optional<Flow> foundFlow = flowRepository.findById(TEST_FLOW_ID);
+        assertTrue(foundFlow.isPresent());
+    }
+
+    @Test
     public void shouldFindFlowByGroupId() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flow.setGroupId(TEST_GROUP_ID);

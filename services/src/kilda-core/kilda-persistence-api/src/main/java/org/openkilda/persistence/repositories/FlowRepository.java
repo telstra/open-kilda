@@ -23,6 +23,15 @@ import java.util.Optional;
 import java.util.Set;
 
 public interface FlowRepository extends Repository<Flow> {
+    long countFlows();
+
+    /**
+     * Fetches all flows.
+     * <p/>
+     * IMPORTANT: the method doesn't complete the flow and flow path entities with related path segments!
+     */
+    Collection<Flow> findAll();
+
     boolean exists(String flowId);
 
     Optional<Flow> findById(String flowId);
@@ -35,6 +44,11 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<Flow> findByEndpointSwitch(SwitchId switchId);
 
+    /**
+     * Fetches active flows with the port in flow path.
+     * <p/>
+     * IMPORTANT: the method doesn't complete the flow entity with related paths and segments!
+     */
     Collection<Flow> findActiveFlowsWithPortInPath(SwitchId switchId, int port);
 
     Collection<Flow> findDownFlows();

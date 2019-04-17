@@ -237,8 +237,7 @@ public class DatabaseSupportImpl implements Database {
      */
     @Override
     public int countFlows() {
-        //TODO(siakovenko): non optimal and a dedicated method for counting must be introduced.
-        return flowPairRepository.findAll().size();
+        return (int) flowPairRepository.countFlows();
     }
 
     /**
@@ -301,7 +300,7 @@ public class DatabaseSupportImpl implements Database {
      * Update flow bandwidth.
      *
      * @param flowId flow ID
-     * @param newBw new bandwidth to be set
+     * @param newBw  new bandwidth to be set
      */
     @Override
     public void updateFlowBandwidth(String flowId, long newBw) {

@@ -46,6 +46,11 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
     }
 
     @Override
+    public long countFlows() {
+        return flowRepository.countFlows();
+    }
+
+    @Override
     public boolean exists(String flowId) {
         return flowRepository.exists(flowId);
     }
@@ -89,6 +94,11 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
         return flowRepository.findFlowIdsWithSwitchInPath(switchId);
     }
 
+    /**
+     * Fetches all flow pairs.
+     * <p/>
+     * IMPORTANT: the method doesn't complete the flow and flow path entities with related path segments!
+     */
     @Override
     public Collection<FlowPair> findAll() {
         return flowRepository.findAll().stream()
