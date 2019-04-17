@@ -24,7 +24,7 @@ import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
-import org.openkilda.northbound.dto.links.LinkMaxBandwidthDto;
+import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthDto;
 
 import org.mapstruct.Mapper;
 
