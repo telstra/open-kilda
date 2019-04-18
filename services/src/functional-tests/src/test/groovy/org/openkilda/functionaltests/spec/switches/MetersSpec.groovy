@@ -163,6 +163,13 @@ on a #switchType switch"() {
         and: "All new meters rate should be equal to flow's rate"
         newMeterEntries*.rate.every { it == flow.maximumBandwidth }
 
+        and: "Switch validation shows no discrepancies in meters"
+        def metersValidation = northbound.switchValidate(sw.dpId).meters
+        metersValidation.proper.size() == 2
+        metersValidation.excess.empty
+        metersValidation.missing.empty
+        metersValidation.misconfigured.empty
+
         when: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
 
@@ -269,7 +276,7 @@ meters in flow rules at all (#flowType flow)"() {
     }
 
     @Unroll
-    def "Meter burst size should not exceed 105% of #flowRate kbps on non-Centec switches"() {
+    def "Meter burst size is correctly set on non-Centec switches for #flowRate flow rate"() {
         requireProfiles("hardware") //TODO: Research how this behaves on OpenVSwitch
 
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible switch"
@@ -300,8 +307,15 @@ meters in flow rules at all (#flowType flow)"() {
         and: "New meters rate should be equal to flow bandwidth"
         newMeters*.rate.every { it == flowRate }
 
-        and: "New meters burst size should be between 100.5% and 105% of the flow's rate"
+        and: "New meters burst size matches the expected value for given switch model"
         newMeters*.burstSize.each { assert it == getExpectedBurst(sw.dpId, flowRate) }
+
+        and: "Switch validation shows no discrepancies in meters"
+        def metersValidation = northbound.switchValidate(sw.dpId).meters
+        metersValidation.proper.size() == 2
+        metersValidation.excess.empty
+        metersValidation.missing.empty
+        metersValidation.misconfigured.empty
 
         cleanup: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
@@ -341,8 +355,15 @@ meters in flow rules at all (#flowType flow)"() {
         and: "New meters rate should be equal to flow bandwidth"
         newMeters*.rate.every { it == flowRate }
 
-        and: "New meters burst size should be 1024 kbit/s regardless the flow speed"
+        and: "New meters burst size should respect the min/max border value for Centec"
         newMeters*.burstSize.every { it == expectedBurstSize }
+
+        and: "Switch validation shows no discrepancies in meters"
+        def metersValidation = northbound.switchValidate(sw.dpId).meters
+        metersValidation.proper.size() == 2
+        metersValidation.excess.empty
+        metersValidation.missing.empty
+        metersValidation.misconfigured.empty
 
         cleanup: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
