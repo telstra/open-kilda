@@ -39,6 +39,7 @@ import java.net.InetSocketAddress;
 import java.util.Arrays;
 
 public class PathVerificationPacketOutTest extends FloodlightTestCase {
+    private static final String VERIFICATION_BCAST_PACKET_DST = "01:80:C2:00:00:00";
     private PathVerificationService pvs;
     private InetSocketAddress srcIpTarget;
     private InetSocketAddress dstIpTarget;
@@ -52,8 +53,13 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         fmc.addService(IOFSwitchService.class, getMockSwitchService());
         OFDescStatsReply swDescription = factory.buildDescStatsReply().build();
-        pvs = new PathVerificationService();
 
+        PathVerificationServiceConfig config = EasyMock.createMock(PathVerificationServiceConfig.class);
+        expect(config.getVerificationBcastPacketDst()).andReturn(VERIFICATION_BCAST_PACKET_DST).anyTimes();
+        replay(config);
+
+        pvs = new PathVerificationService();
+        pvs.setConfig(config);
         pvs.initAlgorithm("secret");
 
         srcIpTarget = new InetSocketAddress("192.168.10.1", 200);
@@ -88,7 +94,7 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
 
         // Destination MAC should be that of BROADCAST for Broadcast Packet
         byte[] dstMac = Arrays.copyOfRange(packet.getData(), 0, 6);
-        assertArrayEquals(MacAddress.of(pvs.VERIFICATION_BCAST_PACKET_DST).getBytes(), dstMac);
+        assertArrayEquals(MacAddress.of(VERIFICATION_BCAST_PACKET_DST).getBytes(), dstMac);
 
         // Source IP is actual switch1 IP
         byte[] srcIpActual = Arrays.copyOfRange(packet.getData(), 26, 30);

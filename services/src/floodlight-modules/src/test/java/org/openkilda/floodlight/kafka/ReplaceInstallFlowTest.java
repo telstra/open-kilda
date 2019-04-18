@@ -29,6 +29,7 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
+import org.openkilda.floodlight.pathverification.PathVerificationServiceConfig;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -60,6 +61,7 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.easymock.Capture;
 import org.easymock.CaptureType;
+import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
@@ -105,7 +107,12 @@ public class ReplaceInstallFlowTest {
         config = factory.createConfiguration(SwitchManagerConfig.class, new MapConfigurationSource(emptyMap()));
 
         final SwitchManager switchManager = new SwitchManager();
-        final PathVerificationService pathVerificationService = new PathVerificationService();
+        PathVerificationServiceConfig config = EasyMock.createMock(PathVerificationServiceConfig.class);
+        expect(config.getVerificationBcastPacketDst()).andReturn("01:80:C2:00:00:00").anyTimes();
+        replay(config);
+        PathVerificationService pathVerificationService = EasyMock.createMock(PathVerificationService.class);
+        expect(pathVerificationService.getConfig()).andReturn(config).anyTimes();
+        replay(pathVerificationService);
 
         ofSwitchService = createMock(IOFSwitchService.class);
 

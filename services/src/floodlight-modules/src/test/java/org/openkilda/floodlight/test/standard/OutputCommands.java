@@ -16,7 +16,6 @@
 package org.openkilda.floodlight.test.standard;
 
 import static java.util.Collections.singletonList;
-import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.BDF_DEFAULT_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.CATCH_BFD_RULE_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
@@ -56,6 +55,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 
 public interface OutputCommands {
+    String VERIFICATION_BCAST_PACKET_DST = "01:80:C2:00:00:00";
+
     OFFactory ofFactory = new OFFactoryMock();
 
     OFFlowAdd egressReplaceFlowMod(int inputPort, int outputPort, int inputVlan, int outputVlan, long cookie);

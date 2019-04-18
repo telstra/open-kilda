@@ -36,6 +36,7 @@ kilda_floodlight_command_processor_deferred_requests_limit: 64
 kilda_floodlight_flow_meter_burst_coefficient: 1.05
 kilda_floodlight_consumer_executors: 20
 kilda_floodlight_consumer_disco_executors: 20
+kilda_floodlight_broadcast_mac_address: "01:80:C2:00:00:00"
 
 kilda_grpc_speaker_kafka_listener_threads: 1
 kilda_grpc_speaker_kafka_session_timeout: 30000
