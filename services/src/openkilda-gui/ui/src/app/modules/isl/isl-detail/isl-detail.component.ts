@@ -332,15 +332,19 @@ get f() {
   graphChanged(){
     if(this.filterForm.controls.graph.value == "isllossforward"){
       this.currentGraphName = "ISL Loss Packets Forward Graph";
+      this.filterForm.controls.metric.setValue("packets");
     }
     if(this.filterForm.controls.graph.value == "isllossreverse"){
       this.currentGraphName = "ISL Loss Packets Resverse Graph";
+      this.filterForm.controls.metric.setValue("packets");
     }
     if(this.filterForm.controls.graph.value == "target"){
       this.currentGraphName = "Destination Graph";
+      this.filterForm.controls.metric.setValue("bits");
     }
     if(this.filterForm.controls.graph.value == "source"){
       this.currentGraphName = "Source Graph";
+      this.filterForm.controls.metric.setValue("bits");
     }
     if(this.filterForm.controls.graph.value == "latency"){
       this.currentGraphName = "ISL Latency Graph";
