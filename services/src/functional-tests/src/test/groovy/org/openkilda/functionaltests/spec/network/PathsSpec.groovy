@@ -11,21 +11,13 @@ class PathsSpec extends BaseSpecification {
 
     def "Get paths between not neighboring switches"() {
         given: "Two active not neighboring switches"
-
-        def switches = topology.getActiveSwitches()
-        def allLinks = northbound.getAllLinks()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allLinks.every { link ->
-                !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId)
-            }
-        }
+        def potentialFlow = topologyHelper.findNonNeighbors()
 
         and: "Create a flow to reduce available bandwidth on some path between these two switches"
-        def flow = flowHelper.addFlow(flowHelper.randomFlow(srcSwitch, dstSwitch))
+        def flow = flowHelper.addFlow(flowHelper.randomFlow(potentialFlow))
 
         when: "Get paths between switches"
-        def paths = northbound.getPaths(srcSwitch.dpId, dstSwitch.dpId)
+        def paths = northbound.getPaths(potentialFlow.src.dpId, potentialFlow.dst.dpId)
 
         then: "Paths will be sorted by bandwidth (descending order) and then by latency (ascending order)"
         paths.paths.size() > 0

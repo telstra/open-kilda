@@ -30,6 +30,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableRangeSet;
 import com.google.common.collect.Range;
@@ -39,6 +41,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.experimental.NonFinal;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -223,6 +226,7 @@ public class TopologyDefinition {
             return new Switch(name, dpId, ofVersion, status, outPorts, maxPort, controller);
         }
 
+        @JsonIgnore
         public boolean isActive() {
             return status == Status.Active;
         }
@@ -230,6 +234,7 @@ public class TopologyDefinition {
         /**
          * Get list of all available ports on this switch.
          */
+        @JsonIgnore
         public List<Integer> getAllPorts() {
             return IntStream.rangeClosed(1, maxPort).boxed().collect(toList());
         }
@@ -246,6 +251,7 @@ public class TopologyDefinition {
 
         private int port;
         @NonNull
+        @JsonSerialize(using = ToStringSerializer.class)
         private RangeSet<Integer> vlanRange;
 
         @JsonCreator
@@ -257,6 +263,7 @@ public class TopologyDefinition {
         }
 
         private static RangeSet<Integer> parseVlanRange(String vlanRangeAsStr) {
+            vlanRangeAsStr = StringUtils.strip(StringUtils.strip(vlanRangeAsStr, "["), "]");
             String[] splitRanges = vlanRangeAsStr.split(",");
             if (splitRanges.length == 0) {
                 throw new IllegalArgumentException("Vlan range must be non-empty.");
