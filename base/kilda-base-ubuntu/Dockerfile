@@ -13,7 +13,8 @@
 #   limitations under the License.
 #
 
-FROM ubuntu:xenial
+ARG base_image=ubuntu:xenial
+FROM ${base_image}
 
 ENV DEBIAN_FRONTEND noninteractive
 

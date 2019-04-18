@@ -13,7 +13,8 @@
 #   limitations under the License.
 #
 
-FROM kilda/base-ubuntu
+ARG base_image=kilda/base-ubuntu
+FROM ${base_image}
 
 RUN    wget -O - https://debian.neo4j.org/neotechnology.gpg.key | apt-key add - \
     && echo 'deb https://debian.neo4j.org/repo stable/' | tee /etc/apt/sources.list.d/neo4j.list \

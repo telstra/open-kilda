@@ -13,7 +13,8 @@
 #   limitations under the License.
 #
 
-FROM kilda/hbase
+ARG base_image=kilda/hbase
+FROM ${base_image}
 
 WORKDIR /tmp/
 
