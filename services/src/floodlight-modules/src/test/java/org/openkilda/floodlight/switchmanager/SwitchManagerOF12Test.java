@@ -4,12 +4,16 @@ import static java.util.Collections.singletonList;
 import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_PRIORITY;
 
 import org.openkilda.floodlight.OFFactoryVer12Mock;
 import org.openkilda.floodlight.error.SwitchOperationException;
+import org.openkilda.floodlight.pathverification.IPathVerificationService;
+import org.openkilda.floodlight.pathverification.PathVerificationService;
+import org.openkilda.floodlight.pathverification.PathVerificationServiceConfig;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -47,6 +51,14 @@ public class SwitchManagerOF12Test {
     @Before
     public void setUp() throws FloodlightModuleException {
         EasyMock.reset(switchService);
+
+        PathVerificationServiceConfig config = EasyMock.createMock(PathVerificationServiceConfig.class);
+        expect(config.getVerificationBcastPacketDst()).andReturn("01:80:C2:00:00:00").anyTimes();
+        replay(config);
+        PathVerificationService pathVerificationService = EasyMock.createMock(PathVerificationService.class);
+        expect(pathVerificationService.getConfig()).andReturn(config).anyTimes();
+        replay(pathVerificationService);
+        context.addService(IPathVerificationService.class, pathVerificationService);
 
         switchManager = new SwitchManager();
         switchManager.init(context);

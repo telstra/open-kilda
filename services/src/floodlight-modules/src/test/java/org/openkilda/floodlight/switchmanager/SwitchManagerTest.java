@@ -56,6 +56,9 @@ import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import org.openkilda.floodlight.OFFactoryVer12Mock;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.error.SwitchOperationException;
+import org.openkilda.floodlight.pathverification.IPathVerificationService;
+import org.openkilda.floodlight.pathverification.PathVerificationService;
+import org.openkilda.floodlight.pathverification.PathVerificationServiceConfig;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.test.standard.OutputCommands;
 import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
@@ -152,9 +155,17 @@ public class SwitchManagerTest {
         switchDescription = createMock(SwitchDescription.class);
         dpid = DatapathId.of(SWITCH_ID.toLong());
 
+        PathVerificationServiceConfig config = EasyMock.createMock(PathVerificationServiceConfig.class);
+        expect(config.getVerificationBcastPacketDst()).andReturn("01:80:C2:00:00:00").anyTimes();
+        replay(config);
+        PathVerificationService pathVerificationService = EasyMock.createMock(PathVerificationService.class);
+        expect(pathVerificationService.getConfig()).andReturn(config).anyTimes();
+        replay(pathVerificationService);
+
         context.addService(IRestApiService.class, restApiService);
         context.addService(IOFSwitchService.class, ofSwitchService);
         context.addService(FeatureDetectorService.class, featureDetectorService);
+        context.addService(IPathVerificationService.class, pathVerificationService);
 
         switchManager = new SwitchManager();
         switchManager.init(context);

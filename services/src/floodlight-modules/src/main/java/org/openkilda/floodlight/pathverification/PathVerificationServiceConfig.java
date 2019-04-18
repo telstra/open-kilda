@@ -34,4 +34,8 @@ public interface PathVerificationServiceConfig {
     @Key("hmac256-secret")
     @NotBlank
     String getHmac256Secret();
+
+    @Key("verification-bcast-packet-dst")
+    @Default("01:80:C2:00:00:00")
+    String getVerificationBcastPacketDst();
 }
