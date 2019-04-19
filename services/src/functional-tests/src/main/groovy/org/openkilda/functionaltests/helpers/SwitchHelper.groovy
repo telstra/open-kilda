@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.helpers
 
 import org.openkilda.model.Cookie
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundService
 
@@ -104,6 +105,20 @@ class SwitchHelper {
             }
         } else {
             return (rate * burstCoefficient).round(0)
+        }
+    }
+
+    void verifyMeterSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
+                                     List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
+        sections.each {
+            assert switchValidateInfo.meters."$it".empty
+        }
+    }
+
+    void verifyRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
+                                    List<String> sections = ["missing", "proper", "excess"]) {
+        sections.each {
+            assert switchValidateInfo.rules."$it".empty
         }
     }
 }
