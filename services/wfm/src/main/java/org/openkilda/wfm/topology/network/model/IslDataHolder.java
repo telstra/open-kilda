@@ -27,23 +27,26 @@ public class IslDataHolder {
     private long speed;
     private int latency;
     private long maximumBandwidth;
+    private long effectiveMaximumBandwidth;
 
     public IslDataHolder(IslInfoData speakerData) {
         speed = speakerData.getSpeed();
         latency = (int) speakerData.getLatency();
-        maximumBandwidth = speakerData.getAvailableBandwidth();
+        maximumBandwidth = effectiveMaximumBandwidth = speakerData.getAvailableBandwidth();
     }
 
     public IslDataHolder(Isl entity) {
         speed = entity.getSpeed();
         latency = entity.getLatency();
         maximumBandwidth = entity.getMaxBandwidth();
+        effectiveMaximumBandwidth = entity.getDefaultMaxBandwidth();
     }
 
     private IslDataHolder(IslDataHolder first, IslDataHolder second) {
         speed = Math.min(first.speed, second.speed);
         latency = Math.max(first.latency, second.latency);
         maximumBandwidth = Math.min(first.maximumBandwidth, second.maximumBandwidth);
+        effectiveMaximumBandwidth = Math.min(first.effectiveMaximumBandwidth, second.effectiveMaximumBandwidth);
     }
 
     public IslDataHolder merge(IslDataHolder other) {
