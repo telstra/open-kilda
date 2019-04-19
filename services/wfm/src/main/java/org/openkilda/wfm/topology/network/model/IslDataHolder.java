@@ -24,26 +24,43 @@ import lombok.Value;
 @Value
 @AllArgsConstructor
 public class IslDataHolder {
+    /**
+     * Physical link speed (speed reported by switch port).
+     */
     private long speed;
+
     private int latency;
+
+    /**
+     * Bandwidth available to allocation. It will be equal to {@code effectiveMaximumBandwidth} it not overridden via
+     * link props.
+     */
     private long maximumBandwidth;
+
+    /**
+     * Available link bandwidth calculated from {@code speed} with respect current traffic reservation/oversubscription
+     * policy.
+     */
+    private long effectiveMaximumBandwidth;
 
     public IslDataHolder(IslInfoData speakerData) {
         speed = speakerData.getSpeed();
         latency = (int) speakerData.getLatency();
-        maximumBandwidth = speakerData.getAvailableBandwidth();
+        maximumBandwidth = effectiveMaximumBandwidth = speakerData.getAvailableBandwidth();
     }
 
     public IslDataHolder(Isl entity) {
         speed = entity.getSpeed();
         latency = entity.getLatency();
         maximumBandwidth = entity.getMaxBandwidth();
+        effectiveMaximumBandwidth = entity.getDefaultMaxBandwidth();
     }
 
     private IslDataHolder(IslDataHolder first, IslDataHolder second) {
         speed = Math.min(first.speed, second.speed);
         latency = Math.max(first.latency, second.latency);
         maximumBandwidth = Math.min(first.maximumBandwidth, second.maximumBandwidth);
+        effectiveMaximumBandwidth = Math.min(first.effectiveMaximumBandwidth, second.effectiveMaximumBandwidth);
     }
 
     public IslDataHolder merge(IslDataHolder other) {
