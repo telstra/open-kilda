@@ -94,15 +94,15 @@ class SwitchHelper {
         }
     }
 
-    void verifyMeterSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
-                                     List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
+    static void verifyMeterSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
+                                            List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
         sections.each {
             assert switchValidateInfo.meters."$it".empty
         }
     }
 
-    void verifyRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
-                                    List<String> sections = ["missing", "proper", "excess"]) {
+    static void verifyRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
+                                           List<String> sections = ["missing", "proper", "excess"]) {
         sections.each {
             assert switchValidateInfo.rules."$it".empty
         }
