@@ -22,6 +22,7 @@ import { ToastrService } from "ngx-toastr";
 import { NgxSpinnerService } from "ngx-spinner";
 import { LoaderService } from "../../../common/services/loader.service";
 import { Renderer3 } from "@angular/core/src/render3/interfaces/renderer";
+import { ClipboardService } from "ngx-clipboard";
 
 @Component({
   selector: "app-datatable",
@@ -53,7 +54,7 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
   expandedAvailableBandwidth : boolean = false;
   expandedLatency : boolean = false;
   expandedUnidirectional : boolean = false;
-
+  clipBoardItems = [];
   showIslDetail = function(data) {
      this.router.navigate(["/isl/switch/isl/"+data.source_switch+"/"+data.src_port+"/"+data.target_switch+"/"+data.dst_port]);
   };
@@ -64,7 +65,8 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
     private islListService: IslListService,
     private toastr: ToastrService,
     private loaderService: LoaderService,
-    private renderer: Renderer2
+    private renderer: Renderer2,
+    private clipboardService: ClipboardService
   ) {
     this.wrapperHide = false;
   }
@@ -187,6 +189,7 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
     if(change.data){
       if(change.data.currentValue){
         this.data  = change.data.currentValue;
+        this.clipBoardItems = this.data;
       }
     }
   }
@@ -217,4 +220,10 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
       return false;
     }
   }
+
+  copyToClip(event, copyItem,index) {
+     var copyData = this.checkValue(this.clipBoardItems[index][copyItem]);
+    this.clipboardService.copyFromContent(copyData);
+  }
+
 }

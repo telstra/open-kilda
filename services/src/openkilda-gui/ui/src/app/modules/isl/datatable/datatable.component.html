@@ -70,8 +70,8 @@
     </tr>
   </thead>
   <tbody>
-    <tr *ngFor="let listItem of data" [ngClass]="{'down-state': listItem.state == 'FAILED' , 'up-state': listItem.state != 'FAILED'}" class="flowDataRow">
-      <td class="divTableCell" title="{{ checkValue(listItem.source_switch_name) }}" (click)="showIslDetail(listItem)">
+    <tr *ngFor="let listItem of data; let i = index" [ngClass]="{'down-state': listItem.state == 'FAILED' , 'up-state': listItem.state != 'FAILED'}" class="flowDataRow">
+      <td class="divTableCell" title="{{ checkValue(listItem.source_switch_name) }}" (click)="showIslDetail(listItem)" [contextMenu]="copySrcSwitchName">
         {{checkValue(listItem.source_switch_name)}}
       </td>
       <td class="divTableCell" title="{{ checkValue(listItem.source_switch) }}">
@@ -80,7 +80,7 @@
       <td class="divTableCell" title="{{ checkValue(listItem.src_port) }}" (click)="showIslDetail(listItem)">
         {{checkValue(listItem.src_port)}}
       </td>
-      <td class="divTableCell" title="{{ checkValue(listItem.target_switch_name) }}" (click)="showIslDetail(listItem)">
+      <td class="divTableCell" title="{{ checkValue(listItem.target_switch_name) }}" (click)="showIslDetail(listItem)" [contextMenu]="copyTrgtSwitchName">
         {{checkValue(listItem.target_switch_name)}}
       </td>
       <td class="divTableCell" title="{{ checkValue(listItem.target_switch) }}">
@@ -111,6 +111,16 @@
       <td class="divTableCell" title="{{ checkValue(listItem.unidirectional) }}" (click)="showIslDetail(listItem)">
         {{checkValue(listItem.unidirectional)}}
       </td>
+      <context-menu #copySrcSwitchName>
+        <ng-template contextMenuItem (execute)="copyToClip($event,'source_switch_name',i);">
+          Copy to Clipboard
+        </ng-template>
+      </context-menu>
+      <context-menu #copyTrgtSwitchName>
+        <ng-template contextMenuItem (execute)="copyToClip($event,'target_switch_name',i);">
+          Copy to Clipboard
+        </ng-template>
+      </context-menu>
     </tr>
   </tbody>
 </table>
