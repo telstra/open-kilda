@@ -90,7 +90,7 @@ class FlowHelper {
             def srcEndpoint = getFlowEndpoint(sw, allowedPorts, useTraffgenPorts)
             def dstEndpoint = getFlowEndpoint(sw, allowedPorts - srcEndpoint.portNumber, useTraffgenPorts)
             def newFlow = new FlowCreatePayload(generateFlowId(), srcEndpoint, dstEndpoint, 500, false, false, false,
-                    "autotest flow", null, null, null, null, null, null)
+                    "autotest flow", null, null, null, null, null, null, false)
             if (flowConflicts(newFlow, existingFlows)) {
                 throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
             }
