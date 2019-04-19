@@ -47,6 +47,7 @@ public class FlowUpdatePayload extends FlowPayload {
      * @param status           flow status
      * @param maxLatency       max latency
      * @param priority         flow priority
+     * @param pinned           pinned flag
      */
     @JsonCreator
     public FlowUpdatePayload(@JsonProperty(Utils.FLOW_ID) String id,
@@ -61,9 +62,10 @@ public class FlowUpdatePayload extends FlowPayload {
                              @JsonProperty("diverse-flowid") String diverseFlowId,
                              @JsonProperty("status") String status,
                              @JsonProperty("max-latency") Integer maxLatency,
-                             @JsonProperty("priority") Integer priority) {
+                             @JsonProperty("priority") Integer priority,
+                             @JsonProperty("pinned") Boolean pinned) {
         super(id, source, destination, maximumBandwidth, ignoreBandwidth, periodicPings, description, created,
-                lastUpdated, status, maxLatency, priority);
+                lastUpdated, status, maxLatency, priority, pinned);
         this.diverseFlowId = diverseFlowId;
     }
 }

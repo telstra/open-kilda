@@ -85,7 +85,7 @@ public class TestMessageMock implements MessagingChannel {
     static final List<PathNodePayload> pathPayloadsList = singletonList(new PathNodePayload(SWITCH_ID, 1, 1));
     static final FlowPathPayload flowPath = new FlowPathPayload(FLOW_ID, pathPayloadsList, pathPayloadsList, null);
     static final FlowDto flowModel = new FlowDto(FLOW_ID, 10000, false, false, 0L, FLOW_ID, null, null, SWITCH_ID,
-            SWITCH_ID, 1, 1, 1, 1, 1, 1, path, FlowState.UP, null, null);
+            SWITCH_ID, 1, 1, 1, 1, 1, 1, path, FlowState.UP, null, null, false);
 
     private static final FlowResponse flowResponse = new FlowResponse(flowModel);
     static final FlowReadResponse FLOW_RESPONSE =

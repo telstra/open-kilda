@@ -148,6 +148,9 @@ public class FlowDto implements Serializable {
     @JsonProperty("priority")
     private Integer priority;
 
+    @JsonProperty("pinned")
+    private boolean pinned;
+
     public FlowDto() {
     }
 
@@ -173,6 +176,7 @@ public class FlowDto implements Serializable {
      * @param state             flow state
      * @param maxLatency        max latency
      * @param priority          flow priority
+     * @param pinned            pinned flag
      */
     @JsonCreator
     @Builder(toBuilder = true)
@@ -195,7 +199,8 @@ public class FlowDto implements Serializable {
                    @JsonProperty(Utils.FLOW_PATH) final PathInfoData flowPath,
                    @JsonProperty("state") FlowState state,
                    @JsonProperty("max_latency") Integer maxLatency,
-                   @JsonProperty("priority") Integer priority) {
+                   @JsonProperty("priority") Integer priority,
+                   @JsonProperty("pinned") boolean pinned) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
@@ -216,6 +221,7 @@ public class FlowDto implements Serializable {
         this.state = state;
         this.maxLatency = maxLatency;
         this.priority = priority;
+        this.pinned = pinned;
     }
 
     /**
@@ -241,7 +247,8 @@ public class FlowDto implements Serializable {
                 flow.getFlowPath(),
                 flow.getState(),
                 flow.getMaxLatency(),
-                flow.getPriority());
+                flow.getPriority(),
+                flow.isPinned());
     }
 
     /**
@@ -257,13 +264,14 @@ public class FlowDto implements Serializable {
      * @param destinationSwitch destination switch
      * @param destinationPort   destination port
      * @param destinationVlan   destination vlan id
+     * @param pinned            pinned flag
      */
     public FlowDto(String flowId,
                    long bandwidth,
                    boolean ignoreBandwidth,
                    String description,
                    SwitchId sourceSwitch, int sourcePort, int sourceVlan,
-                   SwitchId destinationSwitch, int destinationPort, int destinationVlan) {
+                   SwitchId destinationSwitch, int destinationPort, int destinationVlan, boolean pinned) {
         this(flowId,
                 bandwidth,
                 ignoreBandwidth,
@@ -277,7 +285,7 @@ public class FlowDto implements Serializable {
                 destinationPort,
                 sourceVlan,
                 destinationVlan,
-                null, 0, null, null, null, null);
+                null, 0, null, null, null, null, pinned);
     }
 
     public FlowDto(FlowPayload input) {
@@ -296,7 +304,8 @@ public class FlowDto implements Serializable {
                 input.getDestination().getVlanId(),
                 null, 0, null, null,
                 input.getMaxLatency(),
-                input.getPriority());
+                input.getPriority(),
+                input.isPinned());
     }
 
     /**
