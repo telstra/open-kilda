@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.event.service;
 
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
@@ -75,7 +76,8 @@ public class IslService {
             String reason = String.format("Create or update ISL: %s_%d-%s_%d. ISL status: %s",
                     isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(),
                     isl.getDestSwitch().getSwitchId(), isl.getDestPort(), isl.getStatus());
-            sender.sendRerouteInactiveFlowsMessage(reason);
+            PathNode pathNode = new PathNode(isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(), 0);
+            sender.sendRerouteInactiveFlowsMessage(pathNode, reason);
         } else {
             log.warn("Feature toggle 'flows_reroute_on_isl_discovery' is disabled");
         }

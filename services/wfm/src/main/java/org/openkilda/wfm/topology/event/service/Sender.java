@@ -46,8 +46,8 @@ public class Sender {
         this.correlationId = correlationId;
     }
 
-    public void sendRerouteInactiveFlowsMessage(String reason) {
-        RerouteInactiveFlows request = new RerouteInactiveFlows(reason);
+    public void sendRerouteInactiveFlowsMessage(PathNode pathNode, String reason) {
+        RerouteInactiveFlows request = new RerouteInactiveFlows(pathNode, reason);
         sendRerouteMessage(request);
     }
 
