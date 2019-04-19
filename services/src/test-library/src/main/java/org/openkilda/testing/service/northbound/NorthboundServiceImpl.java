@@ -573,7 +573,6 @@ public class NorthboundServiceImpl implements NorthboundService {
                 .availableBandwidth(dto.getAvailableBandwidth())
                 .defaultMaxBandwidth(dto.getDefaultMaxBandwidth())
                 .maxBandwidth(dto.getMaxBandwidth())
-                .defaultMaxBandwidth(dto.getDefaultMaxBandwidth())
                 .underMaintenance(dto.isUnderMaintenance())
                 .build();
     }
