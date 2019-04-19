@@ -1,18 +1,22 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Unroll
@@ -29,6 +33,9 @@ System can start to use protected path in two case:
 
 Main and protected paths can't use the same link.""")
 class ProtectedPathSpec extends BaseSpecification {
+    @Autowired
+    SwitchHelper switchHelper
+
     @Unroll
     def "Able to create a flow with protected path when maximumBandwidth=#bandwidth, vlan=#vlanId"() {
         given: "Two active not neighboring switches with two possible paths at least"
@@ -630,11 +637,24 @@ class ProtectedPathSpec extends BaseSpecification {
         given: "Two active not neighboring switches with two possible paths at least"
         def (Switch srcSwitch, Switch dstSwitch) = getNotNeighboringSwitchPair(2)
 
-        and: "Create a flow with protected path"
+        and: "Create a flow without protected path"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flow.allocateProtectedPath = true
+        flow.allocateProtectedPath = false
         flowHelper.addFlow(flow)
+        assert !northbound.getFlowPath(flow.id).protectedPath
+
+        and: "Cookies are created by flow"
+        def createdCookies = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+            !Cookie.isDefaultRule(it.cookie)
+        }*.cookie
+        assert createdCookies.size() == 2
+
+        when: "Update flow: enable protected path(allocateProtectedPath=true)"
+        northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
+
+        then: "Protected path is enabled"
         def flowPathInfo = northbound.getFlowPath(flow.id)
+        flowPathInfo.protectedPath
         def currentPath = pathHelper.convert(flowPathInfo)
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
         currentPath != currentProtectedPath
@@ -642,7 +662,15 @@ class ProtectedPathSpec extends BaseSpecification {
         and: "Rules for main and protected paths are created"
         Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
 
+        def cookiesAfterEnablingProtectedPath = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+            !Cookie.isDefaultRule(it.cookie)
+        }*.cookie
+        // two for main path + one for protected path
+        cookiesAfterEnablingProtectedPath.size() == 3
+
         when: "Swap flow paths"
+        def srcSwitchCreatedMeterIds = getCreatedMeterIds(srcSwitch.dpId)
+        def dstSwitchCreatedMeterIds = getCreatedMeterIds(dstSwitch.dpId)
         def currentLastUpdate = northbound.getFlow(flow.id).lastUpdated
         northbound.swapFlowPath(flow.id)
 
@@ -658,6 +686,42 @@ class ProtectedPathSpec extends BaseSpecification {
 
         currentLastUpdate < northbound.getFlow(flow.id).lastUpdated
 
+        and: "New meter is created on the src and dst switches"
+        def newSrcSwitchCreatedMeterIds = getCreatedMeterIds(srcSwitch.dpId)
+        def newDstSwitchCreatedMeterIds = getCreatedMeterIds(dstSwitch.dpId)
+        newSrcSwitchCreatedMeterIds != srcSwitchCreatedMeterIds
+        newDstSwitchCreatedMeterIds != dstSwitchCreatedMeterIds
+
+        and: "Rules are updated"
+        Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
+
+        and: "Old meter is deleted on the src and dst switches"
+        Wrappers.wait(WAIT_OFFSET) {
+            [srcSwitch.dpId, dstSwitch.dpId].each { switchId ->
+                def switchValidateInfo = northbound.switchValidate(switchId)
+                assert switchValidateInfo.meters.proper.size() == 1
+                assert switchValidateInfo.rules.proper.size() == 3
+                switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
+                // is not working yet, awaiting for fix, estimate: Monday
+                switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
+            }
+        }
+
+        and: "Transit switches store the correct info about rules and meters"
+        def involvedTransitSwitches = (currentPath[1..-2].switchId + currentProtectedPath[1..-2].switchId).unique()
+        Wrappers.wait(WAIT_OFFSET) {
+            involvedTransitSwitches.each { switchId ->
+                def amountOfRules = (switchId in currentProtectedPath*.switchId && switchId in currentPath*.switchId)
+                        ? 4 : 2
+                def switchValidateInfo = northbound.switchValidate(switchId)
+                assert switchValidateInfo.rules.proper.size() == amountOfRules
+                switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
+                switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo)
+            }
+        } || true
+
+        and: "No rule discrepancies when doing flow validation"
+        northbound.validateFlow(flow.id).each { assert it.discrepancies.empty }
         and: "All rules for main and protected paths are updated"
         Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
 
@@ -859,5 +923,11 @@ class ProtectedPathSpec extends BaseSpecification {
         } ?: assumeTrue("No suiting switches found", false)
 
         return [srcSwitch, dstSwitch]
+    }
+
+    List<Integer> getCreatedMeterIds(SwitchId switchId) {
+        return northbound.getAllMeters(switchId).meterEntries.findAll {
+            it.meterId > MAX_SYSTEM_RULE_METER_ID
+        }*.meterId
     }
 }
