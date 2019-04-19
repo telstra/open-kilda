@@ -44,18 +44,16 @@ class ProtectedPathSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.allocateProtectedPath = true
         flow.maximumBandwidth = bandwidth
+        flow.ignoreBandwidth = (bandwidth == 0) ? true : false
         flow.source.vlanId = vlanId
         flowHelper.addFlow(flow)
 
         then: "Flow is created with protected path"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         def flowPathInfo = northbound.getFlowPath(flow.id)
         flowPathInfo.protectedPath
 
-        and: "Rules for protected path are created"
-        Wrappers.wait(WAIT_OFFSET) {
-            flowHelper.verifyRulesOnProtectedFlow(flow.id)
-        }
+        and: "Rules for main and protected paths are created"
+        Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
 
         and: "Validation of flow must be succeed"
         northbound.validateFlow(flow.id).each { direction ->
@@ -85,15 +83,6 @@ class ProtectedPathSpec extends BaseSpecification {
         then: "Flow is created without protected path"
         !northbound.getFlowPath(flow.id).protectedPath
 
-        and: "Needed number of rules are created"
-        northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll { !Cookie.isDefaultRule(it.cookie) }.size() == 2
-
-        pathHelper.getInvolvedSwitches(flow.id)[1..-1].each { sw ->
-            assert northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                !Cookie.isDefaultRule(it.cookie)
-            }.size() == 2
-        }
-
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
         def currentLastUpdate = northbound.getFlow(flow.id).lastUpdated
         northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
@@ -104,13 +93,10 @@ class ProtectedPathSpec extends BaseSpecification {
 
         currentLastUpdate < northbound.getFlow(flow.id).lastUpdated
 
-        and: "Rules are updated on the main path"
-        Wrappers.wait(WAIT_OFFSET) {
-            flowHelper.verifyRulesOnProtectedFlow(flow.id)
-        }
+        and: "Rules for main and protected paths are created"
+        Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
 
         when: "Update flow: disable protected path(allocateProtectedPath=false)"
-        def mainFlowPath = northbound.getFlowPath(flow.id).forwardPath
         def protectedFlowPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
         northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = false })
 
@@ -118,43 +104,17 @@ class ProtectedPathSpec extends BaseSpecification {
         !northbound.getFlowPath(flow.id).protectedPath
 
         and: "Rules for protected path are deleted"
-        def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
         Wrappers.wait(WAIT_OFFSET) {
-            commonNodeIds.each { sw ->
-                def rules = northbound.getSwitchRules(sw).flowEntries.findAll {
+            protectedFlowPath.each { sw ->
+                def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
                     !Cookie.isDefaultRule(it.cookie)
                 }
-                if (sw == srcSwitch.dpId || sw == dstSwitch.dpId) {
-                    assert rules.size() == 2
 
-                    def mainNode = mainFlowPath.find { it.switchId == sw }
-                    assert flowHelper.findForwardPathRules(rules, mainNode).size() == 1
-                    assert flowHelper.findReversePathRules(rules, mainNode).size() == 1
-                } else {
-                    assert rules.size() == 4
-                }
+                assert flowHelper.findForwardPathRules(rules, sw).size() == 0
+                assert flowHelper.findReversePathRules(rules, sw).size() == 0
             }
         }
 
-        def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
-            !commonNodeIds.contains(it.switchId)
-        }
-        uniqueNodes.each { sw ->
-            def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
-                !Cookie.isDefaultRule(it.cookie)
-            }
-            def mainNode = mainFlowPath.find { it.switchId == sw.switchId }
-            if (mainNode) {
-                assert rules.size() == 2
-                assert flowHelper.findForwardPathRules(rules, sw).size() == 1
-                assert flowHelper.findReversePathRules(rules, sw).size() == 1
-            }
-
-            def protectedNode = protectedFlowPath.find { it.switchId == sw.switchId }
-            if (protectedNode) {
-                assert rules.size() == 0
-            }
-        } || true
 
         and: "Cleanup: delete the flow"
         flowHelper.deleteFlow(flow.id)
@@ -212,7 +172,6 @@ class ProtectedPathSpec extends BaseSpecification {
         then: "Flow is created with protected path"
         def flowPathInfo = northbound.getFlowPath(flow.id)
         flowPathInfo.protectedPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Current path is not equal to protected path"
         def currentPath = pathHelper.convert(flowPathInfo)
@@ -223,21 +182,20 @@ class ProtectedPathSpec extends BaseSpecification {
         def protectedIsls = pathHelper.getInvolvedIsls(currentProtectedPath)
         def protectedIslsInfo = protectedIsls.collect { islUtils.getIslInfo(it).get() }
 
-        allIsls.each { originIsl ->
-            protectedIslsInfo.each { newIsl ->
-                if (originIsl.id == newIsl.id) {
-                    assert originIsl.availableBandwidth - newIsl.availableBandwidth == flow.maximumBandwidth
+        allIsls.each { isl ->
+            protectedIslsInfo.each { protectedIsl ->
+                if (isl.id == protectedIsl.id) {
+                    assert isl.availableBandwidth - protectedIsl.availableBandwidth == flow.maximumBandwidth
                 }
             }
         }
 
         when: "Init reroute"
-        def currentIsls = pathHelper.getInvolvedIsls(currentPath)
-        def islToBreak = currentIsls.find { !protectedIsls.contains(it) }
+        def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
         northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         then: "Flow is rerouted"
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+        Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.id)) != currentPath
         }
@@ -284,7 +242,6 @@ class ProtectedPathSpec extends BaseSpecification {
 
         def flowPathInfo = northbound.getFlowPath(flow.id)
         flowPathInfo.protectedPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         def currentPath = pathHelper.convert(flowPathInfo)
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
@@ -322,7 +279,7 @@ class ProtectedPathSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "System reroutes #flowDescription flow to protected path  and ignore more preferable path in case reroute is automatical"() {
+    def "System reroutes #flowDescription flow to protected path and ignore more preferable path in case reroute is automatical"() {
         given: "A flow with alternate paths available"
         def switches = topology.getActiveSwitches()
         List<List<PathNode>> allPaths = []
@@ -351,14 +308,12 @@ class ProtectedPathSpec extends BaseSpecification {
         alternativePaths.each { pathHelper.makePathMorePreferable(it, currentProtectedPath) }
 
         and: "Init reroute"
-        def protectedIsls = pathHelper.getInvolvedIsls(currentProtectedPath)
-        def currentIsls = pathHelper.getInvolvedIsls(currentPath)
-        def islToBreak = currentIsls.find { !protectedIsls.contains(it) }
+        def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
         northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         then: "Flow is rerouted"
         def newCurrentPath
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
+        Wrappers.wait(WAIT_OFFSET) {
             newCurrentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
             assert newCurrentPath != currentPath
@@ -417,7 +372,7 @@ class ProtectedPathSpec extends BaseSpecification {
         protectedPath << [false, true]
     }
 
-    def "Unable to create a flow with the the 'protected path' option in case there is not enough bandwidth"() {
+    def "Unable to create a flow with the 'protected path' option in case there is not enough bandwidth"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
         def (srcSwitch, dstSwitch) = [isls.first().srcSwitch, isls.first().dstSwitch]
@@ -560,26 +515,28 @@ class ProtectedPathSpec extends BaseSpecification {
         then: "Flow is created with protected path"
         def flowPathInfo = northbound.getFlowPath(flow.id)
         flowPathInfo.protectedPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Current path is not equal to protected path"
         def currentPath = pathHelper.convert(flowPathInfo)
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
         currentPath != currentProtectedPath
 
+        and: "Current path is not changed"
+        currentPath == pathHelper.convert(northbound.getFlowPath(flow.id))
+
         and: "Bandwidth is reserved for protected path on involved isls"
         def protectedIsls = pathHelper.getInvolvedIsls(currentProtectedPath)
         def protectedIslsInfo = protectedIsls.collect { islUtils.getIslInfo(it).get() }
 
-        allIsls.each { originIsl ->
-            protectedIslsInfo.each { newIsl ->
-                if (originIsl.id == newIsl.id) {
-                    assert originIsl.availableBandwidth - newIsl.availableBandwidth == flow.maximumBandwidth
+        allIsls.each { isl ->
+            protectedIslsInfo.each { protectedIsl ->
+                if (isl.id == protectedIsl.id) {
+                    assert isl.availableBandwidth - protectedIsl.availableBandwidth == flow.maximumBandwidth
                 }
             }
         }
 
-        when: "Switch some port to DOWN state on the protected path to init the recalculate procedure"
+        when: "Switch remaining ISL port on the protected path to init the recalculate procedure"
         def currentIsls = pathHelper.getInvolvedIsls(currentPath)
         def islToBreakProtectedPath = protectedIsls.find { !currentIsls.contains(it) }
         northbound.portDown(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
@@ -600,10 +557,10 @@ class ProtectedPathSpec extends BaseSpecification {
         def allLinks = northbound.getAllLinks()
         def newProtectedIslsInfo = newProtectedIsls.collect { islUtils.getIslInfo(allLinks, it).get() }
 
-        allIsls.each { originIsl ->
-            newProtectedIslsInfo.each { newIsl ->
-                if (originIsl.id == newIsl.id) {
-                    assert originIsl.availableBandwidth - newIsl.availableBandwidth == flow.maximumBandwidth
+        allIsls.each { isl ->
+            newProtectedIslsInfo.each { protectedIsl ->
+                if (isl.id == protectedIsl.id) {
+                    assert isl.availableBandwidth - protectedIsl.availableBandwidth == flow.maximumBandwidth
                 }
             }
         }
@@ -757,15 +714,12 @@ class ProtectedPathSpec extends BaseSpecification {
         flow.allocateProtectedPath = true
         flowHelper.addFlow(flow)
         def flowPathInfo = northbound.getFlowPath(flow.id)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         def currentPath = pathHelper.convert(flowPathInfo)
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
         currentPath != currentProtectedPath
 
-        and: "Needed rules exist"
-        Wrappers.wait(WAIT_OFFSET) {
-            flowHelper.verifyRulesOnProtectedFlow(flow.id)
-        }
+        and: "Rules for main and protected paths are created"
+        Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
 
         when: "Swap flow path"
         def currentLastUpdate = northbound.getFlow(flow.id).lastUpdated
@@ -783,10 +737,8 @@ class ProtectedPathSpec extends BaseSpecification {
 
         currentLastUpdate < northbound.getFlow(flow.id).lastUpdated
 
-        and: "Rules are updated"
-        Wrappers.wait(WAIT_OFFSET) {
-            flowHelper.verifyRulesOnProtectedFlow(flow.id)
-        }
+        and: "All rules for main and protected paths are updated"
+        Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
 
         and: "Cleanup: revert system to original state"
         flowHelper.deleteFlow(flow.id)
@@ -801,8 +753,6 @@ class ProtectedPathSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.allocateProtectedPath = false
         flowHelper.addFlow(flow)
-
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         !northbound.getFlowPath(flow.id).protectedPath
 
         when: "Try to swap flow without protected path"
@@ -844,7 +794,6 @@ class ProtectedPathSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.allocateProtectedPath = true
         flowHelper.addFlow(flow)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
         List<PathNode> broughtDownPorts = []
@@ -916,7 +865,6 @@ class ProtectedPathSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
         def flowInfoPath = northbound.getFlowPath(flow.id)
         assert flowInfoPath.protectedPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         when: "All alternative paths are unavailable (bring ports down on the source switch and on the protected path)"
         def currentPath = pathHelper.convert(flowInfoPath)

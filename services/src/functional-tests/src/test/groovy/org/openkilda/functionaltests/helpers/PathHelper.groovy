@@ -114,7 +114,7 @@ class PathHelper {
     }
 
     /**
-     * Converts FlowPathPayload$FlowProtectedPath path representation to a List<PathNode> representation
+     * Converts FlowPathPayload.FlowProtectedPath path representation to a List<PathNode> representation
      */
     static List<PathNode> convert(FlowProtectedPath pathPayload, pathToConvert = "forwardPath") {
         def path = pathPayload."$pathToConvert"
