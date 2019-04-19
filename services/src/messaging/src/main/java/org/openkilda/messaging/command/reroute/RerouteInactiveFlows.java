@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging.command.reroute;
 
+import org.openkilda.messaging.info.event.PathNode;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -28,7 +30,8 @@ import lombok.Value;
 public class RerouteInactiveFlows extends RerouteFlows {
 
     @JsonCreator
-    public RerouteInactiveFlows(@NonNull @JsonProperty("reason") String reason) {
-        super(reason);
+    public RerouteInactiveFlows(@NonNull @JsonProperty("path_node") PathNode pathNode,
+            @NonNull @JsonProperty("reason") String reason) {
+        super(pathNode, reason);
     }
 }

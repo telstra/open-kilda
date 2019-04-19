@@ -379,7 +379,9 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     private void triggerDownFlowReroute(IslFsmContext context) {
         if (shouldEmitDownFlowReroute()) {
-            RerouteInactiveFlows trigger = new RerouteInactiveFlows(String.format(
+            Endpoint source = discoveryFacts.getReference().getSource();
+            PathNode pathNode = new PathNode(source.getDatapath(), source.getPortNumber(), 0);
+            RerouteInactiveFlows trigger = new RerouteInactiveFlows(pathNode, String.format(
                     "ISL %s status become %s", discoveryFacts.getReference(), IslStatus.ACTIVE));
             context.getOutput().triggerReroute(trigger);
         }
