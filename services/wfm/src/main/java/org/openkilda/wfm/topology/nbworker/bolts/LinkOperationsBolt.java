@@ -56,6 +56,7 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -230,8 +231,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
         LinkProps reverseLinkPropsToDrop = swapLinkProps(linkPropsToDrop);
 
         try {
-            LinkProps result = deleteLinkProps(linkPropsToDrop);
-            deleteLinkProps(reverseLinkPropsToDrop);
+            LinkProps result = deleteLinkProps(linkPropsToDrop, reverseLinkPropsToDrop);
 
             return new LinkPropsResponse(request, LinkPropsMapper.INSTANCE.map(result), null);
         } catch (Exception e) {
@@ -241,35 +241,39 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
         }
     }
 
-    private LinkProps deleteLinkProps(LinkProps linkPropsToDrop) {
+    private LinkProps deleteLinkProps(LinkProps fwdLinkProps, LinkProps rvsLinkProps) {
+
+        List<LinkProps> linkProperties = Arrays.asList(rvsLinkProps, fwdLinkProps);
 
         return transactionManager.doInTransaction(() -> {
-            Collection<LinkProps> existingLinkProps = linkPropsRepository.findByEndpoints(
-                    linkPropsToDrop.getSrcSwitchId(), linkPropsToDrop.getSrcPort(),
-                    linkPropsToDrop.getDstSwitchId(), linkPropsToDrop.getDstPort());
-
             LinkProps linkProps = null;
-            if (!existingLinkProps.isEmpty()) {
-                linkProps = existingLinkProps.iterator().next();
-                linkPropsRepository.delete(linkProps);
-            }
+            for (LinkProps linkPropsToDrop : linkProperties) {
+                Collection<LinkProps> existingLinkProps = linkPropsRepository.findByEndpoints(
+                        linkPropsToDrop.getSrcSwitchId(), linkPropsToDrop.getSrcPort(),
+                        linkPropsToDrop.getDstSwitchId(), linkPropsToDrop.getDstPort());
 
-            Optional<Isl> existingIsl = islRepository.findByEndpoints(
-                    linkPropsToDrop.getSrcSwitchId(), linkPropsToDrop.getSrcPort(),
-                    linkPropsToDrop.getDstSwitchId(), linkPropsToDrop.getDstPort());
-            long propsMaxBandwidth = (linkProps != null ? linkProps.getMaxBandwidth() : null) != null
-                    ? linkProps.getMaxBandwidth() : 0L;
-            existingIsl.ifPresent(link -> {
-                link.setCost(0);
-                link.setMaxBandwidth(link.getDefaultMaxBandwidth());
-                if (propsMaxBandwidth > 0) {
-                    long availableBandwidth = link.getDefaultMaxBandwidth()
-                            - (propsMaxBandwidth - link.getAvailableBandwidth());
-                    link.setAvailableBandwidth(availableBandwidth);
+                if (!existingLinkProps.isEmpty()) {
+                    linkProps = existingLinkProps.iterator().next();
+                    linkPropsRepository.delete(linkProps);
                 }
-                islRepository.createOrUpdate(link);
-            });
 
+                Optional<Isl> existingIsl = islRepository.findByEndpoints(
+                        linkPropsToDrop.getSrcSwitchId(), linkPropsToDrop.getSrcPort(),
+                        linkPropsToDrop.getDstSwitchId(), linkPropsToDrop.getDstPort());
+                long propsMaxBandwidth = (linkProps != null ? linkProps.getMaxBandwidth() : null) != null
+                        ? linkProps.getMaxBandwidth() : 0L;
+                existingIsl.ifPresent(link -> {
+                    link.setCost(0);
+                    link.setMaxBandwidth(link.getDefaultMaxBandwidth());
+                    if (propsMaxBandwidth > 0) {
+                        long availableBandwidth = link.getDefaultMaxBandwidth()
+                                - (propsMaxBandwidth - link.getAvailableBandwidth());
+                        link.setAvailableBandwidth(availableBandwidth);
+                    }
+                    islRepository.createOrUpdate(link);
+                });
+
+            }
             return linkProps;
         });
     }
