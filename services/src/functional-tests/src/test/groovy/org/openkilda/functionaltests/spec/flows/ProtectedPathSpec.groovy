@@ -13,6 +13,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
@@ -30,6 +31,10 @@ System can start to use protected path in two case:
 
 Main and protected paths can't use the same link.""")
 class ProtectedPathSpec extends BaseSpecification {
+
+    @Value('${reroute.hardtimeout}')
+    int rerouteHardtimeout
+
     @Unroll
     def "Able to create flow with the 'protected path' option in case maximumBandwidth=#bandwidth, vlan=#vlanId"() {
         given: "Two active not neighboring switches with two possible paths at least"
@@ -866,7 +871,7 @@ class ProtectedPathSpec extends BaseSpecification {
         northbound.portDown(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
 
         then: "Flow state is changed to down"
-        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
 
         when: "Try to swap the inactive flow"
         northbound.swapFlowPath(flow.id)
@@ -891,6 +896,75 @@ class ProtectedPathSpec extends BaseSpecification {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
         database.resetCosts()
+    }
+
+    @Unroll
+    def "#flowDescription flow is DOWN when protected and alternative paths are not available"() {
+        given: "Two active neighboring switches with two not overlapping paths at least"
+        def switches = topology.getActiveSwitches()
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            database.getPaths(src.dpId, dst.dpId)*.path.collect {
+                pathHelper.getInvolvedIsls(it)
+            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "A flow with protected path"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.allocateProtectedPath = true
+        flow.maximumBandwidth = bandwidth
+        flowHelper.addFlow(flow)
+        def flowInfoPath = northbound.getFlowPath(flow.id)
+        assert flowInfoPath.protectedPath
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+
+        when: "All alternative paths are unavailable (bring ports down on the source switch and on the protected path)"
+        def currentPath = pathHelper.convert(flowInfoPath)
+        def currentProtectedPath = pathHelper.convert(flowInfoPath.protectedPath)
+        List<PathNode> broughtDownPorts = []
+        database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.findAll {
+            it != pathHelper.convert(northbound.getFlowPath(flow.id))
+        }.unique {
+            it.first()
+        }.each { path ->
+            def src = path.first()
+            broughtDownPorts.add(src)
+            northbound.portDown(src.switchId, src.portNo)
+        }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == IslChangeType.FAILED
+            }.size() == broughtDownPorts.size() * 2
+        }
+
+        then: "Protected path is not recalculated because all alt paths are unavailable"
+        Wrappers.timedLoop(rerouteHardtimeout) {
+            def flowPathInfo = northbound.getFlowPath(flow.id)
+            pathHelper.convert(flowPathInfo) == currentPath
+            pathHelper.convert(flowPathInfo.protectedPath) == currentProtectedPath
+        }
+
+        and: "Flow status is DOWN"
+        northbound.getFlowStatus(flow.id).status == FlowState.DOWN
+
+        when: "Update flow: disable protected path(allocateProtectedPath=false)"
+        northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = false })
+
+        then: "Flow status is UP"
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+
+        and: "Cleanup: Restore topology, delete flow and reset costs"
+        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        flowHelper.deleteFlow(flow.id)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
+        }
+        database.resetCosts()
+
+        where:
+        flowDescription | bandwidth
+        "A metered"     | 1000
+        "An unmetered"  | 0
     }
 
     List<Switch> getNotNeighboringSwitchPair(minPossiblePath) {
