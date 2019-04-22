@@ -15,7 +15,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -226,14 +225,9 @@ class ProtectedPathSpec extends BaseSpecification {
 
     @Unroll
     def "System reroutes #flowDescription flow to more preferable path and ignore protected path in case reroute is intentional"() {
-        given: "A flow with alternate paths available"
-        def switches = topology.getActiveSwitches()
-        List<List<PathNode>> allPaths = []
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
-            allPaths = database.getPaths(src.dpId, dst.dpId)*.path
-            allPaths.size() > 2
-        } ?: assumeTrue("No suiting switches found", false)
+        given: "Two active neighboring switches with two possible paths at least"
+        def (Switch srcSwitch, Switch dstSwitch) = getNeighboringSwitchPair(2)
+        def allPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
 
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = bandwidth
@@ -241,11 +235,11 @@ class ProtectedPathSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         def flowPathInfo = northbound.getFlowPath(flow.id)
-        flowPathInfo.protectedPath
+        assert flowPathInfo.protectedPath
 
         def currentPath = pathHelper.convert(flowPathInfo)
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
-        currentPath != currentProtectedPath
+        assert currentPath != currentProtectedPath
 
         when: "Make the current and protected path less preferable than alternatives"
         def alternativePaths = allPaths.findAll { it != currentPath && it != currentProtectedPath }
@@ -280,14 +274,9 @@ class ProtectedPathSpec extends BaseSpecification {
 
     @Unroll
     def "System reroutes #flowDescription flow to protected path and ignore more preferable path in case reroute is automatical"() {
-        given: "A flow with alternate paths available"
-        def switches = topology.getActiveSwitches()
-        List<List<PathNode>> allPaths = []
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
-            allPaths = database.getPaths(src.dpId, dst.dpId)*.path
-            allPaths.size() > 2
-        } ?: assumeTrue("No suiting switches found", false)
+        given: "Two active not neighboring switches with two possible paths at least"
+        def (Switch srcSwitch, Switch dstSwitch) = getNotNeighboringSwitchPair(2)
+        def allPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
 
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = bandwidth
@@ -295,12 +284,11 @@ class ProtectedPathSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         def flowPathInfo = northbound.getFlowPath(flow.id)
-        flowPathInfo.protectedPath
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        assert flowPathInfo.protectedPath
 
         def currentPath = pathHelper.convert(flowPathInfo)
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
-        currentPath != currentProtectedPath
+        assert currentPath != currentProtectedPath
 
         when: "Make the current and protected path less preferable than alternatives"
         def alternativePaths = allPaths.findAll { it != currentPath && it != currentProtectedPath }
@@ -322,9 +310,9 @@ class ProtectedPathSpec extends BaseSpecification {
         and: "Current path is protected path and new protected path is created"
         Wrappers.wait(WAIT_OFFSET) {
             def newCurrentProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
-            newCurrentPath == currentProtectedPath
-            newCurrentProtectedPath != currentPath
-            newCurrentProtectedPath != currentProtectedPath
+            assert newCurrentPath == currentProtectedPath
+            assert newCurrentProtectedPath != currentPath
+            assert newCurrentProtectedPath != currentProtectedPath
         }
 
         when: "Restore port status"
@@ -455,53 +443,6 @@ class ProtectedPathSpec extends BaseSpecification {
         isls.each { database.resetIslBandwidth(it) }
     }
 
-    @Ignore("Test is not valid, the availableBandwidth field is rewritten by each update action")
-    def "Able to enable protected path on a flow in case there is not enough bandwidth for protectedPath and ignoreBandwidth=true"() {
-        given: "Two active neighboring switches"
-        def isls = topology.getIslsForActiveSwitches()
-        def (srcSwitch, dstSwitch) = [isls.first().srcSwitch, isls.first().dstSwitch]
-
-        and: "Update all isls which can be used by protected path"
-        def bandwidth = 100
-        isls[1..-1].each { isl ->
-            database.updateIslAvailableBandwidth(isl, 90)
-            database.updateIslAvailableBandwidth(isl.reversed, 90)
-        }
-
-        when: "Create flow without protected path"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flow.maximumBandwidth = bandwidth
-        flow.allocateProtectedPath = false
-        flow.ignoreBandwidth = true
-        flowHelper.addFlow(flow)
-
-        then: "Flow is created without protected path"
-        !northbound.getFlowPath(flow.id).protectedPath
-
-        when: "Update flow: enable protected path(allocateProtectedPath=true)"
-        northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
-
-        then: "Protected path is enabled"
-        northbound.getFlowPath(flow.id).protectedPath
-
-        // TODO I've second thoughts about the following lines
-        northbound.updateFlow(flow.id, flow.tap { it.ignoreBandwidth = false })
-        northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = false })
-        //Should the protected path be enabled?
-//        isls[1..-1].each { isl ->
-//            database.updateIslAvailableBandwidth(isl, 90)
-//            database.updateIslAvailableBandwidth(isl.reversed, 90)
-//        }
-        northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
-
-        and: "Cleanup: delete the flow and restore available bandwidth"
-        flowHelper.deleteFlow(flow.id)
-        isls.each { isl ->
-            database.resetIslBandwidth(isl)
-            database.resetIslBandwidth(isl.reversed)
-        }
-    }
-
     def "System is able to recalculate protected path when port is down"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def allIsls = northbound.getAllLinks()
@@ -520,9 +461,6 @@ class ProtectedPathSpec extends BaseSpecification {
         def currentPath = pathHelper.convert(flowPathInfo)
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
         currentPath != currentProtectedPath
-
-        and: "Current path is not changed"
-        currentPath == pathHelper.convert(northbound.getFlowPath(flow.id))
 
         and: "Bandwidth is reserved for protected path on involved isls"
         def protectedIsls = pathHelper.getInvolvedIsls(currentProtectedPath)
@@ -551,6 +489,9 @@ class ProtectedPathSpec extends BaseSpecification {
             newProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
             newProtectedPath != currentProtectedPath
         }
+
+        and: "Current path is not changed"
+        currentPath == pathHelper.convert(northbound.getFlowPath(flow.id))
 
         and: "Bandwidth is reserved for new protected path on involved isls"
         def newProtectedIsls = pathHelper.getInvolvedIsls(newProtectedPath)
@@ -591,13 +532,7 @@ class ProtectedPathSpec extends BaseSpecification {
     @Unroll
     def "Unable to create protected path on #flowDescription flow on the same path"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
-        def switches = topology.getActiveSwitches()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            database.getPaths(src.dpId, dst.dpId)*.path.collect {
-                pathHelper.getInvolvedIsls(it)
-            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
-        } ?: assumeTrue("No suiting switches found", false)
+        def (Switch srcSwitch, Switch dstSwitch) = getNeighboringSwitchPair(2)
 
         and: "A flow without protected path"
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -606,7 +541,9 @@ class ProtectedPathSpec extends BaseSpecification {
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
         List<PathNode> broughtDownPorts = []
-        database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.findAll { it != flow1 }.unique {
+        database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.findAll {
+            it != pathHelper.convert(northbound.getFlowPath(flow1.id))
+        }.unique {
             it.first()
         }.each { path ->
             def src = path.first()
@@ -630,9 +567,8 @@ class ProtectedPathSpec extends BaseSpecification {
         exc.rawStatusCode == 404
         //TODO investigate error message
         exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found. " +
-                "Failed to find path with requested bandwidth=$bandwidth: " +
-                "Switch $srcSwitch.dpId doesn't have links with enough bandwidth"
+                "Could not create flow: Not enough bandwidth found or path not found." +
+                " Couldn't find non overlapping protected path"
 
         and: "Restore topology, delete flows and reset costs"
         broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
@@ -651,13 +587,7 @@ class ProtectedPathSpec extends BaseSpecification {
     @Unroll
     def "Unable to enable protected path on #flowDescription flow on the same path"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
-        def switches = topology.getActiveSwitches()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            database.getPaths(src.dpId, dst.dpId)*.path.collect {
-                pathHelper.getInvolvedIsls(it)
-            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
-        } ?: assumeTrue("No suiting switches found", false)
+        def (Switch srcSwitch, Switch dstSwitch) = getNeighboringSwitchPair(2)
 
         and: "A flow without protected path"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -667,7 +597,9 @@ class ProtectedPathSpec extends BaseSpecification {
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
         List<PathNode> broughtDownPorts = []
-        database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.findAll { it != flow }.unique {
+        database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.findAll {
+            it != pathHelper.convert(northbound.getFlowPath(flow.id))
+        }.unique {
             it.first()
         }.each { path ->
             def src = path.first()
@@ -687,9 +619,8 @@ class ProtectedPathSpec extends BaseSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
         exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not update flow: Not enough bandwidth found or path not found. " +
-                "Failed to find path with requested bandwidth=$bandwidth: " +
-                "Switch $srcSwitch.dpId doesn't have links with enough bandwidth"
+                "Could not update flow: Not enough bandwidth found or path not found." +
+                " Couldn't find non overlapping protected path"
 
         and: "Restore topology, delete flows and reset costs"
         broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
@@ -782,13 +713,7 @@ class ProtectedPathSpec extends BaseSpecification {
 
     def "Unable to swap an inactive flow"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
-        def switches = topology.getActiveSwitches()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            database.getPaths(src.dpId, dst.dpId)*.path.collect {
-                pathHelper.getInvolvedIsls(it)
-            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
-        } ?: assumeTrue("No suiting switches found", false)
+        def (Switch srcSwitch, Switch dstSwitch) = getNeighboringSwitchPair(2)
 
         and: "A flow with protected path"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -797,7 +722,9 @@ class ProtectedPathSpec extends BaseSpecification {
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
         List<PathNode> broughtDownPorts = []
-        database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.findAll { it != flow }.unique {
+        database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.findAll {
+            it != pathHelper.convert(northbound.getFlowPath(flow.id))
+        }.unique {
             it.first()
         }.each { path ->
             def src = path.first()
@@ -850,13 +777,7 @@ class ProtectedPathSpec extends BaseSpecification {
     @Unroll
     def "#flowDescription flow is DOWN when protected and alternative paths are not available"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
-        def switches = topology.getActiveSwitches()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            database.getPaths(src.dpId, dst.dpId)*.path.collect {
-                pathHelper.getInvolvedIsls(it)
-            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
-        } ?: assumeTrue("No suiting switches found", false)
+        def (Switch srcSwitch, Switch dstSwitch) = getNeighboringSwitchPair(2)
 
         and: "A flow with protected path"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -935,6 +856,18 @@ class ProtectedPathSpec extends BaseSpecification {
             allLinks.every { link ->
                 !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId)
             } && possibleFlowPaths.size() >= minPossiblePath && numberOfDifferentSwitchInPath >= 2
+        } ?: assumeTrue("No suiting switches found", false)
+
+        return [srcSwitch, dstSwitch]
+    }
+
+    List<Switch> getNeighboringSwitchPair(minPossiblePath) {
+        def switches = topology.getActiveSwitches()
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            database.getPaths(src.dpId, dst.dpId)*.path.collect {
+                pathHelper.getInvolvedIsls(it)
+            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= minPossiblePath
         } ?: assumeTrue("No suiting switches found", false)
 
         return [srcSwitch, dstSwitch]
