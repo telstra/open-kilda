@@ -213,18 +213,12 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
     @Override
     public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port, Long packetId) {
-        return sendDiscoveryMessage(srcSwId, port, null, packetId);
-    }
-
-    @Override
-    public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port, DatapathId dstSwId, Long packetId) {
         boolean result = false;
 
         try {
             IOFSwitch srcSwitch = switchService.getSwitch(srcSwId);
             if (srcSwitch != null && srcSwitch.getPort(port) != null) {
-                IOFSwitch dstSwitch = (dstSwId == null) ? null : switchService.getSwitch(dstSwId);
-                OFPacketOut ofPacketOut = generateVerificationPacket(srcSwitch, port, dstSwitch, true, packetId);
+                OFPacketOut ofPacketOut = generateVerificationPacket(srcSwitch, port, true, packetId);
 
                 if (ofPacketOut != null) {
                     logger.debug("==> Sending verification packet out {}/{} id {}: {}", srcSwitch.getId().toString(),
@@ -234,7 +228,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                     result = srcSwitch.write(ofPacketOut);
                 } else {
                     logger.error("<== Received null from generateVerificationPacket, inputs where: "
-                            + "srcSwitch: {}, port: {} id: {}, dstSwitch: {}", srcSwitch, port, packetId, dstSwitch);
+                            + "srcSwitch: {}, port: {} id: {}", srcSwitch, port, packetId);
                 }
 
                 if (result) {
@@ -253,21 +247,16 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         return result;
     }
 
-    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, Long packetId) {
-        return generateVerificationPacket(srcSw, port, null, true, packetId);
-    }
-
     /**
      * Return verification packet.
      *
      * @param srcSw source switch.
      * @param port port.
-     * @param dstSw destination switch
      * @param sign sign.
+     * @param packetId id of the packet.
      * @return verification packet.
      */
-    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, IOFSwitch dstSw,
-                                                  boolean sign, Long packetId) {
+    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, boolean sign, Long packetId) {
         try {
             byte[] dpidArray = new byte[8];
             ByteBuffer dpidBb = ByteBuffer.wrap(dpidArray);
@@ -343,16 +332,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             }
 
             MacAddress dstMac = MacAddress.of(VERIFICATION_BCAST_PACKET_DST);
-            if (dstSw != null) {
-                OFPortDesc sw2OfPortDesc = dstSw.getPort(port);
-                dstMac = sw2OfPortDesc.getHwAddr();
-            }
-
             IPv4Address dstIp = IPv4Address.of(VERIFICATION_PACKET_IP_DST);
-            if (dstSw != null) {
-                dstIp = IPv4Address
-                        .of(((InetSocketAddress) dstSw.getInetAddress()).getAddress().getAddress());
-            }
             IPv4 l3 = new IPv4()
                     .setSourceAddress(
                             IPv4Address.of(((InetSocketAddress) srcSw.getInetAddress()).getAddress().getAddress()))
