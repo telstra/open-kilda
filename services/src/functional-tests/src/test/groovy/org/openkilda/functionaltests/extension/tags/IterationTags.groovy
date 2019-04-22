@@ -1,17 +1,15 @@
 package org.openkilda.functionaltests.extension.tags
 
 import java.lang.annotation.ElementType
-import java.lang.annotation.Inherited
 import java.lang.annotation.Retention
 import java.lang.annotation.RetentionPolicy
 import java.lang.annotation.Target
 
 /**
- * Container annotation for {@link Tag}
+ * Container annotation for multiple {@link IterationTag}
  */
-@Target([ElementType.TYPE, ElementType.METHOD])
+@Target([ElementType.METHOD])
 @Retention(RetentionPolicy.RUNTIME)
-@Inherited
-@interface Tags {
-    Tag[] value() default []
+@interface IterationTags {
+    IterationTag[] value()
 }

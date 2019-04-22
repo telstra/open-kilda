@@ -2,7 +2,7 @@ package org.openkilda.functionaltests.extension.tags
 
 /**
  * All available tags go here.
- * See {@link TagExtension}
+ * See {@link TagExtension}, {@link Tags}, {@link IterationTags}
  */
 enum Tag {
     //regularity
