@@ -23,6 +23,7 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
+import org.openkilda.messaging.info.rule.BatchInstallResponse;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
@@ -30,9 +31,12 @@ import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt.CoordinatorCommand;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.topology.switchmanager.StreamType;
-import org.openkilda.wfm.topology.switchmanager.SwitchValidationCarrier;
+import org.openkilda.wfm.topology.switchmanager.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.command.RemoveKeyRouterBolt;
+import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
+import org.openkilda.wfm.topology.switchmanager.service.SwitchSyncService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
+import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchSyncServiceImpl;
 import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchValidateServiceImpl;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
@@ -45,14 +49,16 @@ import org.apache.storm.tuple.Values;
 
 import java.util.Map;
 
-public class SwitchValidateManager extends HubBolt implements SwitchValidationCarrier {
+public class SwitchValidateManager extends HubBolt implements SwitchManagerCarrier {
     public static final String ID = "switch.validate";
     public static final String INCOME_STREAM = "validate.command";
     private static final int TIMEOUT_MS = 10000;
     private static final boolean AUTO_ACK = true;
 
     private final PersistenceManager persistenceManager;
-    private transient SwitchValidateService service;
+    private transient SwitchValidateService validateService;
+    private transient SwitchSyncService syncService;
+
     private long flowMeterMinBurstSizeInKbits;
     private double flowMeterBurstCoefficient;
 
@@ -67,7 +73,8 @@ public class SwitchValidateManager extends HubBolt implements SwitchValidationCa
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         super.prepare(stormConf, context, collector);
-        service = new SwitchValidateServiceImpl(this, persistenceManager);
+        validateService = new SwitchValidateServiceImpl(this, persistenceManager);
+        syncService = new SwitchSyncServiceImpl(this, persistenceManager);
     }
 
     @Override
@@ -78,19 +85,23 @@ public class SwitchValidateManager extends HubBolt implements SwitchValidationCa
         if (message instanceof CommandMessage) {
             CommandData data = ((CommandMessage) message).getData();
             if (data instanceof SwitchValidateRequest) {
-                service.handleSwitchValidateRequest(key, (SwitchValidateRequest) data);
+                validateService.handleSwitchValidateRequest(key, (SwitchValidateRequest) data);
             }
 
         } else if (message instanceof InfoMessage) {
             InfoData data = ((InfoMessage) message).getData();
             if (data instanceof SwitchFlowEntries) {
-                service.handleFlowEntriesResponse(key, (SwitchFlowEntries) data);
+                validateService.handleFlowEntriesResponse(key, (SwitchFlowEntries) data);
             } else if (data instanceof SwitchMeterEntries) {
-                service.handleMeterEntriesResponse(key, (SwitchMeterEntries) data);
+                validateService.handleMeterEntriesResponse(key, (SwitchMeterEntries) data);
+            } else if (data instanceof BatchInstallResponse) {
+                syncService.handleInstallRulesResponse(key);
             }
 
         } else if (message instanceof ErrorMessage) {
-            service.handleTaskError(key, (ErrorMessage) message);
+            log.warn("Receive ErrorMessage for key {}", key);
+            validateService.handleTaskError(key, (ErrorMessage) message);
+            syncService.handleTaskError(key, (ErrorMessage) message);
         }
     }
 
@@ -101,7 +112,8 @@ public class SwitchValidateManager extends HubBolt implements SwitchValidationCa
 
     @Override
     public void onTimeout(String key) {
-        service.handleTaskTimeout(key);
+        validateService.handleTaskTimeout(key);
+        syncService.handleTaskTimeout(key);
     }
 
     @Override
@@ -131,6 +143,11 @@ public class SwitchValidateManager extends HubBolt implements SwitchValidationCa
     }
 
     @Override
+    public void runSwitchSync(String key, SwitchValidateRequest request, ValidationResult validationResult) {
+        syncService.handleSwitchSync(key, request, validationResult);
+    }
+
+    @Override
     public long getFlowMeterMinBurstSizeInKbits() {
         return flowMeterMinBurstSizeInKbits;
     }
@@ -148,6 +165,5 @@ public class SwitchValidateManager extends HubBolt implements SwitchValidationCa
         declarer.declareStream(StreamType.TO_NORTHBOUND.toString(), fields);
         declarer.declareStream(StreamType.TO_FLOODLIGHT.toString(), fields);
         declarer.declareStream(RouterBolt.INCOME_STREAM, fields);
-
     }
 }

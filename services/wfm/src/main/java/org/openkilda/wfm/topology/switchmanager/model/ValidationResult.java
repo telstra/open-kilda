@@ -13,21 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.service;
+package org.openkilda.wfm.topology.switchmanager.model;
 
-import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
-import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.messaging.info.rule.FlowEntry;
 
-public interface SyncRulesService {
+import lombok.Value;
 
-    void handleSyncRulesRequest(String key, SwitchRulesSyncRequest data);
+import java.util.List;
 
-    void handleFlowEntriesResponse(String key, SwitchFlowEntries data);
+@Value
+public class ValidationResult {
+    List<FlowEntry> flowEntries;
 
-    void handleInstallRulesResponse(String key);
-
-    void handleTaskTimeout(String key);
-
-    void handleTaskError(String key, ErrorMessage message);
+    ValidateRulesResult validateRulesResult;
+    ValidateMetersResult validateMetersResult;
 }

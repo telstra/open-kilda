@@ -33,6 +33,7 @@ import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface SwitchMapper {
@@ -43,7 +44,10 @@ public interface SwitchMapper {
 
     SwitchValidationResult toSwitchValidationResult(SwitchValidationResponse response);
 
-    RulesValidationResult toRulesValidationResult(SyncRulesResponse response);
+    @Mapping(source = "rules.excess", target = "excessRules")
+    @Mapping(source = "rules.missing", target = "missingRules")
+    @Mapping(source = "rules.proper", target = "properRules")
+    RulesValidationResult toRulesValidationResult(SwitchValidationResponse response);
 
     RulesValidationDto toRulesValidationResult(RulesValidationEntry data);
 

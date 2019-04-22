@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.switchmanager.bolt;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
@@ -49,10 +48,7 @@ public class RouterBolt extends AbstractBolt {
         if (message instanceof CommandMessage) {
             CommandMessage commandMessage = (CommandMessage) message;
             CommandData data = commandMessage.getData();
-            if (data instanceof SwitchRulesSyncRequest) {
-                emit(SwitchSyncRulesManager.INCOME_STREAM, input, key, message);
-                streams.put(key, SwitchSyncRulesManager.INCOME_STREAM);
-            } else if (data instanceof SwitchValidateRequest) {
+            if (data instanceof SwitchValidateRequest) {
                 emit(SwitchValidateManager.INCOME_STREAM, input, key, message);
                 streams.put(key, SwitchValidateManager.INCOME_STREAM);
             } else if (data instanceof RemoveKeyRouterBolt) {
@@ -71,7 +67,6 @@ public class RouterBolt extends AbstractBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         Fields fields = new Fields(MessageTranslator.KEY_FIELD, MessageTranslator.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
-        declarer.declareStream(SwitchSyncRulesManager.INCOME_STREAM, fields);
         declarer.declareStream(SwitchValidateManager.INCOME_STREAM, fields);
     }
 }
