@@ -17,8 +17,10 @@ package org.openkilda.wfm.topology.switchmanager;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.switches.SwitchValidateRequest;
+import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 
-public interface SwitchValidationCarrier {
+public interface SwitchManagerCarrier {
     void sendCommand(String key, CommandMessage command);
 
     void response(String key, Message message);
@@ -28,4 +30,6 @@ public interface SwitchValidationCarrier {
     long getFlowMeterMinBurstSizeInKbits();
 
     double getFlowMeterBurstCoefficient();
+
+    void runSwitchSync(String key, SwitchValidateRequest request, ValidationResult validationResult);
 }
