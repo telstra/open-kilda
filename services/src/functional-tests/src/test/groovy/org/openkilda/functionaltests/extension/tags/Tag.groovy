@@ -5,6 +5,12 @@ package org.openkilda.functionaltests.extension.tags
  * See {@link TagExtension}, {@link Tags}, {@link IterationTags}
  */
 enum Tag {
+    //pre-defined sets
+    SMOKE, REGRESSION,
+
+    //environments
+    HARDWARE, VIRTUAL,
+
     //regularity
     ONDEMAND,
 

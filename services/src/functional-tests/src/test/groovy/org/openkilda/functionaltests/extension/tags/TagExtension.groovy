@@ -8,6 +8,7 @@ import org.spockframework.runtime.extension.AbstractGlobalExtension
 import org.spockframework.runtime.extension.IMethodInterceptor
 import org.spockframework.runtime.extension.IMethodInvocation
 import org.spockframework.runtime.model.FeatureInfo
+import org.spockframework.runtime.model.IterationInfo
 import org.spockframework.runtime.model.SpecInfo
 
 /**
@@ -28,6 +29,33 @@ class TagExtension extends AbstractGlobalExtension {
     static Set<String> specialLiterals = ["NOT", "AND", "OR", "(", ")"]
     static Set<String> tagLiterals = Tag.values()*.toString()
 
+    @Override
+    void start() {
+        //override getName implementations for spec/feature/iteration names and inject Tags information
+        [SpecInfo, FeatureInfo].each {
+            def originalGetName = it.metaClass.getMetaMethod('getName', [] as Class[])
+            it.metaClass.getName = { ->
+                def tags = collectAllTagsAnnotations(delegate).collectMany { it.value().toList() }
+                originalGetName.invoke(delegate) + tagsCollectionToString(tags)
+            }
+        }
+        def iterationGetName = IterationInfo.metaClass.getMetaMethod('getName', [] as Class[])
+        IterationInfo.metaClass.getName = { ->
+            def featureMethod = (delegate as IterationInfo).feature.featureMethod
+            def iterationTags = (featureMethod.getAnnotation(IterationTags)?.value()?.toList() ?: [] +
+                    featureMethod.getAnnotation(IterationTag)).findAll()
+            def applicableTags = iterationTags.findAll {
+                iterationGetName.invoke(owner.delegate) =~ it.iterationNameRegex()
+            }.collectMany { it.tags().toList() }
+            def tagsAnnotation = featureMethod.getAnnotation(Tags)
+            if(tagsAnnotation) {
+                applicableTags.addAll(tagsAnnotation.value().toList())
+            }
+            return iterationGetName.invoke(delegate) + tagsCollectionToString(applicableTags)
+        }
+    }
+
+    @Override
     void visitSpec(SpecInfo spec) {
         String tagsExpression = System.getProperty(TAGS_PROPERTY_NAME)
         if (!tagsExpression) {
@@ -37,7 +65,7 @@ class TagExtension extends AbstractGlobalExtension {
             def tags = collectAllTagsAnnotations(feature).collectMany { it.value().toList() } as Set
             def iterationTags = (feature.featureMethod.getAnnotation(IterationTags)?.value()?.toList() ?: [] +
                     feature.featureMethod.getAnnotation(IterationTag)).findAll()
-            feature.excluded = !matches(tagsExpression, tags)
+            feature.excluded = !matches(tagsExpression, tags + iterationTags.collectMany {it.tags().toList() })
             if (iterationTags) {
                 feature.addIterationInterceptor(new IMethodInterceptor() {
                     /*This stores how many times did we match a certain iteration tag.
@@ -46,9 +74,10 @@ class TagExtension extends AbstractGlobalExtension {
 
                     @Override
                     void intercept(IMethodInvocation invocation) throws Throwable {
+                        def iteration = invocation.iteration
                         //look for iteration which matches our iteration name regexp
                         Map<IterationTag, Integer> applicableITags = tagExecutions.findAll { itag, exec ->
-                            invocation.iteration.name.matches(itag.iterationNameRegex())
+                            iteration.name =~ itag.iterationNameRegex()
                         }
                         //If no applicable iteration tags found, try checking whether top-level tags allow execution
                         if (applicableITags.isEmpty() && matches(tagsExpression, tags)) {
@@ -65,8 +94,8 @@ class TagExtension extends AbstractGlobalExtension {
                             allowingTag.value++
                             invocation.proceed()
                         } else {
-                            throw new AssumptionViolatedException("This iteration does not match the provided tags " +
-                                    "expression: \"$tagsExpression\"")
+                            throw new AssumptionViolatedException("The test '$iteration.feature.spec.name#" +
+                                    "$iteration.name' does not match the provided tags expression: '$tagsExpression'")
                         }
                     }
                 })
@@ -103,7 +132,7 @@ class TagExtension extends AbstractGlobalExtension {
     private static boolean matches(String tagsExpression, Set<Tag> tags) {
         def literals = tagsExpression
                 .replaceAll(/[()]/, / $0 /)
-                .replaceAll(/\s+/, " ")
+                .replaceAll(/\s+/, " ").trim()
                 .split(" ")
         return Eval.me(literals.collect {
             def literal = it.toUpperCase()
@@ -125,5 +154,13 @@ class TagExtension extends AbstractGlobalExtension {
                 throw new UnknownTagLiteralException("Unknown literal: $literal")
             }
         }.join(" "))
+    }
+
+    private static String tagsCollectionToString(List<Tag> input) {
+        if(input.empty) {
+            return ""
+        } else {
+            return (input as Set)*.toString().inspect()
+        }
     }
 }

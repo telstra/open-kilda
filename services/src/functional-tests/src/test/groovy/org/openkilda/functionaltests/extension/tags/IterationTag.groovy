@@ -14,7 +14,7 @@ import java.lang.annotation.Target
 @Retention(RetentionPolicy.RUNTIME)
 @interface IterationTag {
     Tag[] tags() default [] //these tags will be applied to iterations that are matched by 'iterationNameRegex'
-    String iterationNameRegex() default ".*" //Regex used to match certain iteration's name. Full match.
+    String iterationNameRegex() default ".*" //Regex used to match certain iteration's name. Partial match.
     /**Additional limitation when unable to exactly pin-point certain iteration(s) by name.
      Will pick first N iterations matched by iterationNameRegex*/
     int take() default 2147483647
