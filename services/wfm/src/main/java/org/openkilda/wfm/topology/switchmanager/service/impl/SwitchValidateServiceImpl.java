@@ -16,19 +16,18 @@
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
-import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
-import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.switchmanager.SwitchValidationCarrier;
+import org.openkilda.wfm.topology.switchmanager.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
+import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 
@@ -36,28 +35,27 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class SwitchValidateServiceImpl implements SwitchValidateService {
 
     private Map<String, SwitchValidateFsm> fsms = new HashMap<>();
 
-    private PersistenceManager persistenceManager;
-    private SwitchValidationCarrier carrier;
+    @VisibleForTesting
+    ValidationService validationService;
+    private SwitchManagerCarrier carrier;
     private StateMachineBuilder<SwitchValidateFsm, SwitchValidateState, SwitchValidateEvent, Object> builder;
 
-    public SwitchValidateServiceImpl(SwitchValidationCarrier carrier, PersistenceManager persistenceManager) {
+    public SwitchValidateServiceImpl(SwitchManagerCarrier carrier, PersistenceManager persistenceManager) {
         this.carrier = carrier;
         this.builder = SwitchValidateFsm.builder();
-        this.persistenceManager = persistenceManager;
+        this.validationService = new ValidationServiceImpl(persistenceManager);
     }
 
     @Override
     public void handleSwitchValidateRequest(String key, SwitchValidateRequest request) {
         SwitchValidateFsm fsm =
-                builder.newStateMachine(SwitchValidateState.INITIALIZED, carrier, key, request, persistenceManager);
+                builder.newStateMachine(SwitchValidateState.INITIALIZED, carrier, key, request, validationService);
 
         process(fsm);
     }
@@ -66,15 +64,11 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
     public void handleFlowEntriesResponse(String key, SwitchFlowEntries data) {
         SwitchValidateFsm fsm = fsms.get(key);
         if (fsm == null) {
-            sendFsmNotFound(key);
+            logFsmNotFound(key);
             return;
         }
 
-        Set<Long> presentCookies = data.getFlowEntries().stream()
-                .map(FlowEntry::getCookie)
-                .collect(Collectors.toSet());
-
-        fsm.fire(SwitchValidateEvent.RULES_RECEIVED, presentCookies);
+        fsm.fire(SwitchValidateEvent.RULES_RECEIVED, data.getFlowEntries());
         process(fsm);
     }
 
@@ -82,7 +76,7 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
     public void handleMeterEntriesResponse(String key, SwitchMeterEntries data) {
         SwitchValidateFsm fsm = fsms.get(key);
         if (fsm == null) {
-            sendFsmNotFound(key);
+            logFsmNotFound(key);
             return;
         }
 
@@ -94,7 +88,6 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
     public void handleTaskTimeout(String key) {
         SwitchValidateFsm fsm = fsms.get(key);
         if (fsm == null) {
-            sendFsmNotFound(key);
             return;
         }
 
@@ -105,26 +98,19 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
     public void handleTaskError(String key, ErrorMessage message) {
         SwitchValidateFsm fsm = fsms.get(key);
         if (fsm == null) {
-            sendFsmNotFound(key);
             return;
         }
 
         fsm.fire(SwitchValidateEvent.ERROR, message);
     }
 
-    private void sendFsmNotFound(String key) {
-        String message = String.format("Switch validate FSM with key %s not found", key);
-        log.error(message);
-        ErrorData errorData = new ErrorData(ErrorType.INTERNAL_ERROR, message,
-                "FSM not found");
-        ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
-        carrier.response(key, errorMessage);
+    private void logFsmNotFound(String key) {
+        log.warn("Switch validate FSM with key {} not found", key);
     }
 
     void process(SwitchValidateFsm fsm) {
         final List<SwitchValidateState> stopStates = Arrays.asList(
-                SwitchValidateState.RECEIVE_RULES,
-                SwitchValidateState.RECEIVE_METERS,
+                SwitchValidateState.RECEIVE_DATA,
                 SwitchValidateState.FINISHED,
                 SwitchValidateState.FINISHED_WITH_ERROR
         );
