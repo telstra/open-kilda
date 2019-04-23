@@ -325,6 +325,7 @@ class ProtectedPathSpec extends BaseSpecification {
 
         and: "Cleanup: revert system to original state"
         flowHelper.deleteFlow(flow.id)
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
 
         where:
