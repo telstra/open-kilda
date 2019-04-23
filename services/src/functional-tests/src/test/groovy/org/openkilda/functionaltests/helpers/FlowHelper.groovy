@@ -194,7 +194,7 @@ class FlowHelper {
 
     /**
      * Check that all needed rules are created for a flow with protected path.
-     * protected path creates the 'egress' rule only on the src and dst switches
+     * Protected path creates the 'egress' rule only on the src and dst switches
      * and creates 2 rules(input/output) on the transit switches
      * if (switchId == src/dst): 2 rules for main flow path + 1 egress for protected path = 3
      * if (switchId != src/dst): 2 rules for main flow path + 2 rules for protected path = 4
