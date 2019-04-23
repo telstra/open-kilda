@@ -493,8 +493,8 @@ class ProtectedPathSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             newProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
             newProtectedPath != currentProtectedPath
-            Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Current path is not changed"
         currentPath == pathHelper.convert(northbound.getFlowPath(flow.id))
