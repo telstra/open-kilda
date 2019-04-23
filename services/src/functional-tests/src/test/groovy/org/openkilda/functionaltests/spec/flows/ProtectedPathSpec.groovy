@@ -702,7 +702,6 @@ class ProtectedPathSpec extends BaseSpecification {
                 assert switchValidateInfo.meters.proper.size() == 1
                 assert switchValidateInfo.rules.proper.size() == 3
                 switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
-                // is not working yet, awaiting for fix, estimate: Monday
                 switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
             }
         }
