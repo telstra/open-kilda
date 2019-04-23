@@ -35,7 +35,7 @@ class ProtectedPathSpec extends BaseSpecification {
     int rerouteHardtimeout
 
     @Unroll
-    def "Able to create flow with the 'protected path' option in case maximumBandwidth=#bandwidth, vlan=#vlanId"() {
+    def "Able to create flow with 'protected path' in case maximumBandwidth=#bandwidth, vlan=#vlanId"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def (Switch srcSwitch, Switch dstSwitch) = getNotNeighboringSwitchPair(2)
 
@@ -70,7 +70,7 @@ class ProtectedPathSpec extends BaseSpecification {
         0         | 0
     }
 
-    def "Able to update the 'protected path' option"() {
+    def "Able to enable/disable 'protected path' on a flow"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def (Switch srcSwitch, Switch dstSwitch) = getNotNeighboringSwitchPair(2)
 
@@ -119,7 +119,7 @@ class ProtectedPathSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
-    def "Unable to create flow with the 'protected path' option on a single switch flow"() {
+    def "Unable to create flow with 'protected path' on a single switch flow"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
 
@@ -135,7 +135,7 @@ class ProtectedPathSpec extends BaseSpecification {
                 "Could not create flow: Couldn't setup protected path for one-switch flow"
     }
 
-    def "Unable to update flow with the 'protected path' option on a single switch flow"() {
+    def "Unable to update flow with 'protected path' on a single switch flow"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
 
@@ -157,7 +157,7 @@ class ProtectedPathSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "System is able to reroute #flowDescription flow to protected path"() {
+    def "System is able to swap #flowDescription flow to protected path"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def allIsls = northbound.getAllLinks()
         def (Switch srcSwitch, Switch dstSwitch) = getNotNeighboringSwitchPair(2)
@@ -189,11 +189,11 @@ class ProtectedPathSpec extends BaseSpecification {
             }
         }
 
-        when: "Init reroute"
+        when: "Init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
         northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
-        then: "Flow is rerouted"
+        then: "Flow is swapped"
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.id)) != currentPath
@@ -273,7 +273,7 @@ class ProtectedPathSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "System reroutes #flowDescription flow to protected path and ignore more preferable path in case reroute is automatical"() {
+    def "System swaps #flowDescription flow to protected path and ignore more preferable path in case reroute is automatical"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def (Switch srcSwitch, Switch dstSwitch) = getNotNeighboringSwitchPair(2)
         def allPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
@@ -295,11 +295,11 @@ class ProtectedPathSpec extends BaseSpecification {
         alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
         alternativePaths.each { pathHelper.makePathMorePreferable(it, currentProtectedPath) }
 
-        and: "Init reroute"
+        and: "Init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
         northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
-        then: "Flow is rerouted"
+        then: "Flow is swapped"
         def newCurrentPath
         Wrappers.wait(WAIT_OFFSET) {
             newCurrentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
@@ -335,14 +335,20 @@ class ProtectedPathSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "Able to get flow(protectedPath=#protectedPath) path in case flow is not rerouted"() {
+    def "Flow with protected path does not get rerouted if already on the best path"() {
         given: "Two active neighboring switches and a flow"
         def isls = topology.getIslsForActiveSwitches()
         def (srcSwitch, dstSwitch) = [isls.first().srcSwitch, isls.first().dstSwitch]
 
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flow.allocateProtectedPath = protectedPath
+        flow.allocateProtectedPath = true
         flowHelper.addFlow(flow)
+
+        def flowPathInfo = northbound.getFlowPath(flow.id)
+        def currentPath = pathHelper.convert(flowPathInfo)
+        def currentProtectedPath
+        assert flowPathInfo.protectedPath
+        currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
 
         when: "Init reroute"
         def rerouteResponse = northbound.rerouteFlow(flow.id)
@@ -350,17 +356,17 @@ class ProtectedPathSpec extends BaseSpecification {
         then: "Flow is not rerouted"
         !rerouteResponse.rerouted
 
-        and: "System allows to get flow path"
-        northbound.getFlowPath(flow.id)
+        def newFlowPathInfo = northbound.getFlowPath(flow.id)
+        def newCurrentPath = pathHelper.convert(newFlowPathInfo)
+        newCurrentPath == currentPath
+        def newCurrentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
+        assert newCurrentProtectedPath == currentProtectedPath
 
         and: "Cleanup: revert system to original state"
         flowHelper.deleteFlow(flow.id)
-
-        where:
-        protectedPath << [false, true]
     }
 
-    def "Unable to create a flow with the 'protected path' option in case there is not enough bandwidth"() {
+    def "Unable to create a flow with 'protected path' in case there is not enough bandwidth"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
         def (srcSwitch, dstSwitch) = [isls.first().srcSwitch, isls.first().dstSwitch]
@@ -386,7 +392,7 @@ class ProtectedPathSpec extends BaseSpecification {
         isls.each { database.resetIslBandwidth(it) }
     }
 
-    def "Unable to update the 'protected path' option on a flow in case there is not enough bandwidth"() {
+    def "Unable to update 'protected path' on a flow in case there is not enough bandwidth"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
         def (srcSwitch, dstSwitch) = [isls.first().srcSwitch, isls.first().dstSwitch]
@@ -474,9 +480,8 @@ class ProtectedPathSpec extends BaseSpecification {
             }
         }
 
-        when: "Switch remaining ISL port on the protected path to init the recalculate procedure"
-        def currentIsls = pathHelper.getInvolvedIsls(currentPath)
-        def islToBreakProtectedPath = protectedIsls.find { !currentIsls.contains(it) }
+        when: "Break ISL on the protected path (bring port down) to init the recalculate procedure"
+        def islToBreakProtectedPath = protectedIsls[0]
         northbound.portDown(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
 
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
