@@ -15,6 +15,8 @@
 
 package org.openkilda.persistence;
 
+import net.jodah.failsafe.RetryPolicy;
+
 /**
  * Manager of transaction boundaries.
  */
@@ -30,6 +32,8 @@ public interface TransactionManager {
      */
     <T, E extends Throwable> T doInTransaction(TransactionCallback<T, E> action) throws E;
 
+    <T, E extends Throwable> T doInTransaction(RetryPolicy retryPolicy, TransactionCallback<T, E> action) throws E;
+
     /**
      * Execute the action specified by the given callback within a transaction.
      * <p/>
@@ -39,4 +43,7 @@ public interface TransactionManager {
      * @param action the transactional action
      */
     <E extends Throwable> void doInTransaction(TransactionCallbackWithoutResult<E> action) throws E;
+
+    <E extends Throwable> void doInTransaction(RetryPolicy retryPolicy, TransactionCallbackWithoutResult<E> action)
+            throws E;
 }
