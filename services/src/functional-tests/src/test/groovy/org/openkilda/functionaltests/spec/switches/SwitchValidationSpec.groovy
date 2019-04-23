@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.junit.Assume.assumeTrue
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -358,9 +357,12 @@ class SwitchValidationSpec extends BaseSpecification {
     }
 
 
-    def "Able to get empty switch validate information from the intermediate switch(flow contain > 2 switches)"() {
+    def "Able to get empty switch validate information from the intermediate switch(flow contains > 2 switches)"() {
+        given: "Two active not neighboring switches"
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+
         when: "Create an intermediate-switch flow"
-        def flow = intermediateSwitchFlow()
+        def flow = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -387,32 +389,27 @@ class SwitchValidationSpec extends BaseSpecification {
 
     def "Switch validate is able to detect rule info into the 'missing' section"() {
         given: "Two active not neighboring switches"
-        def switches = topology.getActiveSwitches()
-        def allLinks = northbound.getAllLinks()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allLinks.every { link -> !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId) }
-        } ?: assumeTrue("No suiting switches found", false)
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
 
         and: "Create an intermediate-switch flow"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow)
 
         when: "Delete created rules on the srcSwitch"
-        def createdCookies = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+        def createdCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
             !Cookie.isDefaultRule(it.cookie)
         }*.cookie
         assert createdCookies.size() == 2
 
-        northbound.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
+        northbound.deleteSwitchRules(switchPair.src.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
 
         then: "Rule info is moved into the 'missing' section on the srcSwitch"
-        def srcSwitchValidateInfo = northbound.switchValidate(srcSwitch.dpId)
+        def srcSwitchValidateInfo = northbound.switchValidate(switchPair.src.dpId)
         srcSwitchValidateInfo.rules.missing.containsAll(createdCookies)
         verifyRuleSectionsAreEmpty(srcSwitchValidateInfo, ["proper", "excess"])
 
         and: "Rule info is NOT moved into the 'missing' section on the dstSwitch and transit switches"
-        def dstSwitchValidateInfo = northbound.switchValidate(dstSwitch.dpId)
+        def dstSwitchValidateInfo = northbound.switchValidate(switchPair.dst.dpId)
         dstSwitchValidateInfo.rules.proper.containsAll(createdCookies)
         verifyRuleSectionsAreEmpty(dstSwitchValidateInfo, ["missing", "excess"])
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)*.dpId
@@ -454,19 +451,14 @@ class SwitchValidationSpec extends BaseSpecification {
         }
     }
 
-    def "Switch validate is able to detect rule info into the 'excess' section"() {
+    def "Switch validate is able to detect rule info in the 'excess' section"() {
         given: "Two active not neighboring switches"
-        def switches = topology.getActiveSwitches()
-        def allLinks = northbound.getAllLinks()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allLinks.every { link -> !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId) }
-        } ?: assumeTrue("No suiting switches found", false)
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
 
         and: "Create an intermediate-switch flow"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow)
-        def createdCookies = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+        def createdCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
             !Cookie.isDefaultRule(it.cookie)
         }*.cookie
         createdCookies.size() == 2
@@ -476,21 +468,21 @@ class SwitchValidationSpec extends BaseSpecification {
 
         def producer = new KafkaProducer(producerProps)
         //pick a meter id which is not yet used on src switch
-        def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(dstSwitch.dpId)
+        def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(switchPair.dst.dpId)
                 .meterEntries*.meterId).first()
-        producer.send(new ProducerRecord(flowTopic, dstSwitch.dpId.toString(), buildMessage(
-                new InstallEgressFlow(UUID.randomUUID(), flow.id, 1L, dstSwitch.dpId, 1, 2, 1, 1,
+        producer.send(new ProducerRecord(flowTopic, switchPair.dst.dpId.toString(), buildMessage(
+                new InstallEgressFlow(UUID.randomUUID(), flow.id, 1L, switchPair.dst.dpId, 1, 2, 1, 1,
                         OutputVlanType.REPLACE)).toJson()))
         involvedSwitches[1..-1].each { transitSw ->
             producer.send(new ProducerRecord(flowTopic, transitSw.toString(), buildMessage(
                     new InstallTransitFlow(UUID.randomUUID(), flow.id, 1L, transitSw, 1, 2, 1)).toJson()))
         }
-        producer.send(new ProducerRecord(flowTopic, srcSwitch.dpId.toString(), buildMessage(
-                new InstallIngressFlow(UUID.randomUUID(), flow.id, 1L, srcSwitch.dpId, 1, 2, 1, 1,
+        producer.send(new ProducerRecord(flowTopic, switchPair.src.dpId.toString(), buildMessage(
+                new InstallIngressFlow(UUID.randomUUID(), flow.id, 1L, switchPair.src.dpId, 1, 2, 1, 1,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId)).toJson()))
 
         then: "System detects excess rules and store them in the 'excess' section"
-        def newCookiesSize = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+        def newCookiesSize = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
             !Cookie.isDefaultRule(it.cookie)
         }.size()
         newCookiesSize == createdCookies.size() + 1
@@ -508,8 +500,8 @@ class SwitchValidationSpec extends BaseSpecification {
         }
 
         and: "System detects excess meter on the srcSwitch only"
-        Long burstSize = switchHelper.getExpectedBurst(srcSwitch.dpId, flow.maximumBandwidth)
-        def validateSwitchInfo = northbound.switchValidate(srcSwitch.dpId)
+        Long burstSize = switchHelper.getExpectedBurst(switchPair.src.dpId, flow.maximumBandwidth)
+        def validateSwitchInfo = northbound.switchValidate(switchPair.src.dpId)
         assert validateSwitchInfo.meters.excess.size() == 1
         assert validateSwitchInfo.meters.excess.each {
             assert it.rate == flow.maximumBandwidth
@@ -524,7 +516,7 @@ class SwitchValidationSpec extends BaseSpecification {
         // TODO(andriidovhan) add synchronizeSwitch and check that rule inflo is moved back into the 'proper' section
         when: "Delete the flow and excess rules"
         flowHelper.deleteFlow(flow.id)
-        northbound.deleteMeter(srcSwitch.dpId, excessMeterId)
+        northbound.deleteMeter(switchPair.src.dpId, excessMeterId)
         involvedSwitches.each { switchId ->
             northbound.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
         }
@@ -537,28 +529,6 @@ class SwitchValidationSpec extends BaseSpecification {
                 verifyMeterSectionsAreEmpty(switchValidateInfo)
             }
         }
-    }
-
-    def intermediateSwitchFlow(boolean ensureAltPathsExist = false, boolean getAllPaths = false) {
-        def flowWithPaths = getFlowWithPaths(3, Integer.MAX_VALUE, ensureAltPathsExist ? 1 : 0)
-        return getAllPaths ? flowWithPaths : flowWithPaths[0]
-    }
-
-    def getFlowWithPaths(int minSwitchesInPath, int maxSwitchesInPath, int minAltPaths) {
-        def allFlowPaths = []
-        def switches = topology.getActiveSwitches()
-        def switchPair = [switches, switches].combinations().findAll {
-            src, dst -> src != dst
-        }.unique {
-            it.sort()
-        }.find { src, dst ->
-            allFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path
-            allFlowPaths.size() > minAltPaths && allFlowPaths.min {
-                it.size()
-            }.size() in (minSwitchesInPath..maxSwitchesInPath)
-        } ?: assumeTrue("No suiting switches found", false)
-
-        return [flowHelper.randomFlow(switchPair[0], switchPair[1]), allFlowPaths]
     }
 
     @Memoized
@@ -600,6 +570,6 @@ class SwitchValidationSpec extends BaseSpecification {
     }
 
     private static Message buildMessage(final CommandData data) {
-        return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null);
+        return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null)
     }
 }

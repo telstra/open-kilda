@@ -27,10 +27,10 @@ class FlowValidationNegativeSpec extends BaseSpecification {
     @Unroll
     def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration"() {
         given: "Two flows with #flowConfig configuration"
-        def flowToBreak = (potentialFlow.src == potentialFlow.dst) ? flowHelper.singleSwitchFlow(potentialFlow.src) 
-                : flowHelper.randomFlow(potentialFlow)
-        def intactFlow = (potentialFlow.src == potentialFlow.dst) ? flowHelper.singleSwitchFlow(potentialFlow.src) 
-                : flowHelper.randomFlow(potentialFlow)
+        def flowToBreak = (switchPair.src == switchPair.dst) ? flowHelper.singleSwitchFlow(switchPair.src)
+                : flowHelper.randomFlow(switchPair)
+        def intactFlow = (switchPair.src == switchPair.dst) ? flowHelper.singleSwitchFlow(switchPair.src)
+                : flowHelper.randomFlow(switchPair)
 
         flowHelper.addFlow(flowToBreak)
         flowHelper.addFlow(intactFlow)
@@ -82,19 +82,19 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         [flowToBreak.id, intactFlow.id].each { flowHelper.deleteFlow(it) }
 
         where:
-        flowConfig      | potentialFlow                         | item | switchNo | flowType
-        "single switch" | getTopologyHelper().singleSwitch()    | 0    | "single" | "forward"
-        "single switch" | getTopologyHelper().singleSwitch()    | 0    | "single" | "reverse"
-        "neighbouring"  | getTopologyHelper().findNeighbors()   | 0    | "first"  | "forward"
-        "neighbouring"  | getTopologyHelper().findNeighbors()   | 0    | "first"  | "reverse"
-        "neighbouring"  | getTopologyHelper().findNeighbors()   | 1    | "last"   | "forward"
-        "neighbouring"  | getTopologyHelper().findNeighbors()   | 1    | "last"   | "reverse"
-        "transit"       | getTopologyHelper().findNonNeighbors()| 0    | "first"  | "forward"
-        "transit"       | getTopologyHelper().findNonNeighbors()| 0    | "first"  | "reverse"
-        "transit"       | getTopologyHelper().findNonNeighbors()| 1    | "middle" | "forward"
-        "transit"       | getTopologyHelper().findNonNeighbors()| 1    | "middle" | "reverse"
-        "transit"       | getTopologyHelper().findNonNeighbors()| -1   | "last"   | "forward"
-        "transit"       | getTopologyHelper().findNonNeighbors()| -1   | "last"   | "reverse"
+        flowConfig      | switchPair                                        | item | switchNo | flowType
+        "single switch" | getTopologyHelper().getSingleSwitchPair()         | 0    | "single" | "forward"
+        "single switch" | getTopologyHelper().getSingleSwitchPair()         | 0    | "single" | "reverse"
+        "neighbouring"  | getTopologyHelper().getNeighboringSwitchPair()    | 0    | "first"  | "forward"
+        "neighbouring"  | getTopologyHelper().getNeighboringSwitchPair()    | 0    | "first"  | "reverse"
+        "neighbouring"  | getTopologyHelper().getNeighboringSwitchPair()    | 1    | "last"   | "forward"
+        "neighbouring"  | getTopologyHelper().getNeighboringSwitchPair()    | 1    | "last"   | "reverse"
+        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | 0    | "first"  | "forward"
+        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | 0    | "first"  | "reverse"
+        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | 1    | "middle" | "forward"
+        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | 1    | "middle" | "reverse"
+        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | -1   | "last"   | "forward"
+        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | -1   | "last"   | "reverse"
     }
 
     @Unroll

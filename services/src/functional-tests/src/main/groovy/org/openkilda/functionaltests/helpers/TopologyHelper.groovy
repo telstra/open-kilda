@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
-import org.openkilda.functionaltests.helpers.model.PotentialFlow
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
@@ -34,51 +34,51 @@ class TopologyHelper {
         return new Tuple2(src, dst)
     }
 
-    PotentialFlow singleSwitch() {
-        return PotentialFlow.singleSwitchInstance(topology.activeSwitches.first())
+    SwitchPair getSingleSwitchPair() {
+        return SwitchPair.singleSwitchInstance(topology.activeSwitches.first())
     }
 
-    List<PotentialFlow> allSingleSwitch() {
-        return topology.activeSwitches.collect { PotentialFlow.singleSwitchInstance(it) }
+    List<SwitchPair> getAllSingleSwitchPairs() {
+        return topology.activeSwitches.collect { SwitchPair.singleSwitchInstance(it) }
     }
 
-    PotentialFlow findNeighbors() {
-        findPotentialFlows().find {
+    SwitchPair getNeighboringSwitchPair() {
+        getSwitchPairs().find {
             it.paths.min { it.size() }.size() == 2
         }
     }
 
-    PotentialFlow findNonNeighbors() {
-        findPotentialFlows().find {
+    SwitchPair getNotNeighboringSwitchPair() {
+        getSwitchPairs().find {
             it.paths.min { it.size() }.size() > 2
         }
     }
 
-    List<PotentialFlow> findAllNeighbors() {
-        findPotentialFlows().findAll {
+    List<SwitchPair> getAllNeighboringSwitchPairs() {
+        getSwitchPairs().findAll {
             it.paths.min { it.size() }.size() == 2
         }
     }
 
-    List<PotentialFlow> findAllNonNeighbors() {
-        findPotentialFlows().findAll {
+    List<SwitchPair> getAllNotNeighboringSwitchPairs() {
+        getSwitchPairs().findAll {
             it.paths.min { it.size() }.size() > 2
         }
     }
 
-    List<PotentialFlow> findPotentialFlows() {
+    List<SwitchPair> getSwitchPairs() {
         //get deep copy
         def mapper = new ObjectMapper()
-        return mapper.readValue(mapper.writeValueAsString(findPotentialFlowsCache()), PotentialFlow[]).toList()
+        return mapper.readValue(mapper.writeValueAsString(getSwitchPairsCached()), SwitchPair[]).toList()
     }
 
     @Memoized
-    private List<PotentialFlow> findPotentialFlowsCache() {
+    private List<SwitchPair> getSwitchPairsCached() {
         return [topology.activeSwitches, topology.activeSwitches].combinations()
-            .findAll { src, dst -> src != dst } //non-single-switch
-            .unique { it.sort() } //no reversed versions of same flows
-            .collect { Switch src, Switch dst ->
-                new PotentialFlow(src: src, dst: dst, paths: database.getPaths(src.dpId, dst.dpId)*.path)
-            }        
+                .findAll { src, dst -> src != dst } //non-single-switch
+                .unique { it.sort() } //no reversed versions of same flows
+                .collect { Switch src, Switch dst ->
+            new SwitchPair(src: src, dst: dst, paths: database.getPaths(src.dpId, dst.dpId)*.path)
+        }
     }
 }

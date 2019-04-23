@@ -4,7 +4,7 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.helpers.model.PotentialFlow
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.model.FlowDto
 import org.openkilda.messaging.model.FlowPairDto
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
@@ -48,7 +48,7 @@ class FlowHelper {
      * will delegate the job to the correct algo based on src and dst switches passed.
      */
     FlowCreatePayload randomFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
-            List<FlowPayload> existingFlows = []) {
+                                 List<FlowPayload> existingFlows = []) {
         if (srcSwitch.dpId == dstSwitch.dpId) {
             return singleSwitchFlow(srcSwitch, useTraffgenPorts, existingFlows)
         } else {
@@ -56,13 +56,13 @@ class FlowHelper {
         }
     }
 
-    FlowCreatePayload randomFlow(PotentialFlow potentialFlow, boolean useTraffgenPorts = true,
-            List<FlowCreatePayload> existingFlows = []) {
-        randomFlow(potentialFlow.src, potentialFlow.dst, useTraffgenPorts, existingFlows)
+    FlowCreatePayload randomFlow(SwitchPair switchPair, boolean useTraffgenPorts = true,
+                                 List<FlowCreatePayload> existingFlows = []) {
+        randomFlow(switchPair.src, switchPair.dst, useTraffgenPorts, existingFlows)
     }
 
     FlowCreatePayload randomMultiSwitchFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
-            List<FlowPayload> existingFlows = []) {
+                                            List<FlowPayload> existingFlows = []) {
         Wrappers.retry(3, 0) {
             def newFlow = new FlowCreatePayload(generateFlowId(), getFlowEndpoint(srcSwitch, useTraffgenPorts),
                     getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, "autotest flow", null, null, null,
@@ -81,7 +81,7 @@ class FlowHelper {
      * examination certain switch should have at least 2 traffgens connected to different ports.
      */
     FlowCreatePayload singleSwitchFlow(Switch sw, boolean useTraffgenPorts = true,
-            List<FlowPayload> existingFlows = []) {
+                                       List<FlowPayload> existingFlows = []) {
         def allowedPorts = topology.getAllowedPortsForSwitch(sw)
         Wrappers.retry(3, 0) {
             def srcEndpoint = getFlowEndpoint(sw, allowedPorts, useTraffgenPorts)
@@ -107,12 +107,12 @@ class FlowHelper {
             dstEndpoint.vlanId--
         }
         return FlowPayload.builder()
-                          .id(generateFlowId())
-                          .source(srcEndpoint)
-                          .destination(dstEndpoint)
-                          .maximumBandwidth(500)
-                          .description("autotest flow")
-                          .build()
+                .id(generateFlowId())
+                .source(srcEndpoint)
+                .destination(dstEndpoint)
+                .maximumBandwidth(500)
+                .description("autotest flow")
+                .build()
     }
 
     /**
@@ -206,7 +206,7 @@ class FlowHelper {
      * in 'allowedPorts'
      */
     private FlowEndpointPayload getFlowEndpoint(Switch sw, List<Integer> allowedPorts,
-            boolean useTraffgenPorts = true) {
+                                                boolean useTraffgenPorts = true) {
         def port = allowedPorts[random.nextInt(allowedPorts.size())]
         if (useTraffgenPorts) {
             def connectedTraffgens = topology.activeTraffGens.findAll { it.switchConnected == sw }

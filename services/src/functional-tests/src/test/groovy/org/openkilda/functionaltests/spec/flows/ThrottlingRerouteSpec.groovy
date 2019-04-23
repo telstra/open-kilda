@@ -43,11 +43,11 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
         /* Here we will pick only short flows that consist of 2 switches, so that we can maximize amount of unique
         flows found*/
-        def potentialFlows = topologyHelper.findAllNeighbors()
+        def switchPairs = topologyHelper.getAllNeighboringSwitchPairs()
 
-        assumeTrue("Topology is too small to run this test", potentialFlows.size() > 3)
-        def flows = potentialFlows.take(5).collect { potentialFlow ->
-            def flow = flowHelper.randomFlow(potentialFlow)
+        assumeTrue("Topology is too small to run this test", switchPairs.size() > 3)
+        def flows = switchPairs.take(5).collect { switchPair ->
+            def flow = flowHelper.randomFlow(switchPair)
             flowHelper.addFlow(flow)
             flow
         }
@@ -96,15 +96,15 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
         /* Here we will pick only short flows that consist of 2 switches, so that we can maximize amount of unique
         flows found*/
-        def potentialFlows = topologyHelper.findAllNeighbors()
-        
+        def switchPairs = topologyHelper.getAllNeighboringSwitchPairs()
+
         /*due to port anti-flap we cannot continuously quickly reroute one single flow until we reach hardTimeout,
         thus we need certain amount of flows to continuously provide reroute triggers for them in a loop.
         We can re-trigger a reroute on the same flow after antiflapCooldown + antiflapMin seconds*/
         int minFlowsRequired = (int) Math.min(rerouteHardTimeout / antiflapMin, antiflapCooldown / antiflapMin + 1) + 1
-        assumeTrue("Topology is too small to run this test", potentialFlows.size() >= minFlowsRequired)
-        def flows = potentialFlows.take(minFlowsRequired).collect { potentialFlow ->
-            def flow = flowHelper.randomFlow(potentialFlow)
+        assumeTrue("Topology is too small to run this test", switchPairs.size() >= minFlowsRequired)
+        def flows = switchPairs.take(minFlowsRequired).collect { switchPair ->
+            def flow = flowHelper.randomFlow(switchPair)
             flowHelper.addFlow(flow)
             flow
         }
