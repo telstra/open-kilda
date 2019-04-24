@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 import org.openkilda.wfm.topology.ping.model.PingContext.Kinds;
 
@@ -32,7 +31,7 @@ public class ResultDispatcher extends Abstract {
     public static final String STREAM_MANUAL_ID = "manual";
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         PingContext pingContext = pullPingContext(input);
 
         final String stream = dispatch(pingContext);

@@ -20,7 +20,6 @@ import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.TaskIdBasedKeyFactory;
 import org.openkilda.wfm.topology.network.error.ControllerNotFoundException;
@@ -79,7 +78,7 @@ public class BfdPortHandler extends AbstractBolt
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String source = input.getSourceComponent();
         if (SwitchHandler.BOLT_ID.equals(source)) {
             handleSwitchCommand(input);

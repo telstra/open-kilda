@@ -17,7 +17,7 @@ package org.openkilda.floodlight.error;
 
 import org.openkilda.messaging.model.Ping;
 
-public class PingImpossibleException extends AbstractException {
+public class PingImpossibleException extends Exception {
     private final Ping ping;
 
     private final Ping.Errors error;

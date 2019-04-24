@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.topology.AbstractTopology;
 
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +34,7 @@ public class ReplyBolt extends AbstractBolt {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         Object key = input.getValueByField(AbstractTopology.KEY_FIELD);
         String message = input.getValueByField(AbstractTopology.MESSAGE_FIELD).toString();
         Values values = new Values(key, message);

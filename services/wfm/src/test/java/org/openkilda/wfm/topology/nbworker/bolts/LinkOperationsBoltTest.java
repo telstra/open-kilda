@@ -30,7 +30,6 @@ import org.openkilda.persistence.Neo4jPersistenceManager;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.EmbeddedNeo4jDatabase;
-import org.openkilda.wfm.error.AbstractException;
 
 import org.apache.storm.task.TopologyContext;
 import org.junit.AfterClass;
@@ -84,7 +83,7 @@ public class LinkOperationsBoltTest {
     }
 
     @Test
-    public void shouldCreateLinkProps() throws AbstractException {
+    public void shouldCreateLinkProps() throws Exception {
         SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
         switchRepository.createOrUpdate(Switch.builder().switchId(SWITCH_ID_1).build());

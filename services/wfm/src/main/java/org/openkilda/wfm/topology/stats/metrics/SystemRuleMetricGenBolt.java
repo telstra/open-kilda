@@ -22,7 +22,6 @@ import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.error.AbstractException;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.tuple.Tuple;
@@ -38,7 +37,7 @@ public class SystemRuleMetricGenBolt extends MetricGenBolt {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         FlowStatsData data = (FlowStatsData) input.getValueByField(STATS_FIELD);
         log.debug("Received system rules statistics: {}.", data);
         long timestamp = input.getLongByField(TIMESTAMP);

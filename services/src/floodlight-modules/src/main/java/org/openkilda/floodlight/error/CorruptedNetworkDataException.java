@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.error;
 
-public class CorruptedNetworkDataException extends AbstractException {
+public class CorruptedNetworkDataException extends Exception {
     public CorruptedNetworkDataException() {
         this("Corrupted network data");
     }
