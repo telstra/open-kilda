@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 
@@ -31,7 +30,7 @@ public abstract class ResultManager extends Abstract {
     public static final String STREAM_GROUP_ID = "grouping";
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String component = input.getSourceComponent();
         if (GroupCollector.BOLT_ID.equals(component)) {
             handleGroup(input);
@@ -42,7 +41,7 @@ public abstract class ResultManager extends Abstract {
 
     protected void handleGroup(Tuple input) throws PipelineException {}
 
-    protected void handle(Tuple input, PingContext pingContext) throws AbstractException {
+    protected void handle(Tuple input, PingContext pingContext) throws Exception {
         if (pingContext.isError()) {
             handleError(input, pingContext);
         } else {

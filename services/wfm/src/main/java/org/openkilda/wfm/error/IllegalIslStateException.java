@@ -17,7 +17,7 @@ package org.openkilda.wfm.error;
 
 import org.openkilda.model.SwitchId;
 
-public class IllegalIslStateException extends AbstractException {
+public class IllegalIslStateException extends Exception {
     public IllegalIslStateException(SwitchId srcSwitch, Integer srcPort,
                                     SwitchId dstSwitch, Integer dstPort, String s) {
         super(String.format("Link with following parameters is in illegal state: "

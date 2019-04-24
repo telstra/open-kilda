@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.error;
 
-public class FeatureTogglesNotEnabledException extends AbstractException {
+public class FeatureTogglesNotEnabledException extends Exception {
     public FeatureTogglesNotEnabledException(String operation) {
         super(String.format("Feature toggles not enabled for %s operation.", operation));
     }

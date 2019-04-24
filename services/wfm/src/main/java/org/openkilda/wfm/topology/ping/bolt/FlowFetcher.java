@@ -23,7 +23,6 @@ import org.openkilda.model.FlowPair;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.ping.model.FlowRef;
@@ -66,7 +65,7 @@ public class FlowFetcher extends Abstract {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String component = input.getSourceComponent();
 
         if (TickDeduplicator.BOLT_ID.equals(component)) {

@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.ping.bolt;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.FlowPingResponse.FlowPingResponseBuilder;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.ping.model.Group;
 import org.openkilda.wfm.topology.ping.model.PingContext;
@@ -38,7 +37,7 @@ public class OnDemandResultManager extends ResultManager {
     public static final Fields STREAM_FIELDS = new Fields(NorthboundEncoder.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     @Override
-    protected void handle(Tuple input, PingContext pingContext) throws AbstractException {
+    protected void handle(Tuple input, PingContext pingContext) throws Exception {
         collectGroup(input, pingContext);
         super.handle(input, pingContext);
     }

@@ -21,7 +21,6 @@ import org.openkilda.model.history.FlowEvent;
 import org.openkilda.model.history.FlowHistory;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.share.services.HistoryService;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -44,7 +43,7 @@ public class HistoryBolt extends AbstractBolt {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         Object payload = input.getValueByField(Utils.PAYLOAD);
         if (payload instanceof FlowEvent) {
             historyService.store((FlowEvent) payload);

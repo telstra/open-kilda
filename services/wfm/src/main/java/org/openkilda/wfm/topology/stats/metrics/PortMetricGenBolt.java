@@ -21,7 +21,6 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.error.AbstractException;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.storm.tuple.Tuple;
@@ -35,7 +34,7 @@ public class PortMetricGenBolt extends MetricGenBolt {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         InfoMessage message = (InfoMessage) input.getValueByField(MESSAGE_FIELD);
         PortStatsData data = (PortStatsData) message.getData();
         long timestamp = message.getTimestamp();

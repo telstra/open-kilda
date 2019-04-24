@@ -22,7 +22,7 @@ import org.projectfloodlight.openflow.types.DatapathId;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class NoFeatureException extends AbstractException {
+public class NoFeatureException extends Exception {
     public NoFeatureException(DatapathId dpId, SpeakerSwitchView.Feature missingFeature,
                               Set<SpeakerSwitchView.Feature> switchFeatures) {
         super(formatMessage(dpId, missingFeature, switchFeatures));
