@@ -689,8 +689,8 @@ class ProtectedPathSpec extends BaseSpecification {
         and: "New meter is created on the src and dst switches"
         def newSrcSwitchCreatedMeterIds = getCreatedMeterIds(srcSwitch.dpId)
         def newDstSwitchCreatedMeterIds = getCreatedMeterIds(dstSwitch.dpId)
-        newSrcSwitchCreatedMeterIds != srcSwitchCreatedMeterIds
-        newDstSwitchCreatedMeterIds != dstSwitchCreatedMeterIds
+        newSrcSwitchCreatedMeterIds.sort() != srcSwitchCreatedMeterIds.sort()
+        newDstSwitchCreatedMeterIds.sort() != dstSwitchCreatedMeterIds.sort()
 
         and: "Rules are updated"
         Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
@@ -716,8 +716,8 @@ class ProtectedPathSpec extends BaseSpecification {
                 assert switchValidateInfo.rules.proper.size() == amountOfRules
                 switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
                 switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo)
-            }
-        } || true
+            } || true
+        }
 
         and: "No rule discrepancies when doing flow validation"
         northbound.validateFlow(flow.id).each { assert it.discrepancies.empty }
