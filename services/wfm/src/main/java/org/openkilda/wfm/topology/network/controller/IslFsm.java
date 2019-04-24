@@ -50,6 +50,7 @@ import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.facts.DiscoveryFacts;
 import org.openkilda.wfm.topology.network.service.IIslCarrier;
+import org.openkilda.wfm.topology.network.storm.bolt.isl.BfdManager;
 
 import lombok.Builder;
 import lombok.Value;
@@ -71,6 +72,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private final TransactionManager transactionManager;
     private final FeatureTogglesRepository featureTogglesRepository;
 
+    private final BfdManager bfdManager;
+
     private final int costRaiseOnPhysicalDown;
     private final int islCostWhenUnderMaintenance;
     private final BiIslDataHolder<IslEndpointStatus> endpointStatus;
@@ -85,7 +88,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         builder = StateMachineBuilderFactory.create(
                 IslFsm.class, IslFsmState.class, IslFsmEvent.class, IslFsmContext.class,
                 // extra parameters
-                PersistenceManager.class, NetworkOptions.class, IslReference.class);
+                PersistenceManager.class, BfdManager.class, NetworkOptions.class, IslReference.class);
 
         String updateEndpointStatusMethod = "updateEndpointStatus";
         String updateAndPersistEndpointStatusMethod = "updateAndPersistEndpointStatus";
@@ -103,7 +106,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         builder.transition()
                 .from(IslFsmState.INIT).to(IslFsmState.DOWN).on(IslFsmEvent._HISTORY_DOWN);
         builder.transition()
-                .from(IslFsmState.INIT).to(IslFsmState.UP).on(IslFsmEvent._HISTORY_UP);
+                .from(IslFsmState.INIT).to(IslFsmState.UP).on(IslFsmEvent._HISTORY_UP)
+                .callMethod("historyRestoreUp");
         builder.transition()
                 .from(IslFsmState.INIT).to(IslFsmState.MOVED).on(IslFsmEvent._HISTORY_MOVED);
         builder.internalTransition()
@@ -141,8 +145,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 .from(IslFsmState.UP).to(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN);
         builder.transition()
                 .from(IslFsmState.UP).to(IslFsmState.MOVED).on(IslFsmEvent.ISL_MOVE);
-        builder.internalTransition().within(IslFsmState.UP).on(IslFsmEvent.BFD_UPDATE)
-                .callMethod("handleBfdEnableDisable");
         builder.onEntry(IslFsmState.UP)
                 .callMethod("upEnter");
         builder.onExit(IslFsmState.UP)
@@ -174,14 +176,15 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     /**
      * Create and properly initialize new {@link IslFsm}.
      */
-    public static IslFsm create(PersistenceManager persistenceManager, NetworkOptions options,
+    public static IslFsm create(PersistenceManager persistenceManager, BfdManager bfdManager, NetworkOptions options,
                                 IslReference reference) {
-        IslFsm fsm = builder.newStateMachine(IslFsmState.INIT, persistenceManager, options, reference);
+        IslFsm fsm = builder.newStateMachine(IslFsmState.INIT, persistenceManager, bfdManager, options, reference);
         fsm.start();
         return fsm;
     }
 
-    public IslFsm(PersistenceManager persistenceManager, NetworkOptions options, IslReference reference) {
+    public IslFsm(PersistenceManager persistenceManager, BfdManager bfdManager, NetworkOptions options,
+                  IslReference reference) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         islRepository = repositoryFactory.createIslRepository();
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
@@ -190,6 +193,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
 
         transactionManager = persistenceManager.getTransactionManager();
+
+        this.bfdManager = bfdManager;
 
         costRaiseOnPhysicalDown = options.getIslCostRaiseOnPhysicalDown();
         islCostWhenUnderMaintenance = options.getIslCostWhenUnderMaintenance();
@@ -222,6 +227,12 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         }
 
         fire(route, context);
+    }
+
+    public void historyRestoreUp(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        if (shouldSetupBfd()) {
+            bfdManager.enable(context.getOutput());
+        }
     }
 
     public void handleInitialDiscovery(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -266,10 +277,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             // Do not produce reroute during recovery system state from DB
             triggerDownFlowReroute(context);
         }
-
-        if (shouldSetupBfd()) {
-            emitBfdEnableRequest(context);
-        }
     }
 
     public void upExit(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -294,14 +301,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     public void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
         saveStatusTransaction();
-    }
-
-    public void handleBfdEnableDisable(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        if (context.getBfdEnable()) {
-            emitBfdEnableRequest(context);
-        } else {
-            emitBfdDisableRequest(context);
-        }
+        bfdManager.disable(context.getOutput());
     }
 
     public void removeAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -375,18 +375,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                     "ISL %s status become %s", discoveryFacts.getReference(), IslStatus.ACTIVE));
             context.getOutput().triggerReroute(trigger);
         }
-    }
-
-    private void emitBfdEnableRequest(IslFsmContext context) {
-        IslReference reference = discoveryFacts.getReference();
-        context.getOutput().bfdEnableRequest(reference.getSource(), reference);
-        context.getOutput().bfdEnableRequest(reference.getDest(), reference);
-    }
-
-    private void emitBfdDisableRequest(IslFsmContext context) {
-        IslReference reference = discoveryFacts.getReference();
-        context.getOutput().bfdDisableRequest(reference.getSource());
-        context.getOutput().bfdDisableRequest(reference.getDest());
     }
 
     private void saveAllTransaction() {
@@ -784,8 +772,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     public enum IslFsmEvent {
         NEXT,
-
-        BFD_UPDATE,
 
         HISTORY, _HISTORY_DOWN, _HISTORY_UP, _HISTORY_MOVED,
         ISL_UP, ISL_DOWN, ISL_MOVE,

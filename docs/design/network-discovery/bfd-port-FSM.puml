@@ -13,7 +13,6 @@ Input signals
 * FL-ok (worker)
 * FL-fail (worker)
 * FL-timeout (worker)
-* isl-move (ISL-FSM)
 
 Output signals
 * bfd-up
@@ -36,7 +35,6 @@ IDLE -l-> FAIL : port-up
 
 INSTALLING --> ACTIVE : port-up
 INSTALLING --> CLEANING : FL-fail [match reuest-key] /\nreport error
-INSTALLING --> CLEANING : isl-move
 INSTALLING --> CLEANING : disable
 INSTALLING --> FAIL : fail
 INSTALLING : enter / save remote SwitchId
@@ -72,7 +70,6 @@ state ACTIVE {
     DOWN : enter / emit bfd-down
     DOWN : enter / set isUp = false
 }
-ACTIVE --> CLEANING : isl-move
 ACTIVE --> CLEANING : disable
 ACTIVE --> HOUSEKEEPING : kill
 ACTIVE : exit / emit bfd-kill

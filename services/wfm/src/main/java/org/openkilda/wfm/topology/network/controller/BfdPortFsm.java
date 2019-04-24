@@ -114,8 +114,6 @@ public final class BfdPortFsm extends
         builder.transition()
                 .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.DISABLE);
         builder.transition()
-                .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.BI_ISL_MOVE);
-        builder.transition()
                 .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.FAIL);
         builder.onEntry(BfdPortFsmState.INSTALLING)
                 .callMethod("installingEnter");
@@ -161,8 +159,6 @@ public final class BfdPortFsm extends
         // ACTIVE
         builder.transition()
                 .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.DISABLE);
-        builder.transition()
-                .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.BI_ISL_MOVE);
         builder.transition()
                 .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.HOUSEKEEPING).on(BfdPortFsmEvent.KILL);
         builder.onExit(BfdPortFsmState.ACTIVE)
@@ -542,7 +538,6 @@ public final class BfdPortFsm extends
 
         HISTORY,
         ENABLE, DISABLE,
-        BI_ISL_MOVE,
         PORT_UP, PORT_DOWN,
 
         SPEAKER_SUCCESS, SPEAKER_FAIL,
