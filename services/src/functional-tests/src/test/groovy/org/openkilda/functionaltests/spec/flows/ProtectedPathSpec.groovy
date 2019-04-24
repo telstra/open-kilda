@@ -6,6 +6,7 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -668,6 +669,14 @@ class ProtectedPathSpec extends BaseSpecification {
         // two for main path + one for protected path
         cookiesAfterEnablingProtectedPath.size() == 3
 
+        and: "No rule discrepancies on every switch of the flow on the main path"
+        def mainSwitches = pathHelper.getInvolvedSwitches(currentPath)
+        mainSwitches.each { verifySwitchRules(it.dpId) }
+
+        and: "No rule discrepancies on every switch of the flow on the protected path)"
+        def protectedSwitches = pathHelper.getInvolvedSwitches(currentProtectedPath)
+        protectedSwitches.each { verifySwitchRules(it.dpId) }
+
         when: "Swap flow paths"
         def srcSwitchCreatedMeterIds = getCreatedMeterIds(srcSwitch.dpId)
         def dstSwitchCreatedMeterIds = getCreatedMeterIds(dstSwitch.dpId)
@@ -716,13 +725,22 @@ class ProtectedPathSpec extends BaseSpecification {
                 assert switchValidateInfo.rules.proper.size() == amountOfRules
                 switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
                 switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo)
-            } || true
+            }
         }
 
         and: "No rule discrepancies when doing flow validation"
         northbound.validateFlow(flow.id).each { assert it.discrepancies.empty }
+
         and: "All rules for main and protected paths are updated"
         Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
+
+        and: "No rule discrepancies on every switch of the flow on the main path"
+        def newMainSwitches = pathHelper.getInvolvedSwitches(newCurrentPath)
+        newMainSwitches.each { verifySwitchRules(it.dpId) }
+
+        and: "No rule discrepancies on every switch of the flow on the protected path)"
+        def newProtectedSwitches = pathHelper.getInvolvedSwitches(newCurrentProtectedPath)
+        newProtectedSwitches.each { verifySwitchRules(it.dpId) }
 
         and: "Cleanup: revert system to original state"
         flowHelper.deleteFlow(flow.id)
