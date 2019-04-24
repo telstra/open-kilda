@@ -117,7 +117,7 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         "synchronize" | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 
-    def "Able to detect discrepancies when a flow is created with protected path"() {
+    def "Able to detect discrepancies for a flow with protected path"() {
         when: "Create a flow with protected path"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -147,8 +147,7 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         northbound.deleteSwitchRules(srcSwitch.dpId, ruleToDelete)
 
         then: "Flow validate detect discrepancies"
-        //TODO(andriidovhan) maybe: the in:1-12 value is incorrect in the 'discrepancies' field
-        // and actual filed for protected path == correct cookId
+        //TODO(andriidovhan) try to extend this test when the issues/2302 is fixed
         def responseValidateFlow = northbound.validateFlow(flow.id).findAll { !it.discrepancies.empty }*.discrepancies
         assert responseValidateFlow.size() == 1
         responseValidateFlow[0].expectedValue[0] == ruleToDelete.toString()
@@ -160,7 +159,7 @@ class FlowValidationNegativeSpec extends BaseSpecification {
             northbound.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
         }
 
-        then: "Flow validate detects more discrepancies"
+        then: "Flow validate detects discrepancies for all deleted rules"
         def responseValidateFlow2 = northbound.validateFlow(flow.id).findAll { !it.discrepancies.empty }*.discrepancies
         assert responseValidateFlow2.size() == 4
 
