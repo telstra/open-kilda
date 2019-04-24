@@ -192,7 +192,7 @@ public class FlowCommandFactory {
 
     private InstallTransitFlow buildInstallTransitFlow(FlowPath flowPath, SwitchId switchId,
                                                        int inputPortNo, int outputPortNo, TransitVlan transitVlan) {
-        return new InstallTransitFlow(transactionIdGenerator.generate(), flowPath.getFlowId(),
+        return new InstallTransitFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(),
                 flowPath.getCookie().getValue(), switchId, inputPortNo, outputPortNo, transitVlan.getVlan());
     }
 
@@ -201,7 +201,7 @@ public class FlowCommandFactory {
         long cookie = flowPath.getCookie().getValue();
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(cookie,
                 inputPortNo, transitVlan.getVlan(), 0, outputPortNo);
-        return new RemoveFlow(transactionIdGenerator.generate(), flowPath.getFlowId(), cookie,
+        return new RemoveFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(), cookie,
                 switchId, null, criteria);
     }
 

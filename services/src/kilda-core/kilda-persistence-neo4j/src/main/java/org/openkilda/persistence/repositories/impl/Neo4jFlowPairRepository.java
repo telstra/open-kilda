@@ -26,7 +26,6 @@ import org.openkilda.persistence.repositories.TransitVlanRepository;
 
 import java.util.Collection;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -46,25 +45,8 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
     }
 
     @Override
-    public long countFlows() {
-        return flowRepository.countFlows();
-    }
-
-    @Override
-    public boolean exists(String flowId) {
-        return flowRepository.exists(flowId);
-    }
-
-    @Override
     public Optional<FlowPair> findById(String flowId) {
         return flowRepository.findById(flowId).map(this::toFlowPair);
-    }
-
-    @Override
-    public Collection<FlowPair> findByGroupId(String flowGroupId) {
-        return flowRepository.findByGroupId(flowGroupId).stream()
-                .map(this::toFlowPair)
-                .collect(Collectors.toList());
     }
 
     @Override
@@ -75,61 +57,11 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
     }
 
     @Override
-    public Collection<FlowPair> findByEndpoint(SwitchId switchId, int port) {
-        return flowRepository.findByEndpoint(switchId, port).stream()
-                .map(this::toFlowPair)
-                .collect(Collectors.toList());
-    }
-
-    @Override
     public Collection<FlowPair> findWithSegmentInPath(SwitchId srcSwitchId, int srcPort,
                                                       SwitchId dstSwitchId, int dstPort) {
         return flowRepository.findWithPathSegment(srcSwitchId, srcPort, dstSwitchId, dstPort).stream()
                 .map(this::toFlowPair)
                 .collect(Collectors.toList());
-    }
-
-    @Override
-    public Set<String> findFlowIdsWithSwitchInPath(SwitchId switchId) {
-        return flowRepository.findFlowIdsWithSwitchInPath(switchId);
-    }
-
-    /**
-     * Fetches all flow pairs.
-     * <p/>
-     * IMPORTANT: the method doesn't complete the flow and flow path entities with related path segments!
-     */
-    @Override
-    public Collection<FlowPair> findAll() {
-        return flowRepository.findAll().stream()
-                .map(this::toFlowPair)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public void createOrUpdate(FlowPair entity) {
-        flowRepository.createOrUpdate(entity.getFlowEntity());
-
-        //TODO: hard-coded encapsulation will be removed in Flow H&S
-        if (entity.getForwardTransitVlanEntity() != null) {
-            transitVlanRepository.createOrUpdate(entity.getForwardTransitVlanEntity());
-        }
-        if (entity.getReverseTransitVlanEntity() != null) {
-            transitVlanRepository.createOrUpdate(entity.getReverseTransitVlanEntity());
-        }
-    }
-
-    @Override
-    public void delete(FlowPair entity) {
-        flowRepository.delete(entity.getFlowEntity());
-
-        //TODO: hard-coded encapsulation will be removed in Flow H&S
-        if (entity.getForwardTransitVlanEntity() != null) {
-            transitVlanRepository.delete(entity.getForwardTransitVlanEntity());
-        }
-        if (entity.getReverseTransitVlanEntity() != null) {
-            transitVlanRepository.delete(entity.getReverseTransitVlanEntity());
-        }
     }
 
     private FlowPair toFlowPair(Flow flow) {

@@ -21,6 +21,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -276,8 +278,14 @@ public class AvailableNetworkTest {
         Switch srcSwitch = Switch.builder().switchId(srcDpid).build();
         Switch dstSwitch = Switch.builder().switchId(dstDpid).build();
 
-        PathSegment segment = PathSegment.builder()
+        FlowPath flowPath = FlowPath.builder()
+                .flow(new Flow())
                 .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(srcSwitch)
+                .destSwitch(dstSwitch)
+                .build();
+        PathSegment segment = PathSegment.builder()
+                .path(flowPath)
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
                 .srcPort(srcPort)

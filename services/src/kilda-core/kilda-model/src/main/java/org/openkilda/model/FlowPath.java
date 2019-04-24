@@ -15,6 +15,10 @@
 
 package org.openkilda.model;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static org.neo4j.ogm.annotation.Relationship.INCOMING;
+import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -23,20 +27,24 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
-import org.neo4j.ogm.annotation.EndNode;
+import lombok.ToString;
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.Index;
+import org.neo4j.ogm.annotation.NodeEntity;
+import org.neo4j.ogm.annotation.PostLoad;
 import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.RelationshipEntity;
-import org.neo4j.ogm.annotation.StartNode;
-import org.neo4j.ogm.annotation.Transient;
+import org.neo4j.ogm.annotation.Relationship;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Represents a flow path.
@@ -44,7 +52,8 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = {"entityId", "segments"})
-@RelationshipEntity(type = "flow_path")
+@ToString(exclude = {"flow"})
+@NodeEntity(label = "flow_path")
 public class FlowPath implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -62,17 +71,16 @@ public class FlowPath implements Serializable {
     private PathId pathId;
 
     @NonNull
-    @StartNode
+    @Relationship(type = "source", direction = OUTGOING)
     private Switch srcSwitch;
 
     @NonNull
-    @EndNode
+    @Relationship(type = "destination", direction = OUTGOING)
     private Switch destSwitch;
 
     @NonNull
-    @Property(name = "flow_id")
-    @Index
-    private String flowId;
+    @Relationship(type = "owns", direction = INCOMING)
+    private Flow flow;
 
     @Convert(graphPropertyType = Long.class)
     private Cookie cookie;
@@ -102,20 +110,21 @@ public class FlowPath implements Serializable {
     @Convert(graphPropertyType = String.class)
     private FlowPathStatus status;
 
-    @NonNull
-    @Transient
-    private List<PathSegment> segments;
+    @Relationship(type = "owns", direction = OUTGOING)
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    private List<PathSegment> segments = Collections.emptyList();
 
     @Builder(toBuilder = true)
     public FlowPath(@NonNull PathId pathId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
-                    @NonNull String flowId, Cookie cookie, MeterId meterId,
+                    @NonNull Flow flow, Cookie cookie, MeterId meterId,
                     long latency, long bandwidth, boolean ignoreBandwidth,
                     Instant timeCreate, Instant timeModify,
-                    FlowPathStatus status, @NonNull List<PathSegment> segments) {
+                    FlowPathStatus status, List<PathSegment> segments) {
         this.pathId = pathId;
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
-        this.flowId = flowId;
+        this.flow = flow;
         this.cookie = cookie;
         this.meterId = meterId;
         this.latency = latency;
@@ -124,29 +133,7 @@ public class FlowPath implements Serializable {
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
         this.status = status;
-        setSegments(segments);
-    }
-
-    /**
-     * Set the pathId and propagate it to segments.
-     */
-    public void setPathId(@NonNull PathId pathId) {
-        this.pathId = pathId;
-
-        if (segments != null) {
-            segments.forEach(pathSegment -> pathSegment.setPathId(pathId));
-        }
-    }
-
-    /**
-     * Set the segments and update the pathId in each.
-     */
-    public final void setSegments(@NonNull List<PathSegment> segments) {
-        this.segments = segments;
-
-        if (pathId != null) {
-            segments.forEach(pathSegment -> pathSegment.setPathId(pathId));
-        }
+        setSegments(segments != null ? segments : Collections.emptyList());
     }
 
     /**
@@ -156,5 +143,34 @@ public class FlowPath implements Serializable {
      */
     public boolean isOneSwitchFlow() {
         return srcSwitch.getSwitchId().equals(destSwitch.getSwitchId());
+    }
+
+    public List<PathSegment> getSegments() {
+        return Collections.unmodifiableList(segments);
+    }
+
+    /**
+     * Set the segments.
+     */
+    public final void setSegments(List<PathSegment> segments) {
+        segments.forEach(segment -> checkArgument(Objects.equals(segment.getPath(), this),
+                "Segment %s and the path %s don't reference each other, but expected.",
+                segment, this));
+
+        for (int idx = 0; idx < segments.size(); idx++) {
+            PathSegment segment = segments.get(idx);
+            segment.setSeqId(idx);
+        }
+
+        this.segments = segments;
+    }
+
+    @PostLoad
+    private void sortSegmentsOnLoad() {
+        if (segments != null) {
+            segments = segments.stream()
+                    .sorted(Comparator.comparingInt(PathSegment::getSeqId))
+                    .collect(Collectors.toList());
+        }
     }
 }
