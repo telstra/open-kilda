@@ -10,15 +10,10 @@ import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
-import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
 import spock.lang.Unroll
 
 class FlowPriorityRerouteSpec extends BaseSpecification {
-
-    @Value('${reroute.delay}')
-    int rerouteDelay
-
     @Unroll
     def "System is able to reroute(automatically) flow #info in the correct order based on the priority field"() {
         given: "3 flows on the same path, with alt paths available"
@@ -64,8 +59,9 @@ class FlowPriorityRerouteSpec extends BaseSpecification {
         }
 
         and: "Reroute procedure was done based on the priority field"
-        int delay = protectedPath ? rerouteDelay * 2 : 1
-        Wrappers.wait(delay) {
+        // for a flow with protected path we use a little bit different logic for rerouting then for simple flow
+        // that's why we use WAIT_OFFSET here
+        Wrappers.wait(WAIT_OFFSET) {
             flows.sort { it.priority }*.id == northbound.getAllFlows().sort { it.lastUpdated }*.id
         }
 
@@ -129,8 +125,7 @@ class FlowPriorityRerouteSpec extends BaseSpecification {
         }
 
         and: "Reroute procedure was done based on the priority field"
-        int delay = protectedPath ? rerouteDelay * 2 : 1
-        Wrappers.wait(delay) {
+        Wrappers.wait(WAIT_OFFSET) {
             flows.sort { it.priority }*.id == northbound.getAllFlows().sort { it.lastUpdated }*.id
         }
         and: "Cleanup: revert system to original state"
