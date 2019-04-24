@@ -115,10 +115,13 @@ public class FlowCreateService {
      */
     public void handleTimeout(String key) {
         FlowCreateFsm fsm = fsms.get(key);
-        fsm.fire(Event.TIMEOUT);
 
-        if (fsm.getCurrentState() == State.FINISHED_WITH_ERROR) {
-            fsms.remove(key);
+        if (fsm != null) {
+            fsm.fire(Event.TIMEOUT);
+
+            if (fsm.getCurrentState() == State.FINISHED_WITH_ERROR) {
+                fsms.remove(key);
+            }
         }
     }
 

@@ -58,7 +58,7 @@ public class ConsumerContext {
     }
 
     public String getKafkaFlowHsWorkerTopic() {
-        return kafkaChannel.getSpeakerWorkerFlowHsTopic();
+        return kafkaChannel.getSpeakerFlowHsTopic();
     }
 
     public String getKafkaTopoDiscoTopic() {

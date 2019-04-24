@@ -95,7 +95,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
     }
 
     protected void ack(Tuple input) {
-        log.debug("ACK tuple id {}", input.getMessageId());
+        log.trace("Ack tuple id {}", input.getMessageId());
         output.ack(input);
     }
 

@@ -40,6 +40,7 @@ public class RouterBolt extends AbstractBolt {
         MessageData data = message.getData();
         if (!(data instanceof FlowRequest)) {
             unhandledInput(input);
+            return;
         }
 
         String key = input.getStringByField(MessageTranslator.KEY_FIELD);
@@ -49,7 +50,7 @@ public class RouterBolt extends AbstractBolt {
         FlowRequest request = (FlowRequest) data;
         switch (request.getType()) {
             case CREATE:
-                emit(ROUTER_TO_FLOW_CREATE_HUB.name(), input, new Values(key, request.getPayload()));
+                emitWithContext(ROUTER_TO_FLOW_CREATE_HUB.name(), input, new Values(key, request.getPayload()));
                 break;
             default:
                 throw new UnsupportedOperationException(format("Flow operation %s is not supported",

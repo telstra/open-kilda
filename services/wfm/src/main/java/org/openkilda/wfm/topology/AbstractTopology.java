@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology;
 
 import static java.lang.String.format;
-import static org.openkilda.wfm.topology.utils.MessageTranslator.KEY_FIELD;
 
 import org.openkilda.config.KafkaConfig;
 import org.openkilda.config.naming.KafkaNamingStrategy;

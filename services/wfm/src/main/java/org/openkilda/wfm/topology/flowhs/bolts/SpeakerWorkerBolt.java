@@ -80,13 +80,13 @@ public class SpeakerWorkerBolt extends WorkerBolt {
         }
 
         @Override
-        public void sendCommand(String key, FlowRequest command) throws PipelineException {
-            emit(SPEAKER_WORKER_REQUEST_SENDER.name(), tuple, new Values(key, command));
+        public void sendCommand(String key, FlowRequest command) {
+            emitWithContext(SPEAKER_WORKER_REQUEST_SENDER.name(), tuple, new Values(key, command));
         }
 
         @Override
-        public void sendResponse(String key, FlowResponse response) throws PipelineException {
-            Values values = new Values(key, response, pullContext(tuple));
+        public void sendResponse(String key, FlowResponse response) {
+            Values values = new Values(key, response, getCommandContext());
             emitResponseToHub(tuple, values);
         }
     }

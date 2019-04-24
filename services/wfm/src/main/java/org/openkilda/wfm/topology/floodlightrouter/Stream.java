@@ -34,6 +34,7 @@ public final class Stream {
     public static final String SPEAKER = "SPEAKER";
     public static final String SPEAKER_FLOW = "SPEAKER_FLOW";
     public static final String KILDA_FLOW = "KILDA_FLOW";
+    public static final String KILDA_HS_FLOW = "KILDA_HS_FLOW";
     public static final String SPEAKER_PING = "SPEAKER_PING";
     public static final String KILDA_PING = "KILDA_PING";
     public static final String KILDA_STATS = "KILDA_STATS";
