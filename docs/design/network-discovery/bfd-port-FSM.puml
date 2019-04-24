@@ -75,8 +75,8 @@ state ACTIVE {
 ACTIVE --> CLEANING : isl-move
 ACTIVE --> CLEANING : disable
 ACTIVE --> HOUSEKEEPING : kill
+ACTIVE : exit / emit bfd-kill
 
-HOUSEKEEPING : enter / emit bfd-kill
 HOUSEKEEPING : enter [remote SwitchId is set] / emit BFD-session remove
 HOUSEKEEPING : enter [remote SwitchId is set] / save request-key
 HOUSEKEEPING --> [*] : FL-ok / release BFD-discriminator\nFL-fail / report error

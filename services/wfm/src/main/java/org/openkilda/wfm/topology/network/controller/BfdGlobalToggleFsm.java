@@ -72,7 +72,7 @@ public class BfdGlobalToggleFsm
                 .on(BfdGlobalToggleFsmEvent.BFD_DOWN)
                 .callMethod("emitBfdDown");
         builder.transition()
-                .from(BfdGlobalToggleFsmState.UP_ENABLED).to(BfdGlobalToggleFsmState.FINISH)
+                .from(BfdGlobalToggleFsmState.UP_ENABLED).to(BfdGlobalToggleFsmState.DOWN_ENABLED)
                 .on(BfdGlobalToggleFsmEvent.BFD_KILL)
                 .callMethod("emitBfdKill");
         builder.onEntry(BfdGlobalToggleFsmState.UP_ENABLED)
@@ -85,9 +85,6 @@ public class BfdGlobalToggleFsm
         builder.transition()
                 .from(BfdGlobalToggleFsmState.UP_DISABLED).to(BfdGlobalToggleFsmState.DOWN_DISABLED)
                 .on(BfdGlobalToggleFsmEvent.BFD_DOWN);
-
-        // FINISH
-        builder.defineFinalState(BfdGlobalToggleFsmState.FINISH);
     }
 
     public static FsmExecutor<BfdGlobalToggleFsm, BfdGlobalToggleFsmState, BfdGlobalToggleFsmEvent,
@@ -153,8 +150,7 @@ public class BfdGlobalToggleFsm
 
     public enum BfdGlobalToggleFsmState {
         DOWN_DISABLED, DOWN_ENABLED,
-        UP_DISABLED, UP_ENABLED,
-        FINISH
+        UP_DISABLED, UP_ENABLED
     }
 
     public enum BfdGlobalToggleFsmEvent {

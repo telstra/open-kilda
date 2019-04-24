@@ -165,6 +165,8 @@ public final class BfdPortFsm extends
                 .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.BI_ISL_MOVE);
         builder.transition()
                 .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.HOUSEKEEPING).on(BfdPortFsmEvent.KILL);
+        builder.onExit(BfdPortFsmState.ACTIVE)
+                .callMethod("activeExit");
         builder.defineSequentialStatesOn(
                 BfdPortFsmState.ACTIVE,
                 BfdPortFsmState.UP, BfdPortFsmState.DOWN);
@@ -323,6 +325,11 @@ public final class BfdPortFsm extends
         linkStatus = LinkStatus.DOWN;
     }
 
+    public void activeExit(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
+        logInfo("notify consumer(s) to STOP react on BFD event");
+        context.getOutput().bfdKillNotification(physicalEndpoint);
+    }
+
     public void upEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
         logInfo("LINK detected");
         linkStatus = LinkStatus.UP;
@@ -345,8 +352,6 @@ public final class BfdPortFsm extends
     public void housekeepingEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                   BfdPortFsmContext context) {
         logInfo("perform housekeeping - release all resources");
-        context.getOutput().bfdKillNotification(physicalEndpoint);
-
         if (sessionDescriptor != null) {
             doBfdRemove(context);
         }
