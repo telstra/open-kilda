@@ -33,8 +33,6 @@ import org.apache.storm.tuple.Values;
 import java.util.Map;
 
 public class SpeakerWorkerBolt extends WorkerBolt {
-    public static final String ID = "speaker.worker.bolt";
-    public static final String INCOME_STREAM = "speaker.worker.stream";
     private transient SpeakerWorkerService service;
 
     public SpeakerWorkerBolt(Config config) {

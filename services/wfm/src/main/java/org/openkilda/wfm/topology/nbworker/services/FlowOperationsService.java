@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2010 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -64,6 +64,13 @@ public class FlowOperationsService {
         this.flowPairRepository = repositoryFactory.createFlowPairRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.transactionManager = transactionManager;
+    }
+
+    /**
+     * Return flow by flow id.
+     */
+    public Flow getFlow(String flowId) throws FlowNotFoundException {
+        return flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
     }
 
     /**

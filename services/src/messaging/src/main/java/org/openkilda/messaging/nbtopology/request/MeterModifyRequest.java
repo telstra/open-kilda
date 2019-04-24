@@ -13,23 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker;
+package org.openkilda.messaging.nbtopology.request;
 
-public enum StreamType {
-    SWITCH,
-    ISL,
-    FLOW,
-    FLOWHS,
-    REROUTE,
-    FEATURE_TOGGLES,
-    KILDA_CONFIG,
-    NOTIFICATION,
-    TO_SPEAKER,
-    PATHS,
-    VALIDATION,
-    DISCO,
-    ERROR,
-    HISTORY,
-    FLOW_VALIDATION_WORKER,
-    METER_MODIFY_WORKER
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
+
+@Value
+@EqualsAndHashCode(callSuper = false)
+public class MeterModifyRequest extends BaseRequest {
+    @JsonProperty("flow_id")
+    private String flowId;
+
+    public MeterModifyRequest(@JsonProperty("flow_id") String flowId) {
+        this.flowId = flowId;
+    }
 }

@@ -108,7 +108,7 @@ public final class RouterUtils {
             } else if (commandData instanceof DumpRulesForNbworkerRequest) {
                 return ((DumpRulesForNbworkerRequest) commandData).getSwitchId();
             } else if (commandData instanceof MeterModifyCommandRequest) {
-                return ((MeterModifyCommandRequest) commandData).getFwdSwitchId();
+                return ((MeterModifyCommandRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpRulesForSwitchManagerRequest) {
                 return ((DumpRulesForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof BatchInstallForSwitchManagerRequest) {
