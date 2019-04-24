@@ -583,16 +583,16 @@ class SwitchRulesSpec extends BaseSpecification {
         commonNodeIds.each {
             def response = northbound.synchronizeSwitchRules(it)
             assert response.missingRules.size() == amountOfRules(it)
+            assert response.installedRules.sort() == response.missingRules.sort()
             assert response.properRules.empty
             assert response.excessRules.empty
-            assert !response.installedRules.empty
         }
         uniqueNodes.each {
             def response = northbound.synchronizeSwitchRules(it.switchId)
             assert response.missingRules.size() == 2
+            assert response.installedRules.sort() == response.missingRules.sort()
             assert response.properRules.empty
             assert response.excessRules.empty
-            assert !response.installedRules.empty
         }
 
         then: "No missing rules were found after rules synchronization"
