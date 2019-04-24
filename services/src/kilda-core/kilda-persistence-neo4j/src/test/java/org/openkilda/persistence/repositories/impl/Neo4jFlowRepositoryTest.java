@@ -139,8 +139,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flowRepository.createOrUpdate(flow);
 
-        Collection<Flow> allFlows = flowRepository.findAll();
-        Flow foundFlow = allFlows.iterator().next();
+        Flow foundFlow = flowRepository.findById(TEST_FLOW_ID).get();
 
         flowRepository.delete(foundFlow);
 
@@ -298,119 +297,123 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     private Flow buildTestFlow(String flowId, Switch srcSwitch, Switch destSwitch) {
-        PathSegment forwardSegment = PathSegment.builder()
+        Flow flow = Flow.builder()
+                .flowId(flowId)
                 .srcSwitch(srcSwitch)
                 .srcPort(1)
                 .destSwitch(destSwitch)
                 .destPort(2)
-                .pathId(new PathId(flowId + "_forward_path"))
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .status(FlowStatus.UP)
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
                 .build();
 
         FlowPath forwardFlowPath = FlowPath.builder()
                 .pathId(new PathId(flowId + "_forward_path"))
-                .flowId(flowId)
+                .flow(flow)
                 .cookie(new Cookie(Cookie.FORWARD_FLOW_COOKIE_MASK | 1L))
                 .meterId(new MeterId(1))
                 .srcSwitch(srcSwitch)
                 .destSwitch(destSwitch)
                 .status(FlowPathStatus.ACTIVE)
-                .segments(Collections.singletonList(forwardSegment))
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
                 .build();
+        flow.setForwardPath(forwardFlowPath);
+
+        PathSegment forwardSegment = PathSegment.builder()
+                .srcSwitch(srcSwitch)
+                .srcPort(1)
+                .destSwitch(destSwitch)
+                .destPort(2)
+                .path(forwardFlowPath)
+                .build();
+        forwardFlowPath.setSegments(Collections.singletonList(forwardSegment));
+
+        FlowPath reverseFlowPath = FlowPath.builder()
+                .pathId(new PathId(flowId + "_reverse_path"))
+                .flow(flow)
+                .cookie(new Cookie(Cookie.REVERSE_FLOW_COOKIE_MASK | 1L))
+                .meterId(new MeterId(2))
+                .srcSwitch(destSwitch)
+                .destSwitch(srcSwitch)
+                .status(FlowPathStatus.ACTIVE)
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
+        flow.setReversePath(reverseFlowPath);
 
         PathSegment reverseSegment = PathSegment.builder()
                 .srcSwitch(destSwitch)
                 .srcPort(2)
                 .destSwitch(srcSwitch)
                 .destPort(1)
-                .pathId(new PathId(flowId + "_reverse_path"))
+                .path(reverseFlowPath)
                 .build();
+        reverseFlowPath.setSegments(Collections.singletonList(reverseSegment));
 
-        FlowPath reverseFlowPath = FlowPath.builder()
-                .pathId(new PathId(flowId + "_reverse_path"))
-                .flowId(flowId)
-                .cookie(new Cookie(Cookie.REVERSE_FLOW_COOKIE_MASK | 1L))
-                .meterId(new MeterId(2))
-                .srcSwitch(destSwitch)
-                .destSwitch(srcSwitch)
-                .status(FlowPathStatus.ACTIVE)
-                .segments(Collections.singletonList(reverseSegment))
-                .timeCreate(Instant.now())
-                .timeModify(Instant.now())
-                .build();
+        return flow;
+    }
 
-        return Flow.builder()
+    private Flow buildTestFlowWithIntermediate(String flowId, Switch srcSwitch,
+                                               Switch intSwitch, int intPort, Switch destSwitch) {
+        Flow flow = Flow.builder()
                 .flowId(flowId)
                 .srcSwitch(srcSwitch)
                 .srcPort(1)
                 .destSwitch(destSwitch)
                 .destPort(2)
-                .forwardPath(forwardFlowPath)
-                .reversePath(reverseFlowPath)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .status(FlowStatus.UP)
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
                 .build();
-    }
-
-    private Flow buildTestFlowWithIntermediate(String flowId, Switch srcSwitch,
-                                               Switch intSwitch, int intPort, Switch destSwitch) {
-        PathSegment forwardSegment = PathSegment.builder()
-                .srcSwitch(srcSwitch)
-                .srcPort(1)
-                .destSwitch(intSwitch)
-                .destPort(intPort)
-                .pathId(new PathId(flowId + "_forward_path"))
-                .build();
 
         FlowPath forwardFlowPath = FlowPath.builder()
                 .pathId(new PathId(flowId + "_forward_path"))
-                .flowId(flowId)
+                .flow(flow)
                 .cookie(new Cookie(Cookie.FORWARD_FLOW_COOKIE_MASK | 1L))
                 .meterId(new MeterId(1))
                 .srcSwitch(srcSwitch)
                 .destSwitch(destSwitch)
                 .status(FlowPathStatus.ACTIVE)
-                .segments(Collections.singletonList(forwardSegment))
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
                 .build();
+        flow.setForwardPath(forwardFlowPath);
+
+        PathSegment forwardSegment = PathSegment.builder()
+                .srcSwitch(srcSwitch)
+                .srcPort(1)
+                .destSwitch(intSwitch)
+                .destPort(intPort)
+                .path(forwardFlowPath)
+                .build();
+        forwardFlowPath.setSegments(Collections.singletonList(forwardSegment));
+
+        FlowPath reverseFlowPath = FlowPath.builder()
+                .pathId(new PathId(flowId + "_reverse_path"))
+                .flow(flow)
+                .cookie(new Cookie(Cookie.REVERSE_FLOW_COOKIE_MASK | 1L))
+                .meterId(new MeterId(2))
+                .srcSwitch(destSwitch)
+                .destSwitch(srcSwitch)
+                .status(FlowPathStatus.ACTIVE)
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
+        flow.setReversePath(reverseFlowPath);
 
         PathSegment reverseSegment = PathSegment.builder()
                 .srcSwitch(intSwitch)
                 .srcPort(100)
                 .destSwitch(srcSwitch)
                 .destPort(1)
-                .pathId(new PathId(flowId + "_reverse_path"))
+                .path(reverseFlowPath)
                 .build();
+        reverseFlowPath.setSegments(Collections.singletonList(reverseSegment));
 
-        FlowPath reverseFlowPath = FlowPath.builder()
-                .pathId(new PathId(flowId + "_reverse_path"))
-                .flowId(flowId)
-                .cookie(new Cookie(Cookie.REVERSE_FLOW_COOKIE_MASK | 1L))
-                .meterId(new MeterId(2))
-                .srcSwitch(destSwitch)
-                .destSwitch(srcSwitch)
-                .status(FlowPathStatus.ACTIVE)
-                .segments(Collections.singletonList(reverseSegment))
-                .timeCreate(Instant.now())
-                .timeModify(Instant.now())
-                .build();
-
-        return Flow.builder()
-                .flowId(flowId)
-                .srcSwitch(srcSwitch)
-                .srcPort(1)
-                .destSwitch(destSwitch)
-                .destPort(2)
-                .forwardPath(forwardFlowPath)
-                .reversePath(reverseFlowPath)
-                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
-                .status(FlowStatus.UP)
-                .timeCreate(Instant.now())
-                .timeModify(Instant.now())
-                .build();
+        return flow;
     }
 }

@@ -44,11 +44,6 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<Flow> findByEndpointSwitch(SwitchId switchId);
 
-    /**
-     * Fetches active flows with the port in flow path.
-     * <p/>
-     * IMPORTANT: the method doesn't complete the flow entity with related paths and segments!
-     */
     Collection<Flow> findActiveFlowsWithPortInPath(SwitchId switchId, int port);
 
     Collection<Flow> findDownFlows();

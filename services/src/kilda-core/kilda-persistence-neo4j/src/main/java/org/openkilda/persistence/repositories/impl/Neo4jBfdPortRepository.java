@@ -31,12 +31,11 @@ import java.util.Collection;
 import java.util.Optional;
 
 /**
- * Neo4J OGM implementation of {@link BfdPortRepository}.
+ * Neo4j OGM implementation of {@link BfdPortRepository}.
  */
-public class Neo4JBfdPortRepository extends Neo4jGenericRepository<BfdPort> implements BfdPortRepository {
+public class Neo4jBfdPortRepository extends Neo4jGenericRepository<BfdPort> implements BfdPortRepository {
 
-
-    public Neo4JBfdPortRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
+    public Neo4jBfdPortRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
     }
 
