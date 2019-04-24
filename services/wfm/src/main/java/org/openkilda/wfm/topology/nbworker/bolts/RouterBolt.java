@@ -30,6 +30,7 @@ import org.openkilda.messaging.nbtopology.request.GetPathsRequest;
 import org.openkilda.messaging.nbtopology.request.HistoryRequest;
 import org.openkilda.messaging.nbtopology.request.KildaConfigurationBaseRequest;
 import org.openkilda.messaging.nbtopology.request.LinksBaseRequest;
+import org.openkilda.messaging.nbtopology.request.MeterModifyRequest;
 import org.openkilda.messaging.nbtopology.request.SwitchesBaseRequest;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
@@ -83,6 +84,8 @@ public class RouterBolt extends AbstractBolt {
             emitWithContext(StreamType.HISTORY.toString(), input, new Values(request));
         } else if (request instanceof FlowValidationRequest) {
             emitWithContext(FlowValidationHubBolt.INCOME_STREAM, input, new Values(key, request));
+        } else if (request instanceof MeterModifyRequest) {
+            emitWithContext(FlowMeterModifyHubBolt.INCOME_STREAM, input, new Values(key, request));
         } else {
             unhandledInput(input);
         }
@@ -104,6 +107,7 @@ public class RouterBolt extends AbstractBolt {
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
 
         declarer.declareStream(FlowValidationHubBolt.INCOME_STREAM, MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(FlowMeterModifyHubBolt.INCOME_STREAM, MessageKafkaTranslator.STREAM_FIELDS);
         declarer.declareStream(SpeakerWorkerBolt.INCOME_STREAM, MessageKafkaTranslator.STREAM_FIELDS);
     }
 }

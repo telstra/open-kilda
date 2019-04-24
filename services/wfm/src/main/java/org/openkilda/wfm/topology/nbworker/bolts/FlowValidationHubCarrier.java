@@ -15,21 +15,7 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
-import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.info.InfoData;
-
-import java.util.List;
-
-public interface FlowValidationHubCarrier {
-
-    void sendCommandToSpeakerWorker(String key, CommandData commandData);
-
-    void sendToResponseSplitterBolt(String key, List<? extends InfoData> message);
-
-    void sendToMessageEncoder(String key, ErrorData errorData);
-
-    void endProcessing(String key);
+public interface FlowValidationHubCarrier extends FlowHubCarrier {
 
     long getFlowMeterMinBurstSizeInKbits();
 
