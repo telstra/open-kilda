@@ -18,6 +18,7 @@ package org.openkilda.messaging.command.flow;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
@@ -26,31 +27,22 @@ import lombok.Value;
 @EqualsAndHashCode(callSuper = false)
 public class MeterModifyCommandRequest extends CommandData {
 
-    @JsonProperty("fwd_switch_id")
-    private SwitchId fwdSwitchId;
+    @JsonProperty("switch_id")
+    private SwitchId switchId;
 
-    @JsonProperty("fwd_meter_id")
-    private Long fwdMeterId;
-
-    @JsonProperty("rvs_switch_id")
-    private SwitchId rvsSwitchId;
-
-    @JsonProperty("rvs_meter_id")
-    private Long rvsMeterId;
+    @JsonProperty("meter_id")
+    private Long meterId;
 
     @JsonProperty("bandwidth")
     private long bandwidth;
 
+    @JsonCreator
     public MeterModifyCommandRequest(
-            @JsonProperty("fwd_switch_id") SwitchId fwdSwitchId,
-            @JsonProperty("fwd_meter_id") Long fwdMeterId,
-            @JsonProperty("rvs_switch_id") SwitchId rvsSwitchId,
-            @JsonProperty("rvs_meter_id") Long rvsMeterId,
+            @JsonProperty("switch_id") SwitchId switchId,
+            @JsonProperty("meter_id") Long meterId,
             @JsonProperty("bandwidth") long bandwidth) {
-        this.fwdSwitchId = fwdSwitchId;
-        this.fwdMeterId = fwdMeterId;
-        this.rvsSwitchId = rvsSwitchId;
-        this.rvsMeterId = rvsMeterId;
+        this.switchId = switchId;
+        this.meterId = meterId;
         this.bandwidth = bandwidth;
     }
 }

@@ -75,11 +75,6 @@ public enum StreamType {
     ERROR,
 
     /**
-     * Meter mode.
-     */
-    METER_MODE,
-
-    /**
      * Deallocate flow resources.
      */
     DEALLOCATE_RESOURCES,
