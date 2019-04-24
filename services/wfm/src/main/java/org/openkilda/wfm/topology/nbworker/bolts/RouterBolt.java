@@ -32,6 +32,7 @@ import org.openkilda.messaging.nbtopology.request.FlowsBaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.GetPathsRequest;
 import org.openkilda.messaging.nbtopology.request.LinksBaseRequest;
+import org.openkilda.messaging.nbtopology.request.MeterModifyRequest;
 import org.openkilda.messaging.nbtopology.request.SwitchesBaseRequest;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
@@ -45,34 +46,36 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 
 public class RouterBolt extends AbstractBolt {
     public static final String INCOME_STREAM = "router.bolt.stream";
-    private Set<String> keys = new HashSet<>();
+
+    private Map<String, String> streams = new HashMap<>();
 
     @Override
     protected void handleInput(Tuple input) throws PipelineException {
         String key = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
         Message message = pullValue(input, FIELD_ID_PAYLOAD, Message.class);
 
-        if (keys.contains(KeyProvider.getParentKey(key))) {
-            processFlowValidationRequest(input, key, message);
+        String parentKey = KeyProvider.getParentKey(key);
+        if (streams.keySet().contains(parentKey)) {
+            processResponse(input, key, parentKey, message);
         } else {
             processRequest(input, key, message);
         }
 
     }
 
-    private void processFlowValidationRequest(Tuple input, String key, Message message) {
+    private void processResponse(Tuple input, String key, String parentKey, Message message) {
         if (message instanceof CommandMessage) {
             CommandData data = ((CommandMessage) message).getData();
             if (data instanceof RemoveKeyRouterBolt) {
-                keys.remove(((RemoveKeyRouterBolt) data).getKey());
+                streams.remove(((RemoveKeyRouterBolt) data).getKey());
             }
         } else {
-            emitWithContext(SpeakerWorkerBolt.INCOME_STREAM, input, new Values(key, message));
+            emitWithContext(streams.get(parentKey), input, new Values(key, message));
         }
     }
 
@@ -115,8 +118,11 @@ public class RouterBolt extends AbstractBolt {
         } else if (request instanceof GetFlowHistoryRequest) {
             getOutput().emit(StreamType.HISTORY.toString(), input, new Values(request, correlationId));
         } else if (request instanceof FlowValidationRequest) {
-            keys.add(key);
+            streams.put(key, StreamType.FLOW_VALIDATION_WORKER.toString());
             emitWithContext(FlowValidationHubBolt.INCOME_STREAM, input, new Values(correlationId, request));
+        } else if (request instanceof MeterModifyRequest) {
+            streams.put(key, StreamType.METER_MODIFY_WORKER.toString());
+            emitWithContext(FlowMeterModifyHubBolt.INCOME_STREAM, input, new Values(correlationId, request));
         } else {
             unhandledInput(input);
         }
@@ -153,6 +159,8 @@ public class RouterBolt extends AbstractBolt {
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
 
         declarer.declareStream(FlowValidationHubBolt.INCOME_STREAM, MessageTranslator.STREAM_FIELDS);
-        declarer.declareStream(SpeakerWorkerBolt.INCOME_STREAM, MessageTranslator.STREAM_FIELDS);
+        declarer.declareStream(FlowMeterModifyHubBolt.INCOME_STREAM, MessageTranslator.STREAM_FIELDS);
+        declarer.declareStream(StreamType.FLOW_VALIDATION_WORKER.toString(), MessageTranslator.STREAM_FIELDS);
+        declarer.declareStream(StreamType.METER_MODIFY_WORKER.toString(), MessageTranslator.STREAM_FIELDS);
     }
 }
