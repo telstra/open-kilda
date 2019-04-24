@@ -114,7 +114,7 @@ public final class RouterUtils {
             } else if (commandData instanceof DumpMetersForNbworkerRequest) {
                 return ((DumpMetersForNbworkerRequest) commandData).getSwitchId();
             } else if (commandData instanceof MeterModifyCommandRequest) {
-                return ((MeterModifyCommandRequest) commandData).getFwdSwitchId();
+                return ((MeterModifyCommandRequest) commandData).getSwitchId();
             } else if (commandData instanceof SetupBfdSession) {
                 return ((SetupBfdSession) commandData).getBfdSession().getTarget().getDatapath();
             } else if (commandData instanceof RemoveBfdSession) {
