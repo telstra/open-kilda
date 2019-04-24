@@ -47,6 +47,13 @@ import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
+import org.openkilda.wfm.share.history.model.FlowDumpData;
+import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
+import org.openkilda.wfm.share.history.model.FlowEventData;
+import org.openkilda.wfm.share.history.model.FlowEventData.Initiator;
+import org.openkilda.wfm.share.history.model.FlowHistoryData;
+import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
@@ -58,6 +65,7 @@ import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.ListUtils;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -85,7 +93,7 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
     }
 
     @Override
-    protected Optional<Message> perform(State from, State to, Event event, FlowCreateContext context,
+    protected Optional<Message> perform(State from, State to, FlowCreateFsm.Event event, FlowCreateContext context,
                                         FlowCreateFsm stateMachine) throws FlowProcessingException {
         log.debug("Allocation resources has been started");
 
@@ -101,12 +109,14 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
         try {
             allocateResourcesForFlow(flow, pathPair);
             stateMachine.setFlow(flow);
-            stateMachine.fire(Event.NEXT);
+            stateMachine.fire(FlowCreateFsm.Event.NEXT);
 
             FlowDto flowDto = FlowDto.builder().build();
             InfoData flowData = new FlowResponse(flowDto);
             Message response = new InfoMessage(flowData, commandContext.getCreateTime(),
                     commandContext.getCorrelationId());
+
+            saveHistory(flow, stateMachine);
             return Optional.of(response);
         } catch (ResourceAllocationException e) {
             log.error("Failed to allocate resources", e);
@@ -198,5 +208,27 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
                 .toArray(Switch[]::new);
 
         switchRepository.lockSwitches(switches);
+    }
+
+    private void saveHistory(Flow flow, FlowCreateFsm stateMachine) {
+        FlowDumpData dumpData = HistoryMapper.INSTANCE.map(flow);
+        dumpData.setDumpType(DumpType.STATE_AFTER);
+
+        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
+                .taskId(stateMachine.getCommandContext().getCorrelationId())
+                .flowDumpData(dumpData)
+                .flowHistoryData(FlowHistoryData.builder()
+                        .action("Resources allocated")
+                        .time(Instant.now())
+                        .flowId(flow.getFlowId())
+                        .build())
+                .flowEventData(FlowEventData.builder()
+                        .initiator(Initiator.NB)
+                        .flowId(flow.getFlowId())
+                        .event(FlowEventData.Event.CREATE)
+                        .time(Instant.now())
+                        .build())
+                .build();
+        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
     }
 }

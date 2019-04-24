@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.bolts;
 
 import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.messaging.Message;
+import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 
 public interface FlowCreateHubCarrier {
     /**
@@ -29,4 +30,9 @@ public interface FlowCreateHubCarrier {
      * Sends response to northbound component.
      */
     void sendNorthboundResponse(Message message);
+
+    /**
+     * Sends main events to history bolt.
+     */
+    void sendHistoryUpdate(FlowHistoryHolder historyHolder);
 }

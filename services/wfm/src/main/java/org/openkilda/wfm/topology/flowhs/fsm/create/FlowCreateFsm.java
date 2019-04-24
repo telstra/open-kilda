@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.create;
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.floodlight.flow.request.RemoveRule;
-import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -41,6 +40,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.action.HandleNotCreatedFlowA
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.HandleNotDeletedRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallNonIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedDeleteResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedInstallResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesAllocateAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesDeallocateAction;
@@ -54,10 +54,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -70,13 +68,11 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
     private FlowCreateHubCarrier carrier;
     private FlowResources flowResources;
 
-    private Set<FlowResponse> flowResponses = new HashSet<>();
     private Set<String> pendingCommands = new HashSet<>();
 
-    private Set<InstallIngressRule> ingressCommands = new HashSet<>();
-    private Set<InstallTransitRule> nonIngressCommands = new HashSet<>();
+    private Map<String, InstallIngressRule> ingressCommands = new HashMap<>();
+    private Map<String, InstallTransitRule> nonIngressCommands = new HashMap<>();
     private Map<String, RemoveRule> removeCommands = new HashMap<>();
-    private List<String> errors = new ArrayList<>();
 
     private FlowCreateFsm(CommandContext commandContext, FlowCreateHubCarrier carrier) {
         super(commandContext);
@@ -102,13 +98,13 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         // allocate flow resources
         builder.transition()
                 .from(State.FLOW_VALIDATED)
-                .to(State.RESOURCES_ALLOCATED)
+                .to(State.ALLOCATING_RESOURCES)
                 .on(Event.NEXT)
                 .perform(new ResourcesAllocateAction(pathComputer, persistenceManager, resourcesConfig));
 
         // install and validate transit and egress rules
         builder.externalTransition()
-                .from(State.RESOURCES_ALLOCATED)
+                .from(State.ALLOCATING_RESOURCES)
                 .to(State.INSTALLING_NON_INGRESS_RULES)
                 .on(Event.NEXT)
                 .perform(new InstallNonIngressRulesAction(persistenceManager));
@@ -195,7 +191,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         builder.internalTransition()
                 .within(State.REMOVING_RULES)
                 .on(Event.COMMAND_EXECUTED)
-                .perform(new OnReceivedInstallResponseAction());
+                .perform(new OnReceivedDeleteResponseAction());
         builder.transition()
                 .from(State.REMOVING_RULES)
                 .to(State.FINISHED_WITH_ERROR)
@@ -260,7 +256,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
     public enum State {
         INITIALIZED,
         FLOW_VALIDATED,
-        RESOURCES_ALLOCATED,
+        ALLOCATING_RESOURCES,
         INSTALLING_NON_INGRESS_RULES,
         VALIDATING_NON_INGRESS_RULES,
         INSTALLING_INGRESS_RULES,

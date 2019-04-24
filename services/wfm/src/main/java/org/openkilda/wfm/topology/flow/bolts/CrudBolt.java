@@ -57,22 +57,26 @@ import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
-import org.openkilda.model.history.FlowDump;
-import org.openkilda.model.history.FlowEvent;
-import org.openkilda.model.history.FlowHistory;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.error.ClientException;
 import org.openkilda.wfm.error.FlowNotFoundException;
-import org.openkilda.wfm.share.bolt.HistoryBolt;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.history.model.FlowDumpData;
+import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
+import org.openkilda.wfm.share.history.model.FlowEventData;
+import org.openkilda.wfm.share.history.model.FlowEventData.Event;
+import org.openkilda.wfm.share.history.model.FlowEventData.Initiator;
+import org.openkilda.wfm.share.history.model.FlowHistoryData;
+import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.AbstractTopology;
@@ -89,6 +93,7 @@ import org.openkilda.wfm.topology.flow.service.FlowService;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -156,7 +161,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         outputFieldsDeclarer.declareStream(StreamType.METER_MODE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
-        outputFieldsDeclarer.declareStream(StreamType.HISTORY.toString(), HistoryBolt.FIELDS_HISTORY);
+        outputFieldsDeclarer.declareStream(StreamType.HISTORY.toString(), MessageTranslator.STREAM_FIELDS);
         // FIXME(dbogun): use proper tuple format
         outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
@@ -405,7 +410,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
             FlowCreateRequest request = (FlowCreateRequest) message.getData();
             UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
-            saveHistory("Flow creating", flow.getFlowId(), "", message.getCorrelationId(), tuple);
+            saveEvent(Event.CREATE, flow.getFlowId(), "", message.getCorrelationId(), tuple);
 
             FlowPair createdFlow = flowService.createFlow(flow.getFlowEntity(),
                     request.getDiverseFlowId(),
@@ -413,7 +418,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
             logger.info("Created the flow: {}", createdFlow);
             saveHistory("Created the flow", "", message.getCorrelationId(), tuple);
-            saveHistory(createdFlow, "stateAfter", message.getCorrelationId(), tuple);
+            saveDump(createdFlow, DumpType.STATE_AFTER, message.getCorrelationId(), tuple);
 
             Values values = new Values(new InfoMessage(buildFlowResponse(createdFlow.getForward()),
                     message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
@@ -440,43 +445,45 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         }
     }
 
-    private void saveHistory(String action, String flowId, String details, String correlationId, Tuple tuple) {
-        FlowEvent flowEvent = FlowEvent.builder()
-                .action(action)
-                .actor("NB")
+    private void saveEvent(Event event, String flowId, String details, String correlationId, Tuple tuple) {
+        FlowEventData flowEvent = FlowEventData.builder()
+                .event(event)
+                .initiator(Initiator.NB)
                 .flowId(flowId)
                 .details(details)
-                .taskId(correlationId)
-                .timestamp(Instant.now())
+                .time(Instant.now())
                 .build();
-        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowEvent));
+
+        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
+                .flowEventData(flowEvent)
+                .taskId(correlationId)
+                .build();
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(null, historyHolder,
+                new CommandContext(correlationId)));
     }
 
     private void saveHistory(String action, String details, String correlationId, Tuple tuple) {
-        FlowHistory flowHistory = FlowHistory.builder()
+        FlowHistoryData flowHistory = FlowHistoryData.builder()
                 .action(action)
-                .details(details)
-                .taskId(correlationId)
-                .timestamp(Instant.now())
+                .description(details)
+                .time(Instant.now())
                 .build();
-        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowHistory));
+
+        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
+                .flowHistoryData(flowHistory)
+                .taskId(correlationId)
+                .build();
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(null, historyHolder,
+                new CommandContext(correlationId)));
     }
 
-    private void saveHistory(Optional<FlowPair> optionalFlowPair, String type, String correlationId, Tuple tuple)
-            throws JsonProcessingException {
-        if (optionalFlowPair.isPresent()) {
-            saveHistory(optionalFlowPair.get(), type, correlationId, tuple);
-        }
-    }
-
-    private void saveHistory(FlowPair flowPair, String type, String correlationId, Tuple tuple)
+    private void saveDump(FlowPair flowPair, DumpType type, String correlationId, Tuple tuple)
             throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
 
-        FlowDump flowDump = FlowDump.builder()
-                .taskId(correlationId)
+        FlowDumpData flowDump = FlowDumpData.builder()
                 .flowId(flowPair.forward.getFlowId())
-                .type(type)
+                .dumpType(type)
                 .bandwidth(flowPair.forward.getBandwidth())
                 .ignoreBandwidth(flowPair.forward.isIgnoreBandwidth())
                 .forwardCookie(flowPair.forward.getCookie())
@@ -495,10 +502,16 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                 .reversePath(
                         objectMapper.writeValueAsString(
                                 FlowPathMapper.INSTANCE.mapToPathNodes(flowPair.reverse)))
-                .forwardStatus(flowPair.forward.getStatus())
-                .reverseStatus(flowPair.reverse.getStatus())
+                .forwardStatus(flowPair.forward.getFlowPath().getStatus())
+                .reverseStatus(flowPair.reverse.getFlowPath().getStatus())
                 .build();
-        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowDump));
+
+        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
+                .flowDumpData(flowDump)
+                .taskId(correlationId)
+                .build();
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(null, historyHolder,
+                new CommandContext(correlationId)));
     }
 
     private void handleRerouteRequest(CommandMessage message, Tuple tuple) {
@@ -549,8 +562,12 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
             FlowUpdateRequest request = (FlowUpdateRequest) message.getData();
             UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
-            saveHistory("Flow updating", flow.getFlowId(), "", message.getCorrelationId(), tuple);
-            saveHistory(flowService.getFlowPair(flow.getFlowId()), "stateBefore", message.getCorrelationId(), tuple);
+            saveHistory("Flow updating", flow.getFlowId(), message.getCorrelationId(), tuple);
+
+            Optional<FlowPair> flowPair = flowService.getFlowPair(flow.getFlowId());
+            if (flowPair.isPresent()) {
+                saveDump(flowPair.get(), DumpType.STATE_BEFORE, message.getCorrelationId(), tuple);
+            }
 
             FlowPair updatedFlow = flowService.updateFlow(flow.getFlowEntity(),
                     request.getDiverseFlowId(),
@@ -558,7 +575,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
             logger.info("Updated the flow: {}", updatedFlow);
             saveHistory("Updated the flow", "", message.getCorrelationId(), tuple);
-            saveHistory(updatedFlow, "stateAfter", message.getCorrelationId(), tuple);
+            saveDump(updatedFlow, DumpType.STATE_AFTER, message.getCorrelationId(), tuple);
 
             Values values = new Values(new InfoMessage(buildFlowResponse(updatedFlow.getForward()),
                     message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));

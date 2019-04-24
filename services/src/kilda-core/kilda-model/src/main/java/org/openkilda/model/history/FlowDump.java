@@ -15,7 +15,7 @@
 
 package org.openkilda.model.history;
 
-import org.openkilda.model.FlowStatus;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.SwitchId;
 
 import lombok.AccessLevel;
@@ -103,9 +103,9 @@ public class FlowDump {
 
     @Property(name = "forward_status")
     @Convert(graphPropertyType = String.class)
-    private FlowStatus forwardStatus;
+    private FlowPathStatus forwardStatus;
 
     @Property(name = "reverse_status")
     @Convert(graphPropertyType = String.class)
-    private FlowStatus reverseStatus;
+    private FlowPathStatus reverseStatus;
 }

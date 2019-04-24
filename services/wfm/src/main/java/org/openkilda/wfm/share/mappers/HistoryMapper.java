@@ -15,19 +15,31 @@
 
 package org.openkilda.wfm.share.mappers;
 
+import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.messaging.payload.history.FlowDumpPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryPayload;
+import org.openkilda.model.Flow;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.history.FlowDump;
 import org.openkilda.model.history.FlowEvent;
 import org.openkilda.model.history.FlowHistory;
+import org.openkilda.wfm.share.history.model.FlowDumpData;
+import org.openkilda.wfm.share.history.model.FlowEventData;
+import org.openkilda.wfm.share.history.model.FlowHistoryData;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.mapstruct.AfterMapping;
+import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.TargetType;
 import org.mapstruct.factory.Mappers;
 
-@Mapper
+import java.util.List;
+
+@Mapper(uses = {FlowPathMapper.class})
 public abstract class HistoryMapper {
     public static final HistoryMapper INSTANCE = Mappers.getMapper(HistoryMapper.class);
 
@@ -38,6 +50,55 @@ public abstract class HistoryMapper {
     public abstract FlowHistoryPayload map(FlowHistory flowHistory);
 
     public abstract FlowDumpPayload map(FlowDump flowDump);
+
+    @Mapping(target = "type", expression = "java(dumpData.getDumpType().getType())")
+    public abstract FlowDump map(FlowDumpData dumpData);
+
+    /**
+     * Note: you have to additionally set {@link org.openkilda.wfm.share.history.model.FlowDumpData.DumpType}
+     * to the dump data.
+     */
+    @Mapping(target = "sourceSwitch", expression = "java(flow.getSrcSwitch().getSwitchId())")
+    @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
+    @Mapping(source = "srcPort", target = "sourcePort")
+    @Mapping(source = "destPort", target = "destinationPort")
+    @Mapping(source = "srcVlan", target = "sourceVlan")
+    @Mapping(source = "destVlan", target = "destinationVlan")
+    @Mapping(source = "flowId", target = "flowId")
+    @Mapping(source = "bandwidth", target = "bandwidth")
+    @Mapping(source = "ignoreBandwidth", target = "ignoreBandwidth")
+    @Mapping(target = "forwardCookie", expression = "java(flow.getForwardPath().getCookie().getValue())")
+    @Mapping(target = "reverseCookie", expression = "java(flow.getReversePath().getCookie().getValue())")
+    @Mapping(target = "forwardMeterId", expression = "java(flow.getReversePath().getMeterId().getValue())")
+    @Mapping(target = "reverseMeterId", expression = "java(flow.getReversePath().getMeterId().getValue())")
+    @Mapping(target = "forwardStatus", expression = "java(flow.getReversePath().getStatus())")
+    @Mapping(target = "reverseStatus", expression = "java(flow.getReversePath().getStatus())")
+    @BeanMapping(ignoreByDefault = true)
+    public abstract FlowDumpData map(Flow flow);
+
+    @Mapping(source = "time", target = "timestamp")
+    @Mapping(source = "description", target = "details")
+    public abstract FlowHistory map(FlowHistoryData historyData);
+
+    @Mapping(target = "actor", expression = "java(eventData.getInitiator().name())")
+    @Mapping(target = "action", expression = "java(eventData.getEvent().getDescription())")
+    public abstract FlowEvent map(FlowEventData eventData);
+
+    /**
+     * Adds string representation of flow path into {@link FlowDumpData}.
+     */
+    @AfterMapping
+    public FlowDumpData map(Flow flow, @TargetType FlowDumpData dumpData) throws JsonProcessingException {
+        List<PathNodePayload> forwardNodes = FlowPathMapper.INSTANCE.mapToPathNodes(flow.getForwardPath(),
+                flow.getSrcPort(), flow.getDestPort());
+        List<PathNodePayload> reverseNodes = FlowPathMapper.INSTANCE.mapToPathNodes(flow.getReversePath(),
+                flow.getDestPort(), flow.getSrcPort());
+
+        dumpData.setForwardPath(Utils.MAPPER.writeValueAsString(forwardNodes));
+        dumpData.setForwardPath(Utils.MAPPER.writeValueAsString(reverseNodes));
+
+        return dumpData;
+    }
 
     public String map(SwitchId switchId) {
         return switchId.toString();

@@ -77,6 +77,8 @@ public class FlowCreateService {
         fsm.fire(Event.NEXT, FlowCreateContext.builder()
                 .flowDetails(request)
                 .build());
+
+        removeIfFinished(fsm, key);
     }
 
     /**
@@ -104,9 +106,7 @@ public class FlowCreateService {
             }
         }
 
-        if (fsm.getCurrentState() == State.FINISHED || fsm.getCurrentState() == State.FINISHED_WITH_ERROR) {
-            fsms.remove(key);
-        }
+        removeIfFinished(fsm, key);
     }
 
     /**
@@ -118,6 +118,12 @@ public class FlowCreateService {
         fsm.fire(Event.TIMEOUT);
 
         if (fsm.getCurrentState() == State.FINISHED_WITH_ERROR) {
+            fsms.remove(key);
+        }
+    }
+
+    private void removeIfFinished(FlowCreateFsm fsm, String key) {
+        if (fsm.getCurrentState() == State.FINISHED || fsm.getCurrentState() == State.FINISHED_WITH_ERROR) {
             fsms.remove(key);
         }
     }

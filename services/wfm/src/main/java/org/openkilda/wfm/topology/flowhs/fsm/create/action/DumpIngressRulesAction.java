@@ -35,7 +35,8 @@ public class DumpIngressRulesAction extends AnonymousAction<FlowCreateFsm, State
         log.debug("Started validation of installed ingress rules for the flow {}",
                 stateMachine.getFlow().getFlowId());
 
-        List<GetInstalledRule> dumpFlowRules = stateMachine.getIngressCommands().stream()
+        List<GetInstalledRule> dumpFlowRules = stateMachine.getIngressCommands().values()
+                .stream()
                 .map(command -> new GetInstalledRule(command.getMessageContext(), command.getCommandId(),
                         command.getFlowId(), command.getSwitchId(), command.getCookie()))
                 .collect(Collectors.toList());

@@ -36,7 +36,8 @@ public class DumpNonIngressRulesAction extends AnonymousAction<FlowCreateFsm, St
         log.debug("Started validation of installed non ingress rules for the flow {}",
                 stateMachine.getFlow().getFlowId());
 
-        List<GetInstalledRule> dumpFlowRules = stateMachine.getNonIngressCommands().stream()
+        List<GetInstalledRule> dumpFlowRules = stateMachine.getNonIngressCommands().values()
+                .stream()
                 .map(command -> new GetInstalledRule(command.getMessageContext(), command.getCommandId(),
                         command.getFlowId(), command.getSwitchId(), command.getCookie()))
                 .collect(Collectors.toList());

@@ -19,6 +19,9 @@ import static java.lang.String.format;
 
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
+import org.openkilda.model.Flow;
+import org.openkilda.wfm.share.history.model.FlowHistoryData;
+import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -29,6 +32,8 @@ import org.openkilda.wfm.topology.flowhs.validation.rules.RulesValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
+import java.time.Instant;
+
 @Slf4j
 public class ValidateIngressRuleAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
@@ -36,21 +41,35 @@ public class ValidateIngressRuleAction extends AnonymousAction<FlowCreateFsm, St
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         String commandId = context.getFlowResponse().getCommandId();
 
-        InstallIngressRule expected = stateMachine.getIngressCommands().stream()
-                .filter(rule -> rule.getCommandId().equals(commandId))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException(format("Failed to find ingress command with id %s",
-                        commandId)));
+        InstallIngressRule expected = stateMachine.getIngressCommands().get(commandId);
 
         RulesValidator validator = new IngressRulesValidator(expected, (FlowRuleResponse) context.getFlowResponse());
         if (!validator.validate()) {
             stateMachine.fire(Event.ERROR);
         } else {
+            saveHistory(stateMachine, expected);
             stateMachine.getPendingCommands().remove(commandId);
             if (stateMachine.getPendingCommands().isEmpty()) {
-                log.info("Ingress rules have been validated for flow {}", stateMachine.getFlow().getFlowId());
+                log.debug("Ingress rules have been validated for flow {}", stateMachine.getFlow().getFlowId());
                 stateMachine.fire(Event.NEXT);
             }
         }
+    }
+
+    private void saveHistory(FlowCreateFsm stateMachine, InstallIngressRule expected) {
+        Flow flow = stateMachine.getFlow();
+
+        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
+                .taskId(stateMachine.getCommandContext().getCorrelationId())
+                .flowHistoryData(FlowHistoryData.builder()
+                        .action(format("Rule is valid: switch %s, cookie %s",
+                                expected.getSwitchId().toString(), expected.getCookie()))
+                        .description(format("Ingress rule has been validated successfully: switch %s, cookie %s",
+                                expected.getSwitchId().toString(), expected.getCookie()))
+                        .time(Instant.now())
+                        .flowId(flow.getFlowId())
+                        .build())
+                .build();
+        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
     }
 }

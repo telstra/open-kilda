@@ -52,7 +52,7 @@ public class ResourcesDeallocateAction extends AnonymousAction<FlowCreateFsm, St
                 flow.getForwardPath().getCookie().getUnmaskedValue(), flow.getEncapsulationType());
         resourcesManager.deallocatePathResources(flow.getReversePathId(),
                 flow.getReversePath().getCookie().getUnmaskedValue(), flow.getEncapsulationType());
-        log.info("Flow resources have been deallocated for flow {}", flow.getFlowId());
+        log.debug("Flow resources have been deallocated for flow {}", flow.getFlowId());
 
         stateMachine.fire(Event.NEXT);
     }

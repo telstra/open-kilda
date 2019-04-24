@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.services;
+package org.openkilda.wfm.share.history.service;
 
 import org.openkilda.model.history.FlowDump;
 import org.openkilda.model.history.FlowEvent;
@@ -28,6 +28,8 @@ import org.openkilda.persistence.repositories.history.FlowHistoryRepository;
 import org.openkilda.persistence.repositories.history.FlowStateRepository;
 import org.openkilda.persistence.repositories.history.HistoryLogRepository;
 import org.openkilda.persistence.repositories.history.StateLogRepository;
+import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.wfm.share.mappers.HistoryMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -58,20 +60,39 @@ public class HistoryService {
         stateLogRepository = repositoryFactory.createStateLogRepository();
     }
 
-    public void store(FlowEvent flowEvent) {
+    /**
+     * Save history data into data storage.
+     *
+     * @param historyHolder holder of history information.
+     */
+    public void store(FlowHistoryHolder historyHolder) {
+        if (historyHolder.getFlowEventData() != null) {
+            FlowEvent event = HistoryMapper.INSTANCE.map(historyHolder.getFlowEventData());
+            store(historyHolder.getTaskId(), event);
+        }
+
+        if (historyHolder.getFlowHistoryData() != null) {
+            FlowHistory history = HistoryMapper.INSTANCE.map(historyHolder.getFlowHistoryData());
+            store(historyHolder.getTaskId(), history);
+        }
+
+        if (historyHolder.getFlowDumpData() != null) {
+            FlowDump dump = HistoryMapper.INSTANCE.map(historyHolder.getFlowDumpData());
+            store(historyHolder.getTaskId(), dump);
+        }
+    }
+
+    private void store(String taskId, FlowEvent flowEvent) {
+        flowEvent.setTaskId(taskId);
         transactionManager.doInTransaction(() -> flowEventRepository.createOrUpdate(flowEvent));
     }
 
-    /**
-     * Writes {@code}FlowHistory{@code} to the DB.
-     * Makes edge between the flowHistory and related flowEvent.
-     *
-     * @param flowHistory the flow history log.
-     */
-    public void store(FlowHistory flowHistory) {
+    private void store(String taskId, FlowHistory flowHistory) {
         transactionManager.doInTransaction(() -> {
+            flowHistory.setTaskId(taskId);
+
             flowHistoryRepository.createOrUpdate(flowHistory);
-            Optional<FlowEvent> flowEvents = flowEventRepository.findByTaskId(flowHistory.getTaskId());
+            Optional<FlowEvent> flowEvents = flowEventRepository.findByTaskId(taskId);
             if (flowEvents.isPresent()) {
                 historyLogRepository.createOrUpdate(HistoryLog.builder()
                         .flowEvent(flowEvents.get())
@@ -84,16 +105,11 @@ public class HistoryService {
         });
     }
 
-    /**
-     * Writes {@code}FlowDump{@code} to the DB.
-     * Makes edge between the flowDump and related flowEvent.
-     *
-     * @param flowDump the dump of flow.
-     */
-    public void store(FlowDump flowDump) {
+    private void store(String taskId, FlowDump flowDump) {
         transactionManager.doInTransaction(() -> {
+            flowDump.setTaskId(taskId);
             flowStateRepository.createOrUpdate(flowDump);
-            Optional<FlowEvent> flowEvents = flowEventRepository.findByTaskId(flowDump.getTaskId());
+            Optional<FlowEvent> flowEvents = flowEventRepository.findByTaskId(taskId);
             if (flowEvents.isPresent()) {
                 stateLogRepository.createOrUpdate(StateLog.builder()
                         .flowEvent(flowEvents.get())

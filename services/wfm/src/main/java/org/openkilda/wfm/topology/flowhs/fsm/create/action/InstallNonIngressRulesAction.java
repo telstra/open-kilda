@@ -17,7 +17,10 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
+import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.history.model.FlowHistoryData;
+import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -27,9 +30,10 @@ import org.openkilda.wfm.topology.flowhs.service.FlowCommandFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
-import java.util.HashSet;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -53,13 +57,28 @@ public class InstallNonIngressRulesAction extends AnonymousAction<FlowCreateFsm,
         } else {
             commands.forEach(command -> stateMachine.getCarrier().sendSpeakerRequest(command));
 
-            stateMachine.setNonIngressCommands(new HashSet<>(commands));
-
+            stateMachine.setNonIngressCommands(commands.stream()
+                    .collect(Collectors.toMap(InstallTransitRule::getCommandId, Function.identity())));
             Set<String> commandIds = commands.stream()
                     .map(FlowRequest::getCommandId)
                     .collect(Collectors.toSet());
             stateMachine.setPendingCommands(commandIds);
             log.debug("Commands for installing non ingress rules have been sent");
+            saveHistory(stateMachine);
         }
+    }
+
+    private void saveHistory(FlowCreateFsm stateMachine) {
+        Flow flow = stateMachine.getFlow();
+
+        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
+                .taskId(stateMachine.getCommandContext().getCorrelationId())
+                .flowHistoryData(FlowHistoryData.builder()
+                        .action("Install non ingress commands have been sent.")
+                        .time(Instant.now())
+                        .flowId(flow.getFlowId())
+                        .build())
+                .build();
+        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
     }
 }
