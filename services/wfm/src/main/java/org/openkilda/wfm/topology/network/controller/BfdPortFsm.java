@@ -77,6 +77,8 @@ public final class BfdPortFsm extends
     private static final StateMachineBuilder<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> builder;
 
     static {
+        final String releaseResourcesMethod = "releaseResources";
+
         builder = StateMachineBuilderFactory.create(
                 BfdPortFsm.class, BfdPortFsmState.class, BfdPortFsmEvent.class, BfdPortFsmContext.class,
                 // extra parameters
@@ -115,6 +117,8 @@ public final class BfdPortFsm extends
                 .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.DISABLE);
         builder.transition()
                 .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.FAIL);
+        builder.transition()
+                .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.TERMINATE).on(BfdPortFsmEvent.KILL);
         builder.onEntry(BfdPortFsmState.INSTALLING)
                 .callMethod("installingEnter");
 
@@ -122,11 +126,10 @@ public final class BfdPortFsm extends
         builder.transition()
                 .from(BfdPortFsmState.CLEANING).to(BfdPortFsmState.CLEANING_CHOICE).on(BfdPortFsmEvent.SPEAKER_SUCCESS)
                 .when(new ResponseKeyValidator())
-                .callMethod("releaseResources");
+                .callMethod(releaseResourcesMethod);
         builder.transition()
-                .from(BfdPortFsmState.CLEANING).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.SPEAKER_FAIL)
-                .when(new ResponseKeyValidator())
-                .callMethod("reportSpeakerFailure");
+                .from(BfdPortFsmState.CLEANING).to(BfdPortFsmState.FAIL_CHOICE).on(BfdPortFsmEvent.SPEAKER_FAIL)
+                .when(new ResponseKeyValidator());
         builder.transition()
                 .from(BfdPortFsmState.CLEANING).to(BfdPortFsmState.HOUSEKEEPING).on(BfdPortFsmEvent.KILL);
         builder.internalTransition().within(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.PORT_UP)
@@ -135,8 +138,6 @@ public final class BfdPortFsm extends
                 .callMethod("cleaningUpdateLinkStatus");
         builder.onEntry(BfdPortFsmState.CLEANING)
                 .callMethod("cleaningEnter");
-        builder.onExit(BfdPortFsmState.CLEANING)
-                .callMethod("cleaningExit");
 
         // CLEANING_CHOICE
         builder.transition()
@@ -147,6 +148,17 @@ public final class BfdPortFsm extends
                 .on(BfdPortFsmEvent._CLEANING_CHOICE_HOLD);
         builder.onEntry(BfdPortFsmState.CLEANING_CHOICE)
                 .callMethod("handleCleaningChoice");
+
+        // FAIL_CHOICE
+        builder.transition()
+                .from(BfdPortFsmState.FAIL_CHOICE).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent._FAIL_CHOICE_CRITICAL)
+                .callMethod("reportSpeakerFailure");
+        builder.transition()
+                .from(BfdPortFsmState.FAIL_CHOICE).to(BfdPortFsmState.IDLE)
+                .on(BfdPortFsmEvent._FAIL_CHOICE_RECOVERABLE)
+                .callMethod(releaseResourcesMethod);
+        builder.onEntry(BfdPortFsmState.FAIL_CHOICE)
+                .callMethod("handleFailChoice");
 
         // WAIT_RELEASE
         builder.transition()
@@ -160,7 +172,7 @@ public final class BfdPortFsm extends
         builder.transition()
                 .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.DISABLE);
         builder.transition()
-                .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.HOUSEKEEPING).on(BfdPortFsmEvent.KILL);
+                .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.TERMINATE).on(BfdPortFsmEvent.KILL);
         builder.onExit(BfdPortFsmState.ACTIVE)
                 .callMethod("activeExit");
         builder.defineSequentialStatesOn(
@@ -190,15 +202,20 @@ public final class BfdPortFsm extends
         builder.onEntry(BfdPortFsmState.FAIL)
                 .callMethod("failEnter");
 
+        // TERMINATE
+        builder.transition()
+                .from(BfdPortFsmState.TERMINATE).to(BfdPortFsmState.HOUSEKEEPING).on(BfdPortFsmEvent.NEXT);
+        builder.onEntry(BfdPortFsmState.TERMINATE)
+                .callMethod("terminateEnter");
+
+
         // HOUSEKEEPING
         builder.transition()
                 .from(BfdPortFsmState.HOUSEKEEPING).to(BfdPortFsmState.STOP).on(BfdPortFsmEvent.SPEAKER_SUCCESS)
-                .callMethod("releaseResources");
+                .callMethod(releaseResourcesMethod);
         builder.transition()
                 .from(BfdPortFsmState.HOUSEKEEPING).to(BfdPortFsmState.STOP).on(BfdPortFsmEvent.SPEAKER_FAIL)
                 .callMethod("reportSpeakerFailure");
-        builder.onEntry(BfdPortFsmState.HOUSEKEEPING)
-                .callMethod("housekeepingEnter");
 
         builder.defineFinalState(BfdPortFsmState.STOP);
     }
@@ -273,18 +290,17 @@ public final class BfdPortFsm extends
     public void releaseResources(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                  BfdPortFsmContext context) {
         bfdSessionRepository.findBySwitchIdAndPort(logicalEndpoint.getDatapath(), logicalEndpoint.getPortNumber())
-                .ifPresent(bfdSessionRepository::delete);
+                .ifPresent(value -> {
+                    if (value.getDiscriminator().equals(sessionDescriptor.getDiscriminator())) {
+                        bfdSessionRepository.delete(value);
+                    }
+                });
         sessionDescriptor = null;
     }
 
     public void cleaningEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                               BfdPortFsmContext context) {
         doBfdRemove(context);
-    }
-
-    public void cleaningExit(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                             BfdPortFsmContext context) {
-        sessionDescriptor = null;
     }
 
     public void cleaningUpdateLinkStatus(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
@@ -308,6 +324,15 @@ public final class BfdPortFsm extends
             fire(BfdPortFsmEvent._CLEANING_CHOICE_HOLD, context);
         } else {
             fire(BfdPortFsmEvent._CLEANING_CHOICE_READY, context);
+        }
+    }
+
+    public void handleFailChoice(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                                 BfdPortFsmContext context) {
+        if (isSpeakerErrorCritical(context.getBfdSessionResponse())) {
+            fire(BfdPortFsmEvent._FAIL_CHOICE_CRITICAL, context);
+        } else {
+            fire(BfdPortFsmEvent._FAIL_CHOICE_RECOVERABLE, context);
         }
     }
 
@@ -345,12 +370,10 @@ public final class BfdPortFsm extends
         }
     }
 
-    public void housekeepingEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
-                                  BfdPortFsmContext context) {
+    public void terminateEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                               BfdPortFsmContext context) {
         logInfo("perform housekeeping - release all resources");
-        if (sessionDescriptor != null) {
-            doBfdRemove(context);
-        }
+        doBfdRemove(context);
     }
 
     public void reportSpeakerFailure(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
@@ -359,7 +382,7 @@ public final class BfdPortFsm extends
         String prefix;
         if (from == BfdPortFsmState.INSTALLING) {
             prefix = "Got speaker error for BFD-session setup request";
-        } else if (from == BfdPortFsmState.CLEANING) {
+        } else if (from == BfdPortFsmState.CLEANING_CHOICE) {
             prefix = "Got speaker error for BFD-session remove request";
         } else {
             prefix = "Got speaker error";
@@ -481,6 +504,13 @@ public final class BfdPortFsm extends
         return new SwitchReference(datapath, address);
     }
 
+    private boolean isSpeakerErrorCritical(BfdSessionResponse response) {
+        if (response == null) {
+            return true;
+        }
+        return NoviBfdSession.Errors.NOVI_BFD_DISCRIMINATOR_NOT_FOUND_ERROR != response.getErrorCode();
+    }
+
     private void logInfo(String message) {
         if (log.isInfoEnabled()) {
             log.info("{} - {}", makeLogPrefix(), message);
@@ -543,7 +573,8 @@ public final class BfdPortFsm extends
         SPEAKER_SUCCESS, SPEAKER_FAIL,
 
         _INIT_CHOICE_CLEAN, _INIT_CHOICE_DIRTY,
-        _CLEANING_CHOICE_READY, _CLEANING_CHOICE_HOLD
+        _CLEANING_CHOICE_READY, _CLEANING_CHOICE_HOLD,
+        _FAIL_CHOICE_CRITICAL, _FAIL_CHOICE_RECOVERABLE,
     }
 
     public enum BfdPortFsmState {
@@ -556,8 +587,9 @@ public final class BfdPortFsm extends
 
         CLEANING,
         CLEANING_CHOICE,
+        FAIL_CHOICE,
         WAIT_RELEASE,
-        HOUSEKEEPING,
+        TERMINATE, HOUSEKEEPING,
 
         FAIL,
         STOP

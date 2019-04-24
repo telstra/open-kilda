@@ -37,21 +37,25 @@ INSTALLING --> ACTIVE : port-up
 INSTALLING --> CLEANING : FL-fail [match reuest-key] /\nreport error
 INSTALLING --> CLEANING : disable
 INSTALLING --> FAIL : fail
+INSTALLING --> TERMINATE : kill
 INSTALLING : enter / save remote SwitchId
 INSTALLING : enter / allocate BFD-discriminator
 INSTALLING : enter / emit BFD-session setup
 INSTALLING : enter / save request-key
 
+state failChoice <<choice>>
 state cleaningChoice <<choice>>
 
 CLEANING --> cleaningChoice : FL-ok / release BFD-discriminator
-CLEANING --> FAIL : FL-fail [match reuest-key] /\nreport error
+CLEANING --> failChoice : FL-fail [match request-key] /\nreport error
 CLEANING --> HOUSEKEEPING : kill
 CLEANING : enter / emit BFD-session remove
 CLEANING : enter / save request-key
 CLEANING : port-up / set isUp = true
 CLEANING : port-down / set isUp = false
-CLEANING : exit / clear remote SwitchId
+
+failChoice --> IDLE : [discrimator-not-found] / release BFD-discrimator
+failChoice --> FAIL : [else]
 
 cleaningChoice --> IDLE : [not isUp]
 cleaningChoice --> WAIT_RELEASE : [isUp]
@@ -71,11 +75,13 @@ state ACTIVE {
     DOWN : enter / set isUp = false
 }
 ACTIVE --> CLEANING : disable
-ACTIVE --> HOUSEKEEPING : kill
+ACTIVE --> TERMINATE : kill
 ACTIVE : exit / emit bfd-kill
 
-HOUSEKEEPING : enter [remote SwitchId is set] / emit BFD-session remove
-HOUSEKEEPING : enter [remote SwitchId is set] / save request-key
+TERMINATE --> HOUSEKEEPING : next
+TERMINATE : enter / emit BFD-session remove
+TERMINATE : enter / save request-key
+
 HOUSEKEEPING --> [*] : FL-ok / release BFD-discriminator\nFL-fail / report error
 
 FAIL -r-> IDLE : port-down
