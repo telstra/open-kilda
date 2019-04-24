@@ -31,6 +31,7 @@ import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
+import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.command.flow.UpdateFlowPathStatusRequest;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CrudBoltState;
@@ -250,6 +251,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                             break;
                         case STATUS:
                             handleUpdateFlowPathStatusRequest(cmsg, tuple);
+                            break;
+                        case SWAP_ENDPOINT:
+                            handleSwapFlowEndpointRequest(cmsg, tuple);
                             break;
                         default:
                             logger.error("Unexpected stream: {} in {}", streamId, tuple);
@@ -580,6 +584,30 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         } catch (Exception e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
+        }
+    }
+
+    private void handleSwapFlowEndpointRequest(CommandMessage message, Tuple tuple) {
+        final String errorType = "Can not swap endpoints for flows";
+
+        try {
+            featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.UPDATE_FLOW);
+
+            SwapFlowEndpointRequest request = (SwapFlowEndpointRequest) message.getData();
+            UnidirectionalFlow firstFlow = FlowMapper.INSTANCE.map(request.getFirstFlow());
+            UnidirectionalFlow secondFlow = FlowMapper.INSTANCE.map(request.getSecondFlow());
+
+
+
+            logger.info("Swap endpoint");
+        } catch (FeatureTogglesNotEnabledException e) {
+            // TODO (vborisovskii): Change INTERNAL_ERROR to ErrorType.NOT_PERMITTED after merge #2250
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.INTERNAL_ERROR, errorType, "Feature toggles not enabled for UPDATE_FLOW operation.");
+        } catch (Exception e) {
+            logger.error("Unhandled exception on SWAP operation");
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.UPDATE_FAILURE, "Could not swap endpoints", e.getMessage());
         }
     }
 
