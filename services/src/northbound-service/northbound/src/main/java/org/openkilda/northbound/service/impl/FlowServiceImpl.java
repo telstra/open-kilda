@@ -27,7 +27,6 @@ import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
-import org.openkilda.messaging.command.flow.MeterModifyRequest;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowHistoryData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
@@ -44,6 +43,7 @@ import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
 import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
+import org.openkilda.messaging.nbtopology.request.MeterModifyRequest;
 import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.payload.flow.DiverseGroupPayload;
@@ -446,9 +446,8 @@ public class FlowServiceImpl implements FlowService {
         MeterModifyRequest request = new MeterModifyRequest(flowId);
 
         final String correlationId = RequestCorrelationId.getId();
-        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId,
-                Destination.WFM);
-        return messagingChannel.sendAndGet(topic, message)
+        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
+        return messagingChannel.sendAndGet(nbworkerTopic, message)
                 .thenApply(FlowMeterEntries.class::cast);
     }
 
