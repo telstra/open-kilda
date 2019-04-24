@@ -1295,6 +1295,120 @@ public class FlowService extends BaseFlowService {
         }
     }
 
+    /**
+     * Swap a two flows endpoints.
+     *
+     * @param firstFlow a first flow.
+     * @param secondFlow a second flow.
+     * @param sender a command sender for flow rules installation and deletion.
+     * @return the flows with swapped endpoints.
+     */
+    public List<UpdatedFlowPathsWithEncapsulation> swapFlowEnpoints(Flow firstFlow, Flow secondFlow,
+                                                                    FlowCommandSender sender)
+            throws FlowNotFoundException {
+        String firstFlowId = firstFlow.getFlowId();
+        String secondFlowId = secondFlow.getFlowId();
+
+        FlowPathsWithEncapsulation currentFirstFlow =
+                getFlowPathPairWithEncapsulation(firstFlowId).orElseThrow(() ->
+                        new FlowNotFoundException(firstFlowId));
+        FlowPathsWithEncapsulation currentSecondFlow =
+                getFlowPathPairWithEncapsulation(secondFlowId).orElseThrow(() ->
+                        new FlowNotFoundException(firstFlowId));
+        return swapFlows(currentFirstFlow, firstFlow, currentSecondFlow, secondFlow, sender);
+    }
+
+    private UpdatedFlowPathsWithEncapsulation processUpdateFlow(FlowPathsWithEncapsulation currentFlow,
+                                                                Flow updatingFlow, FlowCommandSender sender)
+            throws ResourceAllocationException, RecoverableException, FlowValidationException, UnroutableFlowException,
+            FlowNotFoundException {
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
+        PathPair newPathPair = pathComputer.getPath(updatingFlow, true);
+
+        log.info("Updating the flow with {} and path: {}", updatingFlow, newPathPair);
+
+        //TODO: hard-coded encapsulation will be removed in Flow H&S
+        updatingFlow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
+
+        FlowResources flowResources = flowResourcesManager.allocateFlowResources(updatingFlow);
+
+        // Recreate the flow, use allocated resources for new paths.
+        Instant timestamp = Instant.now();
+        FlowPathPair newFlowPathPair = buildFlowPathPair(updatingFlow, newPathPair, flowResources,
+                FlowPathStatus.IN_PROGRESS, timestamp);
+
+        Flow newFlowWithPaths = buildFlowWithPaths(updatingFlow, newFlowPathPair, FlowStatus.IN_PROGRESS, timestamp);
+
+        FlowPath currentForwardPath = currentFlow.getForwardPath();
+        FlowPath currentReversePath = currentFlow.getReversePath();
+        FlowPath newForwardPath = newFlowWithPaths.getForwardPath();
+        FlowPath newReversePath = newFlowWithPaths.getReversePath();
+
+        flowPathRepository.lockInvolvedSwitches(currentForwardPath, currentReversePath, newForwardPath, newReversePath);
+
+        flowRepository.delete(currentFlow.getFlow());
+
+        updateIslsForFlowPath(currentForwardPath);
+        updateIslsForFlowPath(currentReversePath);
+        if (currentFlow.getProtectedForwardPath() != null) {
+            updateIslsForFlowPath(currentFlow.getProtectedForwardPath());
+        }
+        if (currentFlow.getProtectedReversePath() != null) {
+            updateIslsForFlowPath(currentFlow.getProtectedReversePath());
+        }
+
+        flowRepository.createOrUpdate(newFlowWithPaths);
+
+        updateIslsForFlowPath(newForwardPath);
+        updateIslsForFlowPath(newReversePath);
+
+        FlowResources protectedResources = null;
+        if (newFlowWithPaths.isAllocateProtectedPath()) {
+            protectedResources = createProtectedPath(newFlowWithPaths, timestamp);
+        }
+
+        return new UpdatedFlowPathsWithEncapsulation(currentFlow,
+                buildFlowPathsWithEncapsulation(newFlowWithPaths, flowResources, protectedResources));
+    }
+
+    // todo: replace VOID to type
+    private List<UpdatedFlowPathsWithEncapsulation> swapFlows(FlowPathsWithEncapsulation currentFirstFlow,
+                                                              Flow updatingFirstFlow,
+                                                              FlowPathsWithEncapsulation currentSecondFlow,
+                                                              Flow updatingSecondFlow, FlowCommandSender sender) {
+        List<UpdatedFlowPathsWithEncapsulation> flows = (List<UpdatedFlowPathsWithEncapsulation>) getFailsafe().get(
+                () -> transactionManager.doInTransaction(() -> {
+                    UpdatedFlowPathsWithEncapsulation firstUpdatedFlow =
+                            processUpdateFlow(currentFirstFlow, updatingFirstFlow, sender);
+                    UpdatedFlowPathsWithEncapsulation secondUpdatedFlow =
+                            processUpdateFlow(currentSecondFlow, updatingSecondFlow, sender);
+                    return Arrays.asList(firstUpdatedFlow, secondUpdatedFlow);
+                }));
+
+
+        List<CommandGroup> firstCommandGroup = new ArrayList<>();
+        firstCommandGroup.addAll(createInstallRulesGroups(flows.get(0)));
+        firstCommandGroup.addAll(createRemoveRulesGroups(flows.get(0).getOldFlowPair()));
+        firstCommandGroup.addAll(createDeallocateResourcesGroups(flows.get(0).getOldFlowPair()));
+
+        // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
+        sender.sendFlowCommands(currentFirstFlow.getFlow().getFlowId(),
+                firstCommandGroup,
+                createFlowPathStatusRequests(flows.get(0), FlowPathStatus.ACTIVE),
+                createFlowPathStatusRequests(flows.get(0), FlowPathStatus.INACTIVE));
+
+        List<CommandGroup> secondCommandGroup = new ArrayList<>();
+        secondCommandGroup.addAll(createInstallRulesGroups(flows.get(1)));
+        secondCommandGroup.addAll(createRemoveRulesGroups(flows.get(1).getOldFlowPair()));
+        secondCommandGroup.addAll(createDeallocateResourcesGroups(flows.get(1).getOldFlowPair()));
+
+        sender.sendFlowCommands(currentSecondFlow.getFlow().getFlowId(),
+                secondCommandGroup,
+                createFlowPathStatusRequests(flows.get(1), FlowPathStatus.ACTIVE),
+                createFlowPathStatusRequests(flows.get(1), FlowPathStatus.INACTIVE));
+        return flows;
+    }
+
     @Value
     private class RerouteResult {
         FlowPathsWithEncapsulation initialFlow;

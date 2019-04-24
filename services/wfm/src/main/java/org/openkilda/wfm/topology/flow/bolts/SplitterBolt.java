@@ -30,6 +30,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
 import org.openkilda.messaging.command.flow.MeterModifyRequest;
+import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.command.flow.UpdateFlowPathStatusRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
@@ -218,6 +219,12 @@ public class SplitterBolt extends BaseRichBolt {
 
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
+            } else if (data instanceof SwapFlowEndpointRequest) {
+                logger.info("Swap endpoint for flow {} and {}",
+                        ((SwapFlowEndpointRequest) data).getFirstFlow().getFlowId(),
+                        ((SwapFlowEndpointRequest) data).getSecondFlow().getFlowId());
+                values = new Values(message);
+                outputCollector.emit(StreamType.SWAP_ENDPOINT.toString(), tuple, values);
             } else {
                 logger.debug("Skip undefined CommandMessage: {}={}", Utils.CORRELATION_ID, message.getCorrelationId());
             }

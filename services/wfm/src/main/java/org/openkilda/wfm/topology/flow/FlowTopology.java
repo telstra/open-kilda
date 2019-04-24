@@ -110,7 +110,8 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 // tackle during multi instance testing
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.DEALLOCATE_RESOURCES.toString(),
                         fieldFlowId)
-                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId);
+                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
+                .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.SWAP_ENDPOINT.toString());
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
 
         /*
