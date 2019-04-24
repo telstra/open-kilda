@@ -23,7 +23,7 @@ title ISL FSM
 
 INIT --> DOWN : isl-up / set endpoint-(A||B)-status = UP\nisl-down / set endpoint-(A||B)-status = DOWN
 INIT --> DOWN : history [history-down]
-INIT --> UP : history [history-up]
+INIT --> UP : history [history-up]\n/ apply-history\n/ emit bisl-bfd-enable
 INIT --> MOVED : history [history-moved]\nisl-move / set endpoint-(A||B)-status = MOVED
 
 state upAttempt <<choice>>
@@ -49,14 +49,13 @@ UP : exit / set endpoint-(A|B)-status = !UP (determine by event)
 UP : exit / persist DB state
 UP : exit [physical-down] / raise ISL(uni) cost
 UP : exit / emit bisl-down
-UP : bfd-update [bfd-up] / emit bisl-bfd-enable
-UP : bfd-update [bfd-down] / emit bisl-bfd-disable
 
 MOVED --> upAttempt : isl-up / set endpoint-(A|B)-status = UP
 MOVED --> deleteAttempt : isl-remove
 MOVED : enter / persist DB state
 MOVED : enter / emit isl-move
 MOVED : enter / set endpoint-(A|B)-status = MOVED
+MOVED : enter / emit bisl-bfd-disable
 MOVED : isl-down / set endpoint-(A|B)-status = DOWN
 MOVED : isl-down / persist DB state
 
