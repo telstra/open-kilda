@@ -16,12 +16,14 @@
 package org.openkilda.wfm.topology.nbworker.services;
 
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.error.FlowNotFoundException;
@@ -45,12 +47,21 @@ public class FlowOperationsService {
     private IslRepository islRepository;
     private FlowPairRepository flowPairRepository;
     private FlowPathRepository flowPathRepository;
+    private FlowRepository flowRepository;
 
     public FlowOperationsService(RepositoryFactory repositoryFactory, TransactionManager transactionManager) {
         this.islRepository = repositoryFactory.createIslRepository();
         this.flowPairRepository = repositoryFactory.createFlowPairRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
+        this.flowRepository = repositoryFactory.createFlowRepository();
         this.transactionManager = transactionManager;
+    }
+
+    /**
+     * Return flow by flow id.
+     */
+    public Flow getFlow(String flowId) throws FlowNotFoundException {
+        return flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
     }
 
     /**
