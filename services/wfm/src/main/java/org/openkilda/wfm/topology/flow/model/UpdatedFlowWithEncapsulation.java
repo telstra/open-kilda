@@ -18,13 +18,12 @@ package org.openkilda.wfm.topology.flow.model;
 import lombok.Getter;
 
 @Getter
-public class UpdatedFlowPathPair extends FlowPathPairWithEncapsulation {
-    private final FlowPathPairWithEncapsulation oldFlowPair;
+public class UpdatedFlowWithEncapsulation extends FlowWithEncapsulation {
+    private final FlowWithEncapsulation oldFlow;
 
-    public UpdatedFlowPathPair(FlowPathPairWithEncapsulation oldFlowPair, FlowPathPairWithEncapsulation newFlowPair) {
-        super(newFlowPair.getFlow(), newFlowPair.getForwardPath(), newFlowPair.getReversePath(),
-                newFlowPair.getForwardEncapsulation(), newFlowPair.getReverseEncapsulation());
-        this.oldFlowPair = oldFlowPair;
+    public UpdatedFlowWithEncapsulation(FlowWithEncapsulation oldFlow, FlowWithEncapsulation newFlow) {
+        super(newFlow.getFlow(), newFlow.getForwardEncapsulation(), newFlow.getReverseEncapsulation());
+        this.oldFlow = oldFlow;
     }
 
     /**
@@ -32,9 +31,8 @@ public class UpdatedFlowPathPair extends FlowPathPairWithEncapsulation {
      */
     public FlowPathWithEncapsulation getOldForward() {
         return FlowPathWithEncapsulation.builder()
-                .flow(oldFlowPair.getFlow())
-                .flowPath(oldFlowPair.getForwardPath())
-                .encapsulation(oldFlowPair.getForwardEncapsulation())
+                .flowPath(oldFlow.getForwardPath())
+                .encapsulation(oldFlow.getForwardEncapsulation())
                 .build();
     }
 
@@ -43,9 +41,8 @@ public class UpdatedFlowPathPair extends FlowPathPairWithEncapsulation {
      */
     public FlowPathWithEncapsulation getOldReverse() {
         return FlowPathWithEncapsulation.builder()
-                .flow(oldFlowPair.getFlow())
-                .flowPath(oldFlowPair.getReversePath())
-                .encapsulation(oldFlowPair.getReverseEncapsulation())
+                .flowPath(oldFlow.getReversePath())
+                .encapsulation(oldFlow.getReverseEncapsulation())
                 .build();
     }
 }

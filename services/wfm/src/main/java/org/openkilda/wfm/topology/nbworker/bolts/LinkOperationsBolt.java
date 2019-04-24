@@ -264,7 +264,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                     dstSwitch, dstPort, underMaintenance);
 
             if (underMaintenance && evacuate) {
-                flowOperationsService.getFlowIdsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
+                flowOperationsService.getFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
                         .map(FlowPair::getForward)
                         .map(UnidirectionalFlow::getFlowId).forEach(flowId -> {
                             FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId);

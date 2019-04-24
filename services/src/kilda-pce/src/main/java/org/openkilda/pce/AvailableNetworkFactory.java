@@ -89,7 +89,7 @@ public class AvailableNetworkFactory {
             Collection<FlowPath> flowPaths = flowPathRepository.findByFlowGroupId(flow.getGroupId());
             if (reuseAllocatedFlowResources) {
                 flowPaths = flowPaths.stream()
-                        .filter(s -> !s.getFlowId().equals(flow.getFlowId()))
+                        .filter(s -> !s.getFlow().getFlowId().equals(flow.getFlowId()))
                         .collect(Collectors.toList());
             }
 

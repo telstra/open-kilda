@@ -32,13 +32,13 @@ import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.cypher.Filters;
 import org.neo4j.ogm.session.Session;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 /**
- * Base Neo4J OGM implementation of {@link Repository}.
+ * Base Neo4j OGM implementation of {@link Repository}.
  * Provides basic implementation of findAll, createOrUpdate and delete methods.
  */
 abstract class Neo4jGenericRepository<T> implements Repository<T> {
@@ -121,13 +121,12 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
         return entity;
     }
 
-    protected void lockSwitches(Stream<Switch> switches) {
+    protected void lockSwitches(Switch... switches) {
         // Lock switches in ascending order of switchId.
-        switches.map(this::requireManagedEntity)
+        Arrays.stream(switches).map(this::requireManagedEntity)
                 .<Map<SwitchId, Switch>>collect(TreeMap::new, (m, e) -> m.put(e.getSwitchId(), e), Map::putAll)
                 .values()
                 .forEach(this::lockSwitch);
-
     }
 
     private void lockSwitch(Switch sw) {

@@ -159,7 +159,7 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
     }
 
     private Flow convertFlow(FlowDto flowDto) {
-        Flow flow = FlowMapper.INSTANCE.map(flowDto).getFlowEntity();
+        Flow flow = FlowMapper.INSTANCE.map(flowDto).getFlow();
         flow.setSrcSwitch(switchRepository.reload(flow.getSrcSwitch()));
         flow.setDestSwitch(switchRepository.reload(flow.getDestSwitch()));
 

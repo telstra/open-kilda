@@ -30,12 +30,11 @@ import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Neo4jSession;
 import org.neo4j.ogm.session.Session;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Optional;
 
 /**
- * Neo4J OGM implementation of {@link SwitchRepository}.
+ * Neo4j OGM implementation of {@link SwitchRepository}.
  */
 public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implements SwitchRepository {
     static final String SWITCH_NAME_PROPERTY_NAME = "name";
@@ -91,7 +90,7 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
 
     @Override
     public void lockSwitches(Switch... switches) {
-        lockSwitches(Arrays.stream(switches));
+        super.lockSwitches(switches);
     }
 
     @Override

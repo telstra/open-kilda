@@ -35,7 +35,7 @@ import org.openkilda.persistence.repositories.history.HistoryLogRepository;
 import org.openkilda.persistence.repositories.history.StateLogRepository;
 
 /**
- * Neo4J OGM implementation of {@link RepositoryFactory}.
+ * Neo4j OGM implementation of {@link RepositoryFactory}.
  */
 public class Neo4jRepositoryFactory implements RepositoryFactory {
 
@@ -124,6 +124,6 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
 
     @Override
     public BfdPortRepository createBfdPortRepository() {
-        return new Neo4JBfdPortRepository(sessionFactory, transactionManager);
+        return new Neo4jBfdPortRepository(sessionFactory, transactionManager);
     }
 }

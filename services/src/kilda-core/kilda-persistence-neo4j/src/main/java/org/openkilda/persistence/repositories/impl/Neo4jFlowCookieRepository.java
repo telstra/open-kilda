@@ -32,7 +32,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Neo4J OGM implementation of {@link FlowCookieRepository}.
+ * Neo4j OGM implementation of {@link FlowCookieRepository}.
  */
 public class Neo4jFlowCookieRepository extends Neo4jGenericRepository<FlowCookie> implements FlowCookieRepository {
     static final String UNMASKED_COOKIE_PROPERTY_NAME = "unmasked_cookie";

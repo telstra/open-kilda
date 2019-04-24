@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.flow.model;
 
-import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 
@@ -27,7 +26,6 @@ import lombok.Getter;
 @Builder(toBuilder = true)
 @Getter
 public class FlowPathWithEncapsulation {
-    private final Flow flow;
     private final FlowPath flowPath;
     private final EncapsulationResources encapsulation;
 }

@@ -78,7 +78,7 @@ public class CommandBuilderImpl implements CommandBuilder {
         flowPathRepository.findByEndpointSwitch(switchId)
                 .forEach(flowPath -> {
                     if (switchRules.contains(flowPath.getCookie().getValue())) {
-                        Flow flow = flowRepository.findById(flowPath.getFlowId())
+                        Flow flow = flowRepository.findById(flowPath.getFlow().getFlowId())
                                 .orElseThrow(() ->
                                         new IllegalStateException(format("Abandon FlowPath found: %s", flowPath)));
                         if (flowPath.isOneSwitchFlow()) {
@@ -112,9 +112,9 @@ public class CommandBuilderImpl implements CommandBuilder {
             return new ArrayList<>();
         }
 
-        Optional<Flow> foundFlow = flowRepository.findById(flowPath.getFlowId());
+        Optional<Flow> foundFlow = flowRepository.findById(flowPath.getFlow().getFlowId());
         if (!foundFlow.isPresent()) {
-            log.warn("Flow with id {} was not found", flowPath.getFlowId());
+            log.warn("Flow with id {} was not found", flowPath.getFlow().getFlowId());
             return new ArrayList<>();
         }
         Flow flow = foundFlow.get();
@@ -160,7 +160,7 @@ public class CommandBuilderImpl implements CommandBuilder {
 
     private InstallTransitFlow buildInstallTransitRuleCommand(FlowPath flowPath, SwitchId switchId,
                                                               int inputPortNo, int outputPortNo, int transitVlan) {
-        return new InstallTransitFlow(transactionIdGenerator.generate(), flowPath.getFlowId(),
+        return new InstallTransitFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(),
                 flowPath.getCookie().getValue(),
                 switchId, inputPortNo, outputPortNo, transitVlan);
     }
@@ -173,7 +173,7 @@ public class CommandBuilderImpl implements CommandBuilder {
         int outVlan = forward ? flow.getDestVlan() : flow.getSrcVlan();
         OutputVlanType outputVlanType = getOutputVlanType(inVlan, outVlan);
 
-        return new InstallEgressFlow(transactionIdGenerator.generate(), flowPath.getFlowId(),
+        return new InstallEgressFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(),
                 flowPath.getCookie().getValue(), flowPath.getDestSwitch().getSwitchId(), inputPortNo, outPort,
                 transitVlan, outVlan, outputVlanType);
     }
@@ -194,7 +194,7 @@ public class CommandBuilderImpl implements CommandBuilder {
     }
 
     private boolean isForward(Flow flow, FlowPath flowPath) {
-        if (!flowPath.getFlowId().equals(flow.getFlowId())
+        if (!flowPath.getFlow().getFlowId().equals(flow.getFlowId())
                 || !flowPath.getPathId().equals(flow.getForwardPathId())
                 && !flowPath.getPathId().equals(flow.getReversePathId())) {
             throw new IllegalArgumentException(format(

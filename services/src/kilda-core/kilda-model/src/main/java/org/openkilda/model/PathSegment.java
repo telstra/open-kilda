@@ -15,6 +15,9 @@
 
 package org.openkilda.model;
 
+import static org.neo4j.ogm.annotation.Relationship.INCOMING;
+import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -23,14 +26,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
-import org.neo4j.ogm.annotation.EndNode;
+import lombok.ToString;
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
-import org.neo4j.ogm.annotation.Index;
+import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.RelationshipEntity;
-import org.neo4j.ogm.annotation.StartNode;
-import org.neo4j.ogm.annotation.typeconversion.Convert;
+import org.neo4j.ogm.annotation.Relationship;
 
 import java.io.Serializable;
 
@@ -40,7 +41,8 @@ import java.io.Serializable;
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = {"entityId"})
-@RelationshipEntity(type = "path_segment")
+@ToString(exclude = {"path"})
+@NodeEntity(label = "path_segment")
 public class PathSegment implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -52,17 +54,15 @@ public class PathSegment implements Serializable {
     private Long entityId;
 
     @NonNull
-    @Property(name = "path_id")
-    @Index
-    @Convert(graphPropertyType = String.class)
-    private PathId pathId;
+    @Relationship(type = "owns", direction = INCOMING)
+    private FlowPath path;
 
     @NonNull
-    @StartNode
+    @Relationship(type = "source", direction = OUTGOING)
     private Switch srcSwitch;
 
     @NonNull
-    @EndNode
+    @Relationship(type = "destination", direction = OUTGOING)
     private Switch destSwitch;
 
     @Property(name = "src_port")
@@ -71,15 +71,17 @@ public class PathSegment implements Serializable {
     @Property(name = "dst_port")
     private int destPort;
 
+    // Hidden as used only by mapping to keep the order within a list of segments.
     @Property(name = "seq_id")
+    @Setter(AccessLevel.PACKAGE)
     private int seqId;
 
     private Long latency;
 
     @Builder(toBuilder = true)
-    public PathSegment(@NonNull PathId pathId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
+    public PathSegment(@NonNull FlowPath path, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
                        int srcPort, int destPort, Long latency) {
-        this.pathId = pathId;
+        this.path = path;
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
         this.srcPort = srcPort;
