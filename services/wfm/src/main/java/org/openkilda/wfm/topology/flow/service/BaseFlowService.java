@@ -16,70 +16,63 @@
 package org.openkilda.wfm.topology.flow.service;
 
 import org.openkilda.model.FlowPair;
-import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPairRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
-import org.openkilda.wfm.topology.flow.model.FlowPathPairWithEncapsulation;
+import org.openkilda.wfm.topology.flow.model.FlowWithEncapsulation;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class BaseFlowService {
-    protected TransactionManager transactionManager;
-    private FlowPairRepository flowPairRepository;
+    protected final TransactionManager transactionManager;
+    protected final FlowRepository flowRepository;
+    protected final FlowPairRepository flowPairRepository;
 
     public BaseFlowService(PersistenceManager persistenceManager) {
         transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        flowRepository = repositoryFactory.createFlowRepository();
         flowPairRepository = repositoryFactory.createFlowPairRepository();
     }
 
     public boolean doesFlowExist(String flowId) {
-        return flowPairRepository.exists(flowId);
+        return flowRepository.exists(flowId);
     }
 
     public Optional<FlowPair> getFlowPair(String flowId) {
         return flowPairRepository.findById(flowId);
     }
 
+    /**
+     * Fetches all flow pairs.
+     * <p/>
+     * IMPORTANT: the method doesn't complete with flow paths and transit vlans!
+     */
     public Collection<FlowPair> getFlows() {
-        return flowPairRepository.findAll();
+        return flowRepository.findAll().stream()
+                .map(flow -> new FlowPair(flow, null, null))
+                .collect(Collectors.toList());
     }
 
-    protected Optional<FlowPathPairWithEncapsulation> getFlowPathPairWithEncapsulation(String flowId) {
+    protected Optional<FlowWithEncapsulation> getFlowWithEncapsulation(String flowId) {
         return flowPairRepository.findById(flowId)
-                .map(flowPair -> FlowPathPairWithEncapsulation.builder()
-                        .flow(flowPair.getFlowEntity())
-                        .forwardPath(flowPair.getForward().getFlowPath())
-                        .reversePath(flowPair.getReverse().getFlowPath())
+                .map(flowPair -> FlowWithEncapsulation.builder()
+                        .flow(flowPair.getForward().getFlow())
                         //TODO: hard-coded encapsulation will be removed in Flow H&S
                         .forwardEncapsulation(TransitVlanEncapsulation.builder()
-                                .transitVlan(flowPair.getForwardTransitVlanEntity())
+                                .transitVlan(flowPair.getForward().getTransitVlanEntity())
                                 .build())
                         .reverseEncapsulation(TransitVlanEncapsulation.builder()
-                                .transitVlan(flowPair.getReverseTransitVlanEntity())
+                                .transitVlan(flowPair.getReverse().getTransitVlanEntity())
                                 .build())
                         .build());
-    }
-
-    /**
-     * Updates the status of a flow(s).
-     *
-     * @param flowId a flow ID used to locate the flow(s).
-     * @param status the status to set.
-     */
-    public void updateFlowStatus(String flowId, FlowStatus status) {
-        transactionManager.doInTransaction(() ->
-                flowPairRepository.findById(flowId)
-                        .ifPresent(flow -> {
-                            flow.setStatus(status);
-                            flowPairRepository.createOrUpdate(flow);
-                        }));
     }
 }

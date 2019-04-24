@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
@@ -32,16 +33,19 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
 import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.share.flow.TestFlowBuilder;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
@@ -81,88 +85,73 @@ public class FlowServiceTest extends Neo4jBasedTest {
                             .destSwitchId(SWITCH_ID_1).destPort(11).build()))
                     .build()).build();
 
+    private SwitchRepository switchRepository;
+    private IslRepository islRepository;
+    private FlowRepository flowRepository;
+
+    private PathComputer pathComputer;
+    private FlowService flowService;
+
     @Before
     public void setUp() {
-        SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
-        Switch switch1 = Switch.builder().switchId(SWITCH_ID_1).build();
-        switchRepository.createOrUpdate(switch1);
+        switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+        islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
 
-        Switch switch2 = Switch.builder().switchId(SWITCH_ID_2).build();
-        switchRepository.createOrUpdate(switch2);
+        pathComputer = mock(PathComputer.class);
+        PathComputerFactory pathComputerFactory = mock(PathComputerFactory.class);
+        FlowValidator flowValidator = new FlowValidator(persistenceManager.getRepositoryFactory());
+        when(pathComputerFactory.getPathComputer()).thenReturn(pathComputer);
 
-        Switch switch3 = Switch.builder().switchId(SWITCH_ID_3).build();
-        switchRepository.createOrUpdate(switch3);
-        IslRepository islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
+        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        flowService = new FlowService(persistenceManager,
+                pathComputerFactory, new FlowResourcesManager(persistenceManager, flowResourcesConfig), flowValidator,
+                new FlowCommandFactory());
 
-        Isl isl1To2 = new Isl();
-        isl1To2.setSrcSwitch(switch1);
-        isl1To2.setSrcPort(11);
-        isl1To2.setDestSwitch(switch2);
-        isl1To2.setDestPort(11);
-        islRepository.createOrUpdate(isl1To2);
+        createTopology();
+    }
 
-        Isl isl2To1 = new Isl();
-        isl2To1.setSrcSwitch(switch2);
-        isl2To1.setSrcPort(11);
-        isl2To1.setDestSwitch(switch1);
-        isl2To1.setDestPort(11);
-        islRepository.createOrUpdate(isl2To1);
+    @Test
+    public void shouldUpdateFlowStatus() {
+        String flowId = "test-flow";
+        Flow flow = new TestFlowBuilder(flowId)
+                .srcSwitch(getOrCreateSwitch(SWITCH_ID_1))
+                .srcPort(1)
+                .srcVlan(101)
+                .destSwitch(getOrCreateSwitch(SWITCH_ID_2))
+                .destPort(2)
+                .destVlan(102)
+                .status(FlowStatus.IN_PROGRESS)
+                .build();
 
-        Isl isl2To3 = new Isl();
-        isl2To3.setSrcSwitch(switch2);
-        isl2To3.setSrcPort(12);
-        isl2To3.setDestSwitch(switch3);
-        isl2To3.setDestPort(11);
-        islRepository.createOrUpdate(isl2To3);
+        flowRepository.createOrUpdate(flow);
 
-        Isl isl3To2 = new Isl();
-        isl3To2.setSrcSwitch(switch3);
-        isl3To2.setSrcPort(11);
-        isl3To2.setDestSwitch(switch2);
-        isl3To2.setDestPort(12);
-        islRepository.createOrUpdate(isl3To2);
+        flowService.updateFlowStatus(flowId, FlowStatus.UP);
 
-
-        Isl isl1To3 = new Isl();
-        isl1To3.setSrcSwitch(switch1);
-        isl1To3.setSrcPort(11);
-        isl1To3.setDestSwitch(switch3);
-        isl1To3.setDestPort(11);
-        islRepository.createOrUpdate(isl1To3);
-
-        Isl isl3To1 = new Isl();
-        isl3To1.setSrcSwitch(switch3);
-        isl3To1.setSrcPort(11);
-        isl3To1.setDestSwitch(switch1);
-        isl3To1.setDestPort(11);
-        islRepository.createOrUpdate(isl3To1);
+        Optional<Flow> foundFlow = flowRepository.findById(flowId);
+        assertEquals(FlowStatus.UP, foundFlow.get().getStatus());
     }
 
     @Test
     public void shouldRerouteFlow() throws RecoverableException, UnroutableFlowException,
             FlowNotFoundException, FlowAlreadyExistException, FlowValidationException,
             SwitchValidationException, ResourceAllocationException {
-        PathComputer pathComputer = mock(PathComputer.class);
-        PathComputerFactory pathComputerFactory = mock(PathComputerFactory.class);
-        FlowValidator flowValidator = new FlowValidator(persistenceManager.getRepositoryFactory());
-        when(pathComputerFactory.getPathComputer()).thenReturn(pathComputer);
-
-        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
-        FlowService flowService = new FlowService(persistenceManager,
-                pathComputerFactory, new FlowResourcesManager(persistenceManager, flowResourcesConfig), flowValidator,
-                new FlowCommandFactory());
 
         String flowId = "test-flow";
-        FlowPair flowPair = new FlowPair(flowId,
-                getOrCreateSwitch(SWITCH_ID_1), 1, 101,
-                getOrCreateSwitch(SWITCH_ID_3), 2, 102,
-                1);
-        flowPair.getForward().setBandwidth(0);
-        flowPair.setStatus(FlowStatus.IN_PROGRESS);
+        UnidirectionalFlow flow = new TestFlowBuilder(flowId)
+                .srcSwitch(getOrCreateSwitch(SWITCH_ID_1))
+                .srcPort(1)
+                .srcVlan(101)
+                .destSwitch(getOrCreateSwitch(SWITCH_ID_3))
+                .destPort(2)
+                .destVlan(102)
+                .bandwidth(0)
+                .buildUnidirectionalFlow();
+        flow.setStatus(FlowStatus.IN_PROGRESS);
 
         when(pathComputer.getPath(any())).thenReturn(PATH_DIRECT_1_TO_3);
 
-        flowService.createFlow(flowPair.getFlowEntity(), null, mock(FlowCommandSender.class));
+        flowService.createFlow(flow.getFlow(), null, mock(FlowCommandSender.class));
         flowService.updateFlowStatus(flowId, FlowStatus.UP);
 
         when(pathComputer.getPath(any(), eq(true))).thenReturn(PATH_1_TO_3_VIA_2);
@@ -173,7 +162,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
 
         Optional<FlowPair> foundFlow = persistenceManager.getRepositoryFactory().createFlowPairRepository()
                 .findById(flowId);
-        assertEquals(flowPair.getForward().getFlowId(), foundFlow.get().getForward().getFlowId());
+        assertEquals(flow.getFlowId(), foundFlow.get().getForward().getFlowId());
     }
 
     private void checkSamePaths(Path path, FlowPath flowPath) {
@@ -191,12 +180,35 @@ public class FlowServiceTest extends Neo4jBasedTest {
         assertThat(path.getSegments(), containsInAnyOrder(flowPathSegments));
     }
 
+    private void createTopology() {
+        Switch switch1 = getOrCreateSwitch(SWITCH_ID_1);
+        Switch switch2 = getOrCreateSwitch(SWITCH_ID_2);
+        Switch switch3 = getOrCreateSwitch(SWITCH_ID_3);
+
+        createIsl(switch1, 11, switch2, 11);
+        createIsl(switch2, 11, switch1, 11);
+        createIsl(switch2, 12, switch3, 12);
+        createIsl(switch3, 12, switch2, 12);
+        createIsl(switch1, 13, switch3, 13);
+        createIsl(switch3, 13, switch1, 13);
+    }
+
     private Switch getOrCreateSwitch(SwitchId switchId) {
-        SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         return switchRepository.findById(switchId).orElseGet(() -> {
             Switch sw = Switch.builder().switchId(switchId).status(SwitchStatus.ACTIVE).build();
             switchRepository.createOrUpdate(sw);
             return sw;
         });
+    }
+
+    private Isl createIsl(Switch srcSwitch, int srcPort, Switch destSwitch, int destPort) {
+        Isl isl = new Isl();
+        isl.setSrcSwitch(srcSwitch);
+        isl.setSrcPort(srcPort);
+        isl.setDestSwitch(destSwitch);
+        isl.setDestPort(destPort);
+        islRepository.createOrUpdate(isl);
+
+        return isl;
     }
 }
