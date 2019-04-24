@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
@@ -8,6 +9,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
 
 import spock.lang.Ignore
 
@@ -29,6 +31,10 @@ class FlowPriorityRerouteSpec extends BaseSpecification {
             newPriority -= 100
             flows << flow
         }
+
+        def srcSwitchCreatedMetersIds = getCreatedMeterIds(switchPair.src.dpId)
+        def dstSwitchCreatedMetersIds = getCreatedMeterIds(switchPair.dst.dpId)
+
         def currentPath = pathHelper.convert(northbound.getFlowPath(flows[0].id))
         //ensure all flows are on the same path
         assert pathHelper.convert(northbound.getFlowPath(flows[1].id)) == currentPath
@@ -56,10 +62,12 @@ class FlowPriorityRerouteSpec extends BaseSpecification {
         and: "Cleanup: revert system to original state"
         northbound.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         flows.each { flowHelper.deleteFlow(it.id) }
+        srcSwitchCreatedMetersIds.each { northbound.deleteMeter(switchPair.src.dpId, it) }
+        dstSwitchCreatedMetersIds.each { northbound.deleteMeter(switchPair.dst.dpId, it) }
+        database.resetCosts()
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
-        database.resetCosts()
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2211")
@@ -107,5 +115,9 @@ class FlowPriorityRerouteSpec extends BaseSpecification {
         flows.each { flowHelper.deleteFlow(it.id) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
+    }
+
+    List<Integer> getCreatedMeterIds(SwitchId switchId) {
+        return northbound.getAllMeters(switchId).meterEntries.findAll { it.meterId > MAX_SYSTEM_RULE_METER_ID }*.meterId
     }
 }
