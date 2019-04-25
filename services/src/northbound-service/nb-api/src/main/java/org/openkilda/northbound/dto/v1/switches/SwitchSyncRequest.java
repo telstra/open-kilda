@@ -16,9 +16,13 @@
 package org.openkilda.northbound.dto.v1.switches;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class SwitchSyncRequest {
     @JsonProperty("remove_excess")
     private boolean removeExcess;
