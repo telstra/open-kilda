@@ -52,7 +52,7 @@
         </dependency>
         <dependency>
             <groupId>org.openkilda</groupId>
-            <artifactId>api</artifactId>
+            <artifactId>nb-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

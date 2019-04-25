@@ -99,6 +99,9 @@ public class FlowService {
         }
         if (CollectionUtil.isEmpty(statuses) || statuses.contains("active")) {
             flows = flowsIntegrationService.getFlows();
+            if (flows == null) {
+                flows = new ArrayList<FlowInfo>();
+            }
         }
 
         if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
@@ -369,6 +372,7 @@ public class FlowService {
      */
     private void processInventoryFlow(final List<FlowInfo> flows, final List<InventoryFlow> inventoryFlows) {
         List<FlowInfo> discrepancyFlow = new ArrayList<FlowInfo>();
+        final Map<String, String> csNames = switchIntegrationService.getSwitchNames();
         for (InventoryFlow inventoryFlow : inventoryFlows) {
             int index = -1;
             for (FlowInfo flow : flows) {
@@ -406,7 +410,6 @@ public class FlowService {
                 flows.get(index).setIgnoreBandwidth(inventoryFlow.getIgnoreBandwidth());
                 flows.get(index).setInventoryFlow(true);
             } else {
-                final Map<String, String> csNames = switchIntegrationService.getSwitchNames();
                 FlowInfo flowObj = new FlowInfo();
                 flowConverter.toFlowInfo(flowObj, inventoryFlow, csNames);
                 flowObj.setInventoryFlow(true);

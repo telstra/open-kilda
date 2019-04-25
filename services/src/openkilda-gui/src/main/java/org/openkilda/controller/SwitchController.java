@@ -112,12 +112,20 @@ public class SwitchController {
     /**
      * Gets the links detail.
      *
+     * @param srcSwitch the src switch
+     * @param srcPort the src port
+     * @param dstSwitch the dst switch
+     * @param dstPort the dst port
      * @return the links detail
      */
     @RequestMapping(value = "/links", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody List<IslLinkInfo> getLinksDetail() {
-        return serviceSwitch.getIslLinks();
+    public @ResponseBody List<IslLinkInfo> getLinksDetail(
+            @RequestParam(value = "src_switch", required = false) String srcSwitch,
+            @RequestParam(value = "src_port", required = false) String srcPort,
+            @RequestParam(value = "dst_switch", required = false) String dstSwitch,
+            @RequestParam(value = "dst_port", required = false) String dstPort) {
+        return serviceSwitch.getIslLinks(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 
     /**

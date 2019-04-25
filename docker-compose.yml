@@ -265,7 +265,7 @@ services:
   northbound:
     container_name: openkilda-northbound
     build:
-      context: services/src/northbound/
+      context: services/src/northbound-service/northbound/
     ports:
       - "8080:8080"
     environment:

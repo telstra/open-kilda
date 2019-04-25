@@ -17,8 +17,10 @@ package org.openkilda.wfm.topology.network.service;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mockingDetails;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -28,8 +30,10 @@ import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.LinkProps;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionCallbackWithoutResult;
@@ -58,6 +62,9 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -69,6 +76,7 @@ public class NetworkIslServiceTest {
 
     private final Endpoint endpointAlpha1 = Endpoint.of(new SwitchId(1), 1);
     private final Endpoint endpointBeta2 = Endpoint.of(new SwitchId(2), 2);
+    private final Map<SwitchId, Switch> allocatedSwitches = new HashMap<>();
 
     private final NetworkOptions options = NetworkOptions.builder()
             .islCostRaiseOnPhysicalDown(10000)
@@ -220,30 +228,12 @@ public class NetworkIslServiceTest {
 
     @Test
     public void initializeFromHistoryDoNotReAllocateUsedBandwidth() {
-        Switch alphaSwitch = Switch.builder()
-                .switchId(endpointAlpha1.getDatapath())
-                .description("alpha-switch mock")
-                .build();
-        Switch betaSwitch = Switch.builder()
-                .switchId(endpointBeta2.getDatapath())
-                .description("beta-switch mock")
-                .build();
-
-        Isl islAlphaBeta = Isl.builder()
-                .srcSwitch(alphaSwitch).srcPort(endpointAlpha1.getPortNumber())
-                .destSwitch(betaSwitch).destPort(endpointBeta2.getPortNumber())
-                .status(IslStatus.ACTIVE)
+        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2)
                 .availableBandwidth(90)
-                .maxBandwidth(100)
-                .defaultMaxBandwidth(100)
                 .build();
-        Isl islBetaAlpha = islAlphaBeta.toBuilder()
-                .srcSwitch(betaSwitch).srcPort(endpointBeta2.getPortNumber())
-                .destSwitch(alphaSwitch).destPort(endpointAlpha1.getPortNumber())
+        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1)
+                .availableBandwidth(90)
                 .build();
-
-        when(switchRepository.findById(endpointAlpha1.getDatapath())).thenReturn(Optional.of(alphaSwitch));
-        when(switchRepository.findById(endpointBeta2.getDatapath())).thenReturn(Optional.of(betaSwitch));
 
         when(islRepository.findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
                                            endpointBeta2.getDatapath(), endpointBeta2.getPortNumber()))
@@ -293,15 +283,145 @@ public class NetworkIslServiceTest {
         verifyNoMoreInteractions(carrier);
     }
 
-    private void emulateEmptyPersistentDb() {
+    @Test
+    public void changeIslCostAndLinkPropsCostOnPortDown() {
+        // prepare data
+        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2)
+                .cost(10)
+                .build();
+        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1)
+                .cost(20)
+                .build();
+
+        mockPersistenceIsl(endpointAlpha1, endpointBeta2, null);
+        mockPersistenceIsl(endpointBeta2, endpointAlpha1, null);
+
+        mockPersistenceLinkProps(endpointAlpha1, endpointBeta2,
+                                 makeLinkProps(endpointAlpha1, endpointBeta2).cost(10).build());
+        mockPersistenceLinkProps(endpointBeta2, endpointAlpha1, null);
+
+        mockPersistenceBandwidthAllocation(endpointAlpha1, endpointBeta2, 0L);
+        mockPersistenceBandwidthAllocation(endpointBeta2, endpointAlpha1, 0L);
+
+        when(featureTogglesRepository.find()).thenReturn(Optional.empty());
+
+        // setup alpha -> beta half
+        IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
+        service.islUp(endpointAlpha1, reference, new IslDataHolder(islAlphaBeta));
+
+        // setup beta -> alpha half
+        reset(islRepository);
         when(islRepository.findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
                                            endpointBeta2.getDatapath(), endpointBeta2.getPortNumber()))
-                .thenReturn(Optional.empty());
-        when(linkPropsRepository.findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
-                                                 endpointBeta2.getDatapath(), endpointBeta2.getPortNumber()))
-                .thenReturn(Collections.emptyList());
-        when(flowPathRepository.getUsedBandwidthBetweenEndpoints(
-                endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
-                endpointBeta2.getDatapath(), endpointBeta2.getPortNumber())).thenReturn(0L);
+                .thenReturn(Optional.of(islAlphaBeta.toBuilder().build()));
+        service.islUp(endpointBeta2, reference, new IslDataHolder(islBetaAlpha));
+
+        // mock/prepare persistent data
+        reset(carrier);
+        reset(islRepository);
+        reset(linkPropsRepository);
+
+        when(islRepository.findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
+                                           endpointBeta2.getDatapath(), endpointBeta2.getPortNumber()))
+                .thenReturn(Optional.of(islAlphaBeta));
+        when(islRepository.findByEndpoints(endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
+                                           endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber()))
+                .thenReturn(Optional.of(islBetaAlpha));
+
+        mockPersistenceLinkProps(endpointAlpha1, endpointBeta2,
+                                 makeLinkProps(endpointAlpha1, endpointBeta2).cost(10).build());
+
+        // isl fail by PORT DOWN
+        service.islDown(endpointAlpha1, reference, true);
+
+        // ensure we have stored cost update
+        verify(islRepository, atLeastOnce()).createOrUpdate(argThat(
+                link ->
+                        link.getSrcSwitch().getSwitchId().equals(this.endpointAlpha1.getDatapath())
+                                && link.getSrcPort() == this.endpointAlpha1.getPortNumber()
+                                && link.getDestSwitch().getSwitchId().equals(this.endpointBeta2.getDatapath())
+                                && link.getDestPort() == this.endpointBeta2.getPortNumber()
+                                && link.getCost() == options.getIslCostRaiseOnPhysicalDown() + 10));
+        verify(islRepository, atLeastOnce()).createOrUpdate(argThat(
+                link ->
+                        link.getSrcSwitch().getSwitchId().equals(this.endpointBeta2.getDatapath())
+                                && link.getSrcPort() == this.endpointBeta2.getPortNumber()
+                                && link.getDestSwitch().getSwitchId().equals(this.endpointAlpha1.getDatapath())
+                                && link.getDestPort() == this.endpointAlpha1.getPortNumber()
+                                && link.getCost() == options.getIslCostRaiseOnPhysicalDown() + 20));
+
+        verify(linkPropsRepository).findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
+                                                    endpointBeta2.getDatapath(), endpointBeta2.getPortNumber());
+        verify(linkPropsRepository).createOrUpdate(argThat(
+                props ->
+                        props.getSrcSwitchId() == endpointAlpha1.getDatapath()
+                                && props.getSrcPort() == endpointAlpha1.getPortNumber()
+                                && props.getDstSwitchId() == endpointBeta2.getDatapath()
+                                && props.getDstPort() == endpointBeta2.getPortNumber()
+                                && props.getCost() == options.getIslCostRaiseOnPhysicalDown() + 10));
+        verify(linkPropsRepository).findByEndpoints(endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
+                                                    endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber());
+        verifyNoMoreInteractions(linkPropsRepository);
+    }
+
+    private void emulateEmptyPersistentDb() {
+        mockPersistenceIsl(endpointAlpha1, endpointBeta2, null);
+        mockPersistenceLinkProps(endpointAlpha1, endpointBeta2, null);
+        mockPersistenceBandwidthAllocation(endpointAlpha1, endpointBeta2, 0L);
+    }
+
+    private void mockPersistenceIsl(Endpoint source, Endpoint dest, Isl link) {
+        when(islRepository.findByEndpoints(source.getDatapath(), source.getPortNumber(),
+                                           dest.getDatapath(), dest.getPortNumber()))
+                .thenReturn(Optional.ofNullable(link));
+    }
+
+    private void mockPersistenceLinkProps(Endpoint source, Endpoint dest, LinkProps props) {
+        List<LinkProps> response = Collections.emptyList();
+        if (props != null) {
+            response = Collections.singletonList(props);
+        }
+        when(linkPropsRepository.findByEndpoints(source.getDatapath(), source.getPortNumber(),
+                                                 dest.getDatapath(), dest.getPortNumber()))
+                .thenReturn(response);
+    }
+
+    private void mockPersistenceBandwidthAllocation(Endpoint source, Endpoint dest, long allocation) {
+        when(flowPathRepository.getUsedBandwidthBetweenEndpoints(source.getDatapath(), source.getPortNumber(),
+                                                                    dest.getDatapath(), dest.getPortNumber()))
+                .thenReturn(allocation);
+    }
+
+    private Isl.IslBuilder makeIsl(Endpoint source, Endpoint dest) {
+        Switch sourceSwitch = lookupSwitchCreateMockIfAbsent(source.getDatapath());
+        Switch destSwitch = lookupSwitchCreateMockIfAbsent(dest.getDatapath());
+        return Isl.builder()
+                .srcSwitch(sourceSwitch).srcPort(source.getPortNumber())
+                .destSwitch(destSwitch).destPort(dest.getPortNumber())
+                .status(IslStatus.ACTIVE)
+                .availableBandwidth(100)
+                .maxBandwidth(100)
+                .defaultMaxBandwidth(100);
+    }
+
+    private LinkProps.LinkPropsBuilder makeLinkProps(Endpoint source, Endpoint dest) {
+        return LinkProps.builder()
+                .srcSwitchId(source.getDatapath()).srcPort(source.getPortNumber())
+                .dstSwitchId(dest.getDatapath()).dstPort(dest.getPortNumber());
+    }
+
+    private Switch lookupSwitchCreateMockIfAbsent(SwitchId datapath) {
+        Switch entry = allocatedSwitches.get(datapath);
+        if (entry == null) {
+            entry = Switch.builder()
+                    .switchId(datapath)
+                    .status(SwitchStatus.ACTIVE)
+                    .description("autogenerated switch mock")
+                    .build();
+            allocatedSwitches.put(datapath, entry);
+            when(switchRepository.findById(datapath)).thenReturn(Optional.of(entry));
+        }
+
+        return entry;
     }
 }

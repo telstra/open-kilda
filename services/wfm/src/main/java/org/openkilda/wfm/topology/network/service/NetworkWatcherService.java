@@ -139,8 +139,8 @@ public class NetworkWatcherService {
         producedPackets.remove(packet);
 
         if (confirmedPackets.remove(packet)) {
-            log.info("Detect discovery packet lost sent via {} id:{} task:{}",
-                     packet.endpoint, packet.packetNo, taskId);
+            log.debug("Detect discovery packet lost sent via {} id:{} task:{}",
+                      packet.endpoint, packet.packetNo, taskId);
             carrier.discoveryFailed(packet.getEndpoint(), packet.packetNo, now());
         }
     }

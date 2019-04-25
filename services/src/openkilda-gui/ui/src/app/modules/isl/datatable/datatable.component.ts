@@ -22,6 +22,7 @@ import { ToastrService } from "ngx-toastr";
 import { NgxSpinnerService } from "ngx-spinner";
 import { LoaderService } from "../../../common/services/loader.service";
 import { Renderer3 } from "@angular/core/src/render3/interfaces/renderer";
+import { ClipboardService } from "ngx-clipboard";
 
 @Component({
   selector: "app-datatable",
@@ -53,38 +54,9 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
   expandedAvailableBandwidth : boolean = false;
   expandedLatency : boolean = false;
   expandedUnidirectional : boolean = false;
-
+  clipBoardItems = [];
   showIslDetail = function(data) {
-    var flowData = {
-      source_switch: "",
-      src_port: "",
-      source_switch_name: "",
-      target_switch: "",
-      dst_port: "",
-      target_switch_name: "",
-      available_bandwidth: "",
-      speed: "",
-      state: "",
-      latency: "",
-      unidirectional: "",
-      cost: 0
-    };
-
-    flowData.source_switch_name = data.source_switch_name;
-    flowData.source_switch = data.source_switch;
-
-    flowData.src_port = data.src_port;
-    flowData.target_switch_name = data.target_switch_name;
-    flowData.target_switch = data.target_switch;
-    flowData.dst_port = data.dst_port;
-    flowData.state = data.state;
-    flowData.speed = data.speed;
-    flowData.available_bandwidth = data.available_bandwidth;
-    flowData.latency = this.checkValue(data.latency);
-    flowData.unidirectional = data.unidirectional;
-
-    localStorage.setItem("linkData", JSON.stringify(flowData));
-    this.router.navigate(["/isl/switch/isl"]);
+     this.router.navigate(["/isl/switch/isl/"+data.source_switch+"/"+data.src_port+"/"+data.target_switch+"/"+data.dst_port]);
   };
 
   constructor(
@@ -93,7 +65,8 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
     private islListService: IslListService,
     private toastr: ToastrService,
     private loaderService: LoaderService,
-    private renderer: Renderer2
+    private renderer: Renderer2,
+    private clipboardService: ClipboardService
   ) {
     this.wrapperHide = false;
   }
@@ -216,6 +189,7 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
     if(change.data){
       if(change.data.currentValue){
         this.data  = change.data.currentValue;
+        this.clipBoardItems = this.data;
       }
     }
   }
@@ -246,4 +220,10 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
       return false;
     }
   }
+
+  copyToClip(event, copyItem,index) {
+     var copyData = this.checkValue(this.clipBoardItems[index][copyItem]);
+    this.clipboardService.copyFromContent(copyData);
+  }
+
 }

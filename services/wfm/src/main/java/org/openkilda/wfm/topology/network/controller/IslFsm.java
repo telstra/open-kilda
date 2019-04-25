@@ -591,6 +591,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         if (link.getCost() < costRaiseOnPhysicalDown) {
             link.setTimeModify(timeNow);
             link.setCost(link.getCost() + costRaiseOnPhysicalDown);
+            propagateIslCostUpdateToLinkProps(link, timeNow);
         }
     }
 
@@ -608,6 +609,18 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             if (maxBandwidth != null) {
                 isl.maxBandwidth(maxBandwidth);
             }
+        }
+    }
+
+    private void propagateIslCostUpdateToLinkProps(Isl link, Instant timeNow) {
+        Optional<LinkProps> linkProps = loadLinkProps(
+                Endpoint.of(link.getSrcSwitch().getSwitchId(), link.getSrcPort()),
+                Endpoint.of(link.getDestSwitch().getSwitchId(), link.getDestPort()));
+        if (linkProps.isPresent()) {
+            LinkProps entry = linkProps.get();
+            entry.setCost(link.getCost());
+            entry.setTimeModify(timeNow);
+            linkPropsRepository.createOrUpdate(entry);
         }
     }
 

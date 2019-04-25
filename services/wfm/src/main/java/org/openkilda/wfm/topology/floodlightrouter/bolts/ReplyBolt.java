@@ -20,6 +20,7 @@ import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.topology.AbstractTopology;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -44,7 +45,8 @@ public class ReplyBolt extends AbstractBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declareStream(outputStream, new Fields(AbstractTopology.KEY_FIELD,
-                AbstractTopology.MESSAGE_FIELD));
+        Fields fields = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_KEY,
+                                   FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
+        outputFieldsDeclarer.declareStream(outputStream, fields);
     }
 }

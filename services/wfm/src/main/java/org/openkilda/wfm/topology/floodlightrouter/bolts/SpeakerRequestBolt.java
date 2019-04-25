@@ -32,6 +32,7 @@ import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMapping;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -53,22 +54,18 @@ public class SpeakerRequestBolt extends RequestBolt {
                 updateSwitchMapping((SwitchMapping) input.getValueByField(
                         AbstractTopology.MESSAGE_FIELD));
             } else {
-                String json = input.getValueByField(AbstractTopology.MESSAGE_FIELD).toString();
+                String json = pullRequest(input);
                 Message message = MAPPER.readValue(json, Message.class);
                 if (RouterUtils.isBroadcast(message)) {
                     for (String region : regions) {
-                        String targetStream = Stream.formatWithRegion(outputStream, region);
-                        Values values = new Values(json);
-                        outputCollector.emit(targetStream, input, values);
+                        proxyRequestToSpeaker(input, region);
                     }
                 } else {
                     SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
                     if (switchId != null) {
                         String region = switchTracker.lookupRegion(switchId);
                         if (region != null) {
-                            String targetStream = Stream.formatWithRegion(outputStream, region);
-                            Values values = new Values(json);
-                            outputCollector.emit(targetStream, input, values);
+                            proxyRequestToSpeaker(input, region);
                         } else {
                             if (message instanceof CommandMessage) {
                                 processNotFoundError((CommandMessage) message, switchId, input, json);
@@ -110,7 +107,7 @@ public class SpeakerRequestBolt extends RequestBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         super.declareOutputFields(outputFieldsDeclarer);
-        Fields fields = new Fields(AbstractTopology.MESSAGE_FIELD);
+        Fields fields = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
         outputFieldsDeclarer.declareStream(Stream.NORTHBOUND_REPLY, fields);
         outputFieldsDeclarer.declareStream(Stream.NB_WORKER, fields);
     }

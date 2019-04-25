@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeFalse
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -22,7 +23,7 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
-import org.openkilda.northbound.dto.flows.PingInput
+import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.web.client.HttpClientErrorException
@@ -102,8 +103,11 @@ class SwitchRulesSpec extends BaseSpecification {
         then: "Previously installed rules are not deleted from the switch"
         compareRules(northbound.getSwitchRules(srcSwitch.dpId).flowEntries, defaultPlusFlowRules)
 
-        and: "Delete previously installed rules"
+        and: "Delete previously installed rules and meters on the srcSwitch"
         northbound.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
+        northbound.getAllMeters(srcSwitch.dpId).meterEntries*.meterId.findAll { it >= MIN_FLOW_METER_ID }.each {
+            northbound.deleteMeter(srcSwitch.dpId, it)
+        }
         Wrappers.wait(RULES_DELETION_TIME) {
             assert northbound.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwitch.defaultCookies.size()
         }
@@ -467,15 +471,11 @@ class SwitchRulesSpec extends BaseSpecification {
     @Unroll
     def "Able to synchronize rules for #description on a switch (install missing rules)"() {
         given: "Two active not neighboring switches"
-        def switches = topology.getActiveSwitches()
-        def allLinks = northbound.getAllLinks()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allLinks.every { link -> !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId) }
-        } ?: assumeTrue("No suiting switches found", false)
+        def potentialFlow = topologyHelper.findNonNeighbors() ?: 
+                assumeTrue("No suiting switches found", false)
 
         and: "Create a transit-switch flow going through these switches"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelper.randomFlow(potentialFlow)
         flow.maximumBandwidth = maximumBandwidth
         flow.ignoreBandwidth = maximumBandwidth ? false : true
         flowHelper.addFlow(flow)

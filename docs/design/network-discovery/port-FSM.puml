@@ -1,5 +1,6 @@
 Internal state:
 * history data (constructor)
+* report FSM
 
 Input signals:
 * port-up (switch)
@@ -31,11 +32,13 @@ state OPERATIONAL {
     UNKNOWN --> UP : port-up
 
     DOWN --> UP : port-up
+    DOWN : enter / emit port-up into report
     DOWN : enter / emit physical-down
     DOWN : enter / emit delWatch
     DOWN : poll-fail / emit fail
 
     UP --> DOWN : port-down
+    UP : enter / emit port-down into report
     UP : enter / issue addWatch
     UP : poll-discovery / emit discovery
     UP : poll-fail / emit fail

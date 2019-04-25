@@ -75,3 +75,13 @@ a.badge.badge-dark.custom-button {
 .path:last-child .line:nth-child(6){
     display: none;
 }
+.islPath{
+    cursor:pointer;
+    width:50px!important;
+}
+.islPath:hover {
+    background: #00baff!important;
+    height:4px!important;
+   
+  }
+ 

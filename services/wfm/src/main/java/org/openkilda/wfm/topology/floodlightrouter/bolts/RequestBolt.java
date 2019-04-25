@@ -25,8 +25,10 @@ import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.service.RouterUtils;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMapping;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchTracker;
+import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -62,16 +64,14 @@ public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, 
                 updateSwitchMapping((SwitchMapping) input.getValueByField(
                         AbstractTopology.MESSAGE_FIELD));
             } else {
-                String json = input.getValueByField(AbstractTopology.MESSAGE_FIELD).toString();
+                String json = pullRequest(input);
                 Message message = MAPPER.readValue(json, Message.class);
 
                 SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
                 if (switchId != null) {
                     String region = switchTracker.lookupRegion(switchId);
                     if (region != null) {
-                        String targetStream = Stream.formatWithRegion(outputStream, region);
-                        Values values = new Values(json);
-                        outputCollector.emit(targetStream, input, values);
+                        proxyRequestToSpeaker(input, region);
                     } else {
                         log.error("Unable to lookup region for message: {}", json);
                     }
@@ -85,6 +85,25 @@ public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, 
         } finally {
             outputCollector.ack(input);
         }
+    }
+
+    protected void proxyRequestToSpeaker(Tuple input, String region) {
+        String targetStream = Stream.formatWithRegion(outputStream, region);
+        String key = pullRequestKey(input);
+        String value = pullRequest(input);
+        outputCollector.emit(targetStream, input, makeSpeakerTuple(key, value));
+    }
+
+    protected String pullRequest(Tuple input) {
+        return input.getStringByField(KafkaRecordTranslator.FIELD_ID_PAYLOAD);
+    }
+
+    protected String pullRequestKey(Tuple input) {
+        return input.getStringByField(KafkaRecordTranslator.FIELD_ID_KEY);
+    }
+
+    protected Values makeSpeakerTuple(String key, String json) {
+        return new Values(key, json);
     }
 
     /**
@@ -105,15 +124,14 @@ public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, 
         switchTracker = tracker;
     }
 
-
     protected void updateSwitchMapping(SwitchMapping mapping) {
         switchTracker.updateRegion(mapping);
     }
 
-
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        Fields fields = new Fields(AbstractTopology.MESSAGE_FIELD);
+        Fields fields = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_KEY,
+                                   FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
         if (regions == null || regions.isEmpty()) {
             outputFieldsDeclarer.declareStream(outputStream, fields);
         } else {
