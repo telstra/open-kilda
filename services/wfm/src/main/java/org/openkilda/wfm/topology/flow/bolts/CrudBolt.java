@@ -50,6 +50,7 @@ import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
+import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -597,9 +598,14 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             UnidirectionalFlow firstFlow = FlowMapper.INSTANCE.map(request.getFirstFlow());
             UnidirectionalFlow secondFlow = FlowMapper.INSTANCE.map(request.getSecondFlow());
 
-
+            List<FlowPair> flowPairs =
+                    flowService.swapFlowEnpoints(firstFlow.getFlowEntity(), secondFlow.getFlowEntity(),
+                            new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             logger.info("Swap endpoint");
+            Values values = new Values(new InfoMessage(buildSwapFlowResponse(flowPairs), message.getTimestamp(),
+                    message.getCorrelationId(), Destination.NORTHBOUND, null));
+            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FeatureTogglesNotEnabledException e) {
             // TODO (vborisovskii): Change INTERNAL_ERROR to ErrorType.NOT_PERMITTED after merge #2250
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -759,6 +765,11 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         FlowDto flowDto = FlowMapper.INSTANCE.map(flow);
         flowDto.setCookie(flow.getCookie() & Cookie.FLOW_COOKIE_VALUE_MASK);
         return new FlowResponse(flowDto);
+    }
+
+    private SwapFlowResponse buildSwapFlowResponse(List<FlowPair> flows) {
+        return new SwapFlowResponse(buildFlowResponse(flows.get(0).getForward()),
+                buildFlowResponse(flows.get(0).getForward()));
     }
 
     private ErrorMessage buildErrorMessage(String correlationId, ErrorData errorData) {

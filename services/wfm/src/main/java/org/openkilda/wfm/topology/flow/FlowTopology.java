@@ -101,6 +101,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.DUMP.toString())
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.UPDATE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.DELETE.toString(), fieldFlowId)
+                .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.SWAP_ENDPOINT.toString())
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.PUSH.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.UNPUSH.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.REROUTE.toString(), fieldFlowId)
@@ -110,8 +111,7 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 // tackle during multi instance testing
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.DEALLOCATE_RESOURCES.toString(),
                         fieldFlowId)
-                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId)
-                .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.SWAP_ENDPOINT.toString());
+                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
 
         /*

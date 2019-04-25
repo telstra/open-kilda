@@ -18,9 +18,7 @@ package org.openkilda.messaging.command.flow;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.model.FlowDto;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.Value;
@@ -30,15 +28,20 @@ import lombok.Value;
  */
 @Value
 @EqualsAndHashCode(callSuper = false)
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(SnakeCaseStrategy.class)
 public class SwapFlowEndpointRequest extends CommandData {
     private static final long serialVersionUID = 1L;
 
     @NonNull
+    @JsonProperty("first_flow")
     private FlowDto firstFlow;
 
     @NonNull
+    @JsonProperty("second_flow")
     private FlowDto secondFlow;
 
+    public SwapFlowEndpointRequest(@JsonProperty("first_flow") FlowDto firstFlow,
+                                   @JsonProperty("second_flow")FlowDto secondFlow) {
+        this.firstFlow = firstFlow;
+        this.secondFlow = secondFlow;
+    }
 }

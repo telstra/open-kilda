@@ -23,12 +23,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.EqualsAndHashCode;
 
 import java.util.Objects;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
+@EqualsAndHashCode
 public class SwapFlowResponse extends InfoData {
 
     private static final long serialVersionUID = 8858971052045302274L;
