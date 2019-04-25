@@ -223,7 +223,7 @@ public class SplitterBolt extends BaseRichBolt {
                 logger.info("Swap endpoint for flow {} and {}",
                         ((SwapFlowEndpointRequest) data).getFirstFlow().getFlowId(),
                         ((SwapFlowEndpointRequest) data).getSecondFlow().getFlowId());
-                values = new Values(message);
+                values = new Values(message, ((SwapFlowEndpointRequest) data).getFirstFlow().getFlowId());
                 outputCollector.emit(StreamType.SWAP_ENDPOINT.toString(), tuple, values);
             } else {
                 logger.debug("Skip undefined CommandMessage: {}={}", Utils.CORRELATION_ID, message.getCorrelationId());
@@ -258,6 +258,7 @@ public class SplitterBolt extends BaseRichBolt {
         outputFieldsDeclarer.declareStream(StreamType.DEALLOCATE_RESOURCES.toString(),
                 FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.SWAP_ENDPOINT.toString(), FlowTopology.fieldsMessageFlowId);
     }
 
     /**

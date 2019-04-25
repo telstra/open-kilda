@@ -1303,11 +1303,35 @@ public class FlowService extends BaseFlowService {
      * @param sender a command sender for flow rules installation and deletion.
      * @return the flows with swapped endpoints.
      */
-    public List<UpdatedFlowPathsWithEncapsulation> swapFlowEnpoints(Flow firstFlow, Flow secondFlow,
+    public List<FlowPair> swapFlowEnpoints(Flow firstFlow, Flow secondFlow,
                                                                     FlowCommandSender sender)
             throws FlowNotFoundException {
         String firstFlowId = firstFlow.getFlowId();
         String secondFlowId = secondFlow.getFlowId();
+
+        Flow existingFirstFlow = flowRepository.findById(firstFlowId).orElseThrow(
+                () -> new FlowNotFoundException(firstFlowId));
+        Flow existingSecondFlow = flowRepository.findById(secondFlowId).orElseThrow(
+                () -> new FlowNotFoundException(secondFlowId));
+
+        existingFirstFlow = existingFirstFlow.toBuilder()
+                .srcSwitch(firstFlow.getSrcSwitch())
+                .srcPort(firstFlow.getSrcPort())
+                .srcPort(firstFlow.getSrcVlan())
+                .destSwitch(firstFlow.getDestSwitch())
+                .destPort(firstFlow.getDestPort())
+                .destVlan(firstFlow.getDestVlan())
+                .build();
+
+        existingSecondFlow = existingSecondFlow.toBuilder()
+                .srcSwitch(secondFlow.getSrcSwitch())
+                .srcPort(secondFlow.getSrcPort())
+                .srcPort(secondFlow.getSrcVlan())
+                .destSwitch(secondFlow.getDestSwitch())
+                .destPort(secondFlow.getDestPort())
+                .destVlan(secondFlow.getDestVlan())
+                .build();
+
 
         FlowPathsWithEncapsulation currentFirstFlow =
                 getFlowPathPairWithEncapsulation(firstFlowId).orElseThrow(() ->
@@ -1315,7 +1339,7 @@ public class FlowService extends BaseFlowService {
         FlowPathsWithEncapsulation currentSecondFlow =
                 getFlowPathPairWithEncapsulation(secondFlowId).orElseThrow(() ->
                         new FlowNotFoundException(firstFlowId));
-        return swapFlows(currentFirstFlow, firstFlow, currentSecondFlow, secondFlow, sender);
+        return swapFlows(currentFirstFlow, existingFirstFlow, currentSecondFlow, existingSecondFlow, sender);
     }
 
     private UpdatedFlowPathsWithEncapsulation processUpdateFlow(FlowPathsWithEncapsulation currentFlow,
@@ -1372,7 +1396,7 @@ public class FlowService extends BaseFlowService {
     }
 
     // todo: replace VOID to type
-    private List<UpdatedFlowPathsWithEncapsulation> swapFlows(FlowPathsWithEncapsulation currentFirstFlow,
+    private List<FlowPair> swapFlows(FlowPathsWithEncapsulation currentFirstFlow,
                                                               Flow updatingFirstFlow,
                                                               FlowPathsWithEncapsulation currentSecondFlow,
                                                               Flow updatingSecondFlow, FlowCommandSender sender) {
@@ -1406,7 +1430,7 @@ public class FlowService extends BaseFlowService {
                 secondCommandGroup,
                 createFlowPathStatusRequests(flows.get(1), FlowPathStatus.ACTIVE),
                 createFlowPathStatusRequests(flows.get(1), FlowPathStatus.INACTIVE));
-        return flows;
+        return flows.stream().map(this::buildFlowPair).collect(Collectors.toList());
     }
 
     @Value
