@@ -48,6 +48,7 @@ import org.openkilda.northbound.dto.v1.switches.PortDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 
 import java.util.List;
@@ -106,6 +107,8 @@ public interface NorthboundService {
     List<Long> deleteSwitchRules(SwitchId switchId, int priority);
 
     RulesSyncResult synchronizeSwitchRules(SwitchId switchId);
+
+    SwitchSyncResult synchronizeSwitch(SwitchId switchId, boolean removeExcess);
 
     RulesValidationResult validateSwitchRules(SwitchId switchId);
 
