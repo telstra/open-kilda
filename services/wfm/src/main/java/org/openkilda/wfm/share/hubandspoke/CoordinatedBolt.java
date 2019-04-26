@@ -16,7 +16,7 @@
 package org.openkilda.wfm.share.hubandspoke;
 
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt.CoordinatorCommand;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
@@ -41,22 +41,19 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
     }
 
     @Override
-    public void execute(Tuple input) {
-        log.debug("{} input tuple from {}:{} size {}",
-                getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(), input.size());
-        try {
-            if (CoordinatorBolt.ID.equals(input.getSourceComponent())) {
-                String key = input.getStringByField(MessageTranslator.KEY_FIELD);
-                onTimeout(key);
-            } else {
-                handleInput(input);
-            }
-        } catch (Exception e) {
-            log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
-        } finally {
-            if (autoAck) {
-                getOutput().ack(input);
-            }
+    protected void dispatch(Tuple input) throws AbstractException {
+        if (CoordinatorBolt.ID.equals(input.getSourceComponent())) {
+            String key = input.getStringByField(MessageTranslator.KEY_FIELD);
+            onTimeout(key);
+        } else {
+            super.dispatch(input);
+        }
+    }
+
+    @Override
+    protected void ack(Tuple input) {
+        if (autoAck) {
+            super.ack(input);
         }
     }
 
@@ -70,9 +67,9 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
      * Should be called once operation is finished and callback/timer should be cancelled.
      * @param key request's identifier.
      */
-    protected void cancelCallback(String key, Tuple tuple) throws PipelineException {
-        emit(CoordinatorBolt.INCOME_STREAM, tuple,
-                new Values(key, CoordinatorCommand.CANCEL_CALLBACK, 0));
+    protected void cancelCallback(String key, Tuple tuple) {
+        emitWithContext(CoordinatorBolt.INCOME_STREAM, tuple,
+                        new Values(key, CoordinatorCommand.CANCEL_CALLBACK, 0));
     }
 
     /**
@@ -80,7 +77,7 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
      * used.
      * @param key operation identifier.
      */
-    protected void registerCallback(String key, Tuple tuple) throws PipelineException {
+    protected void registerCallback(String key, Tuple tuple) {
         registerCallback(key, defaultTimeout, tuple);
     }
 
@@ -89,8 +86,8 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
      * @param key operation identifier.
      * @param timeout how long coordinator waits for a response. If no response received - timeout error occurs.
      */
-    protected void registerCallback(String key, int timeout, Tuple tuple) throws PipelineException {
-        emit(CoordinatorBolt.INCOME_STREAM, tuple,
-                new Values(key, CoordinatorCommand.REQUEST_CALLBACK, timeout));
+    protected void registerCallback(String key, int timeout, Tuple tuple) {
+        emitWithContext(CoordinatorBolt.INCOME_STREAM, tuple,
+                        new Values(key, CoordinatorCommand.REQUEST_CALLBACK, timeout));
     }
 }

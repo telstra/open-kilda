@@ -216,26 +216,26 @@ public class OfEventWfmTest extends AbstractStormTest {
 
         InfoMessage switch1Up =
                 new InfoMessage(new SwitchInfoData(new SwitchId("ff:01"), SwitchChangeType.ACTIVATED, null, null,
-                        null, null, false), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
+                        null, null, false), 1, "discovery-test", Destination.WFM_OF_DISCOVERY, null);
         json = MAPPER.writeValueAsString(switch1Up);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 0, topoInputTopic);
         linkBolt.execute(tuple);
 
         InfoMessage switch2Up =
                 new InfoMessage(new SwitchInfoData(new SwitchId("ff:02"), SwitchChangeType.ACTIVATED, null, null,
-                        null, null, false), 1, "discovery-test", Destination.WFM_OF_DISCOVERY);
+                        null, null, false), 1, "discovery-test", Destination.WFM_OF_DISCOVERY, null);
         json = MAPPER.writeValueAsString(switch2Up);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 0, topoInputTopic);
         linkBolt.execute(tuple);
 
         InfoMessage port1Up = new InfoMessage(new PortInfoData(new SwitchId("ff:02"), 1, PortChangeType.UP), 1,
-                "discovery-test", Destination.WFM_OF_DISCOVERY);
+                "discovery-test", Destination.WFM_OF_DISCOVERY, null);
         json = MAPPER.writeValueAsString(port1Up);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 1, topoInputTopic);
         linkBolt.execute(tuple);
 
         InfoMessage port2Up = new InfoMessage(new PortInfoData(new SwitchId("ff:01"), 2, PortChangeType.UP), 1,
-                "discovery-test", Destination.WFM_OF_DISCOVERY);
+                "discovery-test", Destination.WFM_OF_DISCOVERY, null);
         json = MAPPER.writeValueAsString(port2Up);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(json), 1, topoInputTopic);
         linkBolt.execute(tuple);
@@ -243,10 +243,15 @@ public class OfEventWfmTest extends AbstractStormTest {
         Tuple tickTuple = new TupleImpl(topologyContext, Collections.emptyList(), 2, Constants.SYSTEM_TICK_STREAM_ID);
         linkBolt.execute(tickTuple);
 
-        InfoData data = new IslInfoData(10L,
-                new PathNode(new SwitchId("ff:01"), 1, 0, 10L),
-                new PathNode(new SwitchId("ff:02"), 2, 1, 10L),
-                10000L, IslChangeType.DISCOVERED, 9000L, false);
+        InfoData data = IslInfoData.builder()
+                .latency(10L)
+                .source(new PathNode(new SwitchId("ff:01"), 1, 0, 10L))
+                .destination(new PathNode(new SwitchId("ff:02"), 2, 1, 10L))
+                .speed(10000L)
+                .state(IslChangeType.DISCOVERED)
+                .availableBandwidth(9000L)
+                .underMaintenance(false)
+                .build();
         String islDiscovered = MAPPER.writeValueAsString(data);
         tuple = new TupleImpl(topologyContext, Collections.singletonList(islDiscovered), 3, topoInputTopic);
         linkBolt.execute(tuple);

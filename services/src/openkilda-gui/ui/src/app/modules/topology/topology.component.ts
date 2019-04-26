@@ -240,7 +240,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
   loadSwitchLinks = () => {
     this.switchService.getSwitchLinks().subscribe(
       links => {
-        this.graphdata.isl = links;
+         this.graphdata.isl = links;
         this.topologyService.setLinksData(links);
         try {
           if (this.viewOptions.FLOW_CHECKED) {
@@ -279,10 +279,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       this.graphdata.flow.length == 0
     ) {
       this.appLoader.hide();
-      /*common.infoMessage('No Data Available','info');
-			$("#wait").css("display", "none");
-			$("#switchesgraph").removeClass("hide");*/
-      //return false;
     }
 
     /*
@@ -294,7 +290,8 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     this.nodes = this.graphdata.switch;
     this.links = this.graphdata.isl;
     this.flows = this.graphdata.flow;
-
+    
+       
     this.linksSourceArr = [];
 
     var linksArr = [];
@@ -309,12 +306,13 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         });
         for (var i = 0, len = result.length; i < len; i++) {
           var row = result[i];
-
           if (row.length >= 1) {
             for (var j = 0, len1 = row.length; j < len1; j++) {
               var key = row[j].source_switch + "_" + row[j].target_switch;
-              if (typeof this.linksSourceArr[key] !== "undefined") {
-                this.linksSourceArr[key].push(row[j]);
+              var key1 = row[j].target_switch + "_" + row[j].source_switch;
+              var prcessKey = ( this.linksSourceArr && typeof this.linksSourceArr[key] !== "undefined") ? key:key1;
+              if (typeof this.linksSourceArr[prcessKey] !== "undefined") {
+                this.linksSourceArr[prcessKey].push(row[j]);
               } else {
                 this.linksSourceArr[key] = [];
                 this.linksSourceArr[key].push(row[j]);
@@ -322,9 +320,10 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
             }
           }
         }
+        
       } catch (e) {}
     }
-
+   
     if (this.flows.length > 0) {
       this.links = this.links.concat(this.flows);
     }
@@ -343,17 +342,22 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
           this.links[j].source = i;
           this.links[j].target = i;
         } else {
-          if (this.nodes[i].switch_id == this.links[j]["source_switch"]) {
-            this.links[j].source = i;
+          var key = this.links[j]["source_switch"] +"_"+this.links[j]["target_switch"]; 
+          var key1 = this.links[j]["target_switch"] +"_"+this.links[j]["source_switch"]; 
+          var processKey = this.linksSourceArr && typeof this.linksSourceArr[key] !='undefined' ? key: key1;
+          var sourceObj = processKey.split("_")[0];
+          var targetObj = processKey.split("_")[1];
+          if (this.nodes[i].switch_id == sourceObj) {
+           this.links[j].source = i;
           } else if (
-            this.nodes[i].switch_id == this.links[j]["target_switch"]
+            this.nodes[i].switch_id == targetObj
           ) {
             this.links[j].target = i;
           }
         }
       }
     }
-
+    
     this.sortLinks();
     this.setLinkIndexAndNum();
 
@@ -391,7 +395,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       .on("start", this.dragStart)
       .on("drag", this.dragging)
       .on("end", this.dragEnd);
-
     this.insertLinks(this.links);
     this.insertNodes(this.nodes);
     this.insertCircles();
@@ -613,7 +616,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   private insertLinks(links) {
     let ref = this;
-
     let graphLinksData = this.graphLinkGroup.selectAll("path.link").data(links);
 
     let graphNewLink = graphLinksData
@@ -879,7 +881,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       })
       .attr("stroke", function(d, index) {
         if (d.hasOwnProperty("flow_count")) {
-          return "#228B22";
+          return ISL.FLOWCOUNT;
         } else {
           if (
             d.unidirectional &&
@@ -889,6 +891,8 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
             return ISL.UNIDIR;
           } else if (d.state && d.state.toLowerCase() == "discovered") {
             return ISL.DISCOVERED;
+          }else if (d.state && d.state.toLowerCase() == "moved") {
+            return ISL.MOVED;
           }
 
           return ISL.FAILED;
@@ -1317,9 +1321,11 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         if (row.length >= 1) {
           for (var j = 0, len1 = row.length; j < len1; j++) {
             var key = row[j].source_switch + "_" + row[j].target_switch;
-            if (typeof this.linksSourceArr[key] !== "undefined") {
-              this.linksSourceArr[key].push(row[j]);
-            } else {
+             var key1 = row[j].target_switch + "_" + row[j].source_switch;
+             var prcessKey = ( this.linksSourceArr && typeof this.linksSourceArr[key] !== "undefined") ? key:key1;
+             if (typeof this.linksSourceArr[prcessKey] !== "undefined") {
+               this.linksSourceArr[prcessKey].push(row[j]);
+             } else {
               this.linksSourceArr[key] = [];
               this.linksSourceArr[key].push(row[j]);
             }
@@ -1442,20 +1448,23 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       var islCount = 0;
       var matchedIndex = 1;
       var key = d.source_switch + "_" + d.target_switch;
+      var key1 =  d.target_switch + "_" + d.source_switch;
+      var processKey = ( this.linksSourceArr && typeof this.linksSourceArr[key] !== "undefined") ? key:key1;
       if (
         this.linksSourceArr &&
-        typeof this.linksSourceArr[key] !== "undefined"
+        typeof this.linksSourceArr[processKey] !== "undefined"
       ) {
-        islCount = this.linksSourceArr[key].length;
+        islCount = this.linksSourceArr[processKey].length;
       }
       if (islCount > 1) {
-        this.linksSourceArr[key].map(function(o, i) {
+        this.linksSourceArr[processKey].map(function(o, i) {
           if (ref.isObjEquivalent(o, d)) {
             matchedIndex = i + 1;
             return;
           }
         });
       }
+    
       var x1 = d.source.x,
         y1 = d.source.y,
         x2 = d.target.x,
@@ -1504,7 +1513,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
               "," +
               d.target.y
             );
-          } else if (matchedIndex % 2 == 0) {
+          } else if (matchedIndex % 2 == 0) { 
             return (
               "M" +
               d.source.x +
@@ -1527,7 +1536,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
               "," +
               d.source.y
             );
-          } else {
+          } else {  
             return (
               "M" +
               d.source.x +
@@ -1674,7 +1683,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
   };
 
   showFlowDetails = d => {
-    let url = "flows?src=" + d.source_switch + "&dst=" + d.target_switch;
+    let url = "flows?src=" + d.source_switch_name + "&dst=" + d.target_switch_name;
     window.location.href = url;
   };
 
@@ -1793,10 +1802,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       this.svgElement.transition().duration(300).call(this.zoom.transform, newtranformation);
     }
     
-   
-
-   
-
   }
 
   toggleSearch = () => {

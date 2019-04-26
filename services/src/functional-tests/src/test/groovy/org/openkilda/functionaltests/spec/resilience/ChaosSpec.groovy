@@ -12,7 +12,6 @@ import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.model.SwitchId
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Value
@@ -34,7 +33,7 @@ class ChaosSpec extends BaseSpecification {
         def flowsAmount = topology.activeSwitches.size() * 15
         List<FlowPayload> flows = []
         flowsAmount.times {
-            def flow = flowHelper.randomFlow(*randomSwitchPair, false, flows)
+            def flow = flowHelper.randomFlow(*topologyHelper.randomSwitchPair, false, flows)
             northbound.addFlow(flow)
             flows << flow
         }
@@ -43,7 +42,9 @@ class ChaosSpec extends BaseSpecification {
         def islsAmountToBlink = topology.islsForActiveSwitches.size() * 5
         def r = new Random()
         islsAmountToBlink.times {
-            def randomIsl = topology.islsForActiveSwitches[r.nextInt(topology.islsForActiveSwitches.size())]
+            //have certain instabilities with blinking centec ports, thus exclude them here
+            def isls = topology.islsForActiveSwitches.findAll { !it.srcSwitch.centec }
+            def randomIsl = isls[r.nextInt(isls.size())]
             blinkPort(randomIsl.srcSwitch.dpId, randomIsl.srcPort)
             //1 of 4 times we will add a minor sleep after blink in order not to fail all ISLs at once
             r.nextInt(4) == 3 && sleep((long) (discoveryInterval / 2) * 1000)
@@ -61,7 +62,7 @@ class ChaosSpec extends BaseSpecification {
             }
         }
 
-        and: "Cleanup: remove flows"
+        and: "Cleanup: remove flows and reset costs"
         flows.each { northbound.deleteFlow(it.id) }
         // Wait for meters deletion from all OF_13 switches since it impacts other tests.
         // Virtual and hardware OF_12 switches don't support meters.
@@ -72,6 +73,7 @@ class ChaosSpec extends BaseSpecification {
                 }.empty
             }
         } : true
+        database.resetCosts()
     }
 
     def validateFlow(String flowId) {
@@ -98,18 +100,5 @@ class ChaosSpec extends BaseSpecification {
     def blinkPort(SwitchId swId, int port) {
         northbound.portDown(swId, port)
         northbound.portUp(swId, port)
-    }
-
-    /**
-     * Get a switch pair with random switches.
-     * Src and dst are guaranteed to be different switches
-     */
-    Tuple2<Switch, Switch> getRandomSwitchPair() {
-        def randomSwitch = { List<Switch> switches ->
-            switches[new Random().nextInt(switches.size())]
-        }
-        def src = randomSwitch(topology.activeSwitches)
-        def dst = randomSwitch(topology.activeSwitches - src)
-        return new Tuple2(src, dst)
     }
 }

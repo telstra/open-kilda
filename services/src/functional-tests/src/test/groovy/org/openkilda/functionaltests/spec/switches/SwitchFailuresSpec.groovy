@@ -39,7 +39,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         def untilIslShouldFail = { timeSwitchesBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
         and: "ISL between those switches looses connection"
-        lockKeeper.portsDown([isl.aswitch.inPort, isl.aswitch.outPort])
+        lockKeeper.removeFlows([isl.aswitch])
 
         and: "Switches go back up"
         lockKeeper.reviveSwitch(isl.srcSwitch.dpId)
@@ -59,12 +59,12 @@ class SwitchFailuresSpec extends BaseSpecification {
         and: "The flow goes down OR changes path to avoid failed ISL after reroute timeout"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             def currentIsls = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.id)))
-            def pathChanged = !currentIsls.contains(isl) && !currentIsls.contains(islUtils.reverseIsl(isl))
+            def pathChanged = !currentIsls.contains(isl) && !currentIsls.contains(isl.reversed)
             assert pathChanged || northbound.getFlowStatus(flow.id).status == FlowState.DOWN
         }
 
         and: "Cleanup: restore connection, remove the flow"
-        lockKeeper.portsUp([isl.aswitch.inPort, isl.aswitch.outPort])
+        lockKeeper.addFlows([isl.aswitch])
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }

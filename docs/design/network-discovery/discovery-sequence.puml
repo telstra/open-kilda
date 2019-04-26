@@ -1,0 +1,48 @@
+@startuml
+
+== Add Port Watch ==
+PortHandler -> WatchListBolt: watch request switch_id+port\nrouting by switch_id
+WatchListBolt -> WatchListBolt: add switch_id+port to watch list
+
+== Del Port Watch ==
+PortHandler -> WatchListBolt: del watch request switch_id+port\nrouting by switch_id
+WatchListBolt -> WatchListBolt: remove switch_id+port from watch list
+WatchListBolt -> WatcherBolt: remove switch_id+port
+WatcherBolt -> WatcherBolt: remove from await list
+
+
+== Discovery process ==
+TickSpout -> WatchListBolt: tick
+WatchListBolt -> WatcherBolt: emit list of switch_id+port_list\nrouting by switch_id
+
+WatcherBolt -> WatcherBolt: add switch_id+port to await response listfdsfds
+WatcherBolt -> FL: sent message with switch_id+port_list
+...
+alt success
+FL --> WatcherBolt: discovery send confirmation\nrouting by switch_id
+WatcherBolt -> WatcherBolt: mark port with send confirmation
+    alt success
+    FL --> WatcherBolt: discovery packet\nrouting by switch_id
+    WatcherBolt -> WatcherBolt: remove from await list
+    WatcherBolt -> DecisionMakerBolt: discovery information\nrouting by switch_id+port_id
+    DecisionMakerBolt -> UniIslHandler
+    else timeout
+    ...
+    TickSpout -> WatcherBolt: tick
+    WatcherBolt -> WatcherBolt: find timeout ports
+    WatcherBolt -> WatcherBolt: remove from await list
+    WatcherBolt -> DecisionMakerBolt: discovery failed message\nrouting by switch_id+port_id
+    DecisionMakerBolt -> UniIslHandler
+end
+else timeout
+TickSpout -> WatcherBolt: tick
+WatcherBolt -> WatcherBolt: find timeout ports
+WatcherBolt -> WatcherBolt: remove from await list
+note over WatcherBolt
+	FL is offline so do nothing
+end note
+
+end
+
+
+@enduml

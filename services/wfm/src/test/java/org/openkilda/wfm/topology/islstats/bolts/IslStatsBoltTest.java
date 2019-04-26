@@ -59,15 +59,24 @@ public class IslStatsBoltTest {
     private static final IslChangeType STATE = IslChangeType.DISCOVERED;
     private static final long AVAILABLE_BANDWIDTH = 500L;
     private static final boolean UNDER_MAINTENANCE = false;
-    private static final IslInfoData ISL_INFO_DATA = new IslInfoData(LATENCY,
-            NODE1, NODE2, SPEED, STATE, AVAILABLE_BANDWIDTH, UNDER_MAINTENANCE);
+    private static final IslInfoData ISL_INFO_DATA = IslInfoData.builder()
+            .latency(LATENCY)
+            .source(NODE1)
+            .destination(NODE2)
+            .speed(SPEED)
+            .state(STATE)
+            .availableBandwidth(AVAILABLE_BANDWIDTH)
+            .underMaintenance(UNDER_MAINTENANCE)
+            .build();
     private static final long TIMESTAMP = 1507433872L;
 
-    private IslStatsBolt statsBolt = new IslStatsBolt();
+    private static final String METRIC_PREFIX = "kilda.";
+    private IslStatsBolt statsBolt = new IslStatsBolt(METRIC_PREFIX);
 
     private static final String CORRELATION_ID = "system";
     private static final Destination DESTINATION = null;
-    private static final InfoMessage MESSAGE = new InfoMessage(ISL_INFO_DATA, TIMESTAMP, CORRELATION_ID, DESTINATION);
+    private static final InfoMessage MESSAGE = new InfoMessage(ISL_INFO_DATA, TIMESTAMP, CORRELATION_ID, DESTINATION,
+            null);
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
@@ -78,7 +87,7 @@ public class IslStatsBoltTest {
         assertThat(tsdbTuple.size(), is(1));
 
         Datapoint datapoint = Utils.MAPPER.readValue(tsdbTuple.get(0).toString(), Datapoint.class);
-        assertEquals("pen.isl.latency", datapoint.getMetric());
+        assertEquals(METRIC_PREFIX + "isl.latency", datapoint.getMetric());
         assertEquals((Long) TIMESTAMP, datapoint.getTime());
         assertEquals(LATENCY, datapoint.getValue());
 
@@ -104,7 +113,7 @@ public class IslStatsBoltTest {
         thrown.expect(Exception.class);
         thrown.expectMessage(containsString("is not an IslInfoData"));
         PortInfoData portData = new PortInfoData();
-        InfoMessage badMessage = new InfoMessage(portData, TIMESTAMP, CORRELATION_ID, null);
+        InfoMessage badMessage = new InfoMessage(portData, TIMESTAMP, CORRELATION_ID, null, null);
         statsBolt.getIslInfoData(statsBolt.getIslInfoData(badMessage.getData()));
     }
 }

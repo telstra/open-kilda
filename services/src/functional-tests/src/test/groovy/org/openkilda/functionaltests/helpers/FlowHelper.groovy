@@ -4,8 +4,10 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
+import org.openkilda.functionaltests.helpers.model.PotentialFlow
 import org.openkilda.messaging.model.FlowDto
 import org.openkilda.messaging.model.FlowPairDto
+import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
@@ -40,34 +42,57 @@ class FlowHelper {
     def allowedVlans = 101..4095
 
     /**
-     * Creates a FlowPayload instance with random vlan and flow id. Will try to build over a traffgen port, or use
+     * Creates a FlowCreatePayload instance with random vlan and flow id. Will try to build over traffgen ports or use
      * random port otherwise.
+     * Since multi-switch and single-switch flows have a bit different algorithms to create a correct flow, this method
+     * will delegate the job to the correct algo based on src and dst switches passed.
      */
-    FlowPayload randomFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
+    FlowCreatePayload randomFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
+            List<FlowPayload> existingFlows = []) {
+        if (srcSwitch.dpId == dstSwitch.dpId) {
+            return singleSwitchFlow(srcSwitch, useTraffgenPorts, existingFlows)
+        } else {
+            return randomMultiSwitchFlow(srcSwitch, dstSwitch, useTraffgenPorts, existingFlows)
+        }
+    }
+
+    FlowCreatePayload randomFlow(PotentialFlow potentialFlow, boolean useTraffgenPorts = true,
+            List<FlowCreatePayload> existingFlows = []) {
+        randomFlow(potentialFlow.src, potentialFlow.dst, useTraffgenPorts, existingFlows)
+    }
+
+    FlowCreatePayload randomMultiSwitchFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
             List<FlowPayload> existingFlows = []) {
         Wrappers.retry(3, 0) {
-            def newFlow = new FlowPayload(generateFlowName(), getFlowEndpoint(srcSwitch, useTraffgenPorts),
-                    getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, "autotest flow", null, null)
+            def newFlow = new FlowCreatePayload(generateFlowId(), getFlowEndpoint(srcSwitch, useTraffgenPorts),
+                    getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, "autotest flow", null, null, null,
+                    null, null, null)
             if (flowConflicts(newFlow, existingFlows)) {
                 throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
             }
             return newFlow
-        } as FlowPayload
+        } as FlowCreatePayload
     }
 
     /**
-     * Creates a FlowPayload instance with random vlan and flow id suitable for a single-switch flow.
+     * Creates a FlowCreatePayload instance with random vlan and flow id suitable for a single-switch flow.
      * The flow will be on DIFFERENT PORTS. Will try to look for both ports to be traffgen ports.
      * But if such port is not available, will pick a random one. So in order to run a correct traffic
      * examination certain switch should have at least 2 traffgens connected to different ports.
      */
-    FlowPayload singleSwitchFlow(Switch sw) {
+    FlowCreatePayload singleSwitchFlow(Switch sw, boolean useTraffgenPorts = true,
+            List<FlowPayload> existingFlows = []) {
         def allowedPorts = topology.getAllowedPortsForSwitch(sw)
-        def srcEndpoint = getFlowEndpoint(sw, allowedPorts)
-        allowedPorts = allowedPorts - srcEndpoint.portNumber //do not pick the same port as in src
-        def dstEndpoint = getFlowEndpoint(sw, allowedPorts)
-        return new FlowPayload(generateFlowName(), srcEndpoint, dstEndpoint, 500,
-                false, false, "autotest flow", null, null)
+        Wrappers.retry(3, 0) {
+            def srcEndpoint = getFlowEndpoint(sw, allowedPorts, useTraffgenPorts)
+            def dstEndpoint = getFlowEndpoint(sw, allowedPorts - srcEndpoint.portNumber, useTraffgenPorts)
+            def newFlow = new FlowCreatePayload(generateFlowId(), srcEndpoint, dstEndpoint, 500, false, false,
+                    "autotest flow", null, null, null, null, null, null)
+            if (flowConflicts(newFlow, existingFlows)) {
+                throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
+            }
+            return newFlow
+        } as FlowCreatePayload
     }
 
     /**
@@ -81,8 +106,13 @@ class FlowHelper {
         if (srcEndpoint.vlanId == dstEndpoint.vlanId) { //ensure same vlan is not randomly picked
             dstEndpoint.vlanId--
         }
-        return new FlowPayload(generateFlowName(), srcEndpoint, dstEndpoint, 500,
-                false, false, "autotest flow", null, null)
+        return FlowPayload.builder()
+                          .id(generateFlowId())
+                          .source(srcEndpoint)
+                          .destination(dstEndpoint)
+                          .maximumBandwidth(500)
+                          .description("autotest flow")
+                          .build()
     }
 
     /**
@@ -150,9 +180,7 @@ class FlowHelper {
      * @return true if passed flow conflicts with any of the flows in the list
      */
     static boolean flowConflicts(FlowPayload newFlow, List<FlowPayload> existingFlows) {
-        List<FlowEndpointPayload> existingEndpoints = existingFlows.inject([]) { r, flow ->
-            r << flow.source << flow.destination
-        }
+        List<FlowEndpointPayload> existingEndpoints = existingFlows.collectMany { [it.source, it.destination] }
         [newFlow.source, newFlow.destination].any { newEp ->
             existingEndpoints.find {
                 newEp.datapath == it.datapath && newEp.portNumber == it.portNumber &&
@@ -192,7 +220,7 @@ class FlowHelper {
     /**
      * Generates a unique name for all auto-tests flows.
      */
-    private String generateFlowName() {
+    private String generateFlowId() {
         return new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US).format(new Date()) + "_" +
                 faker.food().ingredient().toLowerCase().replaceAll(/\W/, "") + faker.number().digits(4)
     }

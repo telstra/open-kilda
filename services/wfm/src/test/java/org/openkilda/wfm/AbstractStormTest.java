@@ -43,7 +43,7 @@ public abstract class AbstractStormTest {
 
     protected static TestKafkaProducer kProducer;
     protected static LocalCluster cluster;
-    static TestUtils.KafkaTestFixture server;
+    protected static TestUtils.KafkaTestFixture server;
 
     @ClassRule
     public static TemporaryFolder fsData = new TemporaryFolder();

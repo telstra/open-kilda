@@ -69,6 +69,13 @@ public class Neo4jFeatureTogglesRepository extends Neo4jGenericRepository<Featur
                 if (featureToggles.getUnpushFlowEnabled() != null) {
                     updatedFeatureToggles.setUnpushFlowEnabled(featureToggles.getUnpushFlowEnabled());
                 }
+                if (featureToggles.getUseBfdForIslIntegrityCheck() != null) {
+                    updatedFeatureToggles.setUseBfdForIslIntegrityCheck(featureToggles.getUseBfdForIslIntegrityCheck());
+                }
+                if (featureToggles.getFloodlightRoutePeriodicSync() != null) {
+                    updatedFeatureToggles.setFloodlightRoutePeriodicSync(
+                            featureToggles.getFloodlightRoutePeriodicSync());
+                }
 
                 super.createOrUpdate(updatedFeatureToggles);
             }
@@ -76,7 +83,7 @@ public class Neo4jFeatureTogglesRepository extends Neo4jGenericRepository<Featur
     }
 
     @Override
-    Class<FeatureToggles> getEntityType() {
+    protected Class<FeatureToggles> getEntityType() {
         return FeatureToggles.class;
     }
 }

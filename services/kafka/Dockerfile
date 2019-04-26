@@ -13,7 +13,8 @@
 #   limitations under the License.
 #
 
-FROM kilda/base-ubuntu
+ARG base_image=kilda/base-ubuntu
+FROM ${base_image}
 
 ENV PACKAGE kafka_2.12-0.10.2.1
 

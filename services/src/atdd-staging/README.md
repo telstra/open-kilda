@@ -2,7 +2,7 @@
 This module holds the Acceptance tests designed to be run against the staging environment.
 
 # Deployment
-## Confirguration
+## Configuration
 ### Topology
 The tests require a network topology definition provided.
 
@@ -74,10 +74,6 @@ northbound.endpoint=http://localhost:8088
 northbound.username=kilda
 northbound.password=kilda
 
-topology-engine-rest.endpoint=http://localhost:80
-topology-engine-rest.username=kilda
-topology-engine-rest.password=kilda
-
 floodlight.endpoint=http://localhost:8081
 floodlight.username=kilda
 floodlight.password=kilda
@@ -115,4 +111,3 @@ We use this tool to remove redundant boilerplate code you often find in data cla
 
 
 To use, go to Android Studio -> Preferences -> Plugins -> Browse repositories... -> Search Lombok Plugin -> Install Plugin
-More on Lombok 

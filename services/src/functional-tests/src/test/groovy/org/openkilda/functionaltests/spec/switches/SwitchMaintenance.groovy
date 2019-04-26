@@ -12,24 +12,26 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.northbound.dto.switches.DeleteLinkResult
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 
 class SwitchMaintenance extends BaseSpecification {
 
     @Value('${isl.cost.when.under.maintenance}')
     int islCostWhenUnderMaintenance
 
+    def setupOnce() {
+        database.resetCosts()  // set default cost on all links before tests
+    }
+
     def "Maintenance mode can be set/unset for a particular switch"() {
         given: "An active switch"
         def sw = topology.activeSwitches.first()
 
         when: "Set maintenance mode for the switch"
-        // Explicitly set default cost for all links due to implementation of database.getIslCost(isl) method.
-        database.resetCosts()
         def response = northbound.setSwitchMaintenance(sw.dpId, true, false)
 
         then: "Maintenance flag for the switch is really set"
@@ -43,8 +45,8 @@ class SwitchMaintenance extends BaseSpecification {
 
         and: "Cost for ISLs is changed respectively"
         topology.islsForActiveSwitches.findAll { sw.dpId in [it.srcSwitch, it.dstSwitch]*.dpId }.each {
-            assert islUtils.getIslCost(it) == islCostWhenUnderMaintenance + DEFAULT_COST
-            assert islUtils.getIslCost(islUtils.reverseIsl(it)) == islCostWhenUnderMaintenance + DEFAULT_COST
+            assert database.getIslCost(it) == islCostWhenUnderMaintenance + DEFAULT_COST
+            assert database.getIslCost(it.reversed) == islCostWhenUnderMaintenance + DEFAULT_COST
         }
 
         when: "Unset maintenance mode from the switch"
@@ -61,30 +63,22 @@ class SwitchMaintenance extends BaseSpecification {
 
         and: "Cost for ISLs is changed to the default value"
         topology.islsForActiveSwitches.findAll { sw.dpId in [it.srcSwitch, it.dstSwitch]*.dpId }.each {
-            assert islUtils.getIslCost(it) == DEFAULT_COST
-            assert islUtils.getIslCost(islUtils.reverseIsl(it)) == DEFAULT_COST
+            assert database.getIslCost(it) == DEFAULT_COST
+            assert database.getIslCost(it.reversed) == DEFAULT_COST
         }
     }
 
     def "Flows can be evacuated (rerouted) from a particular switch when setting maintenance mode for it"() {
-        given: "Two active not neighboring switches with two possible paths at least"
-        def switches = topology.getActiveSwitches()
-        def allLinks = northbound.getAllLinks()
-        List<List<PathNode>> possibleFlowPaths = []
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
-            allLinks.every { link ->
-                !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId)
-            } && possibleFlowPaths.size() > 1
-        } ?: assumeTrue("No suiting switches found", false)
+        given: "Two active not neighboring switches with two possible paths at least"        
+        def potentialFlow = topologyHelper.findAllNonNeighbors().find { it.paths.size() > 1 } ?: 
+                assumeTrue("No suiting switches found", false)
 
         and: "Create a couple of flows going through these switches"
-        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow1 = flowHelper.randomFlow(potentialFlow)
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
-        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow2 = flowHelper.randomFlow(potentialFlow)
         flowHelper.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
 
@@ -127,16 +121,13 @@ class SwitchMaintenance extends BaseSpecification {
 
         and: "Bring port down on the switch to fail the link"
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(islUtils.reverseIsl(isl)).get().state == IslChangeType.FAILED
-        }
+        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
 
         and: "Delete the link"
-        List<DeleteLinkResult> responses = []
-        responses << northbound.deleteLink(islUtils.getLinkParameters(isl))
-        responses << northbound.deleteLink(islUtils.getLinkParameters(islUtils.reverseIsl(isl)))
-        responses.each { assert it.deleted }
+        northbound.deleteLink(islUtils.toLinkParameters(isl))
+        northbound.deleteLink(islUtils.toLinkParameters(isl.reversed))
+        assert !islUtils.getIslInfo(isl)
+        assert !islUtils.getIslInfo(isl.reversed)
 
         when: "Set maintenance mode for the switch"
         northbound.setSwitchMaintenance(isl.srcSwitch.dpId, true, false)
@@ -145,10 +136,10 @@ class SwitchMaintenance extends BaseSpecification {
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
 
         then: "The link is discovered and marked as maintained"
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             def islInfo = islUtils.getIslInfo(links, isl).get()
-            def reverseIslInfo = islUtils.getIslInfo(links, islUtils.reverseIsl(isl)).get()
+            def reverseIslInfo = islUtils.getIslInfo(links, isl.reversed).get()
 
             [islInfo, reverseIslInfo].each {
                 assert it.state == IslChangeType.DISCOVERED
@@ -156,13 +147,16 @@ class SwitchMaintenance extends BaseSpecification {
             }
         }
 
-        and: "Unset maintenance mode"
+        and: "Unset maintenance mode and reset costs"
         northbound.setSwitchMaintenance(isl.srcSwitch.dpId, false, false)
         def links = northbound.getAllLinks()
         !islUtils.getIslInfo(links, isl).get().underMaintenance
-        !islUtils.getIslInfo(links, islUtils.reverseIsl(isl)).get().underMaintenance
+        !islUtils.getIslInfo(links, isl.reversed).get().underMaintenance
+        database.resetCosts()
     }
 
+    // That logic will be reworked to fit new use cases
+    @Ignore("Not implemented in new discovery-topology")
     def "System is correctly handling actions performing on a maintained switch disconnected from the controller"() {
         requireProfiles("virtual")
 

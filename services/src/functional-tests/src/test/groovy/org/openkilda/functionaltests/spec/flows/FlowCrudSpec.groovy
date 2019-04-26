@@ -6,6 +6,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.PotentialFlow
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
@@ -33,17 +34,6 @@ class FlowCrudSpec extends BaseSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider
-
-    /**
-     * Switch pairs with more traffgen-available switches will go first. Then the less tg-available switches there is
-     * in the pair the lower score that pair will get.
-     * During the subsequent 'unique' call the higher scored pairs will have priority over lower scored ones in case
-     * if their uniqueness criteria will be equal.
-     */
-    @Shared
-    def taffgensPrioritized = { List<Switch> switches ->
-        switches.count { sw -> !topology.activeTraffGens.find { it.switchConnected == sw } }
-    }
 
     @Unroll("Valid #data.description has traffic and no rule discrepancies \
 (#flow.source.datapath - #flow.destination.datapath)")
@@ -119,8 +109,8 @@ class FlowCrudSpec extends BaseSpecification {
         then: "Both flows are successfully created"
         northbound.getAllFlows()*.id.containsAll([flow1.id, flow2.id])
 
-        and: "cleanup: delete flows"
-        [flow1, flow2].each { northbound.deleteFlow(it.id) }
+        and: "Cleanup: delete flows"
+        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
 
         where:
         data << [
@@ -226,6 +216,24 @@ class FlowCrudSpec extends BaseSpecification {
         flow << getSingleSwitchSinglePortFlows()
     }
 
+    def "Able to validate flow with zero bandwidth"() {
+        given: "A flow with zero bandwidth"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.maximumBandwidth = 0
+
+        when: "Create a flow with zero bandwidth"
+        flowHelper.addFlow(flow)
+
+        then: "Validation of flow with zero bandwidth must be succeed"
+        northbound.validateFlow(flow.id).each { direction ->
+            assert direction.discrepancies.empty
+        }
+
+        and: "Cleanup: delete the flow"
+        flowHelper.deleteFlow(flow.id)
+    }
+
     def "Unable to create single-switch flow with the same ports and vlans on both sides"() {
         given: "Potential single-switch flow with the same ports and vlans on both sides"
         def flow = flowHelper.singleSwitchSinglePortFlow(topology.activeSwitches.first())
@@ -260,7 +268,7 @@ class FlowCrudSpec extends BaseSpecification {
         then: "Error is returned, stating a readable reason of conflict"
         def error = thrown(HttpClientErrorException)
         error.statusCode == HttpStatus.CONFLICT
-        error.responseBodyAsString.to(MessageError).errorMessage == data.getError(flow)
+        error.responseBodyAsString.to(MessageError).errorMessage == data.getError(flow, conflictingFlow)
 
         and: "Cleanup: delete the dominant flow"
         flowHelper.deleteFlow(flow.id)
@@ -271,8 +279,8 @@ class FlowCrudSpec extends BaseSpecification {
                 makeFlowsConflicting: { FlowPayload dominantFlow, FlowPayload flowToConflict ->
                     flowToConflict.id = dominantFlow.id
                 },
-                getError            : { FlowPayload flowToError ->
-                    "Could not create flow: Flow $flowToError.id already exists"
+                getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict ->
+                    "Could not create flow: Flow $dominantFlow.id already exists"
                 }
         ]
     }
@@ -282,35 +290,23 @@ class FlowCrudSpec extends BaseSpecification {
         given: "Two potential flows"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
-        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
+        def conflictingFlow = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1])
 
-        // TODO(ylobankov): Delete this code once we add such a functionality to flow helper.
-        // It is a kind of dirty workaround to not get a conflict at the point of the second flow creation.
-        def random = new Random()
-        def srcSwitchAllowedPorts = topology.getAllowedPortsForSwitch(srcSwitch)
-        def dstSwitchAllowedPorts = topology.getAllowedPortsForSwitch(dstSwitch)
-        while (!(flow1.source.portNumber != flow2.source.portNumber &&
-                flow1.destination.portNumber != flow2.destination.portNumber)) {
-            flow1.source.portNumber = srcSwitchAllowedPorts[random.nextInt(srcSwitchAllowedPorts.size())]
-            flow1.destination.portNumber = dstSwitchAllowedPorts[random.nextInt(dstSwitchAllowedPorts.size())]
-            flow2.source.portNumber = srcSwitchAllowedPorts[random.nextInt(srcSwitchAllowedPorts.size())]
-            flow2.destination.portNumber = dstSwitchAllowedPorts[random.nextInt(dstSwitchAllowedPorts.size())]
-        }
-
-        def conflictingFlow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        data.makeFlowsConflicting(flow1, conflictingFlow.tap { it.id = flow2.id })
+        data.makeFlowsConflicting(flow1, conflictingFlow)
 
         when: "Create two flows"
         flowHelper.addFlow(flow1)
+
+        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1])
         flowHelper.addFlow(flow2)
 
         and: "Try updating the second flow which should conflict with the first one"
-        northbound.updateFlow(flow2.id, conflictingFlow)
+        northbound.updateFlow(flow2.id, conflictingFlow.tap { it.id = flow2.id })
 
         then: "Error is returned, stating a readable reason of conflict"
         def error = thrown(HttpClientErrorException)
         error.statusCode == HttpStatus.CONFLICT
-        error.responseBodyAsString.to(MessageError).errorMessage == data.getError(flow1, "update")
+        error.responseBodyAsString.to(MessageError).errorMessage == data.getError(flow1, conflictingFlow, "update")
 
         and: "Cleanup: delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
@@ -333,7 +329,7 @@ class FlowCrudSpec extends BaseSpecification {
 
         and: "Make all shorter forward paths not preferable. Shorter reverse paths are still preferable"
         possibleFlowPaths.findAll { it.size() == pathNodeCount }.each {
-            pathHelper.getInvolvedIsls(it).each { database.updateLinkCost(it, Integer.MAX_VALUE) }
+            pathHelper.getInvolvedIsls(it).each { database.updateIslCost(it, Integer.MAX_VALUE) }
         }
 
         when: "Create a flow"
@@ -347,7 +343,7 @@ class FlowCrudSpec extends BaseSpecification {
         and: "The flow has symmetric forward and reverse paths even though there is a more preferable reverse path"
         def forwardIsls = pathHelper.getInvolvedIsls(PathHelper.convert(flowPath))
         def reverseIsls = pathHelper.getInvolvedIsls(PathHelper.convert(flowPath, "reversePath"))
-        forwardIsls.collect { islUtils.reverseIsl(it) }.reverse() == reverseIsls
+        forwardIsls.collect { it.reversed }.reverse() == reverseIsls
 
         and: "Delete the flow and reset costs"
         flowHelper.deleteFlow(flow.id)
@@ -357,7 +353,7 @@ class FlowCrudSpec extends BaseSpecification {
     @Unroll
     def "Error is returned if there is no available path to #data.isolatedSwitchType switch"() {
         given: "A switch that has no connection to other switches"
-        def isolatedSwitch = topology.activeSwitches.first()
+        def isolatedSwitch = topology.activeSwitches[1]
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
             northbound.portDown(isolatedSwitch.dpId, port)
         }
@@ -381,13 +377,14 @@ class FlowCrudSpec extends BaseSpecification {
                 "requested bandwidth=$flow.maximumBandwidth: Switch ${isolatedSwitch.dpId.toString()} doesn't have " +
                 "links with enough bandwidth"
 
-        and: "cleanup: restore connection to the isolated switch"
+        and: "Cleanup: restore connection to the isolated switch and reset costs"
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
             northbound.portUp(isolatedSwitch.dpId, port)
         }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED }
         }
+        database.resetCosts()
 
         where:
         data << [
@@ -431,9 +428,31 @@ class FlowCrudSpec extends BaseSpecification {
     }
 
     @Shared
-    def portError = { String operation, int port, SwitchId switchId, String flowId ->
-        "Could not $operation flow: The port $port on the switch '$switchId' has already occupied " +
-                "by the flow '$flowId'."
+    def errorMessage = { String operation, FlowPayload flow, String endpoint, FlowPayload conflictingFlow,
+                         String conflictingEndpoint ->
+        "Could not $operation flow: Requested flow '$conflictingFlow.id' conflicts with existing flow '$flow.id'. " +
+                "Details: requested flow '$conflictingFlow.id' $conflictingEndpoint: " +
+                "switch=${conflictingFlow."$conflictingEndpoint".datapath} " +
+                "port=${conflictingFlow."$conflictingEndpoint".portNumber} " +
+                "vlan=${conflictingFlow."$conflictingEndpoint".vlanId}, " +
+                "existing flow '$flow.id' $endpoint: " +
+                "switch=${flow."$endpoint".datapath} " +
+                "port=${flow."$endpoint".portNumber} " +
+                "vlan=${flow."$endpoint".vlanId}"
+    }
+
+
+    /**
+     * Potential flows with more traffgen-available switches will go first. Then the less tg-available switches there is
+     * in the pair the lower score that pair will get.
+     * During the subsequent 'unique' call the higher scored pairs will have priority over lower scored ones in case
+     * if their uniqueness criteria will be equal.
+     */
+    @Shared
+    def taffgensPrioritized = { PotentialFlow potentialFlow ->
+        [potentialFlow.src, potentialFlow.dst].count { Switch sw ->
+            !topology.activeTraffGens.find { it.switchConnected == sw }
+        }
     }
 
     /**
@@ -441,30 +460,24 @@ class FlowCrudSpec extends BaseSpecification {
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithoutTransitSwitch() {
-        def switchPairs = [topology.activeSwitches, topology.activeSwitches].combinations()
-                .findAll { src, dst -> src != dst } //non-single-switch
-                .unique { it.sort() } //no reversed versions of same flows
-                .findAll { Switch src, Switch dst ->
-            getPreferredPath(src, dst).size() == 2 //switches are neighbors
-        }
-        .sort(taffgensPrioritized)
-                .unique { it.collect { [it.description, it.ofVersion] }.sort() }
+        def potentialFlows = topologyHelper.findAllNeighbors().sort(taffgensPrioritized)
+                .unique { [it.src, it.dst]*.description.sort() }
 
-        return switchPairs.inject([]) { r, switchPair ->
+        return potentialFlows.inject([]) { r, potentialFlow ->
             r << [
                     description: "flow without transit switch and with random vlans",
-                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1])
+                    flow       : flowHelper.randomFlow(potentialFlow)
             ]
             r << [
                     description: "flow without transit switch and without vlans",
-                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1]).tap {
+                    flow       : flowHelper.randomFlow(potentialFlow).tap {
                         it.source.vlanId = 0
                         it.destination.vlanId = 0
                     }
             ]
             r << [
                     description: "flow without transit switch and vlan only on src",
-                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1]).tap { it.destination.vlanId = 0 }
+                    flow       : flowHelper.randomFlow(potentialFlow).tap { it.destination.vlanId = 0 }
             ]
             r
         }
@@ -475,30 +488,24 @@ class FlowCrudSpec extends BaseSpecification {
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithTransitSwitch() {
-        def switchPairs = [topology.activeSwitches, topology.activeSwitches].combinations()
-                .findAll { src, dst -> src != dst } //non-single-switch
-                .unique { it.sort() } //no reversed versions of same flows
-                .findAll { Switch src, Switch dst ->
-            getPreferredPath(src, dst).size() > 2 //switches are not neighbors
-        }
-        .sort(taffgensPrioritized)
-                .unique { it.collect { [it.description, it.ofVersion] }.sort() }
+        def potentialFlows = topologyHelper.findAllNonNeighbors().sort(taffgensPrioritized)
+                .unique { [it.src, it.dst]*.description.sort() }
 
-        return switchPairs.inject([]) { r, switchPair ->
+        return potentialFlows.inject([]) { r, potentialFlow ->
             r << [
                     description: "flow with transit switch and random vlans",
-                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1])
+                    flow       : flowHelper.randomFlow(potentialFlow)
             ]
             r << [
                     description: "flow with transit switch and no vlans",
-                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1]).tap {
+                    flow       : flowHelper.randomFlow(potentialFlow).tap {
                         it.source.vlanId = 0
                         it.destination.vlanId = 0
                     }
             ]
             r << [
                     description: "flow with transit switch and vlan only on dst",
-                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1]).tap { it.source.vlanId = 0 }
+                    flow       : flowHelper.randomFlow(potentialFlow).tap { it.source.vlanId = 0 }
             ]
             r
         }
@@ -511,7 +518,7 @@ class FlowCrudSpec extends BaseSpecification {
     def getSingleSwitchFlows() {
         topology.getActiveSwitches()
                 .sort { sw -> topology.activeTraffGens.findAll { it.switchConnected == sw }.size() }.reverse()
-                .unique { [it.description, it.ofVersion].sort() }
+                .unique { it.description }
                 .inject([]) { r, sw ->
             r << [
                     description: "single-switch flow with vlans",
@@ -540,22 +547,8 @@ class FlowCrudSpec extends BaseSpecification {
      */
     def getSingleSwitchSinglePortFlows() {
         topology.getActiveSwitches()
-                .unique { [it.description, it.ofVersion].sort() }
+                .unique { it.description }
                 .collect { flowHelper.singleSwitchSinglePortFlow(it) }
-    }
-
-    @Memoized
-    def getPreferredPath(Switch src, Switch dst) {
-        def possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path
-        return possibleFlowPaths.min {
-            /*
-              Taking the actual cost of every ISL for all the permutations takes ages. Since we assume that at the
-              start of the test all isls have the same cost, just take the 'shortest' path and consider it will be
-              preferred.
-              Another option was to introduce cache for getIslCost calls, but implementation was too bulky.
-             */
-            it.size()
-        }
     }
 
     Switch findSwitch(SwitchId swId) {
@@ -570,9 +563,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.source.portNumber = dominantFlow.source.portNumber
                             flowToConflict.source.vlanId = dominantFlow.source.vlanId
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.source.portNumber, flowToError.source.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "source", flowToConflict, "source")
                         }
                 ],
                 [
@@ -581,9 +574,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
                             flowToConflict.destination.vlanId = dominantFlow.destination.vlanId
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.destination.portNumber, flowToError.destination.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "destination", flowToConflict, "destination")
                         }
                 ],
                 [
@@ -592,9 +585,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.source.portNumber = dominantFlow.source.portNumber
                             flowToConflict.source.vlanId = 0
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.source.portNumber, flowToError.source.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "source", flowToConflict, "source")
                         }
                 ],
                 [
@@ -603,9 +596,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
                             flowToConflict.destination.vlanId = 0
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.destination.portNumber, flowToError.destination.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "destination", flowToConflict, "destination")
                         }
                 ],
                 [
@@ -614,9 +607,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.source.portNumber = dominantFlow.source.portNumber
                             dominantFlow.source.vlanId = 0
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.source.portNumber, flowToError.source.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "source", flowToConflict, "source")
                         }
                 ],
                 [
@@ -625,9 +618,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
                             dominantFlow.destination.vlanId = 0
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.destination.portNumber, flowToError.destination.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "destination", flowToConflict, "destination")
                         }
                 ],
                 [
@@ -637,9 +630,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.source.vlanId = 0
                             dominantFlow.source.vlanId = 0
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.source.portNumber, flowToError.source.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "source", flowToConflict, "source")
                         }
                 ],
                 [
@@ -649,9 +642,9 @@ class FlowCrudSpec extends BaseSpecification {
                             flowToConflict.destination.vlanId = 0
                             dominantFlow.destination.vlanId = 0
                         },
-                        getError            : { FlowPayload flowToError, String operation = "create" ->
-                            portError(operation, flowToError.destination.portNumber, flowToError.destination.datapath,
-                                    flowToError.id)
+                        getError            : { FlowPayload dominantFlow, FlowPayload flowToConflict,
+                                                String operation = "create" ->
+                            errorMessage(operation, dominantFlow, "destination", flowToConflict, "destination")
                         }
                 ]
         ]

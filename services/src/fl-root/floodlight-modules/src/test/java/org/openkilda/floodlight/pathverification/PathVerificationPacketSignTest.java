@@ -16,13 +16,17 @@
 package org.openkilda.floodlight.pathverification;
 
 import static org.easymock.EasyMock.anyObject;
+import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.expectLastCall;
+import static org.easymock.EasyMock.newCapture;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 
 import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.IslInfoData;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -31,8 +35,11 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.PacketParsingException;
+import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.easymock.EasyMockRunner;
+import org.easymock.IAnswer;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -56,7 +63,7 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
     public void setUp() throws Exception {
         super.setUp();
 
-        final OFPacketOut packetOut = pvs.generateVerificationPacket(sw1, OFPort.of(1));
+        final OFPacketOut packetOut = pvs.generateVerificationPacket(sw1, OFPort.of(1), null);
 
         ofPacketIn = EasyMock.createMock(OFPacketIn.class);
 
@@ -95,10 +102,47 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
     }
 
     @Test
+    public void testInputSwitchNotFound() {
+        producerService.sendMessageAndTrack(anyObject(), anyObject(), anyObject());
+        expectLastCall().andAnswer((IAnswer) () -> {
+            Assert.fail();
+            return null;
+        }).anyTimes();
+        replay(producerService);
+
+        IOFSwitch sw = buildMockIoFSwitch(13L, null, factory, swDescription, dstIpTarget);
+        replay(sw);
+
+        pvs.handlePacketIn(new OfInput(sw, ofPacketIn, context));
+    }
+
+    @Test
+    public void testHandlePacketInWithDifferentPortSpeeds() {
+        Capture<InfoMessage> capturedArgument = newCapture();
+
+        producerService.sendMessageAndTrack(anyObject(), anyObject(), capture(capturedArgument));
+        expectLastCall().once();
+        replay(producerService);
+
+        pvs.handlePacketIn(new OfInput(sw2, ofPacketIn, context));
+        verify(producerService);
+
+        IslInfoData data = (IslInfoData) capturedArgument.getValue().getData();
+
+        long firstSpeed = sw1.getPort(OFPort.of(1)).getCurrSpeed();
+        long secondSpeed = sw2.getPort(OFPort.of(1)).getCurrSpeed();
+
+        // checks that port speeds are different (otherwise test is useless)
+        Assert.assertNotEquals(firstSpeed, secondSpeed);
+        // checks that minimal port speed will be used
+        Assert.assertEquals(Math.min(firstSpeed, secondSpeed), data.getSpeed());
+    }
+
+    @Test
     public void testSignPacketMissedSign() throws PacketParsingException, FloodlightModuleException {
         replay(producerService);
 
-        OFPacketOut noSignPacket = pvs.generateVerificationPacket(sw1, OFPort.of(1), null, false);
+        OFPacketOut noSignPacket = pvs.generateVerificationPacket(sw1, OFPort.of(1), null, false, null);
         IPacket noSignPacketData = new Ethernet().deserialize(noSignPacket.getData(), 0,
                 noSignPacket.getData().length);
         context.getStorage().put(IFloodlightProviderService.CONTEXT_PI_PAYLOAD, noSignPacketData);

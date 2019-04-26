@@ -16,9 +16,11 @@
 package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
-import org.openkilda.pce.AvailableNetworkFactory.BuildStrategy;
+import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
+
+import java.util.List;
 
 /**
  * Represents computation operations on flow path.
@@ -40,22 +42,21 @@ public interface PathComputer {
      * Gets path between source and destination switch for specified flow.
      *
      * @param flow the {@link Flow} instance.
-     * @param reuseAllocatedFlowBandwidth whether to reuse allocated bandwidth and existing path of the flow
-     *                                    to be a potential new path.
+     * @param reuseAllocatedFlowResources allow already allocated {@param flow} resources (bandwidth, path)
+     *                                    be reused in new path computation.
      * @return {@link PathPair} instances
      */
-    PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth)
+    PathPair getPath(Flow flow, boolean reuseAllocatedFlowResources)
             throws UnroutableFlowException, RecoverableException;
 
     /**
-     * Gets path between source and destination switch for specified flow.
+     * Gets N best paths.
      *
-     * @param flow the {@link Flow} instance.
-     * @param reuseAllocatedFlowBandwidth whether to reuse allocated bandwidth and existing path of the flow
-     *                                    to be a potential new path.
-     * @param buildStrategy  wei
-     * @return {@link PathPair} instances
+     * @param srcSwitch source switchId
+     * @param dstSwitch destination switchId
+     *
+     * @return an list of N (or less) best paths ordered from best to worst.
      */
-    PathPair getPath(Flow flow, boolean reuseAllocatedFlowBandwidth, BuildStrategy buildStrategy)
-            throws UnroutableFlowException, RecoverableException;
+    List<Path> getNPaths(SwitchId srcSwitch, SwitchId dstSwitch, int count)
+            throws RecoverableException, UnroutableFlowException;
 }

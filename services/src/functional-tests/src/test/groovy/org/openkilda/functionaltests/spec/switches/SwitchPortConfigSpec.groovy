@@ -9,31 +9,36 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 import spock.lang.Unroll
 
 @Narrative("Verify that Kilda allows to properly control port state on switches (bring ports up or down).")
 class SwitchPortConfigSpec extends BaseSpecification {
 
+    @Value('${opentsdb.metric.prefix}')
+    String metricPrefix
+
     def otsdbPortUp = 1
     def otsdbPortDown = 0
 
     @Unroll
-    def "Able to bring ISL-busy port down/up on switch(#isl.srcSwitch.dpId)"() {
+    def "Able to bring ISL-busy port down/up on an #isl.srcSwitch.ofVersion switch(#isl.srcSwitch.dpId)"() {
         when: "Bring port down on the switch"
         def portDownTime = new Date()
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
 
-        then: "ISL between switches becomes 'FAILED'"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(islUtils.reverseIsl(isl)).get().state == IslChangeType.FAILED
+        then: "Forward and reverse ISLs between switches becomes 'FAILED'"
+        Wrappers.wait(WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
         }
 
         and: "Port failure is logged in OpenTSDB"
         def statsData = [:]
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
-            statsData = otsdb.query(portDownTime, "pen.switch.state",
+            statsData = otsdb.query(portDownTime, metricPrefix + "switch.state",
                     [switchid: isl.srcSwitch.dpId.toOtsdFormat(), port: isl.srcPort]).dps
             assert statsData.size() == 1
         }
@@ -43,26 +48,30 @@ class SwitchPortConfigSpec extends BaseSpecification {
         def portUpTime = new Date()
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
 
-        then: "ISL between switches becomes 'DISCOVERED'"
+        then: "Forward and reverse ISLs between switches becomes 'DISCOVERED'"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(islUtils.reverseIsl(isl)).get().state == IslChangeType.DISCOVERED
+            def links = northbound.getAllLinks()
+            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
         }
 
         and: "Port UP event is logged in OpenTSDB"
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
-            statsData = otsdb.query(portUpTime, "pen.switch.state",
+            statsData = otsdb.query(portUpTime, metricPrefix + "switch.state",
                     [switchid: isl.srcSwitch.dpId.toOtsdFormat(), port: isl.srcPort]).dps
             assert statsData.size() == 1
         }
         statsData.values().first() == otsdbPortUp
+
+        and: "Cleanup: reset costs"
+        database.resetCosts()
 
         where:
         isl << uniqueIsls
     }
 
     @Unroll
-    def "Able to bring ISL-free port down/up on switch(#sw.dpId)"() {
+    def "Able to bring ISL-free port down/up on an #sw.ofVersion switch(#sw.dpId)"() {
         requireProfiles("hardware")
         // Not checking OTSDB here, since Kilda won't log into OTSDB for isl-free ports, this is expected.
 
@@ -71,13 +80,13 @@ class SwitchPortConfigSpec extends BaseSpecification {
         northbound.portDown(sw.dpId, port)
 
         then: "Port is really DOWN"
-        "PORT_DOWN" in northbound.getPort(sw.dpId, port).config
+        Wrappers.wait(WAIT_OFFSET) { assert "PORT_DOWN" in northbound.getPort(sw.dpId, port).config }
 
         when: "Bring port up on the switch"
         northbound.portUp(sw.dpId, port)
 
         then: "Port is really UP"
-        !("PORT_DOWN" in northbound.getPort(sw.dpId, port).config)
+        Wrappers.wait(WAIT_OFFSET) { assert !("PORT_DOWN" in northbound.getPort(sw.dpId, port).config) }
 
         where:
         // It is impossible to understand whether ISL-free port is UP/DOWN on OF_12 switches.
@@ -87,7 +96,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
 
     List<Isl> getUniqueIsls() {
         def uniqueSwitches = getUniqueSwitches()*.dpId
-        def isls = topology.islsForActiveSwitches.collect { [it, islUtils.reverseIsl(it)] }.flatten()
+        def isls = topology.islsForActiveSwitches.collect { [it, it.reversed] }.flatten()
         return isls.unique { it.srcSwitch.dpId }.findAll { it.srcSwitch.dpId in uniqueSwitches }
     }
 

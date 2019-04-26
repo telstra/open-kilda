@@ -90,7 +90,7 @@ export class FlowAddComponent implements OnInit {
     this.switchService.getSwitchList().subscribe(
       response => {
         response.forEach(function(s) { 
-          ref.switches.push({ label: s.switch_id+' ('+(s.state.toLowerCase())+')', value: s.switch_id });
+          ref.switches.push({ label: s.name+' ('+(s.state.toLowerCase())+')', value: s.switch_id });
         });
         ref.targetSwitches = ref.switches;
         ref.sourceSwitches = ref.switches;

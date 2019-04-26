@@ -32,6 +32,7 @@ opentsdb.batch.size = {{ getv "/kilda_opentsdb_batch_size" }}
 opentsdb.flush.interval = {{ getv "/kilda_opentsdb_flush_interval" }}
 opentsdb.workers = {{ getv "/kilda_opentsdb_workers" }}
 opentsdb.client.chunked-requests.enabled = true
+opentsdb.metric.prefix = {{ getv "/kilda_opentsdb_metric_prefix" }}
 
 neo4j.uri = bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
 neo4j.user = {{ getv "/kilda_neo4j_user" }}
@@ -50,14 +51,29 @@ logger.level = INFO
 # - discovery.keep.removed.isl - how long should we store/remember in minutes isl endpoints.
 #   it is mainly used for defining whether isl is moved or not
 discovery.interval = {{ getv "/kilda_discovery_interval" }}
+discovery.packet.ttl = {{ getv "/kilda_discovery_packet_ttl" }}
 discovery.timeout = {{ getv "/kilda_discovery_timeout" }}
 discovery.limit = {{ getv "/kilda_discovery_limit" }}
+discovery.keep.removed.isl = {{ getv "/kilda_discovery_keep_removed_isl" }}
+
+# deprecated since multi-FL release (must be dropped with "event" topology)
 discovery.speaker-failure-timeout = 5
 discovery.dump-request-timeout-seconds=60
-discovery.keep.removed.isl = {{ getv "/kilda_discovery_keep_removed_isl" }}
+
+# multi-FL
+floodlight.alive.timeout = {{ getv "/kilda_floodlight_alive_timeout" }}
+floodlight.alive.interval = {{ getv "/kilda_floodlight_alive_interval" }}
+floodlight.request.timeout = {{ getv "/kilda_floodlight_request_timeout" }}
+message.blacklist.timeout = {{ getv "/kilda_message_blacklist_timeout" }}
+floodlight.regions = {{ getv "/kilda_floodlight_regions" }}
 
 local = no
 local.execution.time = 300
 
 pce.strategy = {{ getv "/kilda_pce_strategy" }}
 pce.network.strategy = {{ getv "/kilda_pce_network_strategy" }}
+pce.diversity.isl.weight = {{ getv "/kilda_diversity_isl_weight" }}
+pce.diversity.switch.weight = {{ getv "/kilda_diversity_switch_weight" }}
+
+burst.coefficient = {{ getv "/kilda_floodlight_flow_meter_burst_coefficient" }}
+min.burst.size.in.kbits = 1024

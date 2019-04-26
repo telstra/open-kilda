@@ -71,7 +71,6 @@ public class UserController {
     @RequestMapping(value = "/role/{role_id}", method = RequestMethod.GET)
     @Permissions(values = { IConstants.Permission.UM_ROLE_VIEW_USERS })
     public Role getUsersByRoleId(@PathVariable("role_id") final Long roleId) {
-        LOGGER.info("[getUsersByRoleId] (roleId: " + roleId + ")");
         return roleService.getUserByRoleId(roleId);
     }
 
@@ -85,7 +84,6 @@ public class UserController {
     @RequestMapping(method = RequestMethod.POST)
     @Permissions(values = { IConstants.Permission.UM_USER_ADD })
     public UserInfo createUser(@RequestBody final UserInfo userInfo) {
-        LOGGER.info("[createUser] (username: " + userInfo.getUsername() + ", name: " + userInfo.getName() + ")");
         return userService.createUser(userInfo);
     }
 
@@ -100,7 +98,6 @@ public class UserController {
     @RequestMapping(value = "/{user_id}", method = RequestMethod.PUT)
     @Permissions(values = { IConstants.Permission.UM_USER_EDIT })
     public UserInfo updateUser(@RequestBody final UserInfo userInfo, @PathVariable("user_id") final Long userId) {
-        LOGGER.info("[updateUser] (id: " + userId + ")");
         userInfo.setUserId(userId);
         return userService.updateUser(userInfo, userId);
     }
@@ -113,7 +110,6 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.GET)
     public List<UserInfo> getUsers() {
-        LOGGER.info("[getUsers]");
         return userService.getAllUsers();
     }
 
@@ -126,7 +122,6 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{user_id}", method = RequestMethod.GET)
     public UserInfo getUserById(@PathVariable("user_id") final Long userId) {
-        LOGGER.info("[getUserById] (id: " + userId + ")");
         UserInfo userInfo = userService.getUserById(userId);
         return userInfo;
     }
@@ -140,7 +135,6 @@ public class UserController {
     @RequestMapping(value = "/{user_id}", method = RequestMethod.DELETE)
     @Permissions(values = { IConstants.Permission.UM_USER_DELETE })
     public void deleteUserById(@PathVariable("user_id") final Long userId) {
-        LOGGER.info("[deleteUserById] (id: " + userId + ")");
         userService.deleteUserById(userId);
     }
 
@@ -155,7 +149,6 @@ public class UserController {
     @RequestMapping(value = "/role/{role_id}", method = RequestMethod.PUT)
     @Permissions(values = { IConstants.Permission.UM_ASSIGN_ROLE_TO_USERS })
     public Role assignUsersByRoleId(@PathVariable("role_id") final Long roleId, @RequestBody final Role role) {
-        LOGGER.info("[assignUsersByRoleId] (roleId: " + roleId + ")");
         return userService.assignUserByRoleId(roleId, role);
     }
 
@@ -169,7 +162,6 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/changePassword/{user_id}", method = RequestMethod.PUT)
     public Message changePassword(@RequestBody final UserInfo userInfo, @PathVariable("user_id") final Long userId) {
-        LOGGER.info("[changePassword] (userId: " + userId + ")");
         userService.changePassword(userInfo, userId);
         return new Message("Password has been changed successfully.");
     }
@@ -184,7 +176,6 @@ public class UserController {
     @RequestMapping(value = "/resetpassword/{id}", method = RequestMethod.GET)
     @Permissions(values = { IConstants.Permission.UM_USER_RESET })
     public Object resetPassword(@PathVariable("id") final Long userId) {
-        LOGGER.info("[resetPassword] (userId: " + userId + ")");
         userService.resetPassword(userId, false);
         return new Message("Password has been sent to your EmailId");
     }
@@ -199,7 +190,6 @@ public class UserController {
     @RequestMapping(value = "/admin/resetpassword/{id}", method = RequestMethod.GET)
     @Permissions(values = { IConstants.Permission.UM_USER_RESET_ADMIN })
     public Object resetPasswordByAdmin(@PathVariable("id") final Long userId) {
-        LOGGER.info("[resetPasswordByAdmin] (userId: " + userId + ")");
         return userService.resetPassword(userId, true);
     }
 
@@ -213,7 +203,7 @@ public class UserController {
     @RequestMapping(value = "/reset2fa/{user_id}", method = RequestMethod.PUT)
     @Permissions(values = { IConstants.Permission.UM_USER_RESET2FA })
     public Message resetTwofa(@PathVariable("user_id") final Long userId) {
-        LOGGER.info("[resetTwofa] (userId: " + userId + ")");
+        LOGGER.info("Reset two fa. (userId: " + userId + ")");
         userService.reset2fa(userId);
         return new Message("2FA has been reset for the user.");
     }
@@ -226,7 +216,7 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/settings", method = RequestMethod.GET)
     public String getUserSettings() {
-        LOGGER.info("[getUserSettings] (userId: " + serverContext.getRequestContext().getUserId() + ")");
+        LOGGER.info("Get user settings. (userId: " + serverContext.getRequestContext().getUserId() + ")");
         return userService.getUserSettings(serverContext.getRequestContext().getUserId());
     }
 
@@ -242,7 +232,7 @@ public class UserController {
         UserInfo userInfo = new UserInfo();
         userInfo.setData(data);
         userInfo.setUserId(serverContext.getRequestContext().getUserId());
-        LOGGER.info("[saveOrUpdateSettings] (userId: " + userInfo.getUserId() + ")");
+        LOGGER.info("Save or update user settings. (userId: " + userInfo.getUserId() + ")");
         userService.saveOrUpdateSettings(userInfo);
         return data;
     }
@@ -257,7 +247,7 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/validateotp", method = RequestMethod.POST)
     public boolean validateOtp(@RequestBody final UserInfo userInfo, final HttpServletRequest request) {
-        LOGGER.info("[validateOTP] (userId: " + serverContext.getRequestContext().getUserId() + ")");
+        LOGGER.info("Validate OTP. (userId: " + serverContext.getRequestContext().getUserId() + ")");
         return userService.validateOtp(serverContext.getRequestContext().getUserId(), userInfo.getCode());
     }
     
@@ -269,7 +259,6 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/loggedInUserInfo", method = RequestMethod.GET)
     public UserInfo getLoggedInUserInfo() {
-        LOGGER.info("[getLoggedInUserInfo] ");
         return userService.getLoggedInUserInfo();
     }
 }

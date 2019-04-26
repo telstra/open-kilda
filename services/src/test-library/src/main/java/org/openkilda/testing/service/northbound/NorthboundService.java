@@ -30,21 +30,24 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.history.FlowEventPayload;
+import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
-import org.openkilda.northbound.dto.flows.FlowValidationDto;
-import org.openkilda.northbound.dto.flows.PingInput;
-import org.openkilda.northbound.dto.flows.PingOutput;
-import org.openkilda.northbound.dto.links.LinkDto;
-import org.openkilda.northbound.dto.links.LinkParametersDto;
-import org.openkilda.northbound.dto.links.LinkPropsDto;
-import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
-import org.openkilda.northbound.dto.switches.DeleteLinkResult;
-import org.openkilda.northbound.dto.switches.DeleteMeterResult;
-import org.openkilda.northbound.dto.switches.PortDto;
-import org.openkilda.northbound.dto.switches.RulesSyncResult;
-import org.openkilda.northbound.dto.switches.RulesValidationResult;
-import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.v1.flows.PingInput;
+import org.openkilda.northbound.dto.v1.flows.PingOutput;
+import org.openkilda.northbound.dto.v1.links.LinkDto;
+import org.openkilda.northbound.dto.v1.links.LinkParametersDto;
+import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
+import org.openkilda.northbound.dto.v1.links.LinkUnderMaintenanceDto;
+import org.openkilda.northbound.dto.v1.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.v1.switches.DeleteSwitchResult;
+import org.openkilda.northbound.dto.v1.switches.PortDto;
+import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
+import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -56,6 +59,10 @@ public interface NorthboundService {
     //flows
 
     FlowPayload getFlow(String flowId);
+
+    List<FlowEventPayload> getFlowHistory(String flowId);
+
+    List<FlowEventPayload> getFlowHistory(String flowId, Long timeFrom, Long timeTo);
 
     FlowPayload addFlow(FlowPayload payload);
 
@@ -109,6 +116,10 @@ public interface NorthboundService {
 
     SwitchMeterEntries getAllMeters(SwitchId switchId);
 
+    SwitchValidationResult switchValidate(SwitchId switchId);
+
+    DeleteSwitchResult deleteSwitch(SwitchId switchId, boolean force);
+
     PortDto configurePort(SwitchId switchId, Integer portNo, Object config);
 
     PortDto portDown(SwitchId switchId, Integer portNo);
@@ -137,7 +148,7 @@ public interface NorthboundService {
 
     List<String> rerouteLinkFlows(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
 
-    DeleteLinkResult deleteLink(LinkParametersDto linkParameters);
+    List<LinkDto> deleteLink(LinkParametersDto linkParameters);
 
     List<LinkDto> setLinkMaintenance(LinkUnderMaintenanceDto link);
 
@@ -147,25 +158,16 @@ public interface NorthboundService {
 
     FeatureTogglesDto toggleFeature(FeatureTogglesDto request);
 
+    //feature network
+
+    PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch);
+
     /**
      * Returns all active links.
      */
     default List<IslInfoData> getActiveLinks() {
         return getAllLinks().stream()
                 .filter(sw -> sw.getState() == IslChangeType.DISCOVERED)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Get links by source/destination switches and ports.
-     */
-    default List<IslInfoData> getLinksByParameters(
-            SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort) {
-        return getAllLinks().stream()
-                .filter(link -> link.getSource().getSwitchId().equals(srcSwitch)
-                        && link.getSource().getPortNo() == srcPort
-                        && link.getDestination().getSwitchId().equals(dstSwitch)
-                        && link.getDestination().getPortNo() == dstPort)
                 .collect(Collectors.toList());
     }
 

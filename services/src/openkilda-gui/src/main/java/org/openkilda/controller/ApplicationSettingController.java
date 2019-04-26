@@ -57,7 +57,6 @@ public class ApplicationSettingController extends BaseController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.GET)
-    @Permissions(values = { IConstants.Permission.APPLICATION_SETTING })
     public Map<String, String> getApplicationSettings() {
         return applicationSettingService.getApplicationSettings();
     }
@@ -69,7 +68,6 @@ public class ApplicationSettingController extends BaseController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/storagetypes", method = RequestMethod.GET)
-    @Permissions(values = { IConstants.Permission.APPLICATION_SETTING })
     public StorageType[] getStorageTypes() {
         return IConstants.StorageType.values();
     }

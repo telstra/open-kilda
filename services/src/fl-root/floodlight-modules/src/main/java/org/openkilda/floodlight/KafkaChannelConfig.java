@@ -41,6 +41,9 @@ public interface KafkaChannelConfig extends KafkaConsumerGroupConfig {
     @Key("testing-mode")
     String getTestingMode();
 
+    @Key("floodlight-region")
+    String getFloodlightRegion();
+
     default boolean isTestingMode() {
         return "YES".equals(getTestingMode());
     }

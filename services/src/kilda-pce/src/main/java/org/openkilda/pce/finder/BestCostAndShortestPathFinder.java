@@ -66,7 +66,7 @@ public class BestCostAndShortestPathFinder implements PathFinder {
     /**
      * Constructs the finder with the specified limit on path depth.
      *
-     * @param allowedDepth    the allowed depth for a potential path.
+     * @param allowedDepth the allowed depth for a potential path.
      * @param weightFunction  the edge weight computing function.
      */
     public BestCostAndShortestPathFinder(int allowedDepth, WeightFunction weightFunction) {
@@ -102,6 +102,97 @@ public class BestCostAndShortestPathFinder implements PathFinder {
         }
 
         return Pair.of(forwardPath, reversePath);
+    }
+
+    /**
+     * Find N (or less) best paths. To find N paths Yen's algorithm is used.
+     *
+     * @return an list of N (or less) best paths.
+     */
+    @Override
+    public List<List<Edge>> findNPathsBetweenSwitches(
+            AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId, int count)
+            throws UnroutableFlowException {
+
+        Node start = network.getSwitch(startSwitchId);
+        Node end = network.getSwitch(endSwitchId);
+        if (start == null || end == null) {
+            throw new UnroutableFlowException(format("Switch %s doesn't have links with enough bandwidth",
+                    start == null ? startSwitchId : endSwitchId));
+        }
+
+        List<List<Edge>> bestPaths = new ArrayList<>();
+
+        List<Edge> lastBestPath = getPath(start, end);
+        bestPaths.add(lastBestPath);
+
+        for (int i = 0; i < count - 1; i++) {
+            List<Edge> bestPath = null;
+            Edge removedEdge = null;
+            long bestAvailableBandwidth = Long.MIN_VALUE;
+            long bestCost = Long.MAX_VALUE;
+
+            for (Edge edge : lastBestPath) {
+                removeEdge(edge);
+
+                List<Edge> path = getPath(start, end);
+                if (path.isEmpty()) {
+                    continue;
+                }
+
+                long currentAvailableBandwidth = getMinAvailableBandwidth(path);
+                long currentCost = getTotalCost(path);
+
+                if (currentAvailableBandwidth > bestAvailableBandwidth
+                        || (currentAvailableBandwidth == bestAvailableBandwidth && currentCost < bestCost)) {
+                    bestAvailableBandwidth = currentAvailableBandwidth;
+                    bestCost = currentCost;
+                    bestPath = path;
+                    removedEdge = edge;
+                }
+
+                restoreEdge(edge);
+            }
+
+            if (bestPath == null || bestPath.isEmpty()) {
+                break;
+            }
+            bestPaths.add(bestPath);
+            lastBestPath = bestPath;
+            removeEdge(removedEdge);
+        }
+
+
+        return bestPaths;
+    }
+
+    private long getMinAvailableBandwidth(List<Edge> path) {
+        return path.stream().mapToLong(Edge::getAvailableBandwidth).min().orElse(Long.MIN_VALUE);
+    }
+
+    private long getTotalCost(List<Edge> path) {
+        if (path.isEmpty()) {
+            return Long.MAX_VALUE;
+        }
+        return path.stream().mapToLong(Edge::getCost).sum();
+    }
+
+    private void removeEdge(Edge edge) {
+        edge.getSrcSwitch().getOutgoingLinks().remove(edge);
+        edge.getDestSwitch().getIncomingLinks().remove(edge);
+
+        Edge reverseEdge = edge.swap();
+        reverseEdge.getSrcSwitch().getOutgoingLinks().remove(reverseEdge);
+        reverseEdge.getDestSwitch().getIncomingLinks().remove(reverseEdge);
+    }
+
+    private void restoreEdge(Edge edge) {
+        edge.getSrcSwitch().getOutgoingLinks().add(edge);
+        edge.getDestSwitch().getIncomingLinks().add(edge);
+
+        Edge reverseEdge = edge.swap();
+        reverseEdge.getSrcSwitch().getOutgoingLinks().add(reverseEdge);
+        reverseEdge.getDestSwitch().getIncomingLinks().add(reverseEdge);
     }
 
     /**
@@ -184,15 +275,12 @@ public class BestCostAndShortestPathFinder implements PathFinder {
         if (isPathEndpointsCorrect(src, dst, reversePath)) {
             if (isPathValid(reversePath)) {
                 log.debug("Reverse path is available from {} to {}", src.getSwitchId(), dst.getSwitchId());
-                return reversePath;
             } else {
                 log.warn(format("Failed to find symmetric reverse path from %s to %s. Forward path: %s",
                         src.getSwitchId(), dst.getSwitchId(), StringUtils.join(forwardPath, ", ")));
             }
         }
-
-        // find an alternative path
-        return getPath(src, dst);
+        return reversePath;
     }
 
     private boolean isPathEndpointsCorrect(Node src, Node dst, List<Edge> path) {
@@ -265,9 +353,11 @@ public class BestCostAndShortestPathFinder implements PathFinder {
             List<Edge> newParentPath = new ArrayList<>(this.parentPath);
             newParentPath.add(nextIsl);
 
-            long weight = parentCost + weightFunction.apply(nextIsl) + nextIsl.getDestSwitch().getCost();
+            long weight = parentCost
+                    + nextIsl.getFullWeight(weightFunction)
+                    + nextIsl.getDestSwitch().getStaticWeight();
             if (this.parentPath.isEmpty()) {
-                weight += nextIsl.getSrcSwitch().getCost();
+                weight += nextIsl.getSrcSwitch().getStaticWeight();
             }
 
             return new SearchNode(

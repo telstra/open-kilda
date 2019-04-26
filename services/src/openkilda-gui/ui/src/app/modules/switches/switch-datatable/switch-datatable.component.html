@@ -3,10 +3,23 @@
       <div class="row">
           <div class="col-sm-4">
               <div class="form-group input-group-sm">
-                   <input type="text" class="form-control" (keyup)="fulltextSearch($event)" placeholder="Search"/>
+                   <input id="search-input" type="text" class="form-control" (keyup)="fulltextSearch($event)" placeholder="Search"/>
                </div>
           </div>
             <div class="col-sm-8 text-right text-filters mb-3">
+                <div *ngIf="hasStoreSetting" class="btn-group btn-group-sm btn-group-toggle mr-1" data-toggle="buttons">
+                    <label class="btn" (click)="toggleType('all')" [ngClass]="{ 'btn-secondary' : typeFilter == 'all','btn-dark': typeFilter != 'all'}">
+                      <input type="radio" name="options" id="option1" autocomplete="off" checked> All
+                    </label>
+                    <label class="btn" (click)="toggleType('controller')" [ngClass]="{ 'btn-secondary' : typeFilter == 'controller','btn-dark': typeFilter != 'controller'}">
+                      <input type="radio" name="options" id="option2" autocomplete="off"> Controller
+                    </label>
+                    <label class="btn" (click)="toggleType('inventory')" [ngClass]="{ 'btn-secondary' : typeFilter == 'inventory','btn-dark': typeFilter != 'inventory'}">
+                      <input type="radio" name="options" id="option3" autocomplete="off"> Inventory
+                    </label>
+                    
+                  </div>
+                  <a *ngIf="hasStoreSetting" class="mr-1"> | </a>
                <a class="cursor-pointer" (click)="refreshList()"><i class="fa fa-refresh"></i>  Refresh</a>
             </div>
        </div>
@@ -59,17 +72,33 @@
             <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" id="state" [hidden]="!state" />
         
         </th>
+        <th >
+          <span title="type">
+              type
+             </span>
+              
+        </th>
       </tr>
     </thead>
 
     <tbody>
         <tr *ngFor="let row of data; let i = index" (click)="showSwitch(row)" class="flowDataRow"
         [ngClass]="{'down-state': row.state == 'DEACTIVATED' , 'up-state': row.state == 'ACTIVATED'}" [class.down-status]="row.hasOwnProperty('discrepancy') && ((row['discrepancy'].hasOwnProperty('status') && row['discrepancy']['status']))">
-            <td class="divTableCell" title="{{checkValue(row.switch_id)}}" >
+            <td class="divTableCell" title="{{checkValue(row.switch_id)}}" [contextMenu]="copySwitchId">
               {{checkValue(row.switch_id)}}
+              <context-menu #copySwitchId>
+                <ng-template contextMenuItem (execute)="copyToClip($event,'switch_id',i);">
+                  Copy to Clipboard
+                </ng-template>
+              </context-menu>
             </td>
-            <td class="divTableCell" title="{{ row['common-name'] ? checkValue(row['common-name']) : checkValue(row['name']) }}" >
+            <td class="divTableCell" title="{{ row['common-name'] ? checkValue(row['common-name']) : checkValue(row['name']) }}" [contextMenu]="copySwitchName">
               {{ row['common-name'] ? checkValue(row['common-name']) : checkValue(row['name']) }}
+              <context-menu #copySwitchName>
+                <ng-template contextMenuItem (execute)="copyToClip($event,'name',i);">
+                  Copy to Clipboard
+                </ng-template>
+              </context-menu>
             </td>
             <td class="divTableCell" title="{{checkValue(row.address)}}" >
               {{checkValue(row.address)}}
@@ -86,6 +115,9 @@
             <td class="divTableCell" title="{{checkValue(row.state)}}" >
               {{checkValue(row.state)}}
             </td>
+            <td >{{ descrepancyString(row) }}</td>
+           
+           
         </tr>
     </tbody>
   </table>

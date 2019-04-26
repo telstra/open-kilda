@@ -21,19 +21,18 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.command.BatchCommandsRequest;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.CommandGroup;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.BatchFlowCommandsRequest;
-import org.openkilda.messaging.command.flow.FlowCommandGroup;
-import org.openkilda.messaging.command.flow.FlowCommandGroup.FailureReaction;
+import org.openkilda.messaging.command.flow.DeallocateFlowResourcesRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
-import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
-import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.command.flow.UpdateFlowPathStatusRequest;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.CrudBoltState;
-import org.openkilda.messaging.ctrl.state.ResorceCacheBoltState;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.error.ClientErrorMessage;
 import org.openkilda.messaging.error.ErrorData;
@@ -43,7 +42,6 @@ import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
-import org.openkilda.messaging.info.flow.FlowCacheSyncResponse;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
@@ -54,11 +52,14 @@ import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.model.Flow;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPair;
-import org.openkilda.model.FlowSegment;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.UnidirectionalFlow;
+import org.openkilda.model.history.FlowDump;
+import org.openkilda.model.history.FlowEvent;
+import org.openkilda.model.history.FlowHistory;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
@@ -68,63 +69,57 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.error.ClientException;
-import org.openkilda.wfm.share.cache.ResourceCache;
+import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.share.bolt.HistoryBolt;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
-import org.openkilda.wfm.topology.flow.model.FlowPairWithSegments;
-import org.openkilda.wfm.topology.flow.model.UpdatedFlowPairWithSegments;
+import org.openkilda.wfm.topology.flow.model.ReroutedFlow;
 import org.openkilda.wfm.topology.flow.service.FeatureToggle;
 import org.openkilda.wfm.topology.flow.service.FeatureTogglesService;
 import org.openkilda.wfm.topology.flow.service.FlowAlreadyExistException;
 import org.openkilda.wfm.topology.flow.service.FlowCommandFactory;
 import org.openkilda.wfm.topology.flow.service.FlowCommandSender;
-import org.openkilda.wfm.topology.flow.service.FlowNotFoundException;
-import org.openkilda.wfm.topology.flow.service.FlowResourcesManager;
 import org.openkilda.wfm.topology.flow.service.FlowService;
-import org.openkilda.wfm.topology.flow.service.FlowService.ReroutedFlow;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.storm.state.InMemoryKeyValueState;
+import lombok.NonNull;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseStatefulBolt;
+import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collections;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class CrudBolt
-        extends BaseStatefulBolt<InMemoryKeyValueState<String, ResourceCache>>
-        implements ICtrlBolt {
+public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
     private static final String STREAM_ID_CTRL = "ctrl";
 
     private static final Logger logger = LoggerFactory.getLogger(CrudBolt.class);
 
-    /**
-     * Flow cache key.
-     */
-    private static final String FLOW_CACHE = "flow";
-
     private final PersistenceManager persistenceManager;
 
     private final PathComputerConfig pathComputerConfig;
+
+    private final FlowResourcesConfig flowResourcesConfig;
 
     private transient RepositoryFactory repositoryFactory;
 
@@ -143,27 +138,11 @@ public class CrudBolt
     private transient TopologyContext context;
     private transient OutputCollector outputCollector;
 
-    public CrudBolt(PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig) {
+    public CrudBolt(PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig,
+                    FlowResourcesConfig flowResourcesConfig) {
         this.persistenceManager = persistenceManager;
         this.pathComputerConfig = pathComputerConfig;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void initState(InMemoryKeyValueState<String, ResourceCache> state) {
-        ResourceCache resourceCache = state.get(FLOW_CACHE);
-        if (resourceCache == null) {
-            resourceCache = new ResourceCache();
-            state.put(FLOW_CACHE, resourceCache);
-        }
-
-        flowResourcesManager = new FlowResourcesManager(resourceCache);
-        flowService = new FlowService(persistenceManager, pathComputerFactory, flowResourcesManager, flowValidator);
-        featureTogglesService = new FeatureTogglesService(persistenceManager.getRepositoryFactory());
-
-        initFlowResourcesManager();
+        this.flowResourcesConfig = flowResourcesConfig;
     }
 
     /**
@@ -177,6 +156,7 @@ public class CrudBolt
         outputFieldsDeclarer.declareStream(StreamType.METER_MODE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
+        outputFieldsDeclarer.declareStream(StreamType.HISTORY.toString(), HistoryBolt.FIELDS_HISTORY);
         // FIXME(dbogun): use proper tuple format
         outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
@@ -195,6 +175,11 @@ public class CrudBolt
                 new AvailableNetworkFactory(pathComputerConfig, repositoryFactory);
         pathComputerFactory = new PathComputerFactory(pathComputerConfig, availableNetworkFactory);
         commandFactory = new FlowCommandFactory();
+
+        flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
+        flowService = new FlowService(persistenceManager, pathComputerFactory, flowResourcesManager,
+                flowValidator, commandFactory);
+        featureTogglesService = new FeatureTogglesService(persistenceManager.getRepositoryFactory());
     }
 
     /**
@@ -246,9 +231,6 @@ public class CrudBolt
                         case REROUTE:
                             handleRerouteRequest(cmsg, tuple);
                             break;
-                        case CACHE_SYNC:
-                            handleCacheSyncRequest(cmsg, tuple);
-                            break;
                         case READ:
                             handleReadRequest(flowId, cmsg, tuple);
                             break;
@@ -257,6 +239,12 @@ public class CrudBolt
                             break;
                         case METER_MODE:
                             handleMeterModeRequest(cmsg, tuple, flowId);
+                            break;
+                        case DEALLOCATE_RESOURCES:
+                            handleDeallocateResourcesRequest(cmsg, tuple);
+                            break;
+                        case STATUS:
+                            handleUpdateFlowPathStatusRequest(cmsg, tuple);
                             break;
                         default:
                             logger.error("Unexpected stream: {} in {}", streamId, tuple);
@@ -308,16 +296,6 @@ public class CrudBolt
         outputCollector.emit(StreamType.ERROR.toString(), tuple, error);
     }
 
-    private void handleCacheSyncRequest(CommandMessage message, Tuple tuple) {
-        logger.info("Synchronize FlowResourcesManager.");
-
-        initFlowResourcesManager();
-
-        Values values = new Values(new InfoMessage(new FlowCacheSyncResponse(),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
-        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
-    }
-
     private void handlePushRequest(String flowId, InfoMessage message, Tuple tuple) {
         final String errorType = "Can not push flow";
 
@@ -333,11 +311,13 @@ public class CrudBolt
             flow.setStatus(flowStatus);
 
             flowService.saveFlow(flow,
-                    new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.CREATE) {
+                    new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.CREATE) {
                         @Override
-                        public void sendInstallRulesCommand(FlowPairWithSegments flowWithSegments) {
+                        public void sendFlowCommands(String flowId, List<CommandGroup> commandGroups,
+                                                     List<? extends CommandData> onSuccessCommands,
+                                                     List<? extends CommandData> onFailureCommands) {
                             if (fid.getOperation() == FlowOperation.PUSH_PROPAGATE) {
-                                super.sendInstallRulesCommand(flowWithSegments);
+                                super.sendFlowCommands(flowId, commandGroups, onSuccessCommands, onFailureCommands);
                             }
                         }
                     });
@@ -346,7 +326,7 @@ public class CrudBolt
 
             Values values = new Values(new InfoMessage(
                     new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowMapper.INSTANCE.map(flowStatus))),
-                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowAlreadyExistException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -367,12 +347,13 @@ public class CrudBolt
 
             FlowInfoData fid = (FlowInfoData) message.getData();
 
-            FlowPair deletedFlow = flowService.deleteFlow(flowId,
-                    new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.DELETE) {
-                        @Override
-                        public void sendRemoveRulesCommand(FlowPairWithSegments flowWithSegments) {
+            UnidirectionalFlow deletedFlow = flowService.deleteFlow(flowId,
+                    new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.DELETE) {
+                        public void sendFlowCommands(String flowId, List<CommandGroup> commandGroups,
+                                                     List<? extends CommandData> onSuccessCommands,
+                                                     List<? extends CommandData> onFailureCommands) {
                             if (fid.getOperation() == FlowOperation.UNPUSH_PROPAGATE) {
-                                super.sendRemoveRulesCommand(flowWithSegments);
+                                super.sendFlowCommands(flowId, commandGroups, onSuccessCommands, onFailureCommands);
                             }
                         }
                     });
@@ -381,7 +362,7 @@ public class CrudBolt
 
             Values values = new Values(new InfoMessage(
                     new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.DOWN)),
-                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -398,18 +379,19 @@ public class CrudBolt
         try {
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.DELETE_FLOW);
 
-            FlowPair deletedFlow = flowService.deleteFlow(flowId,
-                    new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.DELETE));
+            UnidirectionalFlow deletedFlow = flowService.deleteFlow(flowId,
+                    new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.DELETE));
 
             logger.info("Deleted the flow: {}", deletedFlow);
 
-            Values values = new Values(new InfoMessage(buildFlowResponse(deletedFlow.getForward()),
-                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+            Values values = new Values(new InfoMessage(buildFlowResponse(deletedFlow),
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
         } catch (Exception e) {
+            logger.error("Unexpected error", e);
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.DELETION_FAILURE, errorType, e.getMessage());
         }
@@ -421,15 +403,20 @@ public class CrudBolt
         try {
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.CREATE_FLOW);
 
-            Flow flow = FlowMapper.INSTANCE.map(((FlowCreateRequest) message.getData()).getPayload());
+            FlowCreateRequest request = (FlowCreateRequest) message.getData();
+            UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
+            saveHistory("Flow creating", flow.getFlowId(), "", message.getCorrelationId(), tuple);
 
-            FlowPair createdFlow = flowService.createFlow(flow,
-                    new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.CREATE));
+            FlowPair createdFlow = flowService.createFlow(flow.getFlowEntity(),
+                    request.getDiverseFlowId(),
+                    new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.CREATE));
 
             logger.info("Created the flow: {}", createdFlow);
+            saveHistory("Created the flow", "", message.getCorrelationId(), tuple);
+            saveHistory(createdFlow, "stateAfter", message.getCorrelationId(), tuple);
 
             Values values = new Values(new InfoMessage(buildFlowResponse(createdFlow.getForward()),
-                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -443,10 +430,75 @@ public class CrudBolt
         } catch (UnroutableFlowException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found : " + e.getMessage());
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_FOUND, errorType, "The flow not found :  " + e.getMessage());
         } catch (Exception e) {
+            logger.error("Unexpected error", e);
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, errorType, e.getMessage());
         }
+    }
+
+    private void saveHistory(String action, String flowId, String details, String correlationId, Tuple tuple) {
+        FlowEvent flowEvent = FlowEvent.builder()
+                .action(action)
+                .actor("NB")
+                .flowId(flowId)
+                .details(details)
+                .taskId(correlationId)
+                .timestamp(Instant.now())
+                .build();
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowEvent));
+    }
+
+    private void saveHistory(String action, String details, String correlationId, Tuple tuple) {
+        FlowHistory flowHistory = FlowHistory.builder()
+                .action(action)
+                .details(details)
+                .taskId(correlationId)
+                .timestamp(Instant.now())
+                .build();
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowHistory));
+    }
+
+    private void saveHistory(Optional<FlowPair> optionalFlowPair, String type, String correlationId, Tuple tuple)
+            throws JsonProcessingException {
+        if (optionalFlowPair.isPresent()) {
+            saveHistory(optionalFlowPair.get(), type, correlationId, tuple);
+        }
+    }
+
+    private void saveHistory(FlowPair flowPair, String type, String correlationId, Tuple tuple)
+            throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        FlowDump flowDump = FlowDump.builder()
+                .taskId(correlationId)
+                .flowId(flowPair.forward.getFlowId())
+                .type(type)
+                .bandwidth(flowPair.forward.getBandwidth())
+                .ignoreBandwidth(flowPair.forward.isIgnoreBandwidth())
+                .forwardCookie(flowPair.forward.getCookie())
+                .reverseCookie(flowPair.reverse.getCookie())
+                .sourceSwitch(flowPair.forward.getSrcSwitch().getSwitchId())
+                .destinationSwitch(flowPair.forward.getDestSwitch().getSwitchId())
+                .sourcePort(flowPair.forward.getSrcPort())
+                .destinationPort(flowPair.forward.getDestPort())
+                .sourceVlan(flowPair.forward.getSrcVlan())
+                .destinationVlan(flowPair.forward.getDestVlan())
+                .forwardMeterId(flowPair.forward.getMeterId())
+                .reverseMeterId(flowPair.reverse.getMeterId())
+                .forwardPath(
+                        objectMapper.writeValueAsString(
+                                FlowPathMapper.INSTANCE.mapToPathNodes(flowPair.forward)))
+                .reversePath(
+                        objectMapper.writeValueAsString(
+                                FlowPathMapper.INSTANCE.mapToPathNodes(flowPair.reverse)))
+                .forwardStatus(flowPair.forward.getStatus())
+                .reverseStatus(flowPair.reverse.getStatus())
+                .build();
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowDump));
     }
 
     private void handleRerouteRequest(CommandMessage message, Tuple tuple) {
@@ -456,7 +508,7 @@ public class CrudBolt
 
         try {
             ReroutedFlow reroutedFlow = flowService.rerouteFlow(flowId, request.isForce(),
-                    new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.UPDATE));
+                    new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             if (reroutedFlow.getNewFlow() != null) {
                 logger.warn("Rerouted flow: {}", reroutedFlow);
@@ -465,15 +517,14 @@ public class CrudBolt
                 logger.warn("Reroute {} is unsuccessful: can't find new path.", flowId);
             }
 
-            PathInfoData currentPath = FlowPathMapper.INSTANCE.map(reroutedFlow.getOldFlow()
-                    .getForward().getFlowPath());
+            PathInfoData currentPath = FlowPathMapper.INSTANCE.map(reroutedFlow.getOldFlow().getFlowPath());
             PathInfoData resultPath = Optional.ofNullable(reroutedFlow.getNewFlow())
-                    .map(flow -> FlowPathMapper.INSTANCE.map(flow.getForward().getFlowPath()))
+                    .map(flow -> FlowPathMapper.INSTANCE.map(flow.getFlowPath()))
                     .orElse(currentPath);
 
             FlowRerouteResponse response = new FlowRerouteResponse(resultPath, !resultPath.equals(currentPath));
             Values values = new Values(new InfoMessage(response, message.getTimestamp(),
-                    message.getCorrelationId(), Destination.NORTHBOUND));
+                    message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -484,6 +535,7 @@ public class CrudBolt
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, "Path was not found");
         } catch (Exception e) {
+            logger.error("Unexpected error", e);
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
         }
@@ -495,15 +547,21 @@ public class CrudBolt
         try {
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.UPDATE_FLOW);
 
-            Flow flow = FlowMapper.INSTANCE.map(((FlowUpdateRequest) message.getData()).getPayload());
+            FlowUpdateRequest request = (FlowUpdateRequest) message.getData();
+            UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
+            saveHistory("Flow updating", flow.getFlowId(), "", message.getCorrelationId(), tuple);
+            saveHistory(flowService.getFlowPair(flow.getFlowId()), "stateBefore", message.getCorrelationId(), tuple);
 
-            FlowPair updatedFlow = flowService.updateFlow(flow.getFlowId(), flow,
-                    new CrudFlowCommandSender(message.getCorrelationId(), tuple, StreamType.UPDATE));
+            FlowPair updatedFlow = flowService.updateFlow(flow.getFlowEntity(),
+                    request.getDiverseFlowId(),
+                    new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
             logger.info("Updated the flow: {}", updatedFlow);
+            saveHistory("Updated the flow", "", message.getCorrelationId(), tuple);
+            saveHistory(updatedFlow, "stateAfter", message.getCorrelationId(), tuple);
 
             Values values = new Values(new InfoMessage(buildFlowResponse(updatedFlow.getForward()),
-                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -518,6 +576,7 @@ public class CrudBolt
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found");
         } catch (Exception e) {
+            logger.error("Unexpected error", e);
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
         }
@@ -556,7 +615,7 @@ public class CrudBolt
         logger.debug("Got bidirectional flow: {}, correlationId {}", flow, message.getCorrelationId());
 
         Values values = new Values(new InfoMessage(new FlowReadResponse(flow),
-                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND));
+                message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
     }
 
@@ -568,8 +627,13 @@ public class CrudBolt
         SwitchId fwdSwitchId = flowPair.getForward().getSrcSwitch().getSwitchId();
         SwitchId rvsSwitchId = flowPair.getReverse().getSrcSwitch().getSwitchId();
         long bandwidth = flowPair.getForward().getBandwidth();
-        Integer fwdMeterId = flowPair.getForward().getMeterId();
-        Integer rvsMeterId = flowPair.getReverse().getMeterId();
+        Long fwdMeterId = flowPair.getForward().getMeterId();
+        Long rvsMeterId = flowPair.getReverse().getMeterId();
+
+        if (fwdMeterId == null || rvsMeterId == null) {
+            throw new MessageException(inMessage.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.REQUEST_INVALID, "Can't update meter", String.format("Flow '%s' is unmetered", flowId));
+        }
 
         MeterModifyCommandRequest request = new MeterModifyCommandRequest(fwdSwitchId, fwdMeterId,
                 rvsSwitchId, rvsMeterId, bandwidth);
@@ -583,15 +647,44 @@ public class CrudBolt
         }
     }
 
+    private void handleDeallocateResourcesRequest(CommandMessage message, Tuple tuple) {
+        try {
+            DeallocateFlowResourcesRequest request = (DeallocateFlowResourcesRequest) message.getData();
+            flowService.deallocateResources(request.getPathId(),
+                    request.getUnmaskedCookie(), request.getEncapsulationType());
+
+            logger.info("Flow resources deallocated: {}", request);
+
+        } catch (Exception e) {
+            logger.error("Unexpected error", e);
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.DELETION_FAILURE, "Could not deallocate flow resources", e.getMessage());
+        }
+    }
+
+    private void handleUpdateFlowPathStatusRequest(CommandMessage message, Tuple tuple) {
+        try {
+            UpdateFlowPathStatusRequest request = (UpdateFlowPathStatusRequest) message.getData();
+            flowService.updateFlowPathStatus(request.getFlowId(), request.getPathId(), request.getFlowPathStatus());
+
+            logger.info("Flow status updated: {}", request);
+
+        } catch (Exception e) {
+            logger.error("Unexpected error", e);
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.UPDATE_FAILURE, "Could not update flow status", e.getMessage());
+        }
+    }
+
     /**
      * Builds flow response entity.
      *
      * @param flow a flow for payload
      * @return flow response entity
      */
-    private FlowResponse buildFlowResponse(Flow flow) {
+    private FlowResponse buildFlowResponse(UnidirectionalFlow flow) {
         FlowDto flowDto = FlowMapper.INSTANCE.map(flow);
-        flowDto.setCookie(flow.getCookie() & ResourceCache.FLOW_COOKIE_VALUE_MASK);
+        flowDto.setCookie(flow.getCookie() & Cookie.FLOW_COOKIE_VALUE_MASK);
         return new FlowResponse(flowDto);
     }
 
@@ -601,13 +694,6 @@ public class CrudBolt
 
     private ErrorMessage buildClientErrorMessage(String correlationId, ErrorData errorData) {
         return new ClientErrorMessage(errorData, System.currentTimeMillis(), correlationId, Destination.NORTHBOUND);
-    }
-
-    private void initFlowResourcesManager() {
-        flowResourcesManager.clear();
-
-        repositoryFactory.createFlowRepository().findAllFlowPairs()
-                .forEach(flowPair -> flowResourcesManager.registerUsedByFlow(flowPair));
     }
 
     @Override
@@ -620,7 +706,6 @@ public class CrudBolt
     @Override
     public void clearState() {
         logger.info("State clear request from test");
-        initState(new InMemoryKeyValueState<>());
     }
 
     @Override
@@ -646,106 +731,27 @@ public class CrudBolt
 
     @Override
     public Optional<AbstractDumpState> dumpResorceCacheState() {
-        return Optional.of(new ResorceCacheBoltState(
-                flowResourcesManager.getAllocatedMeters(),
-                flowResourcesManager.getAllocatedVlans(),
-                flowResourcesManager.getAllocatedCookies()));
+        return Optional.empty();
     }
 
-    class CrudFlowCommandSender implements FlowCommandSender {
+    class FlowCommandSenderImpl implements FlowCommandSender {
         private final String correlationId;
         private final Tuple tuple;
         private final StreamType stream;
 
-        CrudFlowCommandSender(String correlationId, Tuple tuple, StreamType stream) {
+        FlowCommandSenderImpl(String correlationId, Tuple tuple, StreamType stream) {
             this.correlationId = correlationId;
             this.tuple = tuple;
             this.stream = stream;
         }
 
         @Override
-        public void sendInstallRulesCommand(FlowPairWithSegments flowWithSegments) {
-            List<FlowCommandGroup> commandGroups = createInstallGroups(flowWithSegments.getFlowPair(),
-                    flowWithSegments.getForwardSegments(), flowWithSegments.getReverseSegments());
-            sendRulesCommand(flowWithSegments.getFlowPair().getForward().getFlowId(), commandGroups);
-        }
-
-        @Override
-        public void sendUpdateRulesCommand(UpdatedFlowPairWithSegments flowWithSegments) {
-            List<FlowCommandGroup> commandGroups = new ArrayList<>();
-
-            commandGroups.addAll(createInstallGroups(flowWithSegments.getFlowPair(),
-                    flowWithSegments.getForwardSegments(), flowWithSegments.getReverseSegments()));
-
-            commandGroups.addAll(createRemoveGroups(flowWithSegments.getOldFlowPair(),
-                    flowWithSegments.getOldForwardSegments(), flowWithSegments.getOldReverseSegments()));
-
-            sendRulesCommand(flowWithSegments.getFlowPair().getForward().getFlowId(), commandGroups);
-        }
-
-        @Override
-        public void sendRemoveRulesCommand(FlowPairWithSegments flowWithSegments) {
-            List<FlowCommandGroup> commandGroups = createRemoveGroups(flowWithSegments.getFlowPair(),
-                    flowWithSegments.getForwardSegments(), flowWithSegments.getReverseSegments());
-            sendRulesCommand(flowWithSegments.getFlowPair().getForward().getFlowId(), commandGroups);
-        }
-
-        private List<FlowCommandGroup> createInstallGroups(FlowPair flow,
-                                                           List<FlowSegment> forwardSegments,
-                                                           List<FlowSegment> reverseSegments) {
-            List<FlowCommandGroup> commandGroups = new ArrayList<>();
-
-            createInstallTransitAndEgressRules(flow.getForward(), forwardSegments)
-                    .ifPresent(commandGroups::add);
-            createInstallTransitAndEgressRules(flow.getReverse(), reverseSegments)
-                    .ifPresent(commandGroups::add);
-            // The ingress rule must be installed after the egress and transit ones.
-            commandGroups.add(createInstallIngressRules(flow.getForward(), forwardSegments));
-            commandGroups.add(createInstallIngressRules(flow.getReverse(), reverseSegments));
-
-            return commandGroups;
-        }
-
-        private Optional<FlowCommandGroup> createInstallTransitAndEgressRules(Flow flow, List<FlowSegment> segments) {
-            List<InstallTransitFlow> rules = commandFactory.createInstallTransitAndEgressRulesForFlow(flow, segments);
-            return !rules.isEmpty() ? Optional.of(new FlowCommandGroup(rules, FailureReaction.ABORT_FLOW))
-                    : Optional.empty();
-        }
-
-        private FlowCommandGroup createInstallIngressRules(Flow flow, List<FlowSegment> segments) {
-            return new FlowCommandGroup(Collections.singletonList(
-                    commandFactory.createInstallIngressRulesForFlow(flow, segments)), FailureReaction.ABORT_FLOW);
-        }
-
-        private List<FlowCommandGroup> createRemoveGroups(FlowPair flow,
-                                                          List<FlowSegment> forwardSegments,
-                                                          List<FlowSegment> reverseSegments) {
-            List<FlowCommandGroup> commandGroups = new ArrayList<>();
-
-            commandGroups.add(createRemoveIngressRules(flow.getForward(), forwardSegments));
-            commandGroups.add(createRemoveIngressRules(flow.getReverse(), reverseSegments));
-            createRemoveTransitAndEgressRules(flow.getForward(), forwardSegments)
-                    .ifPresent(commandGroups::add);
-            createRemoveTransitAndEgressRules(flow.getReverse(), reverseSegments)
-                    .ifPresent(commandGroups::add);
-
-            return commandGroups;
-        }
-
-        private Optional<FlowCommandGroup> createRemoveTransitAndEgressRules(Flow flow, List<FlowSegment> segments) {
-            List<RemoveFlow> rules = commandFactory.createRemoveTransitAndEgressRulesForFlow(flow, segments);
-            return !rules.isEmpty() ? Optional.of(new FlowCommandGroup(rules, FailureReaction.IGNORE))
-                    : Optional.empty();
-        }
-
-        private FlowCommandGroup createRemoveIngressRules(Flow flow, List<FlowSegment> segments) {
-            return new FlowCommandGroup(Collections.singletonList(
-                    commandFactory.createRemoveIngressRulesForFlow(flow, segments)), FailureReaction.IGNORE);
-        }
-
-        private void sendRulesCommand(String flowId, List<FlowCommandGroup> commandGroups) {
-            CommandMessage message = new CommandMessage(new BatchFlowCommandsRequest(commandGroups),
-                    System.currentTimeMillis(), correlationId, Destination.CONTROLLER);
+        public void sendFlowCommands(@NonNull String flowId, @NonNull List<CommandGroup> commandGroups,
+                                     @NonNull List<? extends CommandData> onSuccessCommands,
+                                     @NonNull List<? extends CommandData> onFailureCommands) {
+            CommandMessage message = new CommandMessage(
+                    new BatchCommandsRequest(commandGroups, onSuccessCommands, onFailureCommands),
+                    System.currentTimeMillis(), correlationId);
             outputCollector.emit(stream.toString(), tuple, new Values(message, flowId));
         }
     }

@@ -35,6 +35,10 @@ public interface NbWorkerTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getFlowTopic();
     }
 
+    default String getKafkaDiscoTopic() {
+        return getKafkaTopics().getTopoDiscoTopic();
+    }
+
     @Key("isl.cost.when.under.maintenance")
     int getIslCostWhenUnderMaintenance();
 }

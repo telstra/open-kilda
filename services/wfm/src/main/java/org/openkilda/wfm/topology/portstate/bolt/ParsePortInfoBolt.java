@@ -19,6 +19,7 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.AbstractTopology;
 
 import com.google.common.collect.HashBasedTable;
@@ -39,9 +40,14 @@ import java.util.Map;
 
 public class ParsePortInfoBolt extends BaseRichBolt {
     private static final Logger logger = LoggerFactory.getLogger(ParsePortInfoBolt.class);
-    private static final String METRIC_NAME = "pen.switch.state";
-    private OutputCollector collector;
-    private Table<String, Integer, Map<String, String>> tagsTable;
+    private final String metricName;
+    private transient OutputCollector collector;
+    private transient Table<String, Integer, Map<String, String>> tagsTable;
+
+    public ParsePortInfoBolt(String metricPrefix) {
+        MetricFormatter metricFormatter = new MetricFormatter(metricPrefix);
+        this.metricName = metricFormatter.format("switch.state");
+    }
 
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
@@ -76,7 +82,7 @@ public class ParsePortInfoBolt extends BaseRichBolt {
     }
 
     private List<Object> makeTsdbDatapoint(PortInfoData data) throws IOException {
-        return tsdbTuple(METRIC_NAME,
+        return tsdbTuple(metricName,
                 data.getTimestamp(),
                 getStateAsInt(data),
                 getTags(data));

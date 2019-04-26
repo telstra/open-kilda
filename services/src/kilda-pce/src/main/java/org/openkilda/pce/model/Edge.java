@@ -17,12 +17,15 @@ package org.openkilda.pce.model;
 
 import org.openkilda.model.Isl;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NonNull;
-import lombok.Value;
+import lombok.Setter;
 
-@Value
+@Getter
+@AllArgsConstructor
 @Builder(toBuilder = true)
 @EqualsAndHashCode(of = {"srcSwitch", "destSwitch", "srcPort", "destPort"})
 public class Edge {
@@ -34,7 +37,29 @@ public class Edge {
     private int destPort;
 
     private int cost;
+    private long availableBandwidth;
     private long latency;
+
+    @Setter
+    private int diversityWeight;
+
+    /**
+     * Gets sum of weights, that filling is ruled by AvailableNetwork construction.
+     *
+     * @return the edge total static weight.
+     */
+    public long getStaticWeight() {
+        return diversityWeight;
+    }
+
+    /**
+     * Gets edge full weight. Sum of {@link WeightFunction} result and getStaticWeight().
+     *
+     * @return the edge full weight.
+     */
+    public long getFullWeight(WeightFunction weightFunction) {
+        return weightFunction.apply(this) + getStaticWeight();
+    }
 
     /**
      * Swap edge source and destination.
@@ -61,6 +86,7 @@ public class Edge {
                 .srcPort(isl.getSrcPort())
                 .destPort(isl.getDestPort())
                 .cost(isl.getCost())
-                .latency(isl.getLatency());
+                .latency(isl.getLatency())
+                .availableBandwidth(isl.getAvailableBandwidth());
     }
 }

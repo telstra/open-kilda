@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,11 +17,15 @@ package org.openkilda.model;
 
 import lombok.Value;
 
+import java.io.Serializable;
+
 /**
  * Represents information about a cookie.
  */
 @Value
-public class Cookie {
+public class Cookie implements Comparable<Cookie>, Serializable {
+    private static final long serialVersionUID = 1L;
+
     public static final long DROP_RULE_COOKIE = 0x8000000000000001L;
     public static final long VERIFICATION_BROADCAST_RULE_COOKIE = 0x8000000000000002L;
     public static final long VERIFICATION_UNICAST_RULE_COOKIE = 0x8000000000000003L;
@@ -29,7 +33,24 @@ public class Cookie {
     public static final long CATCH_BFD_RULE_COOKIE = 0x8000000000000005L;
     public static final long DEFAULT_RULES_MASK = 0x8000000000000000L;
 
+    public static final long FORWARD_FLOW_COOKIE_MASK = 0x4000000000000000L;
+    public static final long REVERSE_FLOW_COOKIE_MASK = 0x2000000000000000L;
+
+    public static final long FLOW_COOKIE_VALUE_MASK = 0x00000000FFFFFFFFL;
+
     private final long value;
+
+    public static Cookie buildForwardCookie(long unmaskedCookie) {
+        return new Cookie(unmaskedCookie | Cookie.FORWARD_FLOW_COOKIE_MASK);
+    }
+
+    public static Cookie buildReverseCookie(long unmaskedCookie) {
+        return new Cookie(unmaskedCookie | Cookie.REVERSE_FLOW_COOKIE_MASK);
+    }
+
+    public long getUnmaskedValue() {
+        return value & FLOW_COOKIE_VALUE_MASK;
+    }
 
     public boolean isDefaultRule() {
         return isDefaultRule(value);
@@ -62,5 +83,37 @@ public class Cookie {
         }
 
         return new Cookie(meterId | DEFAULT_RULES_MASK);
+    }
+
+    /**
+     * Checks whether the cookie corresponds to the forward flow mask.
+     */
+    public boolean isMaskedAsForward() {
+        boolean isMatch;
+        if ((value & 0xE000000000000000L) != 0) {
+            isMatch = (value & FORWARD_FLOW_COOKIE_MASK) != 0;
+        } else {
+            isMatch = (value & 0x0080000000000000L) == 0;
+        }
+        return isMatch;
+
+    }
+
+    /**
+     * Checks whether the cookie corresponds to the reverse flow mask.
+     */
+    public boolean isMaskedAsReversed() {
+        boolean isMatch;
+        if ((value & 0xE000000000000000L) != 0) {
+            isMatch = (value & REVERSE_FLOW_COOKIE_MASK) != 0;
+        } else {
+            isMatch = (value & 0x0080000000000000L) != 0;
+        }
+        return isMatch;
+    }
+
+    @Override
+    public int compareTo(Cookie compareWith) {
+        return Long.compare(value, compareWith.value);
     }
 }

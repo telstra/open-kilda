@@ -42,8 +42,10 @@
         </p>
       </div>
       <div class='row'>
-        <label class='col-sm-3 '>Interface Type:</label>
-        <p class='col-sm-3 switchdetails_div_interface'>{{portDataObject.interfacetype}}</p>
+          <label class='col-sm-3 ' *ngIf="!hasStoreSetting">Assignment Type:</label>
+          <p *ngIf="!hasStoreSetting" class='col-sm-3 switchdetails_div_number'>{{portDataObject.assignmenttype ? portDataObject.assignmenttype:'-'}}</p>
+         <label class='col-sm-3 ' *ngIf="hasStoreSetting">Interface Type:</label>
+        <p class='col-sm-3 switchdetails_div_interface' *ngIf="hasStoreSetting">{{portDataObject.interfacetype}}</p>
         <label class='col-sm-3 ' *ngIf="hasStoreSetting">Assignment Customer Account:</label>
         <p *ngIf="hasStoreSetting" class='col-sm-3 switchdetails_div_number'>
           {{portDataObject.customer && portDataObject.customer['customer-account-number']  ? portDataObject.customer['customer-account-number'] :''}}
@@ -52,10 +54,7 @@
         </p>
       </div>
       <!-- <div class='row' >
-        <label class='col-sm-3 '>Status:</label>
-        
-        
-      </div> -->
+        <label class='col-sm-3 '>Status:</label> </div> -->
       <div class='row portStatusInput' >
         <label class='col-sm-3'>Status:</label>
         <p *ngIf="!editConfigStatus" class='col-sm-3 port_details_div_status'>{{portDataObject.status}}</p>

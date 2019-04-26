@@ -15,16 +15,14 @@
 
 package org.openkilda.messaging.info.event;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Data;
 
 import java.util.Objects;
 
@@ -33,11 +31,7 @@ import java.util.Objects;
  */
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-        "switch_id",
-        "port_no",
-        "max_capacity",
-        "state"})
+@Data
 public class PortInfoData extends InfoData {
     /**
      * Serialization version number constant.
@@ -67,6 +61,9 @@ public class PortInfoData extends InfoData {
     @JsonProperty("state")
     private PortChangeType state;
 
+    @JsonProperty("enabled")
+    private Boolean enabled;
+
     /**
      * Default constructor.
      */
@@ -92,9 +89,18 @@ public class PortInfoData extends InfoData {
      * @param state    port state
      */
     public PortInfoData(final SwitchId switchId, final int portNo, final PortChangeType state) {
-        this.switchId = switchId;
-        this.portNo = portNo;
-        this.state = state;
+        this(switchId, portNo, null, state, null);
+    }
+
+    public PortInfoData(SwitchId switchId, int portNo, PortChangeType event, Boolean enabled) {
+        this(switchId, portNo, null, event, enabled);
+    }
+
+    public PortInfoData(final SwitchId switchId,
+                        final int portNo,
+                        final Integer maxCapacity,
+                        PortChangeType state) {
+        this(switchId, portNo, maxCapacity, state, null);
     }
 
     /**
@@ -109,96 +115,13 @@ public class PortInfoData extends InfoData {
     public PortInfoData(@JsonProperty("switch_id") final SwitchId switchId,
                         @JsonProperty("port_no") final int portNo,
                         @JsonProperty("max_capacity") final Integer maxCapacity,
-                        @JsonProperty("state") final PortChangeType state) {
+                        @JsonProperty("state") final PortChangeType state,
+                        @JsonProperty("enabled") Boolean enabled) {
         this.switchId = switchId;
         this.portNo = portNo;
         this.maxCapacity = maxCapacity;
         this.state = state;
-    }
-
-    /**
-     * Returns switch id.
-     *
-     * @return switch id
-     */
-    public SwitchId getSwitchId() {
-        return switchId;
-    }
-
-    /**
-     * Sets switch id.
-     *
-     * @param switchId switch id to set
-     */
-    public void setSwitchId(final SwitchId switchId) {
-        this.switchId = switchId;
-    }
-
-    /**
-     * Returns port number.
-     *
-     * @return port number
-     */
-    public int getPortNo() {
-        return portNo;
-    }
-
-    /**
-     * Sets port number.
-     *
-     * @param portNo port number to set
-     */
-    public void setPortNo(final int portNo) {
-        this.portNo = portNo;
-    }
-
-    /**
-     * Returns maximum capacity.
-     *
-     * @return maximum capacity
-     */
-    public Integer getMaxCapacity() {
-        return maxCapacity;
-    }
-
-    /**
-     * Sets maximum capacity.
-     *
-     * @param maxCapacity maximum capacity to set
-     */
-    public void setMaxCapacity(final int maxCapacity) {
-        this.maxCapacity = maxCapacity;
-    }
-
-    /**
-     * Returns port state.
-     *
-     * @return port state
-     */
-    public PortChangeType getState() {
-        return state;
-    }
-
-    /**
-     * Sets port state.
-     *
-     * @param state port state to set
-     */
-    public void setState(final PortChangeType state) {
-        this.state = state;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String toString() {
-        return toStringHelper(this)
-                .add("switch_id", switchId)
-                .add("port_no", portNo)
-                .add("max_capacity", maxCapacity)
-                .add("state", state)
-                .toString();
+        this.enabled = enabled;
     }
 
     /**

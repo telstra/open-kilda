@@ -61,11 +61,20 @@ public class FlowPayload implements Serializable {
     @JsonProperty("description")
     private String description;
 
+    @JsonProperty("created")
+    private String created;
+
     @JsonProperty("last-updated")
     private String lastUpdated;
 
     @JsonProperty("status")
     private String status;
+
+    @JsonProperty("max-latency")
+    private Integer maxLatency;
+
+    @JsonProperty("priority")
+    private Integer priority;
 
     /**
      * Instance constructor.
@@ -75,8 +84,13 @@ public class FlowPayload implements Serializable {
      * @param destination      flow destination
      * @param maximumBandwidth flow maximum bandwidth
      * @param ignoreBandwidth  should ignore bandwidth in path computation
+     * @param periodicPings    enable periodic flow pings
      * @param description      flow description
+     * @param created          flow created timestamp
      * @param lastUpdated      flow last updated timestamp
+     * @param status           flow status
+     * @param maxLatency       max latency
+     * @param priority         flow priority
      */
     @Builder
     @JsonCreator
@@ -87,8 +101,11 @@ public class FlowPayload implements Serializable {
                        @JsonProperty("ignore_bandwidth") Boolean ignoreBandwidth,
                        @JsonProperty("periodic-pings") Boolean periodicPings,
                        @JsonProperty("description") String description,
+                       @JsonProperty("created") String created,
                        @JsonProperty("last-updated") String lastUpdated,
-                       @JsonProperty("status") String status) {
+                       @JsonProperty("status") String status,
+                       @JsonProperty("max-latency") Integer maxLatency,
+                       @JsonProperty("priority") Integer priority) {
         setId(id);
         setSource(source);
         setDestination(destination);
@@ -102,8 +119,11 @@ public class FlowPayload implements Serializable {
         }
 
         this.description = description;
+        this.created = created;
         this.lastUpdated = lastUpdated;
         this.status = status;
+        this.maxLatency = maxLatency;
+        this.priority = priority;
     }
 
     /**

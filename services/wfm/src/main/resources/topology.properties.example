@@ -47,6 +47,7 @@ opentsdb.batch.size = 50
 opentsdb.flush.interval = 1
 opentsdb.workers = 1
 opentsdb.client.chunked-requests.enabled = true
+opentsdb.metric.prefix = kilda.
 
 neo4j.uri = bolt://neo4j.pendev:7687
 neo4j.user = neo4j
@@ -85,3 +86,8 @@ local.execution.time = 300
 
 pce.strategy = COST
 pce.network.strategy = SYMMETRIC_COST
+pce.diversity.isl.weight = 1000
+pce.diversity.switch.weight = 100
+
+burst.coefficient = 1.05
+min.burst.size.in.kbits = 1024

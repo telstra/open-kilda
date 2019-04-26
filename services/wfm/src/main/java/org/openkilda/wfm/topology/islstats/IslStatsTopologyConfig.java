@@ -18,6 +18,8 @@ package org.openkilda.wfm.topology.islstats;
 import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
+import com.sabre.oss.conf4j.annotation.Default;
+import com.sabre.oss.conf4j.annotation.Key;
 
 @Configuration
 public interface IslStatsTopologyConfig extends AbstractTopologyConfig {
@@ -29,4 +31,8 @@ public interface IslStatsTopologyConfig extends AbstractTopologyConfig {
     default String getKafkaOtsdbTopic() {
         return getKafkaTopics().getOtsdbTopic();
     }
+
+    @Key("opentsdb.metric.prefix")
+    @Default("kilda.")
+    String getMetricPrefix();
 }

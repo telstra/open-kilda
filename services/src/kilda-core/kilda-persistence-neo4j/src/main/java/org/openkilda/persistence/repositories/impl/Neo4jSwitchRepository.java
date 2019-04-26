@@ -24,11 +24,13 @@ import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
+import com.google.common.collect.ImmutableMap;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Neo4jSession;
 import org.neo4j.ogm.session.Session;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Optional;
 
@@ -51,7 +53,7 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
 
     @Override
     public Optional<Switch> findById(SwitchId switchId) {
-        return findById(getSession(), switchId, DEPTH_LOAD_ENTITY);
+        return findById(getSession(), switchId, getDepthLoadEntity());
     }
 
     private Optional<Switch> findById(Session session, SwitchId switchId, int entityLoadDepth) {
@@ -82,7 +84,18 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
     }
 
     @Override
-    Class<Switch> getEntityType() {
+    public void forceDelete(SwitchId switchId) {
+        getSession().query("MATCH (sw:switch {name: $name}) DETACH DELETE sw",
+                ImmutableMap.of("name", switchId.toString()));
+    }
+
+    @Override
+    public void lockSwitches(Switch... switches) {
+        lockSwitches(Arrays.stream(switches));
+    }
+
+    @Override
+    protected Class<Switch> getEntityType() {
         return Switch.class;
     }
 }

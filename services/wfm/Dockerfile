@@ -13,7 +13,8 @@
 #   limitations under the License.
 #
 
-FROM kilda/storm:latest
+ARG base_image=kilda/storm:latest
+FROM ${base_image}
 
 ENV DEBIAN_FRONTEND noninteractive
 

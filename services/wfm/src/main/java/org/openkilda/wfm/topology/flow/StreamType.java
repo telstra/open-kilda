@@ -25,7 +25,7 @@ public enum StreamType {
     CREATE,
 
     /**
-     * Get flow topology stream.
+     * Get flow stream.
      */
     READ,
 
@@ -65,11 +65,6 @@ public enum StreamType {
     STATUS,
 
     /**
-     * Sync Caches with DB.
-     */
-    CACHE_SYNC,
-
-    /**
      * Flow command response.
      */
     RESPONSE,
@@ -82,5 +77,15 @@ public enum StreamType {
     /**
      * Meter mode.
      */
-    METER_MODE;
+    METER_MODE,
+
+    /**
+     * Deallocate flow resources.
+     */
+    DEALLOCATE_RESOURCES,
+
+    /**
+     * History messages.
+     */
+    HISTORY;
 }

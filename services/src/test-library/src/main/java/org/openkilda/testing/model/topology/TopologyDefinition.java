@@ -21,13 +21,17 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 import org.openkilda.model.SwitchId;
+import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableRangeSet;
 import com.google.common.collect.Range;
@@ -37,11 +41,11 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.experimental.NonFinal;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -63,7 +67,10 @@ public class TopologyDefinition {
     @NonNull
     private TraffGenConfig traffGenConfig;
     @SuppressWarnings("squid:S1450")
-    private String controller;
+
+    private Integer bfdOffset;
+
+    private List<String> controllers;
 
     /**
      * Creates TopologyDefinition instance.
@@ -91,8 +98,12 @@ public class TopologyDefinition {
                 traffGenConfig);
     }
 
-    public void setController(String controller) {
-        this.controller = controller;
+    public void setControllers(List<String> controllers) {
+        this.controllers = controllers;
+    }
+
+    public void setBfdOffset(Integer bfdOffset) {
+        this.bfdOffset = bfdOffset;
     }
 
     /**
@@ -141,9 +152,9 @@ public class TopologyDefinition {
     public List<Integer> getAllowedPortsForSwitch(Switch sw) {
         List<Integer> allPorts = new ArrayList<>(sw.getAllPorts());
         allPorts.removeAll(getIslsForActiveSwitches().stream().filter(isl ->
-                isl.getSrcSwitch().getDpId().equals(sw.getDpId())).map(Isl::getSrcPort).collect(Collectors.toList()));
+                isl.getSrcSwitch().getDpId().equals(sw.getDpId())).map(Isl::getSrcPort).collect(toList()));
         allPorts.removeAll(getIslsForActiveSwitches().stream().filter(isl ->
-                isl.getDstSwitch().getDpId().equals(sw.getDpId())).map(Isl::getDstPort).collect(Collectors.toList()));
+                isl.getDstSwitch().getDpId().equals(sw.getDpId())).map(Isl::getDstPort).collect(toList()));
         return allPorts;
     }
 
@@ -151,19 +162,24 @@ public class TopologyDefinition {
      * Get list of switch ports that have ISLs.
      */
     public List<Integer> getBusyPortsForSwitch(Switch sw) {
-        List<Integer> busyPorts = new ArrayList<>(sw.getAllPorts());
-        busyPorts.removeAll(getAllowedPortsForSwitch(sw));
-        return busyPorts;
+        return getRelatedIsls(sw).stream().map(Isl::getSrcPort).collect(toList());
     }
 
     /**
-     * Get list of ISLs that are related to certain switch.
-     * Returns only one-way ISLs. The caller will have to mirror them in order to get full list of actual ISLs
+     * Get list of ISLs that are related to a certain switch.
+     * Returns only outgoing from the switch ISLs. The caller will have to mirror them in order to get full list of
+     * actual ISLs.
      */
     public List<Isl> getRelatedIsls(Switch sw) {
-        return getIslsForActiveSwitches().stream().filter(isl ->
+        List<Isl> isls = getIslsForActiveSwitches().stream().filter(isl ->
                 isl.getSrcSwitch().getDpId().equals(sw.getDpId()) || isl.getDstSwitch().getDpId().equals(sw.getDpId()))
-                .collect(Collectors.toList());
+                .collect(toList());
+        for (Isl isl : isls) {
+            if (isl.getDstSwitch().getDpId().equals(sw.getDpId())) {
+                isls.set(isls.indexOf(isl), isl.getReversed());
+            }
+        }
+        return isls;
     }
 
     @Value
@@ -185,6 +201,9 @@ public class TopologyDefinition {
         private List<OutPort> outPorts;
         private Integer maxPort;
 
+        @NonFinal
+        private String controller;
+
         /**
          * Create a Switch instance.
          */
@@ -195,7 +214,8 @@ public class TopologyDefinition {
                 @JsonProperty("of_version") String ofVersion,
                 @JsonProperty("status") Status status,
                 @JsonProperty("out_ports") List<OutPort> outPorts,
-                @JsonProperty("max_port") Integer maxPort) {
+                @JsonProperty("max_port") Integer maxPort,
+                @JsonProperty("controller") String controller) {
             if (outPorts == null) {
                 outPorts = emptyList();
             }
@@ -203,9 +223,10 @@ public class TopologyDefinition {
                 maxPort = DEFAULT_MAX_PORT;
             }
 
-            return new Switch(name, dpId, ofVersion, status, outPorts, maxPort);
+            return new Switch(name, dpId, ofVersion, status, outPorts, maxPort, controller);
         }
 
+        @JsonIgnore
         public boolean isActive() {
             return status == Status.Active;
         }
@@ -213,8 +234,13 @@ public class TopologyDefinition {
         /**
          * Get list of all available ports on this switch.
          */
+        @JsonIgnore
         public List<Integer> getAllPorts() {
             return IntStream.rangeClosed(1, maxPort).boxed().collect(toList());
+        }
+
+        public void setController(String controller) {
+            this.controller = controller;
         }
     }
 
@@ -225,6 +251,7 @@ public class TopologyDefinition {
 
         private int port;
         @NonNull
+        @JsonSerialize(using = ToStringSerializer.class)
         private RangeSet<Integer> vlanRange;
 
         @JsonCreator
@@ -236,6 +263,7 @@ public class TopologyDefinition {
         }
 
         private static RangeSet<Integer> parseVlanRange(String vlanRangeAsStr) {
+            vlanRangeAsStr = StringUtils.strip(StringUtils.strip(vlanRangeAsStr, "["), "]");
             String[] splitRanges = vlanRangeAsStr.split(",");
             if (splitRanges.length == 0) {
                 throw new IllegalArgumentException("Vlan range must be non-empty.");
@@ -272,7 +300,8 @@ public class TopologyDefinition {
         private Switch dstSwitch;
         private int dstPort;
         private long maxBandwidth;
-        private ASwitch aswitch;
+        private ASwitchFlow aswitch;
+        private boolean isBfd;
 
         @JsonCreator
         public static Isl factory(
@@ -281,8 +310,10 @@ public class TopologyDefinition {
                 @JsonProperty("dst_switch") Switch dstSwitch,
                 @JsonProperty("dst_port") int dstPort,
                 @JsonProperty("max_bandwidth") long maxBandwidth,
-                @JsonProperty("a_switch") ASwitch aswitch) {
-            return new Isl(srcSwitch, srcPort, dstSwitch, dstPort, maxBandwidth, aswitch);
+                @JsonProperty("a_switch") ASwitchFlow aswitch,
+                //we only assume bi-directional bfd sessions for ISLs
+                @JsonProperty("bfd") boolean isBfd) {
+            return new Isl(srcSwitch, srcPort, dstSwitch, dstPort, maxBandwidth, aswitch, isBfd);
         }
 
         @Override
@@ -290,22 +321,21 @@ public class TopologyDefinition {
             return String.format("%s-%s -> %s-%s", srcSwitch.dpId.toString(), srcPort,
                     dstSwitch != null ? dstSwitch.dpId.toString() : "null", dstSwitch != null ? dstPort : "null");
         }
-    }
 
-    @Value
-    @NonFinal
-    @JsonNaming(SnakeCaseStrategy.class)
-    public static class ASwitch {
-
-        @NonNull
-        private Integer inPort;
-        private Integer outPort;
-
-        @JsonCreator
-        public static ASwitch factory(
-                @JsonProperty("in_port") Integer inPort,
-                @JsonProperty("out_port") Integer outPort) {
-            return new ASwitch(inPort, outPort);
+        /**
+         * Returns the 'reverse' version of this ISL.
+         */
+        @JsonIgnore
+        public Isl getReversed() {
+            if (this.getDstSwitch() == null) {
+                return this; //don't reverse not connected ISL
+            }
+            ASwitchFlow reversedAsw = null;
+            if (this.getAswitch() != null) {
+                reversedAsw = this.getAswitch().getReversed();
+            }
+            return Isl.factory(this.getDstSwitch(), this.getDstPort(), this.getSrcSwitch(),
+                    this.getSrcPort(), this.getMaxBandwidth(), reversedAsw, this.isBfd());
         }
     }
 
@@ -349,7 +379,7 @@ public class TopologyDefinition {
         return traffGens.stream()
                 .filter(TraffGen::isActive)
                 .filter(traffGen -> traffGen.getSwitchConnected().isActive())
-                .collect(Collectors.toList());
+                .collect(toList());
     }
 
     @Value

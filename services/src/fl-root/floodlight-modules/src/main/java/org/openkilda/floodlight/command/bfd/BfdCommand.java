@@ -28,7 +28,7 @@ import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.model.Switch;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -93,7 +93,7 @@ abstract class BfdCommand extends Command {
     protected void sendResponse() {
         CommandContext context = getContext();
         InfoMessage response = context.makeInfoMessage(assembleResponse());
-        kafkaProducer.sendMessageAndTrack(kafkaUtility.getTopics().getTopoDiscoTopic(), response);
+        kafkaProducer.sendMessageAndTrack(kafkaUtility.getKafkaChannel().getTopoDiscoTopic(), response);
     }
 
     protected void handleError(Throwable error) {
@@ -119,9 +119,9 @@ abstract class BfdCommand extends Command {
     }
 
     protected void checkSwitchCapabilities(IOFSwitch sw) throws NoFeatureException {
-        Set<Switch.Feature> features = featureDetector.detectSwitch(sw);
+        Set<SpeakerSwitchView.Feature> features = featureDetector.detectSwitch(sw);
 
-        final Switch.Feature requiredFeature = Switch.Feature.BFD;
+        final SpeakerSwitchView.Feature requiredFeature = SpeakerSwitchView.Feature.BFD;
         if (!features.contains(requiredFeature)) {
             throw new NoFeatureException(sw.getId(), requiredFeature, features);
         }

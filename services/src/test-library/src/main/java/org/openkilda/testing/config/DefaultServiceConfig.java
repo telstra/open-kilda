@@ -53,14 +53,6 @@ public class DefaultServiceConfig {
         return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
-    @Bean(name = "topologyEngineRestTemplate")
-    public RestTemplate topologyEngineRestTemplate(
-            @Value("${topology-engine-rest.endpoint}") String endpoint,
-            @Value("${topology-engine-rest.username}") String username,
-            @Value("${topology-engine-rest.password}") String password) {
-        return buildRestTemplateWithAuth(endpoint, username, password);
-    }
-
     @Bean(name = "elasticSearchRestTemplate")
     public RestTemplate elasticSearchRestTemplate(
             @Value("${elasticsearch.endpoint}") String endpoint,
@@ -80,13 +72,21 @@ public class DefaultServiceConfig {
     }
 
     @Bean(name = "otsdbRestTemplate")
-    public RestTemplate otsdbRestTemplate(@Value("${otsdb.endpoint}") String endpoint) {
+    public RestTemplate otsdbRestTemplate(@Value("${opentsdb.endpoint}") String endpoint) {
         return buildLoggingRestTemplate(endpoint);
     }
 
     @Bean(name = "labApiRestTemplate")
     public RestTemplate labApiRestTemplate(@Value("${lab-api.endpoint}") String endpoint) {
         return buildLoggingRestTemplate(endpoint);
+    }
+
+    @Bean(name = "grpcRestTemplate")
+    public RestTemplate grpcRestTemplate(
+            @Value("${grpc.endpoint}") String endpoint,
+            @Value("${grpc.username}") String username,
+            @Value("${grpc.password}") String password) {
+        return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
     private RestTemplate buildLoggingRestTemplate(String endpoint) {

@@ -20,7 +20,7 @@ build-pce:
 	mvn install -pl pce -am -DskipTests
 
 build-northbound:
-	mvn install -pl northbound -am -DskipTests
+	mvn install -pl northbound-service/northbound -am -DskipTests
 
 build-messaging:
 	mvn install -pl messaging -am -DskipTests

@@ -1,0 +1,5 @@
+[template]
+src = "storm/storm.yaml.tmpl"
+dest = "services/storm/conf/storm.yaml"
+keys = [ "/" ]
+mode = "0644"

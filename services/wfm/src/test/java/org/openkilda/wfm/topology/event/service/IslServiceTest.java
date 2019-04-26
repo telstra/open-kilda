@@ -140,7 +140,8 @@ public class IslServiceTest extends Neo4jBasedTest {
     public void shouldNotFailIslDiscoverOnNotActiveIsl() {
         Isl isl = createIsl();
         isl.setStatus(IslStatus.INACTIVE);
-        islService.createOrUpdateIsl(isl);
+        isl.setActualStatus(IslStatus.INACTIVE);
+        islRepository.createOrUpdate(isl);
 
         Isl foundIsl = islRepository.findByEndpoints(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT,
                 TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT).get();
@@ -172,9 +173,7 @@ public class IslServiceTest extends Neo4jBasedTest {
 
     private Switch createSwitchIfNotExist(SwitchId switchId) {
         return switchRepository.findById(switchId).orElseGet(() -> {
-            Switch sw = new Switch();
-            sw.setSwitchId(switchId);
-            sw.setStatus(SwitchStatus.ACTIVE);
+            Switch sw = Switch.builder().switchId(switchId).status(SwitchStatus.ACTIVE).build();
             switchRepository.createOrUpdate(sw);
             return sw;
         });

@@ -25,6 +25,7 @@ import org.openkilda.security.TwoFactorUtility;
 
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -70,6 +71,9 @@ public class LoginController extends BaseController {
 
     @Autowired
     private PermissionRepository permissionRepository;
+    
+    @Value("${application.name}")
+    private String applicationName;
 
     /**
      * Login.
@@ -103,7 +107,6 @@ public class LoginController extends BaseController {
     @RequestMapping(value = "/authenticate", method = RequestMethod.POST)
     public ModelAndView authenticate(@RequestParam("username") String username,
             @RequestParam("password") final String password, final HttpServletRequest request) {
-        LOGGER.info("[authenticate] - start");
         ModelAndView modelAndView = new ModelAndView(IConstants.View.LOGIN);
         String error = null;
         username = username != null ? username.toLowerCase() : null;
@@ -122,29 +125,31 @@ public class LoginController extends BaseController {
                 userService.updateLoginDetail(username);
             } else {
                 error = "Invalid email or password";
-                LOGGER.error("authenticate() Authentication failure with username{} and password{}");
+                LOGGER.warn("Authentication failure for user: '" + username + "'");
                 modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
             }
         } catch (TwoFaKeyNotSetException e) {
-            LOGGER.error("2 FA Key not set for user: '" + username + "'.");
+            LOGGER.warn("2 FA Key not set for user: '" + username + "'");
             modelAndView.addObject("username", username);
             modelAndView.addObject("password", password);
 
             String secretKey = TwoFactorUtility.getBase32EncryptedKey();
             modelAndView.addObject("key", secretKey);
             userService.updateUser2FaKey(username, secretKey);
-
+            modelAndView.addObject("applicationName", applicationName);
             modelAndView.setViewName(IConstants.View.TWO_FA_GENERATOR);
         } catch (OtpRequiredException e) {
-            LOGGER.error("OTP required for user: '" + username + "'.");
+            LOGGER.warn("OTP required for user: '" + username + "'");
             modelAndView.addObject("username", username);
             modelAndView.addObject("password", password);
+            modelAndView.addObject("applicationName", applicationName);
             modelAndView.setViewName(IConstants.View.OTP);
         } catch (InvalidOtpException e) {
-            LOGGER.error("Authentication code is invalid for user: '" + username + "'.");
+            LOGGER.warn("Authentication code is invalid for user: '" + username + "'");
             error = "Authentication code is invalid";
             modelAndView.addObject("username", username);
             modelAndView.addObject("password", password);
+            modelAndView.addObject("applicationName", applicationName);
             if (customWebAuthenticationDetails.isConfigure2Fa()) {
                 UserEntity userInfo = userService.getUserByUsername(username);
                 modelAndView.addObject("key", userInfo.getTwoFaKey());
@@ -153,11 +158,11 @@ public class LoginController extends BaseController {
                 modelAndView.setViewName(IConstants.View.OTP);
             }
         } catch (UsernameNotFoundException | BadCredentialsException e) {
-            LOGGER.error("authenticate() Authentication failure", e);
+            LOGGER.warn("Authentication failure", e);
             error = "Invalid email or password";
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         } catch (Exception e) {
-            LOGGER.error("authenticate() Authentication failure", e);
+            LOGGER.warn("Authentication failure", e);
             error = "Login Failed. Error: '" + e.getMessage() + "'.";
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         }

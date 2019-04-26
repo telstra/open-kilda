@@ -1,0 +1,87 @@
+Internal data
+* BFD-discriminator
+* isUp (initial false)
+
+Internal signals
+* fail
+
+Input signals
+* port-up
+* port-down
+* enable (ISL-FSM)
+* disable (ISL-FSM)
+* FL-ok (worker)
+* FL-fail (worker)
+* FL-timeout (worker)
+* isl-move (ISL-FSM)
+
+Output signals
+* bfd-up
+* bfd-down
+* bfd-kill
+
+@startuml
+title BFD port FSM
+
+[*] --> INIT
+
+state initChoice <<choice>>
+INIT --> initChoice : history / load persistence-data
+
+initChoice --> IDLE : [BFD-discriminator is empty]
+initChoice --> CLEANING : [BFD-discriminator is set]
+
+IDLE --> INSTALLING : enable
+IDLE -l-> FAIL : port-up
+
+INSTALLING --> ACTIVE : port-up
+INSTALLING --> CLEANING : FL-fail [match reuest-key] /\nreport error
+INSTALLING --> CLEANING : isl-move
+INSTALLING --> CLEANING : disable
+INSTALLING --> FAIL : fail
+INSTALLING : enter / save remote SwitchId
+INSTALLING : enter / allocate BFD-discriminator
+INSTALLING : enter / emit BFD-session setup
+INSTALLING : enter / save request-key
+
+state cleaningChoice <<choice>>
+
+CLEANING --> cleaningChoice : FL-ok / release BFD-discriminator
+CLEANING --> FAIL : FL-fail [match reuest-key] /\nreport error
+CLEANING --> FAIL : fail
+CLEANING --> HOUSEKEEPING : kill
+CLEANING : enter / emit BFD-session remove
+CLEANING : enter / save request-key
+CLEANING : port-up / set isUp = true
+CLEANING : port-down / set isUp = false
+CLEANING : exit / clear remote SwitchId
+
+cleaningChoice --> IDLE : [not isUp]
+cleaningChoice --> WAIT_RELEASE : [isUp]
+
+WAIT_RELEASE --> IDLE : port-down
+WAIT_RELEASE : exit : set isUp = false
+
+state ACTIVE {
+    [*] --> UP
+
+    UP --> DOWN : port-down
+    UP : enter / emit bfd-up
+    UP : enter / set isUp = true
+
+    DOWN --> UP : port-up
+    DOWN : enter / emit bfd-down
+    DOWN : enter / set isUp = false
+}
+ACTIVE --> CLEANING : isl-move
+ACTIVE --> CLEANING : disable
+ACTIVE --> HOUSEKEEPING : kill
+
+HOUSEKEEPING : enter / emit bfd-kill
+HOUSEKEEPING : enter [remote SwitchId is set] / emit BFD-session remove
+HOUSEKEEPING : enter [remote SwitchId is set] / save request-key
+HOUSEKEEPING --> [*] : fail\nFL-ok / release BFD-discriminator\nFL-fail / report error
+
+FAIL -r-> IDLE : port-down
+
+@enduml

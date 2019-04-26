@@ -13,7 +13,8 @@
 #   limitations under the License.
 #
 
-FROM kilda/python3-ubuntu
+ARG base_image=kilda/base-lab-service
+FROM ${base_image}
 
 ADD traffexam/ /exam
 WORKDIR /exam

@@ -11,7 +11,7 @@ build-base:
 	docker build -t kilda/neo4j:latest services/neo4j
 	docker build -t kilda/opentsdb:latest services/opentsdb
 	docker build -t kilda/logstash:latest services/logstash
-	docker build -t kilda/python3-ubuntu:latest base/kilda-base-python3/
+	docker build -t kilda/base-lab-service:latest base/kilda-base-lab-service/
 
 build-latest: update-props build-base compile
 	docker-compose build
@@ -91,6 +91,8 @@ update-props-dryrun:
 #   make func-tests PARAMS='-Dtest="LinkSpec#Able to delete inactive link"'  // run a certain test from 'LinkSpec' class
 
 func-tests:
+	cp services/src/functional-tests/kilda.properties.example services/src/functional-tests/kilda.properties
+	cp services/src/functional-tests/src/test/resources/topology.yaml services/src/functional-tests/topology.yaml
 	mvn -Pfunctional -f services/src/functional-tests/pom.xml test $(PARAMS)
 
 .PHONY: default run-dev build-latest build-base	

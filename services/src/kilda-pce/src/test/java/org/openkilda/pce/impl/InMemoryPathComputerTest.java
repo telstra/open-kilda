@@ -15,21 +15,25 @@
 
 package org.openkilda.pce.impl;
 
-import static java.util.Collections.emptyMap;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
 import org.openkilda.config.provider.ConfigurationProvider;
+import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.FlowSegment;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.PathId;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.pce.AvailableNetworkFactory;
+import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
@@ -41,15 +45,14 @@ import org.openkilda.pce.finder.BestCostAndShortestPathFinder;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.persistence.spi.PersistenceProvider;
 
-import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
-import com.sabre.oss.conf4j.source.MapConfigurationSource;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -60,7 +63,9 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.neo4j.ogm.testutil.TestServer;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class InMemoryPathComputerTest {
 
@@ -68,9 +73,9 @@ public class InMemoryPathComputerTest {
     static TransactionManager txManager;
     static SwitchRepository switchRepository;
     static IslRepository islRepository;
-    static FlowSegmentRepository flowSegmentRepository;
+    static FlowRepository flowRepository;
+    static FlowPathRepository flowPathRepository;
 
-    private static JdkProxyStaticConfigurationFactory configFactory = new JdkProxyStaticConfigurationFactory();
     static PathComputerConfig config;
 
     static AvailableNetworkFactory availableNetworkFactory;
@@ -109,6 +114,11 @@ public class InMemoryPathComputerTest {
                                 public int getConnectionPoolSize() {
                                     return 50;
                                 }
+
+                                @Override
+                                public String getIndexesAuto() {
+                                    return "update";
+                                }
                             };
                         } else {
                             throw new UnsupportedOperationException("Unsupported configurationType "
@@ -122,9 +132,10 @@ public class InMemoryPathComputerTest {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
         islRepository = repositoryFactory.createIslRepository();
-        flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
+        flowRepository = repositoryFactory.createFlowRepository();
+        flowPathRepository = repositoryFactory.createFlowPathRepository();
 
-        config = configFactory.createConfiguration(PathComputerConfig.class, new MapConfigurationSource(emptyMap()));
+        config = new PropertiesBasedConfigurationProvider().getConfiguration(PathComputerConfig.class);
 
         availableNetworkFactory = new AvailableNetworkFactory(config, repositoryFactory);
         pathComputerFactory = new PathComputerFactory(config, availableNetworkFactory);
@@ -151,16 +162,14 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch = switchRepository.findById(new SwitchId("00:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("00:04")).get();
 
-        Flow f = new Flow();
-        f.setSrcSwitch(srcSwitch);
-        f.setDestSwitch(destSwitch);
+        Flow f = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
         f.setBandwidth(100);
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair path = pathComputer.getPath(f);
         assertNotNull(path);
-        assertThat(path.getForward().getNodes(), Matchers.hasSize(4));
-        assertEquals(new SwitchId("00:02"), path.getForward().getNodes().get(1).getSwitchId()); // chooses path B
+        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        assertEquals(new SwitchId("00:02"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path B
     }
 
     @Test
@@ -174,18 +183,15 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch = switchRepository.findById(new SwitchId("01:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("01:04")).get();
 
-        Flow f = new Flow();
-        f.setSrcSwitch(srcSwitch);
-        f.setDestSwitch(destSwitch);
+        Flow f = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
         f.setBandwidth(100);
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair path = pathComputer.getPath(f);
-
         assertNotNull(path);
-        assertThat(path.getForward().getNodes(), Matchers.hasSize(4));
+        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> only difference is it should now have C as first hop .. since B is inactive
-        assertEquals(new SwitchId("01:03"), path.getForward().getNodes().get(1).getSwitchId()); // chooses path B
+        assertEquals(new SwitchId("01:03"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path B
     }
 
     @Test
@@ -199,17 +205,15 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch = switchRepository.findById(new SwitchId("02:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("02:02")).get();
 
-        Flow f = new Flow();
-        f.setSrcSwitch(srcSwitch);
-        f.setDestSwitch(destSwitch);
+        Flow f = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
         f.setBandwidth(100);
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair path = pathComputer.getPath(f);
         assertNotNull(path);
-        assertThat(path.getForward().getNodes(), Matchers.hasSize(4));
+        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> only difference is it should now have C as first hop .. since B is inactive
-        assertEquals(new SwitchId("02:03"), path.getForward().getNodes().get(1).getSwitchId()); // chooses path B
+        assertEquals(new SwitchId("02:03"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path B
     }
 
     @Test
@@ -222,17 +226,15 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch = switchRepository.findById(new SwitchId("03:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("03:04")).get();
 
-        Flow f = new Flow();
-        f.setSrcSwitch(srcSwitch);
-        f.setDestSwitch(destSwitch);
+        Flow f = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
         f.setBandwidth(100);
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair path = pathComputer.getPath(f);
         assertNotNull(path);
-        assertThat(path.getForward().getNodes(), Matchers.hasSize(4));
+        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> Should choose B .. because default cost (700) cheaper than 2000
-        assertEquals(new SwitchId("03:02"), path.getForward().getNodes().get(1).getSwitchId()); // chooses path B
+        assertEquals(new SwitchId("03:02"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path B
     }
 
 
@@ -246,9 +248,7 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch = switchRepository.findById(new SwitchId("04:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("04:04")).get();
 
-        Flow f = new Flow();
-        f.setSrcSwitch(srcSwitch);
-        f.setDestSwitch(destSwitch);
+        Flow f = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
         f.setBandwidth(100);
 
         thrown.expect(UnroutableFlowException.class);
@@ -266,30 +266,26 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch1 = switchRepository.findById(new SwitchId("05:01")).get();
         Switch destSwitch1 = switchRepository.findById(new SwitchId("05:03")).get();
 
-        Flow f1 = new Flow();
-        f1.setSrcSwitch(srcSwitch1);
-        f1.setDestSwitch(destSwitch1);
+        Flow f1 = new FlowPair(srcSwitch1, destSwitch1).getFlowEntity();
         f1.setBandwidth(0);
         f1.setIgnoreBandwidth(false);
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair path = pathComputer.getPath(f1);
         assertNotNull(path);
-        assertThat(path.getForward().getNodes(), Matchers.hasSize(2));
+        assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
 
         Switch srcSwitch2 = switchRepository.findById(new SwitchId("05:01")).get();
         Switch destSwitch2 = switchRepository.findById(new SwitchId("05:04")).get();
 
-        Flow f2 = new Flow();
-        f2.setSrcSwitch(srcSwitch2);
-        f2.setDestSwitch(destSwitch2);
+        Flow f2 = new FlowPair(srcSwitch2, destSwitch2).getFlowEntity();
         f2.setBandwidth(0);
         f2.setIgnoreBandwidth(false);
 
         path = pathComputer.getPath(f2);
         assertNotNull(path);
-        assertThat(path.getForward().getNodes(), Matchers.hasSize(4));
-        assertEquals(new SwitchId("05:02"), path.getForward().getNodes().get(1).getSwitchId());
+        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        assertEquals(new SwitchId("05:02"), path.getForward().getSegments().get(0).getDestSwitchId());
     }
 
     /**
@@ -306,24 +302,20 @@ public class InMemoryPathComputerTest {
         Switch destSwitch1 = switchRepository.findById(new SwitchId("06:03")).get();
 
         // THIS ONE SHOULD WORK
-        Flow f1 = new Flow();
-        f1.setSrcSwitch(srcSwitch1);
-        f1.setDestSwitch(destSwitch1);
+        Flow f1 = new FlowPair(srcSwitch1, destSwitch1).getFlowEntity();
         f1.setBandwidth(0);
         f1.setIgnoreBandwidth(false);
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair path = pathComputer.getPath(f1);
         assertNotNull(path);
-        assertThat(path.getForward().getNodes(), Matchers.hasSize(2));
+        assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
 
         Switch srcSwitch2 = switchRepository.findById(new SwitchId("06:01")).get();
         Switch destSwitch2 = switchRepository.findById(new SwitchId("07:04")).get();
 
         // THIS ONE SHOULD FAIL
-        Flow f2 = new Flow();
-        f2.setSrcSwitch(srcSwitch2);
-        f2.setDestSwitch(destSwitch2);
+        Flow f2 = new FlowPair(srcSwitch2, destSwitch2).getFlowEntity();
         f2.setBandwidth(0);
         f2.setIgnoreBandwidth(false);
 
@@ -364,9 +356,7 @@ public class InMemoryPathComputerTest {
         Switch destSwitch1 = switchRepository.findById(new SwitchId("11:03")).get();
 
         // THIS ONE SHOULD WORK
-        Flow f1 = new Flow();
-        f1.setSrcSwitch(srcSwitch1);
-        f1.setDestSwitch(destSwitch1);
+        Flow f1 = new FlowPair(srcSwitch1, destSwitch1).getFlowEntity();
         f1.setBandwidth(0);
         f1.setIgnoreBandwidth(false);
 
@@ -375,15 +365,13 @@ public class InMemoryPathComputerTest {
                         pathComputerFactory.getWeightFunctionByStrategy(WeightStrategy.COST)));
         PathPair path = pathComputer.getPath(f1, false);
         assertNotNull(path);
-        assertThat(path.getForward().getNodes(), Matchers.hasSize(278));
+        assertThat(path.getForward().getSegments(), Matchers.hasSize(278));
 
         Switch srcSwitch2 = switchRepository.findById(new SwitchId("08:01")).get();
         Switch destSwitch2 = switchRepository.findById(new SwitchId("11:04")).get();
 
         // THIS ONE SHOULD FAIL
-        Flow f2 = new Flow();
-        f2.setSrcSwitch(srcSwitch2);
-        f2.setDestSwitch(destSwitch2);
+        Flow f2 = new FlowPair(srcSwitch2, destSwitch2).getFlowEntity();
         f2.setBandwidth(0);
         f2.setIgnoreBandwidth(false);
 
@@ -403,9 +391,7 @@ public class InMemoryPathComputerTest {
         Switch srcSwitch = switchRepository.findById(new SwitchId("09:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("09:04")).get();
 
-        Flow flow = new Flow();
-        flow.setSrcSwitch(srcSwitch);
-        flow.setDestSwitch(destSwitch);
+        Flow flow = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
         flow.setIgnoreBandwidth(false);
         flow.setBandwidth(10);
 
@@ -413,13 +399,13 @@ public class InMemoryPathComputerTest {
         PathPair result = pathComputer.getPath(flow);
         assertNotNull(result);
         // ensure start/end switches match
-        List<FlowPath.Node> left = result.getForward().getNodes();
-        assertEquals(srcSwitch.getSwitchId(), left.get(0).getSwitchId());
-        assertEquals(destSwitch.getSwitchId(), left.get(left.size() - 1).getSwitchId());
+        List<Path.Segment> left = result.getForward().getSegments();
+        assertEquals(srcSwitch.getSwitchId(), left.get(0).getSrcSwitchId());
+        assertEquals(destSwitch.getSwitchId(), left.get(left.size() - 1).getDestSwitchId());
 
-        List<FlowPath.Node> right = result.getReverse().getNodes();
-        assertEquals(destSwitch.getSwitchId(), right.get(0).getSwitchId());
-        assertEquals(srcSwitch.getSwitchId(), right.get(right.size() - 1).getSwitchId());
+        List<Path.Segment> right = result.getReverse().getSegments();
+        assertEquals(destSwitch.getSwitchId(), right.get(0).getSrcSwitchId());
+        assertEquals(srcSwitch.getSwitchId(), right.get(right.size() - 1).getDestSwitchId());
     }
 
     /**
@@ -427,25 +413,25 @@ public class InMemoryPathComputerTest {
      */
     @Test
     public void shouldAlwaysFindPathForExistedFlow() throws RecoverableException, UnroutableFlowException {
-        Flow flow = new Flow();
-        flow.setFlowId("flow-A1:01-A1:03");
-        flow.setBandwidth(1000);
-        flow.setIgnoreBandwidth(false);
+        String flowId = "flow-A1:01-A1:03";
+        long bandwidth = 1000;
 
         createLinearTopoWithFlowSegments(10, "A1:", 1, 0L,
-                flow.getFlowId(), flow.getBandwidth());
+                flowId, bandwidth);
 
         Switch srcSwitch = switchRepository.findById(new SwitchId("A1:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("A1:03")).get();
 
-        flow.setSrcSwitch(srcSwitch);      // getPath will find an isl port
-        flow.setDestSwitch(destSwitch);
+        Flow flow = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
+        flow.setFlowId(flowId);
+        flow.setBandwidth(bandwidth);
+        flow.setIgnoreBandwidth(false);
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair result = pathComputer.getPath(flow, true);
 
-        assertThat(result.getForward().getNodes(), Matchers.hasSize(4));
-        assertThat(result.getReverse().getNodes(), Matchers.hasSize(4));
+        assertThat(result.getForward().getSegments(), Matchers.hasSize(2));
+        assertThat(result.getReverse().getSegments(), Matchers.hasSize(2));
     }
 
     /**
@@ -454,22 +440,20 @@ public class InMemoryPathComputerTest {
     @Test
     public void shouldNotFindPathForExistedFlowAndIncreasedBandwidth()
             throws RecoverableException, UnroutableFlowException {
+        String flowId = "flow-A1:01-A1:03";
         long originFlowBandwidth = 1000L;
-
-        Flow flow = new Flow();
-        flow.setBandwidth(originFlowBandwidth);
-        flow.setIgnoreBandwidth(false);
-        flow.setFlowId("flow-A1:01-A1:03");
 
         // create network, all links have available bandwidth 0
         createLinearTopoWithFlowSegments(10, "A1:", 1, 0,
-                flow.getFlowId(), flow.getBandwidth());
+                flowId, originFlowBandwidth);
 
         Switch srcSwitch = switchRepository.findById(new SwitchId("A1:01")).get();
         Switch destSwitch = switchRepository.findById(new SwitchId("A1:03")).get();
 
-        flow.setSrcSwitch(srcSwitch);
-        flow.setDestSwitch(destSwitch);
+        Flow flow = new FlowPair(srcSwitch, destSwitch).getFlowEntity();
+        flow.setBandwidth(originFlowBandwidth);
+        flow.setIgnoreBandwidth(false);
+        flow.setFlowId(flowId);
 
         long updatedFlowBandwidth = originFlowBandwidth + 1;
         flow.setBandwidth(updatedFlowBandwidth);
@@ -478,6 +462,78 @@ public class InMemoryPathComputerTest {
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         pathComputer.getPath(flow, true);
+    }
+
+    @Test
+    public void shouldFindDiversePath() throws RecoverableException, UnroutableFlowException {
+        createDiamondWithDiversity();
+
+        Flow flow = Flow.builder()
+                .flowId("new-flow")
+                .groupId("diverse")
+                .bandwidth(10)
+                .srcSwitch(switchRepository.findById(new SwitchId("00:0A")).get())
+                .destSwitch(switchRepository.findById(new SwitchId("00:0D")).get())
+                .build();
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
+        PathPair diversePath = pathComputer.getPath(flow);
+
+        diversePath.getForward().getSegments().forEach(
+                segment -> {
+                    assertNotEquals(new SwitchId("00:0B"), segment.getSrcSwitchId());
+                    assertNotEquals(new SwitchId("00:0B"), segment.getDestSwitchId());
+                });
+    }
+
+    @Test
+    public void shouldFindTheSameDiversePath() throws RecoverableException, UnroutableFlowException {
+        createDiamondWithDiversity();
+
+        Flow flow = Flow.builder()
+                .flowId("new-flow")
+                .groupId("diverse")
+                .bandwidth(10)
+                .srcSwitch(switchRepository.findById(new SwitchId("00:0A")).get())
+                .srcPort(10)
+                .destSwitch(switchRepository.findById(new SwitchId("00:0D")).get())
+                .destPort(10)
+                .build();
+        PathComputer pathComputer = pathComputerFactory.getPathComputer();
+        PathPair diversePath = pathComputer.getPath(flow);
+
+        FlowPath forwardPath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(flow.getSrcSwitch())
+                .destSwitch(flow.getDestSwitch())
+                .flowId(flow.getFlowId())
+                .bandwidth(flow.getBandwidth())
+                .segments(new ArrayList<>())
+                .build();
+        addPathSegments(forwardPath, diversePath.getForward());
+        flow.setForwardPath(forwardPath);
+
+        FlowPath reversePath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(flow.getDestSwitch())
+                .destSwitch(flow.getSrcSwitch())
+                .flowId(flow.getFlowId())
+                .bandwidth(flow.getBandwidth())
+                .segments(new ArrayList<>())
+                .build();
+        addPathSegments(reversePath, diversePath.getReverse());
+        flow.setReversePath(reversePath);
+
+        flowRepository.createOrUpdate(flow);
+
+        PathPair path2 = pathComputer.getPath(flow, true);
+        assertEquals(diversePath, path2);
+    }
+
+    private void addPathSegments(FlowPath flowPath, Path path) {
+        path.getSegments().forEach(segment ->
+                addPathSegment(flowPath, switchRepository.findById(segment.getSrcSwitchId()).get(),
+                        switchRepository.findById(segment.getDestSwitchId()).get(),
+                        segment.getSrcPort(), segment.getDestPort()));
     }
 
     private void createLinearTopoWithFlowSegments(int cost, String switchStart, int startIndex, long linkBw,
@@ -494,10 +550,87 @@ public class InMemoryPathComputerTest {
         createIsl(nodeC, nodeB, IslStatus.ACTIVE, IslStatus.ACTIVE, cost, linkBw, 6);
         createIsl(nodeB, nodeA, IslStatus.ACTIVE, IslStatus.ACTIVE, cost, linkBw, 5);
 
-        createFlowSegment(flowId, flowBandwidth, nodeA, nodeB, 5, 5);
-        createFlowSegment(flowId, flowBandwidth, nodeB, nodeA, 5, 5);
-        createFlowSegment(flowId, flowBandwidth, nodeB, nodeC, 6, 6);
-        createFlowSegment(flowId, flowBandwidth, nodeC, nodeB, 6, 6);
+        FlowPath forwardPath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(nodeA)
+                .destSwitch(nodeC)
+                .flowId(flowId)
+                .bandwidth(flowBandwidth)
+                .segments(new ArrayList<>())
+                .build();
+        addPathSegment(forwardPath, nodeA, nodeB, 5, 5);
+        addPathSegment(forwardPath, nodeB, nodeC, 6, 6);
+        flowPathRepository.createOrUpdate(forwardPath);
+
+        FlowPath reversePath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(nodeC)
+                .destSwitch(nodeA)
+                .flowId(flowId)
+                .bandwidth(flowBandwidth)
+                .segments(new ArrayList<>())
+                .build();
+        addPathSegment(reversePath, nodeC, nodeB, 6, 6);
+        addPathSegment(reversePath, nodeB, nodeA, 5, 5);
+        flowPathRepository.createOrUpdate(reversePath);
+    }
+
+    // A - B - D    and A-B-D is used in flow group
+    //   + C +
+    private void createDiamondWithDiversity() {
+        Switch nodeA = createSwitch("00:0A");
+        Switch nodeB = createSwitch("00:0B");
+        Switch nodeC = createSwitch("00:0C");
+        Switch nodeD = createSwitch("00:0D");
+
+        IslStatus status = IslStatus.ACTIVE;
+        int cost = 100;
+        createIsl(nodeA, nodeB, status, status, cost, 1000, 1);
+        createIsl(nodeA, nodeC, status, status, cost * 2, 1000, 2);
+        createIsl(nodeB, nodeD, status, status, cost, 1000, 3);
+        createIsl(nodeC, nodeD, status, status, cost * 2, 1000, 4);
+        createIsl(nodeB, nodeA, status, status, cost, 1000, 1);
+        createIsl(nodeC, nodeA, status, status, cost * 2, 1000, 2);
+        createIsl(nodeD, nodeB, status, status, cost, 1000, 3);
+        createIsl(nodeD, nodeC, status, status, cost * 2, 1000, 4);
+
+        int bandwith = 10;
+        String flowId = "existed-flow";
+
+        FlowPath forwardPath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(nodeA)
+                .destSwitch(nodeD)
+                .flowId(flowId)
+                .bandwidth(bandwith)
+                .segments(new ArrayList<>())
+                .build();
+        addPathSegment(forwardPath, nodeA, nodeB, 1, 1);
+        addPathSegment(forwardPath, nodeB, nodeD, 3, 3);
+
+        FlowPath reversePath = FlowPath.builder()
+                .pathId(new PathId(UUID.randomUUID().toString()))
+                .srcSwitch(nodeD)
+                .destSwitch(nodeA)
+                .flowId(flowId)
+                .bandwidth(bandwith)
+                .segments(new ArrayList<>())
+                .build();
+        addPathSegment(reversePath, nodeD, nodeB, 3, 3);
+        addPathSegment(reversePath, nodeB, nodeA, 1, 1);
+
+        String groupId = "diverse";
+
+        Flow flow = Flow.builder()
+                .flowId(flowId)
+                .srcSwitch(nodeA).srcPort(15)
+                .destSwitch(nodeD).destPort(16)
+                .groupId(groupId)
+                .bandwidth(bandwith)
+                .forwardPath(forwardPath)
+                .reversePath(reversePath)
+                .build();
+        flowRepository.createOrUpdate(flow);
     }
 
     private void createDiamond(IslStatus pathBstatus, IslStatus pathCstatus, int pathBcost, int pathCcost) {
@@ -555,9 +688,7 @@ public class InMemoryPathComputerTest {
     }
 
     private Switch createSwitch(String name) {
-        Switch sw = new Switch();
-        sw.setSwitchId(new SwitchId(name));
-        sw.setStatus(SwitchStatus.ACTIVE);
+        Switch sw = Switch.builder().switchId(new SwitchId(name)).status(SwitchStatus.ACTIVE).build();
 
         switchRepository.createOrUpdate(sw);
         return sw;
@@ -582,17 +713,16 @@ public class InMemoryPathComputerTest {
         return isl;
     }
 
-    private FlowSegment createFlowSegment(String flowId, long flowBandwidth,
-                                          Switch src, Switch dst, int srcPort, int dstPort) {
-        FlowSegment fs = new FlowSegment();
-        fs.setFlowId(flowId);
-        fs.setSrcSwitch(src);
-        fs.setSrcPort(srcPort);
-        fs.setDestSwitch(dst);
-        fs.setDestPort(dstPort);
-        fs.setBandwidth(flowBandwidth);
-
-        flowSegmentRepository.createOrUpdate(fs);
-        return fs;
+    private FlowPath addPathSegment(FlowPath flowPath, Switch src, Switch dst, int srcPort, int dstPort) {
+        PathSegment ps = new PathSegment();
+        ps.setPathId(flowPath.getPathId());
+        ps.setSrcSwitch(src);
+        ps.setDestSwitch(dst);
+        ps.setSrcPort(srcPort);
+        ps.setDestPort(dstPort);
+        ps.setLatency(null);
+        ps.setSeqId(flowPath.getSegments().size());
+        flowPath.getSegments().add(ps);
+        return flowPath;
     }
 }

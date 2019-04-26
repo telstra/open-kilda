@@ -16,6 +16,7 @@
 package org.openkilda.testing.service.lockkeeper.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
@@ -37,5 +38,10 @@ public class ASwitchFlow implements Serializable {
     public ASwitchFlow(@JsonProperty("in_port") Integer inPort, @JsonProperty("out_port") Integer outPort) {
         this.inPort = inPort;
         this.outPort = outPort;
+    }
+
+    @JsonIgnore
+    public ASwitchFlow getReversed() {
+        return new ASwitchFlow(outPort, inPort);
     }
 }

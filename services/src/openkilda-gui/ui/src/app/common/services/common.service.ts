@@ -90,6 +90,12 @@ export class CommonService {
     return (valInMbps < 1)?Math.ceil(valInMbps * 1000) / 1000:Math.ceil(valInMbps * 100) / 100
   }
 
+  convertNumberToString(data){
+    var returnDatajson = data.replace(/([\[:])?(\d+)([,\}\]])/g, "$1\"$2\"$3").replace(/-"/g,'\"-');
+   returnDatajson = JSON.parse(returnDatajson);
+   return returnDatajson;
+  }
+
   saveSessionTimeoutSetting(timeout){
     return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/SESSION_TIMEOUT`,timeout);
   }

@@ -33,4 +33,6 @@ public interface IKafkaProducerService extends IService {
     void sendMessageAndTrack(String topic, String key, AbstractMessage message);
 
     SendStatus sendMessage(String topic, Message message);
+
+    int getFailedSendMessageCounter();
 }

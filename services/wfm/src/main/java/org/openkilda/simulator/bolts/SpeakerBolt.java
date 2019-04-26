@@ -84,7 +84,7 @@ public class SpeakerBolt extends BaseRichBolt {
                 data,
                 Instant.now().toEpochMilli(),
                 UUID.randomUUID().toString(),
-                null);
+                null, null);
         return Utils.MAPPER.writeValueAsString(message);
     }
 
@@ -98,7 +98,7 @@ public class SpeakerBolt extends BaseRichBolt {
                 data,
                 Instant.now().toEpochMilli(),
                 UUID.randomUUID().toString(),
-                null);
+                null, null);
         return Utils.MAPPER.writeValueAsString(message);
     }
 
@@ -170,13 +170,14 @@ public class SpeakerBolt extends BaseRichBolt {
             PathNode source = new PathNode(new SwitchId(sw.getDpid().toString()), localPort.getNumber(), 0);
             source.setSegLatency(localPort.getLatency());
             PathNode destination = new PathNode(new SwitchId(localPort.getPeerSwitch()), localPort.getPeerPortNum(), 1);
-            IslInfoData islInfoData = new IslInfoData(
-                    localPort.getLatency(),
-                    source,
-                    destination,
-                    100000,
-                    IslChangeType.DISCOVERED,
-                    100000, false);
+            IslInfoData islInfoData = IslInfoData.builder()
+                    .latency(localPort.getLatency())
+                    .source(source)
+                    .destination(destination)
+                    .speed(100000L)
+                    .state(IslChangeType.DISCOVERED)
+                    .availableBandwidth(100000L)
+                    .build();
             collector.emit(SimulatorTopology.SWITCH_BOLT_STREAM, tuple,
                     new Values(
                             localPort.getPeerSwitch().toLowerCase(),
@@ -201,7 +202,7 @@ public class SpeakerBolt extends BaseRichBolt {
 
         if (port.isActiveIsl()) {
             long now = Instant.now().toEpochMilli();
-            InfoMessage infoMessage = new InfoMessage(data, now, "system", null);
+            InfoMessage infoMessage = new InfoMessage(data, now, "system", null, null);
             logger.debug("checking isl on: {}", data.toString());
             collector.emit(SimulatorTopology.KAFKA_BOLT_STREAM, tuple,
                     new Values("INFO", Utils.MAPPER.writeValueAsString(infoMessage)));

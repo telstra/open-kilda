@@ -63,9 +63,9 @@ public class FlowStoreService {
             AuthConfigDto authDto = authService.getAuth(StoreType.LINK_STORE);
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponseList(urlDto, authDto, String.class);
-        } catch (Exception exception) {
-            LOGGER.error("Exception in getAllStatusList " + exception.getMessage());
-            throw new StoreIntegrationException(exception);
+        } catch (Exception e) {
+            LOGGER.error("Error occurred while retriving status list", e);
+            throw new StoreIntegrationException(e);
         }
     }
 
@@ -87,9 +87,9 @@ public class FlowStoreService {
             AuthConfigDto authDto = authService.getAuth(StoreType.LINK_STORE);
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponse(urlDto, authDto, InventoryFlow.class);
-        } catch (Exception exception) {
-            LOGGER.error("Exception in getFlowById " + exception.getMessage());
-            throw new StoreIntegrationException(exception);
+        } catch (Exception e) {
+            LOGGER.error("Error occurred while retriving flow by id: " + flowId, e);
+            throw new StoreIntegrationException(e);
         }
     }
 
@@ -111,9 +111,9 @@ public class FlowStoreService {
             AuthConfigDto authDto = authService.getAuth(StoreType.LINK_STORE);
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponseList(urlDto, authDto, InventoryFlow.class);
-        } catch (Exception exception) {
-            LOGGER.error("Exception in getFlowsWithParams " + exception.getMessage());
-            throw new StoreIntegrationException(exception);
+        } catch (Exception e) {
+            LOGGER.error("Error occurred while retriving flows with status: " + status, e);
+            throw new StoreIntegrationException(e);
         }
     }
 
@@ -136,9 +136,9 @@ public class FlowStoreService {
             AuthConfigDto authDto = authService.getAuth(StoreType.LINK_STORE);
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponseList(urlDto, authDto, Contract.class);
-        } catch (Exception exception) {
-            LOGGER.error("Exception in getAllContracts " + exception.getMessage());
-            throw new StoreIntegrationException(exception);
+        } catch (Exception e) {
+            LOGGER.error("Error occurred while retriving contracts by link id: " + linkId, e);
+            throw new StoreIntegrationException(e);
         }
     }
 
@@ -163,9 +163,9 @@ public class FlowStoreService {
             AuthConfigDto authDto = authService.getAuth(StoreType.LINK_STORE);
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             authService.getResponse(urlDto, authDto, null);
-        } catch (Exception exception) {
-            LOGGER.error("Exception in deleteContract " + exception.getMessage());
-            throw new StoreIntegrationException(exception);
+        } catch (Exception e) {
+            LOGGER.error("Error occurred while deleting contract: " + contractId, e);
+            throw new StoreIntegrationException(e);
         }
     }
 }

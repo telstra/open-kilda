@@ -93,13 +93,15 @@ public class FlowService {
      * @return SwitchRelationData
      */
     public List<FlowInfo> getAllFlows(List<String> statuses) {
-        LOGGER.info("Inside ServiceFlowImpl method getAllFlows");
         List<FlowInfo> flows = new ArrayList<FlowInfo>();
         if (!CollectionUtil.isEmpty(statuses)) {
             statuses = statuses.stream().map((status) -> status.toLowerCase()).collect(Collectors.toList());
         }
         if (CollectionUtil.isEmpty(statuses) || statuses.contains("active")) {
             flows = flowsIntegrationService.getFlows();
+            if (flows == null) {
+                flows = new ArrayList<FlowInfo>();
+            }
         }
 
         if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
@@ -116,8 +118,7 @@ public class FlowService {
                 inventoryFlows = flowStoreService.getFlowsWithParams(status);
                 processInventoryFlow(flows, inventoryFlows);
             } catch (Exception ex) {
-                LOGGER.error("[getAllFlows] Exception while retrieving flows from store. Exception: "
-                        + ex.getLocalizedMessage(), ex);
+                LOGGER.error("Error occurred while retrieving flows from store", ex);
             }
         }
         return flows;
@@ -131,9 +132,8 @@ public class FlowService {
      * @return the flow count
      */
     public Collection<FlowCount> getFlowsCount(final List<Flow> flows) {
-        LOGGER.info("Inside ServiceFlowImpl method getFlowsCount");
         Map<FlowCount, FlowCount> infoByFlowInfo = new HashMap<>();
-        Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
+        Map<String, String> csNames = switchIntegrationService.getSwitchNames();
 
         if (!CollectionUtil.isEmpty(flows)) {
             flows.forEach((flow) -> {
@@ -159,7 +159,6 @@ public class FlowService {
                 }
             });
         }
-        LOGGER.info("exit ServiceSwitchImpl method getFlowsCount");
         return infoByFlowInfo.values();
     }
 
@@ -218,10 +217,9 @@ public class FlowService {
         try {
             flow = flowsIntegrationService.getFlowById(flowId);
         } catch (Exception ex) {
-            LOGGER.error("[getFlowById] Exception while retrieving flows from controller. Exception: "
-                    + ex.getLocalizedMessage(), ex);
+            LOGGER.error("Error occurred while retrieving flows from controller", ex);
         }
-        Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
+        Map<String, String> csNames = switchIntegrationService.getSwitchNames();
         if (flow != null) {
             flowInfo = flowConverter.toFlowInfo(flow, csNames);
         }
@@ -233,7 +231,8 @@ public class FlowService {
                     flowInfo.setIgnoreBandwidth(inventoryFlow.getIgnoreBandwidth());
                     FlowDiscrepancy discrepancy = new FlowDiscrepancy();
                     discrepancy.setControllerDiscrepancy(false);
-                    if (flowInfo.getMaximumBandwidth() != inventoryFlow.getMaximumBandwidth()) {
+                    if (flowInfo.getMaximumBandwidth() != (inventoryFlow.getMaximumBandwidth() == null ? 0
+                            : inventoryFlow.getMaximumBandwidth())) {
                         discrepancy.setBandwidth(true);
 
                         FlowBandwidth flowBandwidth = new FlowBandwidth();
@@ -275,8 +274,7 @@ public class FlowService {
                     flowConverter.toFlowInfo(flowInfo, inventoryFlow, csNames);
                 }
             } catch (Exception ex) {
-                LOGGER.error("[getFlowById] Exception while retrieving flows from store. Exception: "
-                        + ex.getLocalizedMessage(), ex);
+                LOGGER.error("Error occurred while retrieving flows from store", ex);
             }
         }
         return flowInfo;
@@ -352,6 +350,17 @@ public class FlowService {
         activityLogger.log(ActivityType.RESYNC_FLOW, flowId);
         return flowsIntegrationService.resyncFlow(flowId);
     }
+    
+    /**
+     * Flow ping.
+     *
+     * @param flowId the flow id
+     * @param flow the flow
+     * @return the string
+     */
+    public String flowPing(String flowId, Flow flow) {
+        return flowsIntegrationService.flowPing(flow, flowId);
+    }
 
     /**
      * Process inventory flow.
@@ -363,6 +372,7 @@ public class FlowService {
      */
     private void processInventoryFlow(final List<FlowInfo> flows, final List<InventoryFlow> inventoryFlows) {
         List<FlowInfo> discrepancyFlow = new ArrayList<FlowInfo>();
+        final Map<String, String> csNames = switchIntegrationService.getSwitchNames();
         for (InventoryFlow inventoryFlow : inventoryFlows) {
             int index = -1;
             for (FlowInfo flow : flows) {
@@ -398,10 +408,11 @@ public class FlowService {
                 flows.get(index).setDiscrepancy(discrepancy);
                 flows.get(index).setState(inventoryFlow.getState());
                 flows.get(index).setIgnoreBandwidth(inventoryFlow.getIgnoreBandwidth());
+                flows.get(index).setInventoryFlow(true);
             } else {
-                final Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
                 FlowInfo flowObj = new FlowInfo();
                 flowConverter.toFlowInfo(flowObj, inventoryFlow, csNames);
+                flowObj.setInventoryFlow(true);
                 discrepancyFlow.add(flowObj);
             }
         }
@@ -433,6 +444,7 @@ public class FlowService {
 
                 flow.setDiscrepancy(discrepancy);
             }
+            flow.setControllerFlow(true);
         }
         flows.addAll(discrepancyFlow);
     }
