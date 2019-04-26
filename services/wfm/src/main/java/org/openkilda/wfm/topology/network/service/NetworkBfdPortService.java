@@ -127,9 +127,13 @@ public class NetworkBfdPortService {
      * Handle change in ONLINE status of switch that own logical-BFD port.
      */
     public void updateOnlineMode(Endpoint endpoint, boolean mode) {
+        BfdPortFsmEvent event = mode ? BfdPortFsmEvent.ONLINE : BfdPortFsmEvent.OFFLINE;
         log.debug("BFD-port service receive online mode change notification for {} (logical) mode:{}",
-                  endpoint, mode ? "ONLINE" : "OFFLINE");
-        // Current implementation do not take into account switch's online status
+                  endpoint, event);
+
+        BfdPortFsm controller = lookupControllerByLogicalEndpoint(endpoint);
+        BfdPortFsmContext context = BfdPortFsmContext.builder(carrier).build();
+        controllerExecutor.fire(controller, event, context);
     }
 
     /**
