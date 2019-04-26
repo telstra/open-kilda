@@ -102,7 +102,7 @@ public class FlowCreateHubBolt extends HubBolt {
         @Override
         public void sendSpeakerRequest(FlowRequest command) {
             String key = tuple.getStringByField(MessageTranslator.FIELD_ID_KEY);
-            String commandKey = KeyProvider.joinKeys(command.getCommandId(), key);
+            String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), key);
 
             Values values = new Values(commandKey, command);
             emitWithContext(HUB_TO_SPEAKER_WORKER.name(), tuple, values);

@@ -33,13 +33,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Slf4j
 public class ValidateIngressRuleAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
     @Override
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        String commandId = context.getFlowResponse().getCommandId();
+        UUID commandId = context.getFlowResponse().getCommandId();
 
         InstallIngressRule expected = stateMachine.getIngressCommands().get(commandId);
 

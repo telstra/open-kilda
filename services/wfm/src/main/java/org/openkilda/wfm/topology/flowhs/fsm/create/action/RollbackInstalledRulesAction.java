@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @Slf4j
 public class RollbackInstalledRulesAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
@@ -58,7 +59,7 @@ public class RollbackInstalledRulesAction extends AnonymousAction<FlowCreateFsm,
             removeCommands.addAll(removeIngress);
         }
 
-        Map<String, RemoveRule> commandPerId = new HashMap<>(removeCommands.size());
+        Map<UUID, RemoveRule> commandPerId = new HashMap<>(removeCommands.size());
         for (RemoveRule command : removeCommands) {
             commandPerId.put(command.getCommandId(), command);
             stateMachine.getCarrier().sendSpeakerRequest(command);

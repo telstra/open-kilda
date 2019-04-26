@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.validation.rules;
 
-import org.openkilda.floodlight.flow.request.InstallFlow;
+import org.openkilda.floodlight.flow.request.InstallFlowRule;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
 
 import lombok.AllArgsConstructor;
@@ -27,7 +27,7 @@ import java.util.Objects;
 @AllArgsConstructor
 public class RulesValidator {
 
-    private final InstallFlow expected;
+    private final InstallFlowRule expected;
     final FlowRuleResponse actual;
 
     /**

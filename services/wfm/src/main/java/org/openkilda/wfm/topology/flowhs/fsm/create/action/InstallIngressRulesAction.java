@@ -33,6 +33,7 @@ import org.squirrelframework.foundation.fsm.AnonymousAction;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -54,7 +55,7 @@ public class InstallIngressRulesAction extends AnonymousAction<FlowCreateFsm, St
 
         stateMachine.setIngressCommands(commands.stream()
                 .collect(Collectors.toMap(InstallIngressRule::getCommandId, Function.identity())));
-        Set<String> commandIds = commands.stream()
+        Set<UUID> commandIds = commands.stream()
                 .map(FlowRequest::getCommandId)
                 .collect(Collectors.toSet());
         stateMachine.setPendingCommands(commandIds);

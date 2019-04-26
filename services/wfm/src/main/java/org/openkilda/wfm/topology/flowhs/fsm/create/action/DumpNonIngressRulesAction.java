@@ -27,6 +27,7 @@ import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -43,7 +44,7 @@ public class DumpNonIngressRulesAction extends AnonymousAction<FlowCreateFsm, St
                 .collect(Collectors.toList());
 
         dumpFlowRules.forEach(command -> stateMachine.getCarrier().sendSpeakerRequest(command));
-        Set<String> commandIds = dumpFlowRules.stream()
+        Set<UUID> commandIds = dumpFlowRules.stream()
                 .map(FlowRequest::getCommandId)
                 .collect(Collectors.toSet());
         stateMachine.setPendingCommands(commandIds);

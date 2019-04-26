@@ -24,12 +24,14 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.UUID;
+
 @Slf4j
 public class OnReceivedDeleteResponseAction extends OnReceivedInstallResponseAction {
 
     @Override
     void handleResponse(FlowCreateFsm stateMachine, FlowResponse response) {
-        String commandId = response.getCommandId();
+        UUID commandId = response.getCommandId();
         if (stateMachine.getRemoveCommands().containsKey(commandId)) {
             throw new IllegalStateException(format("Failed to find a delete rule command with id %s", commandId));
         }

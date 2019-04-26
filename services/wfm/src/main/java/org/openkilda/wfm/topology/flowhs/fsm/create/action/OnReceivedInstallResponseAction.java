@@ -33,6 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Slf4j
 public class OnReceivedInstallResponseAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
@@ -66,14 +67,14 @@ public class OnReceivedInstallResponseAction extends AnonymousAction<FlowCreateF
         }
     }
 
-    private long getCookieForCommand(FlowCreateFsm stateMachine, String commandId) {
+    private long getCookieForCommand(FlowCreateFsm stateMachine, UUID commandId) {
         long cookie;
         if (stateMachine.getNonIngressCommands().containsKey(commandId)) {
             InstallTransitRule installRule = stateMachine.getNonIngressCommands().get(commandId);
-            cookie = installRule.getCookie();
+            cookie = installRule.getCookie().getValue();
         } else if (stateMachine.getIngressCommands().containsKey(commandId)) {
             InstallIngressRule installRule = stateMachine.getIngressCommands().get(commandId);
-            cookie = installRule.getCookie();
+            cookie = installRule.getCookie().getValue();
         } else {
             throw new IllegalStateException(format("Failed to find install rule command with id %s", commandId));
         }

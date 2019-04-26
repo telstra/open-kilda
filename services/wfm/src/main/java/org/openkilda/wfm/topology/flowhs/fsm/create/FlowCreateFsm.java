@@ -58,6 +58,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -68,11 +69,11 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
     private FlowCreateHubCarrier carrier;
     private FlowResources flowResources;
 
-    private Set<String> pendingCommands = new HashSet<>();
+    private Set<UUID> pendingCommands = new HashSet<>();
 
-    private Map<String, InstallIngressRule> ingressCommands = new HashMap<>();
-    private Map<String, InstallTransitRule> nonIngressCommands = new HashMap<>();
-    private Map<String, RemoveRule> removeCommands = new HashMap<>();
+    private Map<UUID, InstallIngressRule> ingressCommands = new HashMap<>();
+    private Map<UUID, InstallTransitRule> nonIngressCommands = new HashMap<>();
+    private Map<UUID, RemoveRule> removeCommands = new HashMap<>();
 
     private FlowCreateFsm(CommandContext commandContext, FlowCreateHubCarrier carrier) {
         super(commandContext);

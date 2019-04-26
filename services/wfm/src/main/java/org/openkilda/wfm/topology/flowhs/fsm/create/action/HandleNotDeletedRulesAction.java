@@ -24,13 +24,15 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
+import java.util.UUID;
+
 @Slf4j
 public class HandleNotDeletedRulesAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
     @Override
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         if (!stateMachine.getPendingCommands().isEmpty()) {
-            for (String commandId : stateMachine.getPendingCommands()) {
+            for (UUID commandId : stateMachine.getPendingCommands()) {
                 RemoveRule nonDeletedRule = stateMachine.getRemoveCommands().get(commandId);
                 log.warn("Failed to delete {} from the switch", nonDeletedRule);
             }
