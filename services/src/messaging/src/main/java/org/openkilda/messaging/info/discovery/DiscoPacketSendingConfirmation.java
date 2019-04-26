@@ -21,16 +21,26 @@ import org.openkilda.messaging.model.NetworkEndpoint;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
+@EqualsAndHashCode(callSuper = false)
 public class DiscoPacketSendingConfirmation extends InfoData {
 
     @JsonProperty("endpoint")
     private NetworkEndpoint endpoint;
 
+    /**
+     * Packet id.
+     */
+    @JsonProperty("packetId")
+    private long packetId;
+
     @JsonCreator
-    public DiscoPacketSendingConfirmation(@JsonProperty("endpoint") NetworkEndpoint endpoint) {
+    public DiscoPacketSendingConfirmation(@JsonProperty("endpoint") NetworkEndpoint endpoint,
+                                          @JsonProperty("packetId") final long packetId) {
         this.endpoint = endpoint;
+        this.packetId = packetId;
     }
 }

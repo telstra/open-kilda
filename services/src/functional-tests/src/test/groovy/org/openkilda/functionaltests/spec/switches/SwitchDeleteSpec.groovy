@@ -121,8 +121,7 @@ class SwitchDeleteSpec extends BaseSpecification {
         then: "Got 400 BadRequest error because the switch has the flow assigned"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        //TODO(ylobankov): Verify the certain number of flows assigned once the issue #2045 is resolved.
-        exc.responseBodyAsString.matches(".*Switch '${flow.source.datapath}' has \\d+ assigned flows.*")
+        exc.responseBodyAsString.matches(".*Switch '${flow.source.datapath}' has 1 assigned flows: \\[${flow.id}\\].*")
 
         and: "Cleanup: activate the switch back and remove the flow"
         lockKeeper.reviveSwitch(flow.source.datapath)
@@ -149,8 +148,8 @@ class SwitchDeleteSpec extends BaseSpecification {
         }
 
         // delete all ISLs on switch
-        swIsls.collectMany { [it, islUtils.reverseIsl(it)] }.each {
-            northbound.deleteLink(islUtils.getLinkParameters(it))
+        swIsls.each {
+            northbound.deleteLink(islUtils.toLinkParameters(it))
         }
 
         // deactivate switch
@@ -196,7 +195,7 @@ class SwitchDeleteSpec extends BaseSpecification {
             def links = northbound.getAllLinks()
             swIsls.each {
                 assert !islUtils.getIslInfo(links, it)
-                assert !islUtils.getIslInfo(links, islUtils.reverseIsl(it))
+                assert !islUtils.getIslInfo(links, it.reversed)
             }
         }
 
@@ -207,7 +206,7 @@ class SwitchDeleteSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
         // restore ISLs
-        def allSwIsls = swIsls.collectMany { [it, islUtils.reverseIsl(it)] }
+        def allSwIsls = swIsls.collectMany { [it, it.reversed] }
         allSwIsls.each { northbound.portDown(it.srcSwitch.dpId, it.srcPort) }
         TimeUnit.SECONDS.sleep(antiflapCooldown)
         allSwIsls.each { northbound.portUp(it.srcSwitch.dpId, it.srcPort) }

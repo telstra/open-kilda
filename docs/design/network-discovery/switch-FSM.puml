@@ -1,0 +1,54 @@
+Internal data:
+* switchId
+* list of portNumber+upState
+
+Input signals:
+* history
+* online
+* offline
+* port-add
+* port-del
+* port-up
+* port-down
+
+Output signals:
+* online
+* offline
+* setup-port
+* remove-port
+* port-up
+* port-down
+
+@startuml
+title Switch FSM
+
+[*] --> INIT
+
+INIT --> OFFLINE : history / setup port workers
+INIT --> SETUP : online
+
+SETUP : enter / create or update DB record
+SETUP : enter / save features
+SETUP : enter / setup port FSM for NEW ports
+SETUP : enter / emit online for ALL ports
+SETUP : enter / emit port-del for REMOVED ports
+SETUP : enter / emit port-down for DOWN ports
+SETUP : enter / emit port-up for UP ports
+SETUP -r-> ONLINE : next
+
+ONLINE : port-add / setup port FSM
+ONLINE : port-add / emit online for port
+ONLINE : port-add / emit port-up/down
+ONLINE : port-del / kill port FSM
+ONLINE : port-up / proxy
+ONLINE : port-down / proxy
+ONLINE : online / update ports status
+ONLINE --> OFFLINE : offline
+
+OFFLINE : enter / update status in DB
+OFFLINE : enter / emit offline for portAll()
+OFFLINE --> SETUP : online
+OFFLINE --> DELETED: switch-remove / kill ports FSM
+DELETED -> [*]
+
+@enduml

@@ -8,12 +8,14 @@ import org.openkilda.functionaltests.extension.fixture.SetupOnce
 import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightService
+import org.openkilda.testing.service.grpc.GrpcService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.otsdb.OtsdbQueryService
@@ -51,7 +53,13 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
     FlowHelper flowHelper
 
     @Autowired
+    TopologyHelper topologyHelper
+
+    @Autowired
     PathHelper pathHelper
+
+    @Autowired
+    GrpcService grpc
 
     @Value('${spring.profiles.active}')
     String profile
@@ -98,7 +106,7 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
             }
             links.findAll { it.state == IslChangeType.FAILED }.empty
             def topoLinks = topology.islsForActiveSwitches.collectMany {
-                [islUtils.getIslInfo(links, it).get(), islUtils.getIslInfo(links, islUtils.reverseIsl(it)).get()]
+                [islUtils.getIslInfo(links, it).get(), islUtils.getIslInfo(links, it.reversed).get()]
             }
             def missingLinks = links - topoLinks
             missingLinks.empty
@@ -109,10 +117,11 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
         and: "Link bandwidths and speeds are equal. No excess and missing switch rules are present"
         verifyAll {
             links.findAll { it.availableBandwidth != it.speed }.empty
-            topology.activeSwitches.findAll {
-                def rules = northbound.validateSwitchRules(it.dpId)
-                !rules.excessRules.empty || !rules.missingRules.empty
-            }.empty
+            topology.activeSwitches.each { sw ->
+                def rules = northbound.validateSwitchRules(sw.dpId)
+                assert rules.excessRules.empty, sw
+                assert rules.missingRules.empty, sw
+            }
 
             topology.activeSwitches.findAll {
                 !it.virtual && it.ofVersion != "OF_12" && !floodlight.getMeters(it.dpId).findAll {

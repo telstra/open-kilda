@@ -17,7 +17,7 @@ package org.openkilda.floodlight.service;
 
 import static org.easymock.EasyMock.expect;
 
-import org.openkilda.messaging.model.Switch.Feature;
+import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 
 import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.core.IOFSwitch;

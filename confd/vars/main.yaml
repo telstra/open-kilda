@@ -12,12 +12,14 @@ kilda_neo4j_password: "temppass"
 kilda_neo4j_cypher_path: "/db/data/cypher"
 
 kilda_kafka_hosts: "kafka.pendev:9092"
-kilda_zookeeper_hosts: "zookeeper.pendev:2181"
+kilda_zookeeper_hosts: "zookeeper.pendev"
+kilda_zookeeper_port: "2181"
 kilda_opentsdb_hosts: "opentsdb.pendev"
 kilda_opentsdb_port: "4242"
 kilda_storm_numbus_hosts: "nimbus.pendev"
 kilda_logging_elasticsearch_user: "kilda"
 kilda_logging_elasticsearch_pass: "kilda"
+kilda_logging_elasticsearch_index: "kilda-*"
 
 kilda_gui_host: "http://127.0.0.1"
 kilda_gui_port: 1010
@@ -30,10 +32,13 @@ kilda_floodlight_rest_port: "8081"
 kilda_floodlight_username: "kilda"
 kilda_floodlight_password: "kilda"
 kilda_floodlight_controller_uri: "tcp:kilda:6653"
-kilda_floodlight_command_processor_deferred_requests_limit: 8
+kilda_floodlight_command_processor_deferred_requests_limit: 64
 kilda_floodlight_flow_meter_burst_coefficient: 1.05
 kilda_floodlight_consumer_executors: 20
 kilda_floodlight_consumer_disco_executors: 20
+
+kilda_grpc_speaker_kafka_listener_threads: 1
+kilda_grpc_speaker_kafka_session_timeout: 30000
 
 kilda_aswitch_port: "5001"
 kilda_aswitch_endpoint: "http://127.0.0.1"
@@ -66,6 +71,7 @@ kilda_kafka_te_consumer_group: "kilda-tpe"
 
 # interval in ticks (seconds) between sending disco packets
 kilda_discovery_interval: 3
+kilda_discovery_packet_ttl: 5
 kilda_discovery_timeout: "15"
 # discovery_limit of -1 is forever
 # 28000 is about a day (test every 3 seconds, 20 failures per minute, 1200 per hour ..
@@ -88,6 +94,10 @@ kilda_production_fileserver: "http://127.0.0.1"
 
 kilda_reroute_throttling_delay_min: 3
 kilda_reroute_throttling_delay_max: 15
+kilda_flow_default_priority: 1000
+
+kilda_diversity_isl_weight: 1000
+kilda_diversity_switch_weight: 100
 
 kilda_isl_cost_when_port_down: 10000
 kilda_isl_cost_when_under_maintenance: 10000
@@ -95,6 +105,12 @@ kilda_isl_cost_when_under_maintenance: 10000
 kilda_port_up_down_throttling_delay_seconds_min: 1
 kilda_port_up_down_throttling_delay_seconds_warm_up: 5
 kilda_port_up_down_throttling_delay_seconds_cool_down: 5
+
+kilda_floodlight_alive_timeout: 5
+kilda_floodlight_alive_interval: 2
+kilda_floodlight_request_timeout: 180
+kilda_message_blacklist_timeout: 180
+kilda_floodlight_regions: "1"
 
 kilda_bfd_port_offset: 200
 
@@ -115,3 +131,16 @@ kilda_logging_port_floodlight: 5002
 kilda_logging_port_topology_engine_rest: 5003
 kilda_logging_port_mininet: 5004
 kilda_logging_port_northbound: 5005
+kilda_logging_port_grpc: 5005
+
+kilda_gui_application_name_prefix: "Dev"
+
+kilda_grpc_endpoint: "http://grpc-speaker.pendev"
+kilda_grpc_rest_port: "8091"
+kilda_grpc_basicauth_username: "kilda"
+kilda_grpc_basicauth_password: "kilda"
+kilda_grpc_username: "kilda"
+kilda_grpc_password: "kilda"
+kilda_grpc_remote_log_server_ip: "1.1.1.1"
+kilda_grpc_remote_log_server_port: 321
+

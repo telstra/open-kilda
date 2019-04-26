@@ -54,6 +54,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
@@ -112,6 +113,26 @@ public class SwitchIntegrationService {
         }
         return null;
     }
+    
+    /**
+     * Get the switch by id.
+     *
+     * @return the switch
+     */
+    public SwitchInfo getSwitchesById(String switchId) {
+        HttpResponse response = restClientManager.invoke(
+                applicationProperties.getNbBaseUrl()
+                        + IConstants.NorthBoundUrl.GET_SWITCH.replace("{switch_id}", switchId),
+                HttpMethod.GET, "", "", applicationService.getAuthHeader());
+        if (RestClientManager.isValidResponse(response)) {
+            SwitchInfo switchInfo = restClientManager.getResponse(response, SwitchInfo.class);
+            if (switchInfo != null) {
+                switchInfo.setName(customSwitchName(getSwitchNames(), switchInfo.getSwitchId()));
+                return switchInfo;
+            }
+        }
+        return null;
+    }
 
     /**
      * Gets the switch info set name.
@@ -122,21 +143,8 @@ public class SwitchIntegrationService {
      */
     private List<SwitchInfo> getSwitchInfoSetName(List<SwitchInfo> switches) {
 
-        LOGGER.info("Inside getSwitchInfoSetName : Start");
         if (switches != null && !StringUtils.isEmpty(switches)) {
-
-            Map<String, String> csNames = new HashMap<String, String>();
-            if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == null) {
-                String value = applicationSettingService
-                        .getApplicationSetting(ApplicationSetting.SWITCH_NAME_STORAGE_TYPE);
-                IConstants.STORAGE_TYPE_FOR_SWITCH_NAME = StorageType.get(value);
-            }
-
-            if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == StorageType.FILE_STORAGE) {
-                csNames = getCustomSwitchNameFromFile();
-            } else if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == StorageType.DATABASE_STORAGE) {
-                csNames = getCustomSwitchNameFromDatabase();
-            }
+            Map<String, String> csNames = getSwitchNames();
             for (SwitchInfo switchInfo : switches) {
                 switchInfo.setName(customSwitchName(csNames, switchInfo.getSwitchId()));
             }
@@ -144,6 +152,26 @@ public class SwitchIntegrationService {
         return switches;
     }
 
+    /**
+     * Gets the switch names.
+     *
+     * @return the switch names
+     */
+    public Map<String, String> getSwitchNames() {
+        Map<String, String> csNames = new HashMap<String, String>();
+        if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == null) {
+            String value = applicationSettingService.getApplicationSetting(ApplicationSetting.SWITCH_NAME_STORAGE_TYPE);
+            IConstants.STORAGE_TYPE_FOR_SWITCH_NAME = StorageType.get(value);
+        }
+
+        if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == StorageType.FILE_STORAGE) {
+            csNames = getCustomSwitchNameFromFile();
+        } else if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == StorageType.DATABASE_STORAGE) {
+            csNames = getCustomSwitchNameFromDatabase();
+        }
+        return csNames;
+    }
+    
     /**
      * Custom switch name.
      *
@@ -174,12 +202,12 @@ public class SwitchIntegrationService {
      *
      * @return the isl links
      */
-    public List<IslLinkInfo> getIslLinks() {
-        List<IslLink> links = getIslLinkPortsInfo();
+    public List<IslLinkInfo> getIslLinks(LinkProps keys) {
+        List<IslLink> links = getIslLinkPortsInfo(keys);
         if (CollectionUtil.isEmpty(links)) {
             throw new ContentNotFoundException();
         }
-        return islLinkConverter.toIslLinksInfo(links, islCostMap());
+        return islLinkConverter.toIslLinksInfo(links, islCostMap(null));
     }
 
     /**
@@ -187,9 +215,12 @@ public class SwitchIntegrationService {
      *
      * @return the isl links port info
      */
-    public List<IslLink> getIslLinkPortsInfo() {
-        HttpResponse response = restClientManager.invoke(
-                applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINKS, HttpMethod.GET, "", "",
+    public List<IslLink> getIslLinkPortsInfo(LinkProps keys) {
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromHttpUrl(applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINKS);
+        builder = setLinkProps(keys, builder);
+        String fullUri = builder.build().toUriString();
+        HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
                 applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
             List<IslLink> links = restClientManager.getResponseList(response, IslLink.class);
@@ -198,8 +229,8 @@ public class SwitchIntegrationService {
         return null;
     }
 
-    private Map<String, String> islCostMap() {
-        List<LinkProps> linkProps = getIslLinkProps(null);
+    private Map<String, String> islCostMap(LinkProps keys) {
+        List<LinkProps> linkProps = getIslLinkProps(keys);
         Map<String, String> islCostMap = new HashMap<>();
         if (linkProps != null) {
 
@@ -234,8 +265,8 @@ public class SwitchIntegrationService {
                     return linkPropsResponses;
                 }
             }
-        } catch (InvalidResponseException exception) {
-            LOGGER.error("Exception in getIslLinkProps " + exception.getMessage(), exception);
+        } catch (InvalidResponseException e) {
+            LOGGER.warn("Error occurred while getting isl link props ", e);
             return null;
         }
         return null;
@@ -261,8 +292,8 @@ public class SwitchIntegrationService {
                     csNames = JsonUtil.toObject(data, HashMap.class);
                 }
             }
-        } catch (Exception ex) {
-            LOGGER.error("Inside getCustomSwitchNameFromFile unable to find switch file path Exception :", ex);
+        } catch (IOException e) {
+            LOGGER.warn("Error occurred while getting switch name from file", e);
         }
         return csNames;
 
@@ -295,8 +326,8 @@ public class SwitchIntegrationService {
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINK_PROPS, HttpMethod.PUT,
                     objectMapper.writeValueAsString(keys), "application/json", applicationService.getAuthHeader());
             return IoUtil.toString(response.getEntity().getContent());
-        } catch (Exception e) {
-            LOGGER.error("Inside updateIslLinkProps  Exception :", e);
+        } catch (IOException e) {
+            LOGGER.warn("Error occurred while updating isl link props", e);
             throw new IntegrationException(e);
         }
     }
@@ -347,8 +378,8 @@ public class SwitchIntegrationService {
                             + IConstants.NorthBoundUrl.GET_SWITCH_RULES.replace("{switch_id}", switchId),
                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
             return IoUtil.toString(response.getEntity().getContent());
-        } catch (Exception e) {
-            LOGGER.error("Inside updateIslLinkProps  Exception :", e);
+        } catch (IOException e) {
+            LOGGER.error("Error occurred while retrivig switch rules by switch id:" + switchId, e);
             throw new IntegrationException(e);
         }
     }
@@ -375,10 +406,10 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponse(response, ConfiguredPort.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Inside configurePort  Exception :", e);
+            LOGGER.error("Error occurred while configuring port. Switch Id:" + switchId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (JsonProcessingException e) {
-            LOGGER.error("Error occurred while converting configration to string. Exception: " + e.getMessage(), e);
+            LOGGER.error("Error occurred while converting configration to string. Switch Id:" + switchId, e);
             throw new IntegrationException(e);
         }
         return null;
@@ -430,11 +461,8 @@ public class SwitchIntegrationService {
                 return restClientManager.getResponseList(response, Flow.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Inside getIslFlowList  Exception :", e);
+            LOGGER.error("Error occurred while getting isl flow list", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (Exception exception) {
-            LOGGER.error("Exception in getIslFlowList " + exception.getMessage());
-            throw new IntegrationException(exception);
         }
         return null;
     }

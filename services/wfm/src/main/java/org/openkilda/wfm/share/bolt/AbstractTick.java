@@ -28,9 +28,12 @@ import java.util.Map;
 
 public abstract class AbstractTick extends AbstractBolt {
     public static final String FIELD_ID_TIME_MILLIS = "time";
-    public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_TIME_MILLIS, FIELD_ID_CONTEXT);
+    public static final String FIELD_ID_TICK_NUMBER = "tick";
+    public static final Fields STREAM_FIELDS = new Fields(
+            FIELD_ID_TIME_MILLIS, FIELD_ID_TICK_NUMBER, FIELD_ID_CONTEXT);
 
     private final Integer interval;
+    private long tickNumber = 0;
 
     public AbstractTick(Integer interval) {
         this.interval = interval;
@@ -43,10 +46,21 @@ public abstract class AbstractTick extends AbstractBolt {
         }
 
         produceTick(input);
+
+        tickNumber += 1;
     }
 
     protected void produceTick(Tuple input) {
-        getOutput().emit(input, new Values(System.currentTimeMillis(), new CommandContext()));
+        getOutput().emit(input, new Values(System.currentTimeMillis(), tickNumber, getCommandContext()));
+    }
+
+    protected boolean isMultiplierTick(int multiplier) {
+        return tickNumber % multiplier == 0;
+    }
+
+    @Override
+    protected CommandContext setupCommandContext() {
+        return new CommandContext();
     }
 
     @Override

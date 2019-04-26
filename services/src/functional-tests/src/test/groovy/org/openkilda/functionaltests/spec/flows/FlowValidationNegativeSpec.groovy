@@ -4,14 +4,11 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.model.FlowDto
 import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.flows.FlowValidationDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
 
 import groovy.util.logging.Slf4j
-import org.junit.Assume
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Unroll
@@ -30,9 +27,10 @@ class FlowValidationNegativeSpec extends BaseSpecification {
     @Unroll
     def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration"() {
         given: "Two flows with #flowConfig configuration"
-        def (src, dest) = switches
-        def flowToBreak = (src == dest) ? flowHelper.singleSwitchFlow(src) : flowHelper.randomFlow(src, dest)
-        def intactFlow = (src == dest) ? flowHelper.singleSwitchFlow(src) : flowHelper.randomFlow(src, dest)
+        def flowToBreak = (potentialFlow.src == potentialFlow.dst) ? flowHelper.singleSwitchFlow(potentialFlow.src) 
+                : flowHelper.randomFlow(potentialFlow)
+        def intactFlow = (potentialFlow.src == potentialFlow.dst) ? flowHelper.singleSwitchFlow(potentialFlow.src) 
+                : flowHelper.randomFlow(potentialFlow)
 
         flowHelper.addFlow(flowToBreak)
         flowHelper.addFlow(intactFlow)
@@ -84,19 +82,37 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         [flowToBreak.id, intactFlow.id].each { flowHelper.deleteFlow(it) }
 
         where:
-        flowConfig      | switches                     | item | switchNo | flowType
-        "single switch" | getSingleSwitch()            | 0    | "single" | "forward"
-        "single switch" | getSingleSwitch()            | 0    | "single" | "reverse"
-        "neighbouring"  | getNeighbouringSwitches()    | 0    | "first"  | "forward"
-        "neighbouring"  | getNeighbouringSwitches()    | 0    | "first"  | "reverse"
-        "neighbouring"  | getNeighbouringSwitches()    | 1    | "last"   | "forward"
-        "neighbouring"  | getNeighbouringSwitches()    | 1    | "last"   | "reverse"
-        "transit"       | getNonNeighbouringSwitches() | 0    | "first"  | "forward"
-        "transit"       | getNonNeighbouringSwitches() | 0    | "first"  | "reverse"
-        "transit"       | getNonNeighbouringSwitches() | 1    | "middle" | "forward"
-        "transit"       | getNonNeighbouringSwitches() | 1    | "middle" | "reverse"
-        "transit"       | getNonNeighbouringSwitches() | -1   | "last"   | "forward"
-        "transit"       | getNonNeighbouringSwitches() | -1   | "last"   | "reverse"
+        flowConfig      | potentialFlow                         | item | switchNo | flowType
+        "single switch" | getTopologyHelper().singleSwitch()    | 0    | "single" | "forward"
+        "single switch" | getTopologyHelper().singleSwitch()    | 0    | "single" | "reverse"
+        "neighbouring"  | getTopologyHelper().findNeighbors()   | 0    | "first"  | "forward"
+        "neighbouring"  | getTopologyHelper().findNeighbors()   | 0    | "first"  | "reverse"
+        "neighbouring"  | getTopologyHelper().findNeighbors()   | 1    | "last"   | "forward"
+        "neighbouring"  | getTopologyHelper().findNeighbors()   | 1    | "last"   | "reverse"
+        "transit"       | getTopologyHelper().findNonNeighbors()| 0    | "first"  | "forward"
+        "transit"       | getTopologyHelper().findNonNeighbors()| 0    | "first"  | "reverse"
+        "transit"       | getTopologyHelper().findNonNeighbors()| 1    | "middle" | "forward"
+        "transit"       | getTopologyHelper().findNonNeighbors()| 1    | "middle" | "reverse"
+        "transit"       | getTopologyHelper().findNonNeighbors()| -1   | "last"   | "forward"
+        "transit"       | getTopologyHelper().findNonNeighbors()| -1   | "last"   | "reverse"
+    }
+
+    @Unroll
+    def "Unable to #action a non-existent flow"() {
+        when: "Trying to #action a non-existent flow"
+        northbound."${action}Flow"(NON_EXISTENT_FLOW_ID)
+
+        then: "An error is received (404 code)"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 404
+        exc.responseBodyAsString.to(MessageError).errorMessage == message
+
+        where:
+        action        | message
+        "get"         | "Can not get flow: Flow $NON_EXISTENT_FLOW_ID not found"
+        "reroute"     | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
+        "validate"    | "Could not validate flow: Flow $NON_EXISTENT_FLOW_ID not found"
+        "synchronize" | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 
     /**
@@ -126,63 +142,5 @@ class FlowValidationNegativeSpec extends BaseSpecification {
             cookies[dpId] = cookie
         }
         return cookies
-    }
-
-    boolean findDirectLinks(Switch src, Switch dst, List<IslInfoData> links) {
-        def connectingLinks = links.findAll { link ->
-            (link.source.switchId == src.dpId) && (link.destination.switchId == dst.dpId)
-        }
-        return connectingLinks.empty
-    }
-
-    /**
-     * Finds pair of switches with no direct links between them.
-     * NOTE: distance between switches is NOT guaranteed
-     * @return List < Switch >
-     */
-    def getNonNeighbouringSwitches() {
-        def islInfoData = northbound.getAllLinks()
-        def switches = topology.getActiveSwitches()
-        def differentSwitches = [switches, switches].combinations().findAll { src, dst -> src.dpId != dst.dpId }
-
-        return differentSwitches.find { src, dst -> findDirectLinks(src, dst, islInfoData) }
-    }
-
-    /**
-     * Finds pair of swithes with a direct link between them.
-     * @return List < Switch >
-     */
-    def getNeighbouringSwitches() {
-        def switches = topology.getActiveSwitches()
-        def islInfoData = northbound.getAllLinks()
-        return [switches, switches].combinations().unique().find { src, dst -> !findDirectLinks(src, dst, islInfoData) }
-    }
-
-    /**
-     * Finds a single switch
-     * @return List < Switch >    (convenient for randomFlow() method)
-     */
-    def getSingleSwitch() {
-        def switches = topology.getActiveSwitches()
-        return [switches.first(), switches.first()]
-    }
-
-    @Unroll
-    def "Unable to #action a non-existent flow"() {
-        Assume.assumeFalse("Ignored due to issue #2027", action == "validate")
-        when: "Trying to #action a non-existent flow"
-        northbound."${action}Flow"(NON_EXISTENT_FLOW_ID)
-
-        then: "An error is received (404 code)"
-        def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage == message
-
-        where:
-        action        | message
-        "synchronize" | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
-        "reroute"     | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
-        "get"         | "Can not get flow: Flow $NON_EXISTENT_FLOW_ID not found"
-        "validate"    | "Can not validate flow: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 }

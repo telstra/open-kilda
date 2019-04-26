@@ -69,7 +69,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
      * Instantiates a new global exception mapper.
      */
     public GlobalExceptionMapper() {
-        _log.info("[GlobalExceptionMapper] Initializing {}...", GlobalExceptionMapper.class.getName());
+        _log.info("Global exception mapper. Initializing {}...", GlobalExceptionMapper.class.getName());
     }
 
     @Override

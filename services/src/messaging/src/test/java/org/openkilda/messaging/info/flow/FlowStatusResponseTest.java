@@ -47,7 +47,8 @@ public class FlowStatusResponseTest {
          * Start with serializing to JSON.
          * Then re-populate from JSON.
          */
-        InfoMessage msg = new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload("FLOW", FlowState.UP)), 10L,"CORRELATION", Destination.NORTHBOUND);
+        InfoMessage msg = new InfoMessage(new FlowStatusResponse(new FlowIdStatusPayload("FLOW",FlowState.UP)), 10L,"CORRELATION", Destination.NORTHBOUND,
+                null);
 
         InfoMessage fromJson = MAPPER.readValue(json, InfoMessage.class);
         FlowStatusResponse fsrJson = (FlowStatusResponse) fromJson.getData();

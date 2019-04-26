@@ -1,0 +1,48 @@
+* Timeouts
+- delay_warmup
+- delay_min
+- delay_cooldown
+
+* Vars
+- start-time
+- down-time
+- up-time
+
+@startuml
+title AntiFlap FSM
+legend top right
+    last-down = down-time>up-time
+    last-up = up-time>down-time
+    last-event = max(down-time, up-time)
+endlegend
+
+[*] -l-> Init
+
+Init --> Nothing : port-up, port-down
+Init: port-up / emit port-up, save up-time
+Init: port-down / emit port-down, save down-time
+
+state WarmingUpEnded <<choice>>
+
+Nothing: port-up / emit port-up, save up-time
+Nothing -d-> WarmingUp : port-down [last-up]
+
+WarmingUp: enter / save start-time and down-time
+WarmingUp: port-up / save up-time
+WarmingUp: port-down / save down-time
+WarmingUp -d-> CoolingDown : tick [last-down &&\nnow() - down-time > delay_min]
+note top on link #lightgreen: port is down and at pause
+WarmingUp -l-> WarmingUpEnded : tick [now() \n- start-time \n> delay_warm_up]
+
+WarmingUpEnded -> CoolingDown : [last-down \n|| last-event > start_time \n+ delay_warmup \n- delay_min]
+note top on link #coral: port is down or flapping
+WarmingUpEnded -> Nothing : else
+note top on link #lightgreen: happy-path
+
+CoolingDown: enter / emit port-down
+CoolingDown: exit [last-up] / emit port-up
+CoolingDown: port-up / save port-up-time
+CoolingDown: port-down / save port-down-time
+CoolingDown -u-> Nothing : tick [now() - last-event \n> delay_cooldown]
+note top on link #lightgreen: no events during cool down
+@enduml

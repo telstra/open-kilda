@@ -33,6 +33,7 @@
         <commons-lang.version>2.6</commons-lang.version>
         <hibernate-validator.version>6.0.10.Final</hibernate-validator.version>
         <glassfish-el.version>3.0.1-b09</glassfish-el.version>
+
         <mapstruct.version>1.2.0.Final</mapstruct.version>
         <jetty.version>9.2.22.v20170606</jetty.version>
         <neo4j.version>3.3.3</neo4j.version>
@@ -40,6 +41,7 @@
         <java-uuid-generator.version>3.1.5</java-uuid-generator.version>
         <failsafe.version>1.0.5</failsafe.version>
         <squirrelframework.version>0.3.8</squirrelframework.version>
+        <neo4j-ogm.version>3.1.3</neo4j-ogm.version>
 
         <aspectj-maven-plugin.version>1.11</aspectj-maven-plugin.version>
         <maven-checkstyle-plugin.version>3.0.0</maven-checkstyle-plugin.version>
@@ -260,7 +262,6 @@
         <!-- ~~~~~~~ -->
         <!-- TESTING -->
         <!-- ~~~~~~~ -->
-
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -383,7 +384,6 @@
             <groupId>net.jodah</groupId>
             <artifactId>failsafe</artifactId>
             <version>${failsafe.version}</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 

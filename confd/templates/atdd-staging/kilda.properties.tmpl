@@ -6,6 +6,8 @@ floodlight.endpoint={{ getv "/kilda_floodlight_endpoint" }}:{{ getv "/kilda_floo
 floodlight.username={{ getv "/kilda_floodlight_username" }}
 floodlight.password={{ getv "/kilda_floodlight_password" }}
 floodlight.controller.uri={{ getv "/kilda_floodlight_controller_uri" }}
+floodlight.alive.timeout={{ getv "/kilda_floodlight_alive_timeout" }}
+floodlight.alive.interval={{ getv "/kilda_floodlight_alive_interval" }}
 
 neo.uri=bolt://{{ getv "/kilda_neo4j_host" }}:{{ getv "/kilda_neo4j_bolt_port" }}
 neo.user={{ getv "/kilda_neo4j_user" }}
@@ -14,15 +16,16 @@ neo.password={{ getv "/kilda_neo4j_password" }}
 elasticsearch.endpoint={{ getv "/kilda_logging_elasticsearch_proto" }}://{{ getv "/kilda_logging_elasticsearch_hosts" }}
 elasticsearch.username={{ getv "/kilda_logging_elasticsearch_user" }}
 elasticsearch.password={{ getv "/kilda_logging_elasticsearch_pass" }}
+elasticsearch.index={{ getv "/kilda_logging_elasticsearch_index" }}
 
+environment.naming.prefix={{ getv "/kilda_environment_naming_prefix" }}
 kafka.bootstrap.server={{ getv "/kilda_kafka_hosts" }}
-kafka.topic.topo.disco=kilda.topo.disco
+kafka.topic.topo.disco=kilda.topo.disco.storm
 
 lab-api.endpoint={{ getv "/kilda_lab_api_endpoint" }}:{{ getv "/kilda_lab_api_port" }}
 lockkeeper.endpoint={{ getv "/kilda_aswitch_endpoint" }}:{{ getv "/kilda_aswitch_port" }}
 
-otsdb.endpoint=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
-
+opentsdb.endpoint=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
 opentsdb.metric.prefix = {{ getv "/kilda_opentsdb_metric_prefix" }}
 
 spring.profiles.active={{ getv "/kilda_test_profile" }}
@@ -43,3 +46,12 @@ isl.cost.when.under.maintenance={{ getv "/kilda_isl_cost_when_under_maintenance"
 burst.coefficient={{ getv "/kilda_floodlight_flow_meter_burst_coefficient" }}
 
 bfd.offset={{ getv "/kilda_bfd_port_offset" }}
+
+diversity.isl.weight={{ getv "/kilda_diversity_isl_weight" }}
+diversity.switch.weight={{ getv "/kilda_diversity_switch_weight" }}
+
+grpc.endpoint={{ getv "/kilda_grpc_endpoint" }}:{{ getv "/kilda_grpc_rest_port" }}
+grpc.username={{ getv "/kilda_grpc_username" }}
+grpc.password={{ getv "/kilda_grpc_password" }}
+grpc.remote.log.server.ip={{ getv "/kilda_grpc_remote_log_server_ip" }}
+grpc.remote.log.server.port={{ getv "/kilda_grpc_remote_log_server_port" }}

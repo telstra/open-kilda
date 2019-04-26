@@ -22,9 +22,9 @@ export class SwitchService {
     return this.httpClient.get<any[]>(`${environment.apiEndPoint}/switch/links`);
   }
 
-  getSwitchRulesList(switchId) : Observable<any[]>{
+  getSwitchRulesList(switchId) : Observable<String>{
     let timestamp = new Date().getTime();
-    return this.httpClient.get<any[]>(`${environment.apiEndPoint}/switch/${switchId}/rules?_=${timestamp}`);
+    return this.httpClient.get(`${environment.apiEndPoint}/switch/${switchId}/rules?_=${timestamp}`,{responseType: 'text'});
   }
 
   getSwitchPortsStats(switchId):Observable<any[]>{

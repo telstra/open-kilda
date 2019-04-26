@@ -1,0 +1,19 @@
+grpc.user=kilda
+grpc.pass=kilda
+
+environment.naming.prefix =
+
+service.name=@project.name@
+service.version=@project.version@
+service.description=@project.description@
+
+kafka.hosts=kafka.pendev:9092
+server.port=8091
+
+grpc.speaker.kafka.listener.threads=1
+grpc.speaker.kafka.session.timeout=30000
+grpc.speaker.kafka.messages.expiration.minutes=15
+
+server.contextPath=/api/v1
+security.rest.username.default=kilda
+security.rest.password.default=kilda

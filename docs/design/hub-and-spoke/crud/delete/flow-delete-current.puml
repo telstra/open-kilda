@@ -1,0 +1,68 @@
+@startuml
+title FLOW delete
+
+control kilda.flow
+participant SplitterBolt as SplitterBolt
+participant SpeakerBolt as SpeakerBolt
+participant CrudBolt as CrudBolt
+participant TransactionBolt
+participant ErrorBolt
+participant NorthboundReplyBolt
+participant StatusBolt
+control kilda.northbound
+control kilda.speaker.flow
+
+kilda.flow -> SplitterBolt: CommandMessage\nFlowDeleteRequest
+SplitterBolt -> CrudBolt: CommandMessage\nFlowDeleteRequest
+activate CrudBolt
+
+== Deletion from DB and resource deallocation ==
+CrudBolt -> CrudBolt: Load the flow from DB
+
+opt Flow doesn't exist?
+    CrudBolt -> ErrorBolt: Requested flow doesn't exist
+    ErrorBolt -> NorthboundReplyBolt: Error message
+    NorthboundReplyBolt -> kilda.northbound: Error message
+end
+
+CrudBolt -> CrudBolt: Remove flow
+note right: We delete flow from DB although flow \nstill exists on switches and some rules \nmight not be deleted if switch is not available \nor an error occurred
+CrudBolt -> CrudBolt: Remove flow segments
+CrudBolt -> CrudBolt: Release used bandwidth on ISLs
+
+CrudBolt -> CrudBolt: Deallocate resources used by flow
+
+CrudBolt -> CrudBolt: Create delete commands
+note right: 2 groups of commands is created: \n1. Clean up ingress rules \n2. Clean up remaining rules.
+
+CrudBolt -> TransactionBolt: Flow deletion commands
+activate TransactionBolt
+
+CrudBolt -> NorthboundReplyBolt: Flow delete response
+NorthboundReplyBolt -> kilda.northbound: Flow delete response
+deactivate CrudBolt
+
+== Rules deletion ==
+loop for each command in the 1st group
+    TransactionBolt -> kilda.speaker.flow: Forward the command to Speaker
+    TransactionBolt -> TransactionBolt: Register as a transaction for the 1st group
+end
+deactivate TransactionBolt
+
+loop for each installed
+    kilda.flow -> SplitterBolt: CommandMessage\nBaseFlow
+    SplitterBolt -> SpeakerBolt: CommandMessage\nBaseFlow
+    SpeakerBolt -> TransactionBolt: CommandMessage\nBaseFlow
+    activate TransactionBolt
+    TransactionBolt -> TransactionBolt: Mark corresponding transaction as completed
+    opt Are all ingress rules deleted?
+        TransactionBolt -> TransactionBolt: Mark 1st stage as completed
+        loop for each command in the next group
+            TransactionBolt -> kilda.speaker.flow: Forward the command to Speaker
+            TransactionBolt -> TransactionBolt: Register as a transaction for the next stage \n(delete remaining rules)
+        end
+	end
+end
+deactivate TransactionBolt
+
+@enduml

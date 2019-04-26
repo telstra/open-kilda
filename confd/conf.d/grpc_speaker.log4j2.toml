@@ -1,0 +1,5 @@
+[template]
+src = "grpc-service/log4j2.xml.tmpl"
+dest = "services/src/grpc-speaker/grpc-service/src/main/resources/log4j2.xml"
+keys = [ "/" ]
+mode = "0644"

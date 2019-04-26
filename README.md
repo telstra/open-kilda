@@ -16,11 +16,14 @@ The followings are required for building Kilda controller:
  - Python 3.5+
  - Docker Compose 1.20.0+
  - GNU Make 4.1+
+ - Open vSwitch 2.9+
+ 
+For running virtual environment you additionally need linux kernel 4.18+ for OVS meters support
 
-On Ubuntu 16.04, you can install those dependancies like this:
+On Ubuntu 18.04, you can install those dependencies like this:
 
 ```
-apt-get install maven openjdk-8-jdk python python3 docker.io docker-compose virtualenv make
+apt-get install maven openjdk-8-jdk python python3 docker.io docker-compose virtualenv make openvswitch-switch linux-generic-hwe-18.04
 ```
 
 Note that your build user needs to be a member of the docker group for the build to work. Do that by adding the user to /etc/groups and logging out and back in again.

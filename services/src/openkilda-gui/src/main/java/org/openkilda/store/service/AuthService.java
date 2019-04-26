@@ -25,6 +25,9 @@ import org.openkilda.store.model.OauthTwoConfigDto;
 import org.openkilda.store.service.converter.AuthTypeConverter;
 import org.openkilda.store.service.converter.OauthConfigConverter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -40,6 +43,8 @@ import java.util.List;
 @Service
 public class AuthService {
     
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthService.class);
+    
     @Autowired
     private OauthConfigRepository oauthConfigRepository;
     
@@ -50,6 +55,7 @@ public class AuthService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public List<AuthTypeDto> getAuthTypes() {
+        LOGGER.info("Get auth types");
         List<AuthTypeDto> list = new ArrayList<AuthTypeDto>();
         AuthType[] authTypes = AuthType.values();
         for (AuthType authType : authTypes) {
@@ -66,6 +72,7 @@ public class AuthService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public OauthTwoConfigDto saveOrUpdateOauthConfig(final OauthTwoConfigDto oauthTwoConfigDto) {
+        LOGGER.info("Save or update oauth configuration");
         List<OauthConfigEntity> oauthConfigEntityList = oauthConfigRepository
                 .findByAuthType_authTypeId(AuthType.OAUTH_TWO.getAuthTypeEntity().getAuthTypeId());
         OauthConfigEntity oauthConfigEntity = null;
@@ -89,6 +96,7 @@ public class AuthService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public OauthTwoConfigDto getOauthConfig() {
+        LOGGER.info("Get oauth configuration");
         List<OauthConfigEntity> oauthConfigEntityList = oauthConfigRepository
                 .findByAuthType_authTypeId(AuthType.OAUTH_TWO.getAuthTypeEntity().getAuthTypeId());
         OauthConfigEntity oauthConfigEntity = null;
@@ -109,6 +117,7 @@ public class AuthService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public AuthConfigDto getAuth(final StoreType storeType) {
+        LOGGER.info("Get auth for store type");
         if (storeType == StoreType.LINK_STORE || storeType == StoreType.SWITCH_STORE) {
             return OauthConfigConverter.toOauthTwoConfigDto(storeType.getStoreTypeEntity().getOauthConfigEntity());
         }

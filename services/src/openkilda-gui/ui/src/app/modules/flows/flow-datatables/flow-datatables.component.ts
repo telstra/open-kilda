@@ -6,6 +6,7 @@ import { Flow } from 'src/app/common/data-models/flow';
 import { Router } from '@angular/router';
 import { CommonService } from 'src/app/common/services/common.service';
 import { FormBuilder, FormGroup } from '@angular/forms';
+import { ClipboardService } from 'ngx-clipboard';
 declare var jQuery: any;
 
 @Component({
@@ -21,6 +22,8 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   @Output() refresh =  new EventEmitter();
   @Input()  statusParams:any;
   @Input() statusList:any;
+
+  typeFilter = 'all';
   
   dtOptions = {};
   dtTrigger: Subject<any> = new Subject();
@@ -42,10 +45,12 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   storeLinkSetting = false;
   loadFilter : boolean =  false;
   activeStatus :any = '';
+  clipBoardItems = [];
   filterForm : FormGroup;
 
   constructor(private loaderService:LoaderService, private renderer: Renderer2,private router: Router,
     private commonService: CommonService,
+    private clipboardService: ClipboardService,
     private formBuilder: FormBuilder) {
     this.wrapperHide = false;
     let storeSetting = localStorage.getItem("haslinkStoreSetting") || false;
@@ -58,7 +63,8 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
     this.dtOptions = {
       pageLength: 10,
       deferRender: true,
-      dom: 'tpl',
+      info:true,
+      dom: 'tpli',
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       retrieve: true,
       autoWidth: false,
@@ -77,7 +83,14 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
         { sWidth: '9%' },
         { sWidth: '10%' },
         { sWidth: '10%' },
-        { sWidth: '10%' },{ sWidth: '10%' ,"bSortable": false} ],
+        { sWidth: '10%' },
+        { sWidth: '1%' ,"bSortable": false},
+        { sWidth: '10%' ,"bSortable": false},
+       
+       ],
+       columnDefs:[
+        { targets: [10], visible: false},
+      ],
       initComplete:function( settings, json ){
         setTimeout(function(){
           ref.loaderService.hide();
@@ -91,6 +104,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
     if(change.data){
       if(change.data.currentValue){
         this.data  = change.data.currentValue;
+        this.clipBoardItems = this.data;
       }
     }
 
@@ -119,6 +133,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   }
   fulltextSearch(e:any){ 
       var value = e.target.value;
+      this.typeFilter = 'all';
         this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
           dtInstance.search(value)
                   .draw();
@@ -179,6 +194,46 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
 
   ngOnDestroy(): void {
     this.dtTrigger.unsubscribe();
+  }
+  
+  descrepancyString(row){
+    let text = [];
+    if(row.hasOwnProperty('controller-flow')){
+        if(row['controller-flow']){
+          text.push("controller:true");
+        }else{
+          text.push("controller:false");
+        }
+    }else{
+      text.push("controller:false");
+    }
+
+    if(row.hasOwnProperty('inventory-flow')){
+      if(row['inventory-flow']){
+        text.push("inventory:true");
+      }else{
+        text.push("inventory:false");
+      }
+    }else{
+      text.push("inventory:false");
+    }
+
+    return text.join(", ");
+  }
+
+  toggleType(type){
+    this.typeFilter = type;
+    let searchString = type =='all' ? '' : type+":true";
+    console.log('searchString',searchString);
+    this.renderer.selectRootElement('#search-input').value="";
+    this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
+      dtInstance.search(searchString).draw();
+    });
+  }
+
+  copyToClip(event, copyItem,index) {
+    var copyItem = this.clipBoardItems[index][copyItem];
+    this.clipboardService.copyFromContent(copyItem);
   }
 
 }

@@ -60,9 +60,9 @@ public class SwitchStoreService {
             AuthConfigDto authDto = authService.getAuth(StoreType.SWITCH_STORE);
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponseList(urlDto, authDto, InventorySwitch.class);
-        } catch (Exception exception) {
-            LOGGER.error("Exception in getSwitches " + exception.getMessage());
-            throw new StoreIntegrationException(exception);
+        } catch (Exception e) {
+            LOGGER.error("Error occurred while retriving switches", e);
+            throw new StoreIntegrationException(e);
         }
     }
     
@@ -81,9 +81,11 @@ public class SwitchStoreService {
             AuthConfigDto authDto = authService.getAuth(StoreType.SWITCH_STORE);
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponseList(urlDto, authDto, Customer.class);
-        } catch (Exception exception) {
-            LOGGER.error("Exception in getPortFlows " + exception.getMessage());
-            throw new StoreIntegrationException(exception);
+        } catch (Exception e) {
+            LOGGER.error(
+                    "Error occurred while retriving switch port flows. Switch Id: " + switchId + ", Port: " + port,
+                    e);
+            throw new StoreIntegrationException(e);
         }
     }
     
@@ -105,9 +107,9 @@ public class SwitchStoreService {
             
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponseList(urlDto, authDto, Port.class);
-        } catch (Exception exception) {
-            LOGGER.error("Exception in getSwitchPort " + exception.getMessage());
-            throw new StoreIntegrationException(exception);
+        } catch (Exception e) {
+            LOGGER.error("Error occurred while retriving switch ports. Switch Id: " + switchId, e);
+            throw new StoreIntegrationException(e);
         }
     }
     
@@ -128,9 +130,9 @@ public class SwitchStoreService {
             AuthConfigDto authDto = authService.getAuth(StoreType.SWITCH_STORE);
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponse(urlDto, authDto, InventorySwitch.class);
-        } catch (Exception exception) {
-            LOGGER.error("Exception in getSwitches " + exception.getMessage());
-            throw new StoreIntegrationException(exception);
+        } catch (Exception e) {
+            LOGGER.error("Error occurred while retriving switches. Switch Id: " + switchId, e);
+            throw new StoreIntegrationException(e);
         }
     }
 }

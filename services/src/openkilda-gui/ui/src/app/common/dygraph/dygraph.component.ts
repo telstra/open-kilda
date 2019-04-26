@@ -3,7 +3,7 @@ import { IslDataService } from "../services/isl-data.service";
 import { DygraphService } from "../services/dygraph.service";
 import * as _moment from 'moment';
 declare var moment: any;
-
+declare var Dygraph :any;
 
 @Component({
   selector: "app-dygraph",
@@ -20,13 +20,16 @@ export class DygraphComponent implements OnInit, OnDestroy {
   graphAPIFlag: boolean = false;
   message: {};
   data = [];
+  highestYaXis = null;
   labels: any;
   options : any = Object.assign({}, {
     width: "auto",
     chartHeight:"380",
     legend: "onmouseover",
-    noDataLabel:"Please wait"
+    noDataLabel:"Please wait",
+    
   });
+
   jsonResponse: any;
   startDate: any;
   endDate: any;
@@ -38,6 +41,8 @@ export class DygraphComponent implements OnInit, OnDestroy {
   optionsObject = {};
   graphDataOptions: any;
   dateMessage:string;
+
+  
 
   
 
@@ -84,10 +89,13 @@ export class DygraphComponent implements OnInit, OnDestroy {
     }
 
     if (!jsonResponse) {
-      var getValue = typeof data[0] !== "undefined" ? data[0].dps : 0;
+      var getValue = typeof data[0] !== "undefined" ? data[0].dps : {};
+      var fDps = [];
+      var rDps = [];
       metric1 = typeof data[0] !== "undefined" ? data[0].metric : "";
       if (data.length == 2) {
-        var getVal = data[1].dps;
+        var getVal = typeof data[1] !== "undefined" ? data[1].dps : {};
+        rDps = Object.keys(getVal);
         metric2 = data[1].metric;
 
         if (data[1].tags.direction) {
@@ -97,25 +105,35 @@ export class DygraphComponent implements OnInit, OnDestroy {
           metric1 = data[0].metric + "(" + data[0].tags.direction + ")";
         }
       }
-      if (!getValue) {
+
+      fDps = Object.keys(getValue);
+      var graphDps = fDps.concat(rDps);
+      graphDps.sort();
+      graphDps = graphDps.filter((v, i, a) => a.indexOf(v) === i);
+      
+      if (graphDps.length <= 0 ) {
         metric1 = "F";
         metric2 = "R";
       } else {
-        for (let i in getValue) {
+
+        for(var index=0;index < graphDps.length; index++){
+          let i = graphDps[index];
           this.numOperator = parseInt(i);
-          if (getValue[i] < 0 || getValue[i] == null) {
-           continue;
+          if (getValue[i] == null || typeof getValue[i] == 'undefined') {
+            getValue[i] = null;
+          }else if(getValue[i] < 0){
+            getValue[i]=0;
           }
-          if (
-            typeof getVal[i] !== "undefined" &&
-            (getVal[i] < 0 || getVal[i] == null)
-          ) {
-            continue;
-          }
+        
           var temparr = [];
           temparr[0] = new Date(Number(this.numOperator * 1000));
           temparr[1] = getValue[i];
           if (data.length == 2) {
+            if (getVal[i] == null || typeof getVal[i] == 'undefined') {
+              getVal[i]= null;
+            }else if(getVal[i] < 0){
+              getVal[i]=0;
+            }
             temparr[2] = getVal[i];
           }
           graphData.push(temparr);
@@ -148,7 +166,8 @@ export class DygraphComponent implements OnInit, OnDestroy {
       graphData.push(arr);
       //graphData.shift();
     }
-    ////graphData.pop();
+    
+  
     return { data: graphData, labels: labels };
   }
 
@@ -187,46 +206,45 @@ export class DygraphComponent implements OnInit, OnDestroy {
   drawGraphCall(dataObj) {
    this.timezone = dataObj.timezone;
    this.jsonResponse = undefined;
-   this.data = this.constructGraphData(
-      dataObj.data,
-      this.jsonResponse,
-      dataObj.startDate,
-      dataObj.endDate,
-      dataObj.timezone
-    ).data;
-    this.labels = this.constructGraphData(
-      dataObj.data,
-      this.jsonResponse,
-      dataObj.startDate,
-      dataObj.endDate,
-      dataObj.timezone
-    ).labels;
 
-      if (this.timezone == "UTC") {
-      
-        this.options = Object.assign(this.options, {
-        labels: this.labels,
-        drawPoints: false,
-        animatedZooms: true,
-        labelsUTC: true,
-        colors: ["#1C227C","#A1CD24"] ,
-        legend: "onmouseover",
-        legendFormatter:this.dygraphService.legendFormatter,
-         zoomCallback: this.zoomCallbackHandler
-      });
-    } else {
-      
-      this.options = Object.assign(this.options, {
-        labels: this.labels,
-        drawPoints: false,
-        animatedZooms: true,
-        labelsUTC: false,
-        colors: ["#1C227C","#A1CD24"],
-        legend: "onmouseover",
-        legendFormatter:this.dygraphService.legendFormatter,
-        zoomCallback: this.zoomCallbackHandler
-      });
-    }
+   let processedResponse = this.constructGraphData(
+    dataObj.data,
+    this.jsonResponse,
+    dataObj.startDate,
+    dataObj.endDate,
+    dataObj.timezone
+  );
+   this.data = processedResponse.data;
+   this.labels = processedResponse.labels;
+
+  if (this.timezone == "UTC") {
+    this.options = Object.assign(this.options, {
+    labels: this.labels,
+    drawPoints: false,
+    animatedZooms: true,
+    labelsUTC: true,
+    colors: ["#1C227C","#A1CD24"] ,
+    legend: "onmouseover",
+    valueRange:[0,null],
+    connectSeparatedPoints:true,
+    legendFormatter:this.dygraphService.legendFormatter,
+      zoomCallback: this.zoomCallbackHandler
+    });
+  }else{
+    
+    this.options = Object.assign(this.options, {
+      labels: this.labels,
+      drawPoints: false,
+      animatedZooms: true,
+      labelsUTC: false,
+      colors: ["#1C227C","#A1CD24"],
+      legend: "onmouseover",
+      valueRange:[0,null],
+      connectSeparatedPoints:true,
+      legendFormatter:this.dygraphService.legendFormatter,
+      zoomCallback: this.zoomCallbackHandler
+    });
+  }
 
     
    
@@ -274,6 +292,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
           labelsUTC: true,
           series: series,
           legend: "onmouseover",
+          connectSeparatedPoints:true,
           legendFormatter:this.dygraphService.legendFormatter,
           zoomCallback: this.zoomCallbackHandler
         });
@@ -283,6 +302,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
           series: series,
           labelsUTC: true,
           legend: "onmouseover",
+          connectSeparatedPoints:true,
           legendFormatter:this.dygraphService.legendFormatter,
           zoomCallback: this.zoomCallbackHandler
         });
@@ -294,6 +314,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
           series: series,
           labelsUTC: false,
           legend: "onmouseover",
+          connectSeparatedPoints:true,
           legendFormatter:this.dygraphService.legendFormatter,
           zoomCallback: this.zoomCallbackHandler
         });
@@ -303,6 +324,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
           series: series,
           labelsUTC: false,
           legend: "onmouseover",
+          connectSeparatedPoints:true,
           legendFormatter:this.dygraphService.legendFormatter,
           zoomCallback: this.zoomCallbackHandler
         });
@@ -328,6 +350,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
         animatedZooms: true,
         labelsUTC: true,
         colors: ["#1C227C", "#A1CD24"],
+        connectSeparatedPoints:true,
         legendFormatter:this.dygraphService.legendFormatter,
         zoomCallback: this.zoomCallbackHandler
       });
@@ -338,6 +361,7 @@ export class DygraphComponent implements OnInit, OnDestroy {
         animatedZooms: true,
         labelsUTC: false,
         colors: ["#1C227C", "#A1CD24"],
+        connectSeparatedPoints:true,
         legendFormatter:this.dygraphService.legendFormatter,
         zoomCallback: this.zoomCallbackHandler
       });

@@ -37,9 +37,8 @@ public class Neo4jSwitchRepositoryTest extends Neo4jBasedTest {
 
     @Test
     public void shouldCreateSwitch() {
-        Switch origSwitch = new Switch();
-        origSwitch.setSwitchId(TEST_SWITCH_ID);
-        origSwitch.setDescription("Some description");
+        Switch origSwitch = Switch.builder().switchId(TEST_SWITCH_ID)
+                .description("Some description").build();
 
         repository.createOrUpdate(origSwitch);
 
@@ -48,9 +47,8 @@ public class Neo4jSwitchRepositoryTest extends Neo4jBasedTest {
 
     @Test
     public void shouldFindSwitchById() {
-        Switch origSwitch = new Switch();
-        origSwitch.setSwitchId(TEST_SWITCH_ID);
-        origSwitch.setDescription("Some description");
+        Switch origSwitch = Switch.builder().switchId(TEST_SWITCH_ID)
+                .description("Some description").build();
 
         repository.createOrUpdate(origSwitch);
 
@@ -60,9 +58,8 @@ public class Neo4jSwitchRepositoryTest extends Neo4jBasedTest {
 
     @Test
     public void shouldDeleteSwitch() {
-        Switch origSwitch = new Switch();
-        origSwitch.setSwitchId(TEST_SWITCH_ID);
-        origSwitch.setDescription("Some description");
+        Switch origSwitch = Switch.builder().switchId(TEST_SWITCH_ID)
+                .description("Some description").build();
 
         repository.createOrUpdate(origSwitch);
         repository.delete(origSwitch);

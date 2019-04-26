@@ -57,7 +57,13 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
         islRepository = repositoryFactory.createIslRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
 
-        linkOperationsService = new LinkOperationsService(persistenceManager.getRepositoryFactory(),
+        ILinkOperationsServiceCarrier carrier = new ILinkOperationsServiceCarrier() {
+            @Override
+            public void islBfdFlagChanged(Isl isl) {
+            }
+        };
+
+        linkOperationsService = new LinkOperationsService(carrier, persistenceManager.getRepositoryFactory(),
                 persistenceManager.getTransactionManager(),
                 islCostWhenUnderMaintenance);
     }
@@ -112,9 +118,7 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
 
     private Switch createSwitchIfNotExist(SwitchId switchId) {
         return switchRepository.findById(switchId).orElseGet(() -> {
-            Switch sw = new Switch();
-            sw.setSwitchId(switchId);
-            sw.setStatus(SwitchStatus.ACTIVE);
+            Switch sw = Switch.builder().switchId(switchId).status(SwitchStatus.ACTIVE).build();
             switchRepository.createOrUpdate(sw);
             return sw;
         });

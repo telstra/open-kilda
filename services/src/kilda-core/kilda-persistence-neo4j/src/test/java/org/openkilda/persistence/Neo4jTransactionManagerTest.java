@@ -39,8 +39,7 @@ public class Neo4jTransactionManagerTest extends Neo4jBasedTest {
     @Test
     public void shouldCommitTx() {
         // given
-        Switch origSwitch = new Switch();
-        origSwitch.setSwitchId(TEST_SWITCH_ID);
+        Switch origSwitch = Switch.builder().switchId(TEST_SWITCH_ID).build();
 
         // when
         txManager.doInTransaction(() -> repository.createOrUpdate(origSwitch));
@@ -56,8 +55,7 @@ public class Neo4jTransactionManagerTest extends Neo4jBasedTest {
     @Test
     public void shouldCommitExtendedTx() {
         // given
-        Switch origSwitch = new Switch();
-        origSwitch.setSwitchId(TEST_SWITCH_ID);
+        Switch origSwitch = Switch.builder().switchId(TEST_SWITCH_ID).build();
 
         // when
 
@@ -80,9 +78,8 @@ public class Neo4jTransactionManagerTest extends Neo4jBasedTest {
     @Test
     public void shouldRollbackTx() {
         // given
-        Switch origSwitch = new Switch();
-        origSwitch.setSwitchId(TEST_SWITCH_ID);
-        origSwitch.setDescription("Some description");
+        Switch origSwitch = Switch.builder().switchId(TEST_SWITCH_ID)
+                .description("Some description").build();
 
         // when
         txManager.begin();
@@ -98,8 +95,7 @@ public class Neo4jTransactionManagerTest extends Neo4jBasedTest {
     @Test(expected = PersistenceException.class)
     public void shouldRollbackExtendedTx() {
         // given
-        Switch origSwitch = new Switch();
-        origSwitch.setSwitchId(TEST_SWITCH_ID);
+        Switch origSwitch = Switch.builder().switchId(TEST_SWITCH_ID).build();
 
         // when
 
@@ -127,8 +123,7 @@ public class Neo4jTransactionManagerTest extends Neo4jBasedTest {
     @Test
     public void shouldRollbackExtendedAndRootTx() {
         // given
-        Switch origSwitch = new Switch();
-        origSwitch.setSwitchId(TEST_SWITCH_ID);
+        Switch origSwitch = Switch.builder().switchId(TEST_SWITCH_ID).build();
 
         // when
 
@@ -147,5 +142,44 @@ public class Neo4jTransactionManagerTest extends Neo4jBasedTest {
 
         // then
         assertEquals(0, repository.findAll().size());
+    }
+
+    @Test(expected = TestCheckedException.class)
+    public void shouldPassthroughAndCatchCheckedException() throws TestCheckedException {
+        TransactionCallbackWithoutResult<TestCheckedException> callback = () -> {
+            throw new TestCheckedException();
+        };
+
+        // when
+        try {
+            txManager.doInTransaction(callback);
+        } catch (TestCheckedException ex) {
+            throw ex;
+        }
+
+        fail();
+    }
+
+    @Test(expected = TestCheckedException.class)
+    public void shouldPassthroughCheckedException() {
+        // when
+        txManager.doInTransaction(() -> {
+            throw new TestCheckedException();
+        });
+
+        fail();
+    }
+
+    @Test(expected = TestCheckedException.class)
+    public void shouldPassthroughCheckedExceptionWithoutResult() throws TestCheckedException {
+        // when
+        txManager.doInTransaction((TransactionCallbackWithoutResult<TestCheckedException>) () -> {
+            throw new TestCheckedException();
+        });
+
+        fail();
+    }
+
+    private class TestCheckedException extends Exception {
     }
 }

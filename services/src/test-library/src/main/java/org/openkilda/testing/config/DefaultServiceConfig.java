@@ -72,13 +72,21 @@ public class DefaultServiceConfig {
     }
 
     @Bean(name = "otsdbRestTemplate")
-    public RestTemplate otsdbRestTemplate(@Value("${otsdb.endpoint}") String endpoint) {
+    public RestTemplate otsdbRestTemplate(@Value("${opentsdb.endpoint}") String endpoint) {
         return buildLoggingRestTemplate(endpoint);
     }
 
     @Bean(name = "labApiRestTemplate")
     public RestTemplate labApiRestTemplate(@Value("${lab-api.endpoint}") String endpoint) {
         return buildLoggingRestTemplate(endpoint);
+    }
+
+    @Bean(name = "grpcRestTemplate")
+    public RestTemplate grpcRestTemplate(
+            @Value("${grpc.endpoint}") String endpoint,
+            @Value("${grpc.username}") String username,
+            @Value("${grpc.password}") String password) {
+        return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
     private RestTemplate buildLoggingRestTemplate(String endpoint) {

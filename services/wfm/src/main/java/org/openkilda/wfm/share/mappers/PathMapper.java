@@ -15,9 +15,9 @@
 
 package org.openkilda.wfm.share.mappers;
 
-import org.openkilda.messaging.info.network.Path;
-import org.openkilda.model.FlowPath;
-import org.openkilda.model.FlowPath.Node;
+import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.pce.Path;
+import org.openkilda.pce.Path.Segment;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Convert {@link FlowPath} to {@link Path}.
+ * Convert {@link org.openkilda.pce.Path} to {@link org.openkilda.messaging.info.network.Path}.
  */
 @Mapper
 public abstract class PathMapper {
@@ -34,24 +34,33 @@ public abstract class PathMapper {
     public static final PathMapper INSTANCE = Mappers.getMapper(PathMapper.class);
 
     /**
-     * Convert {@link FlowPath} to {@link Path}.
+     * Convert {@link org.openkilda.pce.Path} to {@link org.openkilda.messaging.info.network.Path}.
      */
-    public Path map(FlowPath flowPath) {
-        if (flowPath == null || flowPath.getNodes().isEmpty()) {
-            return new Path(0L, 0L, new ArrayList<>());
+    public org.openkilda.messaging.info.network.Path map(org.openkilda.pce.Path path) {
+        if (path == null || path.getSegments().isEmpty()) {
+            return new org.openkilda.messaging.info.network.Path(0L, 0L, new ArrayList<>());
         }
 
-        List<String> edges = new ArrayList<>();
+        List<PathNodePayload> nodes = new ArrayList<>();
 
-        for (int i = 0; i < flowPath.getNodes().size(); i += 2) {
-            Node srcNode = flowPath.getNodes().get(i);
-            Node dstNode = flowPath.getNodes().get(i + 1);
+        List<Path.Segment> pathSegments = path.getSegments();
+        if (!pathSegments.isEmpty()) {
+            Segment firstSegment = pathSegments.get(0);
+            nodes.add(new PathNodePayload(firstSegment.getSrcSwitchId(), null, firstSegment.getSrcPort()));
 
-            String edge = String.format("%s_%d ===> %s_%d",
-                    srcNode.getSwitchId(), srcNode.getPortNo(), dstNode.getSwitchId(), dstNode.getPortNo());
+            for (int i = 1; i < pathSegments.size(); i++) {
+                Path.Segment inputNode = pathSegments.get(i - 1);
+                Path.Segment outputNode = pathSegments.get(i);
 
-            edges.add(edge);
+                nodes.add(new PathNodePayload(inputNode.getDestSwitchId(), inputNode.getDestPort(),
+                        outputNode.getSrcPort()));
+            }
+
+            Segment lastSegment = pathSegments.get(pathSegments.size() - 1);
+            nodes.add(new PathNodePayload(lastSegment.getDestSwitchId(), lastSegment.getDestPort(), null));
         }
-        return new Path(flowPath.getMinAvailableBandwidth(), flowPath.getLatency(), edges);
+
+        return new org.openkilda.messaging.info.network.Path(path.getMinAvailableBandwidth(),
+                path.getLatency(), nodes);
     }
 }

@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging.info.network;
 
+import org.openkilda.messaging.payload.flow.PathNodePayload;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -31,14 +33,14 @@ public class Path implements Serializable {
     @JsonProperty("latency")
     private Long latency;
 
-    @JsonProperty("edges")
-    private List<String> edges;
+    @JsonProperty("nodes")
+    private List<PathNodePayload> nodes;
 
     public Path(@JsonProperty("bandwidth") Long bandwidth,
                 @JsonProperty("latency") Long latency,
-                @JsonProperty("edges") List<String> edges) {
+                @JsonProperty("nodes") List<PathNodePayload> nodes) {
         this.bandwidth = bandwidth;
         this.latency = latency;
-        this.edges = edges;
+        this.nodes = nodes;
     }
 }

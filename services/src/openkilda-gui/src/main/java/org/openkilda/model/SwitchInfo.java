@@ -86,5 +86,9 @@ public class SwitchInfo implements Serializable {
     @JsonProperty("manufacturer")
     private String manufacturer;
     
-
+    @JsonProperty("controller-switch")
+    private boolean controllerSwitch;
+    
+    @JsonProperty("inventory-switch")
+    private boolean inventorySwitch;
 }

@@ -1,16 +1,14 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.rerun.Rerun
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.PortBlinker
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PortChangeType
+import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
@@ -18,6 +16,8 @@ import spock.lang.Issue
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
+
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Slf4j
 @Narrative("""
@@ -43,6 +43,14 @@ class PortAntiflapSpec extends BaseSpecification {
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
+
+    def setupOnce() {
+        northbound.toggleFeature(FeatureTogglesDto.builder().floodlightRoutePeriodicSync(false).build())
+    }
+
+    def cleanupSpec() {
+        getNorthbound().toggleFeature(FeatureTogglesDto.builder().floodlightRoutePeriodicSync(true).build())
+    }
 
     //rerun is required to check the #1790 issue
     @Rerun(times = 2)

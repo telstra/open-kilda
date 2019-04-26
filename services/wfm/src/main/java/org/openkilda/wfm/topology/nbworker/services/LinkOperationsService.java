@@ -26,6 +26,7 @@ import org.openkilda.wfm.error.IslNotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -34,13 +35,17 @@ import java.util.Optional;
 @Slf4j
 public class LinkOperationsService {
 
+    private final ILinkOperationsServiceCarrier carrier;
     private IslRepository islRepository;
     private TransactionManager transactionManager;
     private int islCostWhenUnderMaintenance;
 
-    public LinkOperationsService(RepositoryFactory repositoryFactory,
+
+    public LinkOperationsService(ILinkOperationsServiceCarrier carrier,
+                                 RepositoryFactory repositoryFactory,
                                  TransactionManager transactionManager,
                                  int islCostWhenUnderMaintenance) {
+        this.carrier = carrier;
         this.islRepository = repositoryFactory.createIslRepository();
         this.transactionManager = transactionManager;
         this.islCostWhenUnderMaintenance = islCostWhenUnderMaintenance;
@@ -114,25 +119,67 @@ public class LinkOperationsService {
      * @throws IslNotFoundException if ISL is not found
      * @throws IllegalIslStateException if ISL is in 'active' state
      */
-    public boolean deleteIsl(SwitchId sourceSwitch, int sourcePort, SwitchId destinationSwitch, int destinationPort)
+    public Collection<Isl> deleteIsl(SwitchId sourceSwitch, int sourcePort, SwitchId destinationSwitch,
+                                     int destinationPort)
             throws IllegalIslStateException, IslNotFoundException {
         log.info("Delete ISL with following parameters: "
                         + "source switch '%s', source port '%d', destination switch '%s', destination port '%d'",
                 sourceSwitch, sourcePort, destinationSwitch, destinationPort);
 
-        Optional<Isl> isl = islRepository.findByEndpoints(sourceSwitch, sourcePort, destinationSwitch, destinationPort);
+        List<Isl> isls = new ArrayList<>();
 
-        if (!isl.isPresent()) {
+        islRepository.findByEndpoints(sourceSwitch, sourcePort,
+                destinationSwitch, destinationPort).ifPresent(isls::add);
+        islRepository.findByEndpoints(destinationSwitch, destinationPort,
+                sourceSwitch, sourcePort).ifPresent(isls::add);
+
+        if (isls.isEmpty()) {
             throw new IslNotFoundException(sourceSwitch, sourcePort, destinationSwitch, destinationPort);
         }
 
-        if (isl.get().getStatus() == IslStatus.ACTIVE) {
+        if (isls.stream().anyMatch(x -> x.getStatus() == IslStatus.ACTIVE)) {
             throw new IllegalIslStateException(sourceSwitch, sourcePort, destinationSwitch, destinationPort,
                     "ISL must NOT be in active state.");
         }
 
-        islRepository.delete(isl.get());
+        isls.forEach(islRepository::delete);
 
-        return !islRepository.findByEndpoints(sourceSwitch, sourcePort, destinationSwitch, destinationPort).isPresent();
+        return isls;
+    }
+
+    /**
+     * Update the "Under maintenance" flag in ISL.
+     *
+     * @param srcSwitchId source switch id.
+     * @param srcPort source port.
+     * @param dstSwitchId destination switch id.
+     * @param dstPort destination port.
+     * @param enableBfd "Enable bfd" flag.
+     * @return updated isl.
+     * @throws IslNotFoundException if there is no isl with these parameters.
+     */
+    public Collection<Isl> updateLinkEnableBfdFlag(SwitchId srcSwitchId, Integer srcPort,
+                                                    SwitchId dstSwitchId, Integer dstPort,
+                                                    boolean enableBfd) throws IslNotFoundException {
+        return transactionManager.doInTransaction(() -> {
+            Optional<Isl> foundIsl = islRepository.findByEndpoints(srcSwitchId, srcPort, dstSwitchId, dstPort);
+            if (!foundIsl.isPresent()) {
+                return Optional.<List<Isl>>empty();
+            }
+
+            Isl isl = foundIsl.get();
+
+            if (isl.isEnableBfd() == enableBfd) {
+                return Optional.of(Arrays.asList(isl));
+            }
+
+            isl.setEnableBfd(enableBfd);
+
+            islRepository.createOrUpdate(isl);
+
+            carrier.islBfdFlagChanged(isl);
+
+            return Optional.of(Arrays.asList(isl));
+        }).orElseThrow(() -> new IslNotFoundException(srcSwitchId, srcPort, dstSwitchId, dstPort));
     }
 }

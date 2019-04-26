@@ -15,8 +15,6 @@
 
 package org.openkilda.messaging.command.flow;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.model.FlowDto;
@@ -24,94 +22,41 @@ import org.openkilda.messaging.model.FlowDto;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-
-import java.util.Objects;
+import lombok.EqualsAndHashCode;
+import lombok.NonNull;
+import lombok.Value;
 
 /**
  * Represents update flow northbound request.
  */
-@JsonSerialize
+@Value
+@EqualsAndHashCode(callSuper = false)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({
-        "command",
-        Utils.PAYLOAD})
 public class FlowUpdateRequest extends CommandData {
-    /**
-     * Serialization version number constant.
-     */
     private static final long serialVersionUID = 1L;
 
-    /**
-     * The request payload.
-     */
+    @NonNull
     @JsonProperty(Utils.PAYLOAD)
-    protected FlowDto payload;
+    FlowDto payload;
+
+    @JsonProperty("diverse-flowid")
+    String diverseFlowId;
 
     /**
      * Instance constructor.
      *
      * @param payload request payload
-     * @throws IllegalArgumentException if payload is null
+     * @param diverseFlowId the flow id to build diverse group
+     * @throws NullPointerException if payload is null
      */
     @JsonCreator
-    public FlowUpdateRequest(@JsonProperty(Utils.PAYLOAD) FlowDto payload) {
-        setPayload(payload);
-    }
-
-    /**
-     * Returns request payload.
-     *
-     * @return request payload
-     */
-    public FlowDto getPayload() {
-        return payload;
-    }
-
-    /**
-     * Sets request payload.
-     *
-     * @param payload request payload
-     */
-    public void setPayload(FlowDto payload) {
-        if (payload == null) {
-            throw new IllegalArgumentException("need to set payload");
-        }
+    public FlowUpdateRequest(@JsonProperty(Utils.PAYLOAD) @NonNull FlowDto payload,
+                             @JsonProperty("diverse-flowid") String diverseFlowId) {
         this.payload = payload;
+        this.diverseFlowId = diverseFlowId;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String toString() {
-        return toStringHelper(this)
-                .add(Utils.PAYLOAD, payload)
-                .toString();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return Objects.hash(payload);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(Object object) {
-        if (this == object) {
-            return true;
-        }
-        if (object == null || getClass() != object.getClass()) {
-            return false;
-        }
-
-        FlowUpdateRequest that = (FlowUpdateRequest) object;
-        return Objects.equals(getPayload(), that.getPayload());
+    public FlowUpdateRequest(FlowDto payload) {
+        this(payload, null);
     }
 }

@@ -1,0 +1,25 @@
+@startuml
+
+title Simplified PortUp processing
+
+participant FL
+box "Network Topology" #LightBlue
+	participant Switch
+	participant Port
+	participant Discovery
+	participant UniIsl
+	participant Isl
+end box
+
+FL -> Switch: PortUp
+Switch -> Port: PortUp
+Port -> Discovery: StartDiscovery
+Discovery -> Port: IslFound
+Port -> UniIsl: IslFound
+UniIsl -> Isl: UniIslUp
+
+alt Isl is up on both sides
+	Isl -> DB: Update with Up Status
+end
+
+@enduml

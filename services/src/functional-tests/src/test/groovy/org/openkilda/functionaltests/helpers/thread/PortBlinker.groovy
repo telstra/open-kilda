@@ -66,6 +66,7 @@ class PortBlinker extends Thread {
         if (!endWithPortUp) {
             kafkaChangePort(PortChangeType.DOWN)
         }
+        producer.flush()
         producer.close()
         timeStopped = new Date()
     }

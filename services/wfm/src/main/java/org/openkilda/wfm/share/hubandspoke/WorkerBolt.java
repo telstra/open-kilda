@@ -19,7 +19,6 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 import org.openkilda.wfm.error.AbstractException;
-import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import lombok.Builder;
@@ -72,6 +71,8 @@ public abstract class WorkerBolt extends CoordinatedBolt {
 
             onHubRequest(input);
         } else if (pendingTasks.containsKey(key) && workerConfig.getWorkerSpoutComponent().equals(sender)) {
+            // TODO(surabujin): it whould be great to get initial request together with response i.e.
+            // onAsyncResponse(input, pendingTasks.get(key)
             onAsyncResponse(input);
         } else {
             unhandledInput(input);
@@ -83,7 +84,7 @@ public abstract class WorkerBolt extends CoordinatedBolt {
      * @param input received tuple.
      * @param values response to be sent to the hub.
      */
-    protected void emitResponseToHub(Tuple input, Values values) throws PipelineException {
+    protected void emitResponseToHub(Tuple input, Values values) {
         String key = input.getStringByField(MessageTranslator.KEY_FIELD);
         cancelCallback(key, input);
 

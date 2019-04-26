@@ -17,7 +17,7 @@ package org.openkilda.messaging.info.discovery;
 
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.model.Switch;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -36,11 +36,11 @@ public class NetworkDumpSwitchData extends InfoData {
     private static final long serialVersionUID = 1L;
 
     @JsonProperty(value = "switch_record", required = true)
-    private Switch switchRecord;
+    private SpeakerSwitchView switchView;
 
     @JsonCreator
     public NetworkDumpSwitchData(
-            @JsonProperty("switch_record") @NonNull Switch switchRecord) {
-        this.switchRecord = switchRecord;
+            @JsonProperty("switch_record") @NonNull SpeakerSwitchView switchView) {
+        this.switchView = switchView;
     }
 }

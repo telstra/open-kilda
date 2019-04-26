@@ -34,24 +34,26 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.history.FlowEventPayload;
+import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
-import org.openkilda.northbound.dto.flows.FlowValidationDto;
-import org.openkilda.northbound.dto.flows.PingInput;
-import org.openkilda.northbound.dto.flows.PingOutput;
-import org.openkilda.northbound.dto.links.LinkDto;
-import org.openkilda.northbound.dto.links.LinkParametersDto;
-import org.openkilda.northbound.dto.links.LinkPropsDto;
-import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
-import org.openkilda.northbound.dto.switches.DeleteLinkResult;
-import org.openkilda.northbound.dto.switches.DeleteMeterResult;
-import org.openkilda.northbound.dto.switches.DeleteSwitchResult;
-import org.openkilda.northbound.dto.switches.PortDto;
-import org.openkilda.northbound.dto.switches.RulesSyncResult;
-import org.openkilda.northbound.dto.switches.RulesValidationResult;
-import org.openkilda.northbound.dto.switches.SwitchDto;
-import org.openkilda.northbound.dto.switches.UnderMaintenanceDto;
+import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.v1.flows.PingInput;
+import org.openkilda.northbound.dto.v1.flows.PingOutput;
+import org.openkilda.northbound.dto.v1.links.LinkDto;
+import org.openkilda.northbound.dto.v1.links.LinkParametersDto;
+import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
+import org.openkilda.northbound.dto.v1.links.LinkUnderMaintenanceDto;
+import org.openkilda.northbound.dto.v1.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.v1.switches.DeleteSwitchResult;
+import org.openkilda.northbound.dto.v1.switches.PortDto;
+import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
+import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
+import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
@@ -91,6 +93,26 @@ public class NorthboundServiceImpl implements NorthboundService {
     public FlowPayload getFlow(String flowId) {
         return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
+    }
+
+    @Override
+    public List<FlowEventPayload> getFlowHistory(String flowId) {
+        return getFlowHistory(flowId, null, null);
+    }
+
+    @Override
+    public List<FlowEventPayload> getFlowHistory(String flowId, Long timeFrom, Long timeTo) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/flows/{flow_id}/history");
+        if (timeFrom != null) {
+            uriBuilder.queryParam("timeFrom", timeFrom);
+        }
+        if (timeTo != null) {
+            uriBuilder.queryParam("timeTo", timeTo);
+        }
+
+        FlowEventPayload[] flowHistory = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowEventPayload[].class, flowId).getBody();
+        return Arrays.asList(flowHistory);
     }
 
     @Override
@@ -386,10 +408,11 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public DeleteLinkResult deleteLink(LinkParametersDto linkParameters) {
-        return restTemplate.exchange("/api/v1/links", HttpMethod.DELETE,
+    public List<LinkDto> deleteLink(LinkParametersDto linkParameters) {
+        LinkDto[] updatedLink = restTemplate.exchange("/api/v1/links", HttpMethod.DELETE,
                 new HttpEntity<>(linkParameters, buildHeadersWithCorrelationId()),
-                DeleteLinkResult.class).getBody();
+                LinkDto[].class).getBody();
+        return Arrays.asList(updatedLink);
     }
 
     @Override
@@ -447,6 +470,13 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public SwitchValidationResult switchValidate(SwitchId switchId) {
+        log.debug("Switch validating '{}'", switchId);
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/validate", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResult.class, switchId).getBody();
+    }
+
+    @Override
     public DeleteSwitchResult deleteSwitch(SwitchId switchId, boolean force) {
         HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
         httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
@@ -487,6 +517,13 @@ public class NorthboundServiceImpl implements NorthboundService {
                 new HttpEntity(buildHeadersWithCorrelationId()), PortDescription.class, switchId, portNo).getBody();
     }
 
+    @Override
+    public PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch) {
+        return restTemplate.exchange(
+                "/api/v1/network/paths?src_switch={src_switch}&dst_switch={dst_switch}", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), PathsDto.class, srcSwitch, dstSwitch).getBody();
+    }
+
     private HttpHeaders buildHeadersWithCorrelationId() {
         HttpHeaders headers = new HttpHeaders();
         headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
@@ -509,6 +546,8 @@ public class NorthboundServiceImpl implements NorthboundService {
                 .actualState(IslChangeType.from(dto.getActualState().toString()))
                 .cost(dto.getCost())
                 .availableBandwidth(dto.getAvailableBandwidth())
+                .defaultMaxBandwidth(dto.getDefaultMaxBandwidth())
+                .maxBandwidth(dto.getMaxBandwidth())
                 .underMaintenance(dto.isUnderMaintenance())
                 .build();
     }
