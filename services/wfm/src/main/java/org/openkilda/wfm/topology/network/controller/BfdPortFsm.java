@@ -99,11 +99,19 @@ public final class BfdPortFsm extends
 
         // IDLE
         builder.transition()
-                .from(BfdPortFsmState.IDLE).to(BfdPortFsmState.INSTALLING).on(BfdPortFsmEvent.ENABLE);
+                .from(BfdPortFsmState.IDLE).to(BfdPortFsmState.PREPARING).on(BfdPortFsmEvent.ENABLE);
         builder.transition()
                 .from(BfdPortFsmState.IDLE).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.PORT_UP);
         builder.onEntry(BfdPortFsmState.IDLE)
                 .callMethod("idleEnter");
+
+        // PREPARING
+        builder.transition()
+                .from(BfdPortFsmState.PREPARING).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.FAIL);
+        builder.transition()
+                .from(BfdPortFsmState.PREPARING).to(BfdPortFsmState.INSTALLING).on(BfdPortFsmEvent.NEXT);
+        builder.onEntry(BfdPortFsmState.PREPARING)
+                .callMethod("preparingEnter");
 
         // INSTALLING
         builder.transition()
@@ -116,7 +124,7 @@ public final class BfdPortFsm extends
         builder.transition()
                 .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.DISABLE);
         builder.transition()
-                .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.FAIL);
+                .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.OFFLINE);
         builder.transition()
                 .from(BfdPortFsmState.INSTALLING).to(BfdPortFsmState.TERMINATE).on(BfdPortFsmEvent.KILL);
         builder.onEntry(BfdPortFsmState.INSTALLING)
@@ -130,6 +138,8 @@ public final class BfdPortFsm extends
         builder.transition()
                 .from(BfdPortFsmState.CLEANING).to(BfdPortFsmState.FAIL_CHOICE).on(BfdPortFsmEvent.SPEAKER_FAIL)
                 .when(new ResponseKeyValidator());
+        builder.transition()
+                .from(BfdPortFsmState.CLEANING).to(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.OFFLINE);
         builder.transition()
                 .from(BfdPortFsmState.CLEANING).to(BfdPortFsmState.HOUSEKEEPING).on(BfdPortFsmEvent.KILL);
         builder.internalTransition().within(BfdPortFsmState.CLEANING).on(BfdPortFsmEvent.PORT_UP)
@@ -177,24 +187,38 @@ public final class BfdPortFsm extends
                 .callMethod("activeExit");
         builder.defineSequentialStatesOn(
                 BfdPortFsmState.ACTIVE,
-                BfdPortFsmState.UP, BfdPortFsmState.DOWN);
+                BfdPortFsmState.UP, BfdPortFsmState.DOWN, BfdPortFsmState.OFFLINE);
 
         // UP
         builder.transition()
                 .from(BfdPortFsmState.UP).to(BfdPortFsmState.DOWN).on(BfdPortFsmEvent.PORT_DOWN);
+        builder.transition()
+                .from(BfdPortFsmState.UP).to(BfdPortFsmState.OFFLINE).on(BfdPortFsmEvent.OFFLINE);
         builder.onEntry(BfdPortFsmState.UP)
                 .callMethod("upEnter");
 
         // DOWN
         builder.transition()
                 .from(BfdPortFsmState.DOWN).to(BfdPortFsmState.UP).on(BfdPortFsmEvent.PORT_UP);
+        builder.transition()
+                .from(BfdPortFsmState.DOWN).to(BfdPortFsmState.OFFLINE).on(BfdPortFsmEvent.OFFLINE);
         builder.onEntry(BfdPortFsmState.DOWN)
                 .callMethod("downEnter");
+
+        // OFFLINE
+        builder.transition()
+                .from(BfdPortFsmState.OFFLINE).to(BfdPortFsmState.UP).on(BfdPortFsmEvent.PORT_UP);
+        builder.transition()
+                .from(BfdPortFsmState.OFFLINE).to(BfdPortFsmState.DOWN).on(BfdPortFsmEvent.PORT_DOWN);
+        builder.onEntry(BfdPortFsmState.OFFLINE)
+                .callMethod("offlineEnter");
 
         // FAIL
         String reportMalfunctionMethod = "reportMalfunction";
         builder.transition()
                 .from(BfdPortFsmState.FAIL).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.PORT_DOWN);
+        builder.transition()
+                .from(BfdPortFsmState.FAIL).to(BfdPortFsmState.INSTALLING).on(BfdPortFsmEvent.ONLINE);
         builder.internalTransition().within(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.ENABLE)
                 .callMethod(reportMalfunctionMethod);
         builder.internalTransition().within(BfdPortFsmState.FAIL).on(BfdPortFsmEvent.DISABLE)
@@ -282,6 +306,16 @@ public final class BfdPortFsm extends
         logInfo("BFD session setup is successfully completed");
     }
 
+    public void preparingEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                               BfdPortFsmContext context) {
+        try {
+            sessionDescriptor = allocateDiscriminator(makeSessionDescriptor(context.getIslReference()));
+        } catch (SwitchReferenceLookupException e) {
+            logError(String.format("Can't allocate BFD-session resources - %s", e.getMessage()));
+            fire(BfdPortFsmEvent.FAIL, context);
+        }
+    }
+
     public void installingEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
                                 BfdPortFsmContext context) {
         doBfdSetup(context);
@@ -363,6 +397,12 @@ public final class BfdPortFsm extends
         context.getOutput().bfdDownNotification(physicalEndpoint);
     }
 
+    public void offlineEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event,
+                             BfdPortFsmContext context) {
+        logInfo("notify consumer(s) to STOP react on BFD event, because switch {} is OFFLINE now");
+        context.getOutput().bfdKillNotification(physicalEndpoint);
+    }
+
     public void failEnter(BfdPortFsmState from, BfdPortFsmState to, BfdPortFsmEvent event, BfdPortFsmContext context) {
         if (log.isErrorEnabled()) {
             log.error("{} - is marked as FAILED, it can't process any request at this moment",
@@ -409,16 +449,10 @@ public final class BfdPortFsm extends
     // -- private/service methods --
 
     private void doBfdSetup(BfdPortFsmContext context) {
-        try {
-            sessionDescriptor = allocateDiscriminator(makeSessionDescriptor(context.getIslReference()));
-            logInfo(String.format("BFD session setup process have started - discriminator:%s, remote-datapath:%s",
-                                  sessionDescriptor.getDiscriminator(), sessionDescriptor.getRemote().getDatapath()));
+        logInfo(String.format("BFD session setup process have started - discriminator:%s, remote-datapath:%s",
+                              sessionDescriptor.getDiscriminator(), sessionDescriptor.getRemote().getDatapath()));
 
-            pendingRequestKey = context.getOutput().setupBfdSession(makeBfdSessionRecord());
-        } catch (SwitchReferenceLookupException e) {
-            log.error("Can't make BFD-session setup request - {}", e.getMessage());
-            fire(BfdPortFsmEvent.FAIL, context);
-        }
+        pendingRequestKey = context.getOutput().setupBfdSession(makeBfdSessionRecord());
     }
 
     private void doBfdRemove(BfdPortFsmContext context) {
@@ -517,6 +551,12 @@ public final class BfdPortFsm extends
         }
     }
 
+    private void logError(String message) {
+        if (log.isErrorEnabled()) {
+            log.error("{} - {}", makeLogPrefix(), message);
+        }
+    }
+
     private String makeLogPrefix() {
         return String.format("BFD port %s(physical-port:%s)", logicalEndpoint, physicalEndpoint.getPortNumber());
     }
@@ -568,6 +608,7 @@ public final class BfdPortFsm extends
 
         HISTORY,
         ENABLE, DISABLE,
+        ONLINE, OFFLINE,
         PORT_UP, PORT_DOWN,
 
         SPEAKER_SUCCESS, SPEAKER_FAIL,
@@ -582,8 +623,8 @@ public final class BfdPortFsm extends
         INIT_CHOICE,
         IDLE,
 
-        INSTALLING,
-        ACTIVE, UP, DOWN,
+        PREPARING, INSTALLING,
+        ACTIVE, UP, DOWN, OFFLINE,
 
         CLEANING,
         CLEANING_CHOICE,
