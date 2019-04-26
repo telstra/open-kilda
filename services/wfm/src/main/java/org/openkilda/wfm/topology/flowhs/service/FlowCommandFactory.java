@@ -27,7 +27,6 @@ import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -46,7 +45,7 @@ import org.apache.commons.collections4.ListUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 public class FlowCommandFactory {
@@ -149,14 +148,12 @@ public class FlowCommandFactory {
         String commandId = commandIdGenerator.generate().toString();
         return InstallMultiSwitchIngressRule.builder()
                 .messageContext(new MessageContext(commandId, context.getCorrelationId()))
-                .commandId(commandIdGenerator.generate().toString())
+                .commandId(commandIdGenerator.generate())
                 .flowId(flowPath.getFlowId())
                 .switchId(flowPath.getSrcSwitch().getSwitchId())
-                .cookie(flowPath.getCookie().getValue())
+                .cookie(flowPath.getCookie())
                 .bandwidth(flowPath.getBandwidth())
-                .meterId(Optional.ofNullable(flowPath.getMeterId())
-                        .map(MeterId::getValue)
-                        .orElse(null))
+                .meterId(flowPath.getMeterId())
                 .inputPort(inputPort)
                 .outputPort(ingressSegment.getSrcPort())
                 .outputVlanType(getOutputVlanType(inputVlanId, outputVlanId))
@@ -171,14 +168,12 @@ public class FlowCommandFactory {
         String commandId = commandIdGenerator.generate().toString();
         return InstallSingleSwitchIngressRule.builder()
                 .messageContext(new MessageContext(commandId, context.getCorrelationId()))
-                .commandId(commandIdGenerator.generate().toString())
+                .commandId(commandIdGenerator.generate())
                 .flowId(flowPath.getFlowId())
                 .switchId(flowPath.getSrcSwitch().getSwitchId())
-                .cookie(flowPath.getCookie().getValue())
+                .cookie(flowPath.getCookie())
                 .bandwidth(flowPath.getBandwidth())
-                .meterId(Optional.ofNullable(flowPath.getMeterId())
-                        .map(MeterId::getValue)
-                        .orElse(null))
+                .meterId(flowPath.getMeterId())
                 .inputPort(inputPort)
                 .outputPort(outputPort)
                 .outputVlanType(getOutputVlanType(inputVlanId, outputVlanId))
@@ -220,22 +215,22 @@ public class FlowCommandFactory {
 
     private InstallTransitRule buildInstallTransitRule(CommandContext context, FlowPath flowPath, SwitchId switchId,
                                                        int inputPort, int outputPort, int transitVlan) {
-        String commandId = commandIdGenerator.generate().toString();
-        MessageContext messageContext = new MessageContext(commandId, context.getCorrelationId());
+        UUID commandId = commandIdGenerator.generate();
+        MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
 
-        return new InstallTransitRule(messageContext, commandId, flowPath.getFlowId(), flowPath.getCookie().getValue(),
+        return new InstallTransitRule(messageContext, commandId, flowPath.getFlowId(), flowPath.getCookie(),
                 switchId, inputPort, outputPort, transitVlan);
     }
 
     private InstallEgressRule buildInstallEgressRule(CommandContext context, FlowPath flowPath, int inputPort,
                                                      int outputPort, int srcVlan, int transitVlan, int destVlan) {
-        String commandId = commandIdGenerator.generate().toString();
+        UUID commandId = commandIdGenerator.generate();
         return InstallEgressRule.builder()
-                .messageContext(new MessageContext(commandId, context.getCorrelationId()))
+                .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
                 .commandId(commandId)
                 .flowId(flowPath.getFlowId())
                 .switchId(flowPath.getDestSwitch().getSwitchId())
-                .cookie(flowPath.getCookie().getValue())
+                .cookie(flowPath.getCookie())
                 .inputPort(inputPort)
                 .transitVlanId(transitVlan)
                 .outputPort(outputPort)
@@ -254,16 +249,14 @@ public class FlowCommandFactory {
 
         DeleteRulesCriteria ingressCriteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort,
                 inputVlanId, 0, ingressSegment.getSrcPort());
-        String commandId = commandIdGenerator.generate().toString();
+        UUID commandId = commandIdGenerator.generate();
         return RemoveRule.builder()
-                .messageContext(new MessageContext(commandId, context.getCorrelationId()))
+                .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
                 .commandId(commandId)
                 .flowId(flowPath.getFlowId())
                 .switchId(flowPath.getSrcSwitch().getSwitchId())
-                .cookie(flowPath.getCookie().getValue())
-                .meterId(Optional.ofNullable(flowPath.getMeterId())
-                        .map(MeterId::getValue)
-                        .orElse(null))
+                .cookie(flowPath.getCookie())
+                .meterId(flowPath.getMeterId())
                 .criteria(ingressCriteria)
                 .build();
     }
@@ -303,12 +296,12 @@ public class FlowCommandFactory {
                                               int inputPort, int outputPort, int transitVlan) {
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort, transitVlan,
                 0, outputPort);
-        String commandId = commandIdGenerator.generate().toString();
+        UUID commandId = commandIdGenerator.generate();
         return RemoveRule.builder()
-                .messageContext(new MessageContext(commandId, context.getCorrelationId()))
+                .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
                 .commandId(commandId)
                 .flowId(flowPath.getFlowId())
-                .cookie(flowPath.getCookie().getValue())
+                .cookie(flowPath.getCookie())
                 .switchId(switchId)
                 .criteria(criteria)
                 .build();
@@ -318,12 +311,12 @@ public class FlowCommandFactory {
                                              int transitVlan) {
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort, transitVlan,
                 0, outputPort);
-        String commandId = commandIdGenerator.generate().toString();
+        UUID commandId = commandIdGenerator.generate();
         return RemoveRule.builder()
-                .messageContext(new MessageContext(commandId, context.getCorrelationId()))
+                .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
                 .commandId(commandId)
                 .flowId(flowPath.getFlowId())
-                .cookie(flowPath.getCookie().getValue())
+                .cookie(flowPath.getCookie())
                 .criteria(criteria)
                 .switchId(flowPath.getDestSwitch().getSwitchId())
                 .build();
