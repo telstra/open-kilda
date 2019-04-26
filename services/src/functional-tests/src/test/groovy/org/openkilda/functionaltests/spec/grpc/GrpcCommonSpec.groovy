@@ -12,10 +12,10 @@ class GrpcCommonSpec extends GrpcBaseSpecification {
         response.serialNumber
         response.uptime
         response.kernel
-        response.memUsage
-        response.ssdUsage
+        response.memUsage != null
+        response.ssdUsage != null
         response.ethLinks
         response.builds
-        response.cpuPercentage
+        response.cpuPercentage != null
     }
 }

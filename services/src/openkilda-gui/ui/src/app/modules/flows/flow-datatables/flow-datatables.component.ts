@@ -6,6 +6,7 @@ import { Flow } from 'src/app/common/data-models/flow';
 import { Router } from '@angular/router';
 import { CommonService } from 'src/app/common/services/common.service';
 import { FormBuilder, FormGroup } from '@angular/forms';
+import { ClipboardService } from 'ngx-clipboard';
 declare var jQuery: any;
 
 @Component({
@@ -44,10 +45,12 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   storeLinkSetting = false;
   loadFilter : boolean =  false;
   activeStatus :any = '';
+  clipBoardItems = [];
   filterForm : FormGroup;
 
   constructor(private loaderService:LoaderService, private renderer: Renderer2,private router: Router,
     private commonService: CommonService,
+    private clipboardService: ClipboardService,
     private formBuilder: FormBuilder) {
     this.wrapperHide = false;
     let storeSetting = localStorage.getItem("haslinkStoreSetting") || false;
@@ -101,6 +104,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
     if(change.data){
       if(change.data.currentValue){
         this.data  = change.data.currentValue;
+        this.clipBoardItems = this.data;
       }
     }
 
@@ -225,6 +229,11 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
     this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
       dtInstance.search(searchString).draw();
     });
+  }
+
+  copyToClip(event, copyItem,index) {
+    var copyItem = this.clipBoardItems[index][copyItem];
+    this.clipboardService.copyFromContent(copyItem);
   }
 
 }

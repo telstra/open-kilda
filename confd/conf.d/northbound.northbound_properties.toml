@@ -1,5 +1,5 @@
 [template]
 src = "northbound/northbound.properties.tmpl"
-dest = "services/src/northbound/src/main/resources/northbound.properties"
+dest = "services/src/northbound-service/northbound/src/main/resources/northbound.properties"
 keys = [ "/" ]
 mode = "0644"

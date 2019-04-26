@@ -240,7 +240,7 @@ services:
   floodlight_one:
     container_name: floodlight_one
     build:
-      context: services/src/fl-root/floodlight-modules
+      context: services/src/floodlight-service/floodlight-modules
     image: "kilda/floodlight:${full_build_number:-latest}"
     command: ["floodlight", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1"]
     ports:
@@ -265,7 +265,7 @@ services:
   northbound:
     container_name: openkilda-northbound
     build:
-      context: services/src/northbound/
+      context: services/src/northbound-service/northbound/
     ports:
       - "8080:8080"
     environment:

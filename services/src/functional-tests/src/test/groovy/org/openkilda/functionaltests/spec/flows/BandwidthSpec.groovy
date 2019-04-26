@@ -19,19 +19,14 @@ class BandwidthSpec extends BaseSpecification {
 
     def "Available bandwidth on ISLs changes respectively when creating/updating/deleting a flow"() {
         given: "Two active not neighboring switches"
-        def switches = topology.getActiveSwitches()
         def linksBeforeFlowCreate = northbound.getAllLinks()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            linksBeforeFlowCreate.every { link ->
-                !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId)
-            }
-        } ?: assumeTrue("No suiting switches found", false)
+        def potentialFlow = topologyHelper.findNonNeighbors() ?:
+                assumeTrue("No suiting switches found", false)
 
         when: "Create a flow with a valid bandwidth"
         def maximumBandwidth = 1000
 
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelper.randomFlow(potentialFlow)
         flow.maximumBandwidth = maximumBandwidth
         flowHelper.addFlow(flow)
         assert northbound.getFlow(flow.id).maximumBandwidth == maximumBandwidth
@@ -69,37 +64,33 @@ class BandwidthSpec extends BaseSpecification {
     }
 
     def "Longer path is chosen in case of not enough available bandwidth on a shorter path"() {
-        given: "Two active switches and two possible flow paths at least"
-        def switches = topology.getActiveSwitches()
-        List<List<PathNode>> possibleFlowPaths = []
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
-            possibleFlowPaths.size() > 1
+        given: "Two active switches with two possible flow paths at least"
+        def potentialFlow = topologyHelper.findPotentialFlows().find {
+            it.paths.size() > 1
         } ?: assumeTrue("No suiting switches found", false)
 
         // Make the first path more preferable than others.
-        possibleFlowPaths[1..-1].each { pathHelper.makePathMorePreferable(possibleFlowPaths.first(), it) }
+        potentialFlow.paths[1..-1].each { pathHelper.makePathMorePreferable(potentialFlow.paths.first(), it) }
 
         // Get min available bandwidth on the preferable path.
         def involvedBandwidths = []
         def allLinks = northbound.getAllLinks()
-        pathHelper.getInvolvedIsls(possibleFlowPaths.first()).each {
+        pathHelper.getInvolvedIsls(potentialFlow.paths.first()).each {
             involvedBandwidths.add(islUtils.getIslInfo(allLinks, it).get().availableBandwidth)
         }
         def minAvailableBandwidth = involvedBandwidths.min()
 
         when: "Create a flow to reduce available bandwidth on links of the expected preferable path"
-        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow1 = flowHelper.randomFlow(potentialFlow)
         flow1.maximumBandwidth = minAvailableBandwidth - 100
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
         then: "The flow is really built through the expected preferable path"
-        flow1Path == possibleFlowPaths.first()
+        flow1Path == potentialFlow.paths.first()
 
         when: "Create another flow. One path is shorter but available bandwidth is not enough, another path is longer"
-        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow2 = flowHelper.randomFlow(potentialFlow)
         flow2.maximumBandwidth = 101
         flowHelper.addFlow(flow2)
 
@@ -216,13 +207,11 @@ class BandwidthSpec extends BaseSpecification {
 
     def "Able to update bandwidth to maximum link speed without using alternate links"() {
         given: "Two active neighboring switches"
-        def isls = topology.getIslsForActiveSwitches()
-        def (srcSwitch, dstSwitch) = [isls.first().srcSwitch, isls.first().dstSwitch]
+        def potentialFlow = topologyHelper.findNeighbors()
 
         // We need to handle the case when there are parallel links between chosen switches. So we make all parallel
         // links except the first link not preferable to avoid flow reroute when updating the flow.
-        List<List<PathNode>> allFlowPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.sort { it.size() }
-        List<List<PathNode>> parallelPaths = allFlowPaths.findAll { it.size() == 2 }
+        List<List<PathNode>> parallelPaths = potentialFlow.paths.findAll { it.size() == 2 }
         if (parallelPaths.size() > 1) {
             parallelPaths[1..-1].each { pathHelper.makePathMorePreferable(parallelPaths.first(), it) }
         }
@@ -230,7 +219,7 @@ class BandwidthSpec extends BaseSpecification {
         when: "Create a flow with a valid small bandwidth"
         def maximumBandwidth = 1000
 
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelper.randomFlow(potentialFlow)
         flow.maximumBandwidth = maximumBandwidth
         flowHelper.addFlow(flow)
         assert northbound.getFlow(flow.id).maximumBandwidth == maximumBandwidth

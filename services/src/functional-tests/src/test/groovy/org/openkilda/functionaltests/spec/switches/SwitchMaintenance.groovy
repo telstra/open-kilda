@@ -69,24 +69,16 @@ class SwitchMaintenance extends BaseSpecification {
     }
 
     def "Flows can be evacuated (rerouted) from a particular switch when setting maintenance mode for it"() {
-        given: "Two active not neighboring switches with two possible paths at least"
-        def switches = topology.getActiveSwitches()
-        def allLinks = northbound.getAllLinks()
-        List<List<PathNode>> possibleFlowPaths = []
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
-            allLinks.every { link ->
-                !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId)
-            } && possibleFlowPaths.size() > 1
-        } ?: assumeTrue("No suiting switches found", false)
+        given: "Two active not neighboring switches with two possible paths at least"        
+        def potentialFlow = topologyHelper.findAllNonNeighbors().find { it.paths.size() > 1 } ?: 
+                assumeTrue("No suiting switches found", false)
 
         and: "Create a couple of flows going through these switches"
-        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow1 = flowHelper.randomFlow(potentialFlow)
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
-        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow2 = flowHelper.randomFlow(potentialFlow)
         flowHelper.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
 

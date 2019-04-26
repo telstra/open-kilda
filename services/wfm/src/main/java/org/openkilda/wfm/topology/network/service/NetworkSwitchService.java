@@ -147,8 +147,8 @@ public class NetworkSwitchService {
 
             case OTHER_UPDATE:
             case CACHED:
-                log.error("Invalid port event {}_{} - incomplete or deprecated",
-                          payload.getSwitchId(), payload.getPortNo());
+                log.error("Invalid port event {} for {}_{} - incomplete or deprecated",
+                          payload.getState(), payload.getSwitchId(), payload.getPortNo());
                 break;
 
             default:

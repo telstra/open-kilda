@@ -62,7 +62,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
         try {
             currentTuple = input;
             commandContext = setupCommandContext();
-            handleInput(input);
+            dispatch(input);
         } catch (Exception e) {
             wrapExceptionHandler(e);
         } finally {
@@ -86,6 +86,10 @@ public abstract class AbstractBolt extends BaseRichBolt {
         payload.add(getCommandContext());
         log.debug("emit tuple into {} stream: {}", stream, payload);
         getOutput().emit(stream, input, payload);
+    }
+
+    protected void dispatch(Tuple input) throws AbstractException {
+        handleInput(input);
     }
 
     protected abstract void handleInput(Tuple input) throws AbstractException;

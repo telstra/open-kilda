@@ -32,6 +32,7 @@ import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMapping;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -106,7 +107,7 @@ public class SpeakerRequestBolt extends RequestBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         super.declareOutputFields(outputFieldsDeclarer);
-        Fields fields = new Fields(AbstractTopology.MESSAGE_FIELD);
+        Fields fields = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
         outputFieldsDeclarer.declareStream(Stream.NORTHBOUND_REPLY, fields);
         outputFieldsDeclarer.declareStream(Stream.NB_WORKER, fields);
     }

@@ -18,7 +18,7 @@ The followings are required for building Kilda controller:
  - GNU Make 4.1+
  - Open vSwitch 2.9+
  
-For testing meters on virtual environment you additionally need linux kernel 4.18+  
+For running virtual environment you additionally need linux kernel 4.18+ for OVS meters support
 
 On Ubuntu 18.04, you can install those dependencies like this:
 

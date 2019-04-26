@@ -42,7 +42,9 @@ class ChaosSpec extends BaseSpecification {
         def islsAmountToBlink = topology.islsForActiveSwitches.size() * 5
         def r = new Random()
         islsAmountToBlink.times {
-            def randomIsl = topology.islsForActiveSwitches[r.nextInt(topology.islsForActiveSwitches.size())]
+            //have certain instabilities with blinking centec ports, thus exclude them here
+            def isls = topology.islsForActiveSwitches.findAll { !it.srcSwitch.centec }
+            def randomIsl = isls[r.nextInt(isls.size())]
             blinkPort(randomIsl.srcSwitch.dpId, randomIsl.srcPort)
             //1 of 4 times we will add a minor sleep after blink in order not to fail all ISLs at once
             r.nextInt(4) == 3 && sleep((long) (discoveryInterval / 2) * 1000)
