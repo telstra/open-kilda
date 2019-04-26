@@ -50,7 +50,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
         String correlationId = request.getHeader(CORRELATION_ID);
         if (StringUtils.isBlank(correlationId)) {
             correlationId = UUID.randomUUID().toString();
-            LOGGER.warn("CorrelationId was not sent, generated one: {}", correlationId);
+            LOGGER.info("CorrelationId was not sent, generated one: {}", correlationId);
         } else {
             correlationId = RequestCorrelationId.chain(UUID.randomUUID().toString(), correlationId);
             LOGGER.trace("Found correlationId in header. Chaining: {}", correlationId);
