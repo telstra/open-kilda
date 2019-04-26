@@ -3,7 +3,9 @@ import { TopologyService } from '../../../common/services/topology.service';
 import { TopologyView } from '../../../common/data-models/topology-view';
 import { trigger, state, style, transition, animate} from '@angular/animations';
 import { NgbModal } from "@ng-bootstrap/ng-bootstrap";
-import { AffectedIslComponent } from "../affected-isl/affected-isl.component"
+import { AffectedIslComponent } from "../affected-isl/affected-isl.component";
+import {ImportTopologySettingComponent} from "../import-topology-setting/import-topology-setting.component";
+import {ExportTopologySettingComponent} from "../export-topology-setting/export-topology-setting.component";
 declare var jQuery: any;
 
 @Component({
@@ -62,7 +64,6 @@ export class TopologyMenuComponent implements OnInit {
   
   ngOnInit() {
     this.defaultSetting = this.topologyService.getViewOptions();
-
     this.topologyService.settingReceiver.subscribe((data: TopologyView) => {
       this.defaultSetting = data;
     });
@@ -112,12 +113,20 @@ export class TopologyMenuComponent implements OnInit {
     this.topologyService.setViewOptinos(settings);
   }
 
-  showInfo = () => {
+   showInfo = () => {
     this.showInfoFlag = this.showInfoFlag == "hide" ? "show" : "hide";
   };
 
+  importSettingModal(){
+    const modalRef = this.modalService.open(ImportTopologySettingComponent,{ size: 'lg',windowClass:'modal-import-setting slideInUp'});
+  }
+
   showAffectedISL(){
     const modalRef = this.modalService.open(AffectedIslComponent,{ size: 'lg',windowClass:'modal-isl slideInUp'});
+  }
+
+  exportSetting(){
+    const modalRef = this.modalService.open(ExportTopologySettingComponent,{ size: 'lg',windowClass:'modal-import-setting slideInUp'});
   }
 
   onClickedOutside(e: Event,type) {

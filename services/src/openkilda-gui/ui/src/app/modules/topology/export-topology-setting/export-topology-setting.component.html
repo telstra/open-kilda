@@ -1,0 +1,18 @@
+<div class="modal-header">
+    <h4 class="modal-title"><span class="export_setting_large"></span> <span class="ml-1">Export Topology Settings</span></h4>
+    <button type="button" class="close" aria-label="Close" (click)="activeModal.dismiss('Cross click')">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+  <div class="row">
+     <div class="col-sm-12">
+         <a [href]="downloadCoordinatesHref" download="topologysetting.json" class="btn btn-sm btn-dark" >Save to .json file</a>
+         <button type="button"  class="btn btn-dark ml-3" (click)="enableViewJson()">View JSON</button>
+         <button type="button" *ngIf="viewJson" class="btn btn-dark ml-3" (click)="copyToClip()">Copy to Clipboard</button>
+        <pre *ngIf="viewJson" class="code mt-3">{{settings | json}}</pre>
+      </div>
+  </div>
+  </div>
+
+ 
