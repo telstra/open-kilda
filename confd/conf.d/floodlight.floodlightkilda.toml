@@ -1,5 +1,5 @@
 [template]
 src = "floodlight/floodlightkilda.properties.tmpl"
-dest = "services/src/fl-root/floodlight-modules/src/main/resources/floodlightkilda.properties"
+dest = "services/src/floodlight-service/floodlight-modules/src/main/resources/floodlightkilda.properties"
 keys = [ "/" ]
 mode = "0644"

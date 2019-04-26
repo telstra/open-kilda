@@ -31,7 +31,7 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     }
 
     default String getKafkaFlowSpeakerWorkerTopic() {
-        return getKafkaTopics().getFlowSpeakerWorkerTopic();
+        return getKafkaTopics().getFlowHsSpeakerTopic();
     }
 
 }
