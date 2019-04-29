@@ -95,7 +95,7 @@ Example message:
   * (W) FlowTopology -TransactionBolt
   * (R) StatsTopology - SpeakerBolt
   * (R/W) CacheTopology - CacheBolt
-  * (R) IslStatsTopology - IslStatsBolt
+  * (R) IslLatencyTopology - IslStatsBolt
 
 #### `kilda.wfm.topo.updown` 
 * (W) FlowTopology - CrudBolt
