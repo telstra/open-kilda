@@ -1,12 +1,12 @@
 # WFM topology management
 
-TOPOLOGY := network flow stats islstats opentsdb portstate nbworker ping reroute swmanager floodlightrouter
+TOPOLOGY := network flow stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter
 
 ENTRY_network := org.openkilda.wfm.topology.network.NetworkTopology
 ENTRY_wfm := org.openkilda.wfm.topology.event.OfEventWfmTopology
 ENTRY_flow := org.openkilda.wfm.topology.flow.FlowTopology
 ENTRY_stats := org.openkilda.wfm.topology.stats.StatsTopology
-ENTRY_islstats := org.openkilda.wfm.topology.islstats.IslStatsTopology
+ENTRY_isllatency := org.openkilda.wfm.topology.isllatency.IslLatencyTopology
 ENTRY_opentsdb := org.openkilda.wfm.topology.opentsdb.OpenTsdbTopology
 ENTRY_portstate := org.openkilda.wfm.topology.portstate.PortStateTopology
 ENTRY_nbworker := org.openkilda.wfm.topology.nbworker.NbWorkerTopology

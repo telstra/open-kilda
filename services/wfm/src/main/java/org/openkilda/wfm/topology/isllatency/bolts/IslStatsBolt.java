@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.islstats.bolts;
+package org.openkilda.wfm.topology.isllatency.bolts;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
@@ -21,17 +21,19 @@ import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.error.AbstractException;
+import org.openkilda.wfm.error.JsonDecodeException;
+import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.annotations.VisibleForTesting;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Tuple;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -39,10 +41,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class IslStatsBolt extends BaseRichBolt {
-    private static final Logger logger = LoggerFactory.getLogger(IslStatsBolt.class);
-
-    private transient OutputCollector collector;
+@Slf4j
+public class IslStatsBolt extends AbstractBolt {
     private MetricFormatter metricFormatter;
 
     public IslStatsBolt(String metricPrefix) {
@@ -50,17 +50,17 @@ public class IslStatsBolt extends BaseRichBolt {
     }
 
     private static List<Object> tsdbTuple(String metric, long timestamp, Number value, Map<String, String> tag)
-            throws IOException {
+            throws JsonEncodeException {
         Datapoint datapoint = new Datapoint(metric, timestamp, tag, value);
-        return Collections.singletonList(Utils.MAPPER.writeValueAsString(datapoint));
+        try {
+            return Collections.singletonList(Utils.MAPPER.writeValueAsString(datapoint));
+        } catch (JsonProcessingException e) {
+            throw new JsonEncodeException(datapoint, e);
+        }
     }
 
-    @Override
-    public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector) {
-        this.collector = collector;
-    }
-
-    List<Object> buildTsdbTuple(IslInfoData data, long timestamp) throws IOException {
+    @VisibleForTesting
+    List<Object> buildTsdbTuple(IslInfoData data, long timestamp) throws JsonEncodeException {
         Map<String, String> tags = new HashMap<>();
         tags.put("src_switch", data.getSource().getSwitchId().toOtsdFormat());
         tags.put("src_port", String.valueOf(data.getSource().getPortNo()));
@@ -70,50 +70,39 @@ public class IslStatsBolt extends BaseRichBolt {
         return tsdbTuple(metricFormatter.format("isl.latency"), timestamp, data.getLatency(), tags);
     }
 
-    private String getJson(Tuple tuple) {
-        return tuple.getStringByField(KafkaRecordTranslator.FIELD_ID_PAYLOAD);
-    }
-
-    public Message getMessage(String json) throws IOException {
-        return Utils.MAPPER.readValue(json, Message.class);
-    }
-
-    InfoData getInfoData(Message message) {
-        if (!(message instanceof InfoMessage)) {
-            throw new IllegalArgumentException(message.getClass().getName() + " is not an InfoMessage");
+    private Message getMessage(Tuple input) throws JsonDecodeException {
+        String json = input.getStringByField(KafkaRecordTranslator.FIELD_ID_PAYLOAD);
+        try {
+            return Utils.MAPPER.readValue(json, Message.class);
+        } catch (IOException e) {
+            log.error(String.format("Could not deserialize message = %s", json), e);
+            throw new JsonDecodeException(Message.class, json, e);
         }
-        return ((InfoMessage) message).getData();
-    }
-
-    IslInfoData getIslInfoData(InfoData data) {
-        if (!(data instanceof IslInfoData)) {
-            throw new IllegalArgumentException(data.getClass().getName() + " is not an IslInfoData");
-        }
-        return (IslInfoData) data;
     }
 
     @Override
-    public void execute(Tuple tuple) {
-        logger.debug("tuple: {}", tuple);
-        String json = getJson(tuple);
-        try {
-            Message message = getMessage(json);
-            IslInfoData data = getIslInfoData(getInfoData(message));
-            List<Object> results = buildTsdbTuple(data, message.getTimestamp());
-            logger.debug("emit: {}", results);
-            collector.emit(results);
-        } catch (IOException e) {
-            logger.error("Could not deserialize message={}", json, e);
-        } catch (Exception e) {
-            // TODO: has to be a cleaner way to do this?
-        } finally {
-            collector.ack(tuple);
+    protected void handleInput(Tuple input) throws AbstractException {
+        Message message = getMessage(input);
+
+        if (message instanceof InfoMessage) {
+            InfoData data = ((InfoMessage) message).getData();
+            if (data instanceof IslInfoData) {
+                handleIslInfoData(input, message, (IslInfoData) data);
+            } else {
+                unhandledInput(input);
+            }
+        } else {
+            unhandledInput(input);
         }
+    }
+
+    private void handleIslInfoData(Tuple input, Message message, IslInfoData data) throws JsonEncodeException {
+        List<Object> results = buildTsdbTuple(data, message.getTimestamp());
+        getOutput().emit(input, results);
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(AbstractTopology.fieldMessage);
     }
-
 }
