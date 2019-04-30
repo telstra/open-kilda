@@ -54,7 +54,11 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
         OFDescStatsReply swDescription = factory.buildDescStatsReply().build();
         pvs = new PathVerificationService();
 
-        pvs.initAlgorithm("secret");
+        fmc.addConfigParam(pvs, "isl_bandwidth_quotient", "0.0");
+        fmc.addConfigParam(pvs, "hmac256-secret", "secret");
+        fmc.addConfigParam(pvs, "bootstrap-servers", "");
+
+        pvs.init(fmc);
 
         srcIpTarget = new InetSocketAddress("192.168.10.1", 200);
         dstIpTarget = new InetSocketAddress("192.168.10.101", 100);
@@ -72,7 +76,6 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
         replay(sw2);
     }
 
-    @SuppressWarnings("static-access")
     @Test
     public void testBcastPacket() {
         // This is Broadcast so set dstIpTarget to the broadcast IP

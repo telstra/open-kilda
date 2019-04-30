@@ -18,7 +18,12 @@ package org.openkilda.floodlight.pathverification;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.PATH_ORDINAL_OPTIONAL_TYPE;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.REMOTE_SWITCH_OPTIONAL_TYPE;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.TIMESTAMP_OPTIONAL_TYPE;
 import static org.openkilda.floodlight.pathverification.VerificationPacket.CHASSIS_ID_LLDPTV_PACKET_TYPE;
+import static org.openkilda.floodlight.pathverification.VerificationPacket.OPTIONAL_LLDPTV_PACKET_TYPE;
 import static org.openkilda.floodlight.pathverification.VerificationPacket.PORT_ID_LLDPTV_PACKET_TYPE;
 import static org.openkilda.floodlight.pathverification.VerificationPacket.TTL_LLDPTV_PACKET_TYPE;
 
@@ -29,6 +34,7 @@ import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.utils.CommandContextFactory;
 
+import com.google.common.collect.Lists;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -41,6 +47,7 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.LLDPTLV;
 import net.floodlightcontroller.packet.UDP;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.lang.ArrayUtils;
 import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
@@ -51,6 +58,7 @@ import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -58,9 +66,14 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TransportPort;
 
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.util.List;
 
 public class PathVerificationPacketInTest extends FloodlightTestCase {
 
+    public static final byte[] REMOTE_SWITCH_ID = {1, 2, 3, 4, 5, 6, 7, 8};
+    public static final byte[] TIMESTAMP = {8, 7, 6, 5, 4, 3, 2, 1};
+    public static final byte[] PATH_ORDINAL = {1, 2, 3, 4};
     protected CommandContextFactory commandContextFactory = new CommandContextFactory();
 
     protected FloodlightContext cntx;
@@ -76,42 +89,77 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
     protected OFPacketIn pktIn;
     protected InetSocketAddress srcIpTarget;
     protected InetSocketAddress dstIpTarget;
-    protected InetSocketAddress swIp = new InetSocketAddress("192.168.10.1", 200);
 
-    private byte[] pkt = {(byte) 0xAA, (byte) 0xBB, (byte) 0xCC, (byte) 0xDD, (byte) 0xEE, (byte) 0xFF, // src mac
-            0x11, 0x22, 0x33, 0x44, 0x55, 0x66,                                           // dst mac
-            0x08, 0x00,                                                                   // ether-type
+    private byte[] pkt = {
+            (byte) 0xAA, (byte) 0xBB, (byte) 0xCC, (byte) 0xDD, (byte) 0xEE, (byte) 0xFF, // src mac
+            0x11, 0x22, 0x33, 0x44, 0x55, 0x66,                                    // dst mac
+            0x08, 0x00,                                                            // ether-type
             // IP
-            0x45, 0x00,                                                                   // ver,ihl, dscp, ecn
-            0x00, 0x30,                                                                   // total length
-            0x00, 0x00,                                                                   // tcp ident
-            0x00, 0x00,                                                                   // flags, frag offset
-            0x00,                                                                         // ttl
-            0x11,                                                                         // protocol
-            0x38, (byte) 0x6d,                                                            // header checksum
-            (byte) 0xC0, (byte) 0xA8, 0x00, 0x01,                                         // src ip
-            (byte) 0xC0, (byte) 0xA8, 0x00, (byte) 0xFF,                                  // dst ip
+            0x45, 0x00,                                                            // ver,ihl, dscp, ecn
+            0x00, 0x56,                                                            // total length
+            0x00, 0x00,                                                            // tcp ident
+            0x00, 0x00,                                                            // flags, frag offset
+            0x00,                                                                  // ttl
+            0x11,                                                                  // protocol
+            0x38, (byte) 0x47,                                                     // header checksum
+            (byte) 0xC0, (byte) 0xA8, 0x00, 0x01,                                  // src ip
+            (byte) 0xC0, (byte) 0xA8, 0x00, (byte) 0xFF,                           // dst ip
             // UDP
-            (byte) 0xEF, 0x2F,                                                            // src port
-            (byte) 0xEF, 0x2F,                                                            // dst port
-            0x00, 0x1c,                                                                   // length
-            (byte) 0x8e, 0x7D,                                                            // checksum
+            (byte) 0xEF, 0x2F,                                                     // src port
+            (byte) 0xEF, 0x2F,                                                     // dst port
+            0x00, 0x42,                                                            // length
+            (byte) 0xc8, (byte) 0x6c,                                              // checksum
             // LLDP TLVs
-            0x02, 0x07,                                                                   // type, len
-            0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,                                     // chassisid
-            0x04, 0x03,                                                                   // type, len
-            0x02, 0x00, 0x01,                                                             // port id
-            0x06, 0x02,                                                                   // type, len
-            0x00, 0x78,                                                                   // ttl
+            0x02, 0x07,                                                            // type, len
+            0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,                              // chassisid
+            0x04, 0x03,                                                            // type, len
+            0x02, 0x00, 0x01,                                                      // port id
+            0x06, 0x02,                                                            // type, len
+            0x00, 0x78,                                                            // ttl
+            // Optional LLDP TLVs:
+            // dpid
+            (byte) 0xfe, 0x0C,                                                     // optional type, len
+            0x00, 0x26, (byte) 0xe1,                                               // organizationally unique identifier
+            REMOTE_SWITCH_OPTIONAL_TYPE,                                           // dpid type
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,                        // dpid
+            // timestamp
+            (byte) 0xfe, 0x0C,                                                     // optional type, len
+            0x00, 0x26, (byte) 0xe1,                                               // organizationally unique identifier
+            TIMESTAMP_OPTIONAL_TYPE,                                               // timestamp type
+            0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,                        // timestamp
+            // ordinal type
+            (byte) 0xfe, 0x08,                                                     // optional type, len
+            0x00, 0x26, (byte) 0xe1,                                               // organizationally unique identifier
+            PATH_ORDINAL_OPTIONAL_TYPE,                                            // ordinal type
+            0x01, 0x02, 0x03, 0x04,                                                // ordinal
+            // End of LLDP
             0x00, 0x00
     };
 
-    protected IPacket getPacket() {
+    private Ethernet getPacket() {
         UDP udp = new UDP()
                 .setDestinationPort(
                         TransportPort.of(PathVerificationService.VERIFICATION_PACKET_UDP_PORT))
                 .setSourcePort(
                         TransportPort.of(PathVerificationService.VERIFICATION_PACKET_UDP_PORT));
+
+        List<LLDPTLV> optional = Lists.newArrayList(
+                new LLDPTLV() // dpid
+                        .setType(OPTIONAL_LLDPTV_PACKET_TYPE)
+                        .setLength((short) 12)
+                        .setValue(ArrayUtils.addAll(
+                                new byte[] {0x0, 0x26, (byte) 0xe1, REMOTE_SWITCH_OPTIONAL_TYPE}, REMOTE_SWITCH_ID)),
+                new LLDPTLV() // timestamp
+                        .setType(OPTIONAL_LLDPTV_PACKET_TYPE)
+                        .setLength((short) 12)
+                        .setValue(ArrayUtils.addAll(
+                                new byte[] {0x0, 0x26, (byte) 0xe1, TIMESTAMP_OPTIONAL_TYPE}, TIMESTAMP)),
+                new LLDPTLV() // path ordinal
+                        .setType(OPTIONAL_LLDPTV_PACKET_TYPE)
+                        .setLength((short) 8)
+                        .setValue(ArrayUtils.addAll(
+                                new byte[] {0x0, 0x26, (byte) 0xe1, PATH_ORDINAL_OPTIONAL_TYPE}, PATH_ORDINAL))
+        );
 
         VerificationPacket verificationPacket = VerificationPacket.builder()
                 .chassisId(new LLDPTLV().setType(CHASSIS_ID_LLDPTV_PACKET_TYPE).setLength((short) 7)
@@ -120,6 +168,7 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
                         .setValue(new byte[] {0x02, 0x00, 0x01}))
                 .ttl(new LLDPTLV().setType(TTL_LLDPTV_PACKET_TYPE).setLength((short) 2)
                         .setValue(new byte[] {0x00, 0x78}))
+                .optionalTlvList(optional)
                 .build();
 
         udp.setPayload(new Data(verificationPacket.serialize()));
@@ -201,7 +250,7 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
     }
 
     @Test
@@ -211,5 +260,17 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
 
         IPacket expected = getPacket();
         assertArrayEquals(expected.serialize(), ethernet.serialize());
+    }
+
+    @Test
+    public void testParseVerificationPacket() {
+        long switchLatency = 5;
+        Ethernet ethernet = getPacket();
+        VerificationPacket verificationPacket = pvs.deserialize(ethernet);
+        VerificationPacketData data = pvs.parseVerificationPacket(verificationPacket, switchLatency);
+
+        assertEquals(DatapathId.of(REMOTE_SWITCH_ID).toString(), data.getRemoteSwitchId().toString());
+        assertEquals(ByteBuffer.wrap(TIMESTAMP).getLong() + switchLatency, data.getTimestamp());
+        assertEquals(ByteBuffer.wrap(PATH_ORDINAL).getInt(), data.getPathOrdinal());
     }
 }
