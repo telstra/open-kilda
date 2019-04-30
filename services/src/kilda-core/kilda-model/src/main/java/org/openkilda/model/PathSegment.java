@@ -78,6 +78,8 @@ public class PathSegment implements Serializable {
 
     private Long latency;
 
+    private boolean failed = false;
+
     @Builder(toBuilder = true)
     public PathSegment(@NonNull FlowPath path, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
                        int srcPort, int destPort, Long latency) {
