@@ -25,6 +25,8 @@ import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.FlowReadRequest;
+import org.openkilda.messaging.command.flow.FlowRequest;
+import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
@@ -67,6 +69,8 @@ import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
@@ -99,6 +103,12 @@ public class FlowServiceImpl implements FlowService {
      */
     @Value("#{kafkaTopicsConfig.getFlowTopic()}")
     private String topic;
+
+    /**
+     * The kafka topic for the new flow topology.
+     */
+    @Value("#{kafkaTopicsConfig.getFlowHsTopic()}")
+    private String flowHsTopic;
 
     @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
     private String nbworkerTopic;
@@ -146,6 +156,20 @@ public class FlowServiceImpl implements FlowService {
                 .thenApply(FlowResponse.class::cast)
                 .thenApply(FlowResponse::getPayload)
                 .thenApply(flowMapper::toFlowOutput);
+    }
+
+    @Override
+    public CompletableFuture<FlowResponseV2> createFlow(FlowRequestV2 request) {
+        logger.info("Processing flow creation: {}", request);
+
+        FlowRequest payload = new FlowRequest(flowMapper.toFlowDto(request), Type.CREATE);
+        CommandMessage command = new CommandMessage(
+                payload, System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
+
+        return messagingChannel.sendAndGet(flowHsTopic, command)
+                .thenApply(FlowResponse.class::cast)
+                .thenApply(FlowResponse::getPayload)
+                .thenApply(flowMapper::toFlowResponseV2);
     }
 
     /**
