@@ -20,7 +20,6 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowResponse;
-import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -53,6 +52,7 @@ import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowEventData.Initiator;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableAction;
@@ -111,8 +111,7 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
             stateMachine.setFlow(flow);
             stateMachine.fire(FlowCreateFsm.Event.NEXT);
 
-            FlowDto flowDto = FlowDto.builder().build();
-            InfoData flowData = new FlowResponse(flowDto);
+            InfoData flowData = new FlowResponse(FlowMapper.INSTANCE.map(flow));
             Message response = new InfoMessage(flowData, commandContext.getCreateTime(),
                     commandContext.getCorrelationId());
 

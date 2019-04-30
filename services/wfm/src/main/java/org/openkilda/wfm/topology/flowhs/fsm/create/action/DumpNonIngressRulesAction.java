@@ -48,7 +48,5 @@ public class DumpNonIngressRulesAction extends AnonymousAction<FlowCreateFsm, St
                 .map(FlowRequest::getCommandId)
                 .collect(Collectors.toSet());
         stateMachine.setPendingCommands(commandIds);
-
-        stateMachine.fire(Event.NEXT);
     }
 }

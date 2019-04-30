@@ -60,6 +60,17 @@ public abstract class FlowMapper {
     @Mapping(source = "timeCreate", target = "createdTime")
     public abstract FlowDto map(UnidirectionalFlow flow);
 
+    @Mapping(source = "srcPort", target = "sourcePort")
+    @Mapping(source = "srcVlan", target = "sourceVlan")
+    @Mapping(source = "destPort", target = "destinationPort")
+    @Mapping(source = "destVlan", target = "destinationVlan")
+    @Mapping(target = "sourceSwitch", expression = "java(flow.getSrcSwitch().getSwitchId())")
+    @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
+    @Mapping(source = "status", target = "state")
+    @Mapping(source = "timeModify", target = "lastUpdated")
+    @Mapping(source = "timeCreate", target = "createdTime")
+    public abstract FlowDto map(Flow flow);
+
     /**
      * Convert {@link FlowPair} to {@link FlowPairDto}.
      */

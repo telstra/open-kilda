@@ -229,6 +229,8 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                     getCommandContext().getCorrelationId());
             carrier.sendNorthboundResponse(message);
         }
+
+        fireError();
         super.afterTransitionCausedException(fromState, toState, event, context);
     }
 
