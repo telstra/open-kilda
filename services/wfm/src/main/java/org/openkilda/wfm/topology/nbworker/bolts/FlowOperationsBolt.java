@@ -88,7 +88,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         Integer dstPort = request.getDestination().getPortNumber();
 
         try {
-            return flowOperationsService.getFlowIdsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
+            return flowOperationsService.getFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
                     .map(FlowPair::getForward)
                     .map(FlowMapper.INSTANCE::map)
                     .map(FlowResponse::new)
@@ -106,7 +106,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
 
         List<String> flowIds;
         try {
-            flowIds = flowOperationsService.getFlowIdsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
+            flowIds = flowOperationsService.getFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
                     .map(FlowPair::getForward)
                     .map(UnidirectionalFlow::getFlowId)
                     .collect(Collectors.toList());

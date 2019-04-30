@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <changelog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xsi:noNamespaceSchemaLocation="http://www.liquigraph.org/schema/1.0/liquigraph.xsd">
-    <changeset id="1.0-create-flow-paths-n-resources" author="Sergii Iakovenko">
+    <changeset id="1.0-create-flows-with-paths-n-resources" author="Sergii Iakovenko">
         <precondition if-not-met="FAIL">
             <!-- Validate flows, no orphans entities or invalid cookies allowed. -->
             <and>
@@ -28,85 +28,72 @@
             </and>
         </precondition>
 
-        <!-- Create a forward path for each flow with a meter. -->
+        <!-- Create a flow node for each forward flow. -->
         <query><![CDATA[
             MATCH (src:switch)-[forward:flow]->(dst:switch)
-            WHERE forward.cookie > 4611686018427387904 AND forward.meter_id IS NOT NULL
-            WITH src, dst, forward
-            MERGE (src)-[:flow_path {
+            WHERE forward.cookie > 4611686018427387904
+            MERGE (src)<-[:source]-(f:flow {
+                    flow_id: forward.flowid,
+                    src_port: forward.src_port,
+                    src_vlan: forward.src_vlan,
+                    dst_port: forward.dst_port,
+                    dst_vlan: forward.dst_vlan,
+                    forward_path_id: forward.flowid + "_forward",
+                    reverse_path_id: forward.flowid + "_reverse",
+                    bandwidth: forward.bandwidth,
+                    ignore_bandwidth: forward.ignore_bandwidth,
+                    status: "up",
+                    encapsulation_type: "transit_vlan",
+                    time_create: coalesce(forward.time_create, forward.time_modify)
+                })-[:destination]->(dst)
+                SET f.group_id = forward.group_id, f.priority = forward.priority,
+                    f.description = forward.description, f.max_latency = forward.max_latency,
+                    f.periodic_pings = coalesce(forward.periodic_pings, false),
+                    f.time_modify = forward.time_modify
+        ]]></query>
+
+        <!-- Create a forward path for each flow. -->
+        <query><![CDATA[
+            MATCH (src:switch)-[forward:flow]->(dst:switch)
+            WHERE forward.cookie > 4611686018427387904
+            MATCH (src)<-[:source]-(f:flow {flow_id: forward.flowid})-[:destination]->(dst)
+            MERGE (src)<-[:source]-(fp:flow_path {
                     path_id: forward.flowid + "_forward", 
                     flow_id: forward.flowid, 
                     cookie: forward.cookie, 
-                    meter_id: forward.meter_id, 
-                    bandwidth: forward.bandwidth, 
-                    ignore_bandwidth: forward.ignore_bandwidth, 
-                    time_create: forward.time_modify, 
-                    time_modify: forward.time_modify,
-                    status: "active", 
-                    latency: apoc.convert.fromJsonMap(forward.flowpath).latency_ns
-                }]->(dst)
-        ]]></query>
-
-        <!-- Create a forward path for each flow with no meters. -->
-        <query><![CDATA[
-            MATCH (src:switch)-[forward:flow]->(dst:switch)
-            WHERE forward.cookie > 4611686018427387904 AND forward.meter_id IS NULL
-            WITH src, dst, forward
-            MERGE (src)-[:flow_path {
-                    path_id: forward.flowid + "_forward",
-                    flow_id: forward.flowid,
-                    cookie: forward.cookie,
                     bandwidth: forward.bandwidth,
-                    ignore_bandwidth: forward.ignore_bandwidth,
-                    time_create: forward.time_modify,
-                    time_modify: forward.time_modify,
+                    ignore_bandwidth: forward.ignore_bandwidth, 
+                    time_create: coalesce(forward.time_create, forward.time_modify),
                     status: "active",
                     latency: apoc.convert.fromJsonMap(forward.flowpath).latency_ns
-                }]->(dst)
+                })-[:destination]->(dst)
+            SET fp.meter_id = forward.meter_id, fp.time_modify = forward.time_modify
+            MERGE (f)-[:owns]->(fp)
         ]]></query>
 
-        <!-- Create a reverse path for each flow with a meter. -->
+        <!-- Create a reverse path for each flow. -->
         <query><![CDATA[
             MATCH (src:switch)-[reverse:flow]->(dst:switch)
-            WHERE reverse.cookie < 4611686018427387904 AND reverse.meter_id IS NOT NULL
-            WITH src, dst, reverse
-            MERGE (src)-[:flow_path {
+            WHERE reverse.cookie < 4611686018427387904
+            MATCH (dst)<-[:source]-(f:flow {flow_id: reverse.flowid})-[:destination]->(src)
+            MERGE (src)<-[:source]-(fp:flow_path {
                     path_id: reverse.flowid + "_reverse", 
                     flow_id: reverse.flowid, 
                     cookie: reverse.cookie, 
-                    meter_id: reverse.meter_id, 
-                    bandwidth: reverse.bandwidth, 
-                    ignore_bandwidth: reverse.ignore_bandwidth, 
-                    time_create: reverse.time_modify, 
-                    time_modify: reverse.time_modify,
-                    status: "active", 
-                    latency: apoc.convert.fromJsonMap(reverse.flowpath).latency_ns
-                }]->(dst)
-        ]]></query>
-
-        <!-- Create a reverse path for each flow with no meters. -->
-        <query><![CDATA[
-            MATCH (src:switch)-[reverse:flow]->(dst:switch)
-            WHERE reverse.cookie < 4611686018427387904 AND reverse.meter_id IS NULL
-            WITH src, dst, reverse
-            MERGE (src)-[:flow_path {
-                    path_id: reverse.flowid + "_reverse",
-                    flow_id: reverse.flowid,
-                    cookie: reverse.cookie,
                     bandwidth: reverse.bandwidth,
-                    ignore_bandwidth: reverse.ignore_bandwidth,
-                    time_create: reverse.time_modify,
-                    time_modify: reverse.time_modify,
+                    ignore_bandwidth: reverse.ignore_bandwidth, 
+                    time_create: coalesce(reverse.time_create, reverse.time_modify),
                     status: "active",
                     latency: apoc.convert.fromJsonMap(reverse.flowpath).latency_ns
-                }]->(dst)
+                })-[:destination]->(dst)
+            SET fp.meter_id = reverse.meter_id, fp.time_modify = reverse.time_create
+            MERGE (f)-[:owns]->(fp)
         ]]></query>
 
         <!-- Create a flow cookie entity for each flow. -->
         <query><![CDATA[
             MATCH (src:switch)-[forward:flow]->(dst:switch)
             WHERE forward.cookie > 4611686018427387904
-            WITH src, dst, forward
             MERGE (:flow_cookie {
                     flow_id: forward.flowid, 
                     unmasked_cookie: forward.cookie - 4611686018427387904
@@ -117,8 +104,7 @@
         <query><![CDATA[
             MATCH (src:switch)-[forward:flow]->(dst:switch)
             WHERE forward.cookie > 4611686018427387904 AND forward.meter_id IS NOT NULL
-            WITH src, dst, forward
-            MERGE (src)<-[:owned_by]-(:flow_meter {
+            MERGE (src)-[:owns]->(:flow_meter {
                     meter_id: forward.meter_id, 
                     flow_id: forward.flowid, 
                     path_id: forward.flowid + "_forward", 
@@ -130,7 +116,6 @@
         <query><![CDATA[
             MATCH (src:switch)-[forward:flow]->(dst:switch)
             WHERE forward.cookie > 4611686018427387904 AND forward.transit_vlan <> 0
-            WITH src, dst, forward
             MERGE (:transit_vlan {
                     flow_id: forward.flowid,
                     path_id: forward.flowid + "_forward",
@@ -142,8 +127,7 @@
         <query><![CDATA[
             MATCH (src:switch)-[reverse:flow]->(dst:switch)
             WHERE reverse.cookie < 4611686018427387904 AND reverse.meter_id IS NOT NULL
-            WITH src, dst, reverse
-            MERGE (src)<-[:owned_by]-(:flow_meter {
+            MERGE (src)-[:owns]->(:flow_meter {
                     meter_id: reverse.meter_id, 
                     flow_id: reverse.flowid, 
                     path_id: reverse.flowid + "_reverse", 
@@ -155,7 +139,6 @@
         <query><![CDATA[
             MATCH (src:switch)-[reverse:flow]->(dst:switch)
             WHERE reverse.cookie < 4611686018427387904  AND reverse.transit_vlan <> 0
-            WITH src, dst, reverse
             MERGE (:transit_vlan {
                     flow_id: reverse.flowid,
                     path_id: reverse.flowid + "_reverse",
@@ -183,91 +166,38 @@
         <query><![CDATA[
             MATCH (src:switch)-[forward:flow]->(dst:switch)
             WHERE forward.cookie > 4611686018427387904
-            WITH src, dst, forward
             MATCH (fs_src)-[fs:flow_segment{
-		    flowid: forward.flowid,
-		    cookie: forward.cookie
+                    flowid: forward.flowid,
+                    cookie: forward.cookie
                 }]->(fs_dst)
-            WITH fs_src, fs, fs_dst
-            MERGE (fs_src)-[ps:path_segment {
-		    path_id: fs.flowid + "_forward", 
-		    src_port: fs.src_port,
-		    dst_port: fs.dst_port,
-		    seq_id: fs.seq_id
-	        }]->(fs_dst)
+            MATCH (fp:flow_path {path_id: fs.flowid + "_forward"})
+            MERGE (fs_src)<-[:source]-(ps:path_segment {
+                    path_id: fs.flowid + "_forward",
+                    src_port: fs.src_port,
+                    dst_port: fs.dst_port,
+                    seq_id: fs.seq_id
+	            })-[:destination]->(fs_dst)
             SET ps.latency = fs.segment_latency
+            MERGE (fp)-[:owns]->(ps)
         ]]></query>
 
         <!-- Create path segments for each reverse path. -->
         <query><![CDATA[
             MATCH (src:switch)-[reverse:flow]->(dst:switch)
             WHERE reverse.cookie < 4611686018427387904
-            WITH src, dst, reverse
-            MATCH (fs_src)-[fs:flow_segment{
-		    flowid: reverse.flowid, 
-		    cookie: reverse.cookie
-	        }]->(fs_dst)
-            WITH fs_src, fs, fs_dst
-            MERGE (fs_src)-[ps:path_segment {
-		    path_id: fs.flowid + "_reverse", 
-		    src_port: fs.src_port, 
-		    dst_port: fs.dst_port, 
-		    seq_id: fs.seq_id
-	        }]->(fs_dst)
+            MATCH (fs_src)-[fs:flow_segment {
+                    flowid: reverse.flowid,
+                    cookie: reverse.cookie
+	            }]->(fs_dst)
+            MATCH (fp:flow_path {path_id: fs.flowid + "_reverse"})
+            MERGE (fs_src)<-[:source]-(ps:path_segment {
+                    path_id: fs.flowid + "_reverse",
+                    src_port: fs.src_port,
+                    dst_port: fs.dst_port,
+                    seq_id: fs.seq_id
+                })-[:destination]->(fs_dst)
             SET ps.latency = fs.segment_latency
-        ]]></query>
-    </changeset>
-
-    <changeset id="1.0-clone-and-delete-reverse-flows" author="Sergii Iakovenko">
-        <!-- Copy reverse flow as old_flow entitiy. -->
-        <query><![CDATA[
-            MATCH (src:switch)-[reverse:flow]->(dst:switch)
-            WHERE reverse.cookie < 4611686018427387904
-            WITH src, dst, reverse
-            CREATE (src)-[of:old_flow]->(dst)
-            SET of = reverse
-        ]]></query>
-
-        <!-- Delete original copies of reverse flows. -->
-        <query><![CDATA[
-            MATCH (src:switch)-[reverse:flow]->(dst:switch)
-            WHERE reverse.cookie < 4611686018427387904
-            WITH src, dst, reverse
-            DELETE reverse
-        ]]></query>
-    </changeset>
-
-    <changeset id="1.0-clone-and-cleanup-forward-flows" author="Sergii Iakovenko">
-        <!-- Copy forward flow as old_flow entitiy. -->
-        <query><![CDATA[
-            MATCH (src:switch)-[forward:flow]->(dst:switch)
-            WHERE forward.cookie > 4611686018427387904
-            WITH src, dst, forward
-            CREATE (src)-[of:old_flow]->(dst)
-            SET of = forward
-        ]]></query>
-
-        <!-- Update original copies of forward flows with path ids and encapsulation type. -->
-        <query><![CDATA[
-            MATCH (src:switch)-[forward:flow]->(dst:switch)
-            WHERE forward.cookie > 4611686018427387904
-            SET forward.forward_path_id = forward.flowid + "_forward",
-	            forward.reverse_path_id = forward.flowid + "_reverse",
-	            forward.encapsulation_type = "transit_vlan",
-	            forward.time_create = forward.time_modify
-        ]]></query>
-
-        <!-- Cleanup original copies of forward flows. -->
-        <query><![CDATA[
-            MATCH (src:switch)-[forward:flow]->(dst:switch)
-            WHERE forward.cookie > 4611686018427387904
-            REMOVE forward.flowpath,
-                forward.cookie,
-                forward.src_switch,
-                forward.dst_switch,
-                forward.last_updated,
-                forward.meter_id,
-                forward.transit_vlan
+            MERGE (fp)-[:owns]->(ps)
         ]]></query>
     </changeset>
 </changelog>

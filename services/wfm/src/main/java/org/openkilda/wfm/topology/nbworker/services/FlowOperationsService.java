@@ -16,12 +16,14 @@
 package org.openkilda.wfm.topology.nbworker.services;
 
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.error.FlowNotFoundException;
@@ -43,11 +45,13 @@ public class FlowOperationsService {
 
     private TransactionManager transactionManager;
     private IslRepository islRepository;
+    private FlowRepository flowRepository;
     private FlowPairRepository flowPairRepository;
     private FlowPathRepository flowPathRepository;
 
     public FlowOperationsService(RepositoryFactory repositoryFactory, TransactionManager transactionManager) {
         this.islRepository = repositoryFactory.createIslRepository();
+        this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowPairRepository = repositoryFactory.createFlowPairRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
         this.transactionManager = transactionManager;
@@ -63,8 +67,8 @@ public class FlowOperationsService {
      * @return all flows for a particular link.
      * @throws IslNotFoundException if there is no link with these parameters.
      */
-    public Collection<FlowPair> getFlowIdsForLink(SwitchId srcSwitchId, Integer srcPort,
-                                                  SwitchId dstSwitchId, Integer dstPort)
+    public Collection<FlowPair> getFlowsForLink(SwitchId srcSwitchId, Integer srcPort,
+                                                SwitchId dstSwitchId, Integer dstPort)
             throws IslNotFoundException {
 
         if (!islRepository.findByEndpoints(srcSwitchId, srcPort, dstSwitchId, dstPort).isPresent()) {
@@ -81,7 +85,7 @@ public class FlowOperationsService {
      * @return all flows for a switch.
      */
     public Set<String> getFlowIdsForSwitch(SwitchId switchId) {
-        return flowPairRepository.findFlowIdsWithSwitchInPath(switchId);
+        return flowRepository.findFlowIdsWithSwitchInPath(switchId);
     }
 
     /**
@@ -90,23 +94,23 @@ public class FlowOperationsService {
      * @param flowId the flow to get a path.
      */
     public List<GroupFlowPathPayload> getFlowPath(String flowId) throws FlowNotFoundException {
-        FlowPair currentFlow = flowPairRepository.findById(flowId)
+        Flow currentFlow = flowRepository.findById(flowId)
                 .orElseThrow(() -> new FlowNotFoundException(flowId));
 
-        String groupId = currentFlow.getForward().getGroupId();
+        String groupId = currentFlow.getGroupId();
         if (groupId == null) {
             return Collections.singletonList(
                     toGroupFlowPathPayloadBuilder(currentFlow).build());
         } else {
-            Collection<FlowPair> flowPairsInGroup = flowPairRepository.findByGroupId(groupId);
+            Collection<Flow> flowsInGroup = flowRepository.findByGroupId(groupId);
             IntersectionComputer intersectionComputer =
                     new IntersectionComputer(flowId, flowPathRepository.findByFlowGroupId(groupId));
 
             // other flows in group
-            List<GroupFlowPathPayload> payloads = flowPairsInGroup.stream()
-                    .filter(e -> !e.getForward().getFlowId().equals(flowId))
+            List<GroupFlowPathPayload> payloads = flowsInGroup.stream()
+                    .filter(e -> !e.getFlowId().equals(flowId))
                     .map(e -> this.toGroupFlowPathPayloadBuilder(e)
-                            .segmentsStats(intersectionComputer.getOverlappingStats(e.getForward().getFlowId()))
+                            .segmentsStats(intersectionComputer.getOverlappingStats(e.getFlowId()))
                             .build())
                     .collect(Collectors.toList());
             // current flow
@@ -118,11 +122,11 @@ public class FlowOperationsService {
         }
     }
 
-    private GroupFlowPathPayload.GroupFlowPathPayloadBuilder toGroupFlowPathPayloadBuilder(FlowPair flowPair) {
+    private GroupFlowPathPayload.GroupFlowPathPayloadBuilder toGroupFlowPathPayloadBuilder(Flow flow) {
         return GroupFlowPathPayload.builder()
-                .id(flowPair.getForward().getFlowId())
-                .forwardPath(FlowPathMapper.INSTANCE.mapToPathNodes(flowPair.getForward()))
-                .reversePath(FlowPathMapper.INSTANCE.mapToPathNodes(flowPair.getReverse()));
+                .id(flow.getFlowId())
+                .forwardPath(FlowPathMapper.INSTANCE.mapToPathNodes(flow.getForwardPath()))
+                .reversePath(FlowPathMapper.INSTANCE.mapToPathNodes(flow.getReversePath()));
     }
 
     /**
@@ -133,25 +137,21 @@ public class FlowOperationsService {
      */
     public UnidirectionalFlow updateFlow(UnidirectionalFlow flow) throws FlowNotFoundException {
         return transactionManager.doInTransaction(() -> {
-            Optional<FlowPair> foundFlowPair = flowPairRepository.findById(flow.getFlowId());
-            if (!foundFlowPair.isPresent()) {
+            Optional<FlowPair> foundFlow = flowPairRepository.findById(flow.getFlowId());
+            if (!foundFlow.isPresent()) {
                 return Optional.<UnidirectionalFlow>empty();
             }
-            FlowPair currentFlowPair = foundFlowPair.get();
-
-            UnidirectionalFlow forwardFlow = currentFlowPair.getForward();
-            UnidirectionalFlow reverseFlow = currentFlowPair.getReverse();
+            UnidirectionalFlow forwardFlow = foundFlow.get().getForward();
+            Flow currentFlow = forwardFlow.getFlow();
 
             if (flow.getMaxLatency() != null) {
-                forwardFlow.setMaxLatency(flow.getMaxLatency());
-                reverseFlow.setMaxLatency(flow.getMaxLatency());
+                currentFlow.setMaxLatency(flow.getMaxLatency());
             }
             if (flow.getPriority() != null) {
-                forwardFlow.setPriority(flow.getPriority());
-                reverseFlow.setPriority(flow.getPriority());
+                currentFlow.setPriority(flow.getPriority());
             }
 
-            flowPairRepository.createOrUpdate(currentFlowPair);
+            flowRepository.createOrUpdate(currentFlow);
 
             return Optional.of(forwardFlow);
 

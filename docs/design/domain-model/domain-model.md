@@ -1,10 +1,10 @@
-
 # Kilda Domain Model
 
 Based on
 [Data Mapper](https://martinfowler.com/eaaCatalog/dataMapper.html),
 [Domain Model](https://martinfowler.com/eaaCatalog/domainModel.html),
 [Service Layer](https://martinfowler.com/eaaCatalog/serviceLayer.html)
+
 ## Goals
 - Create separate layers for domain and database representation.
 - Remove direct calls to DB

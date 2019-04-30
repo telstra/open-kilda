@@ -35,7 +35,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Neo4J OGM implementation of {@link FlowMeterRepository}.
+ * Neo4j OGM implementation of {@link FlowMeterRepository}.
  */
 public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> implements FlowMeterRepository {
     static final String PATH_ID_PROPERTY_NAME = "path_id";

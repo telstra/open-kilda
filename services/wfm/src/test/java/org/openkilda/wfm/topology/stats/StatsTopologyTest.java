@@ -40,14 +40,14 @@ import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.model.Cookie;
-import org.openkilda.model.FlowPair;
+import org.openkilda.model.Flow;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowPairRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
@@ -56,6 +56,7 @@ import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.EmbeddedNeo4jDatabase;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
+import org.openkilda.wfm.share.flow.TestFlowBuilder;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -100,7 +101,7 @@ public class StatsTopologyTest extends AbstractStormTest {
     private static StatsTopologyConfig statsTopologyConfig;
 
     private static TestKafkaConsumer otsdbConsumer;
-    private static FlowPairRepository flowPairRepository;
+    private static FlowRepository flowRepository;
     private static SwitchRepository switchRepository;
 
     @BeforeClass
@@ -133,7 +134,7 @@ public class StatsTopologyTest extends AbstractStormTest {
                 kafkaProperties(UUID.randomUUID().toString()));
         otsdbConsumer.start();
 
-        flowPairRepository = persistenceManager.getRepositoryFactory().createFlowPairRepository();
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
         sleep(TOPOLOGY_START_TIMEOUT);
@@ -153,9 +154,9 @@ public class StatsTopologyTest extends AbstractStormTest {
         otsdbConsumer.clear();
 
         // need clear data in CacheBolt
-        for (FlowPair flowPair : flowPairRepository.findAll()) {
-            sendRemoveFlowCommand(flowPair.getForward());
-            flowPairRepository.delete(flowPair);
+        for (Flow flow : flowRepository.findAll()) {
+            sendRemoveFlowCommand(new UnidirectionalFlow(flow.getForwardPath(), null, false));
+            flowRepository.delete(flow);
         }
 
         for (Switch sw : switchRepository.findAll()) {
@@ -261,10 +262,10 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     @Test
     public void meterFlowRulesStatsTest() throws IOException {
-        FlowPair flowPair = createFlow(switchId, flowId);
-        sendInstallOneSwitchFlowCommand(flowPair.getForward());
+        UnidirectionalFlow flow = createFlow(switchId, flowId);
+        sendInstallOneSwitchFlowCommand(flow);
 
-        MeterStatsEntry meterStats = new MeterStatsEntry(flowPair.getForward().getMeterId(), 500L, 700L);
+        MeterStatsEntry meterStats = new MeterStatsEntry(flow.getMeterId(), 500L, 700L);
 
         sendStatsMessage(new MeterStatsData(switchId, Collections.singletonList(meterStats)));
 
@@ -283,18 +284,18 @@ public class StatsTopologyTest extends AbstractStormTest {
         datapoints.forEach(datapoint -> {
             assertEquals(5, datapoint.getTags().size());
             assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
-            assertEquals(String.valueOf(flowPair.getForward().getMeterId()), datapoint.getTags().get("meterid"));
+            assertEquals(String.valueOf(flow.getMeterId()), datapoint.getTags().get("meterid"));
             assertEquals("forward", datapoint.getTags().get("direction"));
             assertEquals(flowId, datapoint.getTags().get("flowid"));
-            assertEquals(String.valueOf(flowPair.getForward().getCookie()), datapoint.getTags().get("cookie"));
+            assertEquals(String.valueOf(flow.getCookie()), datapoint.getTags().get("cookie"));
             assertEquals(timestamp, datapoint.getTime().longValue());
         });
     }
 
     @Test
     public void flowStatsTest() throws Exception {
-        FlowPair flowPair = createFlow(switchId, flowId);
-        sendInstallOneSwitchFlowCommand(flowPair.getForward());
+        UnidirectionalFlow flow = createFlow(switchId, flowId);
+        sendInstallOneSwitchFlowCommand(flow);
 
         FlowStatsEntry flowStats = new FlowStatsEntry((short) 1, cookie, 150L, 300L);
 
@@ -378,18 +379,26 @@ public class StatsTopologyTest extends AbstractStormTest {
         });
     }
 
-    private FlowPair createFlow(SwitchId switchId, String flowId) {
+    private UnidirectionalFlow createFlow(SwitchId switchId, String flowId) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
 
         Switch sw = Switch.builder().switchId(switchId).build();
         switchRepository.createOrUpdate(sw);
 
-        FlowPairRepository flowPairRepository = repositoryFactory.createFlowPairRepository();
-        FlowPair flowPair = new FlowPair(flowId, sw, 1, 5, sw, 2, 5, 1);
-        flowPair.getForward().setCookie(cookie);
-        flowPair.getForward().setMeterId(456L);
-        flowPairRepository.createOrUpdate(flowPair);
-        return flowPair;
+        UnidirectionalFlow flow = new TestFlowBuilder(flowId)
+                .srcSwitch(sw)
+                .srcPort(1)
+                .srcVlan(5)
+                .destSwitch(sw)
+                .destPort(2)
+                .destVlan(5)
+                .unmaskedCookie(1)
+                .meterId(456)
+                .buildUnidirectionalFlow();
+
+        FlowRepository flowRepository = repositoryFactory.createFlowRepository();
+        flowRepository.createOrUpdate(flow.getFlow());
+        return flow;
     }
 
     private void sendStatsMessage(InfoData infoData) throws IOException {

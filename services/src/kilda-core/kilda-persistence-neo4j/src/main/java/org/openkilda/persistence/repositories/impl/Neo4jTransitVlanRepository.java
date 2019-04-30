@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Neo4J OGM implementation of {@link TransitVlanRepository}.
+ * Neo4j OGM implementation of {@link TransitVlanRepository}.
  */
 public class Neo4jTransitVlanRepository extends Neo4jGenericRepository<TransitVlan> implements TransitVlanRepository {
     static final String PATH_ID_PROPERTY_NAME = "path_id";

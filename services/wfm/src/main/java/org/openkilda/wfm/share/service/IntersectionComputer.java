@@ -54,7 +54,7 @@ public class IntersectionComputer {
      */
     public IntersectionComputer(String mainFlowId, Collection<FlowPath> flowPaths) {
         List<Edge> mainFlow = flowPaths.stream()
-                .filter(e -> e.getFlowId().equals(mainFlowId))
+                .filter(e -> e.getFlow().getFlowId().equals(mainFlowId))
                 .flatMap(flowPath -> flowPath.getSegments().stream())
                 .map(Edge::fromPathSegment)
                 .collect(toList());
@@ -66,11 +66,11 @@ public class IntersectionComputer {
 
         otherEdges = new HashMap<>();
         flowPaths.stream()
-                .filter(e -> !e.getFlowId().equals(mainFlowId))
+                .filter(e -> !e.getFlow().getFlowId().equals(mainFlowId))
                 .forEach(flowPath -> {
-                    List<Edge> edges = otherEdges.getOrDefault(flowPath.getFlowId(), new ArrayList<>());
+                    List<Edge> edges = otherEdges.getOrDefault(flowPath.getFlow().getFlowId(), new ArrayList<>());
                     flowPath.getSegments().forEach(segment -> edges.add(Edge.fromPathSegment(segment)));
-                    otherEdges.put(flowPath.getFlowId(), edges);
+                    otherEdges.put(flowPath.getFlow().getFlowId(), edges);
                 });
     }
 

@@ -19,17 +19,18 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.share.flow.TestFlowBuilder;
 
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.UUID;
+import java.util.List;
 
 public class IntersectionComputerTest {
     private static final SwitchId SWITCH_ID_A = new SwitchId("00:00:00:00:00:00:00:0A");
@@ -124,13 +125,11 @@ public class IntersectionComputerTest {
     }
 
     private FlowPath getFlowPath(String flowId) {
-        FlowPath flowPath = FlowPath.builder()
-                .flowId(flowId)
-                .pathId(new PathId(UUID.randomUUID().toString()))
+        Flow flow = new TestFlowBuilder(flowId)
                 .srcSwitch(Switch.builder().switchId(SWITCH_ID_A).build())
                 .destSwitch(Switch.builder().switchId(SWITCH_ID_D).build())
-                .segments(new ArrayList<>())
                 .build();
+        FlowPath flowPath = flow.getForwardPath();
         addPathSegment(flowPath, SWITCH_ID_A, SWITCH_ID_B, 1, 1);
         addPathSegment(flowPath, SWITCH_ID_B, SWITCH_ID_A, 1, 1);
         addPathSegment(flowPath, SWITCH_ID_B, SWITCH_ID_C, 2, 2);
@@ -142,13 +141,15 @@ public class IntersectionComputerTest {
         Switch srcSwitch = Switch.builder().switchId(srcDpid).build();
         Switch dstSwitch = Switch.builder().switchId(dstDpid).build();
 
-        flowPath.getSegments().add(PathSegment.builder()
-                .pathId(flowPath.getPathId())
+        List<PathSegment> segments = new ArrayList<>(flowPath.getSegments());
+        segments.add(PathSegment.builder()
+                .path(flowPath)
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
                 .srcPort(srcPort)
                 .destPort(dstPort)
                 .build());
+        flowPath.setSegments(segments);
     }
 }
 
