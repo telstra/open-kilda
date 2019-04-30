@@ -33,7 +33,6 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
-import net.floodlightcontroller.packet.PacketParsingException;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.easymock.EasyMockRunner;
@@ -138,7 +137,7 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
     }
 
     @Test
-    public void testSignPacketMissedSign() throws PacketParsingException, FloodlightModuleException {
+    public void testSignPacketMissedSign() {
         replay(producerService);
 
         OFPacketOut noSignPacket = pvs.generateVerificationPacket(sw1, OFPort.of(1), false, null);
@@ -152,7 +151,7 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
     }
 
     @Test
-    public void testSignPacketInvalidSign() throws PacketParsingException, FloodlightModuleException {
+    public void testSignPacketInvalidSign() throws FloodlightModuleException {
         replay(producerService);
 
         pvs.initAlgorithm("secret2");
