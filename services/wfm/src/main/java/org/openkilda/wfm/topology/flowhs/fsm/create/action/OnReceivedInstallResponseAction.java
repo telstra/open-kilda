@@ -55,7 +55,7 @@ public class OnReceivedInstallResponseAction extends AnonymousAction<FlowCreateF
     void handleResponse(FlowCreateFsm stateMachine, FlowResponse response) {
         long cookie = getCookieForCommand(stateMachine, response.getCommandId());
         if (response.isSuccess()) {
-            log.debug("Rule %s was installed successfully on switch %s", cookie, response.getSwitchId());
+            log.debug("Rule {} was installed successfully on switch {}", cookie, response.getSwitchId());
             sendHistoryUpdate(stateMachine, "Rule installed",
                     format("Rule was installed successfully: cookie %s, switch %s", cookie, response.getSwitchId()));
         } else {

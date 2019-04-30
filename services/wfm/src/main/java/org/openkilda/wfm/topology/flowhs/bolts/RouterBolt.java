@@ -43,7 +43,7 @@ public class RouterBolt extends AbstractBolt {
             return;
         }
 
-        String key = input.getStringByField(MessageTranslator.KEY_FIELD);
+        String key = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
         if (StringUtils.isBlank(key)) {
             key = UUID.randomUUID().toString();
         }

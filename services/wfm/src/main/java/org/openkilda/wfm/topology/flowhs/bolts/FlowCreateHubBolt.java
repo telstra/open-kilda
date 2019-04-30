@@ -55,7 +55,6 @@ public class FlowCreateHubBolt extends HubBolt {
         this.persistenceManager = persistenceManager;
         this.pathComputerConfig = pathComputerConfig;
         this.flowResourcesConfig = flowResourcesConfig;
-        this.service = new FlowCreateService(persistenceManager, pathComputerConfig, flowResourcesConfig);
     }
 
     @Override

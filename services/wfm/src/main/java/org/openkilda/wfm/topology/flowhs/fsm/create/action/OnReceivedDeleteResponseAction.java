@@ -38,7 +38,7 @@ public class OnReceivedDeleteResponseAction extends OnReceivedInstallResponseAct
 
         RemoveRule removeRule = stateMachine.getRemoveCommands().get(commandId);
         if (response.isSuccess()) {
-            log.debug("Received successful response after deletion %s from the switch %s",
+            log.debug("Received response after deletion {} from the switch {}",
                     removeRule.getCookie(), response.getSwitchId());
             sendHistoryUpdate(stateMachine, "Rule deleted: switch %s, cookie %s.",
                     format("Rule %s was deleted from the switch %s", removeRule.getCookie(), removeRule.getSwitchId()));

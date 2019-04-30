@@ -15,6 +15,7 @@
 
 package org.openkilda.model;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Value;
 
 import java.io.Serializable;
@@ -70,6 +71,11 @@ public final class MeterId implements Comparable<MeterId>, Serializable {
         }
 
         return new MeterId((int) (cookie & METER_ID_DEFAULT_RULE_MASK));
+    }
+
+    @JsonValue
+    public long getValue() {
+        return value;
     }
 
     @Override

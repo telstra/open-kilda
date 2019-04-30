@@ -15,6 +15,7 @@
 
 package org.openkilda.model;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Value;
 
 import java.io.Serializable;
@@ -58,6 +59,11 @@ public class Cookie implements Comparable<Cookie>, Serializable {
 
     public static boolean isDefaultRule(long cookie) {
         return (cookie & DEFAULT_RULES_MASK) != 0L;
+    }
+
+    @JsonValue
+    public long getValue() {
+        return value;
     }
 
     @Override
