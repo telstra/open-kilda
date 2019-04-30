@@ -19,7 +19,6 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
-import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -37,11 +36,10 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.Collection;
 import java.util.Map;
 
 @Slf4j
-public class RerouteBolt extends AbstractBolt {
+public class RerouteBolt extends AbstractBolt implements MessageSender {
 
     public static final String FLOW_ID_FIELD = "flow-id";
     public static final String THROTTLING_DATA_FIELD = "throttling-data";
@@ -74,40 +72,26 @@ public class RerouteBolt extends AbstractBolt {
 
         if (commandData instanceof RerouteAffectedFlows) {
             RerouteAffectedFlows rerouteAffectedFlows = (RerouteAffectedFlows) commandData;
-            PathNode pathNode = rerouteAffectedFlows.getPathNode();
-            Collection<Flow> affectedFlows
-                    = rerouteService.getAffectedFlows(pathNode.getSwitchId(), pathNode.getPortNo());
-
-            emitRerouteCommands(tuple, affectedFlows, message.getCorrelationId(),
-                    rerouteAffectedFlows.getReason());
-
+            rerouteService.rerouteAffectedFlows(this, message.getCorrelationId(), rerouteAffectedFlows);
         } else if (commandData instanceof RerouteInactiveFlows) {
             RerouteInactiveFlows rerouteInactiveFlows = (RerouteInactiveFlows) commandData;
-            Collection<Flow> inactiveFlows = rerouteService.getInactiveFlows();
-
-            emitRerouteCommands(tuple, inactiveFlows, message.getCorrelationId(),
-                    rerouteInactiveFlows.getReason());
-
+            rerouteService.rerouteInactiveFlows(this, message.getCorrelationId(), rerouteInactiveFlows);
         } else {
             log.warn("Skip undefined message type {}", message);
         }
 
     }
 
-    private void emitRerouteCommands(Tuple tuple, Collection<Flow> flows,
-                                     String correlationId, String reason) {
-        for (Flow flow : flows) {
-
-            getOutput().emit(tuple, new Values(flow.getFlowId(),
-                    new FlowThrottlingData(correlationId, flow.getPriority(), flow.getTimeCreate())));
-
-            log.warn("Flow {} reroute command message sent with correlationId {}, reason \"{}\"",
-                    flow.getFlowId(), correlationId, reason);
-        }
-    }
-
     @Override
     public void declareOutputFields(OutputFieldsDeclarer output) {
         output.declare(new Fields(FLOW_ID_FIELD, THROTTLING_DATA_FIELD));
+    }
+
+    @Override
+    public void sendRerouteCommand(String correlationId, Flow flow, String reason) {
+        getOutput().emit(getCurrentTuple(), new Values(flow.getFlowId(),
+                new FlowThrottlingData(correlationId, flow.getPriority(), flow.getTimeCreate())));
+        log.warn("Flow {} reroute command message sent with correlationId {}, reason \"{}\"",
+                flow.getFlowId(), correlationId, reason);
     }
 }

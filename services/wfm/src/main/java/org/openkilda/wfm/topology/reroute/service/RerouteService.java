@@ -15,10 +15,14 @@
 
 package org.openkilda.wfm.topology.reroute.service;
 
+import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
+import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.Flow;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.topology.reroute.bolts.MessageSender;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,6 +35,48 @@ public class RerouteService {
 
     public RerouteService(RepositoryFactory repositoryFactory) {
         this.flowRepository = repositoryFactory.createFlowRepository();
+    }
+
+    /**
+     * Handles reroute for failed isl case.
+     * @param sender transport carrier
+     * @param correlationId original correlation id
+     * @param rerouteAffectedFlows command payload
+     */
+    public void rerouteAffectedFlows(MessageSender sender, String correlationId,
+                                     RerouteAffectedFlows rerouteAffectedFlows) {
+        PathNode pathNode = rerouteAffectedFlows.getPathNode();
+        SwitchId switchId = pathNode.getSwitchId();
+        int port = pathNode.getPortNo();
+        Collection<Flow> affectedFlows
+                = getAffectedFlows(switchId, port);
+        for (Flow flow : affectedFlows) {
+            if (flow.isPinned()) {
+                log.info("Skipping reroute command for pinned flow {}", flow.getFlowId());
+            } else {
+                sender.sendRerouteCommand(correlationId, flow, rerouteAffectedFlows.getReason());
+            }
+        }
+
+    }
+
+    /**
+     * Handles reroute for up isl case.
+     * @param sender transport carrier
+     * @param correlationId original correlation id
+     * @param rerouteInactiveFlows command payload
+     */
+    public void rerouteInactiveFlows(MessageSender sender, String correlationId,
+                                     RerouteInactiveFlows rerouteInactiveFlows) {
+        Collection<Flow> inactiveFlows = getInactiveFlows();
+        for (Flow flow : inactiveFlows) {
+            if (flow.isPinned()) {
+                log.info("Skipping reroute command for pinned flow {}", flow.getFlowId());
+            } else {
+                sender.sendRerouteCommand(correlationId, flow, rerouteInactiveFlows.getReason());
+            }
+        }
+
     }
 
     /**

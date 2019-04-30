@@ -139,13 +139,16 @@ public class Flow implements Serializable {
     @Convert(InstantStringConverter.class)
     private Instant timeModify;
 
+    @Property(name = "pinned")
+    private boolean pinned;
+
     @Builder(toBuilder = true)
     public Flow(@NonNull String flowId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
                 int srcPort, int srcVlan, int destPort, int destVlan,
                 String groupId, long bandwidth, boolean ignoreBandwidth, String description, boolean periodicPings,
                 FlowEncapsulationType encapsulationType, FlowStatus status,
                 Integer maxLatency, Integer priority,
-                Instant timeCreate, Instant timeModify) {
+                Instant timeCreate, Instant timeModify, boolean pinned) {
         this.flowId = flowId;
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
@@ -164,6 +167,7 @@ public class Flow implements Serializable {
         this.priority = priority;
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
+        this.pinned = pinned;
     }
 
     /**
