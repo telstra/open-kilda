@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.topology.reroute.service;
 
+import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
+import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
@@ -23,6 +26,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.topology.reroute.bolts.MessageSender;
 
 import lombok.extern.slf4j.Slf4j;
 
