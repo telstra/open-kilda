@@ -29,11 +29,14 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput;
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring", imports = FlowEndpointPayload.class)
+@Mapper(componentModel = "spring", imports = {FlowEndpointPayload.class, FlowEndpointV2.class})
 public interface FlowMapper {
     @Mapping(target = "id", source = "flowId")
     @Mapping(target = "source",
@@ -47,7 +50,26 @@ public interface FlowMapper {
     @Mapping(target = "created", source = "createdTime")
     FlowPayload toFlowOutput(FlowDto f);
 
+    @Mapping(target = "source",
+            expression = "java(new FlowEndpointV2(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
+    @Mapping(target = "destination",
+            expression = "java(new FlowEndpointV2(f.getDestinationSwitch(), f.getDestinationPort(), "
+                    + "f.getDestinationVlan()))")
+    @Mapping(target = "maximumBandwidth", source = "bandwidth")
+    @Mapping(target = "status", source = "state")
+    @Mapping(target = "created", source = "createdTime")
+    FlowResponseV2 toFlowResponseV2(FlowDto f);
+
     FlowDto toFlowDto(FlowPatchDto flowPatchDto);
+
+    @Mapping(target = "sourceSwitch", expression = "java(request.getSource().getSwitchId())")
+    @Mapping(target = "destinationSwitch", expression = "java(request.getDestination().getSwitchId())")
+    @Mapping(target = "sourcePort", expression = "java(request.getSource().getPortNumber())")
+    @Mapping(target = "destinationPort", expression = "java(request.getDestination().getPortNumber())")
+    @Mapping(target = "sourceVlan", expression = "java(request.getSource().getVlanId())")
+    @Mapping(target = "destinationVlan", expression = "java(request.getDestination().getVlanId())")
+    @Mapping(target = "bandwidth", source = "maximumBandwidth")
+    FlowDto toFlowDto(FlowRequestV2 request);
 
     PingOutput toPingOutput(FlowPingResponse response);
 

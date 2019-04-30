@@ -29,6 +29,8 @@ import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -44,6 +46,14 @@ public interface FlowService {
      * @return created flow
      */
     CompletableFuture<FlowPayload> createFlow(final FlowCreatePayload flow);
+
+    /**
+     * Creates new flow.
+     *
+     * @param flow flow
+     * @return created flow
+     */
+    CompletableFuture<FlowResponseV2> createFlow(final FlowRequestV2 flow);
 
     /**
      * Deletes flow.
