@@ -1,4 +1,4 @@
-.isl_switch_icon, .refresh_toggle, .switch_icon,.affected-isl,.import-setting {
+.isl_switch_icon, .refresh_toggle, .switch_icon,.affected-isl,.import-setting,.export-setting {
     font-size: 20px;
     margin-right: 20px;
     margin-top: -4px;
@@ -7,14 +7,14 @@
     color: #1b1f26;
     position: relative;
 }
-.export-setting{
+/* .export-setting{
     font-size: 20px;
     margin:0px,12px;
     cursor: pointer;
-    bottom: -5px;
+    bottom: -2px;
     color: #1b1f26;
     position: relative;
-}
+} */
 
 
 .isl_flow_switch {

@@ -78,6 +78,8 @@ export class ImportTopologySettingComponent implements OnInit {
       .subscribe(() => {
         this.toastr.success("Setting saved successfully!");
         this.modalService.dismissAll();
+        let url = "topology";
+        window.location.href = url;
       }, error => {
 
       });

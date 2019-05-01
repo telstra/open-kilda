@@ -34,7 +34,7 @@ export class ExportTopologySettingComponent implements OnInit {
   copyToClip() {
     let dataToCopy  = JSON.stringify(this.settings);
     this.clipboardService.copyFromContent(dataToCopy);
-    this.toastr.success('copied');
+    this.toastr.success('Copied');
   }
 
 }

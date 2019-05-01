@@ -9,10 +9,15 @@
      <div class="col-sm-12">
          <a [href]="downloadCoordinatesHref" download="topologysetting.json" class="btn btn-sm btn-dark" >Save to .json file</a>
          <button type="button"  class="btn btn-dark ml-3" (click)="enableViewJson()">View JSON</button>
-         <button type="button" *ngIf="viewJson" class="btn btn-dark ml-3" (click)="copyToClip()">Copy to Clipboard</button>
-        <pre *ngIf="viewJson" class="code mt-3">{{settings | json}}</pre>
+         <pre [contextMenu]="copyJsonSetting" *ngIf="viewJson" class="code mt-3">{{settings | json}}</pre>
       </div>
   </div>
   </div>
+
+  <context-menu #copyJsonSetting>
+    <ng-template contextMenuItem (execute)="copyToClip();">
+      Copy to Clipboard
+    </ng-template>
+  </context-menu>
 
  

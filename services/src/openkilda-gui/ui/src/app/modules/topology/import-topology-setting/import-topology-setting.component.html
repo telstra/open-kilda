@@ -10,8 +10,8 @@
 <div class="modal-body">
 <div class="row">
   <form  [formGroup]="importsettingForm" id="importsetting" (ngSubmit)="submitForm()" novalidate #importsetting="ngForm" enctype="multipart/form-data" class="w-100">
-    <div *ngIf="!importsettingForm.controls['files'].value && !importsettingForm.controls['jsondata'].value && formSubmitted " class="invalid-feedback mb-3"> You should either provide a json file or paste json string in textarea.</div>  
-    <div *ngIf="(importsettingForm.controls['files'].value || importsettingForm.controls['jsondata'].value) && invalidJson && formSubmitted" class="invalid-feedback mb-3">The json in the file or textarea should be a valid json!</div>
+    <div *ngIf="!importsettingForm.controls['files'].value && !importsettingForm.controls['jsondata'].value && formSubmitted " class="invalid-feedback mb-3 ml-3"> You should either provide a json file or paste json string in textarea.</div>  
+    <div *ngIf="(importsettingForm.controls['files'].value || importsettingForm.controls['jsondata'].value) && invalidJson && formSubmitted" class="invalid-feedback mb-3 ml-3">The json in the file or textarea should be a valid json!</div>
     <div class="col-sm-12">
       <div class="upload_file_div">
           <button type="button" [disabled]="importsettingForm.controls['jsondata'].value" class="btn btn-sm btn-dark" (click)="file.click()">Upload .json file</button>
