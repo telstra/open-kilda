@@ -342,7 +342,7 @@ public class FlowService extends BaseFlowService {
 
         UpdatedFlowWithEncapsulation result = updateFlowAndPaths(currentFlow, currentFlow.getFlow(), pathPair, sender);
 
-        log.warn("Rerouted flow with new path: {}", result.getForwardPath());
+        log.warn("Rerouted flow {} with new path: {}", flowId, result.getForwardPath());
 
         return new ReroutedFlow(
                 buildForwardUnidirectionalFlow(currentFlow),
@@ -456,7 +456,7 @@ public class FlowService extends BaseFlowService {
         transactionManager.doInTransaction(() -> {
             Flow flow = flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
-            log.debug("Updating the status of flow path {} in {}", pathId, flow);
+            log.debug("Updating the status of flow path {} in flow {}", pathId, flow);
 
             FlowPath flowPath = flow.getPaths().stream()
                     .filter(path -> path.getPathId().equals(pathId))

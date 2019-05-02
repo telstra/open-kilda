@@ -15,6 +15,8 @@
 
 package org.openkilda.model;
 
+import lombok.ToString;
+
 import java.io.Serializable;
 
 /**
@@ -22,6 +24,7 @@ import java.io.Serializable;
  *
  * @deprecated Must be replaced with new model entities: {@link org.openkilda.model.Flow}
  */
+@ToString
 @Deprecated
 public class FlowPair implements Serializable {
     private static final long serialVersionUID = 1L;
