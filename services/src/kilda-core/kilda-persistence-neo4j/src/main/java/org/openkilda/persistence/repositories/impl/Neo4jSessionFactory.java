@@ -18,7 +18,7 @@ package org.openkilda.persistence.repositories.impl;
 import org.neo4j.ogm.session.Session;
 
 /**
- * Used to obtain {@link Session} instances for interacting with Neo4J OGM.
+ * Used to obtain {@link Session} instances for interacting with Neo4j OGM.
  */
 public interface Neo4jSessionFactory {
     Session getSession();

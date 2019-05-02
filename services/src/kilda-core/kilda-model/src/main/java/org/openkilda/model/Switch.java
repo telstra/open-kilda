@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -20,28 +20,27 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 import lombok.Setter;
-import lombok.ToString;
 import org.apache.commons.lang3.StringUtils;
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.Index;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.Transient;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
+import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
 import java.io.Serializable;
-import java.util.List;
+import java.time.Instant;
 import java.util.regex.Pattern;
 
 /**
- * Represents information about a switch.
+ * Represents a switch.
  */
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId", "incomingLinks", "outgoingLinks"})
-@ToString(exclude = {"incomingLinks", "outgoingLinks"})
+@EqualsAndHashCode(exclude = {"entityId"})
 @NodeEntity(label = "switch")
 public class Switch implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -54,11 +53,13 @@ public class Switch implements Serializable {
     @Setter(AccessLevel.NONE)
     private Long entityId;
 
+    @NonNull
     @Property(name = "name")
     @Convert(graphPropertyType = String.class)
     @Index(unique = true)
     private SwitchId switchId;
 
+    @NonNull
     @Property(name = "state")
     // Enforce usage of custom converters.
     @Convert(graphPropertyType = String.class)
@@ -83,22 +84,18 @@ public class Switch implements Serializable {
     @Property(name = "under_maintenance")
     private boolean underMaintenance;
 
-    /**
-     * TODO(siakovenko): incomingLinks and outgoingLinks are marked as transient as Neo4j OGM handles load strategy
-     * "depth" improperly: when a relation entity is being loaded, OGM fetches ALL relations of start and end nodes
-     * of the requested relation. Even with the "depth" = 1.
-     * See {@link org.neo4j.ogm.session.request.strategy.impl.SchemaRelationshipLoadClauseBuilder}
-     */
-    @Transient
-    private List<Isl> incomingLinks;
+    @Property(name = "time_create")
+    @Convert(InstantStringConverter.class)
+    private Instant timeCreate;
 
-    @Transient
-    private List<Isl> outgoingLinks;
+    @Property(name = "time_modify")
+    @Convert(InstantStringConverter.class)
+    private Instant timeModify;
 
     @Builder(toBuilder = true)
-    Switch(SwitchId switchId, SwitchStatus status, String address, String hostname, //NOSONAR
-            String controller, String description, boolean underMaintenance,
-            List<Isl> incomingLinks, List<Isl> outgoingLinks) {
+    public Switch(@NonNull SwitchId switchId, SwitchStatus status, String address,
+                  String hostname, String controller, String description, boolean underMaintenance,
+                  Instant timeCreate, Instant timeModify) {
         this.switchId = switchId;
         this.status = status;
         this.address = address;
@@ -106,8 +103,8 @@ public class Switch implements Serializable {
         this.controller = controller;
         this.description = description;
         this.underMaintenance = underMaintenance;
-        this.incomingLinks = incomingLinks;
-        this.outgoingLinks = outgoingLinks;
+        this.timeCreate = timeCreate;
+        this.timeModify = timeModify;
     }
 
     public static boolean isCentecSwitch(String manufacturerDescription) {

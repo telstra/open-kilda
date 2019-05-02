@@ -16,12 +16,12 @@
 package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowSegment;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.impl.AvailableNetwork;
 import org.openkilda.persistence.PersistenceException;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 
@@ -37,18 +37,18 @@ import java.util.stream.Collectors;
 public class AvailableNetworkFactory {
     private PathComputerConfig config;
     private IslRepository islRepository;
-    private FlowSegmentRepository flowSegmentRepository;
+    private FlowPathRepository flowPathRepository;
 
     public AvailableNetworkFactory(PathComputerConfig config, RepositoryFactory repositoryFactory) {
         this.config = config;
         this.islRepository = repositoryFactory.createIslRepository();
-        this.flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
+        this.flowPathRepository = repositoryFactory.createFlowPathRepository();
     }
 
     /**
      * Gets a {@link AvailableNetwork}, built with specified strategy.
      *
-     * @param flow the flow, for which {@link AvailableNetwork} is constructing.
+     * @param flow                        the flow, for which {@link AvailableNetwork} is constructing.
      * @param reuseAllocatedFlowResources reuse resources already allocated by {@param flow}.
      * @return {@link AvailableNetwork} instance.
      */
@@ -60,9 +60,9 @@ public class AvailableNetworkFactory {
     /**
      * Gets a {@link AvailableNetwork}, built with specified buildStrategy.
      *
-     * @param flow the flow, for which {@link AvailableNetwork} is constructing.
+     * @param flow                        the flow, for which {@link AvailableNetwork} is constructing.
      * @param reuseAllocatedFlowResources reuse resources already allocated by {@param flow}.
-     * @param buildStrategy the {@link AvailableNetwork} building buildStrategy.
+     * @param buildStrategy               the {@link AvailableNetwork} building buildStrategy.
      * @return {@link AvailableNetwork} instance
      */
     public AvailableNetwork getAvailableNetwork(
@@ -86,14 +86,14 @@ public class AvailableNetworkFactory {
         if (flow.getGroupId() != null) {
             log.info("Filling AvailableNetwork diverse weighs for group with id ", flow.getGroupId());
 
-            Collection<FlowSegment> flowGroupSegments = flowSegmentRepository.findByFlowGroupId(flow.getGroupId());
+            Collection<FlowPath> flowPaths = flowPathRepository.findByFlowGroupId(flow.getGroupId());
             if (reuseAllocatedFlowResources) {
-                flowGroupSegments = flowGroupSegments.stream()
-                        .filter(s -> !s.getFlowId().equals(flow.getFlowId()))
+                flowPaths = flowPaths.stream()
+                        .filter(s -> !s.getFlow().getFlowId().equals(flow.getFlowId()))
                         .collect(Collectors.toList());
             }
 
-            network.processDiversitySegments(flowGroupSegments, config);
+            flowPaths.forEach(flowPath -> network.processDiversitySegments(flowPath.getSegments(), config));
         }
 
         return network;

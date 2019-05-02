@@ -15,38 +15,35 @@
 
 package org.openkilda.model;
 
-import lombok.Builder;
-import lombok.NonNull;
-import lombok.Value;
-
 import java.io.Serializable;
-import java.time.Instant;
 
 /**
- * A pair (forward & reverse) of flows.
+ * A pair (forward & reverse) of unidirectional flows.
+ *
+ * @deprecated Must be replaced with new model entities: {@link org.openkilda.model.Flow}
  */
-@Value
-@Builder
+@Deprecated
 public class FlowPair implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @NonNull
-    public final Flow forward;
+    public final UnidirectionalFlow forward;
+    public final UnidirectionalFlow reverse;
 
-    @NonNull
-    public final Flow reverse;
+    public FlowPair(Flow flow, TransitVlan forwardTransitVlan, TransitVlan reverseTransitVlan) {
+        forward = new UnidirectionalFlow(flow.getForwardPath(), forwardTransitVlan, true);
+        reverse = new UnidirectionalFlow(flow.getReversePath(), reverseTransitVlan, false);
+    }
+
+    public UnidirectionalFlow getForward() {
+        return forward;
+    }
+
+    public UnidirectionalFlow getReverse() {
+        return reverse;
+    }
 
     public void setStatus(FlowStatus status) {
         forward.setStatus(status);
         reverse.setStatus(status);
-    }
-
-    public void setTimeCreate(Instant timeCreate) {
-        forward.setTimeCreate(timeCreate);
-        reverse.setTimeCreate(timeCreate);
-    }
-
-    public boolean isActive() {
-        return forward.isActive() && reverse.isActive();
     }
 }

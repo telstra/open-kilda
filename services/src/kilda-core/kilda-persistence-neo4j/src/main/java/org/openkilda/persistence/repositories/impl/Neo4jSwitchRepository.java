@@ -34,7 +34,7 @@ import java.util.Collection;
 import java.util.Optional;
 
 /**
- * Neo4J OGM implementation of {@link SwitchRepository}.
+ * Neo4j OGM implementation of {@link SwitchRepository}.
  */
 public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implements SwitchRepository {
     static final String SWITCH_NAME_PROPERTY_NAME = "name";
@@ -52,7 +52,7 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
 
     @Override
     public Optional<Switch> findById(SwitchId switchId) {
-        return findById(getSession(), switchId, DEPTH_LOAD_ENTITY);
+        return findById(getSession(), switchId, getDepthLoadEntity());
     }
 
     private Optional<Switch> findById(Session session, SwitchId switchId, int entityLoadDepth) {
@@ -89,7 +89,12 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
     }
 
     @Override
-    Class<Switch> getEntityType() {
+    public void lockSwitches(Switch... switches) {
+        super.lockSwitches(switches);
+    }
+
+    @Override
+    protected Class<Switch> getEntityType() {
         return Switch.class;
     }
 }

@@ -32,11 +32,11 @@ import org.openkilda.messaging.nbtopology.request.UpdateLinkEnableBfdRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateLinkUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
-import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.Isl;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
@@ -237,7 +237,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                     .map(IslMapper.INSTANCE::map)
                     .collect(Collectors.toList());
 
-            for (IslInfoData isl: responseResult) {
+            for (IslInfoData isl : responseResult) {
                 DeactivateIslInfoData data = new DeactivateIslInfoData(isl.getSource(), isl.getDestination());
                 getOutput().emit(StreamType.DISCO.toString(), getTuple(), new Values(data, getCorrelationId()));
             }
@@ -264,9 +264,9 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                     dstSwitch, dstPort, underMaintenance);
 
             if (underMaintenance && evacuate) {
-                flowOperationsService.getFlowIdsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
+                flowOperationsService.getFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
                         .map(FlowPair::getForward)
-                        .map(Flow::getFlowId).forEach(flowId -> {
+                        .map(UnidirectionalFlow::getFlowId).forEach(flowId -> {
                             FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId);
                             getOutput().emit(StreamType.REROUTE.toString(), getTuple(), new Values(rerouteRequest,
                                     getCorrelationId()));

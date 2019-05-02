@@ -37,7 +37,7 @@ public class Neo4jBfdPortRepositoryTest extends Neo4jBasedTest {
 
     @BeforeClass
     public static void setUp() {
-        repository = new Neo4JBfdPortRepository(neo4jSessionFactory, txManager);
+        repository = new Neo4jBfdPortRepository(neo4jSessionFactory, txManager);
     }
 
     @Test

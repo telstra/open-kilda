@@ -1,27 +1,26 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static org.junit.Assume.assumeTrue
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
-import static spock.util.matcher.HamcrestSupport.expect
-
+import groovy.transform.Memoized
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.meter.MeterEntry
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.info.rule.SwitchFlowEntries
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
-import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
 
 import java.math.RoundingMode
+
+import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.junit.Assume.assumeTrue
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static spock.util.matcher.HamcrestSupport.expect
 
 @Narrative("The test suite checks if traffic meters, including default, are set and deleted in a correct way.")
 class MetersSpec extends BaseSpecification {
@@ -443,7 +442,6 @@ meters in flow rules at all (#flowType flow)"() {
         ]
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2043")
     def "Try to reset meters for unmetered flow"() {
         given: "A flow with the 'bandwidth: 0' and 'ignoreBandwidth: true' fields"
         def availableSwitches = topology.activeSwitches
@@ -457,7 +455,11 @@ meters in flow rules at all (#flowType flow)"() {
 
         when: "Resetting meter burst and rate to default"
         northbound.resetMeters(flow.id)
-//        TODO(andriidovhan) add then and check response: body or message
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Can't update meter: Flow '$flow.id' is unmetered"
 
         then: "Delete the created flow"
         flowHelper.deleteFlow(flow.id)

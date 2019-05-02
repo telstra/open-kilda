@@ -21,7 +21,7 @@ import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.model.FlowPair;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
@@ -58,7 +58,7 @@ public class FlowFetcher extends Abstract {
     public static final String STREAM_ON_DEMAND_RESPONSE_ID = "on_demand_response";
 
     private final PersistenceManager persistenceManager;
-    private transient FlowRepository flowRepository;
+    private transient FlowPairRepository flowPairRepository;
     private FlowsHeap flowsHeap;
 
     public FlowFetcher(PersistenceManager persistenceManager) {
@@ -80,7 +80,7 @@ public class FlowFetcher extends Abstract {
 
     private void handlePeriodicRequest(Tuple input) throws PipelineException {
         log.debug("Handle periodic ping request");
-        final List<BidirectionalFlowDto> flows = flowRepository.findFlowPairsWithPeriodicPingsEnabled().stream()
+        final List<BidirectionalFlowDto> flows = flowPairRepository.findWithPeriodicPingsEnabled().stream()
                 .map(pair -> new BidirectionalFlowDto(FlowMapper.INSTANCE.map(pair)))
                 .collect(Collectors.toList());
 
@@ -102,7 +102,7 @@ public class FlowFetcher extends Abstract {
         FlowPingRequest request = pullOnDemandRequest(input);
         BidirectionalFlowDto flow;
 
-        Optional<FlowPair> flowPair = flowRepository.findFlowPairById(request.getFlowId());
+        Optional<FlowPair> flowPair = flowPairRepository.findById(request.getFlowId());
         if (!flowPair.isPresent()) {
             emitOnDemandResponse(input, request, String.format(
                     "Flow %s does not exist", request.getFlowId()));
@@ -150,7 +150,7 @@ public class FlowFetcher extends Abstract {
 
     @Override
     public void init() {
-        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        flowPairRepository = persistenceManager.getRepositoryFactory().createFlowPairRepository();
         flowsHeap = new FlowsHeap();
     }
 }

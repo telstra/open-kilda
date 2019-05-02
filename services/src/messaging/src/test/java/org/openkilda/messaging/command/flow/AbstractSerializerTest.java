@@ -79,7 +79,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final int TRANSIT_VLAN_ID = 103;
     private static final long BANDWIDTH = 10000L;
     private static final long COOKIE = 0x1L;
-    private static final long METER_ID = 0L;
+    private static final Long METER_ID = null;
     private static final OutputVlanType OUTPUT_VLAN_TYPE = OutputVlanType.REPLACE;
     private static final FlowState FLOW_STATUS = FlowState.UP;
     private static final PortChangeType PORT_CHANGE = PortChangeType.OTHER_UPDATE;

@@ -19,14 +19,12 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.model.Cookie;
-import org.openkilda.model.Flow;
-import org.openkilda.model.FlowSegment;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
@@ -46,24 +44,24 @@ import java.util.stream.Collectors;
 public class ValidationServiceImpl implements ValidationService {
     private static final int METER_BURST_SIZE_EQUALS_EPS = 1;
 
-    private FlowRepository flowRepository;
-    private FlowSegmentRepository flowSegmentRepository;
+    private FlowPathRepository flowPathRepository;
 
     public ValidationServiceImpl(PersistenceManager persistenceManager) {
-        this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        this.flowSegmentRepository = persistenceManager.getRepositoryFactory().createFlowSegmentRepository();
+        this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
     }
 
     @Override
     public ValidateRulesResult validateRules(SwitchId switchId, Set<Long> presentCookies) {
         log.debug("Validating rules on switch {}", switchId);
 
-        Set<Long> expectedCookies = flowSegmentRepository.findByDestSwitchId(switchId).stream()
-                .map(FlowSegment::getCookie)
+        Set<Long> expectedCookies = flowPathRepository.findBySegmentDestSwitch(switchId).stream()
+                .map(FlowPath::getCookie)
+                .map(Cookie::getValue)
                 .collect(Collectors.toSet());
 
-        flowRepository.findBySrcSwitchId(switchId).stream()
-                .map(Flow::getCookie)
+        flowPathRepository.findByEndpointSwitch(switchId).stream()
+                .map(FlowPath::getCookie)
+                .map(Cookie::getValue)
                 .forEach(expectedCookies::add);
 
         presentCookies.removeIf(Cookie::isDefaultRule);
@@ -116,34 +114,34 @@ public class ValidationServiceImpl implements ValidationService {
         List<MeterInfoEntry> properMeters = new ArrayList<>();
         List<MeterInfoEntry> excessMeters = new ArrayList<>();
 
-        Collection<Flow> flows = flowRepository.findBySrcSwitchId(switchId).stream()
-                .filter(flow -> flow.getMeterId() != null)
+        Collection<FlowPath> paths = flowPathRepository.findBySrcSwitch(switchId).stream()
+                .filter(path -> path.getMeterId() != null)
                 .collect(Collectors.toList());
 
-        for (Flow flow: flows) {
-            long calculatedBurstSize = Meter.calculateBurstSize(flow.getBandwidth(), flowMeterMinBurstSizeInKbits,
-                    flowMeterBurstCoefficient, flow.getSrcSwitch().getDescription());
+        for (FlowPath path : paths) {
+            long calculatedBurstSize = Meter.calculateBurstSize(path.getBandwidth(), flowMeterMinBurstSizeInKbits,
+                    flowMeterBurstCoefficient, path.getSrcSwitch().getDescription());
 
-            if (!presentMeterIds.contains(flow.getMeterLongValue())) {
+            if (!presentMeterIds.contains(path.getMeterId().getValue())) {
                 missingMeters.add(MeterInfoEntry.builder()
-                        .meterId(flow.getMeterLongValue())
-                        .cookie(flow.getCookie())
-                        .flowId(flow.getFlowId())
-                        .rate(flow.getBandwidth())
+                        .meterId(path.getMeterId().getValue())
+                        .cookie(path.getCookie().getValue())
+                        .flowId(path.getFlow().getFlowId())
+                        .rate(path.getBandwidth())
                         .burstSize(calculatedBurstSize)
                         .flags(Meter.getMeterFlags())
                         .build());
             }
 
-            for (MeterEntry meter: presentMeters) {
-                if (meter.getMeterId() == flow.getMeterLongValue()) {
-                    if (meter.getRate() == flow.getBandwidth()
+            for (MeterEntry meter : presentMeters) {
+                if (meter.getMeterId() == path.getMeterId().getValue()) {
+                    if (meter.getRate() == path.getBandwidth()
                             && equalsBurstSize(meter.getBurstSize(), calculatedBurstSize)
                             && Arrays.equals(meter.getFlags(), Meter.getMeterFlags())) {
                         properMeters.add(MeterInfoEntry.builder()
                                 .meterId(meter.getMeterId())
-                                .cookie(flow.getCookie())
-                                .flowId(flow.getFlowId())
+                                .cookie(path.getCookie().getValue())
+                                .flowId(path.getFlow().getFlowId())
                                 .rate(meter.getRate())
                                 .burstSize(meter.getBurstSize())
                                 .flags(meter.getFlags())
@@ -152,9 +150,9 @@ public class ValidationServiceImpl implements ValidationService {
                         MeterMisconfiguredInfoEntry actual = new MeterMisconfiguredInfoEntry();
                         MeterMisconfiguredInfoEntry expected = new MeterMisconfiguredInfoEntry();
 
-                        if (meter.getRate() != flow.getBandwidth()) {
+                        if (meter.getRate() != path.getBandwidth()) {
                             actual.setRate(meter.getRate());
-                            expected.setRate(flow.getBandwidth());
+                            expected.setRate(path.getBandwidth());
                         }
                         if (!equalsBurstSize(meter.getBurstSize(), calculatedBurstSize)) {
                             actual.setBurstSize(meter.getBurstSize());
@@ -167,8 +165,8 @@ public class ValidationServiceImpl implements ValidationService {
 
                         misconfiguredMeters.add(MeterInfoEntry.builder()
                                 .meterId(meter.getMeterId())
-                                .cookie(flow.getCookie())
-                                .flowId(flow.getFlowId())
+                                .cookie(path.getCookie().getValue())
+                                .flowId(path.getFlow().getFlowId())
                                 .rate(meter.getRate())
                                 .burstSize(meter.getBurstSize())
                                 .flags(meter.getFlags())
@@ -181,8 +179,9 @@ public class ValidationServiceImpl implements ValidationService {
             }
         }
 
-        List<Long> expectedMeterIds = flows.stream()
-                .map(Flow::getMeterLongValue)
+        List<Long> expectedMeterIds = paths.stream()
+                .map(FlowPath::getMeterId)
+                .map(MeterId::getValue)
                 .collect(Collectors.toList());
 
         for (MeterEntry meterEntry : presentMeters) {

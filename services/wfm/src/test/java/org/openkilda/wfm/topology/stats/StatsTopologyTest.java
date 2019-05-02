@@ -45,6 +45,7 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -55,6 +56,7 @@ import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.EmbeddedNeo4jDatabase;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
+import org.openkilda.wfm.share.flow.TestFlowBuilder;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -67,7 +69,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -113,7 +114,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         Properties configOverlay = new Properties();
         configOverlay.setProperty("neo4j.uri", embeddedNeo4jDb.getConnectionUri());
         configOverlay.setProperty("opentsdb.metric.prefix", METRIC_PREFIX);
-        configOverlay.setProperty("neo4j.indexes.auto", "update");
+        configOverlay.setProperty("neo4j.indexes.auto", "update"); // ask to create indexes/constraints if needed
 
         launchEnvironment.setupOverlay(configOverlay);
 
@@ -154,7 +155,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
         // need clear data in CacheBolt
         for (Flow flow : flowRepository.findAll()) {
-            sendRemoveFlowCommand(flow);
+            sendRemoveFlowCommand(new UnidirectionalFlow(flow.getForwardPath(), null, false));
             flowRepository.delete(flow);
         }
 
@@ -261,8 +262,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     @Test
     public void meterFlowRulesStatsTest() throws IOException {
-
-        Flow flow = createFlow(switchId, flowId);
+        UnidirectionalFlow flow = createFlow(switchId, flowId);
         sendInstallOneSwitchFlowCommand(flow);
 
         MeterStatsEntry meterStats = new MeterStatsEntry(flow.getMeterId(), 500L, 700L);
@@ -294,7 +294,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     @Test
     public void flowStatsTest() throws Exception {
-        Flow flow = createFlow(switchId, flowId);
+        UnidirectionalFlow flow = createFlow(switchId, flowId);
         sendInstallOneSwitchFlowCommand(flow);
 
         FlowStatsEntry flowStats = new FlowStatsEntry((short) 1, cookie, 150L, 300L);
@@ -379,31 +379,25 @@ public class StatsTopologyTest extends AbstractStormTest {
         });
     }
 
-    private Flow createFlow(SwitchId switchId, String flowId) {
+    private UnidirectionalFlow createFlow(SwitchId switchId, String flowId) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
 
-        Switch sw = new Switch();
-        sw.setSwitchId(switchId);
+        Switch sw = Switch.builder().switchId(switchId).build();
         switchRepository.createOrUpdate(sw);
 
-        FlowRepository flowRepository = repositoryFactory.createFlowRepository();
-        Flow flow = new Flow();
-        flow.setFlowId(flowId);
-        flow.setCookie(cookie);
-        flow.setMeterId(456);
-        flow.setTransitVlan(1);
-        flow.setSrcSwitch(sw);
-        flow.setSrcPort(1);
-        flow.setSrcVlan(5);
-        flow.setDestSwitch(sw);
-        flow.setDestPort(2);
-        flow.setDestVlan(5);
-        flow.setBandwidth(200);
-        flow.setIgnoreBandwidth(true);
-        flow.setDescription("description");
-        flow.setTimeModify(Instant.EPOCH);
+        UnidirectionalFlow flow = new TestFlowBuilder(flowId)
+                .srcSwitch(sw)
+                .srcPort(1)
+                .srcVlan(5)
+                .destSwitch(sw)
+                .destPort(2)
+                .destVlan(5)
+                .unmaskedCookie(1)
+                .meterId(456)
+                .buildUnidirectionalFlow();
 
-        flowRepository.createOrUpdate(flow);
+        FlowRepository flowRepository = repositoryFactory.createFlowRepository();
+        flowRepository.createOrUpdate(flow.getFlow());
         return flow;
     }
 
@@ -413,13 +407,13 @@ public class StatsTopologyTest extends AbstractStormTest {
         sendMessage(infoMessage, statsTopologyConfig.getKafkaStatsTopic());
     }
 
-    private void sendRemoveFlowCommand(Flow flow) throws IOException {
+    private void sendRemoveFlowCommand(UnidirectionalFlow flow) throws IOException {
         RemoveFlow removeFlow = new RemoveFlow(TRANSACTION_ID, flow.getFlowId(), flow.getCookie(),
-                flow.getSrcSwitch().getSwitchId(), flow.getMeterId().longValue(), null);
+                flow.getSrcSwitch().getSwitchId(), flow.getMeterId(), null);
         sendFlowCommand(removeFlow);
     }
 
-    private void sendInstallOneSwitchFlowCommand(Flow flow) throws IOException {
+    private void sendInstallOneSwitchFlowCommand(UnidirectionalFlow flow) throws IOException {
         InstallOneSwitchFlow installOneSwitchFlow = new InstallOneSwitchFlow(
                 TRANSACTION_ID,
                 flow.getFlowId(),

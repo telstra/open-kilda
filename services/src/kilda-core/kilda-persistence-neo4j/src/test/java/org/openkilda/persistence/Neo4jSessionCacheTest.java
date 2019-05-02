@@ -19,10 +19,15 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.MeterId;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 
@@ -32,10 +37,13 @@ import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Session;
 
+import java.time.Instant;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 
 public class Neo4jSessionCacheTest extends Neo4jBasedTest {
+    static final String FLOW_ID_PROPERTY_NAME = "flow_id";
     static final String TEST_FLOW_ID = "test_flow";
 
     @Test
@@ -43,7 +51,7 @@ public class Neo4jSessionCacheTest extends Neo4jBasedTest {
         initFlow();
 
         Session session = ((Neo4jSessionFactory) persistenceManager.getTransactionManager()).getSession();
-        Filter flowIdFilter = new Filter("flowid", ComparisonOperator.EQUALS, TEST_FLOW_ID);
+        Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, TEST_FLOW_ID);
         Flow fetchedFlow = session.loadAll(Flow.class, flowIdFilter).iterator().next();
 
         assertEquals(FlowStatus.IN_PROGRESS, fetchedFlow.getStatus());
@@ -60,16 +68,17 @@ public class Neo4jSessionCacheTest extends Neo4jBasedTest {
         initFlow();
 
         Session session = ((Neo4jSessionFactory) persistenceManager.getTransactionManager()).getSession();
-        Filter flowIdFilter = new Filter("flowid", ComparisonOperator.EQUALS, TEST_FLOW_ID);
+        Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, TEST_FLOW_ID);
         Flow fetchedFlow = session.loadAll(Flow.class, flowIdFilter).iterator().next();
 
         assertEquals(FlowStatus.IN_PROGRESS, fetchedFlow.getStatus());
 
-        String query = "MATCH ()-[f:flow{flowid: {flowid}}]->() SET f.status='up' RETURN id(f)";
-        Map<String, Object> parameters = ImmutableMap.of("flowid", TEST_FLOW_ID);
+        String query = "MATCH ()-[:source]-(f:flow {flow_id: {flow_id}})-[:destination]-() "
+                + "SET f.status='up' RETURN id(f)";
+        Map<String, Object> parameters = ImmutableMap.of("flow_id", TEST_FLOW_ID);
         Iterable<Long> flowRelationIds = session.query(Long.class, query, parameters);
         // 'refresh' the Flow entity in OGM cache.
-        flowRelationIds.forEach(session::detachRelationshipEntity);
+        flowRelationIds.forEach(session::detachNodeEntity);
 
         assertEquals(FlowStatus.IN_PROGRESS, fetchedFlow.getStatus());
 
@@ -85,13 +94,14 @@ public class Neo4jSessionCacheTest extends Neo4jBasedTest {
         initFlow();
 
         Session session = ((Neo4jSessionFactory) persistenceManager.getTransactionManager()).getSession();
-        Filter flowIdFilter = new Filter("flowid", ComparisonOperator.EQUALS, TEST_FLOW_ID);
+        Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, TEST_FLOW_ID);
         Flow fetchedFlow = session.loadAll(Flow.class, flowIdFilter).iterator().next();
 
         assertEquals(FlowStatus.IN_PROGRESS, fetchedFlow.getStatus());
 
-        String query = "MATCH ()-[f:flow{flowid: {flowid}}]->() SET f.status='up' RETURN id(f)";
-        Map<String, Object> parameters = ImmutableMap.of("flowid", TEST_FLOW_ID);
+        String query = "MATCH ()-[:source]-(f:flow {flow_id: {flow_id}})-[:destination]-() "
+                + "SET f.status='up' RETURN id(f)";
+        Map<String, Object> parameters = ImmutableMap.of("flow_id", TEST_FLOW_ID);
         Iterable<Long> flowRelationIds = session.query(Long.class, query, parameters);
         // 'refresh' the Flow entity in OGM cache.
         flowRelationIds.forEach(session::detachRelationshipEntity);
@@ -111,12 +121,10 @@ public class Neo4jSessionCacheTest extends Neo4jBasedTest {
     private void initFlow() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
 
-        Switch switchA = new Switch();
-        switchA.setSwitchId(new SwitchId(1));
+        Switch switchA = buildTestSwitch(1);
         repositoryFactory.createSwitchRepository().createOrUpdate(switchA);
 
-        Switch switchB = new Switch();
-        switchB.setSwitchId(new SwitchId(2));
+        Switch switchB = buildTestSwitch(2);
         repositoryFactory.createSwitchRepository().createOrUpdate(switchB);
 
         Flow flow = Flow.builder()
@@ -125,8 +133,40 @@ public class Neo4jSessionCacheTest extends Neo4jBasedTest {
                 .srcPort(1)
                 .destSwitch(switchB)
                 .destPort(2)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .status(FlowStatus.IN_PROGRESS)
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
                 .build();
+
+        FlowPath forwardPath = FlowPath.builder()
+                .pathId(new PathId(TEST_FLOW_ID + "_forward_path"))
+                .flow(flow)
+                .cookie(new Cookie(1))
+                .meterId(new MeterId(1))
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .status(FlowPathStatus.ACTIVE)
+                .segments(Collections.emptyList())
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
+        flow.setForwardPath(forwardPath);
+
+        FlowPath reversePath = FlowPath.builder()
+                .pathId(new PathId(TEST_FLOW_ID + "_reverse_path"))
+                .flow(flow)
+                .cookie(new Cookie(2))
+                .meterId(new MeterId(2))
+                .srcSwitch(switchB)
+                .destSwitch(switchA)
+                .status(FlowPathStatus.ACTIVE)
+                .segments(Collections.emptyList())
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
+        flow.setReversePath(reversePath);
+
         repositoryFactory.createFlowRepository().createOrUpdate(flow);
     }
 }

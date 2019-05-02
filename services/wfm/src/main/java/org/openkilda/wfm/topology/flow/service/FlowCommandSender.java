@@ -15,22 +15,21 @@
 
 package org.openkilda.wfm.topology.flow.service;
 
-import org.openkilda.wfm.topology.flow.model.FlowPairWithSegments;
-import org.openkilda.wfm.topology.flow.model.UpdatedFlowPairWithSegments;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.CommandGroup;
+
+import java.util.List;
 
 public interface FlowCommandSender {
     /**
-     * Constructs and sends the install rule commands for the given flow pair.
+     * Sends commands (install rule, remove rule, etc.) for the given flow.
+     *
+     * @param flowId            the flow to which the commands belongs to.
+     * @param commandGroups     grouped commands to be sent for execution.
+     * @param onSuccessCommands commands to be executed if commandGroups is successfully completed.
+     * @param onFailureCommands commands to be executed if execution of commandGroups failed.
      */
-    void sendInstallRulesCommand(FlowPairWithSegments flowPair);
-
-    /**
-     * Constructs and sends the update (or install + delete) rule commands for the given flow pair.
-     */
-    void sendUpdateRulesCommand(UpdatedFlowPairWithSegments flowPair);
-
-    /**
-     * Constructs and sends the remove rule commands for the given flow pair.
-     */
-    void sendRemoveRulesCommand(FlowPairWithSegments flowPair);
+    void sendFlowCommands(String flowId, List<CommandGroup> commandGroups,
+                          List<? extends CommandData> onSuccessCommands,
+                          List<? extends CommandData> onFailureCommands);
 }
