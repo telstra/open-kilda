@@ -36,10 +36,9 @@ import org.neo4j.ogm.cypher.Filters;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 /**
- * Neo4J OGM implementation of {@link IslRepository}.
+ * Neo4j OGM implementation of {@link IslRepository}.
  */
 public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements IslRepository {
     private static final String SRC_PORT_PROPERTY_NAME = "src_port";
@@ -123,8 +122,8 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                 "switch_status", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
                 "isl_status", islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
 
-        String query = "MATCH ()-[fp:flow_path {flow_id: $flow_id}]->() "
-                + "MATCH (src:switch)-[ps:path_segment {path_id: fp.path_id}]->(dst:switch) "
+        String query = "MATCH (:flow {flow_id: $flow_id})-[:owns]-(fp:flow_path)-[:owns]-(ps:path_segment) "
+                + "MATCH (src:switch)-[:source]-(ps)-[:destination]-(dst:switch) "
                 + "MATCH (src)-[link:isl]->(dst) "
                 + "WHERE src.state = $switch_status AND dst.state = $switch_status AND link.status = $isl_status "
                 + " AND link.src_port = ps.src_port AND link.dst_port = ps.dst_port "
@@ -175,7 +174,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     @Override
     public void createOrUpdate(Isl link) {
         transactionManager.doInTransaction(() -> {
-            lockSwitches(Stream.of(link.getSrcSwitch(), link.getDestSwitch()));
+            lockSwitches(link.getSrcSwitch(), link.getDestSwitch());
 
             super.createOrUpdate(link);
         });

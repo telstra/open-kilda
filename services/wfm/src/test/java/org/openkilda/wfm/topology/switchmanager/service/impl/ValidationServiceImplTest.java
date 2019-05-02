@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
@@ -208,6 +209,10 @@ public class ValidationServiceImplTest {
             when(flowPathA.getBandwidth()).thenReturn(10000L);
             when(flowPathA.getCookie()).thenReturn(new Cookie(1));
             when(flowPathA.getMeterId()).thenReturn(new MeterId(32L));
+
+            Flow flow = mock(Flow.class);
+            when(flow.getFlowId()).thenReturn("test_flow");
+            when(flowPathA.getFlow()).thenReturn(flow);
 
             when(flowPathRepository.findBySrcSwitch(eq(SWITCH_ID_B))).thenReturn(singletonList(flowPathA));
 

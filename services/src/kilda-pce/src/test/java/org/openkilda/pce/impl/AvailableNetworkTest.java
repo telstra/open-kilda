@@ -17,10 +17,13 @@ package org.openkilda.pce.impl;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -36,6 +39,7 @@ import org.junit.Test;
 
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 public class AvailableNetworkTest {
     private static PathComputerConfig config = new PropertiesBasedConfigurationProvider()
@@ -136,8 +140,8 @@ public class AvailableNetworkTest {
         addLink(network, DST_SWITCH, SRC_SWITCH, 1, 3, cost, 5);
 
         network.processDiversitySegments(
-                asList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 3, 1, 0),
-                        buildPathSegment(DST_SWITCH, SRC_SWITCH, 1, 3, 0)),
+                asList(buildPathWithSegment(SRC_SWITCH, DST_SWITCH, 3, 1, 0),
+                        buildPathWithSegment(DST_SWITCH, SRC_SWITCH, 1, 3, 0)),
                 config);
         network.reduceByWeight(weightFunction);
 
@@ -207,7 +211,7 @@ public class AvailableNetworkTest {
         addLink(network, SRC_SWITCH, DST_SWITCH,
                 7, 60, 10, 3);
         network.processDiversitySegments(
-                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 0)),
+                singletonList(buildPathWithSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 0)),
                 config);
 
         Node srcSwitch = network.getSwitch(SRC_SWITCH);
@@ -225,7 +229,7 @@ public class AvailableNetworkTest {
         addLink(network, SRC_SWITCH, DST_SWITCH,
                 7, 60, 10, 3);
         network.processDiversitySegments(
-                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 1)),
+                singletonList(buildPathWithSegment(SRC_SWITCH, DST_SWITCH, 7, 60, 1)),
                 config);
 
         Node srcSwitch = network.getSwitch(SRC_SWITCH);
@@ -243,7 +247,7 @@ public class AvailableNetworkTest {
         addLink(network, SRC_SWITCH, DST_SWITCH,
                 7, 60, 10, 3);
         network.processDiversitySegments(
-                singletonList(buildPathSegment(SRC_SWITCH, DST_SWITCH, 1, 2, 0)),
+                singletonList(buildPathWithSegment(SRC_SWITCH, DST_SWITCH, 1, 2, 0)),
                 config);
 
         Node srcSwitch = network.getSwitch(SRC_SWITCH);
@@ -272,19 +276,26 @@ public class AvailableNetworkTest {
         network.addLink(isl);
     }
 
-    private PathSegment buildPathSegment(SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort, int seqId) {
+    private PathSegment buildPathWithSegment(SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort, int seqId) {
         Switch srcSwitch = Switch.builder().switchId(srcDpid).build();
         Switch dstSwitch = Switch.builder().switchId(dstDpid).build();
 
-        PathSegment segment = PathSegment.builder()
+        FlowPath flowPath = FlowPath.builder()
+                .flow(new Flow())
                 .pathId(new PathId(UUID.randomUUID().toString()))
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
-                .srcPort(srcPort)
-                .destPort(dstPort)
                 .build();
-        //TODO: seqId is specific for Neo4j implementation of FlowPath and shouldn't be used outside.
-        segment.setSeqId(seqId);
-        return segment;
+
+        flowPath.setSegments(IntStream.rangeClosed(0, seqId)
+                .mapToObj(i -> PathSegment.builder()
+                        .path(flowPath)
+                        .srcSwitch(srcSwitch)
+                        .destSwitch(dstSwitch)
+                        .srcPort(srcPort)
+                        .destPort(dstPort)
+                        .build())
+                .collect(toList()));
+        return flowPath.getSegments().get(seqId);
     }
 }

@@ -22,7 +22,7 @@ import org.neo4j.ogm.config.Configuration.Builder;
 import org.neo4j.ogm.session.SessionFactory;
 
 /**
- * Neo4J OGM implementation of {@link PersistenceManager}.
+ * Neo4j OGM implementation of {@link PersistenceManager}.
  */
 public class Neo4jPersistenceManager implements PersistenceManager {
     private final Neo4jConfig config;

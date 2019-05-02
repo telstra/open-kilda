@@ -24,6 +24,7 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.IslStatus;
@@ -245,8 +246,7 @@ public class DatabaseSupportImpl implements Database {
      */
     @Override
     public int countFlows() {
-        //TODO(siakovenko): non optimal and a dedicated method for counting must be introduced.
-        return flowRepository.findAll().size();
+        return (int) flowRepository.countFlows();
     }
 
     /**
@@ -309,21 +309,16 @@ public class DatabaseSupportImpl implements Database {
      * Update flow bandwidth.
      *
      * @param flowId flow ID
-     * @param newBw new bandwidth to be set
+     * @param newBw  new bandwidth to be set
      */
     @Override
     public void updateFlowBandwidth(String flowId, long newBw) {
-        FlowPair flowPair = flowPairRepository.findById(flowId)
+        Flow flow = flowRepository.findById(flowId)
                 .orElseThrow(() -> new RuntimeException(format("Unable to find Flow for %s", flowId)));
-        flowPair.getForward().setBandwidth(newBw);
-        flowPair.getReverse().setBandwidth(newBw);
-        flowPairRepository.createOrUpdate(flowPair);
-        //flow path
-        Collection<FlowPath> flowPaths = flowPathRepository.findByFlowId(flowId);
-        flowPaths.forEach(p -> {
-            p.setBandwidth(newBw);
-            flowPathRepository.createOrUpdate(p);
-        });
+        flow.setBandwidth(newBw);
+        flow.getForwardPath().setBandwidth(newBw);
+        flow.getReversePath().setBandwidth(newBw);
+        flowRepository.createOrUpdate(flow);
     }
 
     @Override

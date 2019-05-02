@@ -28,7 +28,7 @@ import org.neo4j.ogm.transaction.Transaction.Status;
 import java.util.Optional;
 
 /**
- * Neo4J OGM implementation of {@link TransactionManager}. Manages transaction boundaries.
+ * Neo4j OGM implementation of {@link TransactionManager}. Manages transaction boundaries.
  */
 @Slf4j
 final class Neo4jTransactionManager implements TransactionManager, Neo4jSessionFactory {

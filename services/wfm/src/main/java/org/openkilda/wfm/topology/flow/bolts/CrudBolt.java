@@ -407,7 +407,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
             saveHistory("Flow creating", flow.getFlowId(), "", message.getCorrelationId(), tuple);
 
-            FlowPair createdFlow = flowService.createFlow(flow.getFlowEntity(),
+            FlowPair createdFlow = flowService.createFlow(flow.getFlow(),
                     request.getDiverseFlowId(),
                     new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.CREATE));
 
@@ -473,30 +473,33 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
 
+        UnidirectionalFlow forward = flowPair.forward;
+        UnidirectionalFlow reverse = flowPair.reverse;
+
         FlowDump flowDump = FlowDump.builder()
                 .taskId(correlationId)
-                .flowId(flowPair.forward.getFlowId())
+                .flowId(forward.getFlowId())
                 .type(type)
-                .bandwidth(flowPair.forward.getBandwidth())
-                .ignoreBandwidth(flowPair.forward.isIgnoreBandwidth())
-                .forwardCookie(flowPair.forward.getCookie())
-                .reverseCookie(flowPair.reverse.getCookie())
-                .sourceSwitch(flowPair.forward.getSrcSwitch().getSwitchId())
-                .destinationSwitch(flowPair.forward.getDestSwitch().getSwitchId())
-                .sourcePort(flowPair.forward.getSrcPort())
-                .destinationPort(flowPair.forward.getDestPort())
-                .sourceVlan(flowPair.forward.getSrcVlan())
-                .destinationVlan(flowPair.forward.getDestVlan())
-                .forwardMeterId(flowPair.forward.getMeterId())
-                .reverseMeterId(flowPair.reverse.getMeterId())
+                .bandwidth(forward.getBandwidth())
+                .ignoreBandwidth(forward.isIgnoreBandwidth())
+                .forwardCookie(forward.getCookie())
+                .reverseCookie(reverse.getCookie())
+                .sourceSwitch(forward.getSrcSwitch().getSwitchId())
+                .destinationSwitch(forward.getDestSwitch().getSwitchId())
+                .sourcePort(forward.getSrcPort())
+                .destinationPort(forward.getDestPort())
+                .sourceVlan(forward.getSrcVlan())
+                .destinationVlan(forward.getDestVlan())
+                .forwardMeterId(forward.getMeterId())
+                .reverseMeterId(reverse.getMeterId())
                 .forwardPath(
                         objectMapper.writeValueAsString(
-                                FlowPathMapper.INSTANCE.mapToPathNodes(flowPair.forward)))
+                                FlowPathMapper.INSTANCE.mapToPathNodes(forward.getFlowPath())))
                 .reversePath(
                         objectMapper.writeValueAsString(
-                                FlowPathMapper.INSTANCE.mapToPathNodes(flowPair.reverse)))
-                .forwardStatus(flowPair.forward.getStatus())
-                .reverseStatus(flowPair.reverse.getStatus())
+                                FlowPathMapper.INSTANCE.mapToPathNodes(reverse.getFlowPath())))
+                .forwardStatus(forward.getStatus())
+                .reverseStatus(reverse.getStatus())
                 .build();
         outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowDump));
     }
@@ -552,7 +555,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             saveHistory("Flow updating", flow.getFlowId(), "", message.getCorrelationId(), tuple);
             saveHistory(flowService.getFlowPair(flow.getFlowId()), "stateBefore", message.getCorrelationId(), tuple);
 
-            FlowPair updatedFlow = flowService.updateFlow(flow.getFlowEntity(),
+            FlowPair updatedFlow = flowService.updateFlow(flow.getFlow(),
                     request.getDiverseFlowId(),
                     new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.UPDATE));
 

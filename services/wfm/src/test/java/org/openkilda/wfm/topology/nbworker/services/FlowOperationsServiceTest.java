@@ -17,28 +17,28 @@ package org.openkilda.wfm.topology.nbworker.services;
 
 import static org.junit.Assert.assertEquals;
 
-import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.UnidirectionalFlow;
-import org.openkilda.persistence.repositories.FlowPairRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
 import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.share.flow.TestFlowBuilder;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class FlowOperationsServiceTest extends Neo4jBasedTest {
     private static FlowOperationsService flowOperationsService;
-    private static FlowPairRepository flowPairRepository;
+    private static FlowRepository flowRepository;
     private static SwitchRepository switchRepository;
 
     @BeforeClass
     public static void setUpOnce() {
-        flowPairRepository = persistenceManager.getRepositoryFactory().createFlowPairRepository();
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         flowOperationsService = new FlowOperationsService(persistenceManager.getRepositoryFactory(),
                 persistenceManager.getTransactionManager());
@@ -60,21 +60,45 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         switchB.setStatus(SwitchStatus.ACTIVE);
         switchRepository.createOrUpdate(switchB);
 
-        FlowPair flowPair = new FlowPair(testFlowId, switchA, 1, 10, switchB, 2, 11, 1);
-        flowPair.setStatus(FlowStatus.UP);
-        flowPairRepository.createOrUpdate(flowPair);
+        UnidirectionalFlow flow = new TestFlowBuilder()
+                .flowId(testFlowId)
+                .srcSwitch(switchA)
+                .srcPort(1)
+                .srcVlan(10)
+                .destSwitch(switchB)
+                .destPort(2)
+                .destVlan(11)
+                .buildUnidirectionalFlow();
+        flow.setStatus(FlowStatus.UP);
+        flowRepository.createOrUpdate(flow.getFlow());
 
-        FlowPair receivedFlow = new FlowPair(testFlowId, switchA, 1, 10, switchB, 2, 11, 1);
-        receivedFlow.getForward().setMaxLatency(maxLatency);
-        receivedFlow.getForward().setPriority(priority);
+        UnidirectionalFlow receivedFlow = new TestFlowBuilder()
+                .flowId(testFlowId)
+                .srcSwitch(switchA)
+                .srcPort(1)
+                .srcVlan(10)
+                .destSwitch(switchB)
+                .destPort(2)
+                .destVlan(11)
+                .maxLatency(maxLatency)
+                .priority(priority)
+                .buildUnidirectionalFlow();
 
-        UnidirectionalFlow updatedFlow = flowOperationsService.updateFlow(receivedFlow.getForward());
+        UnidirectionalFlow updatedFlow = flowOperationsService.updateFlow(receivedFlow);
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
 
-        receivedFlow = new FlowPair(testFlowId, switchA, 1, 10, switchB, 2, 11, 1);
-        updatedFlow = flowOperationsService.updateFlow(receivedFlow.getForward());
+        receivedFlow = new TestFlowBuilder()
+                .flowId(testFlowId)
+                .srcSwitch(switchA)
+                .srcPort(1)
+                .srcVlan(10)
+                .destSwitch(switchB)
+                .destPort(2)
+                .destVlan(11)
+                .buildUnidirectionalFlow();
+        updatedFlow = flowOperationsService.updateFlow(receivedFlow);
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
