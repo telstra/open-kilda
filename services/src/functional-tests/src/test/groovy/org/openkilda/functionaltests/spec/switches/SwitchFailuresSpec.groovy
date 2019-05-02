@@ -49,7 +49,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
 
         and: "ISL fails after discovery timeout"
-        //TODO(rtretiak): Using big timeout here. This is an abnormal behavior, currently investigating.
+        //TODO(rtretiak): Using big timeout here. This is an abnormal behavior
         Wrappers.wait(untilIslShouldFail() / 1000 + WAIT_OFFSET * 1.5) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
@@ -91,9 +91,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         then: "The flow is UP and valid"
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-            northbound.validateFlow(flow.id).each { direction ->
-                assert direction.discrepancies.findAll { it.field != "meterId" }.empty
-            }
+            northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
         }
 
         and: "Rules are valid on the knocked out switch"
@@ -136,9 +134,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         then: "The flow is UP and valid"
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-            northbound.validateFlow(flow.id).each { direction ->
-                assert direction.discrepancies.findAll { it.field != "meterId" }.empty
-            }
+            northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
         }
 
         and: "Rules are valid on the knocked out switch"

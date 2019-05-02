@@ -480,6 +480,7 @@ class SwitchValidationSpec extends BaseSpecification {
         producer.send(new ProducerRecord(flowTopic, switchPair.src.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), flow.id, 1L, switchPair.src.dpId, 1, 2, 1, 1,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId)).toJson()))
+        producer.flush()
 
         then: "System detects excess rules and store them in the 'excess' section"
         def newCookiesSize = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
@@ -529,6 +530,9 @@ class SwitchValidationSpec extends BaseSpecification {
                 verifyMeterSectionsAreEmpty(switchValidateInfo)
             }
         }
+
+        cleanup:
+        producer && producer.close()
     }
 
     @Memoized

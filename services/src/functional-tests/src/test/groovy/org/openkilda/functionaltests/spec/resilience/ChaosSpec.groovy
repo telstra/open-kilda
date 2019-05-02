@@ -17,6 +17,8 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 
+import java.util.concurrent.TimeUnit
+
 @Slf4j
 @Narrative("Test system behavior under different factors or events that randomly appear across the topology")
 class ChaosSpec extends BaseSpecification {
@@ -54,10 +56,11 @@ class ChaosSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET + antiflapCooldown) {
             northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.empty
         }
+        TimeUnit.SECONDS.sleep(rerouteDelay) //all throttled reroutes should start executing
         Wrappers.wait(WAIT_OFFSET + flowsAmount) {
             flows.each { flow ->
-                validateFlow(flow.id)
                 assert northbound.getFlowStatus(flow.id).status == FlowState.UP
+                northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
                 bothDirectionsHaveSamePath(northbound.getFlowPath(flow.id))
             }
         }
@@ -65,26 +68,14 @@ class ChaosSpec extends BaseSpecification {
         and: "Cleanup: remove flows and reset costs"
         flows.each { northbound.deleteFlow(it.id) }
         // Wait for meters deletion from all OF_13 switches since it impacts other tests.
-        // Virtual and hardware OF_12 switches don't support meters.
-        profile != "virtual" ? Wrappers.wait(WAIT_OFFSET + flowsAmount * RULES_DELETION_TIME) {
+        Wrappers.wait(WAIT_OFFSET + flowsAmount * RULES_DELETION_TIME) {
             topology.activeSwitches.findAll { it.ofVersion == "OF_13" }.each {
                 assert northbound.getAllMeters(it.dpId).meterEntries.findAll {
                     it.meterId > MAX_SYSTEM_RULE_METER_ID
                 }.empty
             }
-        } : true
-        database.resetCosts()
-    }
-
-    def validateFlow(String flowId) {
-        northbound.validateFlow(flowId).each { direction ->
-            def discrepancies = profile == "virtual" ? //unable to validate meters for virtual
-                    direction.discrepancies.findAll {
-                        it.field != "meterId"
-                    } : direction.discrepancies
-
-            assert discrepancies.empty
         }
+        database.resetCosts()
     }
 
     def bothDirectionsHaveSamePath(FlowPathPayload path) {

@@ -57,12 +57,7 @@ class FlowCrudSpec extends BaseSpecification {
         switches.each { verifySwitchRules(it.dpId) }
 
         and: "No discrepancies when doing flow validation"
-        northbound.validateFlow(flow.id).each { direction ->
-            def discrepancies = profile == "virtual" ?
-                    direction.discrepancies.findAll { it.field != "meterId" } : //unable to validate meters for virtual
-                    direction.discrepancies
-            assert discrepancies.empty
-        }
+        northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
 
         and: "The flow allows traffic (only applicable flows are checked)"
         try {
@@ -198,12 +193,7 @@ class FlowCrudSpec extends BaseSpecification {
         verifySwitchRules(flow.source.datapath)
 
         and: "No discrepancies when doing flow validation"
-        northbound.validateFlow(flow.id).each { direction ->
-            def discrepancies = profile == "virtual" ?
-                    direction.discrepancies.findAll { it.field != "meterId" } : //unable to validate meters for virtual
-                    direction.discrepancies
-            assert discrepancies.empty
-        }
+        northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
 
         when: "Remove the flow"
         flowHelper.deleteFlow(flow.id)
@@ -231,9 +221,7 @@ class FlowCrudSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         then: "Validation of flow with zero bandwidth must be succeed"
-        northbound.validateFlow(flow.id).each { direction ->
-            assert direction.discrepancies.empty
-        }
+        northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
 
         and: "Cleanup: delete the flow"
         flowHelper.deleteFlow(flow.id)

@@ -24,7 +24,6 @@ class IntentionalRerouteSpec extends BaseSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
-    @Ignore("Flow status check fails due to the timeout defined in the test. Must be reconsidered.")
     def "Should not be able to reroute to a path with not enough bandwidth available"() {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -56,14 +55,12 @@ class IntentionalRerouteSpec extends BaseSpecification {
         def rerouteResponse = northbound.rerouteFlow(flow.id)
 
         then: "The flow is NOT rerouted because of not enough bandwidth on alternative paths"
-        int seqId = 0
-
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         !rerouteResponse.rerouted
         rerouteResponse.path.path == currentPath
+        int seqId = 0
         rerouteResponse.path.path.each { assert it.seqId == seqId++ }
-
         PathHelper.convert(northbound.getFlowPath(flow.id)) == currentPath
-        northbound.getFlowStatus(flow.id).status == FlowState.UP
 
         and: "Remove the flow, restore the bandwidth on ISLs, reset costs"
         flowHelper.deleteFlow(flow.id)
@@ -168,6 +165,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         then: "Flow is rerouted"
         reroute.rerouted
         reroute.path.path == potentialNewPath
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Traffic examination result shows acceptable packet loss percentage"
         def examReports = [exam.forward, exam.reverse].collect { traffExam.waitExam(it) }

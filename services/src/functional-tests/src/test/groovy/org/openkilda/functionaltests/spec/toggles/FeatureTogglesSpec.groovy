@@ -27,7 +27,6 @@ class FeatureTogglesSpec extends BaseSpecification {
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
-        //TODO(rtretiak): inappropriate status code. Issue #1920
         e.statusCode == HttpStatus.FORBIDDEN
         e.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not create flow: Feature toggles not enabled for CREATE_FLOW operation."
@@ -55,7 +54,6 @@ class FeatureTogglesSpec extends BaseSpecification {
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
-        //TODO(rtretiak): inappropriate status code. Issue #1920
         e.statusCode == HttpStatus.FORBIDDEN
         e.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not update flow: Feature toggles not enabled for UPDATE_FLOW operation."
@@ -84,7 +82,6 @@ class FeatureTogglesSpec extends BaseSpecification {
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
-        //TODO(rtretiak): inappropriate status code. Issue #1920
         e.statusCode == HttpStatus.FORBIDDEN
         e.responseBodyAsString.to(MessageError).errorMessage ==
                 "Can not delete flow: Feature toggles not enabled for DELETE_FLOW operation."

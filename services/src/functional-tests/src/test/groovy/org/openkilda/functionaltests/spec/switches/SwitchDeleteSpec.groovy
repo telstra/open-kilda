@@ -206,13 +206,13 @@ class SwitchDeleteSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
         // restore ISLs
-        def allSwIsls = swIsls.collectMany { [it, it.reversed] }
-        allSwIsls.each { northbound.portDown(it.srcSwitch.dpId, it.srcPort) }
-        TimeUnit.SECONDS.sleep(antiflapCooldown)
-        allSwIsls.each { northbound.portUp(it.srcSwitch.dpId, it.srcPort) }
+        swIsls.each { northbound.portDown(it.srcSwitch.dpId, it.srcPort) }
+        TimeUnit.SECONDS.sleep(antiflapMin)
+        swIsls.each { northbound.portUp(it.srcSwitch.dpId, it.srcPort) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
-            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
+            swIsls.collectMany { [it, it.reversed] }
+                  .each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
         database.resetCosts()
     }

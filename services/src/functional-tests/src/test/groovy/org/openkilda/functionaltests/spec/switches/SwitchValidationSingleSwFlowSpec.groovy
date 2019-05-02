@@ -380,6 +380,9 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
             verifyMeterSectionsAreEmpty(switchValidateInfoAfterDelete)
         }
 
+        cleanup:
+        producer && producer.close()
+
         where:
         switchType   | switches
         "Centec"     | getCentecSwitches()

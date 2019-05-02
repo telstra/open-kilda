@@ -70,13 +70,11 @@ class StormLcmSpec extends BaseSpecification {
         def newNodes = database.dumpAllNodes()
         def newRelation = database.dumpAllRelations()
         expect newNodes, sameBeanAs(nodesDump)
-        expect newRelation, sameBeanAs(relationsDump).ignoring("time_modify")
+        expect newRelation, sameBeanAs(relationsDump).ignoring("time_modify").ignoring("latency")
 
         and: "Flows remain valid in terms of installed rules and meters"
         flows.each { flow ->
-            northbound.validateFlow(flow.id).each { direction ->
-                assert direction.discrepancies.findAll { it.field != "meterId" }.empty
-            }
+            northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
         }
 
         and: "Flow can be updated"
@@ -84,9 +82,7 @@ class StormLcmSpec extends BaseSpecification {
         //expect enough free vlans here, ignore used switch-ports for simplicity of search
         def unusedVlan = (flowHelper.allowedVlans - flows.collectMany { [it.source.vlanId, it.destination.vlanId] })[0]
         flowHelper.updateFlow(flowToUpdate.id, flowToUpdate.tap { it.source.vlanId = unusedVlan })
-        northbound.validateFlow(flowToUpdate.id).each { direction ->
-            assert direction.discrepancies.findAll { it.field != "meterId" }.empty
-        }
+        northbound.validateFlow(flowToUpdate.id).each { direction -> assert direction.asExpected }
 
         and: "Cleanup: remove flows"
         flows.each { flowHelper.deleteFlow(it.id) }
