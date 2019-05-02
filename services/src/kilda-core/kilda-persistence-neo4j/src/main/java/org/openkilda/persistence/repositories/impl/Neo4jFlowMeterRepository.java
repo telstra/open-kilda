@@ -73,7 +73,7 @@ public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> 
                 + "RETURN meter "
                 + "UNION ALL "
                 + "MATCH (:switch {name: $switch_id})-[]-(n1:flow_meter) "
-                + "WHERE n1.meter_id > $default_meter "
+                + "WHERE n1.meter_id >= $default_meter "
                 + "OPTIONAL MATCH (:switch {name: $switch_id})-[]-(n2:flow_meter) "
                 + "WHERE (n1.meter_id + 1) = n2.meter_id "
                 + "WITH n1, n2 "

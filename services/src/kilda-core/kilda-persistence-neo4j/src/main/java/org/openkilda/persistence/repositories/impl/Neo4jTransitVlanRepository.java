@@ -62,7 +62,7 @@ public class Neo4jTransitVlanRepository extends Neo4jGenericRepository<TransitVl
                 + "RETURN vlan "
                 + "UNION ALL "
                 + "MATCH (n1:transit_vlan) "
-                + "WHERE n1.vlan > $default_vlan "
+                + "WHERE n1.vlan >= $default_vlan "
                 + "OPTIONAL MATCH (n2:transit_vlan) "
                 + "WHERE (n1.vlan + 1) = n2.vlan "
                 + "WITH n1, n2 "

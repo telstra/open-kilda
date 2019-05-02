@@ -68,7 +68,7 @@ public class Neo4jFlowCookieRepository extends Neo4jGenericRepository<FlowCookie
                 + "RETURN cookie "
                 + "UNION ALL "
                 + "MATCH (n1:flow_cookie) "
-                + "WHERE n1.unmasked_cookie > $default_cookie "
+                + "WHERE n1.unmasked_cookie >= $default_cookie "
                 + "OPTIONAL MATCH (n2:flow_cookie) "
                 + "WHERE (n1.unmasked_cookie + 1) = n2.unmasked_cookie "
                 + "WITH n1, n2 "
