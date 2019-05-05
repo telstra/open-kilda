@@ -9,16 +9,14 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 
-class SwitchMaintenance extends BaseSpecification {
+class SwitchMaintenanceSpec extends BaseSpecification {
 
     @Value('${isl.cost.when.under.maintenance}')
     int islCostWhenUnderMaintenance
@@ -69,16 +67,16 @@ class SwitchMaintenance extends BaseSpecification {
     }
 
     def "Flows can be evacuated (rerouted) from a particular switch when setting maintenance mode for it"() {
-        given: "Two active not neighboring switches with two possible paths at least"        
-        def potentialFlow = topologyHelper.findAllNonNeighbors().find { it.paths.size() > 1 } ?: 
+        given: "Two active not neighboring switches with two possible paths at least"
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)
 
         and: "Create a couple of flows going through these switches"
-        def flow1 = flowHelper.randomFlow(potentialFlow)
+        def flow1 = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
-        def flow2 = flowHelper.randomFlow(potentialFlow)
+        def flow2 = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
 
@@ -125,7 +123,6 @@ class SwitchMaintenance extends BaseSpecification {
 
         and: "Delete the link"
         northbound.deleteLink(islUtils.toLinkParameters(isl))
-        northbound.deleteLink(islUtils.toLinkParameters(isl.reversed))
         assert !islUtils.getIslInfo(isl)
         assert !islUtils.getIslInfo(isl.reversed)
 

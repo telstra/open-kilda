@@ -6,7 +6,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.PotentialFlow
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
@@ -17,7 +17,6 @@ import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
-import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -441,7 +440,6 @@ class FlowCrudSpec extends BaseSpecification {
                 "vlan=${flow."$endpoint".vlanId}"
     }
 
-
     /**
      * Potential flows with more traffgen-available switches will go first. Then the less tg-available switches there is
      * in the pair the lower score that pair will get.
@@ -449,8 +447,8 @@ class FlowCrudSpec extends BaseSpecification {
      * if their uniqueness criteria will be equal.
      */
     @Shared
-    def taffgensPrioritized = { PotentialFlow potentialFlow ->
-        [potentialFlow.src, potentialFlow.dst].count { Switch sw ->
+    def traffgensPrioritized = { SwitchPair switchPair ->
+        [switchPair.src, switchPair.dst].count { Switch sw ->
             !topology.activeTraffGens.find { it.switchConnected == sw }
         }
     }
@@ -460,24 +458,24 @@ class FlowCrudSpec extends BaseSpecification {
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithoutTransitSwitch() {
-        def potentialFlows = topologyHelper.findAllNeighbors().sort(taffgensPrioritized)
+        def switchPairs = topologyHelper.getAllNeighboringSwitchPairs().sort(traffgensPrioritized)
                 .unique { [it.src, it.dst]*.description.sort() }
 
-        return potentialFlows.inject([]) { r, potentialFlow ->
+        return switchPairs.inject([]) { r, switchPair ->
             r << [
                     description: "flow without transit switch and with random vlans",
-                    flow       : flowHelper.randomFlow(potentialFlow)
+                    flow       : flowHelper.randomFlow(switchPair)
             ]
             r << [
                     description: "flow without transit switch and without vlans",
-                    flow       : flowHelper.randomFlow(potentialFlow).tap {
+                    flow       : flowHelper.randomFlow(switchPair).tap {
                         it.source.vlanId = 0
                         it.destination.vlanId = 0
                     }
             ]
             r << [
                     description: "flow without transit switch and vlan only on src",
-                    flow       : flowHelper.randomFlow(potentialFlow).tap { it.destination.vlanId = 0 }
+                    flow       : flowHelper.randomFlow(switchPair).tap { it.destination.vlanId = 0 }
             ]
             r
         }
@@ -488,24 +486,24 @@ class FlowCrudSpec extends BaseSpecification {
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithTransitSwitch() {
-        def potentialFlows = topologyHelper.findAllNonNeighbors().sort(taffgensPrioritized)
+        def switchPairs = topologyHelper.getAllNotNeighboringSwitchPairs().sort(traffgensPrioritized)
                 .unique { [it.src, it.dst]*.description.sort() }
 
-        return potentialFlows.inject([]) { r, potentialFlow ->
+        return switchPairs.inject([]) { r, switchPair ->
             r << [
                     description: "flow with transit switch and random vlans",
-                    flow       : flowHelper.randomFlow(potentialFlow)
+                    flow       : flowHelper.randomFlow(switchPair)
             ]
             r << [
                     description: "flow with transit switch and no vlans",
-                    flow       : flowHelper.randomFlow(potentialFlow).tap {
+                    flow       : flowHelper.randomFlow(switchPair).tap {
                         it.source.vlanId = 0
                         it.destination.vlanId = 0
                     }
             ]
             r << [
                     description: "flow with transit switch and vlan only on dst",
-                    flow       : flowHelper.randomFlow(potentialFlow).tap { it.source.vlanId = 0 }
+                    flow       : flowHelper.randomFlow(switchPair).tap { it.source.vlanId = 0 }
             ]
             r
         }

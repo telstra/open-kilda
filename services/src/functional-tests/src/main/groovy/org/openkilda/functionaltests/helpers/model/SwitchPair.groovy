@@ -6,12 +6,12 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import groovy.transform.Canonical
 
 @Canonical
-class PotentialFlow {
+class SwitchPair {
     Switch src
     Switch dst
     List<List<PathNode>> paths
 
-    static PotentialFlow singleSwitchInstance(Switch sw) {
-        new PotentialFlow(src: sw, dst: sw, paths: [])
+    static SwitchPair singleSwitchInstance(Switch sw) {
+        new SwitchPair(src: sw, dst: sw, paths: [])
     }
 }

@@ -3,7 +3,6 @@ package org.openkilda.functionaltests.spec.network
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.web.client.HttpClientErrorException
 
@@ -11,13 +10,13 @@ class PathsSpec extends BaseSpecification {
 
     def "Get paths between not neighboring switches"() {
         given: "Two active not neighboring switches"
-        def potentialFlow = topologyHelper.findNonNeighbors()
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
 
         and: "Create a flow to reduce available bandwidth on some path between these two switches"
-        def flow = flowHelper.addFlow(flowHelper.randomFlow(potentialFlow))
+        def flow = flowHelper.addFlow(flowHelper.randomFlow(switchPair))
 
         when: "Get paths between switches"
-        def paths = northbound.getPaths(potentialFlow.src.dpId, potentialFlow.dst.dpId)
+        def paths = northbound.getPaths(switchPair.src.dpId, switchPair.dst.dpId)
 
         then: "Paths will be sorted by bandwidth (descending order) and then by latency (ascending order)"
         paths.paths.size() > 0
