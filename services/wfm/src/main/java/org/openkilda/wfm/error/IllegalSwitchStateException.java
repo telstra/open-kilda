@@ -18,7 +18,7 @@ package org.openkilda.wfm.error;
 /**
  * Exception which indicates that some switch operation couldn't be completed because switch is in illegal state.
  */
-public class IllegalSwitchStateException extends AbstractException {
+public class IllegalSwitchStateException extends Exception {
     public IllegalSwitchStateException(String switchId, String message) {
         super(String.format("Switch '%s' is in illegal state. %s", switchId, message));
     }

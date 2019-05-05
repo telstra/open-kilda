@@ -17,7 +17,7 @@ package org.openkilda.wfm.error;
 
 import lombok.Getter;
 
-public class JsonDecodeException extends AbstractException {
+public class JsonDecodeException extends Exception {
     @Getter
     private final String json;
 

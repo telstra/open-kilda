@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.ping.bolt;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.error.PipelineException;
 
@@ -38,7 +37,7 @@ public class OtsdbEncoder extends AbstractBolt {
             FieldNameBasedTupleToKafkaMapper.BOLT_KEY, FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         Datapoint datapoint = pullDatapoint(input);
         String json = encode(datapoint);
 

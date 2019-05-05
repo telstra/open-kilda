@@ -19,7 +19,6 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.share.bolt.KafkaEncoder;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 
@@ -31,7 +30,7 @@ import org.apache.storm.tuple.Values;
 public class MessageEncoder extends KafkaEncoder {
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         MessageData payload = pullPayload(input);
         try {
             Message message = wrap(pullContext(input), payload);
