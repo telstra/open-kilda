@@ -52,6 +52,8 @@ import org.openkilda.northbound.dto.v1.switches.PortDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncRequest;
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 
@@ -253,6 +255,14 @@ public class NorthboundServiceImpl implements NorthboundService {
     public RulesSyncResult synchronizeSwitchRules(SwitchId switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/rules/synchronize", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), RulesSyncResult.class, switchId).getBody();
+    }
+
+    @Override
+    public SwitchSyncResult synchronizeSwitch(SwitchId switchId, boolean removeExcess) {
+        HttpEntity<SwitchSyncRequest> httpEntity = new HttpEntity<>(new SwitchSyncRequest(removeExcess),
+                buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/synchronize", HttpMethod.POST, httpEntity,
+                SwitchSyncResult.class, switchId).getBody();
     }
 
     @Override
