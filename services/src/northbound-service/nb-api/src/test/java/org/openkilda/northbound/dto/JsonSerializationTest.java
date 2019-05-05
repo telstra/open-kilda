@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -126,7 +126,8 @@ public class JsonSerializationTest {
 
     @Test
     public void switchDtoTest() throws IOException {
-        SwitchDto dto = new SwitchDto(SWITCH_ID, "address-test", "host", "desc", "state", false);
+        SwitchDto dto = new SwitchDto(SWITCH_ID, "address-test", "host", "desc", "state", false, "of_version",
+                "manufacturer", "hardware", "software", "serial_number");
         assertEquals(dto, pass(dto, SwitchDto.class));
     }
 

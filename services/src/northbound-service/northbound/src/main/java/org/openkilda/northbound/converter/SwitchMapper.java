@@ -37,7 +37,34 @@ import org.mapstruct.Mapper;
 @Mapper(componentModel = "spring")
 public interface SwitchMapper {
 
-    SwitchDto toSwitchDto(SwitchInfoData data);
+    /**
+     * Convert {@link SwitchInfoData} to {@link SwitchDto}.
+     */
+    default SwitchDto toSwitchDto(SwitchInfoData data) {
+        if (data == null) {
+            return null;
+        }
+        SwitchDto dto = SwitchDto.builder()
+                .switchId(data.getSwitchId().toString())
+                .address(data.getAddress())
+                .hostname(data.getHostname())
+                .description(data.getDescription())
+                .state(data.getState().toString())
+                .underMaintenance(data.isUnderMaintenance())
+                .build();
+
+        if (data.getSwitchView() != null) {
+            dto.setOfVersion(data.getSwitchView().getOfVersion());
+            if (data.getSwitchView().getDescription() != null) {
+                dto.setManufacturer(data.getSwitchView().getDescription().getManufacturer());
+                dto.setHardware(data.getSwitchView().getDescription().getHardware());
+                dto.setSoftware(data.getSwitchView().getDescription().getSoftware());
+                dto.setSerialNumber(data.getSwitchView().getDescription().getSerialNumber());
+            }
+        }
+
+        return dto;
+    }
 
     RulesSyncResult toRulesSyncResult(SyncRulesResponse response);
 
