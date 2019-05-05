@@ -125,7 +125,7 @@ h1 {
 }
 
 .sidebar ul li a i.icon-isl {
-  background: url(assets/images/icon-isl.png) no-repeat 0 0;
+  background: url(assets/images/18x18/link-regular-white.png) no-repeat 0 0;
   background-size: 18px auto;
   display: inline-block;
   width: 18px;
@@ -923,7 +923,7 @@ pre.code {
 
 
 .isl_switch_icon .icon-isl {
-  background: url(assets/images/icon-isl-small.png) no-repeat 0 0;
+  background: url(assets/images/18x18/link-regular-black.png) no-repeat 0 0;
   background-size: 18px auto;
   display: inline-block;
   width: 18px;
@@ -972,6 +972,49 @@ pre.code {
   width: 23px;
   height: 23px;
   margin-bottom: -3px;
+}
+.affected_isl_icon_large{
+  background: url(assets/images/36x36/unlink-regular-black.png) no-repeat 0 0;
+  background-size: 26px auto;
+  display: inline-block;
+  width: 26px;
+  height: 26px;
+}
+
+.import_setting_large{
+  background: url(assets/images/36x36/inbox-in-regular-black.png) no-repeat 0 0;
+  background-size: 26px auto;
+  display: inline-block;
+  width: 26px;
+  height: 26px;
+}
+.export_setting_large{
+  background: url(assets/images/36x36/inbox-out-regular-black.png) no-repeat 0 0;
+  background-size: 26px auto;
+  display: inline-block;
+  width: 29px;
+  height: 26px;
+}
+.affected-isl .icon-affected-isl {
+  background: url(assets/images/18x18/unlink-regular-black.png) no-repeat 0 0;
+  background-size: 18px auto;
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+}
+.import-setting .icon-import-setting {
+  background: url(assets/images/18x18/inbox-in-regular-black.png) no-repeat 0 0;
+  background-size: 18px auto;
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+}
+.export-setting .icon-export-setting {
+  background: url(assets/images/18x18/inbox-out-regular-black.png) no-repeat 0 0;
+  background-size: 18px auto;
+  display: inline-block;
+  width: 18px;
+  height: 18px;
 }
 
 .btn-xsmall {
@@ -2078,5 +2121,9 @@ button:focus{
   to {
     stroke-dashoffset: 0;
   }
+}
+
+.cdk-overlay-container {
+  z-index: 9999!important;
 }
 

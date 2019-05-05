@@ -1,0 +1,35 @@
+<div class="modal-header">
+  <h4 class="modal-title"><span class="import_setting_large"></span>
+    <span class="ml-1">
+        Import Topology Settings
+    </span></h4>
+  <button type="button" class="close" aria-label="Close" (click)="activeModal.dismiss('Cross click')">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+<div class="modal-body">
+<div class="row">
+  <form  [formGroup]="importsettingForm" id="importsetting" (ngSubmit)="submitForm()" novalidate #importsetting="ngForm" enctype="multipart/form-data" class="w-100">
+    <div *ngIf="!importsettingForm.controls['files'].value && !importsettingForm.controls['jsondata'].value && formSubmitted " class="invalid-feedback mb-3 ml-3"> You should either provide a json file or paste json string in textarea.</div>  
+    <div *ngIf="(importsettingForm.controls['files'].value || importsettingForm.controls['jsondata'].value) && invalidJson && formSubmitted" class="invalid-feedback mb-3 ml-3">The json in the file or textarea should be a valid json!</div>
+    <div class="col-sm-12">
+      <div class="upload_file_div">
+          <button type="button" [disabled]="importsettingForm.controls['jsondata'].value" class="btn btn-sm btn-dark" (click)="file.click()">Upload .json file</button>
+           <span *ngIf="importsettingForm.controls['files'].value" class="ml-2" >{{(files && files.length) ?  files[0].name: ''}} <i (click)="emptyFile()" style="position: absolute;" class="close" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+           </i></span>
+            <input id="file" #file type="file" style="visibility:hidden;" formControlName="files" name="files" value="Upload File" (change)="getFile($event)" />
+      </div>
+      <div class="paste_json_div">
+        <div class="form-group">
+              <label class="mt-3 mb-1"> <b>Or Paste</b></label>
+              <textarea style="height:250px; background:#f5f5f5;" (change)="disableField('files','jsondata')" name="jsondata" formControlName="jsondata" class="form-control"></textarea>
+          </div>
+        <div class="form-group">           
+            <button type="submit" class="btn btn-sm btn-dark"> Save </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+</div>
