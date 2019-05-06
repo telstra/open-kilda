@@ -13,13 +13,8 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.messaging.nbtopology.request;
 
-/**
- * Represents flow encapsulation types.
- */
-public enum FlowEncapsulationType {
-    TRANSIT_VLAN,
-    VXLAN
+@SuppressWarnings("squid:MaximumInheritanceDepth")
+public class KildaConfigurationBaseRequest extends BaseRequest {
 }
-
