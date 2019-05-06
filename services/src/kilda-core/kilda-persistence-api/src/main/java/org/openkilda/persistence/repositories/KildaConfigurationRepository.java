@@ -13,13 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.persistence.repositories;
 
-/**
- * Represents flow encapsulation types.
- */
-public enum FlowEncapsulationType {
-    TRANSIT_VLAN,
-    VXLAN
+import org.openkilda.model.KildaConfiguration;
+
+public interface KildaConfigurationRepository extends Repository<KildaConfiguration> {
+
+    KildaConfiguration find();
 }
-
