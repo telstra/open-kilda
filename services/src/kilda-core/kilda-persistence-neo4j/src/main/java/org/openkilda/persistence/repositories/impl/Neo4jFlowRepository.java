@@ -16,7 +16,6 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static java.lang.String.format;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singleton;
 
 import org.openkilda.model.Flow;
@@ -29,15 +28,12 @@ import org.openkilda.persistence.converters.FlowStatusConverter;
 import org.openkilda.persistence.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowRepository;
 
-import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Session;
 
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -133,37 +129,6 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
 
         return Stream.concat(loadAll(srcSwitchFilter).stream(), loadAll(dstSwitchFilter).stream())
                 .collect(Collectors.toList());
-    }
-
-    @Override
-    public Collection<Flow> findActiveFlowsWithPortInPath(SwitchId switchId, int port) {
-        Map<String, Object> parameters = ImmutableMap.of(
-                "switch_id", switchIdConverter.toGraphProperty(switchId),
-                "port", port,
-                "flow_status", flowStatusConverter.toGraphProperty(FlowStatus.UP));
-
-        Set<String> flowIds = new HashSet<>();
-        getSession().query(String.class,
-                "MATCH (src:switch)-[:source]-(f:flow)-[:destination]-(dst:switch) "
-                        + "WHERE (src.name=$switch_id AND f.src_port=$port "
-                        + " OR dst.name=$switch_id AND f.dst_port=$port) "
-                        + " AND (f.status=$flow_status OR f.status IS NULL) "
-                        + "RETURN f.flow_id "
-                        + "UNION ALL "
-                        + "MATCH (src:switch)-[:source]-(ps:path_segment)-[:destination]-(dst:switch) "
-                        + "WHERE src.name=$switch_id AND ps.src_port=$port "
-                        + " OR dst.name=$switch_id AND ps.dst_port=$port "
-                        + "MATCH (f:flow)-[:owns]-(:flow_path)-[:owns]-(ps) "
-                        + "WHERE f.status=$flow_status OR f.status IS NULL "
-                        + "RETURN f.flow_id", parameters).forEach(flowIds::add);
-
-        if (flowIds.isEmpty()) {
-            return emptyList();
-        }
-
-        Filter flowIdsFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.IN, flowIds);
-
-        return loadAll(flowIdsFilter);
     }
 
     @Override

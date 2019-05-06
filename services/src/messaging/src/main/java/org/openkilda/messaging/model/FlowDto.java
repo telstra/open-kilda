@@ -352,6 +352,18 @@ public class FlowDto implements Serializable {
     }
 
     /**
+     * Checks creation params to figure out whether they are aligned or not.
+      * @return validation result
+     */
+    @JsonIgnore
+    public boolean isValid() {
+        if (isAllocateProtectedPath() && isPinned()) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * FlowDto to FlowDto comparison.
      *
      * <p>Ignore fields:

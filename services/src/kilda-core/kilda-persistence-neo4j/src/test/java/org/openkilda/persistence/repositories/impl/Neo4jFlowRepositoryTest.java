@@ -206,37 +206,6 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldActiveFlowsWithPortInPath() {
-        Switch switchC = buildTestSwitch(TEST_SWITCH_C_ID.getId());
-        switchRepository.createOrUpdate(switchC);
-
-        Flow flow = buildTestFlowWithIntermediate(TEST_FLOW_ID, switchA, switchC, 100, switchB);
-        flowRepository.createOrUpdate(flow);
-
-        Collection<Flow> foundFlows = flowRepository.findActiveFlowsWithPortInPath(TEST_SWITCH_C_ID, 100);
-        assertThat(foundFlows, Matchers.hasSize(1));
-    }
-
-    @Test
-    public void shouldFindActiveFlowsByEndpoint() {
-        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
-        flowRepository.createOrUpdate(flow);
-
-        Collection<Flow> foundFlows = flowRepository.findActiveFlowsWithPortInPath(TEST_SWITCH_A_ID, 1);
-        assertThat(foundFlows, Matchers.hasSize(1));
-    }
-
-    @Test
-    public void shouldNotFindInactiveFlowsByEndpoint() {
-        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
-        flow.setStatus(FlowStatus.DOWN);
-        flowRepository.createOrUpdate(flow);
-
-        Collection<Flow> foundFlows = flowRepository.findActiveFlowsWithPortInPath(TEST_SWITCH_A_ID, 1);
-        assertThat(foundFlows, Matchers.empty());
-    }
-
-    @Test
     public void shouldFindDownFlowIdsByEndpoint() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flow.setStatus(FlowStatus.DOWN);

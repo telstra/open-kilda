@@ -90,4 +90,18 @@ public class PathSegment implements Serializable {
         this.destPort = destPort;
         this.latency = latency;
     }
+
+    /**
+     * Checks whether endpoint belongs to segment or not.
+     * @param switchId target switch
+     * @param port target port
+     * @return result of check
+     */
+    public boolean containsNode(SwitchId switchId, int port) {
+        if (switchId == null) {
+            throw new IllegalArgumentException("Switch id must be not null");
+        }
+        return  (switchId.equals(srcSwitch.getSwitchId()) && port == srcPort)
+               || (switchId.equals(destSwitch.getSwitchId()) && port == destPort);
+    }
 }
