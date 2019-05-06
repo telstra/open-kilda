@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import org.openkilda.messaging.nbtopology.request.FeatureTogglesBaseRequest;
 import org.openkilda.messaging.nbtopology.request.FlowsBaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.GetPathsRequest;
+import org.openkilda.messaging.nbtopology.request.KildaConfigurationBaseRequest;
 import org.openkilda.messaging.nbtopology.request.LinksBaseRequest;
 import org.openkilda.messaging.nbtopology.request.SwitchesBaseRequest;
 import org.openkilda.wfm.AbstractBolt;
@@ -80,6 +81,8 @@ public class RouterBolt extends AbstractBolt {
             getOutput().emit(StreamType.FLOW.toString(), input, new Values(request, correlationId));
         } else if (request instanceof FeatureTogglesBaseRequest) {
             getOutput().emit(StreamType.FEATURE_TOGGLES.toString(), input, new Values(request, correlationId));
+        } else if (request instanceof KildaConfigurationBaseRequest) {
+            getOutput().emit(StreamType.KILDA_CONFIG.toString(), input, new Values(request, correlationId));
         } else if (request instanceof GetPathsRequest) {
             getOutput().emit(StreamType.PATHS.toString(), input, new Values(request, correlationId));
         } else if (request instanceof GetFlowHistoryRequest) {
@@ -109,6 +112,7 @@ public class RouterBolt extends AbstractBolt {
         declarer.declareStream(StreamType.ISL.toString(), fields);
         declarer.declareStream(StreamType.FLOW.toString(), fields);
         declarer.declareStream(StreamType.FEATURE_TOGGLES.toString(), fields);
+        declarer.declareStream(StreamType.KILDA_CONFIG.toString(), fields);
         declarer.declareStream(StreamType.PATHS.toString(), fields);
         declarer.declareStream(StreamType.HISTORY.toString(), fields);
 
