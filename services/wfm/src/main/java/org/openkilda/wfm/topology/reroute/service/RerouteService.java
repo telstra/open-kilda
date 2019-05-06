@@ -19,6 +19,10 @@ import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.FlowStatus;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -48,17 +52,34 @@ public class RerouteService {
         PathNode pathNode = rerouteAffectedFlows.getPathNode();
         SwitchId switchId = pathNode.getSwitchId();
         int port = pathNode.getPortNo();
-        Collection<Flow> affectedFlows
-                = getAffectedFlows(switchId, port);
-        for (Flow flow : affectedFlows) {
-            if (flow.isPinned()) {
-                log.info("Skipping reroute command for pinned flow {}", flow.getFlowId());
-            } else {
-                sender.sendRerouteCommand(correlationId, flow, rerouteAffectedFlows.getReason());
-            }
+        Collection<Flow> affectedUnpinnedFlows
+                = getAffectedUnpinnedFlows(switchId, port);
+        for (Flow flow : affectedUnpinnedFlows) {
+            sender.sendRerouteCommand(correlationId, flow, rerouteAffectedFlows.getReason());
         }
-
+        Collection<Flow> affectedPinnedFlows = getAffectedPinnedFlows(switchId, port);
+        for (Flow flow : affectedPinnedFlows) {
+            for (FlowPath fp : flow.getPaths()) {
+                boolean failedFlowPath = false;
+                for (PathSegment pathSegment : fp.getSegments()) {
+                    if (pathSegment.getSrcPort() == port
+                            && switchId.equals(pathSegment.getSrcSwitch().getSwitchId())
+                            || (pathSegment.getDestPort() == port
+                            && switchId.equals(pathSegment.getDestSwitch().getSwitchId()))) {
+                        pathSegment.setFailed(true);
+                        failedFlowPath = true;
+                        break;
+                    }
+                }
+                if (failedFlowPath) {
+                    fp.setStatus(FlowPathStatus.INACTIVE);
+                }
+            }
+            flow.setStatus(FlowStatus.DOWN);
+            flowRepository.createOrUpdate(flow);
+        }
     }
+
 
     /**
      * Handles reroute for up isl case.
@@ -69,14 +90,41 @@ public class RerouteService {
     public void rerouteInactiveFlows(MessageSender sender, String correlationId,
                                      RerouteInactiveFlows rerouteInactiveFlows) {
         Collection<Flow> inactiveFlows = getInactiveFlows();
+        PathNode pathNode = rerouteInactiveFlows.getPathNode();
+        SwitchId switchId = pathNode.getSwitchId();
+        int port = pathNode.getPortNo();
         for (Flow flow : inactiveFlows) {
             if (flow.isPinned()) {
+                int failedFlowPathsCount = 0;
+                for (FlowPath flowPath: flow.getPaths()) {
+                    int failedSegmentsCount = 0;
+                    for (PathSegment pathSegment: flowPath.getSegments()) {
+                        if (pathSegment.isFailed()) {
+                            if (pathSegment.containsNode(switchId, port)) {
+                                pathSegment.setFailed(false);
+                            } else {
+                                failedSegmentsCount++;
+                            }
+                        }
+                    }
+                    if (flowPath.getStatus().equals(FlowPathStatus.INACTIVE)) {
+                        if (failedSegmentsCount == 0) {
+                            flowPath.setStatus(FlowPathStatus.ACTIVE);
+                        } else {
+                            failedFlowPathsCount++;
+                        }
+                    }
+
+                }
+                if (failedFlowPathsCount == 0) {
+                    flow.setStatus(FlowStatus.UP);
+                }
+                flowRepository.createOrUpdate(flow);
                 log.info("Skipping reroute command for pinned flow {}", flow.getFlowId());
             } else {
                 sender.sendRerouteCommand(correlationId, flow, rerouteInactiveFlows.getReason());
             }
         }
-
     }
 
     /**
@@ -86,9 +134,21 @@ public class RerouteService {
      * @param port     port.
      * @return set of active flows with affected path.
      */
-    public Collection<Flow> getAffectedFlows(SwitchId switchId, int port) {
-        log.info("Get affected flows by node {}_{}", switchId, port);
-        return flowRepository.findActiveFlowsWithPortInPath(switchId, port);
+    public Collection<Flow> getAffectedUnpinnedFlows(SwitchId switchId, int port) {
+        log.info("Get affected unpinned flows by node {}_{}", switchId, port);
+        return flowRepository.findActiveUnpinnedFlowsWithPortInPath(switchId, port);
+    }
+
+    /**
+     * Get set of active flows with affected path.
+     *
+     * @param switchId switch id.
+     * @param port     port.
+     * @return set of active flows with affected path.
+     */
+    public Collection<Flow> getAffectedPinnedFlows(SwitchId switchId, int port) {
+        log.info("Get affected pinned flows by node {}_{}", switchId, port);
+        return flowRepository.findActivePinnedFlowsWithPortInPath(switchId, port);
     }
 
     /**

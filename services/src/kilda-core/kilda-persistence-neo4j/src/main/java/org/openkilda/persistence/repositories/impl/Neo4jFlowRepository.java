@@ -29,6 +29,7 @@ import org.openkilda.persistence.converters.FlowStatusConverter;
 import org.openkilda.persistence.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowRepository;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
 import org.neo4j.ogm.cypher.ComparisonOperator;
@@ -136,12 +137,14 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public Collection<Flow> findActiveFlowsWithPortInPath(SwitchId switchId, int port) {
+    @VisibleForTesting
+    Collection<Flow> findActiveFlowsWithPortInPath(SwitchId switchId, int port, boolean pinned,
+                                                                   int depth) {
         Map<String, Object> parameters = ImmutableMap.of(
                 "switch_id", switchIdConverter.toGraphProperty(switchId),
                 "port", port,
-                "flow_status", flowStatusConverter.toGraphProperty(FlowStatus.UP));
+                "flow_status", flowStatusConverter.toGraphProperty(FlowStatus.UP),
+                "pinned", pinned);
 
         Set<String> flowIds = new HashSet<>();
         getSession().query(String.class,
@@ -149,13 +152,15 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                         + "WHERE (src.name=$switch_id AND f.src_port=$port "
                         + " OR dst.name=$switch_id AND f.dst_port=$port) "
                         + " AND (f.status=$flow_status OR f.status IS NULL) "
+                        + " AND f.pinned = $pinned "
                         + "RETURN f.flow_id "
                         + "UNION ALL "
                         + "MATCH (src:switch)-[:source]-(ps:path_segment)-[:destination]-(dst:switch) "
                         + "WHERE src.name=$switch_id AND ps.src_port=$port "
                         + " OR dst.name=$switch_id AND ps.dst_port=$port "
                         + "MATCH (f:flow)-[:owns]-(:flow_path)-[:owns]-(ps) "
-                        + "WHERE f.status=$flow_status OR f.status IS NULL "
+                        + "WHERE (f.status=$flow_status OR f.status IS NULL) "
+                        + "AND f.pinned = $pinned "
                         + "RETURN f.flow_id", parameters).forEach(flowIds::add);
 
         if (flowIds.isEmpty()) {
@@ -164,7 +169,17 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
 
         Filter flowIdsFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.IN, flowIds);
 
-        return loadAll(flowIdsFilter);
+        return loadAll(flowIdsFilter, depth);
+    }
+
+    @Override
+    public Collection<Flow> findActiveUnpinnedFlowsWithPortInPath(SwitchId switchId, int port) {
+        return findActiveFlowsWithPortInPath(switchId, port, false, 0);
+    }
+
+    @Override
+    public Collection<Flow> findActivePinnedFlowsWithPortInPath(SwitchId switchId, int port) {
+        return findActiveFlowsWithPortInPath(switchId, port, true, getDepthLoadEntity());
     }
 
     @Override

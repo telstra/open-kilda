@@ -96,6 +96,10 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
         return getSession().loadAll(getEntityType(), filter, getDepthLoadEntity());
     }
 
+    protected Collection<T> loadAll(Filter filter, int depth) {
+        return getSession().loadAll(getEntityType(), filter, depth);
+    }
+
     protected Collection<T> loadAll(Filters filters) {
         return getSession().loadAll(getEntityType(), filters, getDepthLoadEntity());
     }

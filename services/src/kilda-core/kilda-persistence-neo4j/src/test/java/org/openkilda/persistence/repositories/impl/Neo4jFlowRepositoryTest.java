@@ -16,7 +16,9 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
@@ -206,33 +208,83 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
-    public void shouldActiveFlowsWithPortInPath() {
+    public void shouldFindActiveUnpinnedFlowsWithPortInPath() {
         Switch switchC = buildTestSwitch(TEST_SWITCH_C_ID.getId());
         switchRepository.createOrUpdate(switchC);
 
         Flow flow = buildTestFlowWithIntermediate(TEST_FLOW_ID, switchA, switchC, 100, switchB);
         flowRepository.createOrUpdate(flow);
 
-        Collection<Flow> foundFlows = flowRepository.findActiveFlowsWithPortInPath(TEST_SWITCH_C_ID, 100);
+        Collection<Flow> foundFlows = flowRepository.findActiveUnpinnedFlowsWithPortInPath(TEST_SWITCH_C_ID, 100);
+
         assertThat(foundFlows, Matchers.hasSize(1));
+        Flow foundFlow = foundFlows.toArray(new Flow[0])[0];
+        assertFalse(foundFlow.isPinned());
+        assertNull(foundFlow.getSrcSwitch());
     }
 
     @Test
-    public void shouldFindActiveFlowsByEndpoint() {
+    public void shouldFindActivePinnedFlowsWithPortInPath() {
+        Switch switchC = buildTestSwitch(TEST_SWITCH_C_ID.getId());
+        switchRepository.createOrUpdate(switchC);
+
+        Flow flow = buildTestFlowWithIntermediate(TEST_FLOW_ID, switchA, switchC, 100, switchB);
+        flow.setPinned(true);
+        flowRepository.createOrUpdate(flow);
+
+        Collection<Flow> foundFlows = flowRepository.findActivePinnedFlowsWithPortInPath(TEST_SWITCH_C_ID, 100);
+
+        assertThat(foundFlows, Matchers.hasSize(1));
+        Flow foundFlow = foundFlows.toArray(new Flow[0])[0];
+        assertTrue(foundFlow.isPinned());
+        assertNotNull(foundFlow.getSrcSwitch());
+    }
+
+    @Test
+    public void shouldFindActiveUnpinnedFlowsByEndpoint() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flowRepository.createOrUpdate(flow);
 
-        Collection<Flow> foundFlows = flowRepository.findActiveFlowsWithPortInPath(TEST_SWITCH_A_ID, 1);
+        Collection<Flow> foundFlows = flowRepository.findActiveUnpinnedFlowsWithPortInPath(TEST_SWITCH_A_ID, 1);
+        Flow foundFlow = foundFlows.toArray(new Flow[0])[0];
         assertThat(foundFlows, Matchers.hasSize(1));
+
+        assertFalse(foundFlow.isPinned());
+        assertNull(foundFlow.getSrcSwitch());
     }
 
     @Test
-    public void shouldNotFindInactiveFlowsByEndpoint() {
+    public void shouldFindActivePinnedFlowsByEndpoint() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flow.setPinned(true);
+        flowRepository.createOrUpdate(flow);
+
+        Collection<Flow> foundFlows = flowRepository.findActivePinnedFlowsWithPortInPath(TEST_SWITCH_A_ID, 1);
+        Flow foundFlow = foundFlows.toArray(new Flow[0])[0];
+        assertThat(foundFlows, Matchers.hasSize(1));
+
+        assertTrue(foundFlow.isPinned());
+        assertNotNull(foundFlow.getSrcSwitch());
+    }
+
+    @Test
+    public void shouldNotFindInactiveUnpinnedFlowsByEndpoint() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flow.setStatus(FlowStatus.DOWN);
         flowRepository.createOrUpdate(flow);
 
-        Collection<Flow> foundFlows = flowRepository.findActiveFlowsWithPortInPath(TEST_SWITCH_A_ID, 1);
+        Collection<Flow> foundFlows = flowRepository.findActiveUnpinnedFlowsWithPortInPath(TEST_SWITCH_A_ID, 1);
+        assertThat(foundFlows, Matchers.empty());
+    }
+
+    @Test
+    public void shouldNotFindInactivePinnedFlowsByEndpoint() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flow.setStatus(FlowStatus.DOWN);
+        flow.setPinned(true);
+        flowRepository.createOrUpdate(flow);
+
+        Collection<Flow> foundFlows = flowRepository.findActivePinnedFlowsWithPortInPath(TEST_SWITCH_A_ID, 1);
         assertThat(foundFlows, Matchers.empty());
     }
 

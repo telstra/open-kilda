@@ -104,6 +104,10 @@ public class UnidirectionalFlow implements Serializable {
         return getFlow().getStatus();
     }
 
+    public boolean isPinned() {
+        return getFlow().isPinned();
+    }
+
     /**
      * Set the status (propagate to wrapped flow and flowPath).
      */
