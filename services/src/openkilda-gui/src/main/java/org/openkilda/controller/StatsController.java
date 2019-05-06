@@ -225,4 +225,31 @@ public class StatsController {
         LOGGER.info("Get switch ports stat ");
         return statsService.getSwitchPortsStats(startDate, endDate, downsample, switchid);
     }
+    
+    
+    /**
+     * Gets the meter stats.
+     *
+     * @param flowid the flowid
+     * @param startDate the start date
+     * @param endDate the end date
+     * @param downsample the downsample
+     * @param direction the direction
+     * @param metric the metric
+     * @return the meter stats
+     * @throws Exception the exception
+     */
+    @RequestMapping(value = "meter/{flowid}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
+            method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.MENU_FLOWS })
+    @ResponseBody
+    public String getMeterStats(@PathVariable String flowid, @PathVariable String startDate,
+            @PathVariable String endDate, @PathVariable String downsample, 
+            @PathVariable String metric, @PathVariable String direction)
+            throws Exception {
+
+        LOGGER.info("Get stat for meter");
+        return statsService.getMeterStats(startDate, endDate, downsample, flowid, metric, direction);
+    }
 }
