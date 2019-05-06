@@ -13,13 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.northbound.service;
+
+import org.openkilda.messaging.model.system.KildaConfigurationDto;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
- * Represents flow encapsulation types.
+ * Service to handle feature toggles requests.
  */
-public enum FlowEncapsulationType {
-    TRANSIT_VLAN,
-    VXLAN
-}
+public interface KildaConfigurationService {
 
+    /**
+     * Get current kilda configuration.
+     */
+    CompletableFuture<KildaConfigurationDto> getKildaConfiguration();
+
+    /**
+     * Update kilda configuration.
+     */
+    CompletableFuture<KildaConfigurationDto> updateKildaConfiguration(KildaConfigurationDto dto);
+}

@@ -1,4 +1,5 @@
 CREATE CONSTRAINT ON (`config`:`config`) ASSERT `config`.`entityId` IS UNIQUE;
+CREATE CONSTRAINT ON (`kilda_configuration`:`kilda_configuration`) ASSERT `kilda_configuration`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_cookie`:`flow_cookie`) ASSERT `flow_cookie`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_cookie`:`flow_cookie`) ASSERT `flow_cookie`.`unmasked_cookie` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_dump`:`flow_dump`) ASSERT `flow_dump`.`entityId` IS UNIQUE;
