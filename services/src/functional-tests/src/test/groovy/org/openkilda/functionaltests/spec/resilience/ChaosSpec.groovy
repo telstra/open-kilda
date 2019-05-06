@@ -53,7 +53,7 @@ class ChaosSpec extends BaseSpecification {
         }
 
         then: "All flows remain up and valid"
-        Wrappers.wait(WAIT_OFFSET + antiflapCooldown) {
+        Wrappers.wait(WAIT_OFFSET + antiflapCooldown + discoveryInterval) {
             northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.empty
         }
         TimeUnit.SECONDS.sleep(rerouteDelay) //all throttled reroutes should start executing

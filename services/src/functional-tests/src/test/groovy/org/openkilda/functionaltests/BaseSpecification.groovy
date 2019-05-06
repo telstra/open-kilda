@@ -106,10 +106,10 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
                 assert northbound.activeSwitches.size() == topology.activeSwitches.size()
             }
             links.findAll { it.state == IslChangeType.FAILED }.empty
-            def topoLinks = topology.islsForActiveSwitches.collectMany {
-                [islUtils.getIslInfo(links, it).orElseThrow { new IslNotFoundException(it.toString()) },
-                 islUtils.getIslInfo(links, it.reversed).orElseThrow {
-                     new IslNotFoundException(it.reversed.toString())
+            def topoLinks = topology.islsForActiveSwitches.collectMany { isl ->
+                [islUtils.getIslInfo(links, isl).orElseThrow { new IslNotFoundException(isl.toString()) },
+                 islUtils.getIslInfo(links, isl.reversed).orElseThrow {
+                     new IslNotFoundException(isl.reversed.toString())
                  }]
             }
             def missingLinks = links - topoLinks

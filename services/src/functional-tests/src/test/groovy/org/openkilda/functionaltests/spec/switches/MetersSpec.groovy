@@ -7,6 +7,7 @@ import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.meter.MeterEntry
 import org.openkilda.messaging.info.rule.FlowEntry
@@ -260,21 +261,23 @@ meters in flow rules at all (#data.flowType flow)"() {
                 [
                         flowType  : "Centec-Centec",
                         switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            it.src.centec && it.dst.centec
+                            it.src.centec && it.dst.centec && hasOf13Path(it)
                         }
                 ],
                 [
                         flowType  : "nonCentec-nonCentec",
                         switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
                             !it.src.centec && it.src.ofVersion == "OF_13" &&
-                                    !it.dst.centec && it.dst.ofVersion == "OF_13"
+                                    !it.dst.centec && it.dst.ofVersion == "OF_13" && hasOf13Path(it)
                         }
                 ],
+                //TODO(rtretiak): unlock above iterations by introducing a more clever cost manipulation
                 [
                         flowType  : "Centec-nonCentec",
                         switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            (it.src.centec && !it.dst.centec && it.dst.ofVersion == "OF_13") ||
-                                    (!it.src.centec && it.src.ofVersion == "OF_13" && it.dst.centec)
+                            ((it.src.centec && !it.dst.centec && it.dst.ofVersion == "OF_13") ||
+                                    (!it.src.centec && it.src.ofVersion == "OF_13" && it.dst.centec)) &&
+                                    hasOf13Path(it)
                         }
                 ]
         ]
@@ -553,4 +556,13 @@ meters in flow rules at all (#data.flowType flow)"() {
     def defaultMeters = { it.meterId <= MAX_SYSTEM_RULE_METER_ID }
 
     def flowMeters = { it.meterId > MAX_SYSTEM_RULE_METER_ID }
+    
+    boolean hasOf13Path(SwitchPair pair) {
+        def possibleDefaultPaths = pair.paths.findAll {
+            it.size() == pair.paths.min { it.size() }.size()
+        }
+        !possibleDefaultPaths.find { path ->
+            path[1..-2].every { it.switchId.description.contains("OF_12") }
+        }
+    }
 }
