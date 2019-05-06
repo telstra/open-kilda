@@ -418,6 +418,10 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.CREATE_FLOW);
 
             FlowCreateRequest request = (FlowCreateRequest) message.getData();
+            if (!request.getPayload().isValid()) {
+                throw  new FlowValidationException("Flow flags are not valid, unable to create pinned protected flow",
+                        ErrorType.DATA_INVALID);
+            }
             UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
             saveHistory("Flow creating", flow.getFlowId(), "", message.getCorrelationId(), tuple);
 
@@ -590,6 +594,10 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.UPDATE_FLOW);
 
             FlowUpdateRequest request = (FlowUpdateRequest) message.getData();
+            if (!request.getPayload().isValid()) {
+                throw  new FlowValidationException("Flow flags are not valid, unable to update pinned protected flow",
+                        ErrorType.DATA_INVALID);
+            }
             UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
             saveHistory("Flow updating", flow.getFlowId(), "", message.getCorrelationId(), tuple);
             saveHistory(flowService.getFlowPair(flow.getFlowId()), "stateBefore", message.getCorrelationId(), tuple);

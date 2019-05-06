@@ -268,20 +268,9 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
         FlowPath flowPath = buildTestFlowPathWithIntermediate(switchC, 100);
         flowPathRepository.createOrUpdate(flowPath);
 
-        Collection<FlowPath> paths = flowPathRepository.findActiveAffectedPaths(
+        Collection<FlowPath> paths = flowPathRepository.findAffectedPaths(
                 switchC.getSwitchId(), 100);
         assertThat(paths, containsInAnyOrder(flowPath));
-    }
-
-    @Test
-    public void shouldNotFindActiveAffectedPaths() {
-        FlowPath flowPath = buildTestFlowPathWithIntermediate(switchC, 100);
-        flowPath.setStatus(FlowPathStatus.IN_PROGRESS);
-        flowPathRepository.createOrUpdate(flowPath);
-
-        Collection<FlowPath> paths = flowPathRepository.findActiveAffectedPaths(
-                switchC.getSwitchId(), 100);
-        assertThat(paths, Matchers.empty());
     }
 
     @Test

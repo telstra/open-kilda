@@ -47,6 +47,7 @@ public interface FlowMapper {
     @Mapping(target = "ignoreBandwidth", source = "ignoreBandwidth")
     @Mapping(target = "status", source = "state")
     @Mapping(target = "created", source = "createdTime")
+    @Mapping(target = "pinned", source = "pinned")
     FlowPayload toFlowOutput(FlowDto f);
 
     FlowDto toFlowDto(FlowPatchDto flowPatchDto);

@@ -16,7 +16,13 @@
 package org.openkilda.wfm.topology.reroute.bolts;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathId;
+
+import java.util.Set;
 
 public interface MessageSender {
-    void sendRerouteCommand(String correlationId, Flow flow, String reason);
+    void emitRerouteCommand(String correlationId, Flow flow, Set<PathId> paths, String reason);
+
+    void emitPathSwapCommand(String correlationId, FlowPath path, String reason);
 }
