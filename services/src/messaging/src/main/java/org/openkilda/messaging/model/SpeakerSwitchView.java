@@ -78,6 +78,7 @@ public class SpeakerSwitchView implements Serializable {
     public enum Feature {
         METERS,
         BFD,
-        BFD_REVIEW
+        BFD_REVIEW,
+        ROUND_TRIP_GROUP
     }
 }

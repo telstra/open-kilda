@@ -21,6 +21,7 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.BDF_DEFAULT_P
 import static org.openkilda.floodlight.switchmanager.SwitchManager.CATCH_BFD_RULE_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.BURST;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.KBPS;
@@ -45,6 +46,7 @@ import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
+import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TransportPort;
@@ -315,7 +317,7 @@ public interface OutputCommands {
                 .build();
     }
 
-    default OFFlowAdd installVerificationBroadcastRule(DatapathId defaultDpId) {
+    default OFFlowAdd installVerificationBroadcastRule() {
         Match match = ofFactory.buildMatch()
                 .setExact(MatchField.ETH_DST, MacAddress.of(VERIFICATION_BCAST_PACKET_DST))
                 .build();
@@ -328,17 +330,8 @@ public interface OutputCommands {
                 .setMatch(match)
                 .setInstructions(Arrays.asList(
                         ofFactory.instructions().buildMeter().setMeterId(2L).build(),
-                        ofFactory.instructions().applyActions(Arrays.asList(
-                                ofFactory.actions().buildOutput()
-                                        .setMaxLen(0xFFFFFFFF)
-                                        .setPort(OFPort.CONTROLLER)
-                                        .build(),
-                                ofFactory.actions().buildSetField()
-                                        .setField(
-                                                ofFactory.oxms().buildEthDst()
-                                                        .setValue(MacAddress.of(defaultDpId))
-                                                        .build())
-                                        .build()))))
+                        ofFactory.instructions().applyActions(singletonList(
+                                ofFactory.actions().group(OFGroup.of(ROUND_TRIP_LATENCY_GROUP_ID))))))
                 .build();
     }
 

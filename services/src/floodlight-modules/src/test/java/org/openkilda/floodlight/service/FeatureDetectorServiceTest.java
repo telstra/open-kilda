@@ -16,6 +16,10 @@
 package org.openkilda.floodlight.service;
 
 import static org.easymock.EasyMock.expect;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.BFD;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.BFD_REVIEW;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.METERS;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.ROUND_TRIP_GROUP;
 
 import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 
@@ -52,31 +56,37 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     @Test
     public void metersCommon() {
         discoveryCheck(makeSwitchMock("Common Inc", "Soft123", OFVersion.OF_13),
-                       ImmutableSet.of(Feature.METERS));
+                       ImmutableSet.of(ROUND_TRIP_GROUP, METERS));
     }
 
     @Test
     public void metersOf12() {
         discoveryCheck(makeSwitchMock("Common Inc", "Soft123", OFVersion.OF_12),
-                       ImmutableSet.of());
+                       ImmutableSet.of(ROUND_TRIP_GROUP));
     }
 
     @Test
     public void metersNicira() {
         discoveryCheck(makeSwitchMock("Nicira, Inc.", "Soft123", OFVersion.OF_13),
-                       ImmutableSet.of());
+                       ImmutableSet.of(ROUND_TRIP_GROUP));
     }
 
     @Test
     public void bfdCommon() {
         discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", OFVersion.OF_13),
-                       ImmutableSet.of(Feature.BFD, Feature.METERS));
+                       ImmutableSet.of(ROUND_TRIP_GROUP, BFD, METERS));
     }
 
     @Test
     public void bfdReview() {
         discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", OFVersion.OF_14),
-                       ImmutableSet.of(Feature.BFD, Feature.BFD_REVIEW, Feature.METERS));
+                       ImmutableSet.of(ROUND_TRIP_GROUP, BFD, BFD_REVIEW, METERS));
+    }
+
+    @Test
+    public void roundTripCentec() {
+        discoveryCheck(makeSwitchMock("2004-2016 Centec Networks Inc", "2.8.16.21", OFVersion.OF_13),
+                       ImmutableSet.of(METERS));
     }
 
     private void discoveryCheck(IOFSwitch sw, Set<Feature> expectedFeatures) {
@@ -84,6 +94,9 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
 
         Set<Feature> actualFeatures = featuresDetector.detectSwitch(sw);
         Assert.assertEquals(expectedFeatures, actualFeatures);
+        for (Feature expectedFeature : expectedFeatures) {
+            Assert.assertTrue(featuresDetector.isSwitchSupportsFeature(sw, expectedFeature));
+        }
     }
 
     private IOFSwitch makeSwitchMock(String manufacturer, String softwareDescription, OFVersion version) {

@@ -19,6 +19,7 @@ import org.openkilda.floodlight.feature.AbstractFeature;
 import org.openkilda.floodlight.feature.BfdFeature;
 import org.openkilda.floodlight.feature.BfdReviewFeature;
 import org.openkilda.floodlight.feature.MeterFeature;
+import org.openkilda.floodlight.feature.RoundTripGroupFeature;
 import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 
 import com.google.common.collect.ImmutableList;
@@ -38,7 +39,8 @@ public class FeatureDetectorService implements IService {
         features = ImmutableList.of(
                 new MeterFeature(),
                 new BfdFeature(),
-                new BfdReviewFeature());
+                new BfdReviewFeature(),
+                new RoundTripGroupFeature());
     }
 
     /**
@@ -53,6 +55,10 @@ public class FeatureDetectorService implements IService {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .collect(Collectors.toSet());
+    }
+
+    public boolean isSwitchSupportsFeature(IOFSwitch sw, Feature feature) {
+        return detectSwitch(sw).contains(feature);
     }
 
     @Override
