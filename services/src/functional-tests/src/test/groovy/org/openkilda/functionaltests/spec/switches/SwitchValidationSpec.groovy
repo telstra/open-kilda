@@ -357,7 +357,6 @@ class SwitchValidationSpec extends BaseSpecification {
         }
     }
 
-
     def "Able to get empty switch validate information from the intermediate switch(flow contains > 2 switches)"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
@@ -367,7 +366,6 @@ class SwitchValidationSpec extends BaseSpecification {
                 path[1..-2].every { it.switchId.description.contains("OF_12") }
             }
         }
-
         when: "Create an intermediate-switch flow"
         def flow = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow)
@@ -437,7 +435,6 @@ class SwitchValidationSpec extends BaseSpecification {
             switchHelper.verifyRuleSectionsAreEmpty(transitSwitchValidateInfo, ["missing", "excess"])
         }
 
-        // TODO(andriidovhan) add synchronizeSwitch and check that rule inflo is moved back into the 'proper' section
         when: "Delete rules on the dstSwitch and transit switches"
         involvedSwitches[1..-1].each { switchId ->
             northbound.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
@@ -451,6 +448,19 @@ class SwitchValidationSpec extends BaseSpecification {
                 assert involvedSwitchValidateInfo.rules.missing.size() == 2
                 switchHelper.verifyRuleSectionsAreEmpty(involvedSwitchValidateInfo, ["proper", "excess"])
             }
+        }
+
+        when: "Try to synchronize all involved switches"
+        def syncResultsMap = involvedSwitches.collectEntries {
+            switchId -> [switchId, northbound.synchronizeSwitch(switchId, false)]
+        }
+
+        then: "System detects missing rules, then installs them"
+        involvedSwitches.each { switchId ->
+            assert syncResultsMap[switchId].rules.missing.size() == 2
+            assert syncResultsMap[switchId].rules.missing.containsAll(createdCookies)
+            assert syncResultsMap[switchId].rules.installed.size() == 2
+            assert syncResultsMap[switchId].rules.installed.containsAll(createdCookies)
         }
 
         when: "Delete the flow"
@@ -536,13 +546,25 @@ class SwitchValidationSpec extends BaseSpecification {
             assert northbound.validateSwitch(switchId).meters.excess.empty
         }
 
-        // TODO(andriidovhan) add synchronizeSwitch and check that rule inflo is moved back into the 'proper' section
-        when: "Delete the flow and excess rules"
-        flowHelper.deleteFlow(flow.id)
-        northbound.deleteMeter(switchPair.src.dpId, excessMeterId)
-        involvedSwitches.each { switchId ->
-            northbound.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
+        when: "Try to synchronize the src switch"
+        def syncResultsMap = involvedSwitches.collectEntries { switchId ->
+            [switchId, northbound.synchronizeSwitch(switchId, true)]
         }
+
+        then: "System detects excess rules and meters, then deletes them"
+        involvedSwitches.each { switchId ->
+            assert syncResultsMap[switchId].rules.excess.size() == 1
+            assert syncResultsMap[switchId].rules.excess[0] == 1L
+            assert syncResultsMap[switchId].rules.removed.size() == 1
+            assert syncResultsMap[switchId].rules.removed[0] == 1L
+        }
+        assert syncResultsMap[switchPair.src.dpId].meters.excess.size() == 1
+        assert syncResultsMap[switchPair.src.dpId].meters.excess.meterId[0] == excessMeterId
+        assert syncResultsMap[switchPair.src.dpId].meters.removed.size() == 1
+        assert syncResultsMap[switchPair.src.dpId].meters.removed.meterId[0] == excessMeterId
+
+        when: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
 
         then: "Check that the switch validate request returns empty sections on all involved switches"
         Wrappers.wait(WAIT_OFFSET) {
