@@ -48,7 +48,7 @@ public interface FlowMapper {
     @Mapping(target = "created", source = "createdTime")
     FlowPayload toFlowOutput(FlowDto f);
 
-    @Mapping(target = "id", source = "flowId")
+    @Mapping(target = "flowId", source = "flowId")
     @Mapping(target = "source",
             expression = "java(new FlowEndpointPayload(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
     @Mapping(target = "destination",
@@ -56,7 +56,7 @@ public interface FlowMapper {
                     + "f.getDestinationVlan()))")
     SwapFlowPayload toSwapOutput(FlowDto f);
 
-    @Mapping(target = "id", source = "flowId")
+    @Mapping(target = "flowId", source = "flowId")
     @Mapping(target = "source",
             expression = "java(new FlowEndpointPayload(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
     @Mapping(target = "destination",

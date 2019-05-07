@@ -52,6 +52,7 @@ import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.model.FlowPathDto.FlowProtectedPathDto;
+import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
@@ -1004,10 +1005,11 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<SwapFlowEndpointPayload> swapFlowEndpoint(SwapFlowEndpointPayload input) {
         final String correlationId = RequestCorrelationId.getId();
-        logger.info("Swap endpoints for flow {} and {}", input.getFirstFlow().getId(), input.getSecondFlow().getId());
+        logger.info("Swap endpoints for flow {} and {}", input.getFirstFlow().getFlowId(),
+                input.getSecondFlow().getFlowId());
 
-        SwapFlowEndpointRequest payload =
-                new SwapFlowEndpointRequest(new FlowDto(input.getFirstFlow()), new FlowDto(input.getSecondFlow()));
+        SwapFlowEndpointRequest payload = new SwapFlowEndpointRequest(new SwapFlowDto(input.getFirstFlow()),
+                new SwapFlowDto(input.getSecondFlow()));
 
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);

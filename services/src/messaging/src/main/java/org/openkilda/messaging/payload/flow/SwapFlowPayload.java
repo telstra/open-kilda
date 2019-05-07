@@ -34,7 +34,7 @@ public class SwapFlowPayload {
     private static final long serialVersionUID = 1L;
 
     @JsonProperty(Utils.FLOW_ID)
-    private String id;
+    private String flowId;
 
     @NonNull
     @JsonProperty("source")
@@ -47,16 +47,16 @@ public class SwapFlowPayload {
     /**
      * Instance constructor.
      *
-     * @param id                    flow id
+     * @param flowId                    flow id
      * @param source                flow source
      * @param destination           flow destination
      */
     @Builder
     @JsonCreator
-    public SwapFlowPayload(@JsonProperty(Utils.FLOW_ID) String id,
+    public SwapFlowPayload(@JsonProperty(Utils.FLOW_ID) String flowId,
                        @JsonProperty("source") FlowEndpointPayload source,
                        @JsonProperty("destination") FlowEndpointPayload destination) {
-        setId(id);
+        setFlowId(flowId);
         setSource(source);
         setDestination(destination);
     }
@@ -64,10 +64,10 @@ public class SwapFlowPayload {
     /**
      * Sets flow id.
      */
-    public void setId(String id) {
+    public void setFlowId(String id) {
         if (id == null || id.isEmpty()) {
             throw new IllegalArgumentException("need to set id");
         }
-        this.id = id;
+        this.flowId = id;
     }
 }

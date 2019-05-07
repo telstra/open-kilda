@@ -25,12 +25,10 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.EqualsAndHashCode;
 
-import java.util.Objects;
-
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
-@EqualsAndHashCode
+@EqualsAndHashCode(callSuper = false)
 public class SwapFlowResponse extends InfoData {
 
     private static final long serialVersionUID = 8858971052045302274L;
@@ -88,39 +86,5 @@ public class SwapFlowResponse extends InfoData {
      */
     public void setSecondFlow(FlowResponse secondFlow) {
         this.secondFlow = secondFlow;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        if (!super.equals(o)) {
-            return false;
-        }
-        SwapFlowResponse response = (SwapFlowResponse) o;
-        return Objects.equals(firstFlow, response.firstFlow) && Objects.equals(secondFlow, response.secondFlow);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode(), firstFlow, secondFlow);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String toString() {
-        return "SwapFlowResponse{" + "firstFlow=" + firstFlow + ", secondFlow=" + secondFlow + '}';
     }
 }
