@@ -81,13 +81,13 @@ public class FlowServiceTest {
         FlowEndpointPayload secondEndpoint = new FlowEndpointPayload(new SwitchId("ff:01"), 2, 2);
 
         SwapFlowPayload firstFlowPayload = SwapFlowPayload.builder()
-                .id(firstFlowId)
+                .flowId(firstFlowId)
                 .source(firstEndpoint)
                 .destination(firstEndpoint)
                 .build();
 
         SwapFlowPayload secondFlowPayload = SwapFlowPayload.builder()
-                .id(secondFlowId)
+                .flowId(secondFlowId)
                 .source(secondEndpoint)
                 .destination(secondEndpoint)
                 .build();

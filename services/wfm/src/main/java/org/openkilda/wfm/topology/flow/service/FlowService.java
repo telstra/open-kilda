@@ -28,6 +28,7 @@ import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.UpdateFlowPathStatusRequest;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -86,7 +87,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -1303,8 +1303,7 @@ public class FlowService extends BaseFlowService {
      * @param sender a command sender for flow rules installation and deletion.
      * @return the flows with swapped endpoints.
      */
-    public List<FlowPair> swapFlowEnpoints(Flow firstFlow, Flow secondFlow,
-                                                                    FlowCommandSender sender)
+    public List<FlowPair> swapFlowEnpoints(SwapFlowDto firstFlow, SwapFlowDto secondFlow, FlowCommandSender sender)
             throws FlowNotFoundException {
         String firstFlowId = firstFlow.getFlowId();
         String secondFlowId = secondFlow.getFlowId();
@@ -1315,21 +1314,25 @@ public class FlowService extends BaseFlowService {
                 () -> new FlowNotFoundException(secondFlowId));
 
         existingFirstFlow = existingFirstFlow.toBuilder()
-                .srcSwitch(firstFlow.getSrcSwitch())
-                .srcPort(firstFlow.getSrcPort())
-                .srcPort(firstFlow.getSrcVlan())
-                .destSwitch(firstFlow.getDestSwitch())
-                .destPort(firstFlow.getDestPort())
-                .destVlan(firstFlow.getDestVlan())
+                .srcSwitch(Switch.builder().switchId(firstFlow.getSourceSwitch()).build())
+                .srcPort(firstFlow.getSourcePort())
+                .srcPort(firstFlow.getSourceVlan())
+                .destSwitch(Switch.builder().switchId(firstFlow.getDestinationSwitch()).build())
+                .destPort(firstFlow.getDestinationPort())
+                .destVlan(firstFlow.getDestinationVlan())
+                .forwardPath(null)
+                .reversePath(null)
                 .build();
 
         existingSecondFlow = existingSecondFlow.toBuilder()
-                .srcSwitch(secondFlow.getSrcSwitch())
-                .srcPort(secondFlow.getSrcPort())
-                .srcPort(secondFlow.getSrcVlan())
-                .destSwitch(secondFlow.getDestSwitch())
-                .destPort(secondFlow.getDestPort())
-                .destVlan(secondFlow.getDestVlan())
+                .srcSwitch(Switch.builder().switchId(secondFlow.getSourceSwitch()).build())
+                .srcPort(secondFlow.getSourcePort())
+                .srcPort(secondFlow.getSourceVlan())
+                .destSwitch(Switch.builder().switchId(secondFlow.getDestinationSwitch()).build())
+                .destPort(secondFlow.getDestinationPort())
+                .destVlan(secondFlow.getDestinationVlan())
+                .forwardPath(null)
+                .reversePath(null)
                 .build();
 
 

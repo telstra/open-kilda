@@ -16,7 +16,7 @@
 package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.model.SwapFlowDto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.EqualsAndHashCode;
@@ -33,14 +33,14 @@ public class SwapFlowEndpointRequest extends CommandData {
 
     @NonNull
     @JsonProperty("first_flow")
-    private FlowDto firstFlow;
+    private SwapFlowDto firstFlow;
 
     @NonNull
     @JsonProperty("second_flow")
-    private FlowDto secondFlow;
+    private SwapFlowDto secondFlow;
 
-    public SwapFlowEndpointRequest(@JsonProperty("first_flow") FlowDto firstFlow,
-                                   @JsonProperty("second_flow")FlowDto secondFlow) {
+    public SwapFlowEndpointRequest(@JsonProperty("first_flow") SwapFlowDto firstFlow,
+                                   @JsonProperty("second_flow") SwapFlowDto secondFlow) {
         this.firstFlow = firstFlow;
         this.secondFlow = secondFlow;
     }

@@ -89,13 +89,13 @@ public class TestMessageMock implements MessagingChannel {
             .build();
 
     public static final SwapFlowPayload firstSwapFlow = SwapFlowPayload.builder()
-            .id(FLOW_ID)
+            .flowId(FLOW_ID)
             .source(flowEndpoint)
             .destination(flowEndpoint)
             .build();
 
     public static final SwapFlowPayload secondSwapFlow = SwapFlowPayload.builder()
-            .id(SECOND_FLOW_ID)
+            .flowId(SECOND_FLOW_ID)
             .source(secondFlowEndpoint)
             .destination(secondFlowEndpoint)
             .build();
