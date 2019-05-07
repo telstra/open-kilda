@@ -2,10 +2,13 @@ package org.openkilda.functionaltests.spec.switches
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.meter.MeterEntry
@@ -36,13 +39,8 @@ class MetersSpec extends BaseSpecification {
     @Value('${burst.coefficient}')
     double burstCoefficient
 
-    def setupOnce() {
-        //TODO: remove as soon as OVS 2.10 + kernel 4.18+ get wired in and meters support will be available
-        // on virtual environments
-        requireProfiles("hardware")
-    }
-
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Able to delete a meter from a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
@@ -74,6 +72,7 @@ class MetersSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Unable to delete a meter with invalid ID=#meterId on a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
@@ -96,9 +95,8 @@ class MetersSpec extends BaseSpecification {
      * Default meters should be set in PKTPS by default in Kilda, but Centec switches only allow KBPS flag.
      * System should recalculate the PKTPS value to KBPS on Centec switches.
      */
+    @Tags(HARDWARE)
     def "Default meters should express bandwidth in kbps re-calculated from pktps on Centec switches"() {
-        requireProfiles("hardware")
-
         setup: "Collect all Centec switches"
         def switches = getCentecSwitches()
         assumeTrue("Unable to find required switches in topology", switches as boolean)
@@ -117,9 +115,8 @@ class MetersSpec extends BaseSpecification {
         }
     }
 
+    @Tags(HARDWARE)
     def "Default meters should express bandwidth in pktps on non-Centec switches"() {
-        requireProfiles("hardware") //TODO: Research how this behaves on OpenVSwitch
-
         given: "All Openflow 1.3 compatible non-Centec switches"
         def switches = getNonCentecSwitches()
         assumeTrue("Unable to find required switches in topology", switches as boolean)
@@ -137,6 +134,7 @@ class MetersSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Meters are created/deleted when creating/deleting a single-switch flow with ignore_bandwidth=#ignoreBandwidth \
 on a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
@@ -188,6 +186,7 @@ on a #switchType switch"() {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Meters are not created when creating a single-switch flow with maximum_bandwidth=0 on a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
@@ -219,6 +218,7 @@ on a #switchType switch"() {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Source/destination switches have meters only in flow ingress rule and intermediate switches don't have \
 meters in flow rules at all (#data.flowType flow)"() {
         assumeTrue("Unable to find required switch pair in topology", data.switchPair != null)
@@ -287,9 +287,8 @@ meters in flow rules at all (#data.flowType flow)"() {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Meter burst size is correctly set on non-Centec switches for #flowRate flow rate"() {
-        requireProfiles("hardware") //TODO: Research how this behaves on OpenVSwitch
-
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible switch"
         def switches = getNonCentecSwitches()
         assumeTrue("Unable to find required switches in topology", switches as boolean)
@@ -335,10 +334,9 @@ meters in flow rules at all (#data.flowType flow)"() {
         flowRate << [150, 1000, 1024, 5120, 10240, 2480, 960000]
     }
 
+    @Tags([HARDWARE, TOPOLOGY_DEPENDENT])
     @Unroll("Flow burst should be correctly set on Centec switches in case of #flowRate kbps flow bandwidth")
     def "Flow burst is correctly set on Centec switches"() {
-        requireProfiles("hardware")
-
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible Centec switch"
         def switches = getCentecSwitches()
         assumeTrue("Unable to find required switches in topology", switches as boolean)
@@ -392,9 +390,8 @@ meters in flow rules at all (#data.flowType flow)"() {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "System allows to reset meter values to defaults without reinstalling rules for #data.description flow"() {
-        requireProfiles("hardware")
-
         given: "Switches combination (#data.description)"
         assumeTrue("Desired switch combination is not available in current topology", data.switches.size() > 1)
         def (Switch src, Switch dst) = data.switches[0..1]

@@ -1,9 +1,12 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
@@ -23,6 +26,7 @@ class SwitchPortConfigSpec extends BaseSpecification {
     def otsdbPortDown = 0
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Able to bring ISL-busy port down/up on an #isl.srcSwitch.ofVersion switch(#isl.srcSwitch.dpId)"() {
         when: "Bring port down on the switch"
         def portDownTime = new Date()
@@ -71,8 +75,8 @@ class SwitchPortConfigSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([HARDWARE, TOPOLOGY_DEPENDENT])
     def "Able to bring ISL-free port down/up on an #sw.ofVersion switch(#sw.dpId)"() {
-        requireProfiles("hardware")
         // Not checking OTSDB here, since Kilda won't log into OTSDB for isl-free ports, this is expected.
 
         when: "Bring port down on the switch"

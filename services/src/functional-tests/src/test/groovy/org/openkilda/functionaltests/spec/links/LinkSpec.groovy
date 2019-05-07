@@ -1,10 +1,14 @@
 package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -174,9 +178,8 @@ class LinkSpec extends BaseSpecification {
         database.resetCosts()
     }
 
+    @Tags(VIRTUAL)
     def "ISL should immediately fail if the port went down while switch was disconnected"() {
-        requireProfiles("virtual")
-
         when: "A switch disconnects"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
         lockKeeper.knockoutSwitch(isl.srcSwitch.dpId)
@@ -293,6 +296,7 @@ class LinkSpec extends BaseSpecification {
     }
 
     @Unroll
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = /bfd link/)
     def "Able to delete an inactive #islDescription link and re-discover it back afterwards"() {
         given: "An inactive link"
         assumeTrue("Unable to locate $islDescription ISL for this test", isl as boolean)
@@ -481,9 +485,8 @@ class LinkSpec extends BaseSpecification {
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
     }
 
+    @Tags(VIRTUAL)
     def "Isl is able to properly fail when both src and dst switches suddenly disconnect"() {
-        requireProfiles("virtual")
-
         given: "An ISL under test"
         def isl = topology.islsForActiveSwitches.first()
 

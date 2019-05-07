@@ -1,9 +1,11 @@
 package org.openkilda.functionaltests.spec.resilience
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.payload.flow.FlowPayload
 
 import com.spotify.docker.client.DefaultDockerClient
@@ -23,6 +25,7 @@ verify their consistency after restart.
  * This test takes quite some time (~10+ minutes) since it redeploys all the storm topologies.
  * Aborting it in the middle of execution may lead to Kilda malfunction.
  */
+@Tags(VIRTUAL)
 class StormLcmSpec extends BaseSpecification {
     private static final String WFM_CONTAINER_NAME = "/wfm"
 

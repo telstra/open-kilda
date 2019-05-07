@@ -17,14 +17,14 @@ class TestDataLoggingExtension extends AbstractGlobalExtension {
         spec.fixtureMethods*.addInterceptor(new IMethodInterceptor() {
             @Override
             void intercept(IMethodInvocation invocation) throws Throwable {
-                log.debug "Running fixture: ${invocation.spec.name}#${invocation.method.name}"
+                log.debug "Running fixture: ${invocation.spec.nameTagged}#${invocation.method.name}"
                 invocation.proceed()
             }
         })
         spec.allFeatures*.addIterationInterceptor(new IMethodInterceptor() {
             @Override
             void intercept(IMethodInvocation invocation) throws Throwable {
-                log.info "Running test: ${invocation.spec.name}#${invocation.iteration.name}"
+                log.info "Running test: ${invocation.spec.nameTagged}#${invocation.iteration.nameTagged}"
                 invocation.proceed()
             }
         })

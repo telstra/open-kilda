@@ -1,10 +1,12 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.PathNode
@@ -126,10 +128,10 @@ class IntentionalRerouteSpec extends BaseSpecification {
      * Select a longest available path between 2 switches, then reroute to another long path. Run traffexam during the
      * reroute and expect no packet loss.
      */
+    @Tags(HARDWARE)
     def "Intentional flow reroute is not causing any packet loss"() {
         given: "An unmetered flow going through a long not preferable path(reroute potential)"
         //will be available on virtual as soon as we get the latest iperf installed in lab-service images
-        requireProfiles("hardware")
         assumeTrue("There should be at least two active traffgens for test execution",
                 topology.activeTraffGens.size() >= 2)
 

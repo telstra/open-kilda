@@ -6,16 +6,13 @@ package org.openkilda.functionaltests.extension.tags
  */
 enum Tag {
     //pre-defined sets
-    SMOKE, REGRESSION,
+    SMOKE, REGRESSION, ONDEMAND,
 
     //environments
     HARDWARE, VIRTUAL,
 
-    //regularity
-    ONDEMAND,
-
-    //positiveness
-    POSITIVE, NEGATIVE,
+    //additional markers
+    TOPOLOGY_DEPENDENT, //changing the environment or topology may affect the amount of iterations executed
 
     //speed
     SLOW,//usually for 1minute+ tests

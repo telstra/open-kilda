@@ -3,6 +3,8 @@ package org.openkilda.functionaltests.spec.switches
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeFalse
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
@@ -11,6 +13,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
@@ -51,6 +54,7 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll("Default rules are installed on an #sw.ofVersion switch(#sw.dpId)")
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Default rules are installed on switches"() {
         expect: "Default rules are installed on the switch"
         def cookies = northbound.getSwitchRules(sw.dpId).flowEntries*.cookie
@@ -60,9 +64,8 @@ class SwitchRulesSpec extends BaseSpecification {
         sw << uniqueSwitches
     }
 
+    @Tags(VIRTUAL)
     def "Default rules are installed when a new switch is connected"() {
-        requireProfiles("virtual")
-
         given: "A switch with no rules installed and not connected to the controller"
         northbound.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.DROP_ALL)
         Wrappers.wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(srcSwitch.dpId).flowEntries.isEmpty() }
@@ -79,9 +82,8 @@ class SwitchRulesSpec extends BaseSpecification {
         cookies.sort() == srcSwitch.defaultCookies.sort()
     }
 
+    @Tags(VIRTUAL)
     def "Pre-installed rules are not deleted from a new switch connected to the controller"() {
-        requireProfiles("virtual")
-
         given: "A switch with some rules installed (including default) and not connected to the controller"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
@@ -114,6 +116,7 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Able to install default rule on an #sw.ofVersion switch(#sw.dpId, install-action=#data.installRulesAction)"() {
         assumeFalse("Unable to run the test because an OF_12 switch has one broadcast rule as the default",
                 sw.ofVersion == "OF_12" && data.installRulesAction != InstallRulesAction.INSTALL_BROADCAST)
@@ -168,6 +171,7 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Able to install default rules on an #sw.ofVersion switch(#sw.dpId, install-action=INSTALL_DEFAULTS)"() {
         given: "A switch without any rules"
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
@@ -253,6 +257,7 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Able to delete default rule from an #sw.ofVersion switch (#sw.dpId, delete-action=#data.deleteRulesAction)"() {
         assumeFalse("Unable to run the test because an OF_12 switch has one broadcast rule as the default",
                 sw.ofVersion == "OF_12" && data.cookie != Cookie.VERIFICATION_BROADCAST_RULE_COOKIE)
