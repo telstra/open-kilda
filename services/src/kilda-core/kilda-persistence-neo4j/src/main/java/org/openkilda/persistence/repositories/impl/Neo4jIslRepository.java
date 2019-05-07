@@ -52,6 +52,20 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     }
 
     @Override
+    public Collection<Isl> findByEndpoint(SwitchId switchId, int port) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_id", switchId.toString(),
+                "port", port);
+
+        String query = "MATCH (s:switch)-[i:isl]->(d:switch) "
+                + "WHERE (s.name = $switch_id AND i.src_port = $port) "
+                + " OR (d.name = $switch_id AND i.dst_port = $port) "
+                + "RETURN s, i, d";
+
+        return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
+    }
+
+    @Override
     public Collection<Isl> findBySrcEndpoint(SwitchId srcSwitchId, int srcPort) {
         Filter srcSwitchFilter = createSrcSwitchFilter(srcSwitchId);
         Filter srcPortFilter = new Filter(SRC_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, srcPort);
