@@ -7,7 +7,7 @@
 
 /.vagrant/
 /.venv
-
+/.env
 /kilda-bins/
 
 services/src/api/target/

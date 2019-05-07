@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.config;
+package org.openkilda.functionaltests.config;
 
 import org.openkilda.testing.model.topology.TopologyDefinition;
 
@@ -27,7 +27,6 @@ import org.springframework.core.io.Resource;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Random;
 
 @Configuration
 public class TopologyConfig {
@@ -48,14 +47,10 @@ public class TopologyConfig {
 
         TopologyDefinition topologyDefinition =
                 mapper.readValue(topologyDefinitionFile.getInputStream(), TopologyDefinition.class);
-
-        topologyDefinition.setBfdOffset(bfdOffset);
         topologyDefinition.setControllers(controllerHosts);
-        // TODO(tdurakov): it should be possible to reproduce env by dumping existing topology or changing this random
-        // pick
+        topologyDefinition.setBfdOffset(bfdOffset);
         for (TopologyDefinition.Switch sw : topologyDefinition.getSwitches()) {
-            int pick = new Random().nextInt(controllerHosts.size());
-            sw.setController(controllerHosts.get(pick));
+            sw.setController(controllerHosts.get(0));
         }
         return topologyDefinition;
     }
