@@ -96,28 +96,28 @@ class SwitchSyncSpec extends BaseSpecification {
         def syncResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.synchronizeSwitch(it.dpId, false)] }
 
         then: "System detects missing rules and meters, then installs them"
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            involvedSwitches.each {
-                assert syncResultsMap[it.dpId].rules.proper.size() == 0
-                assert syncResultsMap[it.dpId].rules.excess.size() == 0
-                assert syncResultsMap[it.dpId].rules.missing.containsAll(cookiesMap[it.dpId])
-                assert syncResultsMap[it.dpId].rules.removed.size() == 0
-                assert syncResultsMap[it.dpId].rules.installed.containsAll(cookiesMap[it.dpId])
-            }
-            [srcSwitch, dstSwitch].each {
-                assert syncResultsMap[it.dpId].meters.proper.size() == 0
-                assert syncResultsMap[it.dpId].meters.excess.size() == 0
-                assert syncResultsMap[it.dpId].meters.missing*.meterId == metersMap[it.dpId]
-                assert syncResultsMap[it.dpId].meters.removed.size() == 0
-                assert syncResultsMap[it.dpId].meters.installed*.meterId == metersMap[it.dpId]
-            }
+        involvedSwitches.each {
+            assert syncResultsMap[it.dpId].rules.proper.size() == 0
+            assert syncResultsMap[it.dpId].rules.excess.size() == 0
+            assert syncResultsMap[it.dpId].rules.missing.containsAll(cookiesMap[it.dpId])
+            assert syncResultsMap[it.dpId].rules.removed.size() == 0
+            assert syncResultsMap[it.dpId].rules.installed.containsAll(cookiesMap[it.dpId])
+        }
+        [srcSwitch, dstSwitch].each {
+            assert syncResultsMap[it.dpId].meters.proper.size() == 0
+            assert syncResultsMap[it.dpId].meters.excess.size() == 0
+            assert syncResultsMap[it.dpId].meters.missing*.meterId == metersMap[it.dpId]
+            assert syncResultsMap[it.dpId].meters.removed.size() == 0
+            assert syncResultsMap[it.dpId].meters.installed*.meterId == metersMap[it.dpId]
         }
 
         and: "Switch validation doesn't complain about missing rules and meters"
-        involvedSwitches.each {
-            def validationResult = northbound.switchValidate(it.dpId)
-            assert validationResult.rules.missing.size() == 0
-            assert validationResult.meters.missing.size() == 0
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            involvedSwitches.each {
+                def validationResult = northbound.switchValidate(it.dpId)
+                assert validationResult.rules.missing.size() == 0
+                assert validationResult.meters.missing.size() == 0
+            }
         }
 
         and: "Delete the flow"
@@ -177,28 +177,28 @@ class SwitchSyncSpec extends BaseSpecification {
         def syncResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.synchronizeSwitch(it.dpId, true)] }
 
         then: "System detects excess rules and meters, then deletes them"
-        Wrappers.wait(RULES_DELETION_TIME) {
-            involvedSwitches.each {
-                assert syncResultsMap[it.dpId].rules.proper.containsAll(cookiesMap[it.dpId])
-                assert syncResultsMap[it.dpId].rules.excess == [excessRuleCookie]
-                assert syncResultsMap[it.dpId].rules.missing.size() == 0
-                assert syncResultsMap[it.dpId].rules.removed == [excessRuleCookie]
-                assert syncResultsMap[it.dpId].rules.installed.size() == 0
-            }
-            [srcSwitch, dstSwitch].each {
-                assert syncResultsMap[it.dpId].meters.proper*.meterId == metersMap[it.dpId]
-                assert syncResultsMap[it.dpId].meters.excess*.meterId == [excessMeterId]
-                assert syncResultsMap[it.dpId].meters.missing.size() == 0
-                assert syncResultsMap[it.dpId].meters.removed*.meterId == [excessMeterId]
-                assert syncResultsMap[it.dpId].meters.installed.size() == 0
-            }
+        involvedSwitches.each {
+            assert syncResultsMap[it.dpId].rules.proper.containsAll(cookiesMap[it.dpId])
+            assert syncResultsMap[it.dpId].rules.excess == [excessRuleCookie]
+            assert syncResultsMap[it.dpId].rules.missing.size() == 0
+            assert syncResultsMap[it.dpId].rules.removed == [excessRuleCookie]
+            assert syncResultsMap[it.dpId].rules.installed.size() == 0
+        }
+        [srcSwitch, dstSwitch].each {
+            assert syncResultsMap[it.dpId].meters.proper*.meterId == metersMap[it.dpId]
+            assert syncResultsMap[it.dpId].meters.excess*.meterId == [excessMeterId]
+            assert syncResultsMap[it.dpId].meters.missing.size() == 0
+            assert syncResultsMap[it.dpId].meters.removed*.meterId == [excessMeterId]
+            assert syncResultsMap[it.dpId].meters.installed.size() == 0
         }
 
         and: "Switch validation doesn't complain about excess rules and meters"
-        involvedSwitches.each {
-            def validationResult = northbound.switchValidate(it.dpId)
-            assert validationResult.rules.excess.size() == 0
-            assert validationResult.meters.excess.size() == 0
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            involvedSwitches.each {
+                def validationResult = northbound.switchValidate(it.dpId)
+                assert validationResult.rules.excess.size() == 0
+                assert validationResult.meters.excess.size() == 0
+            }
         }
 
         and: "Delete the flow"

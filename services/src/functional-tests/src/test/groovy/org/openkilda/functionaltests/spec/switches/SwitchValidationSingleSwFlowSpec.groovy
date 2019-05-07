@@ -210,7 +210,19 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
         switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["proper", "excess"])
         switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["misconfigured", "proper", "excess"])
 
-        // TODO(andriidovhan) add synchronizeSwitch and check that rule inflo is moved back into the 'proper' section
+        when: "Try to synchronize the switch"
+        def syncResponse = northbound.synchronizeSwitch(sw.dpId, false)
+
+        then: "System detects missing rules and meters, then installs them"
+        syncResponse.rules.missing.size() == 2
+        syncResponse.rules.missing.containsAll(createdCookies)
+        syncResponse.rules.installed.size() == 2
+        syncResponse.rules.installed.containsAll(createdCookies)
+        syncResponse.meters.missing.size() == 2
+        syncResponse.meters.missing*.meterId.containsAll(meterIds)
+        syncResponse.meters.installed.size() == 2
+        syncResponse.meters.installed*.meterId.containsAll(meterIds)
+
         when: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
 
@@ -314,7 +326,15 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
         and: "The rest fields in the 'rule' section are empty"
         switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["proper", "excess"])
 
-        // TODO(andriidovhan) add synchronizeSwitch and check that rule inflo is moved back into the 'proper' section
+        when: "Try to synchronize the switch"
+        def syncResponse = northbound.synchronizeSwitch(sw.dpId, false)
+
+        then: "System detects missing rules, then installs them"
+        syncResponse.rules.missing.size() == 2
+        syncResponse.rules.missing.containsAll(createdCookies)
+        syncResponse.rules.installed.size() == 2
+        syncResponse.rules.installed.containsAll(createdCookies)
+
         when: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
 
@@ -377,14 +397,23 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
             verifyBurstSizeIsCorrect(burstSize, it.burstSize)
         }
 
-        // TODO(andriidovhan) add synchronizeSwitch and check that rule inflo is moved back into the 'proper' section
-        and: "Cleanup: delete the excess rules"
-        northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
-        northbound.deleteMeter(sw.dpId, excessMeterId)
+        when: "Try to synchronize the switch"
+        def syncResponse = northbound.synchronizeSwitch(sw.dpId, true)
+
+        then: "System detects excess rules and meters, then deletes them"
+        syncResponse.rules.excess.size() == 3
+        syncResponse.rules.excess.containsAll([1L, 2L, 3L])
+        syncResponse.rules.removed.size() == 3
+        syncResponse.rules.removed.containsAll([1L, 2L, 3L])
+        syncResponse.meters.excess.size() == 1
+        syncResponse.meters.removed.size() == 1
+        syncResponse.meters.removed.meterId[0] == excessMeterId
+
+        and: "Switch validation doesn't complain about excess rules and meters"
         Wrappers.wait(WAIT_OFFSET) {
-            def switchValidateInfoAfterDelete = northbound.validateSwitch(sw.dpId)
-            switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfoAfterDelete)
-            switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfoAfterDelete)
+            def switchValidateResponse = northbound.validateSwitch(sw.dpId)
+            switchHelper.verifyRuleSectionsAreEmpty(switchValidateResponse)
+            switchHelper.verifyMeterSectionsAreEmpty(switchValidateResponse)
         }
 
         cleanup:
