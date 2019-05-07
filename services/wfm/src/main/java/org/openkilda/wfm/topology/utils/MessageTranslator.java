@@ -27,8 +27,10 @@ import org.apache.storm.tuple.Values;
 import java.util.List;
 
 public class MessageTranslator extends KafkaRecordTranslator<String, Message> {
-    public static final String KEY_FIELD = "key";
-    public static final Fields STREAM_FIELDS = new Fields(KEY_FIELD, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
+    // use FIELD_ID_KEY instead
+    @Deprecated
+    public static final String KEY_FIELD = FIELD_ID_KEY;
+    public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     @Override
     public List<Object> apply(ConsumerRecord<String, Message> record) {

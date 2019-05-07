@@ -15,7 +15,6 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.transform.Memoized
 import org.springframework.web.client.HttpClientErrorException
@@ -99,21 +98,14 @@ class LinkSpec extends BaseSpecification {
 
     def "Get all flows (UP/DOWN) going through a particular link"() {
         given: "Two active not neighboring switches"
-        def switches = topology.getActiveSwitches()
-        def allLinks = northbound.getAllLinks()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allLinks.every { link ->
-                !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId)
-            }
-        }
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
 
         and: "Forward flow from source switch to destination switch"
-        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow1 = flowHelper.randomFlow(switchPair)
         flow1 = flowHelper.addFlow(flow1)
 
         and: "Reverse flow from destination switch to source switch"
-        def flow2 = flowHelper.randomFlow(dstSwitch, srcSwitch)
+        def flow2 = flowHelper.randomFlow(switchPair)
         flow2 = flowHelper.addFlow(flow2)
 
         and: "Forward flow from source switch to some 'internal' switch"
@@ -142,9 +134,8 @@ class LinkSpec extends BaseSpecification {
         [flow3, flow4].each { assert !(it in linkFlows) }
 
         when: "Bring all ports down on source switch that are involved in current and alternative paths"
-        List<List<PathNode>> possibleFlowPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         List<PathNode> broughtDownPorts = []
-        possibleFlowPaths.unique { it.first() }.each { path ->
+        switchPair.paths.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
             northbound.portDown(src.switchId, src.portNo)
@@ -328,45 +319,40 @@ class LinkSpec extends BaseSpecification {
         database.resetCosts()
 
         where:
-        islDescription | isl
-        "direct"       | getTopology().islsForActiveSwitches.find { !it.aswitch && !it.bfd }
-        "a-switch"     | getTopology().islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd }
-        "bfd"          | getTopology().islsForActiveSwitches.find { it.bfd }
+        [islDescription, isl] << [
+                ["direct", getTopology().islsForActiveSwitches.find { !it.aswitch && !it.bfd }],
+                ["a-switch", getTopology().islsForActiveSwitches.find {
+                    it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd
+                }],
+                ["bfd", getTopology().islsForActiveSwitches.find { it.bfd }]
+        ]
     }
 
     def "Reroute all flows going through a particular link"() {
         given: "Two active not neighboring switches with two possible paths at least"
-        def switches = topology.getActiveSwitches()
-        def allLinks = northbound.getAllLinks()
-        List<List<PathNode>> possibleFlowPaths = []
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
-            allLinks.every { link ->
-                !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId)
-            } && possibleFlowPaths.size() > 1
-        } ?: assumeTrue("No suiting switches found", false)
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue("No suiting switches found", false)
 
         and: "Make the first path more preferable than others by setting corresponding link props"
-        possibleFlowPaths[1..-1].each { pathHelper.makePathMorePreferable(possibleFlowPaths.first(), it) }
+        switchPair.paths[1..-1].each { pathHelper.makePathMorePreferable(switchPair.paths.first(), it) }
 
         and: "Create a couple of flows going through these switches"
-        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow1 = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
-        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow2 = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
 
-        assert flow1Path == possibleFlowPaths.first()
-        assert flow2Path == possibleFlowPaths.first()
+        assert flow1Path == switchPair.paths.first()
+        assert flow2Path == switchPair.paths.first()
 
         and: "Delete link props from all links of alternative paths to allow rerouting flows"
         northbound.deleteLinkProps(northbound.getAllLinkProps())
 
         and: "Make the current flows path not preferable"
-        possibleFlowPaths[1..-1].each { pathHelper.makePathMorePreferable(it, possibleFlowPaths.first()) }
+        switchPair.paths[1..-1].each { pathHelper.makePathMorePreferable(it, switchPair.paths.first()) }
 
         when: "Submit request for rerouting flows"
         def isl = pathHelper.getInvolvedIsls(flow1Path).first()

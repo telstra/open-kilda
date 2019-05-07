@@ -223,7 +223,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     public void handleInitialDiscovery(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        discoveryFacts.put(context.getEndpoint(), context.getIslData());
+        updateLinkData(context.getEndpoint(), context.getIslData());
         updateEndpointStatusByEvent(event, context);
         saveStatusTransaction();
     }
@@ -244,7 +244,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     public void handleUpAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        discoveryFacts.put(context.getEndpoint(), context.getIslData());
+        updateLinkData(context.getEndpoint(), context.getIslData());
 
         IslFsmEvent route;
         if (getAggregatedStatus() == DiscoveryEndpointStatus.UP) {
@@ -309,6 +309,11 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     // -- private/service methods --
+
+    private void updateLinkData(Endpoint bind, IslDataHolder data) {
+        log.info("ISL {} data update - bind:{} - {}", discoveryFacts.getReference(), bind, data);
+        discoveryFacts.put(bind, data);
+    }
 
     private void applyHistory(Isl history) {
         Endpoint source = Endpoint.of(history.getSrcSwitch().getSwitchId(), history.getSrcPort());

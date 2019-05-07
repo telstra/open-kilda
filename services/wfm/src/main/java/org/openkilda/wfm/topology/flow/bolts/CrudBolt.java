@@ -69,6 +69,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.error.ClientException;
+import org.openkilda.wfm.error.FeatureTogglesNotEnabledException;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.bolt.HistoryBolt;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
@@ -331,6 +332,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         } catch (FlowAlreadyExistException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.ALREADY_EXISTS, errorType, e.getMessage());
+        } catch (FeatureTogglesNotEnabledException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_PERMITTED, errorType, "Feature push flow is disabled");
         } catch (Exception e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.CREATION_FAILURE, errorType, e.getMessage());
@@ -367,6 +371,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
+        } catch (FeatureTogglesNotEnabledException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_PERMITTED, errorType, "Feature unpush flow is disabled");
         } catch (Exception e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.DELETION_FAILURE, errorType, e.getMessage());
@@ -390,6 +397,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
+        } catch (FeatureTogglesNotEnabledException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_PERMITTED, errorType, "Feature toggles not enabled for DELETE_FLOW operation.");
         } catch (Exception e) {
             logger.error("Unexpected error", e);
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -433,6 +443,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, "The flow not found :  " + e.getMessage());
+        } catch (FeatureTogglesNotEnabledException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_PERMITTED, errorType, "Feature toggles not enabled for CREATE_FLOW operation.");
         } catch (Exception e) {
             logger.error("Unexpected error", e);
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
@@ -578,6 +591,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         } catch (UnroutableFlowException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found");
+        } catch (FeatureTogglesNotEnabledException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_PERMITTED, errorType, "Feature toggles not enabled for UPDATE_FLOW operation.");
         } catch (Exception e) {
             logger.error("Unexpected error", e);
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),

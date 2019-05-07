@@ -9,16 +9,14 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 
-class SwitchMaintenance extends BaseSpecification {
+class SwitchMaintenanceSpec extends BaseSpecification {
 
     @Value('${isl.cost.when.under.maintenance}')
     int islCostWhenUnderMaintenance
@@ -70,23 +68,15 @@ class SwitchMaintenance extends BaseSpecification {
 
     def "Flows can be evacuated (rerouted) from a particular switch when setting maintenance mode for it"() {
         given: "Two active not neighboring switches with two possible paths at least"
-        def switches = topology.getActiveSwitches()
-        def allLinks = northbound.getAllLinks()
-        List<List<PathNode>> possibleFlowPaths = []
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
-            allLinks.every { link ->
-                !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId)
-            } && possibleFlowPaths.size() > 1
-        } ?: assumeTrue("No suiting switches found", false)
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue("No suiting switches found", false)
 
         and: "Create a couple of flows going through these switches"
-        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow1 = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
-        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow2 = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
 
@@ -133,7 +123,6 @@ class SwitchMaintenance extends BaseSpecification {
 
         and: "Delete the link"
         northbound.deleteLink(islUtils.toLinkParameters(isl))
-        northbound.deleteLink(islUtils.toLinkParameters(isl.reversed))
         assert !islUtils.getIslInfo(isl)
         assert !islUtils.getIslInfo(isl.reversed)
 

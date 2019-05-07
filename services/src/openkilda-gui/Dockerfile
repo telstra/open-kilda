@@ -1,4 +1,5 @@
-FROM kilda/base-ubuntu
+ARG base_image=kilda/base-ubuntu
+FROM ${base_image}
 
 COPY src/main/resources/application.properties src/main/resources/logback.xml target/openkilda-gui.jar /app/
 WORKDIR /app

@@ -47,6 +47,7 @@ import org.openkilda.northbound.dto.v1.switches.PortDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -114,6 +115,8 @@ public interface NorthboundService {
     DeleteMeterResult deleteMeter(SwitchId switchId, Long meterId);
 
     SwitchMeterEntries getAllMeters(SwitchId switchId);
+
+    SwitchValidationResult switchValidate(SwitchId switchId);
 
     DeleteSwitchResult deleteSwitch(SwitchId switchId, boolean force);
 

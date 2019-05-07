@@ -19,9 +19,13 @@ import org.openkilda.messaging.Message;
 
 
 public interface MessageSender {
-    void send(Message message, String outputStream, boolean lookupKey);
+    void emitSpeakerMessage(Message message, String region);
 
-    void send(Object payload, String outputStream);
+    void emitSpeakerMessage(String key, Message message, String region);
 
-    void send(String key, Message message, String outputStream);
+    void emitControllerMessage(Message message);
+
+    void emitControllerMessage(String key, Message message);
+
+    void emitRegionNotification(SwitchMapping mapping);
 }

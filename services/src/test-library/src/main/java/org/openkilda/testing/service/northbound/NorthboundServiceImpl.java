@@ -29,6 +29,8 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.model.HealthCheck;
+import org.openkilda.messaging.model.SpeakerSwitchDescription;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
@@ -52,6 +54,7 @@ import org.openkilda.northbound.dto.v1.switches.PortDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 
 import com.google.common.collect.ImmutableMap;
@@ -469,6 +472,13 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public SwitchValidationResult switchValidate(SwitchId switchId) {
+        log.debug("Switch validating '{}'", switchId);
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/validate", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResult.class, switchId).getBody();
+    }
+
+    @Override
     public DeleteSwitchResult deleteSwitch(SwitchId switchId, boolean force) {
         HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
         httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
@@ -545,6 +555,15 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     private SwitchInfoData convertToSwitchInfoData(SwitchDto dto) {
+        SpeakerSwitchView switchView = SpeakerSwitchView.builder()
+                .ofVersion(dto.getOfVersion())
+                .description(SpeakerSwitchDescription.builder()
+                        .hardware(dto.getHardware())
+                        .manufacturer(dto.getManufacturer())
+                        .serialNumber(dto.getSerialNumber())
+                        .software(dto.getSoftware())
+                        .build())
+                .build();
         return new SwitchInfoData(
                 new SwitchId(dto.getSwitchId()),
                 SwitchChangeType.from(dto.getState()),
@@ -552,6 +571,7 @@ public class NorthboundServiceImpl implements NorthboundService {
                 dto.getHostname(),
                 dto.getDescription(),
                 KILDA_CONTROLLER,
-                dto.isUnderMaintenance());
+                dto.isUnderMaintenance(),
+                switchView);
     }
 }

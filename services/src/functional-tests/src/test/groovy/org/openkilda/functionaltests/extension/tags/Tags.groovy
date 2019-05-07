@@ -13,5 +13,5 @@ import java.lang.annotation.Target
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @interface Tags {
-    Tag[] value()
+    Tag[] value() default []
 }

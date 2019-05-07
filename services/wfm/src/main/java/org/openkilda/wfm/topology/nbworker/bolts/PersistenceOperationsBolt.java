@@ -23,7 +23,6 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 
 import org.apache.storm.task.OutputCollector;
@@ -65,7 +64,7 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
         super.prepare(stormConf, context, collector);
     }
 
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         BaseRequest request = pullValue(input, FIELD_ID_REQUEST, BaseRequest.class);
         correlationId = pullValue(input, FIELD_ID_CORELLATION_ID, String.class);
         tuple = input;

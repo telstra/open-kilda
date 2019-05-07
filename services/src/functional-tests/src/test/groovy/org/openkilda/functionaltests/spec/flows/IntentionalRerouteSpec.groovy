@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import spock.lang.Ignore
-
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -11,11 +9,11 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Ignore
 import spock.lang.Narrative
 
 import javax.inject.Provider
@@ -29,20 +27,15 @@ class IntentionalRerouteSpec extends BaseSpecification {
     @Ignore("Flow status check fails due to the timeout defined in the test. Must be reconsidered.")
     def "Should not be able to reroute to a path with not enough bandwidth available"() {
         given: "A flow with alternate paths available"
-        def switches = topology.getActiveSwitches()
-        List<List<PathNode>> allPaths = []
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
-            allPaths = database.getPaths(src.dpId, dst.dpId)*.path
-            allPaths.size() > 1
-        } ?: assumeTrue("No suiting switches found", false)
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue("No suiting switches found", false)
+        def flow = flowHelper.randomFlow(switchPair)
         flow.maximumBandwidth = 10000
         flowHelper.addFlow(flow)
         def currentPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
         when: "Make the current path less preferable than alternatives"
-        def alternativePaths = allPaths.findAll { it != currentPath }
+        def alternativePaths = switchPair.paths.findAll { it != currentPath }
         alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
 
         and: "Make all alternative paths to have not enough bandwidth to handle the flow"
@@ -82,21 +75,18 @@ class IntentionalRerouteSpec extends BaseSpecification {
 
     def "Should be able to reroute to a better path if it has enough bandwidth"() {
         given: "A flow with alternate paths available"
-        def switches = topology.getActiveSwitches()
-        List<List<PathNode>> allPaths = []
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
-            allPaths = database.getPaths(src.dpId, dst.dpId)*.path
-            allPaths.size() > 1
-        } ?: assumeTrue("No suiting switches found", false)
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue("No suiting switches found", false)
+        def flow = flowHelper.randomFlow(switchPair)
         flow.maximumBandwidth = 10000
         flowHelper.addFlow(flow)
         def currentPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
         when: "Make one of the alternative paths to be the most preferable among all others"
-        def preferableAltPath = allPaths.find { it != currentPath }
-        allPaths.findAll { it != preferableAltPath }.each { pathHelper.makePathMorePreferable(preferableAltPath, it) }
+        def preferableAltPath = switchPair.paths.find { it != currentPath }
+        switchPair.paths.findAll { it != preferableAltPath }.each {
+            pathHelper.makePathMorePreferable(preferableAltPath, it)
+        }
 
         and: "Make the future path to have exact bandwidth to handle the flow"
         def currentIsls = pathHelper.getInvolvedIsls(currentPath)
@@ -192,21 +182,16 @@ class IntentionalRerouteSpec extends BaseSpecification {
 
     def "Should be able to reroute to a path with not enough bandwidth available in case ignoreBandwidth=true"() {
         given: "A flow with alternate paths available"
-        def switches = topology.getActiveSwitches()
-        List<List<PathNode>> allPaths = []
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
-            allPaths = database.getPaths(src.dpId, dst.dpId)*.path
-            allPaths.size() > 1
-        } ?: assumeTrue("No suiting switches found", false)
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue("No suiting switches found", false)
+        def flow = flowHelper.randomFlow(switchPair)
         flow.maximumBandwidth = 10000
         flow.ignoreBandwidth = true
         flowHelper.addFlow(flow)
         def currentPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
         when: "Make the current path less preferable than alternatives"
-        def alternativePaths = allPaths.findAll { it != currentPath }
+        def alternativePaths = switchPair.paths.findAll { it != currentPath }
         alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
 
         and: "Make all alternative paths to have not enough bandwidth to handle the flow"

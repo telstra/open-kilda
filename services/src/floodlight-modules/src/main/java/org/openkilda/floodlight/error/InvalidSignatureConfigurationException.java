@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.error;
 
-public class InvalidSignatureConfigurationException extends AbstractException {
+public class InvalidSignatureConfigurationException extends Exception {
     public InvalidSignatureConfigurationException(String details, Throwable throwable) {
         super(details, throwable);
     }

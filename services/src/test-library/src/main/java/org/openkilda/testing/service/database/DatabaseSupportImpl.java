@@ -26,13 +26,16 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPairRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -69,6 +72,7 @@ public class DatabaseSupportImpl implements Database {
     private final IslRepository islRepository;
     private final SwitchRepository switchRepository;
     private final FlowRepository flowRepository;
+    private final FlowPathRepository flowPathRepository;
     private final FlowPairRepository flowPairRepository;
 
     public DatabaseSupportImpl(PersistenceManager persistenceManager) {
@@ -77,6 +81,7 @@ public class DatabaseSupportImpl implements Database {
         islRepository = repositoryFactory.createIslRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
         flowRepository = repositoryFactory.createFlowRepository();
+        flowPathRepository = repositoryFactory.createFlowPathRepository();
         flowPairRepository = repositoryFactory.createFlowPairRepository();
     }
 
@@ -84,7 +89,7 @@ public class DatabaseSupportImpl implements Database {
      * Updates max_bandwidth property on a certain ISL.
      *
      * @param islToUpdate ISL to be changed
-     * @param value       max bandwidth to set
+     * @param value max bandwidth to set
      * @return true if at least 1 ISL was affected.
      */
     @Override
@@ -106,7 +111,7 @@ public class DatabaseSupportImpl implements Database {
      * Updates available_bandwidth property on a certain ISL.
      *
      * @param islToUpdate ISL to be changed
-     * @param value       available bandwidth to set
+     * @param value available bandwidth to set
      * @return true if at least 1 ISL was affected.
      */
     @Override
@@ -128,7 +133,7 @@ public class DatabaseSupportImpl implements Database {
      * Updates cost property on a certain ISL.
      *
      * @param islToUpdate ISL to be changed
-     * @param value       cost to set
+     * @param value cost to set
      * @return true if at least 1 ISL was affected.
      */
     @Override
@@ -314,6 +319,22 @@ public class DatabaseSupportImpl implements Database {
         flow.getForwardPath().setBandwidth(newBw);
         flow.getReversePath().setBandwidth(newBw);
         flowRepository.createOrUpdate(flow);
+    }
+
+    @Override
+    public void updateFlowMeterId(String flowId, MeterId newMeterId) {
+        //TODO(andriidovhan) rewrite it, FlowPair flowPair -> Flow
+        //FlowPair flowPair = flowPairRepository.findById(flowId)
+        //        .orElseThrow(() -> new RuntimeException(format("Unable to find Flow for %s", flowId)));
+        //flowPair.getForward().setMeterId(newMeterId.getValue());
+        //flowPair.getReverse().setMeterId(newMeterId.getValue());
+        //flowRepository.createOrUpdate(flowPair);
+        //flow path
+        Collection<FlowPath> flowPaths = flowPathRepository.findByFlowId(flowId);
+        flowPaths.forEach(p -> {
+            p.setMeterId(newMeterId);
+            flowPathRepository.createOrUpdate(p);
+        });
     }
 
     @Override

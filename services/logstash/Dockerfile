@@ -1,4 +1,5 @@
-FROM logstash:5.6.12
+ARG base_image=logstash:5.6.12
+FROM ${base_image}
 
 COPY . /
 

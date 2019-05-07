@@ -20,7 +20,6 @@ import org.openkilda.messaging.floodlight.request.PingRequest;
 import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.model.Ping.Errors;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.ping.model.ExpirableMap;
 import org.openkilda.wfm.topology.ping.model.PingContext;
@@ -62,7 +61,7 @@ public class TimeoutManager extends Abstract {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String component = input.getSourceComponent();
 
         if (PingRouter.BOLT_ID.equals(component)) {

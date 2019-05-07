@@ -20,7 +20,6 @@ import org.openkilda.messaging.model.FlowDirection;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.ping.model.GroupId;
 import org.openkilda.wfm.topology.ping.model.PingContext;
@@ -36,7 +35,7 @@ public class PingProducer extends Abstract {
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_PING, FIELD_ID_CONTEXT);
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         PingContext pingContext = pullPingContext(input);
 
         // TODO(surabujin): add one switch flow filter
