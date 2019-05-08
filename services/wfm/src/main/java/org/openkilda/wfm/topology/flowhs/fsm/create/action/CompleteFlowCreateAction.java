@@ -18,6 +18,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -47,7 +49,18 @@ public class CompleteFlowCreateAction extends AnonymousAction<FlowCreateFsm, Sta
 
     @Override
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        flowRepository.updateFlowStatus(stateMachine.getFlow().getFlowId(), FlowStatus.UP);
+        String flowId = stateMachine.getFlow().getFlowId();
+        flowRepository.findById(flowId).ifPresent(
+                flow -> {
+                    FlowPath newForward = flow.getForwardPath();
+                    newForward.setStatus(FlowPathStatus.ACTIVE);
+                    FlowPath newReverse = flow.getReversePath();
+                    newReverse.setStatus(FlowPathStatus.ACTIVE);
+
+                    flow.setStatus(FlowStatus.UP);
+
+                    flowRepository.createOrUpdate(flow);
+                });
         log.info("Flow {} successfully created", stateMachine.getFlow().getFlowId());
         saveHistory(stateMachine);
     }

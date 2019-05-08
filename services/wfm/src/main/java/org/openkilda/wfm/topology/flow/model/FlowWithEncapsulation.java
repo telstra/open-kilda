@@ -26,32 +26,22 @@ import lombok.Getter;
 @AllArgsConstructor
 @Builder(toBuilder = true)
 @Getter
-public class FlowPathPairWithEncapsulation {
+public class FlowWithEncapsulation {
     private final Flow flow;
-    private final FlowPath forwardPath;
-    private final FlowPath reversePath;
     private final EncapsulationResources forwardEncapsulation;
     private final EncapsulationResources reverseEncapsulation;
 
     /**
      * Returns the forward path of the flow.
      */
-    public FlowPathWithEncapsulation getForward() {
-        return FlowPathWithEncapsulation.builder()
-                .flow(flow)
-                .flowPath(forwardPath)
-                .encapsulation(forwardEncapsulation)
-                .build();
+    public FlowPath getForwardPath() {
+        return flow.getForwardPath();
     }
 
     /**
      * Returns the reverse path of the flow.
      */
-    public FlowPathWithEncapsulation getReverse() {
-        return FlowPathWithEncapsulation.builder()
-                .flow(flow)
-                .flowPath(reversePath)
-                .encapsulation(reverseEncapsulation)
-                .build();
+    public FlowPath getReversePath() {
+        return flow.getReversePath();
     }
 }

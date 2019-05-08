@@ -18,9 +18,9 @@ package org.openkilda.wfm.share.mappers;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathSegment;
-import org.openkilda.model.UnidirectionalFlow;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
@@ -60,15 +60,12 @@ public abstract class FlowPathMapper {
     /**
      * Convert {@link FlowPath} to {@link PathNodePayload}.
      */
-    public List<PathNodePayload> mapToPathNodes(UnidirectionalFlow flow) {
-        return mapToPathNodes(flow.getFlowPath(), flow.getSrcPort(), flow.getDestPort());
-    }
-
-    /**
-     * Convert {@link FlowPath} to {@link PathNodePayload}.
-     */
-    public List<PathNodePayload> mapToPathNodes(FlowPath flowPath, int srcPort, int destPort) {
+    public List<PathNodePayload> mapToPathNodes(FlowPath flowPath) {
         List<PathNodePayload> resultList = new ArrayList<>();
+
+        Flow flow = flowPath.getFlow();
+        int srcPort = flow.isForward(flowPath) ? flow.getSrcPort() : flow.getDestPort();
+        int destPort = flow.isForward(flowPath) ? flow.getDestPort() : flow.getSrcPort();
 
         if (flowPath.getSegments().isEmpty()) {
             resultList.add(

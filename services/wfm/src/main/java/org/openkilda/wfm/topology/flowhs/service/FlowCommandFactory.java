@@ -137,19 +137,20 @@ public class FlowCommandFactory {
                 .findAny()
                 .orElseThrow(() ->
                         new IllegalStateException(format("Transit vlan should be present for path %s for flow %s",
-                                flowPath.getPathId(), flowPath.getFlowId())));
+                                flowPath.getPathId(), flowPath.getFlow().getFlowId())));
 
         PathSegment ingressSegment = flowPath.getSegments().stream()
                 .filter(segment -> segment.getSrcSwitch().equals(flowPath.getSrcSwitch()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(
-                        format("PathSegment was not found for ingress flow rule, flowId: %s", flowPath.getFlowId())));
+                        format("PathSegment was not found for ingress flow rule, flowId: %s",
+                                flowPath.getFlow().getFlowId())));
 
         String commandId = commandIdGenerator.generate().toString();
         return InstallMultiSwitchIngressRule.builder()
                 .messageContext(new MessageContext(commandId, context.getCorrelationId()))
                 .commandId(commandIdGenerator.generate())
-                .flowId(flowPath.getFlowId())
+                .flowId(flowPath.getFlow().getFlowId())
                 .switchId(flowPath.getSrcSwitch().getSwitchId())
                 .cookie(flowPath.getCookie())
                 .bandwidth(flowPath.getBandwidth())
@@ -169,7 +170,7 @@ public class FlowCommandFactory {
         return InstallSingleSwitchIngressRule.builder()
                 .messageContext(new MessageContext(commandId, context.getCorrelationId()))
                 .commandId(commandIdGenerator.generate())
-                .flowId(flowPath.getFlowId())
+                .flowId(flowPath.getFlow().getFlowId())
                 .switchId(flowPath.getSrcSwitch().getSwitchId())
                 .cookie(flowPath.getCookie())
                 .bandwidth(flowPath.getBandwidth())
@@ -218,7 +219,7 @@ public class FlowCommandFactory {
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
 
-        return new InstallTransitRule(messageContext, commandId, flowPath.getFlowId(), flowPath.getCookie(),
+        return new InstallTransitRule(messageContext, commandId, flowPath.getFlow().getFlowId(), flowPath.getCookie(),
                 switchId, inputPort, outputPort, transitVlan);
     }
 
@@ -228,7 +229,7 @@ public class FlowCommandFactory {
         return InstallEgressRule.builder()
                 .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
                 .commandId(commandId)
-                .flowId(flowPath.getFlowId())
+                .flowId(flowPath.getFlow().getFlowId())
                 .switchId(flowPath.getDestSwitch().getSwitchId())
                 .cookie(flowPath.getCookie())
                 .inputPort(inputPort)
@@ -245,7 +246,8 @@ public class FlowCommandFactory {
                 .filter(segment -> segment.getSrcSwitch().equals(flowPath.getSrcSwitch()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(
-                        format("PathSegment was not found for ingress flow rule, flowId: %s", flowPath.getFlowId())));
+                        format("PathSegment was not found for ingress flow rule, flowId: %s",
+                                flowPath.getFlow().getFlowId())));
 
         DeleteRulesCriteria ingressCriteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort,
                 inputVlanId, 0, ingressSegment.getSrcPort());
@@ -253,7 +255,7 @@ public class FlowCommandFactory {
         return RemoveRule.builder()
                 .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
                 .commandId(commandId)
-                .flowId(flowPath.getFlowId())
+                .flowId(flowPath.getFlow().getFlowId())
                 .switchId(flowPath.getSrcSwitch().getSwitchId())
                 .cookie(flowPath.getCookie())
                 .meterId(flowPath.getMeterId())
@@ -282,7 +284,8 @@ public class FlowCommandFactory {
         PathSegment egressSegment = segments.get(segments.size() - 1);
         if (!egressSegment.getDestSwitch().getSwitchId().equals(flowPath.getDestSwitch().getSwitchId())) {
             throw new IllegalStateException(
-                    format("PathSegment was not found for egress flow rule, flowId: %s", flowPath.getFlowId()));
+                    format("PathSegment was not found for egress flow rule, flowId: %s",
+                            flowPath.getFlow().getFlowId()));
         }
 
         RemoveRule egressRule =
@@ -300,7 +303,7 @@ public class FlowCommandFactory {
         return RemoveRule.builder()
                 .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
                 .commandId(commandId)
-                .flowId(flowPath.getFlowId())
+                .flowId(flowPath.getFlow().getFlowId())
                 .cookie(flowPath.getCookie())
                 .switchId(switchId)
                 .criteria(criteria)
@@ -315,7 +318,7 @@ public class FlowCommandFactory {
         return RemoveRule.builder()
                 .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
                 .commandId(commandId)
-                .flowId(flowPath.getFlowId())
+                .flowId(flowPath.getFlow().getFlowId())
                 .cookie(flowPath.getCookie())
                 .criteria(criteria)
                 .switchId(flowPath.getDestSwitch().getSwitchId())

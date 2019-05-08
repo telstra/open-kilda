@@ -83,31 +83,33 @@ public class CommandBuilderImplTest {
             boolean forward = srcSwitchId.compareTo(destSwitchId) <= 0;
             Switch srcSwitch = Switch.builder().switchId(srcSwitchId).build();
             Switch destSwitch = Switch.builder().switchId(destSwitchId).build();
-            FlowPath flowPath = FlowPath.builder()
+
+            Flow flow = Flow.builder()
                     .flowId(flowId)
+                    .srcSwitch(forward ? srcSwitch : destSwitch)
+                    .destSwitch(forward ? destSwitch : srcSwitch)
+                    .build();
+
+            FlowPath flowPath = FlowPath.builder()
+                    .flow(flow)
                     .pathId(new PathId(UUID.randomUUID().toString()))
                     .srcSwitch(srcSwitch)
                     .destSwitch(destSwitch)
                     .cookie(new Cookie(cookie))
                     .segments(emptyList())
                     .build();
+            flow.setForwardPath(forward ? flowPath : null);
+            flow.setReversePath(forward ? null : flowPath);
+
             when(flowPathRepository.findById(eq(flowPath.getPathId())))
                     .thenReturn(Optional.of(flowPath));
             when(flowPathRepository.findByFlowId(eq(flowId)))
                     .thenReturn(asList(flowPath));
-
-            Flow flow = Flow.builder()
-                    .flowId(flowId)
-                    .srcSwitch(forward ? srcSwitch : destSwitch)
-                    .destSwitch(forward ? destSwitch : srcSwitch)
-                    .forwardPath(forward ? flowPath : null)
-                    .reversePath(forward ? null : flowPath)
-                    .build();
             when(flowRepository.findById(eq(flowId)))
                     .thenReturn(Optional.of(flow));
 
             TransitVlan transitVlanEntity = TransitVlan.builder()
-                    .flowId(flowPath.getFlowId())
+                    .flowId(flow.getFlowId())
                     .pathId(flowPath.getPathId())
                     .vlan(transitVlan)
                     .build();
@@ -117,9 +119,9 @@ public class CommandBuilderImplTest {
             return flowPath;
         }
 
-        private PathSegment buildSegment(PathId pathId, SwitchId srcSwitchId, SwitchId destSwitchId) {
+        private PathSegment buildSegment(FlowPath path, SwitchId srcSwitchId, SwitchId destSwitchId) {
             return PathSegment.builder()
-                    .pathId(pathId)
+                    .path(path)
                     .srcSwitch(Switch.builder().switchId(srcSwitchId).build())
                     .destSwitch(Switch.builder().switchId(destSwitchId).build())
                     .build();
@@ -127,17 +129,17 @@ public class CommandBuilderImplTest {
 
         private PersistenceManager build() {
             FlowPath flowPathA = buildFlowAndPath("A", SWITCH_ID_A, SWITCH_ID_B, 1, 1);
-            flowPathA.setSegments(asList(buildSegment(flowPathA.getPathId(), SWITCH_ID_A, SWITCH_ID_C),
-                    buildSegment(flowPathA.getPathId(), SWITCH_ID_C, SWITCH_ID_B)));
+            flowPathA.setSegments(asList(buildSegment(flowPathA, SWITCH_ID_A, SWITCH_ID_C),
+                    buildSegment(flowPathA, SWITCH_ID_C, SWITCH_ID_B)));
 
             FlowPath flowPathB = buildFlowAndPath("B", SWITCH_ID_A, SWITCH_ID_C, 2, 1);
-            flowPathB.setSegments(asList(buildSegment(flowPathB.getPathId(), SWITCH_ID_A, SWITCH_ID_B),
-                    buildSegment(flowPathB.getPathId(), SWITCH_ID_B, SWITCH_ID_C)));
+            flowPathB.setSegments(asList(buildSegment(flowPathB, SWITCH_ID_A, SWITCH_ID_B),
+                    buildSegment(flowPathB, SWITCH_ID_B, SWITCH_ID_C)));
 
             FlowPath flowPathC = buildFlowAndPath("C", SWITCH_ID_A, SWITCH_ID_A, 3, 1);
 
             FlowPath flowPathD = buildFlowAndPath("D", SWITCH_ID_B, SWITCH_ID_A, 4, 1);
-            flowPathD.setSegments(asList(buildSegment(flowPathD.getPathId(), SWITCH_ID_B, SWITCH_ID_A)));
+            flowPathD.setSegments(asList(buildSegment(flowPathD, SWITCH_ID_B, SWITCH_ID_A)));
 
             when(flowPathRepository.findBySegmentDestSwitch(eq(SWITCH_ID_B)))
                     .thenReturn(Arrays.asList(flowPathA, flowPathB));

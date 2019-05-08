@@ -139,9 +139,9 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
         FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
 
         long cookie = flowResources.getUnmaskedCookie();
-        flow.setForwardPath(buildFlowPath(flow.getFlowId(), flowResources.getForward(), pathPair.getForward(),
+        flow.setForwardPath(buildFlowPath(flow, flowResources.getForward(), pathPair.getForward(),
                 Cookie.buildForwardCookie(cookie)));
-        flow.setReversePath(buildFlowPath(flow.getFlowId(), flowResources.getReverse(), pathPair.getReverse(),
+        flow.setReversePath(buildFlowPath(flow, flowResources.getReverse(), pathPair.getReverse(),
                 Cookie.buildReverseCookie(cookie)));
 
         transactionManager.doInTransaction(() -> {
@@ -153,10 +153,21 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
         log.debug("Resources allocated successfully for the flow {}", flow.getFlowId());
     }
 
-    private FlowPath buildFlowPath(String flowId, PathResources pathResources, Path path, Cookie cookie) {
-        List<PathSegment> segments = path.getSegments().stream()
+    private FlowPath buildFlowPath(Flow flow, PathResources pathResources, Path path, Cookie cookie) {
+        FlowPath result = FlowPath.builder()
+                .flow(flow)
+                .pathId(pathResources.getPathId())
+                .srcSwitch(switchRepository.reload(Switch.builder()
+                        .switchId(path.getSrcSwitchId()).build()))
+                .destSwitch(switchRepository.reload(Switch.builder()
+                        .switchId(path.getDestSwitchId()).build()))
+                .meterId(pathResources.getMeterId())
+                .cookie(cookie)
+                .build();
+
+        result.setSegments(path.getSegments().stream()
                 .map(segment -> PathSegment.builder()
-                        .pathId(pathResources.getPathId())
+                        .path(result)
                         .srcSwitch(switchRepository.reload(Switch.builder()
                                 .switchId(segment.getSrcSwitchId()).build()))
                         .srcPort(segment.getSrcPort())
@@ -165,18 +176,9 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
                         .destPort(segment.getDestPort())
                         .latency(segment.getLatency())
                         .build())
-                .collect(Collectors.toList());
-        return FlowPath.builder()
-                .flowId(flowId)
-                .pathId(pathResources.getPathId())
-                .srcSwitch(switchRepository.reload(Switch.builder()
-                        .switchId(path.getSrcSwitchId()).build()))
-                .destSwitch(switchRepository.reload(Switch.builder()
-                        .switchId(path.getDestSwitchId()).build()))
-                .meterId(pathResources.getMeterId())
-                .cookie(cookie)
-                .segments(segments)
-                .build();
+                .collect(Collectors.toList()));
+
+        return result;
     }
 
     private void updateIslsForFlowPath(FlowPath path) {

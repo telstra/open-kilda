@@ -412,7 +412,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
             saveEvent(Event.CREATE, flow.getFlowId(), "", message.getCorrelationId(), tuple);
 
-            FlowPair createdFlow = flowService.createFlow(flow.getFlowEntity(),
+            FlowPair createdFlow = flowService.createFlow(flow.getFlow(),
                     request.getDiverseFlowId(),
                     new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.CREATE));
 
@@ -481,29 +481,32 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
 
+        UnidirectionalFlow forward = flowPair.forward;
+        UnidirectionalFlow reverse = flowPair.reverse;
+
         FlowDumpData flowDump = FlowDumpData.builder()
-                .flowId(flowPair.forward.getFlowId())
+                .flowId(forward.getFlowId())
                 .dumpType(type)
-                .bandwidth(flowPair.forward.getBandwidth())
-                .ignoreBandwidth(flowPair.forward.isIgnoreBandwidth())
-                .forwardCookie(flowPair.forward.getCookie())
-                .reverseCookie(flowPair.reverse.getCookie())
-                .sourceSwitch(flowPair.forward.getSrcSwitch().getSwitchId())
-                .destinationSwitch(flowPair.forward.getDestSwitch().getSwitchId())
-                .sourcePort(flowPair.forward.getSrcPort())
-                .destinationPort(flowPair.forward.getDestPort())
-                .sourceVlan(flowPair.forward.getSrcVlan())
-                .destinationVlan(flowPair.forward.getDestVlan())
-                .forwardMeterId(flowPair.forward.getMeterId())
-                .reverseMeterId(flowPair.reverse.getMeterId())
+                .bandwidth(forward.getBandwidth())
+                .ignoreBandwidth(forward.isIgnoreBandwidth())
+                .forwardCookie(forward.getCookie())
+                .reverseCookie(reverse.getCookie())
+                .sourceSwitch(forward.getSrcSwitch().getSwitchId())
+                .destinationSwitch(forward.getDestSwitch().getSwitchId())
+                .sourcePort(forward.getSrcPort())
+                .destinationPort(forward.getDestPort())
+                .sourceVlan(forward.getSrcVlan())
+                .destinationVlan(forward.getDestVlan())
+                .forwardMeterId(forward.getMeterId())
+                .reverseMeterId(reverse.getMeterId())
                 .forwardPath(
                         objectMapper.writeValueAsString(
-                                FlowPathMapper.INSTANCE.mapToPathNodes(flowPair.forward)))
+                                FlowPathMapper.INSTANCE.mapToPathNodes(forward.getFlowPath())))
                 .reversePath(
                         objectMapper.writeValueAsString(
-                                FlowPathMapper.INSTANCE.mapToPathNodes(flowPair.reverse)))
-                .forwardStatus(flowPair.forward.getFlowPath().getStatus())
-                .reverseStatus(flowPair.reverse.getFlowPath().getStatus())
+                                FlowPathMapper.INSTANCE.mapToPathNodes(reverse.getFlowPath())))
+                .forwardStatus(forward.getFlowPath().getStatus())
+                .reverseStatus(reverse.getFlowPath().getStatus())
                 .build();
 
         FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
@@ -569,7 +572,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                 saveDump(flowPair.get(), DumpType.STATE_BEFORE, message.getCorrelationId(), tuple);
             }
 
-            FlowPair updatedFlow = flowService.updateFlow(flow.getFlowEntity(),
+            FlowPair updatedFlow = flowService.updateFlow(flow.getFlow(),
                     request.getDiverseFlowId(),
                     new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.UPDATE));
 

@@ -16,7 +16,6 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
@@ -24,6 +23,15 @@ import java.util.Optional;
 import java.util.Set;
 
 public interface FlowRepository extends Repository<Flow> {
+    long countFlows();
+
+    /**
+     * Fetches all flows.
+     * <p/>
+     * IMPORTANT: the method doesn't complete the flow and flow path entities with related path segments!
+     */
+    Collection<Flow> findAll();
+
     boolean exists(String flowId);
 
     Optional<Flow> findById(String flowId);
@@ -46,6 +54,4 @@ public interface FlowRepository extends Repository<Flow> {
     Set<String> findFlowIdsWithSwitchInPath(SwitchId switchId);
 
     Optional<String> getOrCreateFlowGroupId(String flowId);
-
-    void updateFlowStatus(String flowId, FlowStatus flowStatus);
 }

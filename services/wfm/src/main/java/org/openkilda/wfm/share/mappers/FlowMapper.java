@@ -93,7 +93,7 @@ public abstract class FlowMapper {
     public UnidirectionalFlow map(FlowDto flowDto) {
         Flow flow = buildFlow(flowDto);
 
-        FlowPath flowPath = buildPath(flowDto);
+        FlowPath flowPath = buildPath(flow, flowDto);
         flow.setForwardPath(flowPath);
 
         TransitVlan transitVlan = TransitVlan.builder()
@@ -102,7 +102,7 @@ public abstract class FlowMapper {
                 .vlan(flowDto.getTransitVlan())
                 .build();
 
-        return new UnidirectionalFlow(flow, flowPath, transitVlan, true);
+        return new UnidirectionalFlow(flowPath, transitVlan, true);
     }
 
     /**
@@ -113,10 +113,11 @@ public abstract class FlowMapper {
             return null;
         }
 
-        FlowPath forwardPath = buildPath(flowPair.getLeft());
-        FlowPath reversePath = buildPath(flowPair.getRight());
-
         Flow flow = buildFlow(flowPair.getLeft());
+
+        FlowPath forwardPath = buildPath(flow, flowPair.getLeft());
+        FlowPath reversePath = buildPath(flow, flowPair.getRight());
+
         flow.setForwardPath(forwardPath);
         flow.setReversePath(reversePath);
 
@@ -197,22 +198,22 @@ public abstract class FlowMapper {
         }
     }
 
-    private FlowPath buildPath(FlowDto flow) {
-        Switch srcSwitch = Switch.builder().switchId(flow.getSourceSwitch()).build();
-        Switch destSwitch = Switch.builder().switchId(flow.getDestinationSwitch()).build();
+    private FlowPath buildPath(Flow flow, FlowDto flowDto) {
+        Switch srcSwitch = Switch.builder().switchId(flowDto.getSourceSwitch()).build();
+        Switch destSwitch = Switch.builder().switchId(flowDto.getDestinationSwitch()).build();
 
         return FlowPath.builder()
                 .srcSwitch(srcSwitch)
                 .destSwitch(destSwitch)
-                .cookie(new Cookie(flow.getCookie()))
-                .bandwidth(flow.getBandwidth())
-                .ignoreBandwidth(flow.isIgnoreBandwidth())
-                .flowId(flow.getFlowId())
+                .cookie(new Cookie(flowDto.getCookie()))
+                .bandwidth(flowDto.getBandwidth())
+                .ignoreBandwidth(flowDto.isIgnoreBandwidth())
+                .flow(flow)
                 .pathId(new PathId(UUID.randomUUID().toString()))
-                .meterId(flow.getMeterId() != null ? new MeterId(flow.getMeterId()) : null)
+                .meterId(flowDto.getMeterId() != null ? new MeterId(flowDto.getMeterId()) : null)
                 .segments(Collections.emptyList())
-                .timeCreate(map(flow.getCreatedTime()))
-                .timeModify(map(flow.getLastUpdated()))
+                .timeCreate(map(flowDto.getCreatedTime()))
+                .timeModify(map(flowDto.getLastUpdated()))
                 .build();
     }
 
