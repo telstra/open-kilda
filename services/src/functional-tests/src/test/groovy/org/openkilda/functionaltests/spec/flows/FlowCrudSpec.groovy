@@ -563,6 +563,68 @@ class FlowCrudSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
     }
 
+    @Unroll
+    def "Able to CRUD #flowDescription single switch pinned flow"() {
+        when: "Create a flow"
+        def sw = topology.getActiveSwitches().first()
+        def flow = flowHelper.singleSwitchFlow(sw)
+        flow.maximumBandwidth = bandwidth
+        flow.ignoreBandwidth = (bandwidth == 0) ? true : false
+        flow.pinned = true
+        flowHelper.addFlow(flow)
+
+        then: "Pinned flow is created"
+        def flowInfo = northbound.getFlow(flow.id)
+        flowInfo.pinned
+
+        when: "Update the flow (pinned=false)"
+        northbound.updateFlow(flow.id, flow.tap { it.pinned = false })
+
+        then: "The pinned option is disabled"
+        def newFlowInfo = northbound.getFlow(flow.id)
+        !newFlowInfo.pinned
+        flowInfo.lastUpdated < newFlowInfo.lastUpdated
+
+        and: "Cleanup: Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+
+        where:
+        flowDescription | bandwidth
+        "a metered"     | 1000
+        "an unmetered"  | 0
+    }
+
+    @Unroll
+    def "Able to CRUD #flowDescription pinned flow"() {
+        when: "Create a flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.maximumBandwidth = bandwidth
+        flow.ignoreBandwidth = (bandwidth == 0) ? true : false
+        flow.pinned = true
+        flowHelper.addFlow(flow)
+
+        then: "Pinned flow is created"
+        def flowInfo = northbound.getFlow(flow.id)
+        flowInfo.pinned
+
+        when: "Update the flow (pinned=false)"
+        northbound.updateFlow(flow.id, flow.tap { it.pinned = false })
+
+        then: "The pinned option is disabled"
+        def newFlowInfo = northbound.getFlow(flow.id)
+        !newFlowInfo.pinned
+        flowInfo.lastUpdated < newFlowInfo.lastUpdated
+
+        and: "Cleanup: Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+
+        where:
+        flowDescription | bandwidth
+        "a metered"     | 1000
+        "an unmetered"  | 0
+    }
+
     @Shared
     def errorMessage = { String operation, FlowPayload flow, String endpoint, FlowPayload conflictingFlow,
                          String conflictingEndpoint ->
