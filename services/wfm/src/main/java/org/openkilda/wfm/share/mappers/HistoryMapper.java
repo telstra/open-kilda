@@ -89,10 +89,8 @@ public abstract class HistoryMapper {
      */
     @AfterMapping
     public FlowDumpData map(Flow flow, @TargetType FlowDumpData dumpData) throws JsonProcessingException {
-        List<PathNodePayload> forwardNodes = FlowPathMapper.INSTANCE.mapToPathNodes(flow.getForwardPath(),
-                flow.getSrcPort(), flow.getDestPort());
-        List<PathNodePayload> reverseNodes = FlowPathMapper.INSTANCE.mapToPathNodes(flow.getReversePath(),
-                flow.getDestPort(), flow.getSrcPort());
+        List<PathNodePayload> forwardNodes = FlowPathMapper.INSTANCE.mapToPathNodes(flow.getForwardPath());
+        List<PathNodePayload> reverseNodes = FlowPathMapper.INSTANCE.mapToPathNodes(flow.getReversePath());
 
         dumpData.setForwardPath(Utils.MAPPER.writeValueAsString(forwardNodes));
         dumpData.setForwardPath(Utils.MAPPER.writeValueAsString(reverseNodes));

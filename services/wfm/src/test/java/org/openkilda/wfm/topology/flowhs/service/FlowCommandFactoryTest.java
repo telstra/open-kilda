@@ -42,11 +42,9 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.Neo4jBasedTest;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
@@ -72,10 +70,13 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         Switch srcSwitch = Switch.builder().switchId(SWITCH_1).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_2).build();
 
-        Pair<List<PathSegment>, List<PathSegment>> segments =
-                buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
+        Flow flow = buildFlow(srcSwitch, 1, 0, destSwitch, 2, 0, 0);
+        FlowPath forward = buildFlowPath(flow, flow.getSrcSwitch(), flow.getDestSwitch(), flow.getBandwidth());
+        flow.setForwardPath(forward);
+        FlowPath reverse = buildFlowPath(flow, flow.getDestSwitch(), flow.getSrcSwitch(), flow.getBandwidth());
+        flow.setReversePath(reverse);
+        setSegmentsWithoutTransitSwitches(forward, reverse);
 
-        Flow flow = buildFlow(srcSwitch, 1, 0, destSwitch, 2, 0, 0, segments);
         List<InstallTransitRule> commands = target.createInstallNonIngressRules(COMMAND_CONTEXT, flow);
         assertEquals(2, commands.size());
         InstallTransitRule command = commands.get(0);
@@ -99,10 +100,13 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         Switch srcSwitch = Switch.builder().switchId(SWITCH_1).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_2).build();
 
-        Pair<List<PathSegment>, List<PathSegment>> segments =
-                buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
+        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 0, 0);
+        FlowPath forward = buildFlowPath(flow, flow.getSrcSwitch(), flow.getDestSwitch(), flow.getBandwidth());
+        flow.setForwardPath(forward);
+        FlowPath reverse = buildFlowPath(flow, flow.getDestSwitch(), flow.getSrcSwitch(), flow.getBandwidth());
+        flow.setReversePath(reverse);
+        setSegmentsWithoutTransitSwitches(forward, reverse);
 
-        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 0, 0, segments);
         List<InstallTransitRule> commands = target.createInstallNonIngressRules(COMMAND_CONTEXT, flow);
         assertEquals(2, commands.size());
         InstallTransitRule command = commands.get(0);
@@ -112,7 +116,7 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         assertEquals(flow.getFlowId(), forwardEgressRule.getFlowId());
         assertEquals(destSwitch.getSwitchId(), forwardEgressRule.getSwitchId());
         assertEquals(flow.getForwardPath().getCookie(), forwardEgressRule.getCookie());
-        assertEquals(segments.getLeft().get(0).getDestPort(), (int) forwardEgressRule.getInputPort());
+        assertEquals(flow.getForwardPath().getSegments().get(0).getDestPort(), (int) forwardEgressRule.getInputPort());
         assertEquals(flow.getDestPort(), (int) forwardEgressRule.getOutputPort());
         TransitVlan forwardVlan = vlanRepository.findByPathId(flow.getForwardPathId()).stream()
                 .findAny()
@@ -142,9 +146,13 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         Switch srcSwitch = Switch.builder().switchId(SWITCH_1).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_2).build();
 
-        Pair<List<PathSegment>, List<PathSegment>> segments =
-                buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
-        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 0, segments);
+        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 0);
+        FlowPath forward = buildFlowPath(flow, flow.getSrcSwitch(), flow.getDestSwitch(), flow.getBandwidth());
+        flow.setForwardPath(forward);
+        FlowPath reverse = buildFlowPath(flow, flow.getDestSwitch(), flow.getSrcSwitch(), flow.getBandwidth());
+        flow.setReversePath(reverse);
+        setSegmentsWithoutTransitSwitches(forward, reverse);
+
         List<InstallTransitRule> commands = target.createInstallNonIngressRules(COMMAND_CONTEXT, flow);
         assertEquals(2, commands.size());
         InstallTransitRule command = commands.get(0);
@@ -170,8 +178,13 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         Switch srcSwitch = Switch.builder().switchId(SWITCH_1).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_3).build();
 
-        Pair<List<PathSegment>, List<PathSegment>> segments = buildSegmentsWithTransitSwitches(srcSwitch, destSwitch);
-        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 0, segments);
+        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 0);
+        FlowPath forward = buildFlowPath(flow, flow.getSrcSwitch(), flow.getDestSwitch(), flow.getBandwidth());
+        flow.setForwardPath(forward);
+        FlowPath reverse = buildFlowPath(flow, flow.getDestSwitch(), flow.getSrcSwitch(), flow.getBandwidth());
+        flow.setReversePath(reverse);
+        setSegmentsWithTransitSwitches(forward, reverse);
+
         List<InstallTransitRule> commands = target.createInstallNonIngressRules(COMMAND_CONTEXT, flow);
         assertEquals(4, commands.size());
 
@@ -208,9 +221,13 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         Switch srcSwitch = Switch.builder().switchId(SWITCH_1).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_2).build();
 
-        Pair<List<PathSegment>, List<PathSegment>> segments =
-                buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
-        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 0, segments);
+        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 0);
+        FlowPath forward = buildFlowPath(flow, flow.getSrcSwitch(), flow.getDestSwitch(), flow.getBandwidth());
+        flow.setForwardPath(forward);
+        FlowPath reverse = buildFlowPath(flow, flow.getDestSwitch(), flow.getSrcSwitch(), flow.getBandwidth());
+        flow.setReversePath(reverse);
+        setSegmentsWithoutTransitSwitches(forward, reverse);
+
         List<InstallIngressRule> commands = target.createInstallIngressRules(COMMAND_CONTEXT, flow);
         assertEquals(2, commands.size());
 
@@ -244,9 +261,13 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         Switch srcSwitch = Switch.builder().switchId(SWITCH_1).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_2).build();
 
-        Pair<List<PathSegment>, List<PathSegment>> segments =
-                buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
-        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 1000, segments);
+        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 1000);
+        FlowPath forward = buildFlowPath(flow, flow.getSrcSwitch(), flow.getDestSwitch(), flow.getBandwidth());
+        flow.setForwardPath(forward);
+        FlowPath reverse = buildFlowPath(flow, flow.getDestSwitch(), flow.getSrcSwitch(), flow.getBandwidth());
+        flow.setReversePath(reverse);
+        setSegmentsWithoutTransitSwitches(forward, reverse);
+
         List<InstallIngressRule> commands = target.createInstallIngressRules(COMMAND_CONTEXT, flow);
         assertEquals(2, commands.size());
         InstallMultiSwitchIngressRule sourceSwitchRule = (InstallMultiSwitchIngressRule) commands.get(0);
@@ -279,9 +300,13 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         Switch srcSwitch = Switch.builder().switchId(SWITCH_1).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_2).build();
 
-        Pair<List<PathSegment>, List<PathSegment>> segments =
-                buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
-        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 0, segments);
+        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 0);
+        FlowPath forward = buildFlowPath(flow, flow.getSrcSwitch(), flow.getDestSwitch(), flow.getBandwidth());
+        flow.setForwardPath(forward);
+        FlowPath reverse = buildFlowPath(flow, flow.getDestSwitch(), flow.getSrcSwitch(), flow.getBandwidth());
+        flow.setReversePath(reverse);
+        setSegmentsWithoutTransitSwitches(forward, reverse);
+
         List<RemoveRule> commands = target.createRemoveIngressRules(COMMAND_CONTEXT, flow);
         assertEquals("2 commands for ingress rules should be created", 2, commands.size());
 
@@ -292,7 +317,7 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         assertNull(srcSwitchCommand.getMeterId());
 
         DeleteRulesCriteria srcSwitchCriteria = srcSwitchCommand.getCriteria();
-        assertEquals(flow.getForwardPath().getCookie(), srcSwitchCriteria.getCookie());
+        assertEquals(flow.getForwardPath().getCookie().getValue(), (long) srcSwitchCriteria.getCookie());
         assertEquals(flow.getSrcPort(), (int) srcSwitchCriteria.getInPort());
         assertEquals(flow.getForwardPath().getSegments().get(0).getSrcPort(), (int) srcSwitchCriteria.getOutPort());
         assertEquals(flow.getSrcVlan(), (int) srcSwitchCriteria.getInVlan());
@@ -315,9 +340,13 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         Switch srcSwitch = Switch.builder().switchId(SWITCH_1).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_2).build();
 
-        Pair<List<PathSegment>, List<PathSegment>> segments =
-                buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
-        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 1000, segments);
+        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 1000);
+        FlowPath forward = buildFlowPath(flow, flow.getSrcSwitch(), flow.getDestSwitch(), flow.getBandwidth());
+        flow.setForwardPath(forward);
+        FlowPath reverse = buildFlowPath(flow, flow.getDestSwitch(), flow.getSrcSwitch(), flow.getBandwidth());
+        flow.setReversePath(reverse);
+        setSegmentsWithoutTransitSwitches(forward, reverse);
+
         List<RemoveRule> commands = target.createRemoveIngressRules(COMMAND_CONTEXT, flow);
         assertEquals("2 commands for ingress rules should be created", 2, commands.size());
 
@@ -351,8 +380,13 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         Switch srcSwitch = Switch.builder().switchId(SWITCH_1).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_3).build();
 
-        Pair<List<PathSegment>, List<PathSegment>> segments = buildSegmentsWithTransitSwitches(srcSwitch, destSwitch);
-        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 1000, segments);
+        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 1000);
+        FlowPath forward = buildFlowPath(flow, flow.getSrcSwitch(), flow.getDestSwitch(), flow.getBandwidth());
+        flow.setForwardPath(forward);
+        FlowPath reverse = buildFlowPath(flow, flow.getDestSwitch(), flow.getSrcSwitch(), flow.getBandwidth());
+        flow.setReversePath(reverse);
+        setSegmentsWithTransitSwitches(forward, reverse);
+
         List<RemoveRule> commands = target.createRemoveNonIngressRules(COMMAND_CONTEXT, flow);
         assertEquals("4 commands for ingress rules should be created", 4, commands.size());
 
@@ -395,9 +429,12 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         Switch srcSwitch = Switch.builder().switchId(SWITCH_1).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_2).build();
 
-        Pair<List<PathSegment>, List<PathSegment>> segments =
-                buildSegmentsWithoutTransitSwitches(srcSwitch, destSwitch);
-        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 1000, segments);
+        Flow flow = buildFlow(srcSwitch, 1, 101, destSwitch, 2, 102, 1000);
+        FlowPath forward = buildFlowPath(flow, flow.getSrcSwitch(), flow.getDestSwitch(), flow.getBandwidth());
+        flow.setForwardPath(forward);
+        FlowPath reverse = buildFlowPath(flow, flow.getDestSwitch(), flow.getSrcSwitch(), flow.getBandwidth());
+        flow.setReversePath(reverse);
+        setSegmentsWithoutTransitSwitches(forward, reverse);
         List<RemoveRule> commands = target.createRemoveNonIngressRules(COMMAND_CONTEXT, flow);
         assertEquals("2 commands for ingress rules should be created", 2, commands.size());
 
@@ -434,105 +471,82 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
         assertEquals(reverseVlan.getVlan(), (int) reverseEgressSwitchCriteria.getInVlan());
     }
 
-    private Pair<List<PathSegment>, List<PathSegment>> buildSegmentsWithoutTransitSwitches(
-            Switch srcSwitch, Switch destSwitch) {
-
+    private void setSegmentsWithoutTransitSwitches(FlowPath forward, FlowPath reverse) {
         PathSegment switch1ToSwitch2 = PathSegment.builder()
-                .srcSwitch(srcSwitch)
+                .path(forward)
+                .srcSwitch(forward.getSrcSwitch())
                 .srcPort(12)
-                .destSwitch(destSwitch)
+                .destSwitch(forward.getDestSwitch())
                 .destPort(22)
-                .pathId(new PathId(UUID.randomUUID().toString()))
                 .build();
+        forward.setSegments(ImmutableList.of(switch1ToSwitch2));
         PathSegment switch2ToSwitch1 = PathSegment.builder()
-                .srcSwitch(destSwitch)
+                .path(reverse)
+                .srcSwitch(reverse.getSrcSwitch())
                 .srcPort(22)
-                .destSwitch(srcSwitch)
+                .destSwitch(reverse.getDestSwitch())
                 .destPort(12)
-                .pathId(new PathId(UUID.randomUUID().toString()))
                 .build();
-        return Pair.of(Collections.singletonList(switch1ToSwitch2), Collections.singletonList(switch2ToSwitch1));
+        reverse.setSegments(ImmutableList.of(switch2ToSwitch1));
     }
 
-    private Pair<List<PathSegment>, List<PathSegment>> buildSegmentsWithTransitSwitches(
-            Switch srcSwitch, Switch destSwitch) {
+    private void setSegmentsWithTransitSwitches(FlowPath forward, FlowPath reverse) {
         PathSegment switch1ToSwitch2 = PathSegment.builder()
-                .srcSwitch(srcSwitch)
+                .path(forward)
+                .srcSwitch(forward.getSrcSwitch())
                 .srcPort(12)
                 .destSwitch(Switch.builder().switchId(SWITCH_2).build())
                 .destPort(21)
-                .pathId(new PathId(UUID.randomUUID().toString()))
                 .build();
         PathSegment switch2ToSwitch3 = PathSegment.builder()
+                .path(forward)
                 .srcSwitch(Switch.builder().switchId(SWITCH_2).build())
                 .srcPort(23)
-                .destSwitch(destSwitch)
+                .destSwitch(forward.getDestSwitch())
                 .destPort(32)
-                .pathId(new PathId(UUID.randomUUID().toString()))
                 .build();
+        forward.setSegments(ImmutableList.of(switch1ToSwitch2, switch2ToSwitch3));
 
         PathSegment switch3ToSwitch2 = PathSegment.builder()
-                .srcSwitch(destSwitch)
+                .path(reverse)
+                .srcSwitch(reverse.getSrcSwitch())
                 .srcPort(32)
                 .destSwitch(Switch.builder().switchId(SWITCH_2).build())
                 .destPort(23)
-                .pathId(new PathId(UUID.randomUUID().toString()))
                 .build();
         PathSegment switch2ToSwitch1 = PathSegment.builder()
+                .path(reverse)
                 .srcSwitch(Switch.builder().switchId(SWITCH_2).build())
                 .srcPort(21)
-                .destSwitch(srcSwitch)
+                .destSwitch(reverse.getDestSwitch())
                 .destPort(12)
-                .pathId(new PathId(UUID.randomUUID().toString()))
                 .build();
-
-        return Pair.of(ImmutableList.of(switch1ToSwitch2, switch2ToSwitch3),
-                ImmutableList.of(switch3ToSwitch2, switch2ToSwitch1));
+        reverse.setSegments(ImmutableList.of(switch3ToSwitch2, switch2ToSwitch1));
     }
 
-    private Flow buildFlow(Switch srcSwitch, int srcPort, int srcVlan, Switch dstSwitch, int dstPort, int dstVlan,
-                           int bandwidth, Pair<List<PathSegment>, List<PathSegment>> segments) {
-        String flowId = UUID.randomUUID().toString();
-        PathId forwardPathId = segments.getLeft().isEmpty() ? new PathId(UUID.randomUUID().toString())
-                : segments.getLeft().get(0).getPathId();
+    private FlowPath buildFlowPath(Flow flow, Switch srcSwitch, Switch dstSwitch, long bandwidth) {
+        PathId forwardPathId = new PathId(UUID.randomUUID().toString());
         TransitVlan forwardVlan = TransitVlan.builder()
-                .flowId(flowId)
+                .flowId(flow.getFlowId())
                 .pathId(forwardPathId)
                 .vlan(UNSEED_RANDOM.nextInt())
                 .build();
         vlanRepository.createOrUpdate(forwardVlan);
-        FlowPath forwardPath = FlowPath.builder()
-                .flowId(flowId)
+        return FlowPath.builder()
+                .flow(flow)
                 .bandwidth(bandwidth)
                 .cookie(new Cookie(UNSEED_RANDOM.nextLong()))
                 .meterId(bandwidth != 0 ? new MeterId(UNSEED_RANDOM.nextInt()) : null)
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
                 .pathId(forwardPathId)
-                .segments(segments.getLeft())
                 .build();
+    }
 
-        PathId reversePathId = segments.getRight().isEmpty() ? new PathId(UUID.randomUUID().toString())
-                : segments.getRight().get(0).getPathId();
-        TransitVlan reverseVlan = TransitVlan.builder()
-                .flowId(flowId)
-                .pathId(reversePathId)
-                .vlan(UNSEED_RANDOM.nextInt())
-                .build();
-        vlanRepository.createOrUpdate(reverseVlan);
-        FlowPath reversePath = FlowPath.builder()
-                .flowId(flowId)
-                .bandwidth(bandwidth)
-                .cookie(new Cookie(new Random().nextLong()))
-                .meterId(bandwidth != 0 ? new MeterId(new Random().nextInt()) : null)
-                .srcSwitch(dstSwitch)
-                .destSwitch(srcSwitch)
-                .pathId(reversePathId)
-                .segments(segments.getRight())
-                .build();
-
+    private Flow buildFlow(Switch srcSwitch, int srcPort, int srcVlan, Switch dstSwitch, int dstPort, int dstVlan,
+                           int bandwidth) {
         return Flow.builder()
-                .flowId(flowId)
+                .flowId(UUID.randomUUID().toString())
                 .srcSwitch(srcSwitch)
                 .srcPort(srcPort)
                 .srcVlan(srcVlan)
@@ -540,8 +554,6 @@ public class FlowCommandFactoryTest extends Neo4jBasedTest {
                 .destPort(dstPort)
                 .destVlan(dstVlan)
                 .bandwidth(bandwidth)
-                .forwardPath(forwardPath)
-                .reversePath(reversePath)
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build();
     }
