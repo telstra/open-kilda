@@ -21,7 +21,6 @@ import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.model.Isl;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.bolt.KafkaEncoder;
 import org.openkilda.wfm.topology.network.model.Endpoint;
@@ -68,7 +67,7 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String source = input.getSourceComponent();
         if (UniIslHandler.BOLT_ID.equals(source)) {
             handleUniIslCommand(input);

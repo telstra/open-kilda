@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.network.storm.bolt.watchlist;
 
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.topology.network.model.Endpoint;
@@ -55,7 +54,7 @@ public class WatchListHandler extends AbstractBolt implements IWatchListCarrier 
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String source = input.getSourceComponent();
         if (CoordinatorSpout.ID.equals(source)) {
             handleTimer(input);

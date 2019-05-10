@@ -51,5 +51,6 @@ filter {
 output {
   elasticsearch {
     hosts => "{{ getv "/kilda_logging_elasticsearch_hosts" }}"
+    index => "kilda-%{+YYYY.MM.dd}"
   }
 }

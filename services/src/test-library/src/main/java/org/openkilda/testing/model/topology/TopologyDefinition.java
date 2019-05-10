@@ -30,6 +30,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableRangeSet;
 import com.google.common.collect.Range;
@@ -39,6 +41,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.experimental.NonFinal;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,18 +59,18 @@ import java.util.stream.IntStream;
 public class TopologyDefinition {
 
     @NonNull
-    private List<Switch> switches;
+    protected List<Switch> switches;
     @NonNull
-    private List<Isl> isls;
+    protected List<Isl> isls;
     @NonNull
-    private List<TraffGen> traffGens;
+    protected List<TraffGen> traffGens;
     @NonNull
-    private TraffGenConfig traffGenConfig;
+    protected TraffGenConfig traffGenConfig;
     @SuppressWarnings("squid:S1450")
 
-    private Integer bfdOffset;
+    protected Integer bfdOffset;
 
-    private List<String> controllers;
+    protected List<String> controllers;
 
     /**
      * Creates TopologyDefinition instance.
@@ -106,6 +109,7 @@ public class TopologyDefinition {
     /**
      * Get all switches that are marked as active in config.
      */
+    @JsonIgnore
     public List<Switch> getActiveSwitches() {
         return switches.stream()
                 .filter(Switch::isActive)
@@ -115,6 +119,7 @@ public class TopologyDefinition {
     /**
      * Get all switches that are marked as skipped in config.
      */
+    @JsonIgnore
     public Set<SwitchId> getSkippedSwitchIds() {
         return switches.stream()
                 .filter(sw -> sw.getStatus() == Status.Skip)
@@ -125,6 +130,7 @@ public class TopologyDefinition {
     /**
      * Get all ISLs for switches that are marked as active in config.
      */
+    @JsonIgnore
     public List<Isl> getIslsForActiveSwitches() {
         return isls.stream()
                 .filter(isl -> isl.getDstSwitch() != null
@@ -136,6 +142,7 @@ public class TopologyDefinition {
      * Get list of ISLs that are connected only at one side (no destination switch).
      * The other side is usually an a-switch.
      */
+    @JsonIgnore
     public List<Isl> getNotConnectedIsls() {
         return isls.stream()
                 .filter(isl -> isl.getSrcSwitch() != null && isl.getSrcSwitch().isActive()
@@ -146,6 +153,7 @@ public class TopologyDefinition {
     /**
      * Get list of switch ports excluding the ports which are busy with ISLs.
      */
+    @JsonIgnore
     public List<Integer> getAllowedPortsForSwitch(Switch sw) {
         List<Integer> allPorts = new ArrayList<>(sw.getAllPorts());
         allPorts.removeAll(getIslsForActiveSwitches().stream().filter(isl ->
@@ -158,6 +166,7 @@ public class TopologyDefinition {
     /**
      * Get list of switch ports that have ISLs.
      */
+    @JsonIgnore
     public List<Integer> getBusyPortsForSwitch(Switch sw) {
         return getRelatedIsls(sw).stream().map(Isl::getSrcPort).collect(toList());
     }
@@ -167,6 +176,7 @@ public class TopologyDefinition {
      * Returns only outgoing from the switch ISLs. The caller will have to mirror them in order to get full list of
      * actual ISLs.
      */
+    @JsonIgnore
     public List<Isl> getRelatedIsls(Switch sw) {
         List<Isl> isls = getIslsForActiveSwitches().stream().filter(isl ->
                 isl.getSrcSwitch().getDpId().equals(sw.getDpId()) || isl.getDstSwitch().getDpId().equals(sw.getDpId()))
@@ -223,6 +233,7 @@ public class TopologyDefinition {
             return new Switch(name, dpId, ofVersion, status, outPorts, maxPort, controller);
         }
 
+        @JsonIgnore
         public boolean isActive() {
             return status == Status.Active;
         }
@@ -230,6 +241,7 @@ public class TopologyDefinition {
         /**
          * Get list of all available ports on this switch.
          */
+        @JsonIgnore
         public List<Integer> getAllPorts() {
             return IntStream.rangeClosed(1, maxPort).boxed().collect(toList());
         }
@@ -246,6 +258,7 @@ public class TopologyDefinition {
 
         private int port;
         @NonNull
+        @JsonSerialize(using = ToStringSerializer.class)
         private RangeSet<Integer> vlanRange;
 
         @JsonCreator
@@ -257,6 +270,7 @@ public class TopologyDefinition {
         }
 
         private static RangeSet<Integer> parseVlanRange(String vlanRangeAsStr) {
+            vlanRangeAsStr = StringUtils.strip(StringUtils.strip(vlanRangeAsStr, "["), "]");
             String[] splitRanges = vlanRangeAsStr.split(",");
             if (splitRanges.length == 0) {
                 throw new IllegalArgumentException("Vlan range must be non-empty.");

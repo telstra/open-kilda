@@ -21,6 +21,7 @@ jobs:
       sudo: false
       install: true
       jdk: oraclejdk8
+      if: fork = false
 
       addons:
         sonarcloud:

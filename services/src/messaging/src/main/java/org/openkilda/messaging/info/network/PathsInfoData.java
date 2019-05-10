@@ -16,7 +16,6 @@
 package org.openkilda.messaging.info.network;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.model.FlowPath;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
@@ -28,9 +27,9 @@ import lombok.EqualsAndHashCode;
 @Builder
 public class PathsInfoData extends InfoData {
     @JsonProperty("path")
-    private FlowPath path;
+    private Path path;
 
-    public PathsInfoData(@JsonProperty("path") FlowPath path) {
+    public PathsInfoData(@JsonProperty("path") Path path) {
         this.path = path;
     }
 

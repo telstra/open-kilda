@@ -27,6 +27,7 @@ import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsEntry;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -49,6 +50,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 
 public class CacheBolt extends AbstractBolt {
 
@@ -80,24 +82,34 @@ public class CacheBolt extends AbstractBolt {
 
     private void initFlowCache(FlowRepository flowRepository) {
         try {
-            flowRepository.findAll().forEach(
-                    flow -> {
-                        CacheFlowEntry entry = new CacheFlowEntry(
-                                flow.getFlowId(),
-                                flow.getSrcSwitch().getSwitchId().toOtsdFormat(),
-                                flow.getDestSwitch().getSwitchId().toOtsdFormat(),
-                                flow.getCookie());
+            flowRepository.findAll().stream()
+                    .flatMap(flow -> {
+                        FlowPath forward = flow.getForwardPath();
+                        forward.setSrcSwitch(flow.getSrcSwitch());
+                        forward.setDestSwitch(flow.getDestSwitch());
 
-                        cookieToFlow.put(flow.getCookie(), entry);
-                        if (flow.getMeterId() != null) {
+                        FlowPath reverse = flow.getReversePath();
+                        reverse.setSrcSwitch(flow.getDestSwitch());
+                        reverse.setDestSwitch(flow.getSrcSwitch());
+
+                        return Stream.of(forward, reverse);
+                    })
+                    .forEach(path -> {
+                        CacheFlowEntry entry = new CacheFlowEntry(
+                                path.getFlow().getFlowId(),
+                                path.getSrcSwitch().getSwitchId().toOtsdFormat(),
+                                path.getDestSwitch().getSwitchId().toOtsdFormat(),
+                                path.getCookie().getValue());
+
+                        cookieToFlow.put(path.getCookie().getValue(), entry);
+                        if (path.getMeterId() != null) {
                             switchAndMeterToFlow.put(
                                     new MeterCacheKey(
-                                            flow.getSrcSwitch().getSwitchId(), new Long(flow.getMeterId())), entry);
+                                            path.getSrcSwitch().getSwitchId(), path.getMeterId().getValue()), entry);
                         } else {
-                            log.warn("Flow {} has no meter ID", flow.getFlowId());
+                            log.warn("Flow {} has no meter ID", path.getFlow().getFlowId());
                         }
-                    }
-            );
+                    });
             logger.debug("cookieToFlow cache: {}, switchAndMeterToFlow cache: {}", cookieToFlow, switchAndMeterToFlow);
             logger.info("Stats Cache: Initialized");
         } catch (Exception ex) {

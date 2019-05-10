@@ -279,10 +279,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       this.graphdata.flow.length == 0
     ) {
       this.appLoader.hide();
-      /*common.infoMessage('No Data Available','info');
-			$("#wait").css("display", "none");
-			$("#switchesgraph").removeClass("hide");*/
-      //return false;
     }
 
     /*
@@ -620,7 +616,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   private insertLinks(links) {
     let ref = this;
-    
     let graphLinksData = this.graphLinkGroup.selectAll("path.link").data(links);
 
     let graphNewLink = graphLinksData
@@ -1688,7 +1683,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
   };
 
   showFlowDetails = d => {
-    let url = "flows?src=" + d.source_switch + "&dst=" + d.target_switch;
+    let url = "flows?src=" + d.source_switch_name + "&dst=" + d.target_switch_name;
     window.location.href = url;
   };
 
@@ -1699,7 +1694,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
 
   showLinkDetails = d => {
     localStorage.setItem("linkData", JSON.stringify(d));
-    let url = "isl/switch/isl";
+    let url = "isl/switch/isl/"+d.source_switch+"/"+d.src_port+"/"+d.target_switch+"/"+d.dst_port;
     window.location.href = url;
   };
 
@@ -1807,10 +1802,6 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       this.svgElement.transition().duration(300).call(this.zoom.transform, newtranformation);
     }
     
-   
-
-   
-
   }
 
   toggleSearch = () => {

@@ -6,6 +6,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
@@ -39,14 +40,12 @@ class FlowDiversitySpec extends BaseSpecification {
 
     def "Able to create diverse flows"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
-        def (Switch srcSwitch, Switch dstSwitch) = getSwitchPair(3)
+        def switchPair = getSwitchPair(3)
 
         when: "Create three flows with diversity enabled"
-        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
-        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1]).tap { it.diverseFlowId = flow1.id }
-        def flow3 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1, flow2]).tap {
-            it.diverseFlowId = flow2.id
-        }
+        def flow1 = flowHelper.randomFlow(switchPair, false)
+        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.id }
+        def flow3 = flowHelper.randomFlow(switchPair, false, [flow1, flow2]).tap { it.diverseFlowId = flow2.id }
         [flow1, flow2, flow3].each { flowHelper.addFlow(it) }
 
         then: "All flows have different paths"
@@ -61,12 +60,12 @@ class FlowDiversitySpec extends BaseSpecification {
 
     def "Able to update flows to become diverse"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
-        def (Switch srcSwitch, Switch dstSwitch) = getSwitchPair(3)
+        def switchPair = getSwitchPair(3)
 
         and: "Create three flows"
-        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
-        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1])
-        def flow3 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1, flow2])
+        def flow1 = flowHelper.randomFlow(switchPair, false)
+        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1])
+        def flow3 = flowHelper.randomFlow(switchPair, false, [flow1, flow2])
         [flow1, flow2, flow3].each { flowHelper.addFlow(it) }
 
         def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect {
@@ -99,14 +98,12 @@ class FlowDiversitySpec extends BaseSpecification {
 
     def "Able to update flows to become not diverse"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
-        def (Switch srcSwitch, Switch dstSwitch) = getSwitchPair(3)
+        def switchPair = getSwitchPair(3)
 
         and: "Create three flows with diversity enabled"
-        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
-        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1]).tap { it.diverseFlowId = flow1.id }
-        def flow3 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1, flow2]).tap {
-            it.diverseFlowId = flow2.id
-        }
+        def flow1 = flowHelper.randomFlow(switchPair, false)
+        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.id }
+        def flow3 = flowHelper.randomFlow(switchPair, false, [flow1, flow2]).tap { it.diverseFlowId = flow2.id }
         [flow1, flow2, flow3].each { flowHelper.addFlow(it) }
 
         def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect {
@@ -137,18 +134,16 @@ class FlowDiversitySpec extends BaseSpecification {
 
     def "Diverse flows are built through the same path if there are no alternative paths available"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
-        def (Switch srcSwitch, Switch dstSwitch) = getSwitchPair(2)
+        def switchPair = getSwitchPair(2)
 
         and: "Create a flow going through these switches"
-        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow1 = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
         and: "Make all alternative paths unavailable (bring ports down on the source switch)"
         List<PathNode> broughtDownPorts = []
-        database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.findAll { it != flow1Path }.unique {
-            it.first()
-        }.each { path ->
+        switchPair.paths.findAll { it != flow1Path }.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
             northbound.portDown(src.switchId, src.portNo)
@@ -160,7 +155,7 @@ class FlowDiversitySpec extends BaseSpecification {
         }
 
         when: "Create the second flow with diversity enabled"
-        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1]).tap { it.diverseFlowId = flow1.id }
+        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.id }
         flowHelper.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
 
@@ -178,15 +173,15 @@ class FlowDiversitySpec extends BaseSpecification {
 
     def "Links and switches get extra cost that is considered while calculating diverse flow paths"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
-        def (Switch srcSwitch, Switch dstSwitch) = getSwitchPair(3)
+        def switchPair = getSwitchPair(3)
 
         and: "Create a flow going through these switches"
-        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow1 = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
         and: "Make each alternative path less preferable than the first flow path"
-        def altPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        def altPaths = switchPair.paths
         altPaths.remove(flow1Path)
 
         def flow1PathCost = pathHelper.getCost(flow1Path) + diversityIslWeight + diversitySwitchWeight * 2
@@ -200,7 +195,7 @@ class FlowDiversitySpec extends BaseSpecification {
         }
 
         when: "Create the second flow with diversity enabled"
-        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1]).tap { it.diverseFlowId = flow1.id }
+        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.id }
         flowHelper.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
 
@@ -208,7 +203,7 @@ class FlowDiversitySpec extends BaseSpecification {
         flow2Path == flow1Path
 
         when: "Create the third flow with diversity enabled"
-        def flow3 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1, flow2]).tap {
+        def flow3 = flowHelper.randomFlow(switchPair, false, [flow1, flow2]).tap {
             it.diverseFlowId = flow2.id
         }
         flowHelper.addFlow(flow3)
@@ -226,14 +221,12 @@ class FlowDiversitySpec extends BaseSpecification {
 
     def "Able to get flow paths with correct overlapping segments stats (casual flows)"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
-        def (Switch srcSwitch, Switch dstSwitch) = getSwitchPair(3)
+        def switchPair = getSwitchPair(3)
 
         and: "Create three flows with diversity enabled"
-        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
-        def flow2 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1]).tap { it.diverseFlowId = flow1.id }
-        def flow3 = flowHelper.randomFlow(srcSwitch, dstSwitch, false, [flow1, flow2]).tap {
-            it.diverseFlowId = flow2.id
-        }
+        def flow1 = flowHelper.randomFlow(switchPair, false)
+        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.id }
+        def flow3 = flowHelper.randomFlow(switchPair, false, [flow1, flow2]).tap { it.diverseFlowId = flow2.id }
         [flow1, flow2, flow3].each { flowHelper.addFlow(it) }
 
         when: "Get flow path for all flows"
@@ -325,23 +318,18 @@ class FlowDiversitySpec extends BaseSpecification {
     @Ignore("Functionality is currently not supported yet")
     def "Able to get flow paths with correct overlapping segments stats (casual + single-switch flows)"() {
         given: "Two active not neighboring switches"
-        def switches = topology.getActiveSwitches()
-        def allLinks = northbound.getAllLinks()
-        def (Switch sw1, Switch sw2) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allLinks.every { link -> !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId) }
-        } ?: assumeTrue("No suiting switches found", false)
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
 
         and: "Create a casual flow going through these switches"
-        def flow1 = flowHelper.randomFlow(sw1, sw2, false)
+        def flow1 = flowHelper.randomFlow(switchPair, false)
         flowHelper.addFlow(flow1)
 
         and: "Create a single-switch with diversity enabled on the source switch of the first flow"
-        def flow2 = flowHelper.singleSwitchFlow(sw1, false, [flow1]).tap { it.diverseFlowId = flow1.id }
+        def flow2 = flowHelper.singleSwitchFlow(switchPair.src, false, [flow1]).tap { it.diverseFlowId = flow1.id }
         flow2 = flowHelper.addFlow(flow2)
 
         and: "Create a single-switch with diversity enabled on the destination switch of the first flow"
-        def flow3 = flowHelper.singleSwitchFlow(sw2, false, [flow1]).tap { it.diverseFlowId = flow2.id }
+        def flow3 = flowHelper.singleSwitchFlow(switchPair.dst, false, [flow1]).tap { it.diverseFlowId = flow2.id }
         flowHelper.addFlow(flow3)
 
         when: "Get flow path for all flows"
@@ -379,17 +367,11 @@ class FlowDiversitySpec extends BaseSpecification {
         [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
     }
 
-    List<Switch> getSwitchPair(minOverlappingPaths) {
-        def switches = topology.getActiveSwitches()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            database.getPaths(src.dpId, dst.dpId)*.path.collect {
-                pathHelper.getInvolvedIsls(it)
-            }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= minOverlappingPaths
-
+    SwitchPair getSwitchPair(minNotOverlappingPaths) {
+        topologyHelper.getAllNeighboringSwitchPairs().find {
+            it.paths.collect { pathHelper.getInvolvedIsls(it) }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >=
+                    minNotOverlappingPaths
         } ?: assumeTrue("No suiting switches found", false)
-
-        return [srcSwitch, dstSwitch]
     }
 
     void verifySegmentsStats(List<FlowPathPayload> flowPaths, Map expectedValuesMap) {

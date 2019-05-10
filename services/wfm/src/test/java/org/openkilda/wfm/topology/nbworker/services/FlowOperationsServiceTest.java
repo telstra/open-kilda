@@ -17,16 +17,16 @@ package org.openkilda.wfm.topology.nbworker.services;
 
 import static org.junit.Assert.assertEquals;
 
-import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
 import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.share.flow.TestFlowBuilder;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -60,7 +60,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
         switchB.setStatus(SwitchStatus.ACTIVE);
         switchRepository.createOrUpdate(switchB);
 
-        Flow forwardFlow = Flow.builder()
+        UnidirectionalFlow flow = new TestFlowBuilder()
                 .flowId(testFlowId)
                 .srcSwitch(switchA)
                 .srcPort(1)
@@ -68,41 +68,36 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .destSwitch(switchB)
                 .destPort(2)
                 .destVlan(11)
-                .status(FlowStatus.UP)
-                .cookie(1 | Flow.FORWARD_FLOW_COOKIE_MASK)
-                .build();
+                .buildUnidirectionalFlow();
+        flow.setStatus(FlowStatus.UP);
+        flowRepository.createOrUpdate(flow.getFlow());
 
-        Flow reverseFlow = Flow.builder()
-                .flowId(testFlowId)
-                .srcSwitch(switchB)
-                .srcPort(2)
-                .srcVlan(11)
-                .destSwitch(switchA)
-                .destPort(1)
-                .destVlan(10)
-                .status(FlowStatus.UP)
-                .cookie(1 | Flow.REVERSE_FLOW_COOKIE_MASK)
-                .build();
-
-        flowRepository.createOrUpdate(FlowPair.builder().forward(forwardFlow).reverse(reverseFlow).build());
-
-        Flow receivedFlow = Flow.builder()
+        UnidirectionalFlow receivedFlow = new TestFlowBuilder()
                 .flowId(testFlowId)
                 .srcSwitch(switchA)
+                .srcPort(1)
+                .srcVlan(10)
                 .destSwitch(switchB)
+                .destPort(2)
+                .destVlan(11)
                 .maxLatency(maxLatency)
                 .priority(priority)
-                .build();
-        Flow updatedFlow = flowOperationsService.updateFlow(receivedFlow);
+                .buildUnidirectionalFlow();
+
+        UnidirectionalFlow updatedFlow = flowOperationsService.updateFlow(receivedFlow);
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
 
-        receivedFlow = Flow.builder()
+        receivedFlow = new TestFlowBuilder()
                 .flowId(testFlowId)
                 .srcSwitch(switchA)
+                .srcPort(1)
+                .srcVlan(10)
                 .destSwitch(switchB)
-                .build();
+                .destPort(2)
+                .destVlan(11)
+                .buildUnidirectionalFlow();
         updatedFlow = flowOperationsService.updateFlow(receivedFlow);
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());

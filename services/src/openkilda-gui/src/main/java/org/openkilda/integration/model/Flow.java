@@ -46,6 +46,9 @@ public class Flow {
     
     @JsonProperty("status")
     private String status;
+    
+    @JsonProperty("timeout")
+    private int timeout;
 
     public String getId() {
         return id;
@@ -102,6 +105,16 @@ public class Flow {
     public void setStatus(String status) {
         this.status = status;
     }
+
+    public int getTimeout() {
+        return timeout;
+    }
+    
+
+    public void setTimeout(int timeout) {
+        this.timeout = timeout;
+    }
+    
 
     @Override
     public String toString() {

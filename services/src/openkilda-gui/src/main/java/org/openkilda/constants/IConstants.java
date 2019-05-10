@@ -37,17 +37,22 @@ import java.util.TreeSet;
 public abstract class IConstants {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IConstants.class);
-
+    
     public static final String SESSION_OBJECT = "sessionObject";
+    
+    public static final String APPLICATION_PROPERTIES_FILE = "application.properties";
 
-    public static final String APPLICATION_PROPERTIES_FILE = "file:./application.properties";
-
+    public static final String FILE_PATH_PREFIX = "file:./";
+    
     private static String prefix;
-
+    
     static {
         Properties p = new Properties();
         try {
-            Resource resource = new ClassPathResource(APPLICATION_PROPERTIES_FILE);
+            Resource resource = new ClassPathResource(FILE_PATH_PREFIX + APPLICATION_PROPERTIES_FILE);
+            if (!resource.exists()) {
+                resource = new ClassPathResource(APPLICATION_PROPERTIES_FILE);
+            }
             p.load(new FileReader(resource.getFile()));
             prefix = p.getProperty("opentsdb.metric.prefix");
         } catch (IOException e) {
@@ -128,6 +133,7 @@ public abstract class IConstants {
         public static final String GET_FLOW_VALIDATE = GET_FLOW + "/{flow_id}/validate";
         public static final String GET_PATH_FLOW = GET_FLOW + "/path";
         public static final String GET_SWITCHES = "/switches";
+        public static final String GET_SWITCH = GET_SWITCHES + "/{switch_id}";
         public static final String GET_SWITCH_RULES = GET_SWITCHES + "/{switch_id}/rules";
         public static final String GET_LINKS = "/links";
         public static final String GET_LINK_PROPS = "/link/props";
@@ -138,6 +144,7 @@ public abstract class IConstants {
         public static final String GET_ISL_FLOW = 
                 "/links/flows?src_switch={src_switch}&src_port={src_port}&dst_switch={dst_switch}&dst_port={dst_port}";
         public static final String GET_SWITCH_METERS =  GET_SWITCHES + "/{switch_id}/meters";
+        public static final String FLOW_PING = GET_FLOW + "/{flow_id}/ping";
     }
     
     public final class OpenTsDbUrl {
@@ -227,10 +234,12 @@ public abstract class IConstants {
 
         public static final String FW_FLOW_RESYNC = "fw_flow_resync";
         
+        public static final String FW_FLOW_PING = "fw_flow_ping";
+        
         public static final String SW_PORT_CONFIG = "sw_port_config";
         
         public static final String STORE_SETTING = "store_setting";
-
+                
         public static final String APPLICATION_SETTING = "application_setting";
         
         public static final String SW_SWITCH_UPDATE_NAME = "sw_switch_update_name";

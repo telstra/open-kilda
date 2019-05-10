@@ -18,9 +18,13 @@ package org.openkilda.wfm.error;
 /**
  * {@code FlowNotFoundException} indicates that a flow can't be found / doesn't exist.
  */
-public class FlowNotFoundException extends AbstractException {
+public class FlowNotFoundException extends Exception {
 
     public FlowNotFoundException(String flowId) {
         super(String.format("Flow %s not found", flowId));
+    }
+
+    public FlowNotFoundException(String flowId, String message) {
+        super(String.format("Flow %s not found. %s", flowId, message));
     }
 }

@@ -345,4 +345,31 @@ public class FlowsIntegrationService {
             throw new IntegrationException(e);
         }
     }
+    
+    /**
+     * Flow ping.
+     *
+     * @param flow the flow
+     * @param flowId the flow id
+     * @return the string
+     */
+    public String flowPing(Flow flow, String flowId) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.FLOW_PING.replace("{flow_id}",
+                            UriUtils.encodePath(flowId, "UTF-8")),
+                    HttpMethod.PUT, objectMapper.writeValueAsString(flow), "application/json",
+                    applicationService.getAuthHeader());
+            return IoUtil.toString(response.getEntity().getContent());
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while ping flow by id:" + flowId, e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (UnsupportedEncodingException e) {
+            LOGGER.warn("Error occurred while ping flow by id:" + flowId, e);
+            throw new IntegrationException(e);
+        } catch (IOException e) {
+            LOGGER.warn("Error occurred while ping flow by id:" + flowId, e);
+            throw new IntegrationException(e);
+        }
+    }
 }

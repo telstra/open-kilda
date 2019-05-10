@@ -13,7 +13,9 @@
 #   limitations under the License.
 #
 
-FROM python:3.6-slim
+ARG base_image=python:3.6-slim
+FROM ${base_image}
+
 RUN pip install flask paramiko docker
 ADD lockkeeper.py /lockkeeper.py
 ENV FLASK_APP=lockkeeper.py

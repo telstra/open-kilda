@@ -15,10 +15,6 @@
 
 package org.openkilda.messaging.payload.history;
 
-import org.openkilda.model.FlowPath;
-import org.openkilda.model.FlowStatus;
-import org.openkilda.model.SwitchId;
-
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -33,9 +29,9 @@ public class FlowDumpPayload {
 
     private long reverseCookie;
 
-    private SwitchId sourceSwitch;
+    private String sourceSwitch;
 
-    private SwitchId destinationSwitch;
+    private String destinationSwitch;
 
     private int sourcePort;
 
@@ -45,15 +41,15 @@ public class FlowDumpPayload {
 
     private int destinationVlan;
 
-    private Integer forwardMeterId;
+    private Long forwardMeterId;
 
-    private Integer reverseMeterId;
+    private Long reverseMeterId;
 
-    private FlowPath forwardPath;
+    private String forwardPath;
 
-    private FlowPath reversePath;
+    private String reversePath;
 
-    private FlowStatus forwardStatus;
+    private String forwardStatus;
 
-    private FlowStatus reverseStatus;
+    private String reverseStatus;
 }

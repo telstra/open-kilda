@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.ping.bolt;
 
 import org.openkilda.messaging.floodlight.response.PingResponse;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 import org.openkilda.wfm.topology.ping.model.PingContext.Kinds;
@@ -49,7 +48,7 @@ public class PingRouter extends Abstract {
     public static final String STREAM_RESPONSE_ID = "response";
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String component = input.getSourceComponent();
         if (PingProducer.BOLT_ID.equals(component)) {
             routePingProducer(input);

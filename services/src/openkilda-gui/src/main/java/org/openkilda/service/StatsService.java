@@ -376,7 +376,7 @@ public class StatsService {
     private List<PortInfo> getIslPorts(final Map<String, Map<String, Double>> portStatsByPortNo, String switchid) {
         List<PortInfo> portInfos = getPortInfo(portStatsByPortNo);
 
-        List<IslLink> islLinkPorts = switchIntegrationService.getIslLinkPortsInfo();
+        List<IslLink> islLinkPorts = switchIntegrationService.getIslLinkPortsInfo(null);
         String switchIdInfo = null;
         if (islLinkPorts != null) {
             for (IslLink islLink : islLinkPorts) {

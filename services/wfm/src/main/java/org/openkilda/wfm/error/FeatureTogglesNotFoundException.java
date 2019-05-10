@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.error;
 
-public class FeatureTogglesNotFoundException extends AbstractException {
+public class FeatureTogglesNotFoundException extends Exception {
     public FeatureTogglesNotFoundException() {
         super("Feature toggles not found.");
     }

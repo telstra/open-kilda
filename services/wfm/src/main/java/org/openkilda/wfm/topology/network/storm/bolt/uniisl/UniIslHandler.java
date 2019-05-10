@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.network.storm.bolt.uniisl;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
@@ -52,7 +51,7 @@ public class UniIslHandler extends AbstractBolt implements IUniIslCarrier {
     private transient NetworkUniIslService service;
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String source = input.getSourceComponent();
         if (PortHandler.BOLT_ID.equals(source)) {
             handlePortCommand(input);

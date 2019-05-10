@@ -17,7 +17,11 @@ export class IslListService {
   getIslDetail(src_switch, src_port, dst_switch, dst_port):Observable<IslModel>{
  	let date = new Date().getTime();
     return this.httpClient.get<IslModel>(`${environment.apiEndPoint}/switch/link/props?src_switch=${src_switch}&src_port=${src_port}&dst_switch=${dst_switch}&dst_port=${dst_port}&_=${date}`);
-  }
+	}
+	
+	getISLDetailData(src_switch, src_port, dst_switch, dst_port) : Observable<any>{
+		return this.httpClient.get<any>(`${environment.apiEndPoint}/switch/links?src_switch=${src_switch}&src_port=${src_port}&dst_switch=${dst_switch}&dst_port=${dst_port}`);
+	}
 
   updateCost(src_switch, src_port, dst_switch, dst_port, cost): Observable<{}>{
 	let requestPayload = [

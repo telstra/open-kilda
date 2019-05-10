@@ -222,7 +222,6 @@ export class DygraphComponent implements OnInit, OnDestroy {
     labels: this.labels,
     drawPoints: false,
     animatedZooms: true,
-    //labelsKMB: true,
     labelsUTC: true,
     colors: ["#1C227C","#A1CD24"] ,
     legend: "onmouseover",
@@ -242,7 +241,6 @@ export class DygraphComponent implements OnInit, OnDestroy {
       legend: "onmouseover",
       valueRange:[0,null],
       connectSeparatedPoints:true,
-      //labelsKMB: true,
       legendFormatter:this.dygraphService.legendFormatter,
       zoomCallback: this.zoomCallbackHandler
     });

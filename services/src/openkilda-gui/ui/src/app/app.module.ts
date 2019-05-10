@@ -85,6 +85,8 @@ import { SwitchMetersTableComponent } from './modules/switches/switch-meters-tab
 import { IslFlowDatatablesComponent } from './modules/isl/isl-flow-datatables/isl-flow-datatables.component';
 import { FlowReRouteModalComponent } from './common/components/flow-re-route-modal/flow-re-route-modal.component';
 import { SessionComponent } from './modules/settings/session/session.component';
+import { ImportTopologySettingComponent } from './modules/topology/import-topology-setting/import-topology-setting.component';
+import { ExportTopologySettingComponent } from './modules/topology/export-topology-setting/export-topology-setting.component';
 
 @NgModule({
   declarations: [
@@ -155,7 +157,9 @@ import { SessionComponent } from './modules/settings/session/session.component';
     SwitchStoreComponent,
     FlowsComponent,
     PortGraphComponent,
-    ResetPasswordComponent
+    ResetPasswordComponent,
+    ImportTopologySettingComponent,
+    ExportTopologySettingComponent
   ],
   imports: [
     HttpClientModule,
@@ -195,6 +199,8 @@ import { SessionComponent } from './modules/settings/session/session.component';
     FlowPathGraphComponent,
     FlowContractsComponent,
     ResetPasswordComponent,
+    ImportTopologySettingComponent,    
+    ExportTopologySettingComponent
   ]
 })
 export class AppModule { }

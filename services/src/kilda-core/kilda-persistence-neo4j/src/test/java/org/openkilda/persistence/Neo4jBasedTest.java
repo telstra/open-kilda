@@ -15,12 +15,17 @@
 
 package org.openkilda.persistence;
 
+import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.neo4j.ogm.testutil.TestServer;
+
+import java.time.Instant;
 
 public abstract class Neo4jBasedTest {
     protected static TestServer testServer;
@@ -71,5 +76,18 @@ public abstract class Neo4jBasedTest {
     @After
     public void cleanUpTestServer() {
         neo4jSessionFactory.getSession().purgeDatabase();
+    }
+
+    protected Switch buildTestSwitch(long switchId) {
+        return Switch.builder()
+                .switchId(new SwitchId(switchId))
+                .address("test_addr_" + switchId)
+                .controller("test_ctrl")
+                .description("test_description")
+                .hostname("test_host_" + switchId)
+                .status(SwitchStatus.ACTIVE)
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
     }
 }

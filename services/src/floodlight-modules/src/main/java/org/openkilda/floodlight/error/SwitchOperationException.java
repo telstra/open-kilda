@@ -17,7 +17,7 @@ package org.openkilda.floodlight.error;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 
-public class SwitchOperationException extends AbstractException {
+public class SwitchOperationException extends Exception {
     private final transient DatapathId dpId;
 
     public SwitchOperationException(DatapathId dpId) {

@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.network.storm.bolt.port;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Config;
@@ -76,7 +75,7 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String source = input.getSourceComponent();
         if (DecisionMakerHandler.BOLT_ID.equals(source)) {
             handleDecisionMakerCommand(input);

@@ -12,8 +12,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
-
-FROM kilda/base-ubuntu
+ARG base_image=kilda/base-ubuntu
+FROM ${base_image}
 
 ADD src/main/resources/floodlightkilda.properties /app/floodlightkilda.properties
 ADD src/main/resources/floodlightkildaStats.properties /app/floodlightkildaStats.properties

@@ -13,7 +13,8 @@
 #   limitations under the License.
 #
 
-FROM kilda/base-ubuntu
+ARG base_image=kilda/base-ubuntu
+FROM ${base_image}
 
 ADD target/atdd-staging-*.jar /app/atdd-staging.jar
 ADD target/lib/*.jar /app/lib/

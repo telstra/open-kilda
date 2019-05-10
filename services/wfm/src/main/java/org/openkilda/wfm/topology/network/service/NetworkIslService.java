@@ -151,7 +151,7 @@ public class NetworkIslService {
     private IslFsm locateController(IslReference reference) {
         IslFsm fsm = controller.get(reference);
         if (fsm == null) {
-            throw new IllegalStateException(String.format("There is not ISL FSM for %s", reference));
+            throw new IllegalStateException(String.format("There is no ISL FSM for %s", reference));
         }
         return fsm;
     }

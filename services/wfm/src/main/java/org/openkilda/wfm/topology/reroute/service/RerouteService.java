@@ -22,8 +22,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.Collection;
 
 @Slf4j
 public class RerouteService {
@@ -41,20 +40,16 @@ public class RerouteService {
      * @param port     port.
      * @return set of active flows with affected path.
      */
-    public Set<Flow> getAffectedFlows(SwitchId switchId, int port) {
+    public Collection<Flow> getAffectedFlows(SwitchId switchId, int port) {
         log.info("Get affected flows by node {}_{}", switchId, port);
-        return flowRepository.findActiveFlowIdsWithPortInPathOverSegments(switchId, port).stream()
-                .filter(Flow::isForward)
-                .collect(Collectors.toSet());
+        return flowRepository.findActiveFlowsWithPortInPath(switchId, port);
     }
 
     /**
      * Get set of inactive flows.
      */
-    public Set<Flow> getInactiveFlows() {
+    public Collection<Flow> getInactiveFlows() {
         log.info("Get inactive flows");
-        return flowRepository.findDownFlows().stream()
-                .filter(Flow::isForward)
-                .collect(Collectors.toSet());
+        return flowRepository.findDownFlows();
     }
 }
