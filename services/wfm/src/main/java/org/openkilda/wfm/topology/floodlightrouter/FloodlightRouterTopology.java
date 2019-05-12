@@ -258,8 +258,6 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
             builder.setBolt(Stream.formatWithRegion(ComponentType.SPEAKER_KAFKA_BOLT, region),
                     speakerKafkaBolt, parallelism)
                     .shuffleGrouping(ComponentType.SPEAKER_REQUEST_BOLT,
-                            Stream.formatWithRegion(Stream.SPEAKER, region))
-                    .shuffleGrouping(ComponentType.KILDA_TOPO_DISCO_BOLT,
                             Stream.formatWithRegion(Stream.SPEAKER, region));
         }
 

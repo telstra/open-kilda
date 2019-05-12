@@ -173,12 +173,7 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
     private void send(String key, Message message, String outputStream) {
         try {
             String json = MAPPER.writeValueAsString(message);
-            Values values;
-            if (key == null) {
-                values = new Values(json);
-            } else {
-                values = new Values(key, json);
-            }
+            Values values = new Values(key, json);
             outputCollector.emit(outputStream, currentTuple, values);
         } catch (JsonProcessingException e) {
             logger.error("failed to serialize message {}", message);

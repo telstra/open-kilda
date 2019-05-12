@@ -15,12 +15,8 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
-import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.floodlightrouter.Stream;
-
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.tuple.Tuple;
-import org.apache.storm.tuple.Values;
 
 import java.util.Set;
 
@@ -33,11 +29,8 @@ public class BroadcastRequestBolt extends RequestBolt {
     @Override
     public void execute(Tuple input) {
         try {
-            String json = input.getValueByField(AbstractTopology.MESSAGE_FIELD).toString();
             for (String region : regions) {
-                String targetStream = Stream.formatWithRegion(outputStream, region);
-                Values values = new Values(json);
-                outputCollector.emit(targetStream, input, values);
+                proxyRequestToSpeaker(input, region);
             }
         } catch (Exception e) {
             log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
