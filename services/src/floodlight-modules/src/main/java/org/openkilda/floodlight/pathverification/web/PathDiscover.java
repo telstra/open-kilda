@@ -38,19 +38,12 @@ public class PathDiscover extends ServerResource {
 
         String srcSwitch = (String) getRequestAttributes().get("src_switch");
         String port = (String) getRequestAttributes().get("src_port");
-        String dstSwitch = (String) getRequestAttributes().get("dst_switch");
 
-        logger.debug("asking {} to send a discovery packet out port {} with destination {}.",
-                srcSwitch, port, dstSwitch);
+        logger.debug("asking {} to send a discovery packet out port {}.", srcSwitch, port);
 
-        if (dstSwitch == null) {
-            DatapathId d = DatapathId.of(srcSwitch);
-            int p = Integer.parseInt(port);
-            pvs.sendDiscoveryMessage(d, OFPort.of(p), null);
-        } else {
-            pvs.sendDiscoveryMessage(DatapathId.of(srcSwitch), OFPort.of(new Integer(port)), DatapathId.of(dstSwitch),
-                    null);
-        }
+        DatapathId d = DatapathId.of(srcSwitch);
+        int p = Integer.parseInt(port);
+        pvs.sendDiscoveryMessage(d, OFPort.of(p), null);
         return null;
     }
 }

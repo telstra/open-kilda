@@ -15,107 +15,37 @@
 
 package org.openkilda.floodlight.pathverification;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Builder.Default;
+import lombok.EqualsAndHashCode;
 import net.floodlightcontroller.packet.BasePacket;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.LLDPTLV;
-import org.projectfloodlight.openflow.types.EthType;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
+@Builder()
+@lombok.Data
+@EqualsAndHashCode(callSuper = true)
+@AllArgsConstructor
 public class VerificationPacket extends BasePacket {
-    protected LLDPTLV chassisId;
-    protected LLDPTLV portId;
-    protected LLDPTLV ttl;
-    protected List<LLDPTLV> optionalTlvList;
-    protected EthType ethType;
+    public static final byte CHASSIS_ID_LLDPTV_PACKET_TYPE = (byte) 1;
+    public static final byte PORT_ID_LLDPTV_PACKET_TYPE = (byte) 2;
+    public static final byte TTL_LLDPTV_PACKET_TYPE = (byte) 3;
+    public static final byte OPTIONAL_LLDPTV_PACKET_TYPE = (byte) 127;
 
-    public VerificationPacket() {
-        this.optionalTlvList = new ArrayList<LLDPTLV>();
-    }
+    private LLDPTLV chassisId;
+    private LLDPTLV portId;
+    private LLDPTLV ttl;
+    @Default
+    private List<LLDPTLV> optionalTlvList = new ArrayList<>();
 
-    public VerificationPacket(Data data) {
-        this.optionalTlvList = new ArrayList<LLDPTLV>();
+    VerificationPacket(Data data) {
         deserialize(data.getData(), 0, data.getData().length);
-    }
-
-    /**
-     * Gets the chassisId.
-     *
-     * @return the chassisId
-     */
-    public LLDPTLV getChassisId() {
-        return chassisId;
-    }
-
-    /**
-     * Sets the chassisId.
-     *
-     * @param chassisId the chassisId to set
-     */
-    public VerificationPacket setChassisId(LLDPTLV chassisId) {
-        this.chassisId = chassisId;
-        return this;
-    }
-
-    /**
-     * Gets the portId.
-     *
-     * @return the portId
-     */
-    public LLDPTLV getPortId() {
-        return portId;
-    }
-
-    /**
-     * Sets the portId.
-     *
-     * @param portId the portId to set
-     */
-    public VerificationPacket setPortId(LLDPTLV portId) {
-        this.portId = portId;
-        return this;
-    }
-
-    /**
-     * Gets ttl.
-     *
-     * @return the ttl
-     */
-    public LLDPTLV getTtl() {
-        return ttl;
-    }
-
-    /**
-     * Sets ttl.
-     *
-     * @param ttl the ttl to set
-     */
-    public VerificationPacket setTtl(LLDPTLV ttl) {
-        this.ttl = ttl;
-        return this;
-    }
-
-    /**
-     * Gets optional TLV list.
-     *
-     * @return the optionalTlvList
-     */
-    public List<LLDPTLV> getOptionalTlvList() {
-        return optionalTlvList;
-    }
-
-    /**
-     * Sets optional TLV list.
-     *
-     * @param optionalTlvList the optionalTlvList to set
-     */
-    public VerificationPacket setOptionalTlvList(List<LLDPTLV> optionalTlvList) {
-        this.optionalTlvList = optionalTlvList;
-        return this;
     }
 
     /**
@@ -156,6 +86,7 @@ public class VerificationPacket extends BasePacket {
      * @return the {@code}IPacket{@code}
      */
     public IPacket deserialize(byte[] data, int offset, int length) {
+        this.optionalTlvList = new ArrayList<>();
         ByteBuffer bb = ByteBuffer.wrap(data, offset, length);
         LLDPTLV tlv;
         do {
@@ -169,13 +100,13 @@ public class VerificationPacket extends BasePacket {
                 case 0x0:
                     // can throw this one away, its just an end delimiter
                     break;
-                case 0x1:
+                case CHASSIS_ID_LLDPTV_PACKET_TYPE:
                     this.chassisId = tlv;
                     break;
-                case 0x2:
+                case PORT_ID_LLDPTV_PACKET_TYPE:
                     this.portId = tlv;
                     break;
-                case 0x3:
+                case TTL_LLDPTV_PACKET_TYPE:
                     this.ttl = tlv;
                     break;
                 default:
@@ -184,77 +115,5 @@ public class VerificationPacket extends BasePacket {
             }
         } while (tlv.getType() != 0 && bb.hasRemaining());
         return this;
-    }
-
-    /* (non-Javadoc)
-     * @see java.lang.Object#hashCode()
-     */
-    @Override
-    public int hashCode() {
-        final int prime = 883;
-        int result = super.hashCode();
-        result = prime * result
-                + ((chassisId == null) ? 0 : chassisId.hashCode());
-        result = prime * result + (optionalTlvList.hashCode());
-        result = prime * result + ((portId == null) ? 0 : portId.hashCode());
-        result = prime * result + ((ttl == null) ? 0 : ttl.hashCode());
-        return result;
-    }
-
-    /* (non-Javadoc)
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (!super.equals(obj)) {
-            return false;
-        }
-        if (!(obj instanceof VerificationPacket)) {
-            return false;
-        }
-        VerificationPacket other = (VerificationPacket) obj;
-        if (chassisId == null) {
-            if (other.chassisId != null) {
-                return false;
-            }
-        } else if (!chassisId.equals(other.chassisId)) {
-            return false;
-        }
-        if (!optionalTlvList.equals(other.optionalTlvList)) {
-            return false;
-        }
-        if (portId == null) {
-            if (other.portId != null) {
-                return false;
-            }
-        } else if (!portId.equals(other.portId)) {
-            return false;
-        }
-        if (ttl == null) {
-            if (other.ttl != null) {
-                return false;
-            }
-        } else if (!ttl.equals(other.ttl)) {
-            return false;
-        }
-        return true;
-    }
-
-    @Override
-    public String toString() {
-        String str = "";
-        str += "chassisId=" + ((this.chassisId == null) ? "null" : this.chassisId.toString());
-        str += " portId=" + ((this.portId == null) ? "null" : this.portId.toString());
-        str += " ttl=" + ((this.ttl == null) ? "null" : this.ttl.toString());
-        str += " etherType=" + ethType.toString();
-        str += " optionalTlvList=[";
-        if (this.optionalTlvList != null) {
-            str += optionalTlvList.stream().map(LLDPTLV::toString).collect(Collectors.joining(", "));
-        }
-        str += "]";
-        return str;
     }
 }

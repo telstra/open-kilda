@@ -79,7 +79,7 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
         InetSocketAddress dstIpTarget = new InetSocketAddress(pvs.VERIFICATION_PACKET_IP_DST, 200);
 
         // Generate the VerificationPacket
-        OFPacketOut packet = pvs.generateVerificationPacket(sw1, OFPort.of(1), null);
+        OFPacketOut packet = pvs.generateVerificationPacket(sw1, OFPort.of(1), true, null);
         System.out.println("packet: " + Hex.encodeHexString(packet.getData()));
 
         // Source MAC will always be that of sw1 for both Unicast and Broadcast
@@ -95,26 +95,6 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
         assertArrayEquals(srcIpTarget.getAddress().getAddress(), srcIpActual);
 
         // Destination IP is that of DESTINATION BROADCAST IP
-        byte[] dstIpActual = Arrays.copyOfRange(packet.getData(), 30, 34);
-        assertArrayEquals(dstIpTarget.getAddress().getAddress(), dstIpActual);
-    }
-
-    @Test
-    public void testUncastPacket() {
-        // Generate the VerificationPacket
-        OFPacketOut packet = pvs.generateVerificationPacket(sw1, OFPort.of(1), sw2, true, null);
-
-        // Source MAC will always be that of sw1 for both Unicast and Broadcast
-        byte[] srcMacActual = Arrays.copyOfRange(packet.getData(), 6, 12);
-        assertArrayEquals(MacAddress.of(sw1.getId()).getBytes(), srcMacActual);
-
-        // Destination MAC should be that of sw2 for Unicast Packet
-        byte[] dstMacActual = Arrays.copyOfRange(packet.getData(), 0, 6);
-        assertArrayEquals(MacAddress.of(sw2.getId()).getBytes(), dstMacActual);
-
-        // Source and Destination IP's are the respective switch IP's
-        byte[] srcIpActual = Arrays.copyOfRange(packet.getData(), 26, 30);
-        assertArrayEquals(srcIpTarget.getAddress().getAddress(), srcIpActual);
         byte[] dstIpActual = Arrays.copyOfRange(packet.getData(), 30, 34);
         assertArrayEquals(dstIpTarget.getAddress().getAddress(), dstIpActual);
     }
