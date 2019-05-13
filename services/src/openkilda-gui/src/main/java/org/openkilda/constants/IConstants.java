@@ -348,8 +348,14 @@ public abstract class IConstants {
         SWITCH_TX_PACKETS("Switch_packets", "switch.rx-packets"),
 
         SWITCH_RX_PACKETS("Switch_packets", "switch.tx-packets"),
+        
+        SWITCH_STATE("Switch_state", "switch.state"),
+        
+        METER_BITS("Meter_bits", "flow.meter.bits"),
 
-        SWITCH_STATE("Switch_state", "switch.state");
+        METER_BYTES("Meter_bytes", "flow.meter.bytes"),
+
+        METER_PACKETS("Meter_packets", "flow.meter.packets");
 
         private String tag;
         
@@ -472,6 +478,23 @@ public abstract class IConstants {
             List<String> list = new ArrayList<String>();
             for (Metrics metric : values()) {
                 if (metric.getTag().startsWith(tag)) {
+                    list.add(metric.getDisplayTag());
+                }
+            }
+            return list;
+        }
+        
+        /**
+         * Meter value.
+         *
+         * @param tag the tag
+         * @return the list
+         */
+        public static List<String> meterValue(String tag) {
+            List<String> list = new ArrayList<String>();
+            tag = "Meter_" + tag;
+            for (Metrics metric : values()) {
+                if (metric.getTag().equalsIgnoreCase(tag)) {
                     list.add(metric.getDisplayTag());
                 }
             }
