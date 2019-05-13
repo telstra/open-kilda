@@ -366,6 +366,62 @@ public class NetworkIslServiceTest {
         verifyNoMoreInteractions(linkPropsRepository);
     }
 
+    @Test
+    public void deleteWhenActive() {
+        prepareAndPerformDelete(IslStatus.ACTIVE);
+
+        // ISL can't be delete in ACTIVE state
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void deleteWhenInactive() {
+        prepareAndPerformDelete(IslStatus.INACTIVE);
+        verifyDelete();
+    }
+
+    @Test
+    public void deleteWhenMoved() {
+        prepareAndPerformDelete(IslStatus.MOVED);
+        verifyDelete();
+    }
+
+    private void prepareAndPerformDelete(IslStatus initialStatus) {
+        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2)
+                .actualStatus(initialStatus)
+                .status(initialStatus)
+                .build();
+        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1)
+                .actualStatus(initialStatus)
+                .status(initialStatus)
+                .build();
+
+        // prepare
+        mockPersistenceIsl(endpointAlpha1, endpointBeta2, islAlphaBeta);
+        mockPersistenceIsl(endpointBeta2, endpointAlpha1, islBetaAlpha);
+
+        mockPersistenceLinkProps(endpointAlpha1, endpointBeta2, null);
+        mockPersistenceLinkProps(endpointBeta2, endpointAlpha1, null);
+
+        mockPersistenceBandwidthAllocation(endpointAlpha1, endpointBeta2, 0);
+        mockPersistenceBandwidthAllocation(endpointBeta2, endpointAlpha1, 0);
+
+        IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
+        service.islSetupFromHistory(endpointAlpha1, reference, islAlphaBeta);
+
+        reset(carrier);
+
+        // remove
+        service.remove(reference);
+    }
+
+    private void verifyDelete() {
+        verify(carrier).bfdDisableRequest(endpointAlpha1);
+        verify(carrier).bfdDisableRequest(endpointBeta2);
+
+        verifyNoMoreInteractions(carrier);
+    }
+
     private void emulateEmptyPersistentDb() {
         mockPersistenceIsl(endpointAlpha1, endpointBeta2, null);
         mockPersistenceLinkProps(endpointAlpha1, endpointBeta2, null);

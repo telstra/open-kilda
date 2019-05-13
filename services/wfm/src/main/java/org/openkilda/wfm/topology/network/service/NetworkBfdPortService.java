@@ -68,10 +68,10 @@ public class NetworkBfdPortService {
     }
 
     /**
-     * .
+     * Do BFD session remove (kill).
      */
     public Endpoint remove(Endpoint logicalEndpoint) {
-        log.info("BFD-port service receive REMOVE request for logical-port {} (logical)", logicalEndpoint);
+        log.info("BFD-port service receive REMOVE request for {} (logical)", logicalEndpoint);
 
         BfdPortFsm controller = controllerByLogicalPort.remove(logicalEndpoint);
         if (controller == null) {

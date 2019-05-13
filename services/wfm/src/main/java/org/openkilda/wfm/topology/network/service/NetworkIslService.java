@@ -124,18 +124,22 @@ public class NetworkIslService {
      * Remove isl by request.
      */
     public void remove(IslReference reference) {
-        IslFsm fsm = controller.get(reference).fsm;
-        if (fsm == null) {
+        log.debug("ISL service receive remove for {}", reference);
+
+        IslController islController = controller.get(reference);
+        if (islController == null) {
             log.info("Got DELETE request for not existing ISL {}", reference);
             return;
         }
 
+        IslFsm fsm = islController.fsm;
         IslFsmContext context = IslFsmContext.builder(carrier, reference.getSource())
                 .build();
         controllerExecutor.fire(fsm, IslFsmEvent.ISL_REMOVE, context);
         if (fsm.isTerminated()) {
             controller.remove(reference);
-            log.debug("ISL service removed FSM {}", reference);
+            islController.bfdManager.disable(carrier);
+            log.info("ISL {} have been removed", reference);
         } else {
             log.error("ISL service remove failed for FSM {}, state: {}", reference, fsm.getCurrentState());
         }
