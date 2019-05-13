@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
@@ -135,7 +136,7 @@ public class FlowOperationsService {
      * @param flow flow.
      * @return updated flow.
      */
-    public UnidirectionalFlow updateFlow(UnidirectionalFlow flow) throws FlowNotFoundException {
+    public UnidirectionalFlow updateFlow(FlowDto flow) throws FlowNotFoundException {
         return transactionManager.doInTransaction(() -> {
             Optional<FlowPair> foundFlow = flowPairRepository.findById(flow.getFlowId());
             if (!foundFlow.isPresent()) {
