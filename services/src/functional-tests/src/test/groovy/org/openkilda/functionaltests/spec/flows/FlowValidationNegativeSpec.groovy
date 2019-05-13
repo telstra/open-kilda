@@ -47,21 +47,22 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         northbound.deleteSwitchRules(damagedSwitch, damagedFlow.cookie)
 
         then: "Intact flow should be validated successfully"
-        northbound.validateFlow(intactFlow.id).every { isFlowValid(it) }
+        def intactFlowValidation = northbound.validateFlow(intactFlow.id)
+        intactFlowValidation.each { direction ->
+            assert direction.discrepancies.empty
+            assert direction.asExpected
+        }
 
         and: "Damaged #flowType flow validation should fail, while other direction should be validated successfully"
-        def validationResult = northbound.validateFlow(flowToBreak.id)
-        validationResult.findAll { isFlowValid(it) }.size() == 1
-        def invalidFlow = validationResult.findAll { !isFlowValid(it) }
-        invalidFlow.size() == 1
+        def brokenFlowValidation = northbound.validateFlow(flowToBreak.id)
+        brokenFlowValidation.findAll { it.discrepancies.empty && it.asExpected }.size() == 1
+        def damagedDirection = brokenFlowValidation.findAll { !it.discrepancies.empty && !it.asExpected }
+        damagedDirection.size() == 1
 
         and: "Flow rule discrepancy should contain dpID of the affected switch and cookie of the damaged flow"
-        def rules = findRulesDiscrepancies(invalidFlow[0])
+        def rules = findRulesDiscrepancies(damagedDirection[0])
         rules.size() == 1
         rules[damagedSwitch.toString()] == damagedFlow.cookie.toString()
-
-        and: "Validation of non-affected flow should succeed"
-        northbound.validateFlow(intactFlow.id).every { isFlowValid(it) }
 
         and: "Affected switch should have one missing rule with the same cookie as the damaged flow"
         def switchValidationResult = northbound.validateSwitchRules(damagedSwitch)
@@ -113,19 +114,6 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         "reroute"     | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
         "validate"    | "Could not validate flow: Flow $NON_EXISTENT_FLOW_ID not found"
         "synchronize" | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
-    }
-
-    /**
-     * Checks if there is no discrepancies in the flow validation results
-     * //TODO: Don't skip MeterId discrepancies when OVS 2.10 support is added for virtual envs
-     * @param flow Flow validation results
-     * @return boolean
-     */
-    boolean isFlowValid(FlowValidationDto flow) {
-        if (this.profile.equalsIgnoreCase("virtual")) {
-            return flow.discrepancies.findAll { it.field != "meterId" }.empty
-        }
-        return flow.discrepancies.empty
     }
 
     /**

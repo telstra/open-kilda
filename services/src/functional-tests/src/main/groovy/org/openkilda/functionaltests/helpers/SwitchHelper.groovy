@@ -71,7 +71,7 @@ class SwitchHelper {
     }
 
     @Memoized
-    String getDescription(SwitchId sw) {
+    static String getDescription(SwitchId sw) {
         northbound.activeSwitches.find { it.switchId == sw }.description
     }
 

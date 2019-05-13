@@ -48,8 +48,10 @@ class MultiRerouteSpec extends BaseSpecification {
         then: "Both flows change their paths (or go Down if no path)"
         Wrappers.wait(WAIT_OFFSET) {
             flows.each {
+                def status = northbound.getFlowStatus(it.id).status
+                assert status != FlowState.IN_PROGRESS
                 assert pathHelper.convert(northbound.getFlowPath(it.id)) != currentPath ||
-                        northbound.getFlowStatus(it.id).status == FlowState.DOWN
+                        status == FlowState.DOWN
             }
         }
 

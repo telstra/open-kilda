@@ -361,15 +361,10 @@ class LinkSpec extends BaseSpecification {
         then: "Flows are rerouted"
         response.containsAll([flow1, flow2]*.id)
 
-        def flow1PathUpdated
-        def flow2PathUpdated
-
         Wrappers.wait(WAIT_OFFSET) {
-            flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.id))
-            flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.id))
-
-            assert flow1PathUpdated != flow1Path
-            assert flow2PathUpdated != flow2Path
+            [flow1, flow2].each { assert northbound.getFlowStatus(it.id).status == FlowState.UP }
+            assert PathHelper.convert(northbound.getFlowPath(flow1.id)) != flow1Path
+            assert PathHelper.convert(northbound.getFlowPath(flow2.id)) != flow2Path
         }
 
         and: "Delete flows and delete link props"

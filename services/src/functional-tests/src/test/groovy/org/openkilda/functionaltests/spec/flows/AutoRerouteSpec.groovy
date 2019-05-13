@@ -201,13 +201,13 @@ class AutoRerouteSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches*.switchId.contains(flowPath[1].switchId) }
 
         then: "The flow is #flowStatus"
-        TimeUnit.SECONDS.sleep(discoveryInterval + rerouteDelay + WAIT_OFFSET * 2)
-        northbound.getFlowStatus(flow.id).status == flowStatus
+        TimeUnit.SECONDS.sleep(discoveryInterval + rerouteDelay + 2)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == flowStatus }
 
         and: "Restore topology to the original state, remove the flow, reset toggles"
+        flowHelper.deleteFlow(flow.id)
         northbound.toggleFeature(FeatureTogglesDto.builder().flowsRerouteOnIslDiscoveryEnabled(true).build())
         broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
-        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
