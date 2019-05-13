@@ -22,7 +22,7 @@ import lombok.NonNull;
 import lombok.Value;
 
 @Value
-@Builder
+@Builder(toBuilder = true)
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class FlowResponseV2 {
     @NonNull
