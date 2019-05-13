@@ -5,6 +5,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.performancetests.model.CustomTopology
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.labservice.model.LabInstance
@@ -16,7 +17,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
 @Component("performance")
-class TopologyHelper {
+class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelper {
 
     @Autowired
     NorthboundService northbound
@@ -26,6 +27,25 @@ class TopologyHelper {
     IslUtils islUtils
     @Value('${discovery.timeout}')
     int discoveryTimeout
+    
+    @Value('#{\'${floodlight.controller.uri}\'.split(\',\')}')
+    List<String> controllerHosts
+    
+    CustomTopology createRandomTopology(int switchesAmount, int islsAmount) {
+        def topo = new CustomTopology()
+        switchesAmount.times { topo.addCasualSwitch(controllerHosts[0]) }
+        islsAmount.times {
+            def src = topo.pickRandomSwitch()
+            def dst = topo.pickRandomSwitch([src])
+            topo.addIsl(src, dst)
+        }
+        topo.setControllers(controllerHosts)
+        labService.createLab(topo)
+        Wrappers.wait(switchesAmount * 3, 5) {
+            verifyTopology(topo)
+        }
+        return topo
+    }
 
     /**
      * Verify that current discovered topology matches the TopologyDefinition.
@@ -54,8 +74,8 @@ class TopologyHelper {
      * Delete the lab. Wait until topology is failed and delete all ISLs and all switches related to given
      * topology definition.
      */
-    def purgeTopology(TopologyDefinition topo, LabInstance lab) {
-        labService.deleteLab(lab)
+    def purgeTopology(TopologyDefinition topo, LabInstance lab = null) {
+        lab ? labService.deleteLab(lab) : labService.deleteLab()
         Wrappers.wait(WAIT_OFFSET + discoveryTimeout) {
             northbound.getAllLinks().findAll {
                 it.source.switchId in topo.activeSwitches*.dpId ||
