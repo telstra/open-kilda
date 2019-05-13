@@ -449,6 +449,135 @@ public class NetworkIslServiceTest {
         verifyNoMoreInteractions(carrier);
     }
 
+    @Test
+    public void considerLinkPropsDataOnHistory() {
+        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2)
+                .maxBandwidth(100L)
+                .build();
+        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1)
+                .maxBandwidth(100L)
+                .build();
+
+        mockPersistenceIsl(endpointAlpha1, endpointBeta2, islAlphaBeta);
+        mockPersistenceIsl(endpointBeta2, endpointAlpha1, islBetaAlpha);
+
+        mockPersistenceLinkProps(endpointAlpha1, endpointBeta2,
+                                 makeLinkProps(endpointAlpha1, endpointBeta2)
+                                         .maxBandwidth(50L)
+                                         .build());
+        mockPersistenceLinkProps(endpointBeta2, endpointAlpha1, null);
+
+        mockPersistenceBandwidthAllocation(endpointAlpha1, endpointBeta2, 0L);
+        mockPersistenceBandwidthAllocation(endpointBeta2, endpointAlpha1, 0L);
+
+        IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
+        service.islSetupFromHistory(endpointAlpha1, reference, islAlphaBeta);
+
+        verifyIslBandwidthUpdate(50L, 100L);
+    }
+
+    @Test
+    public void considerLinkPropsDataOnCreate() {
+        final Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2)
+                .defaultMaxBandwidth(250L)
+                .availableBandwidth(200L)
+                .build();
+        final Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1)
+                .defaultMaxBandwidth(250L)
+                .availableBandwidth(200L)
+                .build();
+
+        mockPersistenceIsl(endpointAlpha1, endpointBeta2, null);
+        mockPersistenceIsl(endpointBeta2, endpointAlpha1, null);
+
+        mockPersistenceLinkProps(endpointAlpha1, endpointBeta2,
+                                 makeLinkProps(endpointAlpha1, endpointBeta2)
+                                         .maxBandwidth(50L)
+                                         .build());
+        mockPersistenceLinkProps(endpointBeta2, endpointAlpha1, null);
+
+        mockPersistenceBandwidthAllocation(endpointAlpha1, endpointBeta2, 0L);
+        mockPersistenceBandwidthAllocation(endpointBeta2, endpointAlpha1, 0L);
+
+        IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
+        service.islUp(endpointAlpha1, reference, new IslDataHolder(200L, 20, 200L, 200L));
+
+        mockPersistenceIsl(endpointAlpha1, endpointBeta2, islAlphaBeta);
+        mockPersistenceIsl(endpointBeta2, endpointAlpha1, islBetaAlpha);
+        service.islUp(endpointBeta2, reference, new IslDataHolder(200L, 20, 200L, 200L));
+        verifyIslBandwidthUpdate(50L, 200L);
+    }
+
+    @Test
+    public void considerLinkPropsDataOnRediscovery() {
+        final Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2)
+                .defaultMaxBandwidth(300L)
+                .availableBandwidth(300L)
+                .build();
+        final Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1)
+                .defaultMaxBandwidth(300L)
+                .availableBandwidth(300L)
+                .build();
+
+        // initial discovery
+        mockPersistenceIsl(endpointAlpha1, endpointBeta2, null);
+        mockPersistenceIsl(endpointBeta2, endpointAlpha1, null);
+
+        mockPersistenceLinkProps(endpointAlpha1, endpointBeta2, null);
+        mockPersistenceLinkProps(endpointBeta2, endpointAlpha1, null);
+
+        IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
+        service.islUp(endpointAlpha1, reference, new IslDataHolder(300L, 20, 300L, 300L));
+
+        mockPersistenceIsl(endpointAlpha1, endpointBeta2, islAlphaBeta);
+        mockPersistenceIsl(endpointBeta2, endpointAlpha1, islBetaAlpha);
+        service.islUp(endpointBeta2, reference, new IslDataHolder(300L, 20, 300L, 300L));
+
+        verifyIslBandwidthUpdate(300L, 300L);
+
+        // fail (half)
+        service.islDown(endpointAlpha1, reference, IslDownReason.POLL_TIMEOUT);
+        service.islDown(endpointBeta2, reference, IslDownReason.POLL_TIMEOUT);
+
+        reset(islRepository);
+        reset(linkPropsRepository);
+
+        // rediscovery
+        mockPersistenceIsl(endpointAlpha1, endpointBeta2, islAlphaBeta);
+        mockPersistenceIsl(endpointBeta2, endpointAlpha1, islBetaAlpha);
+
+        mockPersistenceLinkProps(endpointAlpha1, endpointBeta2,
+                                 makeLinkProps(endpointAlpha1, endpointBeta2)
+                                         .maxBandwidth(50L)
+                                         .build());
+        mockPersistenceLinkProps(endpointBeta2, endpointAlpha1, null);
+
+        service.islUp(endpointAlpha1, reference, new IslDataHolder(300L, 20, 300L, 300L));
+        service.islUp(endpointBeta2, reference, new IslDataHolder(300L, 20, 300L, 300L));
+
+        verifyIslBandwidthUpdate(50L, 300L);
+    }
+
+    private void verifyIslBandwidthUpdate(long expectedAlphaBetaBandwidth, long expectedBetaAlphaBandwidth) {
+        // System.out.println(mockingDetails(islRepository).printInvocations());
+        verify(islRepository, atLeastOnce()).createOrUpdate(argThat(
+                link ->
+                        link.getSrcSwitch().getSwitchId().equals(this.endpointAlpha1.getDatapath())
+                                && link.getSrcPort() == this.endpointAlpha1.getPortNumber()
+                                && link.getDestSwitch().getSwitchId().equals(this.endpointBeta2.getDatapath())
+                                && link.getDestPort() == this.endpointBeta2.getPortNumber()
+                                && link.getMaxBandwidth() == expectedAlphaBetaBandwidth
+                                && link.getAvailableBandwidth() == expectedAlphaBetaBandwidth));
+        verify(islRepository, atLeastOnce()).createOrUpdate(argThat(
+                link ->
+                        link.getSrcSwitch().getSwitchId().equals(this.endpointBeta2.getDatapath())
+                                && link.getSrcPort() == this.endpointBeta2.getPortNumber()
+                                && link.getDestSwitch().getSwitchId().equals(this.endpointAlpha1.getDatapath())
+                                && link.getDestPort() == this.endpointAlpha1.getPortNumber()
+                                && link.getMaxBandwidth() == expectedBetaAlphaBandwidth
+                                && link.getAvailableBandwidth() == expectedBetaAlphaBandwidth));
+    }
+
     private void emulateEmptyPersistentDb() {
         mockPersistenceIsl(endpointAlpha1, endpointBeta2, null);
         mockPersistenceLinkProps(endpointAlpha1, endpointBeta2, null);
@@ -484,6 +613,9 @@ public class NetworkIslServiceTest {
                 .srcSwitch(sourceSwitch).srcPort(source.getPortNumber())
                 .destSwitch(destSwitch).destPort(dest.getPortNumber())
                 .status(IslStatus.ACTIVE)
+                .actualStatus(IslStatus.ACTIVE)
+                .latency(10)
+                .speed(100)
                 .availableBandwidth(100)
                 .maxBandwidth(100)
                 .defaultMaxBandwidth(100);
