@@ -546,12 +546,16 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     private void applyIslGenericData(Isl link) {
         IslDataHolder aggData = discoveryFacts.makeAggregatedData();
-        if (aggData != null) {
-            link.setSpeed(aggData.getSpeed());
-            link.setLatency(aggData.getLatency());
-            link.setMaxBandwidth(aggData.getMaximumBandwidth());
-            link.setDefaultMaxBandwidth(aggData.getMaximumBandwidth());
+        if (aggData == null) {
+            throw new IllegalStateException(String.format(
+                    "There is no ISL data available for %s, unable to calculate available_bandwidth",
+                    discoveryFacts.getReference()));
         }
+
+        link.setSpeed(aggData.getSpeed());
+        link.setLatency(aggData.getLatency());
+        link.setMaxBandwidth(aggData.getMaximumBandwidth());
+        link.setDefaultMaxBandwidth(aggData.getMaximumBandwidth());
     }
 
     private void applyIslStatus(Isl link, DiscoveryEndpointStatus uniStatus, Instant timeNow) {
@@ -578,18 +582,10 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     private void applyIslAvailableBandwidth(Isl link, Endpoint source, Endpoint dest) {
-        IslDataHolder dataHolder = discoveryFacts.get(source);
-        if (dataHolder == null) {
-            throw new IllegalStateException(String.format(
-                    "There is no ISL data available for %s, unable to calculate available_bandwidth",
-                    discoveryFacts.getReference()));
-        }
-
-        long maximumBandwidth = dataHolder.getMaximumBandwidth();
         long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(
                 source.getDatapath(), source.getPortNumber(),
                 dest.getDatapath(), dest.getPortNumber());
-        link.setAvailableBandwidth(maximumBandwidth - usedBandwidth);
+        link.setAvailableBandwidth(link.getMaxBandwidth() - usedBandwidth);
     }
 
     private void applyIslCostRaiseOnPhysicalDown(Isl link, Instant timeNow) {
