@@ -23,6 +23,7 @@ import static org.hamcrest.core.Every.everyItem;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.northbound.dto.v1.links.LinkEnableBfdDto;
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto;
 import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
 import org.openkilda.northbound.dto.v1.links.LinkUnderMaintenanceDto;
@@ -147,6 +148,11 @@ public class IslUtils {
                 evacuate);
     }
 
+    public LinkEnableBfdDto toLinkEnableBfd(Isl isl, boolean bfd) {
+        return new LinkEnableBfdDto(isl.getSrcSwitch().getDpId().toString(), isl.getSrcPort(),
+                isl.getDstSwitch().getDpId().toString(), isl.getDstPort(), bfd);
+    }
+
     /**
      * Simulates a physical ISL replug from one switch-port to another switch-port. Uses a-switch.
      *
@@ -183,7 +189,7 @@ public class IslUtils {
                 replugSource ? (plugIntoSource ? dstIsl.getSrcPort() : dstIsl.getDstPort()) : srcIsl.getSrcPort(),
                 replugSource ? srcIsl.getDstSwitch() : (plugIntoSource ? dstIsl.getSrcSwitch() : dstIsl.getDstSwitch()),
                 replugSource ? srcIsl.getDstPort() : (plugIntoSource ? dstIsl.getSrcPort() : dstIsl.getDstPort()),
-                0, aswFlowForward, srcIsl.isBfd());
+                0, aswFlowForward);
     }
 
     private RetryPolicy retryPolicy() {
