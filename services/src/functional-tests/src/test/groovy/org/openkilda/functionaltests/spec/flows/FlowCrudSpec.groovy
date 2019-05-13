@@ -1,9 +1,11 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
@@ -42,6 +44,7 @@ class FlowCrudSpec extends BaseSpecification {
 
     @Unroll("Valid #data.description has traffic and no rule discrepancies \
 (#flow.source.datapath - #flow.destination.datapath)")
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Valid flow has no rule discrepancies"() {
         given: "A flow"
         def traffExam = traffExamProvider.get()
@@ -185,6 +188,7 @@ class FlowCrudSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Able to create single switch single port flow with different vlan (#flow.source.datapath)"(FlowPayload flow) {
         given: "A flow"
         flowHelper.addFlow(flow)

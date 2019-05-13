@@ -1,9 +1,12 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
@@ -89,9 +92,8 @@ class AutoRerouteSpec extends BaseSpecification {
         }
     }
 
+    @Tags(VIRTUAL)
     def "Flow is rerouted when an intermediate switch is disconnected"() {
-        requireProfiles("virtual")
-
         given: "An intermediate-switch flow with one alternative path at least"
         def flow = intermediateSwitchFlow(1)
         flowHelper.addFlow(flow)
@@ -126,9 +128,8 @@ class AutoRerouteSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags(VIRTUAL)
     def "Flow goes to 'Down' status when #switchType switch is disconnected (#flowType)"() {
-        requireProfiles("virtual")
-
         given: "#flowType.capitalize()"
         //TODO(ylobankov): Remove this code once the issue #1464 is resolved.
         assumeTrue("Test is skipped because of the issue #1464", switchType != "single")
@@ -167,9 +168,8 @@ class AutoRerouteSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags(VIRTUAL)
     def "Flow goes to 'Down' status when an intermediate switch is disconnected and there is no ability to reroute"() {
-        requireProfiles("virtual")
-
         given: "An intermediate-switch flow without alternative paths"
         def (flow, allFlowPaths) = intermediateSwitchFlow(0, true)
         flowHelper.addFlow(flow)
@@ -259,9 +259,8 @@ class AutoRerouteSpec extends BaseSpecification {
         }
     }
 
+    @Tags(VIRTUAL)
     def "Flow in 'Down' status is rerouted when connecting a new switch"() {
-        requireProfiles("virtual")
-
         given: "An intermediate-switch flow with one alternative path at least"
         def (flow, allFlowPaths) = intermediateSwitchFlow(1, true)
         flowHelper.addFlow(flow)
@@ -353,9 +352,8 @@ class AutoRerouteSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Tags(VIRTUAL)
     def "Flow in 'Up' status is not rerouted when connecting a new switch and more preferable path is available"() {
-        requireProfiles("virtual")
-
         given: "A flow with one alternative path at least"
         def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
         flowHelper.addFlow(flow)
@@ -387,9 +385,8 @@ class AutoRerouteSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Tags(HARDWARE)
     def "Flow is not rerouted when one of the flow ports goes down"() {
-        requireProfiles("hardware")
-
         given: "An intermediate-switch flow with one alternative path at least"
         def (flow, allFlowPaths) = intermediateSwitchFlow(1, true)
         flowHelper.addFlow(flow)

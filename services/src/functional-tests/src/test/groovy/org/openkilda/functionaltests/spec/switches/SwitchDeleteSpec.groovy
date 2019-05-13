@@ -1,9 +1,11 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 
@@ -36,9 +38,8 @@ class SwitchDeleteSpec extends BaseSpecification {
         exc.responseBodyAsString.contains("Switch '$switchId' is in 'Active' state")
     }
 
+    @Tags(VIRTUAL)
     def "Unable to delete an inactive switch with active ISLs"() {
-        requireProfiles("virtual")
-
         given: "An inactive switch with ISLs"
         def sw = topology.getActiveSwitches()[0]
         def swIsls = topology.getRelatedIsls(sw)
@@ -66,9 +67,8 @@ class SwitchDeleteSpec extends BaseSpecification {
         }
     }
 
+    @Tags(VIRTUAL)
     def "Unable to delete an inactive switch with inactive ISLs (ISL ports are down)"() {
-        requireProfiles("virtual")
-
         given: "An inactive switch with ISLs"
         def sw = topology.getActiveSwitches()[0]
         def swIsls = topology.getRelatedIsls(sw)
@@ -105,9 +105,8 @@ class SwitchDeleteSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags(VIRTUAL)
     def "Unable to delete an inactive switch with a #flowType flow assigned"() {
-        requireProfiles("virtual")
-
         given: "A flow going through a switch"
         flowHelper.addFlow(flow)
 
@@ -134,9 +133,8 @@ class SwitchDeleteSpec extends BaseSpecification {
         "casual"        | getFlowHelper().randomFlow(*getTopology().getActiveSwitches()[0..1])
     }
 
+    @Tags(VIRTUAL)
     def "Able to delete an inactive switch without any ISLs"() {
-        requireProfiles("virtual")
-
         given: "An inactive switch without any ISLs"
         def sw = topology.getActiveSwitches()[0]
         def swIsls = topology.getRelatedIsls(sw)
@@ -177,9 +175,8 @@ class SwitchDeleteSpec extends BaseSpecification {
         database.resetCosts()
     }
 
+    @Tags(VIRTUAL)
     def "Able to delete an active switch with active ISLs if using force delete"() {
-        requireProfiles("virtual")
-
         given: "An active switch with active ISLs"
         def sw = topology.getActiveSwitches()[0]
         def swIsls = topology.getRelatedIsls(sw)

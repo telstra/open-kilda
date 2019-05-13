@@ -1,12 +1,14 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Message
@@ -51,6 +53,7 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
     SwitchHelper switchHelper
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Switch validation is able to store correct information on a #switchType switch in the 'proper' section"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
@@ -104,6 +107,7 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Switch validation is able to detect meter info into the 'misconfigured' section on a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
@@ -173,6 +177,7 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Switch validation is able to detect meter info into the 'missing' section on a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
@@ -224,6 +229,7 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Switch validation is able to detect meter info into the 'excess' section on a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
@@ -288,6 +294,7 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Switch validation is able to detect rule info into the 'missing' section on a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
@@ -326,6 +333,7 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Switch validation is able to detect rule info into the 'excess' section on a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
