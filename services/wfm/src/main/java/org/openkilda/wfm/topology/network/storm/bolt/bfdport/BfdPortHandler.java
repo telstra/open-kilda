@@ -180,8 +180,8 @@ public class BfdPortHandler extends AbstractBolt
         globalToggleService.setup(Endpoint.of(endpoint.getDatapath(), physicalPortNumber));
     }
 
-    public void processRemove(Endpoint logicalEndpoint) {
-        Endpoint physicalEndpoint = bfdPortService.remove(logicalEndpoint);
+    public void processRemove(Endpoint endpoint) {
+        Endpoint physicalEndpoint = bfdPortService.remove(endpoint);
         globalToggleService.remove(physicalEndpoint);
     }
 
