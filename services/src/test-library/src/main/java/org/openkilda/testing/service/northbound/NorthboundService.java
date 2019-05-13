@@ -116,7 +116,7 @@ public interface NorthboundService {
 
     SwitchMeterEntries getAllMeters(SwitchId switchId);
 
-    SwitchValidationResult switchValidate(SwitchId switchId);
+    SwitchValidationResult validateSwitch(SwitchId switchId);
 
     DeleteSwitchResult deleteSwitch(SwitchId switchId, boolean force);
 
