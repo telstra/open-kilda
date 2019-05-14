@@ -39,8 +39,13 @@ UP --> BFD : bfd-up
 UP : enter [have speaker event] / set remote
 UP : enter [have speaker event] / emit isl-up
 
+state selfLoopChoice <<choice>>
+
 moveChoice --> UP : [remote not changed]
-moveChoice --> UP : [remote is changed] / emit isl-move
+moveChoice --> selfLoopChoice : [remote is changed] / emit isl-move
+
+selfLoopChoice --> UP : [else]
+selfLoopChoice -r-> UNKNOWN : [self-loop]
 
 DOWN --> moveChoice : discovery
 DOWN --> BFD : bfd-up

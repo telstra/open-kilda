@@ -64,12 +64,22 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
 
         // DISCOVERY_CHOICE
         builder.transition()
-                .from(UniIslFsmState.DISCOVERY_CHOICE).to(UniIslFsmState.UP).on(UniIslFsmEvent._DISCOVERY_CHOICE_MOVED)
+                .from(UniIslFsmState.DISCOVERY_CHOICE).to(UniIslFsmState.SELF_LOOP_CHOICE)
+                .on(UniIslFsmEvent._DISCOVERY_CHOICE_MOVED)
                 .callMethod("handleMoved");
         builder.transition()
                 .from(UniIslFsmState.DISCOVERY_CHOICE).to(UniIslFsmState.UP).on(UniIslFsmEvent._DISCOVERY_CHOICE_SAME);
         builder.onEntry(UniIslFsmState.DISCOVERY_CHOICE)
-                .callMethod("makeDiscoveryChoice");
+                .callMethod("doDiscoveryChoice");
+        
+        // SELF_LOOP_CHOICE
+        builder.transition()
+                .from(UniIslFsmState.SELF_LOOP_CHOICE).to(UniIslFsmState.UP).on(UniIslFsmEvent._SELF_LOOP_CHOICE_FALSE);
+        builder.transition()
+                .from(UniIslFsmState.SELF_LOOP_CHOICE).to(UniIslFsmState.UNKNOWN)
+                .on(UniIslFsmEvent._SELF_LOOP_CHOICE_TRUE);
+        builder.onEntry(UniIslFsmState.SELF_LOOP_CHOICE)
+                .callMethod("doSelfLoopChoice");
 
         // UP
         builder.transition()
@@ -128,13 +138,24 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
         }
     }
 
-    public void makeDiscoveryChoice(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event,
-                                    UniIslFsmContext context) {
+    public void doDiscoveryChoice(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event,
+                                  UniIslFsmContext context) {
         IslReference actualReference = IslReference.of(context.getDiscoveryEvent());
         if (islReference.equals(actualReference)) {
             fire(UniIslFsmEvent._DISCOVERY_CHOICE_SAME, context);
         } else {
             fire(UniIslFsmEvent._DISCOVERY_CHOICE_MOVED, context);
+        }
+    }
+
+    public void doSelfLoopChoice(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event,
+                                 UniIslFsmContext context) {
+        IslReference reference = IslReference.of(context.getDiscoveryEvent());
+        if (reference.isSelfLoop()) {
+            log.error("Self looped ISL discovery received: {}", reference);
+            fire(UniIslFsmEvent._SELF_LOOP_CHOICE_TRUE, context);
+        } else {
+            fire(UniIslFsmEvent._SELF_LOOP_CHOICE_FALSE, context);
         }
     }
 
@@ -224,7 +245,8 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
         DISCOVERY, FAIL,
         BFD_UP, BFD_DOWN, BFD_KILL,
 
-        _DISCOVERY_CHOICE_SAME, _DISCOVERY_CHOICE_MOVED
+        _DISCOVERY_CHOICE_SAME, _DISCOVERY_CHOICE_MOVED,
+        _SELF_LOOP_CHOICE_TRUE, _SELF_LOOP_CHOICE_FALSE
     }
 
     public enum UniIslFsmState {
@@ -232,6 +254,7 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
         UNKNOWN,
 
         DISCOVERY_CHOICE,
+        SELF_LOOP_CHOICE,
 
         UP, DOWN,
         BFD
