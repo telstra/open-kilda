@@ -83,7 +83,7 @@ idle. Step repeats pre-defined number of times"
                 soft.checkSucceeds { northbound.validateFlow(flow.id).each { assert it.asExpected } }
             }
             topo.switches.each { sw ->
-                def validation = northbound.switchValidate(sw.dpId)
+                def validation = northbound.validateSwitch(sw.dpId)
                 soft.checkSucceeds { assert validation.rules.missing.empty, sw }
                 soft.checkSucceeds { assert validation.rules.excess.empty, sw }
                 soft.checkSucceeds { assert validation.meters.missing.empty, sw }
