@@ -51,6 +51,7 @@ public class FlowUpdatePayload extends FlowPayload {
      * @param maxLatency            max latency
      * @param priority              flow priority
      * @param pinned           pinned flag
+     * @param encapsulationType     flow encapsulation type
      */
     @JsonCreator
     public FlowUpdatePayload(@JsonProperty(Utils.FLOW_ID) String id,
@@ -67,9 +68,10 @@ public class FlowUpdatePayload extends FlowPayload {
                              @JsonProperty("status") String status,
                              @JsonProperty("max-latency") Integer maxLatency,
                              @JsonProperty("priority") Integer priority,
-                             @JsonProperty("pinned") Boolean pinned) {
+                             @JsonProperty("pinned") Boolean pinned,
+                             @JsonProperty("encapsulation-type") String encapsulationType) {
         super(id, source, destination, maximumBandwidth, ignoreBandwidth, periodicPings, allocateProtectedPath,
-                description, created, lastUpdated, status, maxLatency, priority, pinned);
+                description, created, lastUpdated, status, maxLatency, priority, pinned, encapsulationType);
         this.diverseFlowId = diverseFlowId;
     }
 }

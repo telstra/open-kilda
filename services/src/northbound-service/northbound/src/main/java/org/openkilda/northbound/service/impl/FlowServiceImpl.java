@@ -241,7 +241,15 @@ public class FlowServiceImpl implements FlowService {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Create flow: {}", input);
 
-        FlowCreateRequest payload = new FlowCreateRequest(new FlowDto(input), input.getDiverseFlowId());
+        FlowCreateRequest payload;
+        try {
+            payload = new FlowCreateRequest(new FlowDto(input), input.getDiverseFlowId());
+        } catch (IllegalArgumentException e) {
+            logger.error("Can not parse arguments: {}", e.getMessage());
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments when create flow request");
+        }
+
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 
@@ -285,7 +293,14 @@ public class FlowServiceImpl implements FlowService {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Update flow request for flow {}", input.getId());
 
-        FlowUpdateRequest payload = new FlowUpdateRequest(new FlowDto(input), input.getDiverseFlowId());
+        FlowUpdateRequest payload;
+        try {
+            payload = new FlowUpdateRequest(new FlowDto(input), input.getDiverseFlowId());
+        } catch (IllegalArgumentException e) {
+            logger.error("Can not parse arguments: {}", e.getMessage());
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.DATA_INVALID,
+                    e.getMessage(), "Can not parse arguments when update flow request");
+        }
         CommandMessage request = new CommandMessage(
                 payload, System.currentTimeMillis(), correlationId, Destination.WFM);
 

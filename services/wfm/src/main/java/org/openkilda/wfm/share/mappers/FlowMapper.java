@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -207,6 +207,21 @@ public abstract class FlowMapper {
     public Long map(MeterId meterId) {
         return Optional.ofNullable(meterId).map(MeterId::getValue).orElse(null);
     }
+    
+    /**
+     * Convert {@link org.openkilda.messaging.payload.flow.FlowEncapsulationType} to {@link FlowEncapsulationType}.
+     */
+    public FlowEncapsulationType map(org.openkilda.messaging.payload.flow.FlowEncapsulationType encapsulationType) {
+        return encapsulationType != null ? FlowEncapsulationType.valueOf(encapsulationType.name()) : null;
+    }
+
+    /**
+     * Convert {@link FlowEncapsulationType} to {@link org.openkilda.messaging.payload.flow.FlowEncapsulationType}.
+     */
+    public org.openkilda.messaging.payload.flow.FlowEncapsulationType map(FlowEncapsulationType encapsulationType) {
+        return encapsulationType != null ? org.openkilda.messaging.payload.flow.FlowEncapsulationType.valueOf(
+                encapsulationType.name()) : null;
+    }
 
     private FlowPath buildPath(Flow flow, FlowDto flowDto) {
         Switch srcSwitch = Switch.builder().switchId(flowDto.getSourceSwitch()).build();
@@ -245,8 +260,7 @@ public abstract class FlowMapper {
                 .ignoreBandwidth(flow.isIgnoreBandwidth())
                 .periodicPings(flow.isPeriodicPings())
                 .allocateProtectedPath(flow.isAllocateProtectedPath())
-                //TODO: hard-coded encapsulation will be removed in Flow H&S
-                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .encapsulationType(map(flow.getEncapsulationType()))
                 .maxLatency(flow.getMaxLatency())
                 .priority(flow.getPriority())
                 .timeCreate(map(flow.getCreatedTime()))
