@@ -100,88 +100,97 @@ class FlowCrudSpec extends BaseSpecification {
 
     @Unroll("Able to create a second flow if #data.description")
     def "Able to create multiple flows on certain combinations of switch-port-vlans"() {
-        when: "Create a flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flowHelper.addFlow(flow1)
+        given: "Two potential flows that should not conflict"
+        Tuple2<FlowPayload, FlowPayload> flows = data.getNotConflictingFlows()
+
+        when: "Create the first flow"
+        flowHelper.addFlow(flows.first)
 
         and: "Try creating a second flow with #data.description"
-        FlowPayload flow2 = data.getSecondFlow(flow1)
-        flowHelper.addFlow(flow2)
+        flowHelper.addFlow(flows.second)
 
         then: "Both flows are successfully created"
-        northbound.getAllFlows()*.id.containsAll([flow1.id, flow2.id])
+        northbound.getAllFlows()*.id.containsAll(flows*.id)
 
         and: "Cleanup: delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+        flows.each { flowHelper.deleteFlow(it.id) }
 
         where:
         data << [
                 [
                         description  : "same switch-port but vlans on src and dst are swapped",
-                        getSecondFlow: { FlowPayload existingFlow ->
-                            return getFlowHelper().randomFlow(findSwitch(existingFlow.source.datapath),
-                                    findSwitch(existingFlow.destination.datapath)).tap {
-                                it.source.portNumber = existingFlow.source.portNumber
-                                it.source.vlanId = existingFlow.destination.vlanId
-                                it.destination.portNumber = existingFlow.destination.portNumber
-                                it.destination.vlanId = existingFlow.source.vlanId
+                        getNotConflictingFlows: {
+                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
+                            def flow1 = getFlowHelper().randomFlow(srcSwitch, dstSwitch)
+                            def flow2 = getFlowHelper().randomFlow(srcSwitch, dstSwitch).tap {
+                                it.source.portNumber = flow1.source.portNumber
+                                it.source.vlanId = flow1.destination.vlanId
+                                it.destination.portNumber = flow1.destination.portNumber
+                                it.destination.vlanId = flow1.source.vlanId
                             }
+                            return new Tuple2<FlowPayload, FlowPayload>(flow1, flow2)
                         }
                 ],
                 [
                         description  : "same switch-port but vlans on src and dst are different",
-                        getSecondFlow: { FlowPayload existingFlow ->
-                            return getFlowHelper().randomFlow(findSwitch(existingFlow.source.datapath),
-                                    findSwitch(existingFlow.destination.datapath)).tap {
-                                it.source.portNumber = existingFlow.source.portNumber
-                                it.source.vlanId = existingFlow.source.vlanId + 1
-                                it.destination.portNumber = existingFlow.destination.portNumber
-                                it.destination.vlanId = existingFlow.destination.vlanId + 1
+                        getNotConflictingFlows: {
+                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
+                            def flow1 = getFlowHelper().randomFlow(srcSwitch, dstSwitch)
+                            def flow2 = getFlowHelper().randomFlow(srcSwitch, dstSwitch).tap {
+                                it.source.portNumber = flow1.source.portNumber
+                                it.source.vlanId = flow1.source.vlanId + 1
+                                it.destination.portNumber = flow1.destination.portNumber
+                                it.destination.vlanId = flow1.destination.vlanId + 1
                             }
+                            return new Tuple2<FlowPayload, FlowPayload>(flow1, flow2)
                         }
                 ],
                 [
-                        description  : "vlan-port of new src = vlan-port of existing dst (but different switches)",
-                        getSecondFlow: { FlowPayload existingFlow ->
+                        description  : "vlan-port of new src = vlan-port of existing dst (+ different src)",
+                        getNotConflictingFlows: {
+                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
+                            def flow1 = getFlowHelper().randomFlow(srcSwitch, dstSwitch)
                             //src for new flow will be on different switch not related to existing flow
                             //thus two flows will have same dst but different src
-                            def newSrcSwitch = getTopology().activeSwitches.find {
-                                ![existingFlow.source.datapath, existingFlow.destination.datapath].contains(it.dpId)
+                            def newSrc = getTopology().activeSwitches.find {
+                                ![flow1.source.datapath, flow1.destination.datapath].contains(it.dpId) &&
+                                    getTopology().getAllowedPortsForSwitch(it).contains(flow1.destination.portNumber)
                             }
-                            return getFlowHelper().randomFlow(newSrcSwitch, findSwitch(
-                                    existingFlow.destination.datapath)).tap {
-                                it.source.vlanId = existingFlow.destination.vlanId
-                                it.source.portNumber = existingFlow.destination.portNumber
-                                it.destination.vlanId = existingFlow.destination.vlanId + 1
+                            def flow2 = getFlowHelper().randomFlow(newSrc, dstSwitch).tap {
+                                it.source.vlanId = flow1.destination.vlanId
+                                it.source.portNumber = flow1.destination.portNumber
+                                it.destination.vlanId = flow1.destination.vlanId + 1 //ensure no conflict on dst
                             }
+                            return new Tuple2<FlowPayload, FlowPayload>(flow1, flow2)
                         }
                 ],
                 [
                         description  : "vlan-port of new dst = vlan-port of existing src (but different switches)",
-                        getSecondFlow: { FlowPayload existingFlow ->
-                            def newSrcSwitch = getTopology().activeSwitches.find {
-                                ![existingFlow.source.datapath, existingFlow.destination.datapath].contains(it.dpId)
+                        getNotConflictingFlows: {
+                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
+                            def flow1 = getFlowHelper().randomFlow(srcSwitch, dstSwitch).tap {
+                                def srcPort = getTopology().getAllowedPortsForSwitch(srcSwitch)
+                                    .intersect(getTopology().getAllowedPortsForSwitch(dstSwitch))[0]
+                                it.source.portNumber = srcPort
                             }
-                            return getFlowHelper().randomFlow(newSrcSwitch, findSwitch(
-                                    existingFlow.destination.datapath)).tap {
-                                it.destination.vlanId = existingFlow.source.vlanId
-                                it.destination.portNumber = existingFlow.source.portNumber
+                            def flow2 = getFlowHelper().randomFlow(srcSwitch, dstSwitch).tap {
+                                it.destination.vlanId = flow1.source.vlanId
+                                it.destination.portNumber = flow1.source.portNumber
                             }
+                            return new Tuple2<FlowPayload, FlowPayload>(flow1, flow2)
                         }
                 ],
                 [
                         description  : "vlan of new dst = vlan of existing src and port of new dst = port of " +
                                 "existing dst",
-                        getSecondFlow: { FlowPayload existingFlow ->
-                            def newSrcSwitch = getTopology().activeSwitches.find {
-                                ![existingFlow.source.datapath, existingFlow.destination.datapath].contains(it.dpId)
+                        getNotConflictingFlows: {
+                            def (Switch srcSwitch, Switch dstSwitch) = getTopology().activeSwitches
+                            def flow1 = getFlowHelper().randomFlow(srcSwitch, dstSwitch)
+                            def flow2 = getFlowHelper().randomFlow(srcSwitch, dstSwitch).tap {
+                                it.destination.vlanId = flow1.source.vlanId
+                                it.destination.portNumber = flow1.destination.portNumber
                             }
-                            return getFlowHelper().randomFlow(newSrcSwitch, findSwitch(
-                                    existingFlow.destination.datapath)).tap {
-                                it.destination.vlanId = existingFlow.source.vlanId
-                                it.destination.portNumber = existingFlow.destination.portNumber
-                            }
+                            return new Tuple2<FlowPayload, FlowPayload>(flow1, flow2)
                         }
                 ]
         ]
