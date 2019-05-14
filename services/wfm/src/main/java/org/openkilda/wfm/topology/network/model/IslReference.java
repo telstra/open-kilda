@@ -90,6 +90,10 @@ public class IslReference {
         return source == null || dest == null;
     }
 
+    public boolean isSelfLoop() {
+        return source.getDatapath().equals(dest.getDatapath());
+    }
+
     @Override
     public String toString() {
         return String.format("%s <===> %s", source, dest);
