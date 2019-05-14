@@ -102,7 +102,7 @@
             <a *ngIf="switchDetail['reference-url']" href="{{ switchDetail['reference-url'] }}" target="blank">{{ switchDetail['reference-url'] }}</a>
           </p>
         </div>
-        <div class="row" *ngIf="commonService.hasPermission('sw_switch_maintenance')">
+        <div class="row" *ngIf="commonService.hasPermission('sw_switch_maintenance') &&  !switchDetail['inventory-switch']">
             <label class="col-sm-2 col-form-label">Evacuate:</label>
             <div class="col-sm-4 switchdetails_div_address col-form-label">
                 <div class="onoffswitch">
