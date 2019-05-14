@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Switch;
@@ -40,18 +41,65 @@ import java.util.stream.Stream;
 
 public class FlowResourcesManagerTest extends Neo4jBasedTest {
 
-    private final FlowDto firstFlow = new FlowDto("first-flow", 1, false, "first-flow",
-            new SwitchId("ff:01"), 11, 100,
-            new SwitchId("ff:03"), 11, 200, false);
-    private final FlowDto secondFlow = new FlowDto("second-flow", 1, false, "second-flow",
-            new SwitchId("ff:05"), 12, 100,
-            new SwitchId("ff:03"), 12, 200, false);
-    private final FlowDto thirdFlow = new FlowDto("third-flow", 0, true, "third-flow",
-            new SwitchId("ff:03"), 21, 100,
-            new SwitchId("ff:03"), 22, 200, false);
-    private final FlowDto fourthFlow = new FlowDto("fourth-flow", 0, true, "fourth-flow",
-            new SwitchId("ff:04"), 21, 100,
-            new SwitchId("ff:05"), 22, 200, false);
+    private final FlowDto firstFlow = FlowDto.builder()
+            .flowId("first-flow")
+            .bandwidth(1)
+            .ignoreBandwidth(false)
+            .description("first-flow")
+            .sourceSwitch(new SwitchId("ff:01"))
+            .sourcePort(11)
+            .sourceVlan(100)
+            .destinationSwitch(new SwitchId("ff:03"))
+            .destinationPort(11)
+            .destinationVlan(200)
+            .pinned(false)
+            .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+            .build();
+
+    private final FlowDto secondFlow = FlowDto.builder()
+            .flowId("second-flow")
+            .bandwidth(1)
+            .ignoreBandwidth(false)
+            .description("second-flow")
+            .sourceSwitch(new SwitchId("ff:05"))
+            .sourcePort(12)
+            .sourceVlan(100)
+            .destinationSwitch(new SwitchId("ff:03"))
+            .destinationPort(12)
+            .destinationVlan(200)
+            .pinned(false)
+            .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+            .build();
+
+    private final FlowDto thirdFlow = FlowDto.builder()
+            .flowId("third-flow")
+            .bandwidth(0)
+            .ignoreBandwidth(true)
+            .description("third-flow")
+            .sourceSwitch(new SwitchId("ff:03"))
+            .sourcePort(21)
+            .sourceVlan(100)
+            .destinationSwitch(new SwitchId("ff:03"))
+            .destinationPort(22)
+            .destinationVlan(200)
+            .pinned(false)
+            .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+            .build();
+
+    private final FlowDto fourthFlow = FlowDto.builder()
+            .flowId("fourth-flow")
+            .bandwidth(0)
+            .ignoreBandwidth(true)
+            .description("fourth-flow")
+            .sourceSwitch(new SwitchId("ff:04"))
+            .sourcePort(21)
+            .sourceVlan(100)
+            .destinationSwitch(new SwitchId("ff:05"))
+            .destinationPort(22)
+            .destinationVlan(200)
+            .pinned(false)
+            .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+            .build();
 
     private FlowResourcesManager resourcesManager;
     private FlowResourcesConfig flowResourcesConfig;

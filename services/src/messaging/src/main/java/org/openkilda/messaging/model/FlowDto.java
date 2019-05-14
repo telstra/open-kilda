@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package org.openkilda.messaging.model;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.SwitchId;
@@ -154,6 +155,9 @@ public class FlowDto implements Serializable {
     @JsonProperty("pinned")
     private boolean pinned;
 
+    @JsonProperty("encapsulation_type")
+    private FlowEncapsulationType encapsulationType;
+
     public FlowDto() {
     }
 
@@ -182,6 +186,7 @@ public class FlowDto implements Serializable {
      * @param maxLatency        max latency
      * @param priority          flow priority
      * @param pinned            pinned flag
+     * @param encapsulationType flow encapsulation type
      */
     @JsonCreator
     @Builder(toBuilder = true)
@@ -206,7 +211,8 @@ public class FlowDto implements Serializable {
                    @JsonProperty("state") FlowState state,
                    @JsonProperty("max_latency") Integer maxLatency,
                    @JsonProperty("priority") Integer priority,
-                   @JsonProperty("pinned") boolean pinned) {
+                   @JsonProperty("pinned") boolean pinned,
+                   @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType) {
         this.flowId = flowId;
         this.bandwidth = bandwidth;
         this.ignoreBandwidth = ignoreBandwidth;
@@ -229,6 +235,7 @@ public class FlowDto implements Serializable {
         this.maxLatency = maxLatency;
         this.priority = priority;
         this.pinned = pinned;
+        this.encapsulationType = encapsulationType;
     }
 
     /**
@@ -266,7 +273,7 @@ public class FlowDto implements Serializable {
                 destinationPort,
                 sourceVlan,
                 destinationVlan,
-                null, 0, null, null, null, null, pinned);
+                null, 0, null, null, null, null, pinned, null);
     }
 
     public FlowDto(FlowPayload input) {
@@ -287,7 +294,9 @@ public class FlowDto implements Serializable {
                 null, 0, null, null,
                 input.getMaxLatency(),
                 input.getPriority(),
-                input.isPinned());
+                input.isPinned(),
+                input.getEncapsulationType() != null ? FlowEncapsulationType.valueOf(
+                        input.getEncapsulationType().toUpperCase()) : null);
     }
 
     @JsonIgnore
@@ -395,12 +404,13 @@ public class FlowDto implements Serializable {
                 && getSourceVlan() == flow.getSourceVlan()
                 && Objects.equals(getDestinationSwitch(), flow.getDestinationSwitch())
                 && getDestinationPort() == flow.getDestinationPort()
-                && getDestinationVlan() == flow.getDestinationVlan();
+                && getDestinationVlan() == flow.getDestinationVlan()
+                && Objects.equals(getEncapsulationType(), flow.getEncapsulationType());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(flowId, bandwidth, description, state,
-                sourceSwitch, sourcePort, sourceVlan, destinationSwitch, destinationPort, destinationVlan);
+        return Objects.hash(flowId, bandwidth, description, state, sourceSwitch, sourcePort, sourceVlan,
+                destinationSwitch, destinationPort, destinationVlan, encapsulationType);
     }
 }

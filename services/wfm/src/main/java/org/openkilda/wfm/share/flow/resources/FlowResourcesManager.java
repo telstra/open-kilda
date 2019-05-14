@@ -147,7 +147,9 @@ public class FlowResourcesManager {
     }
 
     private EncapsulationResourcesProvider getEncapsulationResourcesProvider(FlowEncapsulationType type) {
-        EncapsulationResourcesProvider provider = encapsulationResourcesProviders.get(type);
+        //TODO: Hard-coded encapsulation will be removed when VXLAN allocation is implemented
+        EncapsulationResourcesProvider provider =
+                encapsulationResourcesProviders.get(FlowEncapsulationType.TRANSIT_VLAN);
         if (provider == null) {
             throw new ResourceNotAvailableException(
                     format("Unsupported encapsulation type %s", type));

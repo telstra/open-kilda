@@ -69,7 +69,7 @@ class FlowHelper {
         Wrappers.retry(3, 0) {
             def newFlow = new FlowCreatePayload(generateFlowId(), getFlowEndpoint(srcSwitch, useTraffgenPorts),
                     getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, false, generateDescription(),
-                    null, null, null, null, null, null, false)
+                    null, null, null, null, null, null, false, null)
             if (flowConflicts(newFlow, existingFlows)) {
                 throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
             }
@@ -90,7 +90,7 @@ class FlowHelper {
             def srcEndpoint = getFlowEndpoint(sw, allowedPorts, useTraffgenPorts)
             def dstEndpoint = getFlowEndpoint(sw, allowedPorts - srcEndpoint.portNumber, useTraffgenPorts)
             def newFlow = new FlowCreatePayload(generateFlowId(), srcEndpoint, dstEndpoint, 500, false, false, false,
-                    generateDescription(), null, null, null, null, null, null, false)
+                    generateDescription(), null, null, null, null, null, null, false, null)
             if (flowConflicts(newFlow, existingFlows)) {
                 throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
             }
@@ -319,7 +319,7 @@ class FlowHelper {
         return new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US).format(new Date()) + "_" +
                 faker.food().ingredient().toLowerCase().replaceAll(/\W/, "") + faker.number().digits(4)
     }
-    
+
     private String generateDescription() {
         //The health of autotest flows is always questionable
         "autotest flow with ${faker.medical().symptoms().uncapitalize()}"
