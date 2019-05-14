@@ -59,4 +59,8 @@ export class SwitchService {
       return this.httpClient.patch<any>(`${environment.apiEndPoint}/switch/name/${switchid}`,name);
     }
 
+    switchMaintenance(data,switchid){
+      return this.httpClient.post<any>(`${environment.apiEndPoint}/switch/under-maintenance/${switchid}`,data);
+    }
+
 }

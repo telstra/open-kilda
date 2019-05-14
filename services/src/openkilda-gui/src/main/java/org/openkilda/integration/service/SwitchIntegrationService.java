@@ -33,6 +33,7 @@ import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkProps;
+import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.model.SwitchMeter;
 import org.openkilda.service.ApplicationService;
@@ -48,6 +49,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
@@ -63,6 +65,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 
 /**
  * The Class SwitchIntegrationService.
@@ -119,7 +122,8 @@ public class SwitchIntegrationService {
      *
      * @return the switch
      */
-    public SwitchInfo getSwitchesById(String switchId) {
+    public SwitchInfo getSwitchesById(final String switchId) {
+        System.out.println("GETTING DETAIL OF SWITCH.... " + switchId);
         HttpResponse response = restClientManager.invoke(
                 applicationProperties.getNbBaseUrl()
                         + IConstants.NorthBoundUrl.GET_SWITCH.replace("{switch_id}", switchId),
@@ -141,7 +145,7 @@ public class SwitchIntegrationService {
      *            the switches
      * @return the switch info set name
      */
-    private List<SwitchInfo> getSwitchInfoSetName(List<SwitchInfo> switches) {
+    private List<SwitchInfo> getSwitchInfoSetName(final List<SwitchInfo> switches) {
 
         if (switches != null && !StringUtils.isEmpty(switches)) {
             Map<String, String> csNames = getSwitchNames();
@@ -181,7 +185,7 @@ public class SwitchIntegrationService {
      *            the switch id
      * @return the string
      */
-    public String customSwitchName(Map<String, String> csNames, String switchId) {
+    public String customSwitchName(final Map<String, String> csNames, final String switchId) {
         if (csNames != null && !StringUtils.isEmpty(csNames) && csNames.size() > 0) {
             if (csNames.containsKey(switchId.toLowerCase()) || csNames.containsKey(switchId.toUpperCase())) {
                 if (!IoUtil.chkStringIsNotEmpty(csNames.get(switchId))) {
@@ -202,7 +206,7 @@ public class SwitchIntegrationService {
      *
      * @return the isl links
      */
-    public List<IslLinkInfo> getIslLinks(LinkProps keys) {
+    public List<IslLinkInfo> getIslLinks(final LinkProps keys) {
         List<IslLink> links = getIslLinkPortsInfo(keys);
         if (CollectionUtil.isEmpty(links)) {
             throw new ContentNotFoundException();
@@ -215,7 +219,7 @@ public class SwitchIntegrationService {
      *
      * @return the isl links port info
      */
-    public List<IslLink> getIslLinkPortsInfo(LinkProps keys) {
+    public List<IslLink> getIslLinkPortsInfo(final LinkProps keys) {
         UriComponentsBuilder builder = UriComponentsBuilder
                 .fromHttpUrl(applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINKS);
         builder = setLinkProps(keys, builder);
@@ -229,7 +233,7 @@ public class SwitchIntegrationService {
         return null;
     }
 
-    private Map<String, String> islCostMap(LinkProps keys) {
+    private Map<String, String> islCostMap(final LinkProps keys) {
         List<LinkProps> linkProps = getIslLinkProps(keys);
         Map<String, String> islCostMap = new HashMap<>();
         if (linkProps != null) {
@@ -251,7 +255,7 @@ public class SwitchIntegrationService {
      *
      * @return the isl link cost
      */
-    public List<LinkProps> getIslLinkProps(LinkProps keys) {
+    public List<LinkProps> getIslLinkProps(final LinkProps keys) {
         UriComponentsBuilder builder = UriComponentsBuilder
                 .fromHttpUrl(applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINK_PROPS);
         builder = setLinkProps(keys, builder);
@@ -320,7 +324,7 @@ public class SwitchIntegrationService {
      *            the keys
      * @return the string
      */
-    public String updateIslLinkProps(List<LinkProps> keys) {
+    public String updateIslLinkProps(final List<LinkProps> keys) {
         try {
             HttpResponse response = restClientManager.invoke(
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINK_PROPS, HttpMethod.PUT,
@@ -341,7 +345,7 @@ public class SwitchIntegrationService {
      *            the uri component builder
      * @return UriComponentsBuilder
      */
-    private UriComponentsBuilder setLinkProps(LinkProps keys, UriComponentsBuilder builder) {
+    private UriComponentsBuilder setLinkProps(final LinkProps keys, final UriComponentsBuilder builder) {
         try {
             if (keys != null) {
                 if (!keys.getSrcSwitch().isEmpty()) {
@@ -370,7 +374,7 @@ public class SwitchIntegrationService {
      *            the switch id
      * @return the switch rules
      */
-    public String getSwitchRules(String switchId) {
+    public String getSwitchRules(final String switchId) {
 
         try {
             HttpResponse response = restClientManager.invoke(
@@ -395,12 +399,13 @@ public class SwitchIntegrationService {
      *            the configuration
      * @return the configured port
      */
-    public ConfiguredPort configurePort(String switchId, String port, PortConfiguration configuration) {
+    public ConfiguredPort configurePort(final String switchId, final String port, 
+            final PortConfiguration configuration) {
         try {
             HttpResponse response = restClientManager.invoke(
-                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.CONFIG_SWITCH_PORT
+                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.CONFIG_SWITCH_PORT
                             .replace("{switch_id}", switchId).replace("{port_no}", port),
-                    HttpMethod.PUT, objectMapper.writeValueAsString(configuration), "application/json",
+                     HttpMethod.PUT, objectMapper.writeValueAsString(configuration), "application/json",
                     applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponse(response, ConfiguredPort.class);
@@ -428,8 +433,8 @@ public class SwitchIntegrationService {
      *            the destination port
      * @return the isl flows
      */
-    public List<FlowInfo> getIslFlows(String srcSwitch, String srcPort, String dstSwitch, String dstPort) {
-
+    public List<FlowInfo> getIslFlows(final String srcSwitch, final String srcPort, final String dstSwitch, 
+            final String dstPort) {
         List<Flow> flowList = getIslFlowList(srcSwitch, srcPort, dstSwitch, dstPort);
         if (flowList != null) {
             return flowConverter.toFlowsInfo(flowList);
@@ -450,13 +455,14 @@ public class SwitchIntegrationService {
      *            the destination port
      * @return the isl flow list
      */
-    public List<Flow> getIslFlowList(String srcSwitch, String srcPort, String dstSwitch, String dstPort) {
+    public List<Flow> getIslFlowList(final String srcSwitch, final String srcPort, final String dstSwitch, 
+            final String dstPort) {
         try {
             HttpResponse response = restClientManager.invoke(
-                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_ISL_FLOW
+                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_ISL_FLOW
                             .replace("{src_switch}", srcSwitch).replace("{src_port}", srcPort)
                             .replace("{dst_switch}", dstSwitch).replace("{dst_port}", dstPort),
-                    HttpMethod.GET, "", "", applicationService.getAuthHeader());
+                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponseList(response, Flow.class);
             }
@@ -472,7 +478,7 @@ public class SwitchIntegrationService {
      *
      * @return the meters
      */
-    public SwitchMeter getMeters(String switchId) {
+    public SwitchMeter getMeters(final String switchId) {
         SwitchMeter switchesResponse = null;
         HttpResponse response = restClientManager.invoke(
                 applicationProperties.getNbBaseUrl()
@@ -482,5 +488,65 @@ public class SwitchIntegrationService {
             switchesResponse = restClientManager.getResponse(response, SwitchMeter.class);
         }
         return switchesResponse;
+    }
+
+    /**
+     * Updates the switch maintenance.
+     *
+     * @return the switch info
+     */
+    public SwitchInfo updateMaintenanceStatus(String switchId, SwitchInfo switchInfo) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
+                    .UPDATE_SWITCH_UNDER_MAINTENANCE.replace("{switch_id}", switchId), 
+                    HttpMethod.POST, objectMapper.writeValueAsString(switchInfo), "application/json", 
+                    applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, SwitchInfo.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while updating switch:" + switchId, e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (JsonProcessingException e) {
+            LOGGER.warn("Error occurred while updating switch:" + switchId, e);
+            throw new IntegrationException(e.getMessage(), e);
+        }
+        return null;
+    }
+    
+    /**
+     * Gets the isl links.
+     *
+     * @return the isl links info
+     */
+    public List<IslLinkInfo> updateIslLinks(final LinkUnderMaintenanceDto linkUnderMaintenanceDto) {
+        List<IslLink> links = updateIslLinkMaintenanceStatus(linkUnderMaintenanceDto);
+        if (CollectionUtil.isEmpty(links)) {
+            throw new ContentNotFoundException();
+        }
+        return islLinkConverter.toIslLinksInfo(links, islCostMap(null));
+    }
+    
+    /**
+     * Updates the isl links.
+     *
+     * @return the isl links
+     */
+    public List<IslLink> updateIslLinkMaintenanceStatus(final LinkUnderMaintenanceDto islLinkInfo) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.UPDATE_LINK_MAINTENANCE, 
+                    HttpMethod.PATCH,
+                    objectMapper.writeValueAsString(islLinkInfo), 
+                    "application/json", applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponseList(response, IslLink.class);
+            }
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Error occurred while updating link", e);
+            throw new IntegrationException(e);
+        }
+        return null;
     }
 }

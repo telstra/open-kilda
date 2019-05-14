@@ -660,6 +660,15 @@ div.switch5 > input.switch:focus ~ label:before {
   text-align: right;
 }
 
+.onoffswitch-inner-maintenance-switch::before{
+  content:'ON';
+  text-align: left;
+}
+.onoffswitch-inner-maintenance-switch::after{
+  content:'OFF';
+  text-align: right;
+}
+
 .onoffswitch-flow-ping {
   right: 93px; 
 }

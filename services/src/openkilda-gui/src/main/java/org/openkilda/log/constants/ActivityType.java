@@ -53,7 +53,9 @@ public enum ActivityType {
     CONFIG_SESSION_TIMEOUT(32L),
     CONFIG_SWITCH_NAME_STORAGE_TYPE(33L),
     UPDATE_SWITCH_NAME(34L),
-    FLOW_PING(35L);
+    FLOW_PING(35L),
+    SWITCH_MAINTENANCE(36L),
+    ISL_MAINTENANCE(37L);
 
     private Long id;
     private ActivityTypeEntity activityTypeEntity;

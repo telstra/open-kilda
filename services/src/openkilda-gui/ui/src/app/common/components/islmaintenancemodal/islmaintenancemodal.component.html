@@ -1,0 +1,17 @@
+<div class="modal-header">
+    <h4 class="modal-title">{{title}}</h4>
+    <button type="button" class="close" aria-label="Close" (click)="activeModal.close(false)">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    <p [innerHTML]="content"></p>
+    <div class="form-group" *ngIf="isMaintenance">
+      <input style="height: 20px; width: 20px; margin: 0px 4px"  type="checkbox" name="doevacuate"  (change)="setEvacuate($event)"  />
+      <label style="margin-top: -10px; vertical-align: middle;" >Evacuate all flows as well.</label>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn kilda_btn" (click)="submitConfirmation()">Yes</button>
+    <button type="button" class="btn kilda_btn" (click)="activeModal.close(false)">No</button>
+  </div>

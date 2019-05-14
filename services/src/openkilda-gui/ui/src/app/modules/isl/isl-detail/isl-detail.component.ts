@@ -18,6 +18,7 @@ import { LoaderService } from "../../../common/services/loader.service";
 import { Title } from '@angular/platform-browser';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ModalconfirmationComponent } from '../../../common/components/modalconfirmation/modalconfirmation.component';
+import { IslmaintenancemodalComponent } from '../../../common/components/islmaintenancemodal/islmaintenancemodal.component';
 import { CommonService } from '../../../common/services/common.service';
 
   declare var moment: any;
@@ -37,6 +38,8 @@ import { CommonService } from '../../../common/services/common.service';
     speed:string = '';
     latency:string = '';
     state:string = '';
+    evacuate:boolean=false;
+    under_maintenance:boolean=false;
     loadingData = true;
     dataSet:any;
     available_bandwidth:string = '';
@@ -149,6 +152,8 @@ import { CommonService } from '../../../common/services/common.service';
           this.latency = retrievedObject.latency;
           this.state = retrievedObject.state;
           this.available_bandwidth = retrievedObject.available_bandwidth;
+          this.under_maintenance = retrievedObject.under_maintenance;
+          this.evacuate = retrievedObject.evacuate;
           this.clipBoardItems = Object.assign(this.clipBoardItems,{
               
               sourceSwitchName: retrievedObject.source_switch_name,
@@ -261,7 +266,63 @@ import { CommonService } from '../../../common/services/common.service';
      }).toggle();
      
   }
+  islMaintenance(e){
+    const modalRef = this.modalService.open(IslmaintenancemodalComponent);
+    modalRef.componentInstance.title = "Confirmation";
+    modalRef.componentInstance.isMaintenance = !this.under_maintenance;
+    modalRef.componentInstance.content = 'Are you sure ?';
+    this.under_maintenance = e.target.checked;
+    modalRef.result.then((response) =>{
+      if(!response){
+        this.under_maintenance = false;
+      }
+    },error => {
+      this.under_maintenance = false;
+    })
+    modalRef.componentInstance.emitService.subscribe(
+      evacuate => {
+        var data = {src_switch:this.src_switch,src_port:this.src_port,dst_switch:this.dst_switch,dst_port:this.dst_port,under_maintenance:e.target.checked,evacuate:evacuate};
+        this.islListService.islUnderMaintenance(data).subscribe(response=>{
+          this.toastr.success('Maintenance mode changed successful','Success');
+          this.under_maintenance = e.target.checked;
+          if(evacuate){
+            location.reload();
+          }
+        },error => {
+          this.toastr.error('Error in changing maintenance mode! ','Error');
+        })
+      },
+      error => {
+      }
+    );
+    
+  }
 
+  evacuateIsl(e){
+    const modalRef = this.modalService.open(ModalconfirmationComponent);
+    modalRef.componentInstance.title = "Confirmation";
+    this.evacuate = e.target.checked;
+    if(this.evacuate){      
+     modalRef.componentInstance.content = 'Are you sure you want to evacuate all flows?';
+    }else{
+      modalRef.componentInstance.content = 'Are you sure ?';
+    }
+     modalRef.result.then((response)=>{
+      if(response && response == true){
+        var data = {src_switch:this.src_switch,src_port:this.src_port,dst_switch:this.dst_switch,dst_port:this.dst_port,under_maintenance:this.under_maintenance,evacuate:e.target.checked};
+        this.islListService.islUnderMaintenance(data).subscribe(response=>{
+          this.toastr.success('All flows are evacuated successfully!','Success');
+          location.reload();
+        },error => {
+          this.toastr.error('Error in evacuating flows! ','Error');
+        })
+      }else{
+        this.evacuate = false;
+      }
+    },error => {
+      this.evacuate = false;
+    })
+  }
 
    copyToClip(event, copyItem) {
     this.clipboardService.copyFromContent(this.clipBoardItems[copyItem]);
