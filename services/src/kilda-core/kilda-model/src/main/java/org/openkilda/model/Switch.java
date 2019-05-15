@@ -111,6 +111,10 @@ public class Switch implements Serializable {
         return StringUtils.contains(manufacturerDescription.toLowerCase(), "centec");
     }
 
+    public static boolean isESwitch(String manufacturerDescription) {
+        return StringUtils.equalsIgnoreCase(manufacturerDescription, "E");
+    }
+
     public static boolean isNoviflowSwitch(String softwareDescription) {
         return NOVIFLOW_SOFTWARE_REGEX.matcher(softwareDescription).matches();
     }

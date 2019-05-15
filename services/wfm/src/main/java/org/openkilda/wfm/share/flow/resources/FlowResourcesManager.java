@@ -21,6 +21,8 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
+import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
@@ -89,11 +91,11 @@ public class FlowResourcesManager {
                             switchRepository.lockSwitches(switchRepository.reload(flow.getSrcSwitch()),
                                     switchRepository.reload(flow.getDestSwitch()));
 
-                            forward.meterId(meterPool.allocate(
-                                    flow.getSrcSwitch().getSwitchId(), flow.getFlowId(), forwardPathId));
+                            allocateMeterId(
+                                    flow.getSrcSwitch().getSwitchId(), flow.getFlowId(), forwardPathId, forward);
 
-                            reverse.meterId(meterPool.allocate(
-                                    flow.getDestSwitch().getSwitchId(), flow.getFlowId(), reversePathId));
+                            allocateMeterId(
+                                    flow.getDestSwitch().getSwitchId(), flow.getFlowId(), reversePathId, reverse);
                         }
 
                         if (!flow.isOneSwitchFlow()) {
@@ -114,6 +116,22 @@ public class FlowResourcesManager {
                     }));
         } catch (ConstraintViolationException | ResourceNotAvailableException ex) {
             throw new ResourceAllocationException("Unable to allocate resources", ex);
+        }
+    }
+
+    private void allocateMeterId(
+            SwitchId switchId, String flowId, PathId pathId, PathResources.PathResourcesBuilder pathBuilder) {
+        Optional<Switch> sw = switchRepository.findById(switchId);
+        if (sw.isPresent()) {
+            if (Switch.isESwitch(sw.get().getOfDescriptionManufacturer())) {
+                log.warn("Do not allocate meter for flow {} because E switch {} doesn't support KBPS flag.",
+                        flowId, switchId);
+            } else {
+                pathBuilder.meterId(meterPool.allocate(switchId, flowId, pathId));
+            }
+        } else {
+            log.warn("Couldn't find switch {} during flow {} create operation.",
+                    sw, switchId);
         }
     }
 
