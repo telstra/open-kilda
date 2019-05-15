@@ -30,7 +30,6 @@ import org.openkilda.persistence.Neo4jPersistenceManager;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.EmbeddedNeo4jDatabase;
-import org.openkilda.wfm.error.AbstractException;
 
 import org.apache.storm.task.TopologyContext;
 import org.junit.AfterClass;
@@ -67,7 +66,7 @@ public class LinkOperationsBoltTest {
 
         Properties configProps = new Properties();
         configProps.setProperty("neo4j.uri", embeddedNeo4jDb.getConnectionUri());
-        configProps.setProperty("neo4j.indexes.auto", "update");
+        configProps.setProperty("neo4j.indexes.auto", "update"); // ask to create indexes/constraints if needed
         PropertiesBasedConfigurationProvider configurationProvider =
                 new PropertiesBasedConfigurationProvider(configProps);
         persistenceManager = new Neo4jPersistenceManager(configurationProvider.getConfiguration(Neo4jConfig.class));
@@ -84,7 +83,7 @@ public class LinkOperationsBoltTest {
     }
 
     @Test
-    public void shouldCreateLinkProps() throws AbstractException {
+    public void shouldCreateLinkProps() throws Exception {
         SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
         switchRepository.createOrUpdate(Switch.builder().switchId(SWITCH_ID_1).build());

@@ -25,15 +25,23 @@ import org.openkilda.persistence.repositories.history.StateLogRepository;
  * Factory to create {@link Repository} instances.
  */
 public interface RepositoryFactory {
+    FlowCookieRepository createFlowCookieRepository();
+
+    FlowMeterRepository createFlowMeterRepository();
+
+    FlowPathRepository createFlowPathRepository();
+
     FlowRepository createFlowRepository();
 
-    FlowSegmentRepository createFlowSegmentRepository();
+    FlowPairRepository createFlowPairRepository();
 
     IslRepository createIslRepository();
 
+    LinkPropsRepository createLinkPropsRepository();
+
     SwitchRepository createSwitchRepository();
 
-    LinkPropsRepository createLinkPropsRepository();
+    TransitVlanRepository createTransitVlanRepository();
 
     FeatureTogglesRepository createFeatureTogglesRepository();
 

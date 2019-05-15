@@ -6,17 +6,18 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.model.SwitchId
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
-import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -34,15 +35,9 @@ class FlowCrudSpec extends BaseSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
-    /**
-     * Switch pairs with more traffgen-available switches will go first. Then the less tg-available switches there is
-     * in the pair the lower score that pair will get.
-     * During the subsequent 'unique' call the higher scored pairs will have priority over lower scored ones in case
-     * if their uniqueness criteria will be equal.
-     */
     @Shared
-    def taffgensPrioritized = { List<Switch> switches ->
-        switches.count { sw -> !topology.activeTraffGens.find { it.switchConnected == sw } }
+    def getPortViolationError = { String action, int port, SwitchId swId ->
+        "Could not $action flow: The port $port on the switch '$swId' is occupied by an ISL."
     }
 
     @Unroll("Valid #data.description has traffic and no rule discrepancies \
@@ -437,6 +432,81 @@ class FlowCrudSpec extends BaseSpecification {
         }
     }
 
+    @Unroll
+    def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {
+        given: "An isl"
+        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
+        assert isl
+
+        when: "Try to create a flow using isl port"
+        def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
+        flow."$data.switchType".portNumber = isl."$data.port"
+        flowHelper.addFlow(flow)
+
+        then: "Flow is not created"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage == data.message(isl)
+
+        where:
+        data << [
+                [
+                        switchType: "source",
+                        port      : "srcPort",
+                        message   : { Isl violatedIsl ->
+                            getPortViolationError("create", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
+                        }
+                ],
+                [
+                        switchType: "destination",
+                        port      : "dstPort",
+                        message   : { Isl violatedIsl ->
+                            getPortViolationError("create", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
+                        }
+                ]
+        ]
+    }
+
+    @Unroll
+    def "Unable to update a flow in case new port is an isl port on a #data.switchType switch"() {
+        given: "An isl"
+        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
+        assert isl
+
+        and: "A flow"
+        def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
+        flowHelper.addFlow(flow)
+
+        when: "Try to edit port to isl port"
+        flowHelper.updateFlow(flow.id, flow.tap { it."$data.switchType".portNumber = isl."$data.port" })
+
+        then:
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage == data.message(isl)
+
+        and: "Cleanup: delete the flow"
+        flowHelper.deleteFlow(flow.id)
+
+        where:
+        data << [
+                [
+                        switchType: "source",
+                        port      : "srcPort",
+                        message   : { Isl violatedIsl ->
+                            getPortViolationError("update", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
+                        }
+                ],
+                [
+                        switchType: "destination",
+                        port      : "dstPort",
+                        message   : { Isl violatedIsl ->
+                            getPortViolationError("update", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
+                        }
+                ]
+        ]
+    }
+
     @Shared
     def errorMessage = { String operation, FlowPayload flow, String endpoint, FlowPayload conflictingFlow,
                          String conflictingEndpoint ->
@@ -452,34 +522,41 @@ class FlowCrudSpec extends BaseSpecification {
     }
 
     /**
+     * Potential flows with more traffgen-available switches will go first. Then the less tg-available switches there is
+     * in the pair the lower score that pair will get.
+     * During the subsequent 'unique' call the higher scored pairs will have priority over lower scored ones in case
+     * if their uniqueness criteria will be equal.
+     */
+    @Shared
+    def traffgensPrioritized = { SwitchPair switchPair ->
+        [switchPair.src, switchPair.dst].count { Switch sw ->
+            !topology.activeTraffGens.find { it.switchConnected == sw }
+        }
+    }
+
+    /**
      * Get list of all unique flows without transit switch (neighboring switches), permute by vlan presence. 
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithoutTransitSwitch() {
-        def switchPairs = [topology.activeSwitches, topology.activeSwitches].combinations()
-                .findAll { src, dst -> src != dst } //non-single-switch
-                .unique { it.sort() } //no reversed versions of same flows
-                .findAll { Switch src, Switch dst ->
-            getPreferredPath(src, dst).size() == 2 //switches are neighbors
-        }
-        .sort(taffgensPrioritized)
-                .unique { it.collect { [it.description, it.ofVersion] }.sort() }
+        def switchPairs = topologyHelper.getAllNeighboringSwitchPairs().sort(traffgensPrioritized)
+                .unique { [it.src, it.dst]*.description.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->
             r << [
                     description: "flow without transit switch and with random vlans",
-                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1])
+                    flow       : flowHelper.randomFlow(switchPair)
             ]
             r << [
                     description: "flow without transit switch and without vlans",
-                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1]).tap {
+                    flow       : flowHelper.randomFlow(switchPair).tap {
                         it.source.vlanId = 0
                         it.destination.vlanId = 0
                     }
             ]
             r << [
                     description: "flow without transit switch and vlan only on src",
-                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1]).tap { it.destination.vlanId = 0 }
+                    flow       : flowHelper.randomFlow(switchPair).tap { it.destination.vlanId = 0 }
             ]
             r
         }
@@ -490,30 +567,24 @@ class FlowCrudSpec extends BaseSpecification {
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithTransitSwitch() {
-        def switchPairs = [topology.activeSwitches, topology.activeSwitches].combinations()
-                .findAll { src, dst -> src != dst } //non-single-switch
-                .unique { it.sort() } //no reversed versions of same flows
-                .findAll { Switch src, Switch dst ->
-            getPreferredPath(src, dst).size() > 2 //switches are not neighbors
-        }
-        .sort(taffgensPrioritized)
-                .unique { it.collect { [it.description, it.ofVersion] }.sort() }
+        def switchPairs = topologyHelper.getAllNotNeighboringSwitchPairs().sort(traffgensPrioritized)
+                .unique { [it.src, it.dst]*.description.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->
             r << [
                     description: "flow with transit switch and random vlans",
-                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1])
+                    flow       : flowHelper.randomFlow(switchPair)
             ]
             r << [
                     description: "flow with transit switch and no vlans",
-                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1]).tap {
+                    flow       : flowHelper.randomFlow(switchPair).tap {
                         it.source.vlanId = 0
                         it.destination.vlanId = 0
                     }
             ]
             r << [
                     description: "flow with transit switch and vlan only on dst",
-                    flow       : flowHelper.randomFlow(switchPair[0], switchPair[1]).tap { it.source.vlanId = 0 }
+                    flow       : flowHelper.randomFlow(switchPair).tap { it.source.vlanId = 0 }
             ]
             r
         }
@@ -526,7 +597,7 @@ class FlowCrudSpec extends BaseSpecification {
     def getSingleSwitchFlows() {
         topology.getActiveSwitches()
                 .sort { sw -> topology.activeTraffGens.findAll { it.switchConnected == sw }.size() }.reverse()
-                .unique { [it.description, it.ofVersion].sort() }
+                .unique { it.description }
                 .inject([]) { r, sw ->
             r << [
                     description: "single-switch flow with vlans",
@@ -555,22 +626,8 @@ class FlowCrudSpec extends BaseSpecification {
      */
     def getSingleSwitchSinglePortFlows() {
         topology.getActiveSwitches()
-                .unique { [it.description, it.ofVersion].sort() }
+                .unique { it.description }
                 .collect { flowHelper.singleSwitchSinglePortFlow(it) }
-    }
-
-    @Memoized
-    def getPreferredPath(Switch src, Switch dst) {
-        def possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path
-        return possibleFlowPaths.min {
-            /*
-              Taking the actual cost of every ISL for all the permutations takes ages. Since we assume that at the
-              start of the test all isls have the same cost, just take the 'shortest' path and consider it will be
-              preferred.
-              Another option was to introduce cache for getIslCost calls, but implementation was too bulky.
-             */
-            it.size()
-        }
     }
 
     Switch findSwitch(SwitchId swId) {

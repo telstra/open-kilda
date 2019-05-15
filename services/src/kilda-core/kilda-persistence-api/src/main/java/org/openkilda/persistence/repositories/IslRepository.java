@@ -22,6 +22,8 @@ import java.util.Collection;
 import java.util.Optional;
 
 public interface IslRepository extends Repository<Isl> {
+    Collection<Isl> findByEndpoint(SwitchId switchId, int port);
+
     Collection<Isl> findBySrcEndpoint(SwitchId srcSwitchId, int srcPort);
 
     Collection<Isl> findByDestEndpoint(SwitchId dstSwitchId, int dstPort);

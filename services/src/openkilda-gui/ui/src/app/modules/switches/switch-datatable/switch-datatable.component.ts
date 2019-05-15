@@ -5,6 +5,7 @@ import { LoaderService } from 'src/app/common/services/loader.service';
 import { Router } from '@angular/router';
 import { Switch } from 'src/app/common/data-models/switch';
 import { StoreSettingtService } from 'src/app/common/services/store-setting.service';
+import { ClipboardService } from 'ngx-clipboard';
 
 @Component({
   selector: 'app-switch-datatable',
@@ -29,11 +30,13 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
   poplocation : boolean = false;
   description : boolean = false;
   state : boolean = false;
+  clipBoardItems = [];
   typeFilter = 'all';
   constructor(private loaderService : LoaderService,
     private renderer: Renderer2, 
     private router:Router,
-    private storeSwitchService: StoreSettingtService
+    private storeSwitchService: StoreSettingtService,
+    private clipboardService:ClipboardService
   ) { }
 
   ngOnInit() {
@@ -107,6 +110,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
     if(change.data){
       if(change.data.currentValue){
         this.data  = change.data.currentValue;
+        this.clipBoardItems = this.data;
       }
     }
   }
@@ -205,6 +209,16 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       });
       
     }
+  }
+
+  copyToClip(event, copyItem,index) {
+    if(copyItem == 'name'){
+      var copyData = (this.clipBoardItems[index]['common-name']) ? this.checkValue(this.clipBoardItems[index]['common-name']) : this.checkValue(this.clipBoardItems[index][copyItem]);
+    }else{
+      var copyData = this.checkValue(this.clipBoardItems[index][copyItem]);
+    }
+    
+    this.clipboardService.copyFromContent(copyData);
   }
 
 

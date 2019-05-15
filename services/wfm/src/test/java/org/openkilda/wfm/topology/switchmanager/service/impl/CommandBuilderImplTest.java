@@ -15,9 +15,12 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -26,13 +29,19 @@ import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowSegment;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathId;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.TransitVlan;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.topology.switchmanager.service.CommandBuilder;
 
 import org.junit.Test;
@@ -40,6 +49,7 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public class CommandBuilderImplTest {
 
@@ -51,93 +61,97 @@ public class CommandBuilderImplTest {
     public void testCommandBuilder() {
         CommandBuilder commandBuilder = new CommandBuilderImpl(persistenceManager().build());
         List<BaseInstallFlow> response = commandBuilder
-                .buildCommandsToSyncRules(SWITCH_ID_B, Arrays.asList(1L, 2L, 3L, 4L));
+                .buildCommandsToSyncRules(SWITCH_ID_B, asList(1L, 2L, 3L, 4L));
         assertEquals(4, response.size());
-        assertTrue(response.get(0) instanceof InstallTransitFlow);
-        assertTrue(response.get(1) instanceof InstallEgressFlow);
+        assertTrue(response.get(0) instanceof InstallEgressFlow);
+        assertTrue(response.get(1) instanceof InstallTransitFlow);
         assertTrue(response.get(2) instanceof InstallOneSwitchFlow);
         assertTrue(response.get(3) instanceof InstallIngressFlow);
     }
 
-    private PersistenceManager persistenceManager() {
-        return new PersistenceManager();
+    private PersistenceManagerBuilder persistenceManager() {
+        return new PersistenceManagerBuilder();
     }
 
-    private static class PersistenceManager {
+    private static class PersistenceManagerBuilder {
+        private FlowRepository flowRepository = mock(FlowRepository.class);
+        private FlowPathRepository flowPathRepository = mock(FlowPathRepository.class);
+        private TransitVlanRepository transitVlanRepository = mock(TransitVlanRepository.class);
 
-        private FlowSegment flowSegmentA = FlowSegment.builder()
-                .flowId("A")
-                .srcSwitch(Switch.builder().switchId(SWITCH_ID_A).build())
-                .destSwitch(Switch.builder().switchId(SWITCH_ID_B).build())
-                .cookie(1L)
-                .build();
+        private FlowPath buildFlowAndPath(String flowId, SwitchId srcSwitchId, SwitchId destSwitchId,
+                                          int cookie, int transitVlan) {
+            boolean forward = srcSwitchId.compareTo(destSwitchId) <= 0;
+            Switch srcSwitch = Switch.builder().switchId(srcSwitchId).build();
+            Switch destSwitch = Switch.builder().switchId(destSwitchId).build();
 
-        private FlowSegment flowSegmentB = FlowSegment.builder()
-                .flowId("B")
-                .srcSwitch(Switch.builder().switchId(SWITCH_ID_B).build())
-                .destSwitch(Switch.builder().switchId(SWITCH_ID_C).build())
-                .cookie(2L)
-                .build();
+            Flow flow = Flow.builder()
+                    .flowId(flowId)
+                    .srcSwitch(forward ? srcSwitch : destSwitch)
+                    .destSwitch(forward ? destSwitch : srcSwitch)
+                    .build();
 
-        private FlowSegment flowSegmentC = FlowSegment.builder()
-                .flowId("C")
-                .srcSwitch(Switch.builder().switchId(SWITCH_ID_A).build())
-                .destSwitch(Switch.builder().switchId(SWITCH_ID_C).build())
-                .cookie(4L)
-                .build();
+            FlowPath flowPath = FlowPath.builder()
+                    .flow(flow)
+                    .pathId(new PathId(UUID.randomUUID().toString()))
+                    .srcSwitch(srcSwitch)
+                    .destSwitch(destSwitch)
+                    .cookie(new Cookie(cookie))
+                    .segments(emptyList())
+                    .build();
+            flow.setForwardPath(forward ? flowPath : null);
+            flow.setReversePath(forward ? null : flowPath);
 
-        private Flow flowA = Flow.builder()
-                .flowId("A")
-                .srcSwitch(Switch.builder().switchId(SWITCH_ID_A).build())
-                .destSwitch(Switch.builder().switchId(SWITCH_ID_C).build())
-                .cookie(1L)
-                .transitVlan(1)
-                .build();
+            when(flowPathRepository.findById(eq(flowPath.getPathId())))
+                    .thenReturn(Optional.of(flowPath));
+            when(flowPathRepository.findByFlowId(eq(flowId)))
+                    .thenReturn(asList(flowPath));
+            when(flowRepository.findById(eq(flowId)))
+                    .thenReturn(Optional.of(flow));
 
-        private Flow flowB = Flow.builder()
-                .flowId("B")
-                .srcSwitch(Switch.builder().switchId(SWITCH_ID_A).build())
-                .destSwitch(Switch.builder().switchId(SWITCH_ID_C).build())
-                .cookie(2L)
-                .transitVlan(1)
-                .build();
+            TransitVlan transitVlanEntity = TransitVlan.builder()
+                    .flowId(flow.getFlowId())
+                    .pathId(flowPath.getPathId())
+                    .vlan(transitVlan)
+                    .build();
+            when(transitVlanRepository.findByPathId(eq(flowPath.getPathId())))
+                    .thenReturn(singleton(transitVlanEntity));
 
-        private Flow flowC = Flow.builder()
-                .flowId("C")
-                .srcSwitch(Switch.builder().switchId(SWITCH_ID_A).build())
-                .destSwitch(Switch.builder().switchId(SWITCH_ID_A).build())
-                .cookie(3L)
-                .transitVlan(1)
-                .build();
+            return flowPath;
+        }
 
-        private Flow flowD = Flow.builder()
-                .flowId("D")
-                .srcSwitch(Switch.builder().switchId(SWITCH_ID_A).build())
-                .destSwitch(Switch.builder().switchId(SWITCH_ID_C).build())
-                .cookie(4L)
-                .transitVlan(1)
-                .build();
+        private PathSegment buildSegment(FlowPath path, SwitchId srcSwitchId, SwitchId destSwitchId) {
+            return PathSegment.builder()
+                    .path(path)
+                    .srcSwitch(Switch.builder().switchId(srcSwitchId).build())
+                    .destSwitch(Switch.builder().switchId(destSwitchId).build())
+                    .build();
+        }
 
-        private org.openkilda.persistence.PersistenceManager build() {
+        private PersistenceManager build() {
+            FlowPath flowPathA = buildFlowAndPath("A", SWITCH_ID_A, SWITCH_ID_B, 1, 1);
+            flowPathA.setSegments(asList(buildSegment(flowPathA, SWITCH_ID_A, SWITCH_ID_C),
+                    buildSegment(flowPathA, SWITCH_ID_C, SWITCH_ID_B)));
 
-            FlowSegmentRepository flowSegmentRepository = mock(FlowSegmentRepository.class);
-            when(flowSegmentRepository.findByDestSwitchId(SWITCH_ID_B))
-                    .thenReturn(Arrays.asList(flowSegmentA, flowSegmentB));
-            when(flowSegmentRepository.findBySrcSwitchIdAndCookie(SWITCH_ID_A, 2L))
-                    .thenReturn(Optional.of(flowSegmentB));
-            when(flowSegmentRepository.findBySrcSwitchIdAndCookie(SWITCH_ID_B, 1L))
-                    .thenReturn(Optional.of(flowSegmentB));
-            when(flowSegmentRepository.findBySrcSwitchIdAndCookie(SWITCH_ID_A, 4L))
-                    .thenReturn(Optional.of(flowSegmentC));
-            FlowRepository flowRepository = mock(FlowRepository.class);
-            when(flowRepository.findBySrcSwitchId(any())).thenReturn(Arrays.asList(flowC, flowD));
-            when(flowRepository.findByIdAndCookie("A", 1L)).thenReturn(Optional.of(flowA));
-            when(flowRepository.findByIdAndCookie("B", 2L)).thenReturn(Optional.of(flowB));
+            FlowPath flowPathB = buildFlowAndPath("B", SWITCH_ID_A, SWITCH_ID_C, 2, 1);
+            flowPathB.setSegments(asList(buildSegment(flowPathB, SWITCH_ID_A, SWITCH_ID_B),
+                    buildSegment(flowPathB, SWITCH_ID_B, SWITCH_ID_C)));
+
+            FlowPath flowPathC = buildFlowAndPath("C", SWITCH_ID_A, SWITCH_ID_A, 3, 1);
+
+            FlowPath flowPathD = buildFlowAndPath("D", SWITCH_ID_B, SWITCH_ID_A, 4, 1);
+            flowPathD.setSegments(asList(buildSegment(flowPathD, SWITCH_ID_B, SWITCH_ID_A)));
+
+            when(flowPathRepository.findBySegmentDestSwitch(eq(SWITCH_ID_B)))
+                    .thenReturn(Arrays.asList(flowPathA, flowPathB));
+            when(flowPathRepository.findByEndpointSwitch(eq(SWITCH_ID_B)))
+                    .thenReturn(Arrays.asList(flowPathC, flowPathD));
+
             RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
-            when(repositoryFactory.createFlowSegmentRepository()).thenReturn(flowSegmentRepository);
             when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
-            org.openkilda.persistence.PersistenceManager persistenceManager =
-                    mock(org.openkilda.persistence.PersistenceManager.class);
+            when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
+            when(repositoryFactory.createTransitVlanRepository()).thenReturn(transitVlanRepository);
+
+            PersistenceManager persistenceManager = mock(PersistenceManager.class);
             when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
             return persistenceManager;
         }

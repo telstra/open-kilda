@@ -113,6 +113,26 @@ public class SwitchIntegrationService {
         }
         return null;
     }
+    
+    /**
+     * Get the switch by id.
+     *
+     * @return the switch
+     */
+    public SwitchInfo getSwitchesById(String switchId) {
+        HttpResponse response = restClientManager.invoke(
+                applicationProperties.getNbBaseUrl()
+                        + IConstants.NorthBoundUrl.GET_SWITCH.replace("{switch_id}", switchId),
+                HttpMethod.GET, "", "", applicationService.getAuthHeader());
+        if (RestClientManager.isValidResponse(response)) {
+            SwitchInfo switchInfo = restClientManager.getResponse(response, SwitchInfo.class);
+            if (switchInfo != null) {
+                switchInfo.setName(customSwitchName(getSwitchNames(), switchInfo.getSwitchId()));
+                return switchInfo;
+            }
+        }
+        return null;
+    }
 
     /**
      * Gets the switch info set name.
@@ -124,19 +144,7 @@ public class SwitchIntegrationService {
     private List<SwitchInfo> getSwitchInfoSetName(List<SwitchInfo> switches) {
 
         if (switches != null && !StringUtils.isEmpty(switches)) {
-
-            Map<String, String> csNames = new HashMap<String, String>();
-            if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == null) {
-                String value = applicationSettingService
-                        .getApplicationSetting(ApplicationSetting.SWITCH_NAME_STORAGE_TYPE);
-                IConstants.STORAGE_TYPE_FOR_SWITCH_NAME = StorageType.get(value);
-            }
-
-            if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == StorageType.FILE_STORAGE) {
-                csNames = getCustomSwitchNameFromFile();
-            } else if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == StorageType.DATABASE_STORAGE) {
-                csNames = getCustomSwitchNameFromDatabase();
-            }
+            Map<String, String> csNames = getSwitchNames();
             for (SwitchInfo switchInfo : switches) {
                 switchInfo.setName(customSwitchName(csNames, switchInfo.getSwitchId()));
             }
@@ -194,12 +202,12 @@ public class SwitchIntegrationService {
      *
      * @return the isl links
      */
-    public List<IslLinkInfo> getIslLinks() {
-        List<IslLink> links = getIslLinkPortsInfo();
+    public List<IslLinkInfo> getIslLinks(LinkProps keys) {
+        List<IslLink> links = getIslLinkPortsInfo(keys);
         if (CollectionUtil.isEmpty(links)) {
             throw new ContentNotFoundException();
         }
-        return islLinkConverter.toIslLinksInfo(links, islCostMap());
+        return islLinkConverter.toIslLinksInfo(links, islCostMap(null));
     }
 
     /**
@@ -207,9 +215,12 @@ public class SwitchIntegrationService {
      *
      * @return the isl links port info
      */
-    public List<IslLink> getIslLinkPortsInfo() {
-        HttpResponse response = restClientManager.invoke(
-                applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINKS, HttpMethod.GET, "", "",
+    public List<IslLink> getIslLinkPortsInfo(LinkProps keys) {
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromHttpUrl(applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_LINKS);
+        builder = setLinkProps(keys, builder);
+        String fullUri = builder.build().toUriString();
+        HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
                 applicationService.getAuthHeader());
         if (RestClientManager.isValidResponse(response)) {
             List<IslLink> links = restClientManager.getResponseList(response, IslLink.class);
@@ -218,8 +229,8 @@ public class SwitchIntegrationService {
         return null;
     }
 
-    private Map<String, String> islCostMap() {
-        List<LinkProps> linkProps = getIslLinkProps(null);
+    private Map<String, String> islCostMap(LinkProps keys) {
+        List<LinkProps> linkProps = getIslLinkProps(keys);
         Map<String, String> islCostMap = new HashMap<>();
         if (linkProps != null) {
 

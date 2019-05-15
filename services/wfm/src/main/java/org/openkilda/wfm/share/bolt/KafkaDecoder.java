@@ -19,7 +19,6 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.JsonDecodeException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
@@ -44,7 +43,7 @@ public abstract class KafkaDecoder extends AbstractBolt {
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_INPUT, FIELD_ID_CONTEXT);
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String json = pullPayload(input);
         Message message = decode(json);
         CommandContext commandContext = new CommandContext(message);

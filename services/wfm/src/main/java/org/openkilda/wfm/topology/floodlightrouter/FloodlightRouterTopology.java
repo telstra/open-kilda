@@ -399,20 +399,6 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
         // Storm <-- kilda.topo.disco -- Floodlight
         createDiscoveryPipelines(builder, parallelism, topicsConfig);
 
-        // Part3 Request to Floodlights
-        // Storm -- kilda.speaker.flow --> Floodlight
-        // createSpeakerFlowRequestStream(builder, parallelism, topicsConfig);
-
-        // Storm -- kilda.speaker.flow.ping --> Floodlight
-        // createSpeakerFlowPingRequestStream(builder, parallelism, topicsConfig);
-
-        // Storm -- kilda.speaker --> Floodlight
-        // createSpeakerRequestStream(builder, parallelism, topicsConfig);
-
-        // Storm -- kilda.speaker.disco --> Floodlight
-        // Storm <-- kilda.topo.disco -- Floodlight
-        // createDiscoveryPipelines(builder, parallelism, topicsConfig);
-
         return builder.createTopology();
     }
 

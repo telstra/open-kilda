@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -70,7 +71,7 @@ public class IslStatsBolt extends BaseRichBolt {
     }
 
     private String getJson(Tuple tuple) {
-        return tuple.getString(0);
+        return tuple.getStringByField(KafkaRecordTranslator.FIELD_ID_PAYLOAD);
     }
 
     public Message getMessage(String json) throws IOException {

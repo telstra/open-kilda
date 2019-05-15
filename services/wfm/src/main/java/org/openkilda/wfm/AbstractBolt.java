@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm;
 
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 
 import lombok.AccessLevel;
@@ -62,7 +61,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
         try {
             currentTuple = input;
             commandContext = setupCommandContext();
-            handleInput(input);
+            dispatch(input);
         } catch (Exception e) {
             wrapExceptionHandler(e);
         } finally {
@@ -88,7 +87,11 @@ public abstract class AbstractBolt extends BaseRichBolt {
         getOutput().emit(stream, input, payload);
     }
 
-    protected abstract void handleInput(Tuple input) throws AbstractException;
+    protected void dispatch(Tuple input) throws Exception {
+        handleInput(input);
+    }
+
+    protected abstract void handleInput(Tuple input) throws Exception;
 
     protected void handleException(Exception e) throws Exception {
         throw e;

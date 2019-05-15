@@ -16,7 +16,6 @@
 package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
@@ -58,6 +57,6 @@ public interface PathComputer {
      *
      * @return an list of N (or less) best paths ordered from best to worst.
      */
-    List<FlowPath> getNPaths(SwitchId srcSwitch, SwitchId dstSwitch, int count)
+    List<Path> getNPaths(SwitchId srcSwitch, SwitchId dstSwitch, int count)
             throws RecoverableException, UnroutableFlowException;
 }

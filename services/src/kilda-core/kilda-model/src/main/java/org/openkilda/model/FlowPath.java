@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,91 +15,162 @@
 
 package org.openkilda.model;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
+import static com.google.common.base.Preconditions.checkArgument;
+import static org.neo4j.ogm.annotation.Relationship.INCOMING;
+import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
+
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
+import lombok.Setter;
+import lombok.ToString;
+import org.neo4j.ogm.annotation.GeneratedValue;
+import org.neo4j.ogm.annotation.Id;
+import org.neo4j.ogm.annotation.Index;
+import org.neo4j.ogm.annotation.NodeEntity;
+import org.neo4j.ogm.annotation.PostLoad;
+import org.neo4j.ogm.annotation.Property;
+import org.neo4j.ogm.annotation.Relationship;
+import org.neo4j.ogm.annotation.typeconversion.Convert;
+import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
 import java.io.Serializable;
+import java.time.Instant;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
- * Representation of a flow path. As opposed to flow segment entity which serves as a mark for ISLs used by the flow,
- * this is switch-based and keeps the list of switch-port pairs the flow path goes through.
+ * Represents a flow path.
  */
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
-@EqualsAndHashCode(exclude = {"latency", "minAvailableBandwidth"})
-@Builder
+@EqualsAndHashCode(exclude = {"entityId", "segments"})
+@ToString(exclude = {"flow"})
+@NodeEntity(label = "flow_path")
 public class FlowPath implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    /**
-     * Latency value in nseconds.
-     */
-    @JsonProperty("latency_ns")
-    private long latency;
-
-    @JsonProperty("min_available_bandwidth")
-    private Long minAvailableBandwidth;
+    // Hidden as needed for OGM only.
+    @Id
+    @GeneratedValue
+    @Setter(AccessLevel.NONE)
+    @Getter(AccessLevel.NONE)
+    private Long entityId;
 
     @NonNull
-    @JsonProperty("path")
-    private List<Node> nodes;
+    @Property(name = "path_id")
+    @Index(unique = true)
+    @Convert(graphPropertyType = String.class)
+    private PathId pathId;
+
+    @NonNull
+    @Relationship(type = "source", direction = OUTGOING)
+    private Switch srcSwitch;
+
+    @NonNull
+    @Relationship(type = "destination", direction = OUTGOING)
+    private Switch destSwitch;
+
+    @NonNull
+    @Relationship(type = "owns", direction = INCOMING)
+    private Flow flow;
+
+    @Convert(graphPropertyType = Long.class)
+    private Cookie cookie;
+
+    @Property(name = "meter_id")
+    @Convert(graphPropertyType = Long.class)
+    private MeterId meterId;
+
+    private long latency;
+
+    private long bandwidth;
+
+    @Property(name = "ignore_bandwidth")
+    private boolean ignoreBandwidth;
+
+    @Property(name = "time_create")
+    @Convert(InstantStringConverter.class)
+    private Instant timeCreate;
+
+    @Property(name = "time_modify")
+    @Convert(InstantStringConverter.class)
+    private Instant timeModify;
+
+    @NonNull
+    @Property(name = "status")
+    // Enforce usage of custom converters.
+    @Convert(graphPropertyType = String.class)
+    private FlowPathStatus status;
+
+    @Relationship(type = "owns", direction = OUTGOING)
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    private List<PathSegment> segments = Collections.emptyList();
+
+    @Builder(toBuilder = true)
+    public FlowPath(@NonNull PathId pathId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
+                    @NonNull Flow flow, Cookie cookie, MeterId meterId,
+                    long latency, long bandwidth, boolean ignoreBandwidth,
+                    Instant timeCreate, Instant timeModify,
+                    FlowPathStatus status, List<PathSegment> segments) {
+        this.pathId = pathId;
+        this.srcSwitch = srcSwitch;
+        this.destSwitch = destSwitch;
+        this.flow = flow;
+        this.cookie = cookie;
+        this.meterId = meterId;
+        this.latency = latency;
+        this.bandwidth = bandwidth;
+        this.ignoreBandwidth = ignoreBandwidth;
+        this.timeCreate = timeCreate;
+        this.timeModify = timeModify;
+        this.status = status;
+        setSegments(segments != null ? segments : Collections.emptyList());
+    }
 
     /**
-     * Needed to support old storage schema.
+     * Checks whether the flow path goes through a single switch.
      *
-     * @deprecated Must be removed along with {@link Flow#flowPath}.
+     * @return true if source and destination switches are the same, otherwise false
      */
-    @Deprecated
-    @JsonInclude(Include.NON_NULL)
-    private Long timestamp;
+    public boolean isOneSwitchFlow() {
+        return srcSwitch.getSwitchId().equals(destSwitch.getSwitchId());
+    }
+
+    public List<PathSegment> getSegments() {
+        return Collections.unmodifiableList(segments);
+    }
 
     /**
-     * A node of a flow path ({@link FlowPath}).
+     * Set the segments.
      */
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @EqualsAndHashCode(exclude = {"segmentLatency", "cookie"})
-    @Builder
-    public static class Node implements Serializable {
-        private static final long serialVersionUID = 1L;
+    public final void setSegments(List<PathSegment> segments) {
+        segments.forEach(segment -> checkArgument(Objects.equals(segment.getPath(), this),
+                "Segment %s and the path %s don't reference each other, but expected.",
+                segment, this));
 
-        @JsonProperty("switch_id")
-        private SwitchId switchId;
+        for (int idx = 0; idx < segments.size(); idx++) {
+            PathSegment segment = segments.get(idx);
+            segment.setSeqId(idx);
+        }
 
-        @JsonProperty("port_no")
-        private int portNo;
+        this.segments = segments;
+    }
 
-        /**
-         * Needed to support old storage schema.
-         *
-         * @deprecated Must be removed along with {@link Flow#flowPath}.
-         */
-        @Deprecated
-        @JsonProperty("seq_id")
-        private int seqId;
-
-        @JsonProperty("segment_latency")
-        @JsonInclude(Include.NON_NULL)
-        private Long segmentLatency;
-
-        /**
-         * Needed to support old storage schema.
-         *
-         * @deprecated Must be removed along with {@link Flow#flowPath}.
-         */
-        @Deprecated
-        @JsonProperty("cookie")
-        @JsonInclude(Include.NON_DEFAULT) // Needed to exclude when not set
-        private Long cookie;
+    @PostLoad
+    private void sortSegmentsOnLoad() {
+        if (segments != null) {
+            segments = segments.stream()
+                    .sorted(Comparator.comparingInt(PathSegment::getSeqId))
+                    .collect(Collectors.toList());
+        }
     }
 }

@@ -6,6 +6,8 @@ floodlight.endpoint=http://localhost:8081
 floodlight.username=kilda
 floodlight.password=kilda
 floodlight.controller.uri=tcp:kilda:6653
+floodlight.alive.timeout=5
+floodlight.alive.interval=2
 
 neo.uri=bolt://localhost:7687
 neo.user=
@@ -14,7 +16,9 @@ neo.password=
 elasticsearch.endpoint=http://localhost:9200
 elasticsearch.username=kilda
 elasticsearch.password=kilda
+elasticsearch.index=kilda-*
 
+environment.naming.prefix=
 kafka.bootstrap.server=kafka.pendev:9092
 kafka.topic.topo.disco=kilda.topo.disco.storm
 
@@ -47,3 +51,10 @@ env.hardware.cleanup=false
 
 diversity.isl.weight=1000
 diversity.switch.weight=100
+
+grpc.endpoint=http://localhost:8091
+grpc.username=kilda
+grpc.password=kilda
+#please use the correct ip address and port for the remote log server
+grpc.remote.log.server.ip=1.1.1.1
+grpc.remote.log.server.port=321

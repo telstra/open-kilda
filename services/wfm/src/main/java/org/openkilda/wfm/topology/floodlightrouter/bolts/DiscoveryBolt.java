@@ -27,9 +27,11 @@ import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.service.FloodlightTracker;
 import org.openkilda.wfm.topology.floodlightrouter.service.MessageSender;
 import org.openkilda.wfm.topology.floodlightrouter.service.RouterService;
+import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMapping;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -43,7 +45,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-
 
 public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<String, RouterService>>
         implements MessageSender {
@@ -92,7 +93,7 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
         currentTuple = input;
         Message message = null;
         try {
-            String json = input.getValueByField(AbstractTopology.MESSAGE_FIELD).toString();
+            String json = input.getStringByField(AbstractTopology.MESSAGE_FIELD);
             message = MAPPER.readValue(json, Message.class);
             switch (sourceComponent) {
                 case ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT:
@@ -106,7 +107,7 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
                     break;
             }
         } catch (Exception e) {
-            logger.error("Failed to process message {}", message);
+            logger.error("Failed to process message {}", message, e);
         } finally {
             outputCollector.ack(input);
         }
@@ -125,14 +126,12 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
+        Fields kafkaFields = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_KEY,
+                                        FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
         for (String region : floodlights) {
-            outputFieldsDeclarer.declareStream(Stream.formatWithRegion(Stream.SPEAKER_DISCO, region),
-                    new Fields(AbstractTopology.MESSAGE_FIELD));
-            outputFieldsDeclarer.declareStream(Stream.formatWithRegion(Stream.SPEAKER, region),
-                    new Fields(AbstractTopology.MESSAGE_FIELD));
+            outputFieldsDeclarer.declareStream(Stream.formatWithRegion(Stream.SPEAKER_DISCO, region), kafkaFields);
         }
-        outputFieldsDeclarer.declareStream(Stream.KILDA_TOPO_DISCO,
-                new Fields(AbstractTopology.KEY_FIELD, AbstractTopology.MESSAGE_FIELD));
+        outputFieldsDeclarer.declareStream(Stream.KILDA_TOPO_DISCO, kafkaFields);
         outputFieldsDeclarer.declareStream(Stream.REGION_NOTIFICATION, new Fields(AbstractTopology.MESSAGE_FIELD));
     }
 
@@ -143,26 +142,35 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
         super.prepare(map, topologyContext, outputCollector);
     }
 
+    // MessageSender implementation
 
     @Override
-    public void send(Message message, String outputStream) {
-        try {
-            String json = MAPPER.writeValueAsString(message);
-            Values values;
-            if (currentTuple.getFields().contains(AbstractTopology.KEY_FIELD)
-                    && currentTuple.getValueByField(AbstractTopology.KEY_FIELD) != null) {
-                values = new Values(currentTuple.getStringByField(AbstractTopology.KEY_FIELD), json);
-            } else {
-                values = new Values(json);
-            }
-            outputCollector.emit(outputStream, currentTuple, values);
-        } catch (JsonProcessingException e) {
-            logger.error("failed to serialize message {}", message);
-        }
+    public void emitSpeakerMessage(Message message, String region) {
+        emitSpeakerMessage(pullKeyFromCurrentTuple(), message, region);
     }
 
     @Override
-    public void send(String key, Message message, String outputStream) {
+    public void emitSpeakerMessage(String key, Message message, String region) {
+        String stream = Stream.formatWithRegion(Stream.SPEAKER_DISCO, region);
+        send(key, message, stream);
+    }
+
+    @Override
+    public void emitControllerMessage(Message message) {
+        emitControllerMessage(pullKeyFromCurrentTuple(), message);
+    }
+
+    @Override
+    public void emitControllerMessage(String key, Message message) {
+        send(key, message, Stream.KILDA_TOPO_DISCO);
+    }
+
+    @Override
+    public void emitRegionNotification(SwitchMapping mapping) {
+        outputCollector.emit(Stream.REGION_NOTIFICATION, currentTuple, new Values(mapping));
+    }
+
+    private void send(String key, Message message, String outputStream) {
         try {
             String json = MAPPER.writeValueAsString(message);
             Values values = new Values(key, json);
@@ -172,10 +180,12 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
         }
     }
 
-    @Override
-    public void send(Object payload, String outputStream) {
-        Values values = new Values(payload);
-        outputCollector.emit(outputStream, currentTuple, values);
+    private String pullKeyFromCurrentTuple() {
+        String key = null;
+        if (currentTuple.getFields().contains(AbstractTopology.KEY_FIELD)) {
+            key = currentTuple.getStringByField(AbstractTopology.KEY_FIELD);
+        }
+        return key;
     }
 
     private void doNetworkDump() {

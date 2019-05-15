@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.ping.bolt;
 
 import org.openkilda.messaging.model.Ping;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 
@@ -41,7 +40,7 @@ public class Blacklist extends Abstract {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         if (!PingRouter.BOLT_ID.equals(input.getSourceComponent())) {
             unhandledInput(input);
             return;

@@ -7,7 +7,6 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
@@ -107,25 +106,20 @@ class SwitchFailuresSpec extends BaseSpecification {
     @Ignore("This is a known Kilda limitation and feature is not implemented yet.")
     def "System can handle situation when switch reconnects while flow is being rerouted"() {
         given: "A flow with alternative paths available"
-        def switches = topology.getActiveSwitches()
-        List<List<PathNode>> allPaths = []
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
-            allPaths = database.getPaths(src.dpId, dst.dpId)*.path
-            allPaths.size() > 1
-        } ?: assumeTrue("No suiting switches found", false)
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue("No suiting switches found", false)
+        def flow = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow)
         def currentPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
         and: "There is a more preferable alternative path"
-        def alternativePaths = allPaths.findAll { it != currentPath }
+        def alternativePaths = switchPair.paths.findAll { it != currentPath }
         def preferredPath = alternativePaths.first()
         def uniqueSwitch = pathHelper.getInvolvedSwitches(preferredPath).find {
             !pathHelper.getInvolvedSwitches(currentPath).contains(it)
         }
         assumeTrue("Didn't find a unique switch for alternative path", uniqueSwitch.asBoolean())
-        allPaths.findAll { it != preferredPath }.each { pathHelper.makePathMorePreferable(preferredPath, it) }
+        switchPair.paths.findAll { it != preferredPath }.each { pathHelper.makePathMorePreferable(preferredPath, it) }
 
         when: "Init reroute of the flow to a better path"
         def reroute = new Thread({ northbound.rerouteFlow(flow.id) })

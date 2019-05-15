@@ -176,6 +176,9 @@
           <li *ngIf="storeLinkSetting && (bandWidthDescrepancy || statusDescrepancy)" [ngClass]="{'active': openedTab == 'descrepancy'}">
             <a href="javascript:void(0);" (click)="openTab('descrepancy');">Discrepancy</a>
           </li>
+          <li  [ngClass]="{'active': openedTab == 'ping'}"  *ngIf="commonService.hasPermission('fw_flow_ping') && (storeLinkSetting  && flowDetail.status)  || !(storeLinkSetting)">
+            <a href="javascript:void(0);" (click)="openTab('ping');">Ping</a>
+          </li>
         </ul>
         <div class="tab-content padding-15 clearfix">
           <div class="tab-pane" *ngIf="openedTab == 'graph'" [ngClass]="{'active': openedTab == 'graph'}">
@@ -190,7 +193,7 @@
           </div>
           <div class="tab-pane" [ngClass]="{'active': openedTab == 'validate'}">
             <div class="text-right mb-2">
-              <button *ngIf="commonService.hasPermission('fw_flow_resync')" class="btn btn-dark btn-sm" (click)="resyncFlow()">Resync
+               <button *ngIf="commonService.hasPermission('fw_flow_resync')" class="btn btn-dark btn-sm" (click)="resyncFlow()">Resync
                 Flow</button>&nbsp;
               <button *ngIf="commonService.hasPermission('fw_permission_validate')" class="btn btn-dark btn-sm" (click)="validateFlow()">Validate
                 Flow</button>
@@ -241,6 +244,42 @@
             </table>
           </div>
       </div>
+      <div class="tab-pane" [ngClass]="{'active': openedTab == 'ping'}">
+          <div class="row">
+              <div class="col-sm-12 mb-2">
+                  <button  class=" pull-right btn btn-dark btn-sm" (click)="pingFlow()">Ping Flow</button>
+                  <div  *ngIf="pingedFlow && pingedFlow['forward']">
+                      <input type="hidden" class="on-off-switch" value="0" style="display: none;">
+                      <div class="pull-right" style="margin-right:10px; margin-top:8px;">
+                        <div class="onoffswitch onoffflow-ping">
+                          <input type="checkbox" (change)="toggleGraphView($event)" name="onoffswitch" class="onoffswitch-checkbox" id="onoffflowping">
+                          <label class="onoffswitch-label" for="onoffflowping">
+                            <span class="onoffswitch-inner onoffswitch-inner-kilda-flow-ping"></span>
+                            <span class="onoffswitch-switch onoffswitch-flow-ping"></span>
+                          </label>
+                        </div>
+                      </div>
+                    </div> 
+                    
+              </div>
+              <div class="col-sm-12">
+                  <div *ngIf="Rawview">
+                      <div *ngIf="loadingPing" class="ping-component-loader"></div>
+                      <pre  *ngIf="!pingedFlow" class="code"  style="height: 250px;"></pre>
+                      <pre  [contextMenu]="copyPingFlow" *ngIf="pingedFlow" class="code"  style="height: 250px;">{{pingedFlow | json}}</pre>
+                  </div>
+                 
+                  <div  [hidden]="!GraphicalView" id="pingGraphwrapper" class="topology-container">
+                      <svg id="pingGraph" width="1000" height="250"></svg>
+                  </div>
+    
+
+          </div>
+          
+       </div>
+          
+         
+      </div>
       </div>
     </div>
   </div>
@@ -248,8 +287,39 @@
 <!-- End : Switch Tab Section -->
 </div>
 
+<div id="ping-hover-txt" style="display: none; top: 339.089px; left: 596.811px;" class="">
+   <div class="form-wrapper" id="forward_ping_errors" style="display: none;"></div>
+   <div class="form-wrapper" id="reverse_ping_errors" style="display: none;"></div>
+    <div class="form-wrapper" id="switch_hover" style="display: none;">
+
+        <div class="row">
+          <label class="col-sm-3 col-form-label" style="font-weight: bold;">Name:</label>
+          <p class="col-sm-9 switchdetails_div_switch_name"></p>
+        </div>
+        <div class="row">
+          <label class="col-sm-3 col-form-label" style="font-weight: bold;">SwitchId:</label>
+          <p class="col-sm-9 switchdetails_div_switchid"></p>
+        </div>
+        <div class="row">
+          <label class="col-sm-3 col-form-label" style="font-weight: bold;">Port:</label>
+          <p class="col-sm-9 switchdetails_div_port"></p>
+        </div>
+        <div class="row">
+          <label class="col-sm-3 col-form-label" style="font-weight: bold;">VLAN:</label>
+          <p class="col-sm-9 switchdetails_div_vlan"></p>
+        </div>
+       </div>
+
+</div>
+
 <context-menu #copySrcSwitch>
   <ng-template contextMenuItem (execute)="copyToClip($event,'sourceSwitch');">
+    Copy to Clipboard
+  </ng-template>
+</context-menu>
+
+<context-menu #copyPingFlow>
+  <ng-template contextMenuItem (execute)="copyToClip($event,'pingedFlow');">
     Copy to Clipboard
   </ng-template>
 </context-menu>
@@ -289,3 +359,9 @@
     Copy to Clipboard
   </ng-template>
 </context-menu>
+
+<context-menu #copyPingedFlow>
+    <ng-template contextMenuItem (execute)="copyToClipHtml($event,'pingedFlow');">
+      Copy to Clipboard
+    </ng-template>
+  </context-menu>

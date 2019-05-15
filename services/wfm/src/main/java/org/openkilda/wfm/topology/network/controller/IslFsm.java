@@ -30,7 +30,7 @@ import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -64,7 +64,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         IslFsmContext> {
     private final IslRepository islRepository;
     private final LinkPropsRepository linkPropsRepository;
-    private final FlowSegmentRepository flowSegmentRepository;
+    private final FlowPathRepository flowPathRepository;
     private final SwitchRepository switchRepository;
     private final TransactionManager transactionManager;
     private final FeatureTogglesRepository featureTogglesRepository;
@@ -91,7 +91,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         // INIT
         builder.transition()
                 .from(IslFsmState.INIT).to(IslFsmState.DOWN).on(IslFsmEvent.ISL_UP)
-                .callMethod(updateAndPersistEndpointStatusMethod);
+                .callMethod("handleInitialDiscovery");
         builder.transition()
                 .from(IslFsmState.INIT).to(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN)
                 .callMethod(updateAndPersistEndpointStatusMethod);
@@ -183,7 +183,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         islRepository = repositoryFactory.createIslRepository();
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
-        flowSegmentRepository = repositoryFactory.createFlowSegmentRepository();
+        flowPathRepository = repositoryFactory.createFlowPathRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
 
@@ -222,6 +222,12 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         fire(route, context);
     }
 
+    public void handleInitialDiscovery(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        updateLinkData(context.getEndpoint(), context.getIslData());
+        updateEndpointStatusByEvent(event, context);
+        saveStatusTransaction();
+    }
+
     public void updateEndpointStatus(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         updateEndpointStatusByEvent(event, context);
     }
@@ -238,7 +244,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     public void handleUpAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
-        discoveryFacts.put(context.getEndpoint(), context.getIslData());
+        updateLinkData(context.getEndpoint(), context.getIslData());
 
         IslFsmEvent route;
         if (getAggregatedStatus() == DiscoveryEndpointStatus.UP) {
@@ -267,7 +273,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     public void upExit(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} is no more UP (physical-down:{})",
                   discoveryFacts.getReference(), context.getPhysicalLinkDown());
-        
+
         String nextState = "Unknown";
         if (event == IslFsmEvent.ISL_DOWN) {
             nextState = IslFsmState.DOWN.toString();
@@ -303,6 +309,11 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     // -- private/service methods --
+
+    private void updateLinkData(Endpoint bind, IslDataHolder data) {
+        log.info("ISL {} data update - bind:{} - {}", discoveryFacts.getReference(), bind, data);
+        discoveryFacts.put(bind, data);
+    }
 
     private void applyHistory(Isl history) {
         Endpoint source = Endpoint.of(history.getSrcSwitch().getSwitchId(), history.getSrcPort());
@@ -432,6 +443,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         link.setTimeModify(timeNow);
 
         applyIslGenericData(link);
+        applyIslMaxBandwidth(link, source.getEndpoint(), dest.getEndpoint());
         applyIslAvailableBandwidth(link, source.getEndpoint(), dest.getEndpoint());
         applyIslStatus(link, uniStatus, timeNow);
 
@@ -491,7 +503,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 .destSwitch(dest.getSw())
                 .destPort(destEndpoint.getPortNumber())
                 .underMaintenance(source.getSw().isUnderMaintenance() || dest.getSw().isUnderMaintenance());
-        applyIslLinkProps(sourceEndpoint, destEndpoint, islBuilder);
+        initializeFromLinkProps(sourceEndpoint, destEndpoint, islBuilder);
         Isl link = islBuilder.build();
 
         if (link.isUnderMaintenance()) {
@@ -537,8 +549,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         if (aggData != null) {
             link.setSpeed(aggData.getSpeed());
             link.setLatency(aggData.getLatency());
-            link.setMaxBandwidth(aggData.getAvailableBandwidth());
-            link.setDefaultMaxBandwidth(aggData.getAvailableBandwidth());
+            link.setMaxBandwidth(aggData.getMaximumBandwidth());
+            link.setDefaultMaxBandwidth(aggData.getMaximumBandwidth());
         }
     }
 
@@ -553,33 +565,46 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         }
     }
 
-    private void applyIslAvailableBandwidth(Isl link, Endpoint source, Endpoint dest) {
-        IslDataHolder islData = discoveryFacts.makeAggregatedData();
-        long availableBandwidth = 0;
-        if (islData != null) {
-            long usedBandwidth = flowSegmentRepository.getUsedBandwidthBetweenEndpoints(
-                    source.getDatapath(), source.getPortNumber(),
-                    dest.getDatapath(), dest.getPortNumber());
-            availableBandwidth = islData.getAvailableBandwidth() - usedBandwidth;
-        } else {
-            log.error("There is no ISL data available for {}, unable to set available_bandwidth",
-                      discoveryFacts.getReference());
+    private void applyIslMaxBandwidth(Isl link, Endpoint source, Endpoint dest) {
+        loadLinkProps(source, dest)
+                .ifPresent(props -> applyIslMaxBandwidth(link, props));
+    }
+
+    private void applyIslMaxBandwidth(Isl link, LinkProps props) {
+        Long maxBandwidth = props.getMaxBandwidth();
+        if (maxBandwidth != null) {
+            link.setMaxBandwidth(maxBandwidth);
         }
-        link.setAvailableBandwidth(availableBandwidth);
+    }
+
+    private void applyIslAvailableBandwidth(Isl link, Endpoint source, Endpoint dest) {
+        IslDataHolder dataHolder = discoveryFacts.get(source);
+        if (dataHolder == null) {
+            throw new IllegalStateException(String.format(
+                    "There is no ISL data available for %s, unable to calculate available_bandwidth",
+                    discoveryFacts.getReference()));
+        }
+
+        long maximumBandwidth = dataHolder.getMaximumBandwidth();
+        long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(
+                source.getDatapath(), source.getPortNumber(),
+                dest.getDatapath(), dest.getPortNumber());
+        link.setAvailableBandwidth(maximumBandwidth - usedBandwidth);
     }
 
     private void applyIslCostRaiseOnPhysicalDown(Isl link, Instant timeNow) {
         if (link.getCost() < costRaiseOnPhysicalDown) {
             link.setTimeModify(timeNow);
             link.setCost(link.getCost() + costRaiseOnPhysicalDown);
+            propagateIslCostUpdateToLinkProps(link, timeNow);
         }
     }
 
-    private void applyIslLinkProps(Endpoint source, Endpoint dest, IslBuilder isl) {
-        Collection<LinkProps> linkProps = linkPropsRepository.findByEndpoints(
-                source.getDatapath(), source.getPortNumber(),
-                dest.getDatapath(), dest.getPortNumber());
-        for (LinkProps entry : linkProps) {
+    private void initializeFromLinkProps(Endpoint source, Endpoint dest, IslBuilder isl) {
+        Optional<LinkProps> linkProps = loadLinkProps(source, dest);
+        if (linkProps.isPresent()) {
+            LinkProps entry = linkProps.get();
+
             Integer cost = entry.getCost();
             if (cost != null) {
                 isl.cost(cost);
@@ -589,15 +614,37 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             if (maxBandwidth != null) {
                 isl.maxBandwidth(maxBandwidth);
             }
+        }
+    }
 
-            // We can/should put "break" here but it lead to warnings... Anyway only one match possible
-            // by such(full) query so we can avoid "break" here.
+    private void propagateIslCostUpdateToLinkProps(Isl link, Instant timeNow) {
+        Optional<LinkProps> linkProps = loadLinkProps(
+                Endpoint.of(link.getSrcSwitch().getSwitchId(), link.getSrcPort()),
+                Endpoint.of(link.getDestSwitch().getSwitchId(), link.getDestPort()));
+        if (linkProps.isPresent()) {
+            LinkProps entry = linkProps.get();
+            entry.setCost(link.getCost());
+            entry.setTimeModify(timeNow);
+            linkPropsRepository.createOrUpdate(entry);
         }
     }
 
     private void pushIslChanges(Isl link) {
         log.debug("Write ISL object: {}", link);
         islRepository.createOrUpdate(link);
+    }
+
+    private Optional<LinkProps> loadLinkProps(Endpoint source, Endpoint dest) {
+        Collection<LinkProps> storedProps = linkPropsRepository.findByEndpoints(
+                source.getDatapath(), source.getPortNumber(),
+                dest.getDatapath(), dest.getPortNumber());
+        Optional<LinkProps> result = Optional.empty();
+        for (LinkProps entry : storedProps) {
+            result = Optional.of(entry);
+            // We can/should put "break" here but it lead to warnings... Anyway only one match possible
+            // by such(full) query so we can avoid "break" here.
+        }
+        return result;
     }
 
     private DiscoveryEndpointStatus getAggregatedStatus() {

@@ -12,12 +12,14 @@ kilda_neo4j_password: "temppass"
 kilda_neo4j_cypher_path: "/db/data/cypher"
 
 kilda_kafka_hosts: "kafka.pendev:9092"
-kilda_zookeeper_hosts: "zookeeper.pendev:2181"
+kilda_zookeeper_hosts: "zookeeper.pendev"
+kilda_zookeeper_port: "2181"
 kilda_opentsdb_hosts: "opentsdb.pendev"
 kilda_opentsdb_port: "4242"
 kilda_storm_numbus_hosts: "nimbus.pendev"
 kilda_logging_elasticsearch_user: "kilda"
 kilda_logging_elasticsearch_pass: "kilda"
+kilda_logging_elasticsearch_index: "kilda-*"
 
 kilda_gui_host: "http://127.0.0.1"
 kilda_gui_port: 1010
@@ -30,7 +32,7 @@ kilda_floodlight_rest_port: "8081"
 kilda_floodlight_username: "kilda"
 kilda_floodlight_password: "kilda"
 kilda_floodlight_controller_uri: "tcp:kilda:6653"
-kilda_floodlight_command_processor_deferred_requests_limit: 8
+kilda_floodlight_command_processor_deferred_requests_limit: 64
 kilda_floodlight_flow_meter_burst_coefficient: 1.05
 kilda_floodlight_consumer_executors: 20
 kilda_floodlight_consumer_disco_executors: 20
@@ -106,6 +108,8 @@ kilda_port_up_down_throttling_delay_seconds_cool_down: 5
 
 kilda_floodlight_alive_timeout: 5
 kilda_floodlight_alive_interval: 2
+kilda_floodlight_request_timeout: 180
+kilda_message_blacklist_timeout: 180
 kilda_floodlight_regions: "1"
 
 kilda_bfd_port_offset: 200
@@ -142,3 +146,5 @@ kilda_grpc_basicauth_username: "kilda"
 kilda_grpc_basicauth_password: "kilda"
 kilda_grpc_username: "kilda"
 kilda_grpc_password: "kilda"
+kilda_grpc_remote_log_server_ip: "1.1.1.1"
+kilda_grpc_remote_log_server_port: 321

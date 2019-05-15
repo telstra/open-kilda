@@ -98,14 +98,7 @@ public class SwitchService {
 
      */
     public SwitchInfo getSwitch(final String switchId) throws IntegrationException {
-        List<SwitchInfo> switchInfoList = switchIntegrationService.getSwitches();
-        SwitchInfo switchInfo = null;
-        for (SwitchInfo switchDetail : switchInfoList) {
-            if (switchDetail.getSwitchId().equalsIgnoreCase(switchId)) {
-                switchInfo = switchDetail;
-                break;
-            }
-        }
+        SwitchInfo switchInfo = switchIntegrationService.getSwitchesById(switchId);
         if (storeService.getSwitchStoreConfig().getUrls().size() > 0) {
             try {
                 InventorySwitch inventorySwitch = switchStoreService.getSwitch(switchId);
@@ -269,16 +262,27 @@ public class SwitchService {
     }
 
     /**
-     * get All Links.
+     * Gets the isl links.
      *
-     * @return SwitchRelationData the isl link info
-     * @throws IntegrationException the integration exception
-
+     * @param srcSwitch the src switch
+     * @param srcPort the src port
+     * @param dstSwitch the dst switch
+     * @param dstPort the dst port
+     * @return the isl links
      */
-    public List<IslLinkInfo> getIslLinks() {
-        return switchIntegrationService.getIslLinks();
+    public List<IslLinkInfo> getIslLinks(final String srcSwitch, final String srcPort, final String dstSwitch,
+            final String dstPort) {
+        if (StringUtil.isAnyNullOrEmpty(srcSwitch, srcPort, dstPort, dstSwitch)) {
+            return switchIntegrationService.getIslLinks(null);
+        }
+        LinkProps keys = new LinkProps();
+        keys.setDstPort(dstPort);
+        keys.setDstSwitch(dstSwitch);
+        keys.setSrcPort(srcPort);
+        keys.setSrcSwitch(srcSwitch);
+        return switchIntegrationService.getIslLinks(keys);
     }
-
+    
     /**
      * Gets the link props.
      *

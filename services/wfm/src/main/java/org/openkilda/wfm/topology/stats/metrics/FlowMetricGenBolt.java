@@ -22,7 +22,6 @@ import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.COOKIE_CACHE_FIEL
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.FlowCookieException;
 import org.openkilda.wfm.topology.stats.FlowDirectionHelper;
@@ -44,7 +43,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         Map<Long, CacheFlowEntry> dataCache = (Map<Long, CacheFlowEntry>) input.getValueByField(COOKIE_CACHE_FIELD);
         log.debug("dataCache in FlowMetricGenBolt {}", dataCache);
 

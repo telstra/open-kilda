@@ -18,6 +18,7 @@ package org.openkilda.wfm.share.mappers;
 import org.openkilda.messaging.payload.history.FlowDumpPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryPayload;
+import org.openkilda.model.SwitchId;
 import org.openkilda.model.history.FlowDump;
 import org.openkilda.model.history.FlowEvent;
 import org.openkilda.model.history.FlowHistory;
@@ -37,4 +38,8 @@ public abstract class HistoryMapper {
     public abstract FlowHistoryPayload map(FlowHistory flowHistory);
 
     public abstract FlowDumpPayload map(FlowDump flowDump);
+
+    public String map(SwitchId switchId) {
+        return switchId.toString();
+    }
 }

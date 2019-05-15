@@ -1,0 +1,57 @@
+@startuml
+title Create flow with protected path
+
+participant Client
+participant FlowService
+participant PathComputerFactory
+participant PathComputer
+participant IntersectionComputer
+database Neo4J
+participant TransactionBolt
+
+Client -> FlowService: create flow with backup
+activate FlowService
+
+FlowService -> PathComputerFactory: create PathComputer
+create PathComputer
+PathComputerFactory -> PathComputer: create
+PathComputer --> FlowService
+
+== Primary path creation ==
+FlowService -> Neo4J: transaction start
+FlowService -> PathComputer: getPath
+activate PathComputer
+PathComputer -> PathComputer: compute path as usual
+PathComputer --> FlowService: computed pathPair
+deactivate PathComputer
+
+alt Path no found
+    FlowService -->x Client: Path not found error
+end
+
+FlowService -> Neo4J: save new flow
+FlowService -> Neo4J: create path segments
+
+== Protected path creation ==
+FlowService -> PathComputer: getPath, diversed with\njust created new flow
+activate PathComputer
+PathComputer -> PathComputer: compute diversed path
+PathComputer --> FlowService: computed pathPair
+deactivate PathComputer
+
+FlowService -> Neo4J: update the new flow with protected paths
+FlowService -> Neo4J: create protected path flow segments
+
+FlowService -> IntersectionComputer: isProtectedPathOverlaps
+alt Intersections exist or any error
+    FlowService -> Neo4J: transaction rollback
+    FlowService -->x Client: Protected path creation error
+end
+FlowService -> Neo4J: transaction commit
+
+== Send install rule commands ==
+FlowService ->> TransactionBolt: send install rules commands
+
+FlowService --> Client: created flow
+deactivate FlowService
+@enduml
