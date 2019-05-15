@@ -283,7 +283,7 @@ services:
       default:
         aliases:
           - floodlight_second.pendev
-    mem_limit: 1073741824
+    mem_limit: ${FL_2_MEM_LIMIT:-1073741824}
 
   northbound:
     container_name: openkilda-northbound
