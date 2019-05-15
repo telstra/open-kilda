@@ -31,7 +31,7 @@ public abstract class OpenTsDb {
 
     public enum StatsType {
         SWITCH, PORT, FLOW, ISL, ISL_LOSS_PACKET, 
-        FLOW_LOSS_PACKET, FLOW_RAW_PACKET, SWITCH_PORT
+        FLOW_LOSS_PACKET, FLOW_RAW_PACKET, SWITCH_PORT, METER
     }
 
 }

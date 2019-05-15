@@ -19,6 +19,7 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy ,OnC
   autoReloadTimerId = null;
   flowMetrics = [];
   packetMetrics = [];
+  metersDirection = [];
   getautoReloadValues = this.commonService.getAutoreloadValues();
   filterForm: FormGroup;
   constructor(
@@ -47,12 +48,14 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy ,OnC
       graph: ["flow"],
       metric: ["packets"],
       direction: ["forward"],
+      meterdirection:["both"],
       auto_reload: [""],
       auto_reload_time: ["", Validators.compose([Validators.pattern("[0-9]*")])]
     });
 
     this.flowMetrics = this.dygraphService.getFlowMetricData();
     this.packetMetrics = this.dygraphService.getPacketsMetricData();
+    this.metersDirection = this.dygraphService.getMetricDirections();
   }
 
   getDateRange() : any {
@@ -141,7 +144,7 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy ,OnC
       this.filterForm.controls["auto_reload_time"].value
     );
     
-    let direction = formdata.direction;
+    let direction = (formdata.graph == 'flowmeter') ?  formdata.meterdirection : formdata.direction;
     let downsampling = formdata.download_sample;
     let metric = formdata.metric;
     let timezone = formdata.timezone;
@@ -187,6 +190,36 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy ,OnC
           },
           error => {
             this.dygraphService.changeFlowGraphData({
+              data: [],
+              startDate: startDate,
+              endDate: endDate,
+              timezone: timezone
+            });
+          }
+        );
+    }else if(formdata.graph == "flowmeter"){
+      this.flowService
+        .getMeterGraphData(
+          "f75a6d6ee59744a8",
+          convertedStartDate,
+          convertedEndDate,
+          downsampling,
+          metric,
+          direction
+        )
+        .subscribe(
+          res => {
+             this.dygraphService.changeMeterGraphData({
+              data: res,
+              startDate: startDate,
+              endDate: endDate,
+              type:null,
+              timezone: timezone,
+              loadfromcookie:null
+            });
+          },
+          error => {
+            this.dygraphService.changeMeterGraphData({
               data: [],
               startDate: startDate,
               endDate: endDate,

@@ -15,6 +15,11 @@
 
 package org.openkilda.floodlight.pathverification;
 
+import static org.openkilda.floodlight.pathverification.VerificationPacket.CHASSIS_ID_LLDPTV_PACKET_TYPE;
+import static org.openkilda.floodlight.pathverification.VerificationPacket.OPTIONAL_LLDPTV_PACKET_TYPE;
+import static org.openkilda.floodlight.pathverification.VerificationPacket.PORT_ID_LLDPTV_PACKET_TYPE;
+import static org.openkilda.floodlight.pathverification.VerificationPacket.TTL_LLDPTV_PACKET_TYPE;
+
 import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
@@ -208,18 +213,12 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
     @Override
     public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port, Long packetId) {
-        return sendDiscoveryMessage(srcSwId, port, null, packetId);
-    }
-
-    @Override
-    public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port, DatapathId dstSwId, Long packetId) {
         boolean result = false;
 
         try {
             IOFSwitch srcSwitch = switchService.getSwitch(srcSwId);
             if (srcSwitch != null && srcSwitch.getPort(port) != null) {
-                IOFSwitch dstSwitch = (dstSwId == null) ? null : switchService.getSwitch(dstSwId);
-                OFPacketOut ofPacketOut = generateVerificationPacket(srcSwitch, port, dstSwitch, true, packetId);
+                OFPacketOut ofPacketOut = generateVerificationPacket(srcSwitch, port, true, packetId);
 
                 if (ofPacketOut != null) {
                     logger.debug("==> Sending verification packet out {}/{} id {}: {}", srcSwitch.getId().toString(),
@@ -229,7 +228,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                     result = srcSwitch.write(ofPacketOut);
                 } else {
                     logger.error("<== Received null from generateVerificationPacket, inputs where: "
-                            + "srcSwitch: {}, port: {} id: {}, dstSwitch: {}", srcSwitch, port, packetId, dstSwitch);
+                            + "srcSwitch: {}, port: {} id: {}", srcSwitch, port, packetId);
                 }
 
                 if (result) {
@@ -248,21 +247,16 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         return result;
     }
 
-    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, Long packetId) {
-        return generateVerificationPacket(srcSw, port, null, true, packetId);
-    }
-
     /**
      * Return verification packet.
      *
      * @param srcSw source switch.
      * @param port port.
-     * @param dstSw destination switch
      * @param sign sign.
+     * @param packetId id of the packet.
      * @return verification packet.
      */
-    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, IOFSwitch dstSw,
-                                                  boolean sign, Long packetId) {
+    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, boolean sign, Long packetId) {
         try {
             byte[] dpidArray = new byte[8];
             ByteBuffer dpidBb = ByteBuffer.wrap(dpidArray);
@@ -284,18 +278,14 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             ByteBuffer portBb = ByteBuffer.wrap(portId, 1, 2);
             portBb.putShort(port.getShortPortNumber());
 
-            VerificationPacket vp = new VerificationPacket();
-            vp.setChassisId(
-                    new LLDPTLV().setType((byte) 1).setLength((short) chassisId.length).setValue(chassisId));
-
-            vp.setPortId(new LLDPTLV().setType((byte) 2).setLength((short) portId.length).setValue(portId));
-
             byte[] ttlValue = new byte[]{0, 0x78};
-            vp.setTtl(
-                    new LLDPTLV().setType((byte) 3).setLength((short) ttlValue.length).setValue(ttlValue));
+            VerificationPacket vp = VerificationPacket.builder()
+                    .chassisId(makeIdLldptvPacket(chassisId, CHASSIS_ID_LLDPTV_PACKET_TYPE))
+                    .portId(makeIdLldptvPacket(portId, PORT_ID_LLDPTV_PACKET_TYPE))
+                    .ttl(makeIdLldptvPacket(ttlValue, TTL_LLDPTV_PACKET_TYPE))
+                    .build();
 
-            LLDPTLV dpidTlv = new LLDPTLV().setType((byte) 127).setLength((short) dpidTlvValue.length)
-                    .setValue(dpidTlvValue);
+            LLDPTLV dpidTlv = makeIdLldptvPacket(dpidTlvValue, OPTIONAL_LLDPTV_PACKET_TYPE);
             vp.getOptionalTlvList().add(dpidTlv);
             // Add the controller identifier to the TLV value.
             //    vp.getOptionalTlvList().add(controllerTLV);
@@ -309,8 +299,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                     .putLong(time + swLatency /* account for our switch's one-way latency */)
                     .array();
 
-            LLDPTLV timestampTlv = new LLDPTLV().setType((byte) 127)
-                    .setLength((short) timestampTlvValue.length).setValue(timestampTlvValue);
+            LLDPTLV timestampTlv = makeIdLldptvPacket(timestampTlvValue, OPTIONAL_LLDPTV_PACKET_TYPE);
 
             vp.getOptionalTlvList().add(timestampTlv);
 
@@ -319,8 +308,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                     .put((byte) 0x26).put((byte) 0xe1)
                     .put((byte) 0x02)
                     .putInt(PathType.ISL.ordinal()).array();
-            LLDPTLV typeTlv = new LLDPTLV().setType((byte) 127)
-                    .setLength((short) typeTlvValue.length).setValue(typeTlvValue);
+            LLDPTLV typeTlv = makeIdLldptvPacket(typeTlvValue, OPTIONAL_LLDPTV_PACKET_TYPE);
             vp.getOptionalTlvList().add(typeTlv);
 
             if (sign) {
@@ -338,23 +326,13 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                         .put((byte) 0x26).put((byte) 0xe1)
                         .put((byte) 0x03)
                         .put(tokenBytes).array();
-                LLDPTLV tokenTlv = new LLDPTLV().setType((byte) 127)
-                        .setLength((short) tokenTlvValue.length).setValue(tokenTlvValue);
+                LLDPTLV tokenTlv = makeIdLldptvPacket(tokenTlvValue, OPTIONAL_LLDPTV_PACKET_TYPE);
 
                 vp.getOptionalTlvList().add(tokenTlv);
             }
 
             MacAddress dstMac = MacAddress.of(VERIFICATION_BCAST_PACKET_DST);
-            if (dstSw != null) {
-                OFPortDesc sw2OfPortDesc = dstSw.getPort(port);
-                dstMac = sw2OfPortDesc.getHwAddr();
-            }
-
             IPv4Address dstIp = IPv4Address.of(VERIFICATION_PACKET_IP_DST);
-            if (dstSw != null) {
-                dstIp = IPv4Address
-                        .of(((InetSocketAddress) dstSw.getInetAddress()).getAddress().getAddress());
-            }
             IPv4 l3 = new IPv4()
                     .setSourceAddress(
                             IPv4Address.of(((InetSocketAddress) srcSw.getInetAddress()).getAddress().getAddress()))
@@ -384,6 +362,10 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         return null;
     }
 
+    private LLDPTLV makeIdLldptvPacket(byte[] data, byte type) {
+        return new LLDPTLV().setType(type).setLength((short) data.length).setValue(data);
+    }
+
     private VerificationPacket deserialize(Ethernet eth) throws Exception {
         if (eth.getPayload() instanceof IPv4) {
             IPv4 ip = (IPv4) eth.getPayload();
@@ -409,7 +391,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             return;
         }
 
-        VerificationPacket verificationPacket = null;
+        VerificationPacket verificationPacket;
         try {
             verificationPacket = deserialize(input.getPacketInPayload());
         } catch (Exception exception) {
@@ -434,7 +416,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             Long packetId = null;
             boolean signed = false;
             for (LLDPTLV lldptlv : verificationPacket.getOptionalTlvList()) {
-                if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
+                if (lldptlv.getType() == OPTIONAL_LLDPTV_PACKET_TYPE && lldptlv.getLength() == 12
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
                         && lldptlv.getValue()[2] == (byte) 0xe1
@@ -442,7 +424,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                     ByteBuffer dpidBb = ByteBuffer.wrap(lldptlv.getValue());
                     remoteSwitchId = DatapathId.of(dpidBb.getLong(4));
                     remoteSwitch = switchService.getSwitch(remoteSwitchId);
-                } else if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
+                } else if (lldptlv.getType() == OPTIONAL_LLDPTV_PACKET_TYPE && lldptlv.getLength() == 12
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
                         && lldptlv.getValue()[2] == (byte) 0xe1
@@ -450,14 +432,14 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                     ByteBuffer tsBb = ByteBuffer.wrap(lldptlv.getValue()); /* skip OpenFlow OUI (4 bytes above) */
                     timestamp = tsBb.getLong(4); /* include the RX switch latency to "subtract" it */
                     timestamp = timestamp + input.getLatency();
-                } else if (lldptlv.getType() == 127 && lldptlv.getLength() == 8
+                } else if (lldptlv.getType() == OPTIONAL_LLDPTV_PACKET_TYPE && lldptlv.getLength() == 8
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
                         && lldptlv.getValue()[2] == (byte) 0xe1
                         && lldptlv.getValue()[3] == 0x02) {
                     ByteBuffer typeBb = ByteBuffer.wrap(lldptlv.getValue());
                     pathOrdinal = typeBb.getInt(4);
-                } else if (lldptlv.getType() == 127
+                } else if (lldptlv.getType() == OPTIONAL_LLDPTV_PACKET_TYPE
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
                         && lldptlv.getValue()[2] == (byte) 0xe1

@@ -144,7 +144,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         FlowDto flowDto = request.getFlow();
 
         try {
-            UnidirectionalFlow flow = flowOperationsService.updateFlow(FlowMapper.INSTANCE.map(flowDto));
+            UnidirectionalFlow flow = flowOperationsService.updateFlow(flowDto);
             return Collections.singletonList(new FlowResponse(FlowMapper.INSTANCE.map(flow)));
 
         } catch (FlowNotFoundException e) {

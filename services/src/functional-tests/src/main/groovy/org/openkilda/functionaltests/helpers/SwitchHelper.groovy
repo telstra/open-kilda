@@ -71,10 +71,24 @@ class SwitchHelper {
     }
 
     @Memoized
-    String getDescription(SwitchId sw) {
+    static String getDescription(SwitchId sw) {
         northbound.activeSwitches.find { it.switchId == sw }.description
     }
 
+     /**
+     * This method calculates expected burst for different types of switches. The common burst equals to
+     * `rate * burstCoefficient`. There are couple exceptions though:<br>
+     * <b>Noviflow</b>: Does not use our common burst coefficient and overrides it with its own coefficient (see static
+     * variables at the top of the class).<br>
+     * <b>Centec</b>: Follows our burst coefficient policy, except for restrictions for the minimum and maximum burst.
+     * In cases when calculated burst is higher or lower of the Centec max/min - the max/min burst value will be used
+     * instead.
+     *
+     * @param sw switchId where burst is being calculated. Needed to get the switch manufacturer and apply special
+     * calculations if required
+     * @param rate meter rate which is used to calculate burst
+     * @return the expected burst value for given switch and rate
+     */
     def getExpectedBurst(SwitchId sw, long rate) {
         def descr = getDescription(sw).toLowerCase()
         if (descr.contains("noviflow")) {

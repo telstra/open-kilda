@@ -151,6 +151,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int CATCH_BFD_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
     public static final int BDF_DEFAULT_PORT = 3784;
+    public static final int MIN_RATE_IN_KBPS = 64;
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
     // 0x1FFF lead to rule reject during install attempt on accton based switches.
@@ -910,7 +911,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     // FIXME: centec switches can't recognize PKTPS flag for meters.
     // Need to simplify detection if the switch don't support PKTPS flag.
     private boolean isSwitchSupportsPktpsFlag(IOFSwitch sw) {
-        return !isCentecSwitch(sw);
+        return !(isCentecSwitch(sw) || isESwitch(sw));
+    }
+
+    private boolean isESwitch(IOFSwitch sw) {
+        return StringUtils.equalsIgnoreCase(sw.getSwitchDescription().getManufacturerDescription(), "E");
     }
 
     private boolean isCentecSwitch(IOFSwitch sw) {
@@ -1400,7 +1405,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             } else {
                 flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
                 // With KBPS flag rate and burst size is in Kbits
-                rate = (ratePkts * config.getDiscoPacketSize()) / 1024L;
+                rate = Math.max(MIN_RATE_IN_KBPS, (ratePkts * config.getDiscoPacketSize()) / 1024L);
                 burstSize = config.getSystemMeterBurstSizeInPackets() * config.getDiscoPacketSize() / 1024L;
             }
 
