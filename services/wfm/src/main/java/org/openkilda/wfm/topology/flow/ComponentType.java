@@ -97,5 +97,10 @@ public enum ComponentType {
     /**
      * History bolt.
      */
-    HISTORY_BOLT
+    HISTORY_BOLT,
+
+    /**
+     * Flow operation bolt.
+     */
+    FLOW_OPERATION_BOLT
 }
