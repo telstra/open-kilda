@@ -23,11 +23,13 @@ class FloodlightKafkaConnectionSpec extends BaseSpecification {
 
     @Value('${floodlight.alive.interval}')
     int floodlightAliveInterval
+    
+    def region = 1
 
     def "System survives temporary connection outage between Floodlight and Kafka"() {
         when: "Controller loses connection to Kafka"
-        kafkaBreaker.shutoff(KafkaBreakTarget.FLOODLIGHT_PRODUCER)
-        kafkaBreaker.shutoff(KafkaBreakTarget.FLOODLIGHT_CONSUMER)
+        kafkaBreaker.shutoff(KafkaBreakTarget.FLOODLIGHT_PRODUCER, region)
+        kafkaBreaker.shutoff(KafkaBreakTarget.FLOODLIGHT_CONSUMER, region)
 
         then: "Right before controller alive timeout switches are still active and links are discovered"
         double interval = floodlightAliveTimeout * 0.4
@@ -48,8 +50,8 @@ class FloodlightKafkaConnectionSpec extends BaseSpecification {
         northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
 
         when: "Controller restores connection to Kafka"
-        kafkaBreaker.restore(KafkaBreakTarget.FLOODLIGHT_PRODUCER)
-        kafkaBreaker.restore(KafkaBreakTarget.FLOODLIGHT_CONSUMER)
+        kafkaBreaker.restore(KafkaBreakTarget.FLOODLIGHT_PRODUCER, region)
+        kafkaBreaker.restore(KafkaBreakTarget.FLOODLIGHT_CONSUMER, region)
 
         then: "All links are discovered and switches become active"
         northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
@@ -68,8 +70,8 @@ class FloodlightKafkaConnectionSpec extends BaseSpecification {
     @Ignore("Due to defect https://github.com/telstra/open-kilda/issues/2214")
     def "System can detect switch changes if they happen while Floodlight was disconnected after it reconnects"() {
         when: "Controller loses connection to kafka"
-        kafkaBreaker.shutoff(KafkaBreakTarget.FLOODLIGHT_PRODUCER)
-        kafkaBreaker.shutoff(KafkaBreakTarget.FLOODLIGHT_CONSUMER)
+        kafkaBreaker.shutoff(KafkaBreakTarget.FLOODLIGHT_PRODUCER, region)
+        kafkaBreaker.shutoff(KafkaBreakTarget.FLOODLIGHT_CONSUMER, region)
 
         and: "Switch port for certain ISL goes down"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
@@ -77,8 +79,8 @@ class FloodlightKafkaConnectionSpec extends BaseSpecification {
         lockKeeper.portsDown([isl.aswitch.inPort])
 
         and: "Controller restores connection to kafka"
-        kafkaBreaker.restore(KafkaBreakTarget.FLOODLIGHT_PRODUCER)
-        kafkaBreaker.restore(KafkaBreakTarget.FLOODLIGHT_CONSUMER)
+        kafkaBreaker.restore(KafkaBreakTarget.FLOODLIGHT_PRODUCER, region)
+        kafkaBreaker.restore(KafkaBreakTarget.FLOODLIGHT_CONSUMER, region)
 
         then: "System detects that certain port has been brought down and fails the related link"
         Wrappers.wait(WAIT_OFFSET) {

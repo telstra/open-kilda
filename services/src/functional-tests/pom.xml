@@ -86,10 +86,6 @@
             <artifactId>gpars</artifactId>
             <version>${gpars.version}</version>
         </dependency>
-        <dependency>
-            <groupId>com.sabre.oss.conf4j</groupId>
-            <artifactId>conf4j-spring-boot</artifactId>
-        </dependency>
     </dependencies>
 
     <build>
