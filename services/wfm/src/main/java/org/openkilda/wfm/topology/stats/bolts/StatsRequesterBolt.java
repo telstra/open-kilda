@@ -20,7 +20,6 @@ import static org.openkilda.wfm.topology.stats.StatsStreamType.STATS_REQUEST;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.stats.StatsRequest;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.stats.StatsComponentType;
 
@@ -38,7 +37,7 @@ public class StatsRequesterBolt extends AbstractBolt {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) {
         if (!StatsComponentType.TICK_BOLT.name().equals(input.getSourceComponent())) {
             log.error("Unexpected tuple from component {}.", input.getSourceComponent());
             return;
