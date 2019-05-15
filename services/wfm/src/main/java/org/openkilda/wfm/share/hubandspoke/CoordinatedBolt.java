@@ -27,14 +27,14 @@ import org.apache.storm.tuple.Values;
 /**
  * This class provides callbacks and timeout handlers for asynchronous operations.
  */
-public abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
+abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
     static final String COMMAND_FIELD = "command";
     static final String TIMEOUT_FIELD = "timeout_ms";
 
     private final boolean autoAck;
     private final int defaultTimeout;
 
-    public CoordinatedBolt(boolean autoAck, int defaultTimeout) {
+    CoordinatedBolt(boolean autoAck, int defaultTimeout) {
         this.autoAck = autoAck;
         this.defaultTimeout = defaultTimeout;
     }

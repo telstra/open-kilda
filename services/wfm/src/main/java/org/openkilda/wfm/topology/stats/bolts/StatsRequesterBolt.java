@@ -28,8 +28,6 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.UUID;
-
 public class StatsRequesterBolt extends AbstractBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
@@ -39,12 +37,12 @@ public class StatsRequesterBolt extends AbstractBolt {
     @Override
     protected void handleInput(Tuple input) {
         if (!StatsComponentType.TICK_BOLT.name().equals(input.getSourceComponent())) {
-            log.error("Unexpected tuple from component {}.", input.getSourceComponent());
+            unhandledInput(input);
             return;
         }
         StatsRequest statsRequestData = new StatsRequest();
         CommandMessage statsRequest = new CommandMessage(statsRequestData,
-                System.currentTimeMillis(), UUID.randomUUID().toString());
+                System.currentTimeMillis(), getCommandContext().getCorrelationId());
         Values values = new Values(statsRequest);
         emit(STATS_REQUEST.name(), input, values);
     }

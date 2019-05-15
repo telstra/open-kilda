@@ -125,7 +125,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 new MeterStatsMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
                 .fieldsGrouping(STATS_CACHE_BOLT.name(), StatsStreamType.METER_STATS.toString(), statsWithCacheFields);
 
-        builder.setBolt(TICK_BOLT.name(), new TickBolt(topologyConfig.getStatisticsRequestInterval()), parallelism);
+        builder.setBolt(TICK_BOLT.name(), new TickBolt(topologyConfig.getStatisticsRequestInterval()));
 
         builder.setBolt(STATS_REQUESTER_BOLT.name(), new StatsRequesterBolt(), parallelism)
                 .shuffleGrouping(TICK_BOLT.name());
