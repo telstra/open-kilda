@@ -207,7 +207,7 @@ public class SwitchManagerTest {
 
         expect(ofStatsFuture.get(anyLong(), anyObject())).andStubReturn(Collections.singletonList(statsReply));
 
-        expect(switchDescription.getManufacturerDescription()).andReturn("").times(6);
+        expect(switchDescription.getManufacturerDescription()).andReturn("").times(8);
         expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(Collections.singleton(Feature.BFD));
         expectLastCall();
 
