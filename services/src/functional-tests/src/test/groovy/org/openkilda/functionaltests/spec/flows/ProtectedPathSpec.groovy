@@ -159,6 +159,7 @@ class ProtectedPathSpec extends BaseSpecification {
         when: "Create flow with protected path"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = bandwidth
+        flow.ignoreBandwidth = (bandwidth == 0) ? true : false
         flow.allocateProtectedPath = true
         flowHelper.addFlow(flow)
 
@@ -226,6 +227,7 @@ class ProtectedPathSpec extends BaseSpecification {
         and: "A flow with protected path"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = bandwidth
+        flow.ignoreBandwidth = (bandwidth == 0) ? true : false
         flow.allocateProtectedPath = true
         flowHelper.addFlow(flow)
 
@@ -276,6 +278,7 @@ class ProtectedPathSpec extends BaseSpecification {
         and: "A flow with protected path"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = bandwidth
+        flow.ignoreBandwidth = (bandwidth == 0) ? true : false
         flow.allocateProtectedPath = true
         flowHelper.addFlow(flow)
 
@@ -552,6 +555,7 @@ class ProtectedPathSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.allocateProtectedPath = true
         flow.maximumBandwidth = bandwidth
+        flow.ignoreBandwidth = (bandwidth == 0) ? true : false
         flowHelper.addFlow(flow)
 
         then: "Human readable error is returned"
@@ -583,6 +587,7 @@ class ProtectedPathSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.allocateProtectedPath = false
         flow.maximumBandwidth = bandwidth
+        flow.ignoreBandwidth = (bandwidth == 0) ? true : false
         flowHelper.addFlow(flow)
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
@@ -780,6 +785,7 @@ class ProtectedPathSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.allocateProtectedPath = true
         flow.maximumBandwidth = bandwidth
+        flow.ignoreBandwidth = (bandwidth == 0) ? true : false
         flowHelper.addFlow(flow)
         def flowInfoPath = northbound.getFlowPath(flow.id)
         assert flowInfoPath.protectedPath
