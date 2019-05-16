@@ -34,10 +34,13 @@ package org.openkilda.floodlight;
 
 import static org.easymock.EasyMock.expect;
 
+import org.openkilda.floodlight.service.FeatureDetectorService;
+
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.packet.Ethernet;
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -68,6 +71,7 @@ public class FloodlightTestCase {
     protected MockSwitchManager mockSwitchManager;
     protected OFFeaturesReply swFeatures;
     protected OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
+    protected FeatureDetectorService featureDetectorService = new FeatureDetectorService();
 
     public MockFloodlightProvider getMockFloodlightProvider() {
         return mockFloodlightProvider;
@@ -103,6 +107,7 @@ public class FloodlightTestCase {
         mockFloodlightProvider = new MockFloodlightProvider();
         mockSwitchManager = new MockSwitchManager();
         swFeatures = factory.buildFeaturesReply().setNBuffers(1000).build();
+        featureDetectorService.setup(new FloodlightModuleContext());
     }
 
     public static OFPortDesc createOfPortDesc(IOFSwitch sw, String name, int number) {

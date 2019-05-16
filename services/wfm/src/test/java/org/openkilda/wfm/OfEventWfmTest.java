@@ -244,7 +244,6 @@ public class OfEventWfmTest extends AbstractStormTest {
         linkBolt.execute(tickTuple);
 
         InfoData data = IslInfoData.builder()
-                .latency(10L)
                 .source(new PathNode(new SwitchId("ff:01"), 1, 0, 10L))
                 .destination(new PathNode(new SwitchId("ff:02"), 2, 1, 10L))
                 .speed(10000L)

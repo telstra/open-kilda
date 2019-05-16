@@ -45,7 +45,7 @@ public class IslDataHolder {
 
     public IslDataHolder(IslInfoData speakerData) {
         speed = speakerData.getSpeed();
-        latency = (int) speakerData.getLatency();
+        latency = Isl.DEFAULT_LATENCY;
         maximumBandwidth = effectiveMaximumBandwidth = speakerData.getAvailableBandwidth();
     }
 

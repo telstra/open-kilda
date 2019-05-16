@@ -21,9 +21,9 @@ import static org.junit.Assert.assertThat;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
-import org.openkilda.messaging.info.event.IslChangeType;
-import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.model.Isl;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 
 import org.junit.Rule;
@@ -49,30 +49,24 @@ public class IslStatsBoltTest {
     private static final PathNode NODE2 = new PathNode(SWITCH2_ID, SWITCH2_PORT, PATH2_SEQID, PATH2_LATENCY);
 
     private static final int LATENCY = 1000;
-    private static final long SPEED = 400L;
-    private static final IslChangeType STATE = IslChangeType.DISCOVERED;
-    private static final long AVAILABLE_BANDWIDTH = 500L;
-    private static final boolean UNDER_MAINTENANCE = false;
-    private static final IslInfoData ISL_INFO_DATA = IslInfoData.builder()
+    private static final Isl ISL = Isl.builder()
+            .srcSwitch(Switch.builder().switchId(NODE1.getSwitchId()).build())
+            .srcPort(NODE1.getPortNo())
+            .destSwitch(Switch.builder().switchId(NODE2.getSwitchId()).build())
+            .destPort(NODE2.getPortNo())
             .latency(LATENCY)
-            .source(NODE1)
-            .destination(NODE2)
-            .speed(SPEED)
-            .state(STATE)
-            .availableBandwidth(AVAILABLE_BANDWIDTH)
-            .underMaintenance(UNDER_MAINTENANCE)
             .build();
     private static final long TIMESTAMP = 1507433872L;
 
     private static final String METRIC_PREFIX = "kilda.";
-    private IslStatsBolt statsBolt = new IslStatsBolt(METRIC_PREFIX);
+    private IslStatsBolt statsBolt = new IslStatsBolt(METRIC_PREFIX, null);
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
     @Test
     public void buildTsdbTuple() throws Exception {
-        List<Object> tsdbTuple = statsBolt.buildTsdbTuple(ISL_INFO_DATA, TIMESTAMP);
+        List<Object> tsdbTuple = statsBolt.buildTsdbTuple(ISL, LATENCY, TIMESTAMP);
         assertThat(tsdbTuple.size(), is(1));
 
         Datapoint datapoint = Utils.MAPPER.readValue(tsdbTuple.get(0).toString(), Datapoint.class);

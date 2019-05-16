@@ -78,9 +78,6 @@ public class IslInfoData extends CacheTimeTag {
     @JsonProperty("time_modify")
     private final Long timeModifyMillis;
 
-    @JsonProperty("latency_ns")
-    protected long latency;
-
     @JsonProperty("cost")
     private int cost;
 
@@ -109,7 +106,6 @@ public class IslInfoData extends CacheTimeTag {
      */
     public IslInfoData(IslInfoData that) {
         this(
-                that.getLatency(),
                 that.getSource(),
                 that.getDestination(),
                 that.getSpeed(),
@@ -131,13 +127,12 @@ public class IslInfoData extends CacheTimeTag {
      * Simple constructor for an ISL with only source/destination and state.
      */
     public IslInfoData(PathNode source, PathNode destination, IslChangeType state, boolean underMaintenance) {
-        this(-1, source, destination, 0, 0, 0, 0, state, null, 0, null, null, underMaintenance, false, null, null);
+        this(source, destination, 0, 0, 0, 0, state, null, 0, null, null, underMaintenance, false, null, null);
     }
 
     @Builder(toBuilder = true)
     @JsonCreator
-    public IslInfoData(@JsonProperty("latency_ns") long latency,
-                       @JsonProperty("source") PathNode source,
+    public IslInfoData(@JsonProperty("source") PathNode source,
                        @JsonProperty("destination") PathNode destination,
                        @JsonProperty("speed") long speed,
                        @JsonProperty("available_bandwidth") long availableBandwidth,
@@ -152,7 +147,6 @@ public class IslInfoData extends CacheTimeTag {
                        @JsonProperty("enable_bfd") boolean enableBfd,
                        @JsonProperty("bfd_session_status") String bfdSessionStatus,
                        @JsonProperty("packet_id") Long packetId) {
-        this.latency = latency;
         this.source = source;
         this.destination = destination;
         this.speed = speed;
@@ -203,7 +197,7 @@ public class IslInfoData extends CacheTimeTag {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(latency, source, destination, speed, availableBandwidth, maxBandwidth, defaultMaxBandwidth,
+        return Objects.hash(source, destination, speed, availableBandwidth, maxBandwidth, defaultMaxBandwidth,
                 state, actualState, cost, underMaintenance, enableBfd, bfdSessionStatus);
     }
 
@@ -220,8 +214,7 @@ public class IslInfoData extends CacheTimeTag {
         }
 
         IslInfoData that = (IslInfoData) object;
-        return Objects.equals(getLatency(), that.getLatency())
-                && Objects.equals(getSource(), that.getSource())
+        return Objects.equals(getSource(), that.getSource())
                 && Objects.equals(getDestination(), that.getDestination())
                 && Objects.equals(getSpeed(), that.getSpeed())
                 && Objects.equals(getAvailableBandwidth(), that.getAvailableBandwidth())

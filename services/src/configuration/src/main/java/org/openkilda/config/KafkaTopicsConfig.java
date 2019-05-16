@@ -191,4 +191,12 @@ public interface KafkaTopicsConfig {
     @Key("topo.switch.manager.region")
     @Default("kilda.topo.switch.manager")
     String getTopoSwitchManagerRegionTopic();
+
+    @Key("topo.isl.latency")
+    @Default("kilda.topo.isl.latency.storm")
+    String getTopoIslLatencyTopic();
+
+    @Key("topo.isl.latency.region")
+    @Default("kilda.topo.isl.latency")
+    String getTopoIslLatencyRegionTopic();
 }

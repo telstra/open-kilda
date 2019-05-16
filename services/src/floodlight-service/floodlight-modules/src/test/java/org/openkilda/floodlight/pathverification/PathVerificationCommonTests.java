@@ -32,7 +32,10 @@ import static org.openkilda.floodlight.pathverification.PathVerificationService.
 import static org.openkilda.floodlight.pathverification.PathVerificationService.UDP_HEADER_SIZE;
 
 import org.openkilda.floodlight.FloodlightTestCase;
+import org.openkilda.floodlight.model.OfInput;
+import org.openkilda.floodlight.service.FeatureDetectorService;
 
+import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -46,8 +49,14 @@ import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
+import org.projectfloodlight.openflow.protocol.OFFactory;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPacketInReason;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import java.net.InetSocketAddress;
@@ -58,12 +67,16 @@ public class PathVerificationCommonTests  extends FloodlightTestCase {
     private byte[] timestampT0 = new byte[] {
             0x07, 0x5b, (byte) 0xcd, 0x15,         // 123456789 seconds
             0x3a, (byte) 0xde, 0x68, (byte) 0xb1}; // 987654321 nanoseconds
+    private byte[] timestampT1 = new byte[] {
+            0x3b, (byte) 0x9a, (byte) 0xc9, (byte) 0xff,   // 999999999 seconds
+            0x3b, (byte) 0x9a, (byte) 0xc9, (byte) 0xff};  // 999999999 nanoseconds
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
+        fmc.addService(FeatureDetectorService.class, featureDetectorService);
         fmc.addService(IOFSwitchService.class, getMockSwitchService());
 
         pvs = new PathVerificationService();
@@ -88,6 +101,71 @@ public class PathVerificationCommonTests  extends FloodlightTestCase {
     @Test
     public void testNoviflowTimstampToLong() {
         assertEquals(123456789_987654321L, PathVerificationService.noviflowTimestamp(timestampT0));
+    }
+
+    @Test
+    public void testCalcLatencyWithTransmitAndReceiveTimestamps() {
+        OfInput input = createInputPacket();
+
+        // packet has software timestamp for tx and rx
+        long calculatedLatency = PathVerificationService.calcLatency(
+                input, 123,
+                PathVerificationService.noviflowTimestamp(timestampT0),
+                PathVerificationService.noviflowTimestamp(timestampT1)
+        );
+        assertEquals(876543210_012345678L, calculatedLatency);
+    }
+
+    @Test
+    public void testCalcLatencyWithTransmitTimestampOnly() {
+        OfInput input = createInputPacket();
+
+        // packet has timestamp for tx only
+        long calculatedLatency = PathVerificationService.calcLatency(
+                input, 123, PathVerificationService.noviflowTimestamp(timestampT0), 0);
+        assertEquals(input.getReceiveTime() * 1000000 - PathVerificationService.noviflowTimestamp(timestampT0),
+                calculatedLatency);
+    }
+
+    @Test
+    public void testCalcLatencyWithReceiveTimestampOnly() {
+        OfInput input = createInputPacket();
+        long expectedLatency = 50;
+        long sendTime = input.getReceiveTime() - expectedLatency;
+
+        //packet has software timestamp for rx only
+        long calculatedLatency = PathVerificationService.calcLatency(
+                input, sendTime, 0, PathVerificationService.noviflowTimestamp(timestampT1));
+        assertEquals(PathVerificationService.noviflowTimestamp(timestampT1) - sendTime * 1000000,
+                calculatedLatency);
+    }
+
+    @Test
+    public void testCalcLatencyWithoutTimestamps() {
+        OfInput input = createInputPacket();
+
+        long expectedLatency = 50;
+        long sendTime = input.getReceiveTime() - expectedLatency;
+
+        // packet has no software timestamps
+        long calculatedLatency = PathVerificationService.calcLatency(input, sendTime, 0, 0);
+        assertEquals(expectedLatency * 1000000, calculatedLatency);  // adjusted to nanoseconds
+    }
+
+    private OfInput createInputPacket() {
+        OFFactory factory = new OFFactoryVer13();
+
+        Match match = factory.buildMatch()
+                .setExact(MatchField.IN_PORT, OFPort.of(1))
+                .build();
+
+        OFPacketIn ofPacketIn = factory.buildPacketIn()
+                .setCookie(PathVerificationService.OF_CATCH_RULE_COOKIE)
+                .setMatch(match)
+                .setReason(OFPacketInReason.PACKET_OUT)
+                .build();
+
+        return new OfInput(sw, ofPacketIn, new FloodlightContext());
     }
 
     @Test
@@ -155,6 +233,6 @@ public class PathVerificationCommonTests  extends FloodlightTestCase {
         IPv4 ipv4 = (IPv4) ethernet.getPayload();
         UDP udp = (UDP) ipv4.getPayload();
 
-        return new DiscoveryPacket((Data) udp.getPayload());
+        return new DiscoveryPacket((Data) udp.getPayload(), true);
     }
 }
