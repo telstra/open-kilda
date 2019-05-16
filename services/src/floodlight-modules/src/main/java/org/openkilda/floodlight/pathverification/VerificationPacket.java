@@ -41,10 +41,12 @@ public class VerificationPacket extends BasePacket {
     private LLDPTLV chassisId;
     private LLDPTLV portId;
     private LLDPTLV ttl;
+    private boolean roundTripLatency;
     @Default
     private List<LLDPTLV> optionalTlvList = new ArrayList<>();
 
-    VerificationPacket(Data data) {
+    VerificationPacket(Data data, boolean roundTripLatency) {
+        this.roundTripLatency = roundTripLatency;
         deserialize(data.getData(), 0, data.getData().length);
     }
 

@@ -15,8 +15,11 @@
 
 package org.openkilda.wfm.topology.isllatency;
 
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.isllatency.bolts.IslLatencyBolt;
 import org.openkilda.wfm.topology.isllatency.bolts.IslStatsBolt;
 
 import org.apache.storm.generated.StormTopology;
@@ -26,6 +29,7 @@ import org.apache.storm.topology.TopologyBuilder;
 public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfig> {
     private static final String ISL_LATENCY_SPOUT_ID = "isl-latency-spout";
     private static final String ISL_LATENCY_OTSDB_BOLT_ID = "isl-latency-otsdb-bolt";
+    private static final String ISL_LATENCY_BOLT_ID = "isl-latency-bolt";
     private static final String ISL_STATS_BOLT_ID = IslStatsBolt.class.getSimpleName();
 
     public IslLatencyTopology(LaunchEnvironment env) {
@@ -40,14 +44,20 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
 
         TopologyBuilder builder = new TopologyBuilder();
 
-        String topoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
+        String topoDiscoTopic = topologyConfig.getKafkaTopoIslLatencyTopic();
 
         logger.debug("connecting to {} topic", topoDiscoTopic);
         builder.setSpout(ISL_LATENCY_SPOUT_ID, createKafkaSpout(topoDiscoTopic, ISL_LATENCY_SPOUT_ID));
 
-        IslStatsBolt verifyIslStatsBolt = new IslStatsBolt(topologyConfig.getMetricPrefix());
+        PersistenceManager persistenceManager =
+                PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+        IslStatsBolt verifyIslStatsBolt = new IslStatsBolt(topologyConfig.getMetricPrefix(), persistenceManager);
         logger.debug("starting {} bolt", ISL_STATS_BOLT_ID);
         builder.setBolt(ISL_STATS_BOLT_ID, verifyIslStatsBolt, topologyConfig.getNewParallelism())
+                .shuffleGrouping(ISL_LATENCY_SPOUT_ID);
+
+        IslLatencyBolt islLatencyBolt = new IslLatencyBolt(persistenceManager);
+        builder.setBolt(ISL_LATENCY_BOLT_ID, islLatencyBolt, topologyConfig.getParallelism())
                 .shuffleGrouping(ISL_LATENCY_SPOUT_ID);
 
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();

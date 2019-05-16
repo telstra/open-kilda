@@ -33,6 +33,7 @@ import static org.openkilda.floodlight.pathverification.VerificationPacket.TTL_L
 import org.openkilda.floodlight.FloodlightTestCase;
 import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.service.CommandProcessorService;
+import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.utils.CommandContextFactory;
@@ -86,6 +87,7 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
     protected PathVerificationService pvs;
     protected InputService inputService = new InputService(commandContextFactory);
     protected IKafkaProducerService producerService = EasyMock.createMock(IKafkaProducerService.class);
+    protected FeatureDetectorService featureDetectorService = new FeatureDetectorService();
 
     protected String sw1HwAddrTarget;
     protected String sw2HwAddrTarget;
@@ -229,6 +231,7 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         fmc.addService(IOFSwitchService.class, getMockSwitchService());
         fmc.addService(InputService.class, inputService);
         fmc.addService(IKafkaProducerService.class, producerService);
+        fmc.addService(FeatureDetectorService.class, featureDetectorService);
 
         KildaCore kildaCore = EasyMock.createMock(KildaCore.class);
         fmc.addService(CommandProcessorService.class, new CommandProcessorService(kildaCore, commandContextFactory));

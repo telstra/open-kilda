@@ -22,6 +22,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.openkilda.model.Isl.DEFAULT_LATENCY;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
@@ -153,19 +154,25 @@ public class NetworkUniIslServiceTest {
                 .srcSwitch(alphaSwitch)
                 .srcPort(1)
                 .destSwitch(betaSwitch)
-                .destPort(1).build();
+                .destPort(1)
+                .latency(DEFAULT_LATENCY)
+                .build();
 
         Isl islAtoB2 = Isl.builder()
                 .srcSwitch(alphaSwitch)
                 .srcPort(2)
                 .destSwitch(betaSwitch)
-                .destPort(2).build();
+                .destPort(2)
+                .latency(DEFAULT_LATENCY)
+                .build();
 
         Isl islAtoB3 = Isl.builder()
                 .srcSwitch(alphaSwitch)
                 .srcPort(1)
                 .destSwitch(betaSwitch)
-                .destPort(3).build();
+                .destPort(3)
+                .latency(DEFAULT_LATENCY)
+                .build();
 
         service.uniIslSetup(endpoint1, islAtoB);
         service.uniIslSetup(endpoint2, null);
@@ -201,13 +208,17 @@ public class NetworkUniIslServiceTest {
                 .srcSwitch(alphaSwitch)
                 .srcPort(1)
                 .destSwitch(betaSwitch)
-                .destPort(1).build();
+                .destPort(1)
+                .latency(DEFAULT_LATENCY)
+                .build();
 
         Isl islA1toB3 = Isl.builder()
                 .srcSwitch(alphaSwitch)
                 .srcPort(1)
                 .destSwitch(betaSwitch)
-                .destPort(3).build();
+                .destPort(3)
+                .latency(DEFAULT_LATENCY)
+                .build();
 
         service.uniIslSetup(endpoint1, null);
 
@@ -281,7 +292,9 @@ public class NetworkUniIslServiceTest {
                 .srcSwitch(alphaSwitch)
                 .srcPort(1)
                 .destSwitch(betaSwitch)
-                .destPort(1).build();
+                .destPort(1)
+                .latency(DEFAULT_LATENCY)
+                .build();
 
         service.uniIslSetup(endpoint1, islA1toB1);
 
@@ -311,7 +324,9 @@ public class NetworkUniIslServiceTest {
                 .srcSwitch(alphaSwitch)
                 .srcPort(1)
                 .destSwitch(betaSwitch)
-                .destPort(1).build();
+                .destPort(1)
+                .latency(DEFAULT_LATENCY)
+                .build();
 
         service.uniIslSetup(endpoint1, islA1toB1);
 

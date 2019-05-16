@@ -120,6 +120,29 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
 
     }
 
+    private void createKildaIslLatencySpout(TopologyBuilder builder, int parallelism, List<String> kildaStatsTopics) {
+        KafkaSpout kildaStatsSpout = createKafkaSpout(kildaStatsTopics,
+                ComponentType.KILDA_ISL_LATENCY_KAFKA_SPOUT);
+        builder.setSpout(ComponentType.KILDA_ISL_LATENCY_KAFKA_SPOUT, kildaStatsSpout, parallelism);
+    }
+
+    private void createKildaIslLatencyKafkaBolt(TopologyBuilder builder, int parallelism,
+                                                KafkaTopicsConfig topicsConfig) {
+        KafkaBolt kildaStatsKafkaBolt = createKafkaBolt(topicsConfig.getTopoIslLatencyTopic());
+        builder.setBolt(ComponentType.KILDA_ISL_LATENCY_KAFKA_BOLT, kildaStatsKafkaBolt, parallelism)
+                .shuffleGrouping(ComponentType.KILDA_ISL_LATENCY_REPLY_BOLT, Stream.KILDA_ISL_LATENCY);
+    }
+
+    private void createKildaIslLatencyReplyStream(TopologyBuilder builder, int parallelism,
+                                                  KafkaTopicsConfig topicsConfig, List<String> kildaIslLatencyTopics) {
+        createKildaIslLatencySpout(builder, parallelism, kildaIslLatencyTopics);
+        createKildaIslLatencyKafkaBolt(builder, parallelism, topicsConfig);
+
+        ReplyBolt replyBolt = new ReplyBolt(Stream.KILDA_ISL_LATENCY);
+        builder.setBolt(ComponentType.KILDA_ISL_LATENCY_REPLY_BOLT, replyBolt, parallelism)
+                .shuffleGrouping(ComponentType.KILDA_ISL_LATENCY_KAFKA_SPOUT);
+    }
+
     private void createKildaSwitchManagerSpout(TopologyBuilder builder, int parallelism,
                                                List<String> kildaSwitchManagerTopics) {
         KafkaSpout kildaSwitchManagerSpout = createKafkaSpout(kildaSwitchManagerTopics,
@@ -401,6 +424,13 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
             kildaStatsTopics.add(Stream.formatWithRegion(topicsConfig.getStatsRegionTopic(), region));
         }
         createKildaStatsReplyStream(builder, parallelism, topicsConfig, kildaStatsTopics);
+
+        // Floodlight -- kilda.topo.isl.latency --> Router
+        List<String> kildaIslLatencyTopics = new ArrayList<>();
+        for (String region: regions) {
+            kildaIslLatencyTopics.add(Stream.formatWithRegion(topicsConfig.getTopoIslLatencyRegionTopic(), region));
+        }
+        createKildaIslLatencyReplyStream(builder, parallelism, topicsConfig, kildaIslLatencyTopics);
 
         // Floodlight -- kilda.topo.switch.manager --> Router
         List<String> kildaSwitchManagerTopics = new ArrayList<>();

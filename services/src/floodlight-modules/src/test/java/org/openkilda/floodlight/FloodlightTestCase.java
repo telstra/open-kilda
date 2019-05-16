@@ -34,6 +34,8 @@ package org.openkilda.floodlight;
 
 import static org.easymock.EasyMock.expect;
 
+import org.openkilda.floodlight.service.FeatureDetectorService;
+
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -68,6 +70,7 @@ public class FloodlightTestCase {
     protected MockSwitchManager mockSwitchManager;
     protected OFFeaturesReply swFeatures;
     protected OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
+    protected FeatureDetectorService featureDetectorService = new FeatureDetectorService();
 
     public MockFloodlightProvider getMockFloodlightProvider() {
         return mockFloodlightProvider;

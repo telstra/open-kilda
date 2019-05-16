@@ -20,6 +20,7 @@ import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertArrayEquals;
 
 import org.openkilda.floodlight.FloodlightTestCase;
+import org.openkilda.floodlight.service.FeatureDetectorService;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -51,6 +52,7 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
         fmc.addService(IOFSwitchService.class, getMockSwitchService());
+        fmc.addService(FeatureDetectorService.class, featureDetectorService);
         OFDescStatsReply swDescription = factory.buildDescStatsReply().build();
         pvs = new PathVerificationService();
 
