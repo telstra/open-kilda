@@ -208,7 +208,6 @@ public class StubServiceFactory {
                 .thenAnswer(invocation -> topologyDefinition.getIslsForActiveSwitches().stream()
                         .flatMap(link -> Stream.of(
                                 IslInfoData.builder()
-                                        .latency(0)
                                         .source(new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 0))
                                         .destination(new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 1))
                                         .speed(link.getMaxBandwidth())
@@ -217,7 +216,6 @@ public class StubServiceFactory {
                                         .build(),
 
                                 IslInfoData.builder()
-                                        .latency(0)
                                         .source(new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 0))
                                         .destination(new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 1))
                                         .speed(link.getMaxBandwidth())

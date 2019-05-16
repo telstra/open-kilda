@@ -24,4 +24,9 @@ public class IllegalIslStateException extends Exception {
                           + "source '%s_%d', destination '%s_%d'. %s",
                 srcSwitch, srcPort, dstSwitch, dstPort, s));
     }
+
+    public IllegalIslStateException(SwitchId srcSwitch, Integer srcPort, String s) {
+        super(String.format("Isl with following parameters is in illegal state: "
+                          + "source '%s_%d'. %s", srcSwitch, srcPort, s));
+    }
 }

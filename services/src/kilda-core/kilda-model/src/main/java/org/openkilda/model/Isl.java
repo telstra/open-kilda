@@ -45,6 +45,7 @@ import java.time.Instant;
 @RelationshipEntity(type = "isl")
 public class Isl implements Serializable {
     private static final long serialVersionUID = 1L;
+    public static final int DEFAULT_LATENCY = -1;
 
     // Hidden as needed for OGM only.
     @Id
