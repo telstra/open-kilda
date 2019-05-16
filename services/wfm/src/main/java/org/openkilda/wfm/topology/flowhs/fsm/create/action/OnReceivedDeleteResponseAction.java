@@ -32,7 +32,7 @@ public class OnReceivedDeleteResponseAction extends OnReceivedInstallResponseAct
     @Override
     void handleResponse(FlowCreateFsm stateMachine, FlowResponse response) {
         UUID commandId = response.getCommandId();
-        if (stateMachine.getRemoveCommands().containsKey(commandId)) {
+        if (!stateMachine.getRemoveCommands().containsKey(commandId)) {
             throw new IllegalStateException(format("Failed to find a delete rule command with id %s", commandId));
         }
 

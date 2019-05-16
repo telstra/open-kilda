@@ -25,7 +25,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandFactory;
+import org.openkilda.wfm.topology.flowhs.service.TransitVlanCommandFactory;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
@@ -40,11 +40,11 @@ import java.util.stream.Collectors;
 @Slf4j
 public class InstallNonIngressRulesAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
-    private FlowCommandFactory commandFactory;
+    private TransitVlanCommandFactory commandFactory;
 
     public InstallNonIngressRulesAction(PersistenceManager persistenceManager) {
         this.commandFactory =
-                new FlowCommandFactory(persistenceManager.getRepositoryFactory().createTransitVlanRepository());
+                new TransitVlanCommandFactory(persistenceManager.getRepositoryFactory().createTransitVlanRepository());
     }
 
     @Override
@@ -54,7 +54,6 @@ public class InstallNonIngressRulesAction extends AnonymousAction<FlowCreateFsm,
 
         if (commands.isEmpty()) {
             log.debug("No need to install non ingress rules for one switch flow");
-            stateMachine.fire(Event.NEXT);
         } else {
             commands.forEach(command -> stateMachine.getCarrier().sendSpeakerRequest(command));
 

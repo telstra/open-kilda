@@ -15,7 +15,9 @@
 
 package org.openkilda.wfm.share.history.model;
 
+import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 
 import lombok.AllArgsConstructor;
@@ -36,10 +38,10 @@ public class FlowDumpData {
     private int destinationPort;
     private int sourceVlan;
     private int destinationVlan;
-    private long forwardCookie;
-    private long reverseCookie;
-    private Long forwardMeterId;
-    private Long reverseMeterId;
+    private Cookie forwardCookie;
+    private Cookie reverseCookie;
+    private MeterId forwardMeterId;
+    private MeterId reverseMeterId;
     private String forwardPath;
     private String reversePath;
     private FlowPathStatus forwardStatus;

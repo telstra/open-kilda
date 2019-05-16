@@ -27,7 +27,7 @@ import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowCreateHubCarrier;
 import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableStateMachine;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -84,7 +84,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
      * Returns builder for flow create fsm.
      */
     private static StateMachineBuilder<FlowCreateFsm, State, Event, FlowCreateContext> builder(
-            PersistenceManager persistenceManager, FlowResourcesConfig resourcesConfig, PathComputer pathComputer) {
+            PersistenceManager persistenceManager, FlowResourcesManager resourcesManager, PathComputer pathComputer) {
         StateMachineBuilder<FlowCreateFsm, State, Event, FlowCreateContext> builder = StateMachineBuilderFactory.create(
                 FlowCreateFsm.class, State.class, Event.class, FlowCreateContext.class,
                 CommandContext.class, FlowCreateHubCarrier.class);
@@ -99,13 +99,20 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         // allocate flow resources
         builder.transition()
                 .from(State.FLOW_VALIDATED)
-                .to(State.ALLOCATING_RESOURCES)
+                .to(State.RESOURCES_ALLOCATED)
                 .on(Event.NEXT)
-                .perform(new ResourcesAllocateAction(pathComputer, persistenceManager, resourcesConfig));
+                .perform(new ResourcesAllocateAction(pathComputer, persistenceManager, resourcesManager));
+
+        // skip installation on transit and egress rules for one switch flow
+        builder.externalTransition()
+                .from(State.RESOURCES_ALLOCATED)
+                .to(State.INSTALLING_INGRESS_RULES)
+                .on(Event.SKIP_NON_INGRESS_RULES_INSTALL)
+                .perform(new InstallIngressRulesAction(persistenceManager));
 
         // install and validate transit and egress rules
         builder.externalTransition()
-                .from(State.ALLOCATING_RESOURCES)
+                .from(State.RESOURCES_ALLOCATED)
                 .to(State.INSTALLING_NON_INGRESS_RULES)
                 .on(Event.NEXT)
                 .perform(new InstallNonIngressRulesAction(persistenceManager));
@@ -132,6 +139,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                 .onEach(Event.NEXT)
                 .perform(new InstallIngressRulesAction(persistenceManager));
 
+        // install and validate ingress rules
         builder.internalTransition()
                 .within(State.INSTALLING_INGRESS_RULES)
                 .on(Event.COMMAND_EXECUTED)
@@ -153,13 +161,13 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                 .perform(new CompleteFlowCreateAction(persistenceManager));
 
         // error during validation or resource allocation
-        builder.transition()
-                .from(State.INITIALIZED)
-                .to(State.FINISHED_WITH_ERROR)
-                .on(Event.ERROR);
-
         builder.transitions()
                 .from(State.FLOW_VALIDATED)
+                .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
+                .onEach(Event.TIMEOUT, Event.ERROR);
+
+        builder.transitions()
+                .from(State.RESOURCES_ALLOCATED)
                 .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
                 .onEach(Event.TIMEOUT, Event.ERROR);
 
@@ -189,9 +197,10 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                 .perform(new RollbackInstalledRulesAction(persistenceManager));
 
         // rules deletion
-        builder.internalTransition()
-                .within(State.REMOVING_RULES)
-                .on(Event.COMMAND_EXECUTED)
+        builder.transitions()
+                .from(State.REMOVING_RULES)
+                .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
+                .onEach(Event.COMMAND_EXECUTED, Event.ERROR)
                 .perform(new OnReceivedDeleteResponseAction());
         builder.transition()
                 .from(State.REMOVING_RULES)
@@ -206,9 +215,19 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
 
         builder.transition()
                 .from(State.NON_DELETED_RULES_STORED)
+                .to(State.REVERTING)
+                .on(Event.NEXT);
+
+        builder.transition()
+                .from(State.REVERTING)
                 .to(State.RESOURCES_DE_ALLOCATED)
                 .on(Event.NEXT)
-                .perform(new ResourcesDeallocateAction(resourcesConfig, persistenceManager));
+                .perform(new ResourcesDeallocateAction(resourcesManager, persistenceManager));
+
+        builder.transition()
+                .from(State.RESOURCES_DE_ALLOCATED)
+                .to(State.REVERTING)
+                .on(Event.ERROR);
 
         builder.transition()
                 .from(State.RESOURCES_DE_ALLOCATED)
@@ -250,33 +269,43 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
     }
 
     public static FlowCreateFsm newInstance(CommandContext commandContext, FlowCreateHubCarrier carrier,
-                                            PersistenceManager persistenceManager,
-                                            FlowResourcesConfig resourcesConfig, PathComputer pathComputer) {
-        return builder(persistenceManager, resourcesConfig, pathComputer)
+                                            PersistenceManager persistenceManager, FlowResourcesManager resManager,
+                                            PathComputer pathComputer) {
+        return builder(persistenceManager, resManager, pathComputer)
                 .newStateMachine(State.INITIALIZED, commandContext, carrier);
     }
 
+    @Getter
     public enum State {
-        INITIALIZED,
-        FLOW_VALIDATED,
-        ALLOCATING_RESOURCES,
-        INSTALLING_NON_INGRESS_RULES,
-        VALIDATING_NON_INGRESS_RULES,
-        INSTALLING_INGRESS_RULES,
-        VALIDATING_INGRESS_RULES,
-        FINISHED,
+        INITIALIZED(false),
+        FLOW_VALIDATED(false),
+        RESOURCES_ALLOCATED(false),
+        INSTALLING_NON_INGRESS_RULES(true),
+        VALIDATING_NON_INGRESS_RULES(true),
+        INSTALLING_INGRESS_RULES(true),
+        VALIDATING_INGRESS_RULES(true),
+        FINISHED(true),
 
-        REMOVING_RULES,
-        VALIDATING_REMOVED_RULES,
-        RESOURCES_DE_ALLOCATED,
-        NON_DELETED_RULES_STORED,
-        FINISHED_WITH_ERROR,
+        REMOVING_RULES(true),
+        VALIDATING_REMOVED_RULES(true),
+        REVERTING(false),
+        RESOURCES_DE_ALLOCATED(false),
+        NON_DELETED_RULES_STORED(false),
+        FINISHED_WITH_ERROR(true);
+
+        boolean blocked;
+
+        State(boolean blocked) {
+            this.blocked = blocked;
+        }
     }
 
     public enum Event {
         NEXT,
         COMMAND_EXECUTED,
+        SKIP_NON_INGRESS_RULES_INSTALL,
         TIMEOUT,
+        PATH_NOT_FOUND,
         ERROR
     }
 }

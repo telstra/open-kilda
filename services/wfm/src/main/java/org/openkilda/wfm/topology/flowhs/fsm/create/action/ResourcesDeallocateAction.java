@@ -20,7 +20,6 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
@@ -38,8 +37,8 @@ public class ResourcesDeallocateAction extends AnonymousAction<FlowCreateFsm, St
     private SwitchRepository switchRepository;
     private IslRepository islRepository;
 
-    public ResourcesDeallocateAction(FlowResourcesConfig resourcesConfig, PersistenceManager persistenceManager) {
-        this.resourcesManager = new FlowResourcesManager(persistenceManager, resourcesConfig);
+    public ResourcesDeallocateAction(FlowResourcesManager resourcesManager, PersistenceManager persistenceManager) {
+        this.resourcesManager = resourcesManager;
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
@@ -53,7 +52,5 @@ public class ResourcesDeallocateAction extends AnonymousAction<FlowCreateFsm, St
         resourcesManager.deallocatePathResources(flow.getReversePathId(),
                 flow.getReversePath().getCookie().getUnmaskedValue(), flow.getEncapsulationType());
         log.debug("Flow resources have been deallocated for flow {}", flow.getFlowId());
-
-        stateMachine.fire(Event.NEXT);
     }
 }

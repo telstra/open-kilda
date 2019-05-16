@@ -19,13 +19,10 @@ import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputer;
-import org.openkilda.pce.PathComputerConfig;
-import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowCreateHubCarrier;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
@@ -43,20 +40,18 @@ import java.util.Map;
 @Slf4j
 public class FlowCreateService {
 
-    private transient Map<String, FlowCreateFsm> fsms = new HashMap<>();
+    private final Map<String, FlowCreateFsm> fsms = new HashMap<>();
 
     private final PersistenceManager persistenceManager;
-    private final FlowResourcesConfig flowResourcesConfig;
+    private final FlowResourcesManager flowResourcesManager;
     private final PathComputer pathComputer;
 
-    public FlowCreateService(PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig,
-                             FlowResourcesConfig flowResourcesConfig) {
+    public FlowCreateService(PersistenceManager persistenceManager, PathComputer pathComputer,
+                             FlowResourcesManager flowResourcesManager) {
         this.persistenceManager = persistenceManager;
-        this.flowResourcesConfig = flowResourcesConfig;
+        this.flowResourcesManager = flowResourcesManager;
 
-        AvailableNetworkFactory availableNetworkFactory =
-                new AvailableNetworkFactory(pathComputerConfig, persistenceManager.getRepositoryFactory());
-        this.pathComputer = new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
+        this.pathComputer = pathComputer;
     }
 
     /**
@@ -67,7 +62,7 @@ public class FlowCreateService {
     public void handleRequest(String key, CommandContext commandContext, FlowDto dto, FlowCreateHubCarrier carrier) {
         log.debug("Handling flow create request with key {}", key);
         FlowCreateFsm fsm = FlowCreateFsm.newInstance(commandContext, carrier,
-                persistenceManager, flowResourcesConfig, pathComputer);
+                persistenceManager, flowResourcesManager, pathComputer);
         fsms.put(key, fsm);
 
         StateMachineLogger fsmLogger = new StateMachineLogger(fsm);
@@ -78,14 +73,15 @@ public class FlowCreateService {
                 .flowDetails(request)
                 .build());
 
-        removeIfFinished(fsm, key);
+        processNext(fsm);
+        removeIfFinished(fsm, key, carrier);
     }
 
     /**
      * Handles async response from worker.
      * @param key command identifier.
      */
-    public void handleAsyncResponse(String key, FlowResponse flowResponse) {
+    public void handleAsyncResponse(String key, FlowResponse flowResponse, FlowCreateHubCarrier carrier) {
         log.debug("Received command completion message {}", flowResponse);
         FlowCreateFsm fsm = fsms.get(key);
         if (fsm == null) {
@@ -93,20 +89,23 @@ public class FlowCreateService {
             return;
         }
 
+        FlowCreateContext context = FlowCreateContext.builder()
+                .flowResponse(flowResponse)
+                .build();
+
         if (flowResponse.isSuccess()) {
-            fsm.fire(Event.COMMAND_EXECUTED, FlowCreateContext.builder()
-                    .flowResponse(flowResponse)
-                    .build());
+            fsm.fire(Event.COMMAND_EXECUTED, context);
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) flowResponse;
             if (errorResponse.getErrorCode() == ErrorCode.OPERATION_TIMED_OUT) {
                 fsm.fire(Event.TIMEOUT);
             } else {
-                fsm.fire(Event.ERROR);
+                fsm.fire(Event.ERROR, context);
             }
         }
 
-        removeIfFinished(fsm, key);
+        processNext(fsm);
+        removeIfFinished(fsm, key, carrier);
     }
 
     /**
@@ -114,20 +113,30 @@ public class FlowCreateService {
      * @param key command identifier.
      */
     public void handleTimeout(String key) {
+        log.debug("Handling timeout for {}", key);
         FlowCreateFsm fsm = fsms.get(key);
 
         if (fsm != null) {
             fsm.fire(Event.TIMEOUT);
 
-            if (fsm.getCurrentState() == State.FINISHED_WITH_ERROR) {
-                fsms.remove(key);
-            }
+            removeIfFinished(fsm, key, null);
         }
     }
 
-    private void removeIfFinished(FlowCreateFsm fsm, String key) {
+    private void processNext(FlowCreateFsm fsm) {
+        while (!fsm.getCurrentState().isBlocked()) {
+            fsm.fire(Event.NEXT);
+        }
+    }
+
+    private void removeIfFinished(FlowCreateFsm fsm, String key, FlowCreateHubCarrier carrier) {
         if (fsm.getCurrentState() == State.FINISHED || fsm.getCurrentState() == State.FINISHED_WITH_ERROR) {
+            log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
             fsms.remove(key);
+
+            if (carrier != null) {
+                carrier.cancelTimeoutCallback(key);
+            }
         }
     }
 }

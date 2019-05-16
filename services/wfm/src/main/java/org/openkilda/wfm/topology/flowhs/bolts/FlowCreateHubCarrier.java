@@ -35,4 +35,10 @@ public interface FlowCreateHubCarrier {
      * Sends main events to history bolt.
      */
     void sendHistoryUpdate(FlowHistoryHolder historyHolder);
+
+    /**
+     * Cancels timeout callback.
+     * @param key operation identifier.
+     */
+    void cancelTimeoutCallback(String key);
 }

@@ -37,7 +37,5 @@ public class HandleNotDeletedRulesAction extends AnonymousAction<FlowCreateFsm, 
                 log.warn("Failed to delete {} from the switch", nonDeletedRule);
             }
         }
-
-        stateMachine.fire(Event.NEXT);
     }
 }

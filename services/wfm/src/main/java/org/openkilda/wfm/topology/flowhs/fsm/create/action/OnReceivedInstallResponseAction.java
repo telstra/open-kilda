@@ -17,8 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.flow.request.InstallIngressRule;
-import org.openkilda.floodlight.flow.request.InstallTransitRule;
+import org.openkilda.floodlight.flow.request.InstallFlowRule;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.model.Flow;
@@ -42,43 +41,37 @@ public class OnReceivedInstallResponseAction extends AnonymousAction<FlowCreateF
         FlowResponse response = context.getFlowResponse();
         stateMachine.getPendingCommands().remove(response.getCommandId());
         handleResponse(stateMachine, response);
-        if (response.isSuccess()) {
-            if (stateMachine.getPendingCommands().isEmpty()) {
-                log.debug("Received responses for all pending commands");
-                stateMachine.fire(Event.NEXT);
-            }
-        } else {
-            stateMachine.fireError();
+
+        if (stateMachine.getPendingCommands().isEmpty()) {
+            log.debug("Received responses for all pending commands");
+            stateMachine.fire(Event.NEXT);
         }
     }
 
     void handleResponse(FlowCreateFsm stateMachine, FlowResponse response) {
-        long cookie = getCookieForCommand(stateMachine, response.getCommandId());
-        if (response.isSuccess()) {
-            log.debug("Rule {} was installed successfully on switch {}", cookie, response.getSwitchId());
-            sendHistoryUpdate(stateMachine, "Rule installed",
-                    format("Rule was installed successfully: cookie %s, switch %s", cookie, response.getSwitchId()));
-        } else {
-            FlowErrorResponse errorResponse = (FlowErrorResponse) response;
-            String message = format("Failed to install rule %s, on the switch %s: %s. Description: %s",
-                    cookie, errorResponse.getSwitchId(), errorResponse.getErrorCode(), errorResponse.getDescription());
-            log.error(message);
-            sendHistoryUpdate(stateMachine, "Rule not installed", message);
-        }
-    }
-
-    private long getCookieForCommand(FlowCreateFsm stateMachine, UUID commandId) {
-        long cookie;
-        if (stateMachine.getNonIngressCommands().containsKey(commandId)) {
-            InstallTransitRule installRule = stateMachine.getNonIngressCommands().get(commandId);
-            cookie = installRule.getCookie().getValue();
-        } else if (stateMachine.getIngressCommands().containsKey(commandId)) {
-            InstallIngressRule installRule = stateMachine.getIngressCommands().get(commandId);
-            cookie = installRule.getCookie().getValue();
+        UUID commandId = response.getCommandId();
+        InstallFlowRule installRule;
+        if (stateMachine.getNonIngressCommands().containsKey(response.getCommandId())) {
+            installRule = stateMachine.getNonIngressCommands().get(commandId);
+        } else if (stateMachine.getIngressCommands().containsKey(response.getCommandId())) {
+            installRule = stateMachine.getIngressCommands().get(commandId);
         } else {
             throw new IllegalStateException(format("Failed to find install rule command with id %s", commandId));
         }
-        return cookie;
+
+        if (response.isSuccess()) {
+            log.debug("Rule {} was installed on switch {}", installRule.getCookie(), response.getSwitchId());
+            sendHistoryUpdate(stateMachine, "Rule installed",
+                    format("Rule was installed successfully: cookie %s, switch %s",
+                            installRule.getCookie(), response.getSwitchId()));
+        } else {
+            FlowErrorResponse errorResponse = (FlowErrorResponse) response;
+            String message = format("Failed to install rule %s, on the switch %s: %s. Description: %s",
+                    installRule.getCookie(), errorResponse.getSwitchId(),
+                    errorResponse.getErrorCode(), errorResponse.getDescription());
+            log.error(message);
+            sendHistoryUpdate(stateMachine, "Rule not installed", message);
+        }
     }
 
     final void sendHistoryUpdate(FlowCreateFsm stateMachine, String action, String description) {

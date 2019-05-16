@@ -66,60 +66,57 @@ public class HistoryService {
      * @param historyHolder holder of history information.
      */
     public void store(FlowHistoryHolder historyHolder) {
-        if (historyHolder.getFlowEventData() != null) {
-            FlowEvent event = HistoryMapper.INSTANCE.map(historyHolder.getFlowEventData());
-            store(historyHolder.getTaskId(), event);
-        }
+        transactionManager.doInTransaction(() -> {
+            if (historyHolder.getFlowEventData() != null) {
+                FlowEvent event = HistoryMapper.INSTANCE.map(historyHolder.getFlowEventData());
+                store(historyHolder.getTaskId(), event);
+            }
 
-        if (historyHolder.getFlowHistoryData() != null) {
-            FlowHistory history = HistoryMapper.INSTANCE.map(historyHolder.getFlowHistoryData());
-            store(historyHolder.getTaskId(), history);
-        }
+            if (historyHolder.getFlowHistoryData() != null) {
+                FlowHistory history = HistoryMapper.INSTANCE.map(historyHolder.getFlowHistoryData());
+                store(historyHolder.getTaskId(), history);
+            }
 
-        if (historyHolder.getFlowDumpData() != null) {
-            FlowDump dump = HistoryMapper.INSTANCE.map(historyHolder.getFlowDumpData());
-            store(historyHolder.getTaskId(), dump);
-        }
+            if (historyHolder.getFlowDumpData() != null) {
+                FlowDump dump = HistoryMapper.INSTANCE.map(historyHolder.getFlowDumpData());
+                store(historyHolder.getTaskId(), dump);
+            }
+        });
     }
 
     private void store(String taskId, FlowEvent flowEvent) {
         flowEvent.setTaskId(taskId);
-        transactionManager.doInTransaction(() -> flowEventRepository.createOrUpdate(flowEvent));
+        flowEventRepository.createOrUpdate(flowEvent);
     }
 
     private void store(String taskId, FlowHistory flowHistory) {
-        transactionManager.doInTransaction(() -> {
-            flowHistory.setTaskId(taskId);
+        flowHistory.setTaskId(taskId);
 
-            flowHistoryRepository.createOrUpdate(flowHistory);
-            Optional<FlowEvent> flowEvents = flowEventRepository.findByTaskId(taskId);
-            if (flowEvents.isPresent()) {
-                historyLogRepository.createOrUpdate(HistoryLog.builder()
-                        .flowEvent(flowEvents.get())
-                        .flowHistory(flowHistory)
-                        .build());
-            } else {
-                log.warn("Unable to find related FlowEvent by taskId: {}", flowHistory.getTaskId());
-            }
-
-        });
+        flowHistoryRepository.createOrUpdate(flowHistory);
+        Optional<FlowEvent> flowEvents = flowEventRepository.findByTaskId(taskId);
+        if (flowEvents.isPresent()) {
+            historyLogRepository.createOrUpdate(HistoryLog.builder()
+                    .flowEvent(flowEvents.get())
+                    .flowHistory(flowHistory)
+                    .build());
+        } else {
+            log.warn("Unable to find related FlowEvent by taskId: {}", flowHistory.getTaskId());
+        }
     }
 
     private void store(String taskId, FlowDump flowDump) {
-        transactionManager.doInTransaction(() -> {
-            flowDump.setTaskId(taskId);
-            flowStateRepository.createOrUpdate(flowDump);
-            Optional<FlowEvent> flowEvents = flowEventRepository.findByTaskId(taskId);
-            if (flowEvents.isPresent()) {
-                stateLogRepository.createOrUpdate(StateLog.builder()
-                        .flowEvent(flowEvents.get())
-                        .flowDump(flowDump)
-                        .type(flowDump.getType())
-                        .build());
-            } else {
-                log.warn("Unable to find related FlowEvent by taskId: {}", flowDump.getTaskId());
-            }
-        });
+        flowDump.setTaskId(taskId);
+        flowStateRepository.createOrUpdate(flowDump);
+        Optional<FlowEvent> flowEvents = flowEventRepository.findByTaskId(taskId);
+        if (flowEvents.isPresent()) {
+            stateLogRepository.createOrUpdate(StateLog.builder()
+                    .flowEvent(flowEvents.get())
+                    .flowDump(flowDump)
+                    .type(flowDump.getType())
+                    .build());
+        } else {
+            log.warn("Unable to find related FlowEvent by taskId: {}", flowDump.getTaskId());
+        }
     }
 
     public List<FlowEvent> listFlowEvents(String flowId, Instant timeFrom, Instant timeTo) {

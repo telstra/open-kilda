@@ -15,6 +15,7 @@
 
 package org.openkilda.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Value;
 
@@ -57,6 +58,11 @@ public final class MeterId implements Comparable<MeterId>, Serializable {
     public static final int MAX_SYSTEM_RULE_METER_ID = 10;
 
     private final long value;
+
+    @JsonCreator
+    public MeterId(long value) {
+        this.value = value;
+    }
 
     public static boolean isMeterIdOfDefaultRule(long meterId) {
         return MIN_SYSTEM_RULE_METER_ID <= meterId && meterId <= MAX_SYSTEM_RULE_METER_ID;

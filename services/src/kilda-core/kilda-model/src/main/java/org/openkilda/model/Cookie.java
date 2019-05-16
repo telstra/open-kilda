@@ -15,6 +15,7 @@
 
 package org.openkilda.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Value;
 
@@ -40,6 +41,11 @@ public class Cookie implements Comparable<Cookie>, Serializable {
     public static final long FLOW_COOKIE_VALUE_MASK = 0x00000000FFFFFFFFL;
 
     private final long value;
+
+    @JsonCreator
+    public Cookie(long value) {
+        this.value = value;
+    }
 
     public static Cookie buildForwardCookie(long unmaskedCookie) {
         return new Cookie(unmaskedCookie | Cookie.FORWARD_FLOW_COOKIE_MASK);

@@ -68,13 +68,13 @@ public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, 
             } else {
                 String json = pullRequest(input);
                 try {
-                    handleMessage(json, input);
+                    handleAbstractMessage(json, input);
                     return;
                 } catch (JsonMappingException e) {
-                    log.debug("Failed to deserialize json to message");
+                    log.debug("Failed to deserialize json to abstract message", e);
                 }
 
-                handleAbstractMessage(json, input);
+                handleMessage(json, input);
             }
         } catch (Exception e) {
             log.error(String.format("Unhandled exception in %s", getClass().getName()), e);

@@ -55,6 +55,7 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.pce.AvailableNetworkFactory;
@@ -489,16 +490,16 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                 .dumpType(type)
                 .bandwidth(forward.getBandwidth())
                 .ignoreBandwidth(forward.isIgnoreBandwidth())
-                .forwardCookie(forward.getCookie())
-                .reverseCookie(reverse.getCookie())
+                .forwardCookie(new Cookie(forward.getCookie()))
+                .reverseCookie(new Cookie(reverse.getCookie()))
                 .sourceSwitch(forward.getSrcSwitch().getSwitchId())
                 .destinationSwitch(forward.getDestSwitch().getSwitchId())
                 .sourcePort(forward.getSrcPort())
                 .destinationPort(forward.getDestPort())
                 .sourceVlan(forward.getSrcVlan())
                 .destinationVlan(forward.getDestVlan())
-                .forwardMeterId(forward.getMeterId())
-                .reverseMeterId(reverse.getMeterId())
+                .forwardMeterId(Optional.ofNullable(forward.getMeterId()).map(MeterId::new).orElse(null))
+                .reverseMeterId(Optional.ofNullable(reverse.getMeterId()).map(MeterId::new).orElse(null))
                 .forwardPath(
                         objectMapper.writeValueAsString(
                                 FlowPathMapper.INSTANCE.mapToPathNodes(forward.getFlowPath())))
@@ -565,7 +566,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
             FlowUpdateRequest request = (FlowUpdateRequest) message.getData();
             UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
-            saveHistory("Flow updating", flow.getFlowId(), message.getCorrelationId(), tuple);
+            saveEvent(Event.UPDATE, flow.getFlowId(), "Flow updating", message.getCorrelationId(), tuple);
 
             Optional<FlowPair> flowPair = flowService.getFlowPair(flow.getFlowId());
             if (flowPair.isPresent()) {

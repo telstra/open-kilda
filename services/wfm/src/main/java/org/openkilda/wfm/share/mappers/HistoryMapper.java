@@ -39,7 +39,7 @@ import org.mapstruct.factory.Mappers;
 
 import java.util.List;
 
-@Mapper(uses = {FlowPathMapper.class})
+@Mapper(uses = {FlowMapper.class, FlowPathMapper.class})
 public abstract class HistoryMapper {
     public static final HistoryMapper INSTANCE = Mappers.getMapper(HistoryMapper.class);
 
@@ -67,10 +67,10 @@ public abstract class HistoryMapper {
     @Mapping(source = "flowId", target = "flowId")
     @Mapping(source = "bandwidth", target = "bandwidth")
     @Mapping(source = "ignoreBandwidth", target = "ignoreBandwidth")
-    @Mapping(target = "forwardCookie", expression = "java(flow.getForwardPath().getCookie().getValue())")
-    @Mapping(target = "reverseCookie", expression = "java(flow.getReversePath().getCookie().getValue())")
-    @Mapping(target = "forwardMeterId", expression = "java(flow.getReversePath().getMeterId().getValue())")
-    @Mapping(target = "reverseMeterId", expression = "java(flow.getReversePath().getMeterId().getValue())")
+    @Mapping(target = "forwardCookie", expression = "java(flow.getForwardPath().getCookie())")
+    @Mapping(target = "reverseCookie", expression = "java(flow.getReversePath().getCookie())")
+    @Mapping(target = "forwardMeterId", expression = "java(flow.getReversePath().getMeterId())")
+    @Mapping(target = "reverseMeterId", expression = "java(flow.getReversePath().getMeterId())")
     @Mapping(target = "forwardStatus", expression = "java(flow.getReversePath().getStatus())")
     @Mapping(target = "reverseStatus", expression = "java(flow.getReversePath().getStatus())")
     @BeanMapping(ignoreByDefault = true)
@@ -82,6 +82,7 @@ public abstract class HistoryMapper {
 
     @Mapping(target = "actor", expression = "java(eventData.getInitiator().name())")
     @Mapping(target = "action", expression = "java(eventData.getEvent().getDescription())")
+    @Mapping(source = "time", target = "timestamp")
     public abstract FlowEvent map(FlowEventData eventData);
 
     /**

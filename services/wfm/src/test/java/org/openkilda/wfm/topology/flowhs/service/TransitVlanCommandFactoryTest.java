@@ -49,19 +49,19 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
-public class FlowCommandFactoryTest extends Neo4jBasedTest {
+public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
     private static final CommandContext COMMAND_CONTEXT = new CommandContext();
     private static final SwitchId SWITCH_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId SWITCH_2 = new SwitchId("00:00:00:00:00:00:00:02");
     private static final SwitchId SWITCH_3 = new SwitchId("00:00:00:00:00:00:00:03");
     private static final Random UNSEED_RANDOM = new Random();
 
-    private FlowCommandFactory target;
+    private TransitVlanCommandFactory target;
     private TransitVlanRepository vlanRepository;
 
     @Before
     public void setUp() {
-        target = new FlowCommandFactory(persistenceManager.getRepositoryFactory().createTransitVlanRepository());
+        target = new TransitVlanCommandFactory(persistenceManager.getRepositoryFactory().createTransitVlanRepository());
         vlanRepository = persistenceManager.getRepositoryFactory().createTransitVlanRepository();
     }
 

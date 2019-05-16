@@ -43,17 +43,13 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
-import org.openkilda.wfm.share.history.model.FlowDumpData;
-import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowEventData.Initiator;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.mappers.FlowMapper;
-import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
@@ -82,10 +78,10 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
     private final FlowPathRepository flowPathRepository;
 
     public ResourcesAllocateAction(PathComputer pathComputer, PersistenceManager persistenceManager,
-                                   FlowResourcesConfig resourcesConfig) {
+                                   FlowResourcesManager resourcesManager) {
         this.pathComputer = pathComputer;
         this.transactionManager = persistenceManager.getTransactionManager();
-        this.resourcesManager = new FlowResourcesManager(persistenceManager, resourcesConfig);
+        this.resourcesManager = resourcesManager;
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
@@ -104,18 +100,20 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
         flow.setDestSwitch(switchRepository.reload(flow.getDestSwitch()));
 
         PathPair pathPair = findPath(flow);
-        //flowRepository.createOrUpdate(flow);
 
         try {
             allocateResourcesForFlow(flow, pathPair);
+            saveHistory(flow, stateMachine);
             stateMachine.setFlow(flow);
-            stateMachine.fire(FlowCreateFsm.Event.NEXT);
 
             InfoData flowData = new FlowResponse(FlowMapper.INSTANCE.map(flow));
             Message response = new InfoMessage(flowData, commandContext.getCreateTime(),
                     commandContext.getCorrelationId());
 
-            saveHistory(flow, stateMachine);
+            if (flow.isOneSwitchFlow()) {
+                stateMachine.fire(Event.SKIP_NON_INGRESS_RULES_INSTALL);
+            }
+
             return Optional.of(response);
         } catch (ResourceAllocationException e) {
             log.error("Failed to allocate resources", e);
@@ -212,12 +210,8 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
     }
 
     private void saveHistory(Flow flow, FlowCreateFsm stateMachine) {
-        FlowDumpData dumpData = HistoryMapper.INSTANCE.map(flow);
-        dumpData.setDumpType(DumpType.STATE_AFTER);
-
         FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
                 .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowDumpData(dumpData)
                 .flowHistoryData(FlowHistoryData.builder()
                         .action("Resources allocated")
                         .time(Instant.now())

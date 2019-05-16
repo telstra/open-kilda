@@ -25,6 +25,7 @@ import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
@@ -32,6 +33,7 @@ import org.apache.storm.tuple.Values;
 
 import java.util.UUID;
 
+@Slf4j
 public class RouterBolt extends AbstractBolt {
 
     @Override
@@ -48,6 +50,7 @@ public class RouterBolt extends AbstractBolt {
             key = UUID.randomUUID().toString();
         }
         FlowRequest request = (FlowRequest) data;
+        log.debug("Received request {} with key {}", request, key);
         switch (request.getType()) {
             case CREATE:
                 emitWithContext(ROUTER_TO_FLOW_CREATE_HUB.name(), input, new Values(key, request.getPayload()));

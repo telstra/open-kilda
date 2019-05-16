@@ -24,10 +24,14 @@ import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.pce.AvailableNetworkFactory;
+import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
+import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
@@ -43,9 +47,9 @@ public class FlowCreateHubBolt extends HubBolt {
 
     private transient FlowCreateService service;
 
-    private PersistenceManager persistenceManager;
-    private PathComputerConfig pathComputerConfig;
-    private FlowResourcesConfig flowResourcesConfig;
+    private final PersistenceManager persistenceManager;
+    private final PathComputerConfig pathComputerConfig;
+    private final FlowResourcesConfig flowResourcesConfig;
 
     public FlowCreateHubBolt(String requestSenderComponent, int timeoutMs, boolean autoAck,
                              PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig,
@@ -59,7 +63,13 @@ public class FlowCreateHubBolt extends HubBolt {
 
     @Override
     protected void init() {
-        service = new FlowCreateService(persistenceManager, pathComputerConfig, flowResourcesConfig);
+        FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
+        AvailableNetworkFactory availableNetworkFactory =
+                new AvailableNetworkFactory(pathComputerConfig, persistenceManager.getRepositoryFactory());
+        PathComputer pathComputer =
+                new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
+
+        service = new FlowCreateService(persistenceManager, pathComputer, resourcesManager);
     }
 
     @Override
@@ -74,7 +84,7 @@ public class FlowCreateHubBolt extends HubBolt {
         String operationKey = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
         String parentKey = KeyProvider.getParentKey(operationKey);
         FlowResponse flowResponse = (FlowResponse) input.getValueByField(FIELD_ID_PAYLOAD);
-        service.handleAsyncResponse(parentKey, flowResponse);
+        service.handleAsyncResponse(parentKey, flowResponse, new FlowCreateHubCarrierImpl(input));
     }
 
     @Override
@@ -115,7 +125,12 @@ public class FlowCreateHubBolt extends HubBolt {
 
         @Override
         public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
-            emitWithContext(Stream.HUB_TO_HISTORY_BOLT.name(), tuple, new Values(null, historyHolder));
+            //emitWithContext(Stream.HUB_TO_HISTORY_BOLT.name(), tuple, new Values(null, historyHolder));
+        }
+
+        @Override
+        public void cancelTimeoutCallback(String key) {
+            cancelCallback(key, tuple);
         }
     }
 }

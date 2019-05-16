@@ -36,6 +36,7 @@ import org.mapstruct.factory.Mappers;
 
 import java.time.Instant;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -196,6 +197,14 @@ public abstract class FlowMapper {
             default:
                 throw new IllegalArgumentException("Unsupported Flow status: " + status);
         }
+    }
+
+    public long map(Cookie cookie) {
+        return cookie.getValue();
+    }
+
+    public Long map(MeterId meterId) {
+        return Optional.ofNullable(meterId).map(MeterId::getValue).orElse(null);
     }
 
     private FlowPath buildPath(Flow flow, FlowDto flowDto) {

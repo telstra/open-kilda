@@ -21,7 +21,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandFactory;
+import org.openkilda.wfm.topology.flowhs.service.TransitVlanCommandFactory;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
@@ -36,16 +36,17 @@ import java.util.UUID;
 @Slf4j
 public class RollbackInstalledRulesAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
-    private final FlowCommandFactory flowCommandFactory;
+    private final TransitVlanCommandFactory flowCommandFactory;
 
     public RollbackInstalledRulesAction(PersistenceManager persistenceManager) {
-        this.flowCommandFactory = new FlowCommandFactory(
+        this.flowCommandFactory = new TransitVlanCommandFactory(
                 persistenceManager.getRepositoryFactory().createTransitVlanRepository());
     }
 
     @Override
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         Set<RemoveRule> removeCommands = new HashSet<>();
+        stateMachine.getPendingCommands().clear();
 
         if (!stateMachine.getNonIngressCommands().isEmpty()) {
             List<RemoveRule> removeNonIngress = flowCommandFactory.createRemoveNonIngressRules(
@@ -63,9 +64,9 @@ public class RollbackInstalledRulesAction extends AnonymousAction<FlowCreateFsm,
         for (RemoveRule command : removeCommands) {
             commandPerId.put(command.getCommandId(), command);
             stateMachine.getCarrier().sendSpeakerRequest(command);
+            stateMachine.getPendingCommands().add(command.getCommandId());
         }
 
-        stateMachine.setPendingCommands(commandPerId.keySet());
         stateMachine.setRemoveCommands(commandPerId);
 
         log.debug("Commands to rollback installed rules have been sent. Total amount: {}", removeCommands.size());
