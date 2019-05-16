@@ -9,7 +9,10 @@ import org.openkilda.functionaltests.helpers.model.PotentialFlow
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.payload.flow.FlowEndpointPayload
+import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
@@ -42,7 +45,7 @@ class FlowCrudV2Spec extends BaseSpecification {
     FlowHelperV2 flowHelperV2
 
     @Unroll("Valid #data.description has traffic and no rule discrepancies \
-(#flow.source.datapath - #flow.destination.datapath)")
+(#flow.source.switchId - #flow.destination.switchId)")
     def "Valid flow has no rule discrepancies"() {
         given: "A flow"
         def traffExam = traffExamProvider.get()
@@ -67,7 +70,7 @@ class FlowCrudV2Spec extends BaseSpecification {
 
         and: "The flow allows traffic (only applicable flows are checked)"
         try {
-            def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 0)
+            def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 0)
             [exam.forward, exam.reverse].each { direction ->
                 def resources = traffExam.startExam(direction)
                 direction.setResources(resources)
@@ -82,7 +85,7 @@ class FlowCrudV2Spec extends BaseSpecification {
         flowHelper.deleteFlow(flow.flowId)
 
         then: "The flow is not present in NB"
-        !northbound.getAllFlows().find { it.flowId == flow.flowId }
+        !northbound.getAllFlows().find { it.id == flow.flowId }
 
         and: "ISL bandwidth is restored"
         Wrappers.wait(WAIT_OFFSET) { northbound.getAllLinks().each { assert it.availableBandwidth == it.speed } }
@@ -113,7 +116,7 @@ class FlowCrudV2Spec extends BaseSpecification {
         flowHelperV2.addFlow(flow2)
 
         then: "Both flows are successfully created"
-        northbound.getAllFlows()*.flowId.containsAll([flow1.flowId, flow2.flowId])
+        northbound.getAllFlows()*.id.containsAll([flow1.flowId, flow2.flowId])
 
         and: "Cleanup: delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.flowId) }
@@ -546,8 +549,6 @@ class FlowCrudV2Spec extends BaseSpecification {
             r << [
                     description: "single-switch flow without vlans",
                     flow       : flowHelperV2.singleSwitchFlow(sw).with {
-                        it.source.vlanId = 0
-                        it.destination.vlanId = 0
                         it.toBuilder()
                                 .source(it.getSource().toBuilder().vlanId(0).build())
                                 .destination(it.getDestination().toBuilder().vlanId(0).build())
@@ -576,6 +577,19 @@ class FlowCrudV2Spec extends BaseSpecification {
 
     Switch findSwitch(SwitchId swId) {
         topology.activeSwitches.find { it.dpId == swId }
+    }
+
+    FlowPayload toFlowPayload(FlowRequestV2 flow) {
+        FlowEndpointV2 source = flow.source
+        FlowEndpointV2 destination = flow.destination
+
+        FlowPayload.builder()
+                .id(flow.flowId)
+                .source(new FlowEndpointPayload(source.switchId, source.portNumber, source.vlanId))
+                .destination(new FlowEndpointPayload(destination.switchId, destination.portNumber, destination.vlanId))
+                .maximumBandwidth(flow.maximumBandwidth)
+                .ignoreBandwidth(flow.ignoreBandwidth)
+                .build()
     }
 
     def getConflictingData() {

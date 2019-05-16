@@ -1,7 +1,10 @@
 package org.openkilda.functionaltests.helpers
 
-import com.github.javafaker.Faker
-import groovy.util.logging.Slf4j
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
+
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 import org.openkilda.functionaltests.helpers.model.PotentialFlow
 import org.openkilda.messaging.model.FlowDto
 import org.openkilda.messaging.model.FlowPairDto
@@ -11,15 +14,16 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
+import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
+
+import com.github.javafaker.Faker
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 import org.springframework.web.client.HttpClientErrorException
 
 import java.text.SimpleDateFormat
-
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 /**
  * Holds utility methods for manipulating flows supporting version 2 of API.
@@ -29,6 +33,8 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 class FlowHelperV2 {
     @Autowired
     TopologyDefinition topology
+    @Autowired
+    NorthboundService northbound
     @Autowired
     NorthboundServiceV2 northboundV2
     @Autowired
@@ -130,7 +136,7 @@ class FlowHelperV2 {
      * Adds flow with checking flow status and rules on source and destination switches.
      * It is supposed if rules are installed on source and destination switches, the flow is completely created.
      */
-    FlowRequestV2 addFlow(FlowRequestV2 flow) {
+    FlowResponseV2 addFlow(FlowRequestV2 flow) {
         log.debug("Adding flow '${flow.flowId}'")
         def response = northboundV2.addFlow(flow)
 
