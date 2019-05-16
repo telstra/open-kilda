@@ -31,6 +31,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.topology.network.error.BfdPortControllerNotFoundException;
 import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
@@ -185,7 +186,7 @@ public class NetworkBfdPortServiceTest {
         // remove confirmation
 
         when(bfdSessionRepository.findBySwitchIdAndPort(alphaLogicalEndpoint.getDatapath(),
-                                                     alphaLogicalEndpoint.getPortNumber()))
+                                                        alphaLogicalEndpoint.getPortNumber()))
                 .thenReturn(Optional.of(bfdSessionDb));
 
         BfdSessionResponse speakerResponse = new BfdSessionResponse(speakerBfdRemove, null);
@@ -276,7 +277,7 @@ public class NetworkBfdPortServiceTest {
     }
 
     @Test
-    public void upOfflineDown() {
+    public void upOfflineUp() {
         // up
         setupAndEnable();
 
@@ -287,10 +288,34 @@ public class NetworkBfdPortServiceTest {
 
         reset(carrier);
 
-        // down
+        // online (up)
+        service.updateOnlineMode(alphaLogicalEndpoint, true);
+        service.updateLinkStatus(alphaLogicalEndpoint, LinkStatus.UP);
+        verify(carrier).bfdUpNotification(alphaEndpoint);
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void upOfflineDownUp() {
+        // up
+        setupAndEnable();
+
+        // offline
+        service.updateOnlineMode(alphaLogicalEndpoint, false);
+        verify(carrier).bfdKillNotification(alphaEndpoint);
+        verifyNoMoreInteractions(carrier);
+
+        reset(carrier);
+
+        // online (down)
         service.updateOnlineMode(alphaLogicalEndpoint, true);
         service.updateLinkStatus(alphaLogicalEndpoint, LinkStatus.DOWN);
-        verify(carrier).bfdDownNotification(alphaEndpoint);
+        verifyNoMoreInteractions(carrier);
+
+        // up
+        service.updateLinkStatus(alphaLogicalEndpoint, LinkStatus.UP);
+        verify(carrier).bfdUpNotification(alphaEndpoint);
+        verifyNoMoreInteractions(carrier);
     }
 
     @Test
@@ -496,7 +521,7 @@ public class NetworkBfdPortServiceTest {
 
         // ignore outdated timeout
         service.speakerTimeout(requestKey + "1", alphaLogicalEndpoint);
-        // IDLE and CLEANING will ignore it, but FAIL will react
+        // IDLE and DO_REMOVE will ignore it, but REMOVE_FAIL will react
         service.updateLinkStatus(alphaLogicalEndpoint, LinkStatus.DOWN);
         verifyNoMoreInteractions(carrier);
 
@@ -505,7 +530,7 @@ public class NetworkBfdPortServiceTest {
                                                        NoviBfdSession.Errors.NOVI_BFD_DISCRIMINATOR_NOT_FOUND_ERROR));
         verifyNoMoreInteractions(carrier);
 
-        // IDLE ignore but FAIL react
+        // IDLE ignore but REMOVE_FAIL react
         service.updateLinkStatus(alphaLogicalEndpoint, LinkStatus.DOWN);
         verifyNoMoreInteractions(carrier);
 
@@ -553,6 +578,73 @@ public class NetworkBfdPortServiceTest {
         service.remove(alphaLogicalEndpoint);
 
         verifyKillSequence(session);
+    }
+
+    @Test
+    public void enableBeforeSetup() {
+        IslReference reference = new IslReference(alphaEndpoint, betaEndpoint);
+
+        // enable
+        doEnableBeforeSetup(reference);
+
+        // setup
+        mockSwitchLookup(alphaSwitch);
+        mockSwitchLookup(betaSwitch);
+        mockMissingBfdSession(alphaLogicalEndpoint);
+        when(carrier.setupBfdSession(any(NoviBfdSession.class))).thenReturn(setupRequestKey);
+
+        service.setup(alphaLogicalEndpoint, alphaEndpoint.getPortNumber());
+
+        verify(bfdSessionRepository).createOrUpdate(any(BfdSession.class));
+        verify(carrier).setupBfdSession(argThat(
+                arg -> arg.getTarget().getDatapath().equals(alphaEndpoint.getDatapath())
+                        && arg.getPhysicalPortNumber() == alphaEndpoint.getPortNumber()
+                        && arg.getLogicalPortNumber() == alphaLogicalEndpoint.getPortNumber()
+                        && arg.getRemote().getDatapath().equals(betaEndpoint.getDatapath())));
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void enableBeforeSetupForDirtyEndpoint() {
+        final int discriminator = 1;
+        final String requestKeyRemove = "remove-request";
+        IslReference reference = new IslReference(alphaEndpoint, betaEndpoint);
+
+        // enable
+        doEnableBeforeSetup(reference);
+
+        // setup (dirty)
+        mockSwitchLookup(alphaSwitch);
+        mockSwitchLookup(betaSwitch);
+
+        BfdSession bfdSession = makeBfdSession(discriminator);
+        mockBfdSessionLookup(bfdSession);
+
+        when(carrier.removeBfdSession(any(NoviBfdSession.class))).thenReturn(requestKeyRemove);
+
+        service.setup(alphaLogicalEndpoint, alphaEndpoint.getPortNumber());
+
+        ArgumentCaptor<NoviBfdSession> removeBfdSessionArgument = ArgumentCaptor.forClass(NoviBfdSession.class);
+        verify(carrier).removeBfdSession(removeBfdSessionArgument.capture());
+        verifyNoMoreInteractions(carrier);
+
+        reset(bfdSessionRepository);
+        reset(carrier);
+
+        // speaker response
+        mockBfdSessionLookup(bfdSession);
+
+        service.speakerResponse(requestKeyRemove, alphaLogicalEndpoint,
+                                new BfdSessionResponse(removeBfdSessionArgument.getValue(), null));
+
+        ArgumentCaptor<BfdSession> createOrUpdateArgument = ArgumentCaptor.forClass(BfdSession.class);
+
+        verify(bfdSessionRepository).delete(bfdSession);
+        verify(bfdSessionRepository).createOrUpdate(createOrUpdateArgument.capture());
+
+        BfdSession autostartSession = createOrUpdateArgument.getValue();
+        verify(carrier).setupBfdSession(argThat(arg -> arg.getDiscriminator() == autostartSession.getDiscriminator()));
+        verifyNoMoreInteractions(carrier);
     }
 
     private NoviBfdSession setupAndEnable() {
@@ -642,6 +734,19 @@ public class NetworkBfdPortServiceTest {
         reset(carrier);
 
         return setupBfdSessionArgument.getValue();
+    }
+
+    private void doEnableBeforeSetup(IslReference reference) {
+        try {
+            service.enable(alphaEndpoint, reference);
+            throw new AssertionError(String.format(
+                    "There is no expected BfdPortControllerNotFoundException from %s.enable(...)",
+                    service.getClass().getName()));
+        } catch (BfdPortControllerNotFoundException e) {
+            // expected behaviour
+        }
+        verifyNoMoreInteractions(bfdSessionRepository);
+        verifyNoMoreInteractions(carrier);
     }
 
     private void verifyTerminateSequence(NoviBfdSession expectedSession) {

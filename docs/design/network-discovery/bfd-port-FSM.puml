@@ -32,9 +32,9 @@ state initChoice <<choice>>
 INIT --> initChoice : history / load persistence-data
 
 initChoice --> IDLE : [else]
-initChoice --> CLEANING : [BFD-discriminator is set]
+initChoice --> INIT_REMOVE : [BFD-discriminator is set]
 
-IDLE --> PREPARING : enable / save ISL reference
+IDLE --> INIT_SETUP : enable / save ISL reference
 IDLE --> CONFLICT : port-up
 IDLE --> UNOPERATIONAL : offline
 IDLE : enter / report ready to setup
@@ -49,72 +49,111 @@ CONFLICT : enable / report conflict
 CONFLICT : disable / report conflict
 
 PENDING --> UNOPERATIONAL : disable
-PENDING --> PREPARING : port-down
+PENDING --> INIT_SETUP : port-down
 PENDING --> CONFLICT : port-up
 PENDING : enter / save ISL reference
 
-PREPARING --> IDLE : fail
-PREPARING --> INSTALLING : next
-PREPARING : enter / allocate BFD-discriminator
+INIT_SETUP --> IDLE : fail
+INIT_SETUP --> DO_SETUP : next
+INIT_SETUP : enter / allocate BFD-discriminator
 
-INSTALLING --> ACTIVE : action-success
-INSTALLING --> CLEANING : disable\naction-fail / report error
-INSTALLING --> FAIL : offline
-INSTALLING --> TERMINATE : kill
-INSTALLING : enter / make BFD-setup action
-INSTALLING : speaker-response / proxy to action
-INSTALLING : port-up / proxy to action
-INSTALLING : port-down / proxy to action
+DO_SETUP --> ACTIVE : action-success / report setup complete
+DO_SETUP --> INIT_REMOVE : disable
+DO_SETUP --> SETUP_FAIL : action-fail / report error
+DO_SETUP --> SETUP_INTERRUPT : offline
+DO_SETUP --> INIT_CLEANUP : kill
+DO_SETUP : enter / make BFD-setup action
+DO_SETUP : speaker-response / proxy to action
+DO_SETUP : port-up / proxy to action
+DO_SETUP : port-down / proxy to action
 
-CLEANING --> IDLE : action-success / release BFD-descriptor
-CLEANING --> FAIL : action-fail / report error
-CLEANING --> PENDING_CLEANING : offline
-CLEANING --> HOUSEKEEPING : kill
-CLEANING : enter / make BFD-remove action
-CLEANING : speaker-response / proxy to action
-CLEANING : port-up / proxy to action
-CLEANING : port-down / proxy to action
+SETUP_FAIL --> INIT_REMOVE : disable
+SETUP_FAIL --> SETUP_INTERRUPT : offline
+SETUP_FAIL --> INIT_CLEANUP : kill
+SETUP_FAIL : enter / report fail
+SETUP_FAIL : enable / report malfunction
+
+SETUP_INTERRUPT --> SETUP_RECOVERY : port-up / set linkStatus = UP\nport-down / set linkStatus DOWN
+SETUP_INTERRUPT --> REMOVE_INTERRUPT : disable
+
+SETUP_RECOVERY --> DO_SETUP : action-success
+SETUP_RECOVERY --> SETUP_INTERRUPT : offline
+SETUP_RECOVERY --> SETUP_FAIL : action-fail / report error
+SETUP_RECOVERY --> DO_REMOVE : disable
+SETUP_RECOVERY --> DO_CLEANUP : kill
+SETUP_RECOVERY : enter / make BFD-remove action
+SETUP_RECOVERY : speaker-response / proxy to action
+SETUP_RECOVERY : port-up / proxy to action
+SETUP_RECOVERY : port-down / proxy to action
 
 state ACTIVE {
     [*] --> UP
 
     UP -r-> DOWN : port-down
-    UP --> OFFLINE : offline
     UP : enter / emit bfd-up
     UP : enter / set linkStatus = UP
 
     DOWN -l-> UP : port-up
-    DOWN --> OFFLINE : offline
     DOWN : enter / emit bfd-down
     DOWN : enter / set linkStatus = DOWN
-
-    OFFLINE --> UP : port-up
-    OFFLINE --> DOWN : port-down
-    OFFLINE : enter / emit bfd-kill
 }
-ACTIVE --> CLEANING : disable
-ACTIVE --> TERMINATE : kill
-ACTIVE : enter / report setup complete
+ACTIVE --> OFFLINE : offline
+ACTIVE --> INIT_REMOVE : disable
+ACTIVE --> INIT_CLEANUP : kill
 ACTIVE : exit / emit bfd-kill
 
-TERMINATE --> HOUSEKEEPING : next
-TERMINATE : enter / make BFD-remove action
+ACTIVE_RECOVERY --> OFFLINE : offline
+ACTIVE_RECOVERY --> ACTIVE : port-up
+ACTIVE_RECOVERY --> INIT_REMOVE : disable
+ACTIVE_RECOVERY --> INIT_CLEANUP : kill
 
-HOUSEKEEPING --> [*] : action-success / release BFD-descriptor\naction-fail / report error
-HOUSEKEEPING : enter / action.updateLinkStatus(DOWN)
-HOUSEKEEPING : speaker-response / proxy to action
+OFFLINE --> ACTIVE_RECOVERY : online
+OFFLINE --> REMOVE_INTERRUPT : disable
 
-FAIL --> RECOVERY : port-down
-FAIL : enable / report malfunction
-FAIL : disable / report malfunction
+INIT_REMOVE --> DO_REMOVE : next
+INIT_REMOVE : enter / make BFD-remove action
 
-PENDING_CLEANING --> CLEANING : port-up / set linkStatus = UP\nport-down / set linkStatus DOWN
+DO_REMOVE --> IDLE : action-success / release BFD-descriptor
+DO_REMOVE --> REMOVE_FAIL : action-fail / report error
+DO_REMOVE --> REMOVE_INTERRUPT : offline
+DO_REMOVE --> DO_CLEANUP : kill
+DO_REMOVE --> CHARGED : enable / save ISL reference
+DO_REMOVE : speaker-response / proxy to action
+DO_REMOVE : port-up / proxy to action
+DO_REMOVE : port-down / proxy to action
 
-RECOVERY --> INSTALLING : action-success
-RECOVERY --> FAIL : action-fail / report error\noffline
-RECOVERY : enter / make BFD-remove action
-RECOVERY : speaker-response / proxy to action
-RECOVERY : port-up / proxy to action
-RECOVERY : port-down / proxy to action
+REMOVE_FAIL --> CHARGED_FAIL: enable / save ISL reference
+REMOVE_FAIL --> REMOVE_INTERRUPT : offline
+REMOVE_FAIL : enter / report fail
+REMOVE_FAIL : disable / report malfunction
+
+REMOVE_INTERRUPT --> INIT_REMOVE : port-up / set linkStatus = UP\nport-down / set linkStatus DOWN
+REMOVE_INTERRUPT --> CHARGED_INTERRUPT : enable / save ISL reference
+
+CHARGED --> INIT_SETUP : action-success / release BFD-descriptor
+CHARGED --> CHARGED_FAIL : action-fail / report error
+CHARGED --> DO_REMOVE : disable
+CHARGED --> CHARGED_INTERRUPT : offline
+CHARGED --> DO_CLEANUP : kill
+CHARGED : speaker-response / proxy to action
+CHARGED : port-up / proxy to action
+CHARGED : port-down / proxy to action
+
+CHARGED_FAIL --> CHARGED_INTERRUPT : offline
+CHARGED_FAIL --> REMOVE_FAIL : disable
+CHARGED_FAIL : enable / report malfunction
+
+CHARGED_INTERRUPT --> CHARGED_RECOVERY : port-up / set linkStatus = UP\nport-down / set linkStatus DOWN
+CHARGED_INTERRUPT --> REMOVE_INTERRUPT : disable
+
+CHARGED_RECOVERY --> CHARGED : next
+CHARGED_RECOVERY : enter / make BFD-remove action
+
+INIT_CLEANUP --> DO_CLEANUP : next
+INIT_CLEANUP : enter / make BFD-remove action
+
+DO_CLEANUP --> [*] : action-success / release BFD-descriptor\naction-fail / report error
+DO_CLEANUP : enter / action.updateLinkStatus(DOWN)
+DO_CLEANUP : speaker-response / proxy to action
 
 @enduml
