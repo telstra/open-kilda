@@ -51,10 +51,11 @@ public interface FlowMapper {
     FlowPayload toFlowOutput(FlowDto f);
 
     @Mapping(target = "source",
-            expression = "java(new FlowEndpointV2(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
+            expression = "java(FlowEndpointV2.builder().switchId(f.getSourceSwitch())"
+                    + ".portNumber(f.getSourcePort()).vlanId(f.getSourceVlan()).build())")
     @Mapping(target = "destination",
-            expression = "java(new FlowEndpointV2(f.getDestinationSwitch(), f.getDestinationPort(), "
-                    + "f.getDestinationVlan()))")
+            expression = "java(FlowEndpointV2.builder().switchId(f.getDestinationSwitch())"
+                    + ".portNumber(f.getDestinationPort()).vlanId(f.getDestinationVlan()).build())")
     @Mapping(target = "maximumBandwidth", source = "bandwidth")
     @Mapping(target = "status", source = "state")
     @Mapping(target = "created", source = "createdTime")

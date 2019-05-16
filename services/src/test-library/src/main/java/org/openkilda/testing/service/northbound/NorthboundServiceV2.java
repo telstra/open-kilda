@@ -13,25 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v2.flows;
+package org.openkilda.testing.service.northbound;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.Builder;
-import lombok.Value;
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 
-@Value
-@Builder(toBuilder = true)
-@JsonNaming(value = SnakeCaseStrategy.class)
-public class FlowRequestV2 {
-    String flowId;
-    FlowEndpointV2 source;
-    FlowEndpointV2 destination;
-
-    long maximumBandwidth;
-    boolean ignoreBandwidth;
-    boolean periodicPings;
-    String description;
-    Integer maxLatency;
-    Integer priority;
+public interface NorthboundServiceV2 {
+    FlowResponseV2 addFlow(FlowRequestV2 request);
 }
