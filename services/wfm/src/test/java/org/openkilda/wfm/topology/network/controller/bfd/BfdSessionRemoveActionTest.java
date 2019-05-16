@@ -83,6 +83,16 @@ public class BfdSessionRemoveActionTest extends AbstractActionTest {
         Assert.assertTrue(result.isSuccess());
     }
 
+    @Test
+    public void happyWithNotFoundError() {
+        String requestKey = "request-key";
+        Action action = makeAction(requestKey, LinkStatus.DOWN);
+
+        action.consumeSpeakerResponse(requestKey, new BfdSessionResponse(
+                payload, NoviBfdSession.Errors.NOVI_BFD_DISCRIMINATOR_NOT_FOUND_ERROR))
+                .orElseThrow(() -> new AssertionError("Result must be defined at this moment"));
+    }
+
     @Override
     protected Action makeAction(String requestKey) {
         return makeAction(requestKey, LinkStatus.UP);
