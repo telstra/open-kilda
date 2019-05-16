@@ -171,7 +171,6 @@ public class SpeakerBolt extends BaseRichBolt {
             source.setSegLatency(localPort.getLatency());
             PathNode destination = new PathNode(new SwitchId(localPort.getPeerSwitch()), localPort.getPeerPortNum(), 1);
             IslInfoData islInfoData = IslInfoData.builder()
-                    .latency(localPort.getLatency())
                     .source(source)
                     .destination(destination)
                     .speed(100000L)

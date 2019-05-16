@@ -103,6 +103,10 @@ public class KafkaChannel implements IFloodlightModule {
         return formatTopicWithRegion(topics.getStatsRegionTopic());
     }
 
+    public String getIslLatencyTopic() {
+        return formatTopicWithRegion(topics.getTopoIslLatencyRegionTopic());
+    }
+
     public String getFlowTopic() {
         return formatTopicWithRegion(topics.getFlowRegionTopic());
     }

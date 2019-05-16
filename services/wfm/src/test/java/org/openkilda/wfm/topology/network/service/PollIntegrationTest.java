@@ -58,7 +58,7 @@ public class PollIntegrationTest {
             public void sendDiscovery(DiscoverIslCommandData discoveryRequest) {
                 // Emulate response from FL
                 watcherCarrier.sendDiscovery(discoveryRequest);
-                IslInfoData response = IslInfoData.builder().latency(latency)
+                IslInfoData response = IslInfoData.builder()
                         .source(new PathNode(discoveryRequest.getSwitchId(),
                                 discoveryRequest.getPortNumber(), 0))
                         .destination(new PathNode(new SwitchId(10), 10, 0))
@@ -95,7 +95,7 @@ public class PollIntegrationTest {
         Assert.assertEquals(endpoint.getDatapath(), request.getSwitchId());
         Assert.assertEquals(endpoint.getPortNumber(), request.getPortNumber());
 
-        IslInfoData expectedDiscoveryEvent = IslInfoData.builder().latency(latency)
+        IslInfoData expectedDiscoveryEvent = IslInfoData.builder()
                 .source(new PathNode(new SwitchId(1), 1, 0))
                 .destination(new PathNode(new SwitchId(10), 10, 0))
                 .state(IslChangeType.DISCOVERED)

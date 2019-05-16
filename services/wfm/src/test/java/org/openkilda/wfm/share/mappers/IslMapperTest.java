@@ -33,7 +33,6 @@ public class IslMapperTest {
     @Test
     public void islMapperTest() {
         IslInfoData islInfoData = IslInfoData.builder()
-                .latency(1L)
                 .source(new PathNode(TEST_SWITCH_A_ID, 1, 0))
                 .destination(new PathNode(TEST_SWITCH_B_ID, 1, 1))
                 .speed(2L)

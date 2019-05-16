@@ -77,4 +77,17 @@ public interface IslRepository extends Repository<Isl> {
      * @return list of ISLs.
      */
     Collection<Isl> findSymmetricActiveWithAvailableBandwidth(long requiredBandwidth);
+
+    /**
+     * Update Isl latency.
+     *
+     * @param srcSwitchId       source switch id.
+     * @param srcPort           source port.
+     * @param dstSwitchId       destination switch id.
+     * @param dstPort           destination port.
+     * @param latency           destination port.
+     *
+     * @return return True if latency was updated, False otherwise.
+     */
+    boolean updateLatency(SwitchId srcSwitchId, Integer srcPort, SwitchId dstSwitchId, Integer dstPort, long latency);
 }

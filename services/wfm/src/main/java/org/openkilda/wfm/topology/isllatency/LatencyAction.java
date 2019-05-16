@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,16 +13,8 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.error;
+package org.openkilda.wfm.topology.isllatency;
 
-import org.openkilda.model.SwitchId;
-
-public class IslNotFoundException extends Exception {
-    public IslNotFoundException(SwitchId srcSwitchId, Integer srcPort, SwitchId dstSwitchId, Integer dstPort) {
-        super(String.format("There is no ISL between %s-%d and %s-%d.", srcSwitchId, srcPort, dstSwitchId, dstPort));
-    }
-
-    public IslNotFoundException(SwitchId srcSwitchId, Integer srcPort) {
-        super(String.format("There is no ISL with source %s-%d.", srcSwitchId, srcPort));
-    }
+public enum LatencyAction {
+    DO_NOTHING, COPY_REVERSE_ROUND_TRIP_LATENCY, USE_ONE_WAY_LATENCY
 }

@@ -87,7 +87,7 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
     @Test
     public void testSignPacketPositive() throws Exception {
         producerService.sendMessageAndTrack(anyObject(), anyObject(), anyObject());
-        expectLastCall().once();
+        expectLastCall().times(2);
         replay(producerService);
 
         pvs.handlePacketIn(new OfInput(sw2, ofPacketIn, context));
