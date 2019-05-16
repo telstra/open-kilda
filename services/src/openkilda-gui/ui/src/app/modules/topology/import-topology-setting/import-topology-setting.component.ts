@@ -90,7 +90,10 @@ export class ImportTopologySettingComponent implements OnInit {
 
   IsJsonString(str) {
     try {
-        JSON.parse(str);
+      if(typeof(str) == 'object'){
+        str = JSON.stringify(str);
+      }
+     JSON.parse(str);
     } catch (e) {
         return false;
     }
