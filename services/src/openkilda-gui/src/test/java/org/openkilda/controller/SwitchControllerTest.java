@@ -15,6 +15,7 @@
 
 package org.openkilda.controller;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -24,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.openkilda.auth.context.ServerContext;
 import org.openkilda.auth.model.RequestContext;
 import org.openkilda.log.ActivityLogger;
+import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.service.SwitchService;
 import org.openkilda.test.MockitoExtension;
@@ -47,6 +49,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.ArrayList;
@@ -63,7 +67,7 @@ public class SwitchControllerTest {
 
     @Mock
     private SwitchService serviceSwitch;
-
+    
     @Mock
     private ServerContext serverContext;
 
@@ -115,23 +119,39 @@ public class SwitchControllerTest {
 
     @Test
     public void testSwitchMaintenance() throws Exception {
-        try {
-            SwitchInfo switchInfo = new SwitchInfo();
-            switchInfo.setSwitchId(TestSwitchMock.SWITCH_ID);
-            switchInfo.setUnderMaintenance(TestSwitchMock.MAINTENANCE_STATUS);
-            switchInfo.setEvacuate(TestSwitchMock.EVACUATE_STATUS);
-            String inputJson = mapToJson(switchInfo);
-            mockMvc.perform(
+        SwitchInfo switchInfo = new SwitchInfo();
+        switchInfo.setSwitchId(TestSwitchMock.SWITCH_ID);
+        switchInfo.setUnderMaintenance(TestSwitchMock.MAINTENANCE_STATUS);
+        switchInfo.setEvacuate(TestSwitchMock.EVACUATE_STATUS);
+        String inputJson = mapToJson(switchInfo);
+        mockMvc.perform(
                     post("/api/switch/under-maintenance/{switchId}", TestSwitchMock.SWITCH_ID)
                             .content(inputJson).contentType(MediaType.APPLICATION_JSON)).andExpect(
                     status().isOk());
-        } catch (Exception ex) {
-            System.out.println("Exception: " + ex.getMessage());
-        }
-
     }
 
-    protected final String mapToJson(final Object obj) throws JsonProcessingException {
+    
+    @Test
+    public void testIslMaintenance() throws Exception {
+        LinkUnderMaintenanceDto linkUnderMaintenanceDto = new LinkUnderMaintenanceDto();
+        linkUnderMaintenanceDto.setSrcPort(Integer.valueOf(TestIslMock.SRC_PORT));
+        linkUnderMaintenanceDto.setSrcSwitch(TestIslMock.SRC_SWITCH);
+        linkUnderMaintenanceDto.setDstPort(Integer.valueOf(TestIslMock.DST_PORT));
+        linkUnderMaintenanceDto.setDstSwitch(TestIslMock.DEST_SWITCH);
+        linkUnderMaintenanceDto.setUnderMaintenance(TestIslMock.UNDER_MAINTENANE_FLAG);
+
+        String inputJson = mapToJson(linkUnderMaintenanceDto);
+        MvcResult mvcResult = mockMvc.perform(MockMvcRequestBuilders
+                .patch("/api/switch/links/under-maintenance")
+                .content(inputJson)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON))
+                .andReturn();
+        int status = mvcResult.getResponse().getStatus();
+        assertEquals(200, status);
+    }
+    
+    protected String mapToJson(Object obj) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
         return objectMapper.writeValueAsString(obj);
     }

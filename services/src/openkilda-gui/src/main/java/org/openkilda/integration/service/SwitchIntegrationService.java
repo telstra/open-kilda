@@ -47,6 +47,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.http.HttpResponse;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +66,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 
 /**
  * The Class SwitchIntegrationService.
@@ -123,7 +123,6 @@ public class SwitchIntegrationService {
      * @return the switch
      */
     public SwitchInfo getSwitchesById(final String switchId) {
-        System.out.println("GETTING DETAIL OF SWITCH.... " + switchId);
         HttpResponse response = restClientManager.invoke(
                 applicationProperties.getNbBaseUrl()
                         + IConstants.NorthBoundUrl.GET_SWITCH.replace("{switch_id}", switchId),

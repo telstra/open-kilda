@@ -191,8 +191,8 @@ import { CommonService } from '../../../common/services/common.service';
             "/isl"
           ]);  
         }
-       },error =>{
-		  this.loaderService.hide()
+      	},error =>{
+        this.loaderService.hide();
           this.toastr.error("No ISL Found",'Error');
           this.router.navigate([
             "/isl"
