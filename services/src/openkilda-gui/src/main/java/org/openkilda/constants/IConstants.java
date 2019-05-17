@@ -145,6 +145,9 @@ public abstract class IConstants {
                 "/links/flows?src_switch={src_switch}&src_port={src_port}&dst_switch={dst_switch}&dst_port={dst_port}";
         public static final String GET_SWITCH_METERS =  GET_SWITCHES + "/{switch_id}/meters";
         public static final String FLOW_PING = GET_FLOW + "/{flow_id}/ping";
+        public static final String UPDATE_SWITCH_UNDER_MAINTENANCE = GET_SWITCHES + "/{switch_id}/under-maintenance";
+        public static final String UPDATE_LINK_UNDER_MAINTENANCE = GET_LINKS + "/under-maintenance";
+        public static final String UPDATE_LINK_MAINTENANCE = GET_LINKS + "/under-maintenance";
     }
     
     public final class OpenTsDbUrl {
@@ -244,6 +247,10 @@ public abstract class IConstants {
         
         public static final String SW_SWITCH_UPDATE_NAME = "sw_switch_update_name";
         
+        public static final String SW_SWITCH_MAINTENANCE = "sw_switch_maintenance";
+        
+        public static final String ISL_UPDATE_MAINTENANCE = "isl_update_maintenance";
+        
     }
 
     public final class Settings {
@@ -321,7 +328,7 @@ public abstract class IConstants {
 
         ISL_LATENCY("Isl_latency", "isl.latency"),
 
-        SWITCH_COLLISIONS("Switch_collisions", "switch.collisions"),
+        SWITCH_COLLISIONS("Switch_collisions", "switch.collisions"),    
 
         SWITCH_RX_CRC_ERROR("Switch_crcerror", "switch.rx-crc-error"),
 

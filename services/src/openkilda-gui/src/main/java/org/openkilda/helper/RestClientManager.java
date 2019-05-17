@@ -96,7 +96,7 @@ public class RestClientManager {
      * @return the http response
      */
     public HttpResponse invoke(final String apiUrl, final HttpMethod httpMethod, final String payload,
-            final String contentType, final String basicAuth) {
+            final String contentType, final String basicAuth) { 
         HttpResponse httpResponse = null;
 
         try {
@@ -114,12 +114,13 @@ public class RestClientManager {
             } else if (HttpMethod.DELETE.equals(httpMethod)) {
                 httpUriRequest = new HttpDelete(apiUrl);
             } else if (HttpMethod.PATCH.equals(httpMethod)) {
-                httpUriRequest = new HttpPatch(apiUrl);
+                httpEntityEnclosingRequest = new HttpPatch(apiUrl);
             } else {
                 httpUriRequest = new HttpGet(apiUrl);
             }
 
-            if (!HttpMethod.POST.equals(httpMethod) && !HttpMethod.PUT.equals(httpMethod)) {
+            if (!HttpMethod.POST.equals(httpMethod) && !HttpMethod.PUT.equals(httpMethod) 
+                    &&  !HttpMethod.PATCH.equals(httpMethod)) {
                 // Setting Required Headers
                 if (!StringUtil.isNullOrEmpty(basicAuth)) {
                     LOGGER.debug("[invoke] Setting authorization in header as " + IAuthConstants.Header.AUTHORIZATION);
@@ -128,9 +129,11 @@ public class RestClientManager {
                 }
             }
 
-            if (HttpMethod.POST.equals(httpMethod) || HttpMethod.PUT.equals(httpMethod)) {
+            if (HttpMethod.POST.equals(httpMethod) || HttpMethod.PUT.equals(httpMethod) 
+                     || HttpMethod.PATCH.equals(httpMethod)) {
+                
                 LOGGER.info("[invoke] Executing POST/ PUT request : httpEntityEnclosingRequest : "
-                        + httpEntityEnclosingRequest + " : payload : " + payload);
+                         + httpEntityEnclosingRequest + " : payload : " + payload);
                 // Setting POST/PUT related headers
                 httpEntityEnclosingRequest.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);

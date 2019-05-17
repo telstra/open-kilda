@@ -28,6 +28,7 @@ import org.openkilda.integration.source.store.dto.InventorySwitch;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkProps;
+import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.PopLocation;
 import org.openkilda.model.SwitchDiscrepancy;
 import org.openkilda.model.SwitchInfo;
@@ -41,8 +42,10 @@ import org.apache.log4j.Logger;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.usermanagement.service.UserService;
 
 import java.util.ArrayList;
+
 import java.util.Date;
 import java.util.List;
 
@@ -64,6 +67,9 @@ public class SwitchService {
 
     @Autowired
     private StoreService storeService;
+    
+    @Autowired
+    private UserService userService;
     
     @Autowired
     private SwitchNameRepository switchNameRepository;
@@ -430,5 +436,31 @@ public class SwitchService {
         switchInfo.setSwitchId(switchId);
         switchInfo.setName(switchName);
         return switchInfo;
+    }
+
+    /**
+ * Switch under maintenance.
+     *
+     * @param switchId
+     *            the switch id
+     * @param switchInfo
+     *        the switch info
+     * @return the SwitchInfo
+     */
+    public SwitchInfo updateMaintenanceStatus(String switchId, SwitchInfo switchInfo) {
+        switchInfo = switchIntegrationService.updateMaintenanceStatus(switchId, switchInfo);
+        return switchInfo;
+        
+    }
+    
+    /**
+     * Updates the links under-maintenance status.
+     *
+     * @param linkUnderMaintenanceDto
+     *           the isl maintenance dto
+     * @return the isl link info
+    */
+    public List<IslLinkInfo> updateLinkMaintenanceStatus(LinkUnderMaintenanceDto linkUnderMaintenanceDto) {
+        return switchIntegrationService.updateIslLinks(linkUnderMaintenanceDto);
     }
 }

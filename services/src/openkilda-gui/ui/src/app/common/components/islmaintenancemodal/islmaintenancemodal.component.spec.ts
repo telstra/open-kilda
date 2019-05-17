@@ -1,20 +1,20 @@
 import { async, ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { IslEditComponent } from './isl-edit.component';
+import { IslmaintenancemodalComponent } from './islmaintenancemodal.component';
 
-describe('IslEditComponent', () => {
-  let component: IslEditComponent;
-  let fixture: ComponentFixture<IslEditComponent>;
+describe('IslmaintenancemodalComponent', () => {
+  let component: IslmaintenancemodalComponent;
+  let fixture: ComponentFixture<IslmaintenancemodalComponent>;
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [ IslEditComponent ]
+      declarations: [ IslmaintenancemodalComponent ]
     })
     .compileComponents();
   }));
 
   beforeEach(() => {
-    fixture = TestBed.createComponent(IslEditComponent);
+    fixture = TestBed.createComponent(IslmaintenancemodalComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
