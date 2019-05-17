@@ -4,8 +4,8 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.functionaltests.helpers.model.PotentialFlow
+import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.model.FlowDto
 import org.openkilda.messaging.model.FlowPairDto
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
