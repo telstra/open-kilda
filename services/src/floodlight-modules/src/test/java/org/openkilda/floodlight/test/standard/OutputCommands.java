@@ -16,11 +16,14 @@
 package org.openkilda.floodlight.test.standard;
 
 import static java.util.Collections.singletonList;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.LATENCY_PACKET_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.BDF_DEFAULT_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.CATCH_BFD_RULE_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_RULE_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_T1_OFFSET;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.BURST;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.KBPS;
@@ -40,6 +43,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
@@ -400,6 +404,40 @@ public interface OutputCommands {
                 .setActions(ImmutableList.of(
                         ofFactory.actions().buildOutput()
                                 .setPort(OFPort.LOCAL)
+                                .build()))
+                .build();
+    }
+
+    /**
+     * Expected result for install default round trip latency rule.
+     *
+     * @param dpid datapath of the switch.
+     * @return expected OFFlowAdd instance.
+     */
+    default OFFlowAdd installRoundTripLatencyRule(DatapathId dpid) {
+        Match match = ofFactory.buildMatch()
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                .setExact(MatchField.ETH_SRC, MacAddress.of(dpid))
+                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                .setExact(MatchField.UDP_DST, TransportPort.of(LATENCY_PACKET_UDP_PORT))
+                .build();
+        OFOxms oxms = ofFactory.oxms();
+
+        return ofFactory.buildFlowAdd()
+                .setCookie(U64.of(Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE))
+                .setMatch(match)
+                .setPriority(ROUND_TRIP_LATENCY_RULE_PRIORITY)
+                .setActions(ImmutableList.of(
+                        ofFactory.actions().buildNoviflowCopyField()
+                                .setNBits(64)
+                                .setSrcOffset(0)
+                                .setDstOffset(ROUND_TRIP_LATENCY_T1_OFFSET)
+                                .setOxmSrcHeader(oxms.buildNoviflowRxtimestamp().getTypeLen())
+                                .setOxmDstHeader(oxms.buildNoviflowPacketOffset().getTypeLen())
+                                .build(),
+                        ofFactory.actions().buildOutput()
+                                .setPort(OFPort.CONTROLLER)
+                                .setMaxLen(0xFFFFFFFF)
                                 .build()))
                 .build();
     }

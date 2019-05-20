@@ -31,6 +31,7 @@ public class Cookie implements Comparable<Cookie>, Serializable {
     public static final long VERIFICATION_UNICAST_RULE_COOKIE = 0x8000000000000003L;
     public static final long DROP_VERIFICATION_LOOP_RULE_COOKIE = 0x8000000000000004L;
     public static final long CATCH_BFD_RULE_COOKIE = 0x8000000000000005L;
+    public static final long ROUND_TRIP_LATENCY_RULE_COOKIE = 0x8000000000000006L;
     public static final long DEFAULT_RULES_MASK = 0x8000000000000000L;
 
     public static final long FORWARD_FLOW_COOKIE_MASK = 0x4000000000000000L;
