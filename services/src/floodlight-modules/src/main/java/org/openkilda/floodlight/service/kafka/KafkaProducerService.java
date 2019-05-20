@@ -93,7 +93,7 @@ public class KafkaProducerService implements IKafkaProducerService {
     }
 
     protected SendStatus produce(ProducerRecord<String, String> record, Callback callback) {
-        logger.debug("Send kafka message: {} <== {}", record.topic(), record.value());
+        logger.debug("Send kafka message: {} <== key:{} value:{}", record.topic(), record.key(), record.value());
         return getWorker(record.topic())
                 .send(record, callback);
     }

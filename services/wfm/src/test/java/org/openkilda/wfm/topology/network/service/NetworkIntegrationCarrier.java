@@ -19,6 +19,7 @@ import org.openkilda.messaging.command.reroute.RerouteFlows;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslDownReason;
 import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.IslReference;
@@ -180,8 +181,8 @@ public class NetworkIntegrationCarrier
     }
 
     @Override
-    public void notifyIslDown(Endpoint endpoint, IslReference reference, boolean isPhysicalDown) {
-        islService.islDown(endpoint, reference, isPhysicalDown);
+    public void notifyIslDown(Endpoint endpoint, IslReference reference, IslDownReason reason) {
+        islService.islDown(endpoint, reference, reason);
     }
 
     @Override

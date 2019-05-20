@@ -13,23 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.network.storm.bolt.isl.command;
+package org.openkilda.wfm.topology.network.storm.bolt.isl;
 
-import org.openkilda.model.IslDownReason;
-import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.IslReference;
-import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
+import org.openkilda.wfm.topology.network.service.IIslCarrier;
 
-public class IslDownCommand extends IslCommand {
-    private final IslDownReason reason;
+public class BfdManager {
+    private final IslReference reference;
 
-    public IslDownCommand(Endpoint endpoint, IslReference reference, IslDownReason reason) {
-        super(endpoint, reference);
-        this.reason = reason;
+    public BfdManager(IslReference reference) {
+        this.reference = reference;
     }
 
-    @Override
-    public void apply(IslHandler handler) {
-        handler.processIslDown(getEndpoint(), getReference(), reason);
+    public void enable(IIslCarrier carrier) {
+        carrier.bfdEnableRequest(reference.getSource(), reference);
+        carrier.bfdEnableRequest(reference.getDest(), reference);
+    }
+
+    public void disable(IIslCarrier carrier) {
+        carrier.bfdDisableRequest(reference.getSource());
+        carrier.bfdDisableRequest(reference.getDest());
     }
 }

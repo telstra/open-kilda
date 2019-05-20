@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,16 +13,31 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.wfm.topology.network.model;
 
-import org.openkilda.model.BfdPort;
-import org.openkilda.model.SwitchId;
+import org.openkilda.model.IslDownReason;
 
-import java.util.Optional;
+import lombok.Getter;
+import lombok.Value;
 
-public interface BfdPortRepository extends Repository<BfdPort> {
+@Value
+public class IslEndpointStatus {
+    @Getter
+    private Status status;
 
-    boolean exists(SwitchId switchId, Integer port);
+    @Getter
+    private IslDownReason downReason;
 
-    Optional<BfdPort> findBySwitchIdAndPort(SwitchId switchId, Integer port);
+    public IslEndpointStatus(Status status) {
+        this(status, null);
+    }
+
+    public IslEndpointStatus(Status status, IslDownReason downReason) {
+        this.status = status;
+        this.downReason = downReason;
+    }
+
+    public enum Status {
+        UP, DOWN, MOVED
+    }
 }
