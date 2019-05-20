@@ -254,10 +254,10 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
 
         islRepository.createOrUpdate(isl);
 
-        buildFlowWithPath(0, 0);
+        Flow flow = buildFlowWithPath(0, 0);
 
         List<Isl> foundIsls = Lists.newArrayList(
-                islRepository.findActiveAndOccupiedByFlowWithAvailableBandwidth(TEST_FLOW_ID, 100));
+                islRepository.findActiveAndOccupiedByFlowPathWithAvailableBandwidth(flow.getFlowPathIds(), 100));
         assertThat(foundIsls, Matchers.hasSize(1));
     }
 
@@ -273,10 +273,10 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
 
         islRepository.createOrUpdate(isl);
 
-        buildFlowWithPath(0, 0);
+        Flow flow = buildFlowWithPath(0, 0);
 
         List<Isl> foundIsls = Lists.newArrayList(
-                islRepository.findActiveAndOccupiedByFlowWithAvailableBandwidth(TEST_FLOW_ID, 100));
+                islRepository.findActiveAndOccupiedByFlowPathWithAvailableBandwidth(flow.getFlowPathIds(), 100));
         assertThat(foundIsls, Matchers.hasSize(0));
     }
 
@@ -415,7 +415,7 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         assertEquals(0, islRepository.findSymmetricActiveWithAvailableBandwidth(availableBandwidth).size());
     }
 
-    private void buildFlowWithPath(int forwardBandwidth, int reverseBandwidth) {
+    private Flow buildFlowWithPath(int forwardBandwidth, int reverseBandwidth) {
         Flow flow = Flow.builder()
                 .flowId(TEST_FLOW_ID)
                 .srcSwitch(switchA)
@@ -472,5 +472,6 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         reversePath.setSegments(Collections.singletonList(reverseSegment));
 
         flowRepository.createOrUpdate(flow);
+        return flow;
     }
 }

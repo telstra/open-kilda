@@ -13,16 +13,26 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flow.model;
+package org.openkilda.messaging.payload.flow;
 
-import org.openkilda.model.UnidirectionalFlow;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
+import lombok.NonNull;
 
-import lombok.AllArgsConstructor;
-import lombok.Value;
+@Data
+public class FlowPathSwapPayload {
 
-@Value
-@AllArgsConstructor
-public class ReroutedFlow {
-    private final UnidirectionalFlow oldFlow;
-    private final UnidirectionalFlow newFlow;
+    @JsonProperty("flow_id")
+    protected String flowId;
+
+    @JsonProperty("path_id")
+    protected String pathId;
+
+    @JsonCreator
+    public FlowPathSwapPayload(@NonNull @JsonProperty("flow_id") String flowId,
+                               @JsonProperty("path_id") String pathId) {
+        this.flowId = flowId;
+        this.pathId = pathId;
+    }
 }

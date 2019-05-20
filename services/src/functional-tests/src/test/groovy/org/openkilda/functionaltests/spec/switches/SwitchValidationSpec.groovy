@@ -19,7 +19,6 @@ import org.openkilda.model.Cookie
 import org.openkilda.model.MeterId
 import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.transform.Memoized
@@ -85,7 +84,7 @@ class SwitchValidationSpec extends BaseSpecification {
 
         and: "The rest fields in the 'meter' section are empty"
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
-            verifyMeterSectionsAreEmpty(it, ["missing", "misconfigured", "excess"])
+            switchHelper.verifyMeterSectionsAreEmpty(it, ["missing", "misconfigured", "excess"])
         }
 
         and: "Created rules are stored in the 'proper' section"
@@ -96,7 +95,7 @@ class SwitchValidationSpec extends BaseSpecification {
 
         and: "The rest fields in the 'rule' section are empty"
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
-            verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
+            switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
         }
 
         when: "Delete the flow"
@@ -107,8 +106,8 @@ class SwitchValidationSpec extends BaseSpecification {
             def srcSwitchValidateInfoAfterDelete = northbound.validateSwitch(srcSwitch.dpId)
             def dstSwitchValidateInfoAfterDelete = northbound.validateSwitch(dstSwitch.dpId)
             [srcSwitchValidateInfoAfterDelete, dstSwitchValidateInfoAfterDelete].each {
-                verifyRuleSectionsAreEmpty(it)
-                verifyMeterSectionsAreEmpty(it)
+                switchHelper.verifyRuleSectionsAreEmpty(it)
+                switchHelper.verifyMeterSectionsAreEmpty(it)
             }
         }
     }
@@ -165,14 +164,14 @@ class SwitchValidationSpec extends BaseSpecification {
 
         and: "The rest fields of 'meter' section are empty"
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
-            verifyMeterSectionsAreEmpty(it, ["missing", "proper", "excess"])
+            switchHelper.verifyMeterSectionsAreEmpty(it, ["missing", "proper", "excess"])
         }
 
         and: "Created rules are still stored in the 'proper' section"
         def createdCookies = srcSwitchCreatedCookies + dstSwitchCreatedCookies
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
             it.rules.proper.containsAll(createdCookies)
-            verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
+            switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
         }
 
         when: "Restore correct bandwidth via DB"
@@ -186,7 +185,7 @@ class SwitchValidationSpec extends BaseSpecification {
         dstSwitchValidateInfoRestored.meters.proper*.meterId.containsAll(dstSwitchCreatedMeterIds)
 
         [srcSwitchValidateInfoRestored, dstSwitchValidateInfoRestored].each {
-            verifyMeterSectionsAreEmpty(it, ["missing", "misconfigured", "excess"])
+            switchHelper.verifyMeterSectionsAreEmpty(it, ["missing", "misconfigured", "excess"])
         }
 
         when: "Delete the flow"
@@ -197,8 +196,8 @@ class SwitchValidationSpec extends BaseSpecification {
             def srcSwitchValidateInfoAfterDelete = northbound.validateSwitch(srcSwitch.dpId)
             def dstSwitchValidateInfoAfterDelete = northbound.validateSwitch(dstSwitch.dpId)
             [srcSwitchValidateInfoAfterDelete, dstSwitchValidateInfoAfterDelete].each {
-                verifyRuleSectionsAreEmpty(it)
-                verifyMeterSectionsAreEmpty(it)
+                switchHelper.verifyRuleSectionsAreEmpty(it)
+                switchHelper.verifyMeterSectionsAreEmpty(it)
             }
         }
     }
@@ -236,8 +235,8 @@ class SwitchValidationSpec extends BaseSpecification {
         }
 
         and: "The rest sections are empty on the srcSwitch"
-        verifyMeterSectionsAreEmpty(srcSwitchValidateInfo, ["misconfigured", "proper", "excess"])
-        verifyRuleSectionsAreEmpty(srcSwitchValidateInfo, ["excess"])
+        switchHelper.verifyMeterSectionsAreEmpty(srcSwitchValidateInfo, ["misconfigured", "proper", "excess"])
+        switchHelper.verifyRuleSectionsAreEmpty(srcSwitchValidateInfo, ["excess"])
 
         and: "Meters info/rules are NOT moved into the 'missing' section on the dstSwitch"
         def createdCookies = srcSwitchCreatedCookies + dstSwitchCreatedCookies
@@ -259,8 +258,8 @@ class SwitchValidationSpec extends BaseSpecification {
         }
 
         and: "The rest sections are empty on the dstSwitch"
-        verifyMeterSectionsAreEmpty(dstSwitchValidateInfo, ["missing", "misconfigured", "excess"])
-        verifyRuleSectionsAreEmpty(dstSwitchValidateInfo, ["missing", "excess"])
+        switchHelper.verifyMeterSectionsAreEmpty(dstSwitchValidateInfo, ["missing", "misconfigured", "excess"])
+        switchHelper.verifyRuleSectionsAreEmpty(dstSwitchValidateInfo, ["missing", "excess"])
 
         when: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
@@ -270,8 +269,8 @@ class SwitchValidationSpec extends BaseSpecification {
             def srcSwitchValidateInfoAfterDelete = northbound.validateSwitch(srcSwitch.dpId)
             def dstSwitchValidateInfoAfterDelete = northbound.validateSwitch(dstSwitch.dpId)
             [srcSwitchValidateInfoAfterDelete, dstSwitchValidateInfoAfterDelete].each {
-                verifyRuleSectionsAreEmpty(it)
-                verifyMeterSectionsAreEmpty(it)
+                switchHelper.verifyRuleSectionsAreEmpty(it)
+                switchHelper.verifyMeterSectionsAreEmpty(it)
             }
         }
     }
@@ -332,12 +331,12 @@ class SwitchValidationSpec extends BaseSpecification {
 
         and: "The rest fields are empty on the src and dst switches"
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
-            verifyMeterSectionsAreEmpty(it, ["misconfigured", "proper"])
+            switchHelper.verifyMeterSectionsAreEmpty(it, ["misconfigured", "proper"])
         }
 
         and: "Rules still exist in the 'proper' section on the src and dst switches"
         [srcSwitchValidateInfo, dstSwitchValidateInfo].each {
-            verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
+            switchHelper.verifyRuleSectionsAreEmpty(it, ["missing", "excess"])
         }
 
         when: "Delete the flow"
@@ -352,8 +351,8 @@ class SwitchValidationSpec extends BaseSpecification {
             def srcSwitchValidateInfoAfterDelete = northbound.validateSwitch(srcSwitch.dpId)
             def dstSwitchValidateInfoAfterDelete = northbound.validateSwitch(dstSwitch.dpId)
             [srcSwitchValidateInfoAfterDelete, dstSwitchValidateInfoAfterDelete].each {
-                verifyRuleSectionsAreEmpty(it)
-                verifyMeterSectionsAreEmpty(it)
+                switchHelper.verifyRuleSectionsAreEmpty(it)
+                switchHelper.verifyMeterSectionsAreEmpty(it)
             }
         }
     }
@@ -377,11 +376,11 @@ class SwitchValidationSpec extends BaseSpecification {
         then: "The intermediate switch does not contain any information about meter"
         def switchToValidate = flowPath[1..-2].find { !it.switchId.description.contains("OF_12") }
         def intermediateSwitchValidateInfo = northbound.validateSwitch(switchToValidate.switchId)
-        verifyMeterSectionsAreEmpty(intermediateSwitchValidateInfo)
+        switchHelper.verifyMeterSectionsAreEmpty(intermediateSwitchValidateInfo)
 
         and: "Rules are stored in the 'proper' section on the transit switch"
         intermediateSwitchValidateInfo.rules.proper.size() == 2
-        verifyRuleSectionsAreEmpty(intermediateSwitchValidateInfo, ["missing", "excess"])
+        switchHelper.verifyRuleSectionsAreEmpty(intermediateSwitchValidateInfo, ["missing", "excess"])
 
         when: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
@@ -390,8 +389,8 @@ class SwitchValidationSpec extends BaseSpecification {
         flowPath.each {
             if (switchHelper.getDescription(it.switchId).contains("OF_13")) {
                 def switchValidateInfo = northbound.validateSwitch(it.switchId)
-                verifyMeterSectionsAreEmpty(switchValidateInfo)
-                verifyRuleSectionsAreEmpty(switchValidateInfo)
+                switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo)
+                switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo)
             }
         }
     }
@@ -422,12 +421,12 @@ class SwitchValidationSpec extends BaseSpecification {
         then: "Rule info is moved into the 'missing' section on the srcSwitch"
         def srcSwitchValidateInfo = northbound.validateSwitch(switchPair.src.dpId)
         srcSwitchValidateInfo.rules.missing.containsAll(createdCookies)
-        verifyRuleSectionsAreEmpty(srcSwitchValidateInfo, ["proper", "excess"])
+        switchHelper.verifyRuleSectionsAreEmpty(srcSwitchValidateInfo, ["proper", "excess"])
 
         and: "Rule info is NOT moved into the 'missing' section on the dstSwitch and transit switches"
         def dstSwitchValidateInfo = northbound.validateSwitch(switchPair.dst.dpId)
         dstSwitchValidateInfo.rules.proper.containsAll(createdCookies)
-        verifyRuleSectionsAreEmpty(dstSwitchValidateInfo, ["missing", "excess"])
+        switchHelper.verifyRuleSectionsAreEmpty(dstSwitchValidateInfo, ["missing", "excess"])
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)*.dpId
         def transitSwitches = involvedSwitches[1..-2].findAll { !it.description.contains("OF_12") }
 
@@ -435,7 +434,7 @@ class SwitchValidationSpec extends BaseSpecification {
             def transitSwitchValidateInfo = northbound.validateSwitch(switchId)
             assert transitSwitchValidateInfo.rules.proper.containsAll(createdCookies)
             assert transitSwitchValidateInfo.rules.proper.size() == 2
-            verifyRuleSectionsAreEmpty(transitSwitchValidateInfo, ["missing", "excess"])
+            switchHelper.verifyRuleSectionsAreEmpty(transitSwitchValidateInfo, ["missing", "excess"])
         }
 
         // TODO(andriidovhan) add synchronizeSwitch and check that rule inflo is moved back into the 'proper' section
@@ -450,7 +449,7 @@ class SwitchValidationSpec extends BaseSpecification {
                 def involvedSwitchValidateInfo = northbound.validateSwitch(switchId)
                 assert involvedSwitchValidateInfo.rules.missing.containsAll(createdCookies)
                 assert involvedSwitchValidateInfo.rules.missing.size() == 2
-                verifyRuleSectionsAreEmpty(involvedSwitchValidateInfo, ["proper", "excess"])
+                switchHelper.verifyRuleSectionsAreEmpty(involvedSwitchValidateInfo, ["proper", "excess"])
             }
         }
 
@@ -461,15 +460,15 @@ class SwitchValidationSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             involvedSwitches.findAll { !it.description.contains("OF_12") }.each { switchId ->
                 def switchValidateInfo = northbound.validateSwitch(switchId)
-                verifyRuleSectionsAreEmpty(switchValidateInfo)
-                verifyMeterSectionsAreEmpty(switchValidateInfo)
+                switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo)
+                switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo)
             }
         }
     }
 
     def "Switch validate is able to detect rule info in the 'excess' section"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair->
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
             def possibleDefaultPaths = pair.paths.findAll { it.size() == pair.paths.min { it.size() }.size() }
             //ensure the path won't have only OF_12 intermediate switches
             def hasOf13Path = !possibleDefaultPaths.find { path ->
@@ -492,7 +491,7 @@ class SwitchValidationSpec extends BaseSpecification {
         def producer = new KafkaProducer(producerProps)
         //pick a meter id which is not yet used on src switch
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(switchPair.dst.dpId)
-                                                                  .meterEntries*.meterId).first()
+                .meterEntries*.meterId).first()
         producer.send(new ProducerRecord(flowTopic, switchPair.dst.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), flow.id, 1L, switchPair.dst.dpId, 1, 2, 1, 1,
                         OutputVlanType.REPLACE)).toJson()))
@@ -516,7 +515,7 @@ class SwitchValidationSpec extends BaseSpecification {
                 def involvedSwitchValidateInfo = northbound.validateSwitch(switchId)
                 assert involvedSwitchValidateInfo.rules.proper.containsAll(createdCookies)
                 assert involvedSwitchValidateInfo.rules.proper.size() == 2
-                verifyRuleSectionsAreEmpty(involvedSwitchValidateInfo, ["missing"])
+                switchHelper.verifyRuleSectionsAreEmpty(involvedSwitchValidateInfo, ["missing"])
 
                 assert involvedSwitchValidateInfo.rules.excess.size() == 1
                 assert involvedSwitchValidateInfo.rules.excess == [1L]
@@ -549,8 +548,8 @@ class SwitchValidationSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             involvedSwitches.findAll { !it.description.contains("OF_12") }.each { switchId ->
                 def switchValidateInfo = northbound.validateSwitch(switchId)
-                verifyRuleSectionsAreEmpty(switchValidateInfo)
-                verifyMeterSectionsAreEmpty(switchValidateInfo)
+                switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo)
+                switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo)
             }
         }
 
@@ -576,20 +575,6 @@ class SwitchValidationSpec extends BaseSpecification {
         return northbound.getSwitchRules(switchId).flowEntries.findAll {
             !Cookie.isDefaultRule(it.cookie) && it.instructions.goToMeter
         }*.cookie
-    }
-
-    void verifyMeterSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
-            List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
-        sections.each {
-            assert switchValidateInfo.meters."$it".empty
-        }
-    }
-
-    void verifyRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
-            List<String> sections = ["missing", "proper", "excess"]) {
-        sections.each {
-            assert switchValidateInfo.rules."$it".empty
-        }
     }
 
     void verifyBurstSizeIsCorrect(Long expected, Long actual) {

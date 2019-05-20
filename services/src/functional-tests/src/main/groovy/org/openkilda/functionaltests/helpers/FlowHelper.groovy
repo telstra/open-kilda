@@ -5,12 +5,15 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.model.FlowDto
 import org.openkilda.messaging.model.FlowPairDto
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.messaging.payload.flow.PathNodePayload
+import org.openkilda.model.Cookie
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
@@ -65,8 +68,8 @@ class FlowHelper {
                                             List<FlowPayload> existingFlows = []) {
         Wrappers.retry(3, 0) {
             def newFlow = new FlowCreatePayload(generateFlowId(), getFlowEndpoint(srcSwitch, useTraffgenPorts),
-                    getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, "autotest flow", null, null, null,
-                    null, null, null)
+                    getFlowEndpoint(dstSwitch, useTraffgenPorts), 500, false, false, false, "autotest flow", null, null,
+                    null, null, null, null)
             if (flowConflicts(newFlow, existingFlows)) {
                 throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
             }
@@ -86,7 +89,7 @@ class FlowHelper {
         Wrappers.retry(3, 0) {
             def srcEndpoint = getFlowEndpoint(sw, allowedPorts, useTraffgenPorts)
             def dstEndpoint = getFlowEndpoint(sw, allowedPorts - srcEndpoint.portNumber, useTraffgenPorts)
-            def newFlow = new FlowCreatePayload(generateFlowId(), srcEndpoint, dstEndpoint, 500, false, false,
+            def newFlow = new FlowCreatePayload(generateFlowId(), srcEndpoint, dstEndpoint, 500, false, false, false,
                     "autotest flow", null, null, null, null, null, null)
             if (flowConflicts(newFlow, existingFlows)) {
                 throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
@@ -187,6 +190,98 @@ class FlowHelper {
                         (newEp.vlanId == it.vlanId || it.vlanId == 0 || newEp.vlanId == 0)
             }
         } || existingFlows*.id.contains(newFlow.id)
+    }
+
+    /**
+     * Check that all needed rules are created for a flow with protected path.
+     * Protected path creates the 'egress' rule only on the src and dst switches
+     * and creates 2 rules(input/output) on the transit switches
+     * if (switchId == src/dst): 2 rules for main flow path + 1 egress for protected path = 3
+     * if (switchId != src/dst): 2 rules for main flow path + 2 rules for protected path = 4
+     *
+     * @param flowId
+     */
+    void verifyRulesOnProtectedFlow(String flowId) {
+        // TODO (andriidovhan) add possibility to use this method when we have more than 1 flow on a switch
+        // then update addFlow/deleteFlow/updateFlow
+        def flowPathInfo = northbound.getFlowPath(flowId)
+        def mainFlowPath = flowPathInfo.forwardPath
+        def srcMainSwitch = mainFlowPath[0]
+        def dstMainSwitch = mainFlowPath[-1]
+        def mainFlowTransitSwitches = mainFlowPath[1..-2]
+        def protectedFlowPath = flowPathInfo.protectedPath.forwardPath
+        def srcProtectedSwitch = protectedFlowPath[0]
+        def dstProtectedSwitch = protectedFlowPath[-1]
+        def protectedFlowTransitSwitches = protectedFlowPath[1..-2]
+
+        def commonSwitches = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
+        def commonTransitSwitches = mainFlowTransitSwitches*.switchId.intersect(protectedFlowTransitSwitches*.switchId)
+
+        def rulesOnSrcSwitch = northbound.getSwitchRules(srcMainSwitch.switchId).flowEntries.findAll {
+            !Cookie.isDefaultRule(it.cookie)
+        }
+        assert rulesOnSrcSwitch.size() == 3
+        //rules for main path
+        assert findForwardPathRules(rulesOnSrcSwitch, srcMainSwitch).size() == 1
+        assert findReversePathRules(rulesOnSrcSwitch, srcMainSwitch).size() == 1
+        //rule for protected path
+        assert findForwardPathRules(rulesOnSrcSwitch, srcProtectedSwitch).size() == 0
+        assert findReversePathRules(rulesOnSrcSwitch, srcProtectedSwitch).size() == 1
+
+        def rulesOnDstSwitch = northbound.getSwitchRules(dstMainSwitch.switchId).flowEntries.findAll {
+            !Cookie.isDefaultRule(it.cookie)
+        }
+        assert rulesOnDstSwitch.size() == 3
+        //rules for main path
+        assert findForwardPathRules(rulesOnDstSwitch, dstMainSwitch).size() == 1
+        assert findReversePathRules(rulesOnDstSwitch, dstMainSwitch).size() == 1
+        //rule for protected path
+        assert findForwardPathRules(rulesOnDstSwitch, dstProtectedSwitch).size() == 1
+        assert findReversePathRules(rulesOnDstSwitch, dstProtectedSwitch).size() == 0
+
+        //this loop checks rules on common nodes(except src and dst switches)
+        commonTransitSwitches.each { sw ->
+            def rules = northbound.getSwitchRules(sw).flowEntries.findAll {
+                !Cookie.isDefaultRule(it.cookie)
+            }
+            assert rules.size() == 4
+
+            def mainNode = mainFlowTransitSwitches.find { it.switchId == sw }
+            assert findForwardPathRules(rules, mainNode).size() == 1
+            assert findReversePathRules(rules, mainNode).size() == 1
+
+            def protectedNode = protectedFlowTransitSwitches.find { it.switchId == sw }
+            assert findForwardPathRules(rules, protectedNode).size() == 1
+            assert findReversePathRules(rules, protectedNode).size() == 1
+        }
+
+        def uniqueTransitSwitches = protectedFlowTransitSwitches.findAll { !commonSwitches.contains(it.switchId) } +
+                mainFlowTransitSwitches.findAll { !commonSwitches.contains(it.switchId) }
+
+        //this loop checks rules on unique nodes
+        uniqueTransitSwitches.each { node ->
+            def rules = northbound.getSwitchRules(node.switchId).flowEntries.findAll {
+                !Cookie.isDefaultRule(it.cookie)
+            }
+            assert rules.size() == 2
+
+            assert findForwardPathRules(rules, node).size() == 1
+            assert findReversePathRules(rules, node).size() == 1
+        }
+    }
+
+    List<FlowEntry> findForwardPathRules(List<FlowEntry> rules, PathNodePayload node) {
+        return rules.findAll {
+            it.match.inPort == node.inputPort.toString() &&
+                    it.instructions.applyActions.flowOutput == node.outputPort.toString()
+        }
+    }
+
+    List<FlowEntry> findReversePathRules(List<FlowEntry> rules, PathNodePayload node) {
+        return rules.findAll {
+            it.instructions?.applyActions?.flowOutput == node.inputPort.toString() &&
+                    it.match.inPort == node.outputPort.toString()
+        }
     }
 
     /**
