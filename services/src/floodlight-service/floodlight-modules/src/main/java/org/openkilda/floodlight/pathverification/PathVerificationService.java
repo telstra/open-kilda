@@ -104,11 +104,43 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     public static final U64 OF_CATCH_RULE_COOKIE = U64.of(Cookie.VERIFICATION_BROADCAST_RULE_COOKIE);
 
     public static final int DISCOVERY_PACKET_UDP_PORT = 61231;
+    public static final int LATENCY_PACKET_UDP_PORT = 61232;
+    public static final long TEN_TO_NINE = 1_000_000_000;
     public static final String DISCOVERY_PACKET_IP_DST = "192.168.0.255";
     public static final byte REMOTE_SWITCH_OPTIONAL_TYPE = 0x00;
     public static final byte TIMESTAMP_OPTIONAL_TYPE = 0x01;
     public static final byte PATH_ORDINAL_OPTIONAL_TYPE = 0x02;
     public static final byte TOKEN_OPTIONAL_TYPE = 0x03;
+    public static final byte SWITCH_T0_OPTIONAL_TYPE = 0x04;
+    public static final byte SWITCH_T1_OPTIONAL_TYPE = 0x05;
+    public static final int ETHERNET_HEADER_SIZE = 112; // 48 dst mac, 48 src mac, 16 ether type
+    public static final int IP_V4_HEADER_SIZE = 160; /*
+                                                      * 4 version, 4 IHL, 8 Type of service, 16 length, 16 ID,
+                                                      * 4 flags, 12 Fragment Offset, 8 TTL, 8 Protocol,
+                                                      * 16 checksum, 32 src IP, 32 dst IP
+                                                      */
+    public static final int UDP_HEADER_SIZE = 64;                    // 16 src port, 16 dst port, 16 length, 16 checksum
+    public static final int LLDP_TLV_CHASSIS_ID_TOTAL_SIZE = 72;     // 7 type, 9 length, 56 chassisId
+    public static final int LLDP_TLV_PORT_ID_TOTAL_SIZE = 40;        // 7 type, 9 length, 24 port
+    public static final int LLDP_TLV_TTL_TOTAL_SIZE = 32;            // 7 type, 9 length, 16 port
+    public static final int ROUND_TRIP_LATENCY_TIMESTAMP_SIZE = 64;  // 24 bits OUI, 8 bits optional type
+    public static final int LLDP_TLV_HEADER_SIZE = 16;               // 7 type, 9 length
+    public static final int LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES = 4; // 24 bits OUI, 8 bits optional type
+
+    public static final int ROUND_TRIP_LATENCY_T0_OFFSET = ETHERNET_HEADER_SIZE
+                                                         + IP_V4_HEADER_SIZE
+                                                         + UDP_HEADER_SIZE
+                                                         + LLDP_TLV_CHASSIS_ID_TOTAL_SIZE
+                                                         + LLDP_TLV_PORT_ID_TOTAL_SIZE
+                                                         + LLDP_TLV_TTL_TOTAL_SIZE
+                                                         + LLDP_TLV_HEADER_SIZE
+                                                         + (LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES * 8);
+
+    public static final int ROUND_TRIP_LATENCY_T1_OFFSET = ROUND_TRIP_LATENCY_T0_OFFSET
+                                                         + ROUND_TRIP_LATENCY_TIMESTAMP_SIZE
+                                                         + LLDP_TLV_HEADER_SIZE
+                                                         + (LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES * 8);
+
     public static final byte[] ORGANIZATIONALLY_UNIQUE_IDENTIFIER = new byte[] {0x00, 0x26, (byte) 0xe1};
 
     private IKafkaProducerService producerService;
@@ -264,6 +296,18 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         return result;
     }
 
+    private static LLDPTLV switchTimestampTlv(byte type) {
+        byte[] timestampArray = ByteBuffer
+                .allocate(ROUND_TRIP_LATENCY_TIMESTAMP_SIZE / 8 + LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES)
+                .put(ORGANIZATIONALLY_UNIQUE_IDENTIFIER)
+                .put(type)
+                .putLong(0L) // placeholder for timestamp
+                .array();
+
+        return new LLDPTLV().setType(OPTIONAL_LLDPTV_PACKET_TYPE)
+                .setLength((short) timestampArray.length).setValue(timestampArray);
+    }
+
     /**
      * Return Discovery packet.
      *
@@ -286,7 +330,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             byte[] dpidTlvValue = Arrays.concatenate(
                     ORGANIZATIONALLY_UNIQUE_IDENTIFIER,
                     new byte[] {REMOTE_SWITCH_OPTIONAL_TYPE, 0, 0, 0, 0, 0, 0, 0, 0});
-            System.arraycopy(dpidArray, 0, dpidTlvValue, 4, 8);
+            System.arraycopy(dpidArray, 0, dpidTlvValue, LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES, 8);
 
             // Set src mac to be able to detect the origin of the packet.
             // NB: previously we set port's address instead of switch (some switches declare unique address per port)
@@ -304,13 +348,19 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                     .ttl(makeIdLldptvPacket(ttlValue, TTL_LLDPTV_PACKET_TYPE))
                     .build();
 
+            // Add TLV for t0, this will be overwritten by the switch if it supports switch timestamps
+            dp.getOptionalTlvList().add(switchTimestampTlv(SWITCH_T0_OPTIONAL_TYPE));
+
+            // Add TLV for t1, this will be overwritten by the switch if it supports switch timestamps
+            dp.getOptionalTlvList().add(switchTimestampTlv(SWITCH_T1_OPTIONAL_TYPE));
+
             LLDPTLV dpidTlv = makeIdLldptvPacket(dpidTlvValue, OPTIONAL_LLDPTV_PACKET_TYPE);
             dp.getOptionalTlvList().add(dpidTlv);
 
             // Add T0 based on format from Floodlight LLDP
             long time = System.currentTimeMillis();
             long swLatency = srcSw.getLatency().getValue();
-            byte[] timestampTlvValue = ByteBuffer.allocate(Long.SIZE / 8 + 4)
+            byte[] timestampTlvValue = ByteBuffer.allocate(Long.SIZE / 8 + LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES)
                     .put(ORGANIZATIONALLY_UNIQUE_IDENTIFIER)
                     .put(TIMESTAMP_OPTIONAL_TYPE) // 0x01 is what we'll use to differentiate DPID 0x00 from time 0x01
                     .putLong(time + swLatency /* account for our switch's one-way latency */)
@@ -321,7 +371,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             dp.getOptionalTlvList().add(timestampTlv);
 
             // Type
-            byte[] typeTlvValue = ByteBuffer.allocate(Integer.SIZE / 8 + 4)
+            byte[] typeTlvValue = ByteBuffer.allocate(Integer.SIZE / 8 + LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES)
                     .put(ORGANIZATIONALLY_UNIQUE_IDENTIFIER)
                     .put(PATH_ORDINAL_OPTIONAL_TYPE)
                     .putInt(PathType.ISL.ordinal()).array();
@@ -339,7 +389,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
                 byte[] tokenBytes = token.getBytes(Charset.forName("UTF-8"));
 
-                byte[] tokenTlvValue = ByteBuffer.allocate(4 + tokenBytes.length)
+                byte[] tokenTlvValue = ByteBuffer.allocate(LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES + tokenBytes.length)
                         .put(ORGANIZATIONALLY_UNIQUE_IDENTIFIER)
                         .put(TOKEN_OPTIONAL_TYPE)
                         .put(tokenBytes).array();
@@ -391,7 +441,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             if (ip.getPayload() instanceof UDP) {
                 UDP udp = (UDP) ip.getPayload();
 
-                if (isUdpHasSpecifiedSrdDstPort(udp, PathVerificationService.DISCOVERY_PACKET_UDP_PORT)) {
+                if (isUdpHasSpecifiedSrdDstPort(udp, DISCOVERY_PACKET_UDP_PORT)) {
                     return new DiscoveryPacket((Data) udp.getPayload());
                 }
             }
@@ -401,6 +451,22 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
     private boolean isUdpHasSpecifiedSrdDstPort(UDP udp, int port) {
         return udp.getSourcePort().getPort() == port && udp.getDestinationPort().getPort() == port;
+    }
+
+    /**
+     * Create a representation of a timestamp from a noviflow Switch software timestamp. The timestamp is presented
+     * in 8 bytes with the first 4 bytes representing EPOCH in seconds and the second set of 4 bytes nanoseconds.
+     *
+     * @param timestamp Noviflow timestamp
+     * @return timestamp in nanoseconds
+     */
+    @VisibleForTesting
+    static long noviflowTimestamp(byte[] timestamp) {
+        ByteBuffer buffer = ByteBuffer.wrap(timestamp);
+        long seconds = buffer.getInt(0);
+        long nanoseconds = buffer.getInt(4);
+
+        return seconds * TEN_TO_NINE + nanoseconds;
     }
 
     void handlePacketIn(OfInput input) {
@@ -484,21 +550,30 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         DiscoveryPacketData.DiscoveryPacketDataBuilder builder = DiscoveryPacketData.builder();
         builder.remotePort(remotePort);
         builder.pathOrdinal(10);
+        builder.switchT0(-1);
+        builder.switchT1(-1);
 
         for (LLDPTLV lldptlv : discoveryPacket.getOptionalTlvList()) {
             if (matchOptionalLldptlv(lldptlv, REMOTE_SWITCH_OPTIONAL_TYPE, 12)) {
                 ByteBuffer dpidBb = ByteBuffer.wrap(lldptlv.getValue());
-                builder.remoteSwitchId(DatapathId.of(dpidBb.getLong(4)));
+                builder.remoteSwitchId(DatapathId.of(dpidBb.getLong(LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES)));
             } else if (matchOptionalLldptlv(lldptlv, TIMESTAMP_OPTIONAL_TYPE, 12)) {
                 ByteBuffer tsBb = ByteBuffer.wrap(lldptlv.getValue()); // skip OpenFlow OUI (4 bytes above)
-                builder.timestamp(tsBb.getLong(4) + switchLatency);    // include the RX switch latency to "subtract" it
+                long sendTime = tsBb.getLong(LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES);
+                builder.timestamp(sendTime + switchLatency); // include the RX switch latency to "subtract" it
             } else if (matchOptionalLldptlv(lldptlv, PATH_ORDINAL_OPTIONAL_TYPE, 8)) {
                 ByteBuffer typeBb = ByteBuffer.wrap(lldptlv.getValue());
-                builder.pathOrdinal(typeBb.getInt(4));
+                builder.pathOrdinal(typeBb.getInt(LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES));
+            } else if (matchOptionalLldptlv(lldptlv, SWITCH_T0_OPTIONAL_TYPE, 12)) {
+                builder.switchT0(noviflowTimestamp(Arrays.copyOfRange(
+                        lldptlv.getValue(), LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES, lldptlv.getValue().length)));
+            } else if (matchOptionalLldptlv(lldptlv, SWITCH_T1_OPTIONAL_TYPE, 12)) {
+                builder.switchT1(noviflowTimestamp(Arrays.copyOfRange(
+                        lldptlv.getValue(), LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES, lldptlv.getValue().length)));
             } else if (matchOptionalLldptlv(lldptlv, TOKEN_OPTIONAL_TYPE)) {
                 ByteBuffer bb = ByteBuffer.wrap(lldptlv.getValue());
-                bb.position(4);
-                byte[] tokenArray = new byte[lldptlv.getLength() - 4];
+                bb.position(LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES);
+                byte[] tokenArray = new byte[lldptlv.getLength() - LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES];
                 bb.get(tokenArray, 0, tokenArray.length);
                 String token = new String(tokenArray);
 
