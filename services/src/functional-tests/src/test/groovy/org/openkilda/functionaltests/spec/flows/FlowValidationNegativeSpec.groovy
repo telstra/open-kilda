@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.model.FlowDto
 import org.openkilda.model.SwitchId
@@ -114,6 +115,56 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         "reroute"     | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
         "validate"    | "Could not validate flow: Flow $NON_EXISTENT_FLOW_ID not found"
         "synchronize" | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
+    }
+
+    def "Able to detect discrepancies for a flow with protected path"() {
+        when: "Create a flow with protected path"
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def flow = flowHelper.randomFlow(switchPair)
+        flow.allocateProtectedPath = true
+        flowHelper.addFlow(flow)
+
+        then: "Flow with protected path is created"
+        northbound.getFlowPath(flow.id).protectedPath
+
+        and: "Validation of flow with protected path must be successful"
+        northbound.validateFlow(flow.id).each { direction ->
+            assert direction.discrepancies.empty
+        }
+
+        when: "Delete rule of protected path on the srcSwitch"
+        def flowPathInfo = northbound.getFlowPath(flow.id)
+        def protectedPath = flowPathInfo.protectedPath.forwardPath
+        def rules = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
+            !org.openkilda.model.Cookie.isDefaultRule(it.cookie)
+        }
+
+        def ruleToDelete = rules.find {
+            it.instructions?.applyActions?.flowOutput == protectedPath[0].inputPort.toString() &&
+                    it.match.inPort == protectedPath[0].outputPort.toString()
+        }.cookie
+
+        northbound.deleteSwitchRules(switchPair.src.dpId, ruleToDelete)
+
+        then: "Flow validate detects discrepancies"
+        //TODO(andriidovhan) try to extend this test when the issues/2302 is fixed
+        def responseValidateFlow = northbound.validateFlow(flow.id).findAll { !it.discrepancies.empty }*.discrepancies
+        assert responseValidateFlow.size() == 1
+        responseValidateFlow[0].expectedValue[0] == ruleToDelete.toString()
+
+        when: "Delete all rules except default on the all involved switches"
+        def mainPath = flowPathInfo.forwardPath
+        def involvedSwitchIds = (mainPath*.switchId + protectedPath*.switchId).unique()
+        involvedSwitchIds.each { switchId ->
+            northbound.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
+        }
+
+        then: "Flow validate detects discrepancies for all deleted rules"
+        def responseValidateFlow2 = northbound.validateFlow(flow.id).findAll { !it.discrepancies.empty }*.discrepancies
+        assert responseValidateFlow2.size() == 4
+
+        and: "Cleanup: delete the flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     /**
