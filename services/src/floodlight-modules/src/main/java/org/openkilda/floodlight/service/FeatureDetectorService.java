@@ -18,6 +18,7 @@ package org.openkilda.floodlight.service;
 import org.openkilda.floodlight.feature.AbstractFeature;
 import org.openkilda.floodlight.feature.BfdFeature;
 import org.openkilda.floodlight.feature.BfdReviewFeature;
+import org.openkilda.floodlight.feature.GroupPacketOutController;
 import org.openkilda.floodlight.feature.MeterFeature;
 import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 
@@ -38,7 +39,8 @@ public class FeatureDetectorService implements IService {
         features = ImmutableList.of(
                 new MeterFeature(),
                 new BfdFeature(),
-                new BfdReviewFeature());
+                new BfdReviewFeature(),
+                new GroupPacketOutController());
     }
 
     /**
