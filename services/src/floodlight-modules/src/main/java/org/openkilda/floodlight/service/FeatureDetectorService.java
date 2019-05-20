@@ -20,6 +20,7 @@ import org.openkilda.floodlight.feature.BfdFeature;
 import org.openkilda.floodlight.feature.BfdReviewFeature;
 import org.openkilda.floodlight.feature.GroupPacketOutController;
 import org.openkilda.floodlight.feature.MeterFeature;
+import org.openkilda.floodlight.feature.NoviFlowCopyFieldFeature;
 import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 
 import com.google.common.collect.ImmutableList;
@@ -40,7 +41,8 @@ public class FeatureDetectorService implements IService {
                 new MeterFeature(),
                 new BfdFeature(),
                 new BfdReviewFeature(),
-                new GroupPacketOutController());
+                new GroupPacketOutController(),
+                new NoviFlowCopyFieldFeature());
     }
 
     /**

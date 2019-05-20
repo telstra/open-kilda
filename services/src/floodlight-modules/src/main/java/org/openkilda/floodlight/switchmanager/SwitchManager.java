@@ -19,11 +19,13 @@ import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.LATENCY_PACKET_UDP_PORT;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
+import static org.openkilda.model.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.isDefaultRule;
@@ -161,10 +163,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int VERIFICATION_RULE_PRIORITY = FlowModUtils.PRIORITY_MAX - 1000;
     public static final int DROP_VERIFICATION_LOOP_RULE_PRIORITY = VERIFICATION_RULE_PRIORITY + 1;
     public static final int CATCH_BFD_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
+    public static final int ROUND_TRIP_LATENCY_RULE_PRIORITY = CATCH_BFD_RULE_PRIORITY + 10; // gap for future rules
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
     public static final int BDF_DEFAULT_PORT = 3784;
     public static final int MIN_RATE_IN_KBPS = 64;
     public static final int ROUND_TRIP_LATENCY_GROUP_ID = 1;
+    public static final int ROUND_TRIP_LATENCY_T1_OFFSET = 944;
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
     // 0x1FFF lead to rule reject during install attempt on accton based switches.
@@ -347,6 +351,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         installVerificationRule(dpid, false);
         installDropLoopRule(dpid);
         installBfdCatchFlow(dpid);
+        installRoundTripLatencyFlow(dpid);
     }
 
     /**
@@ -943,6 +948,24 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         pushFlow(sw, flowName, flowMod);
     }
 
+    /**
+     * Create an action to place the RxTimestamp in the packet.
+     *
+     * @param sw Switch object
+     * @param offset Offset within packet to copy timstamp at
+     * @return {@link OFAction}
+     */
+    private OFAction actionAddRxTimestamp(final IOFSwitch sw, int offset) {
+        OFOxms oxms = sw.getOFFactory().oxms();
+        OFActions actions = sw.getOFFactory().actions();
+        return actions.buildNoviflowCopyField()
+                .setNBits(64)
+                .setSrcOffset(0)
+                .setDstOffset(offset)
+                .setOxmSrcHeader(oxms.buildNoviflowRxtimestamp().getTypeLen())
+                .setOxmDstHeader(oxms.buildNoviflowPacketOffset().getTypeLen())
+                .build();
+    }
 
     /**
      * {@inheritDoc}
@@ -988,6 +1011,28 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     }
 
+    @Override
+    public void installRoundTripLatencyFlow(DatapathId dpid) throws SwitchOperationException {
+        logger.info("Installing round trip default rule on {}", dpid);
+        IOFSwitch sw = lookupSwitch(dpid);
+        if (!featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
+            logger.debug("Skip installation of round-trip latency rule for switch {}", dpid);
+        } else {
+            OFFactory ofFactory = sw.getOFFactory();
+            Match match = roundTripLatencyRuleMatch(dpid, ofFactory);
+            List<OFAction> actions = ImmutableList.of(
+                    actionAddRxTimestamp(sw, ROUND_TRIP_LATENCY_T1_OFFSET),
+                    actionSendToController(sw));
+            OFFlowMod flowMod = prepareFlowModBuilder(
+                    ofFactory, ROUND_TRIP_LATENCY_RULE_COOKIE, ROUND_TRIP_LATENCY_RULE_PRIORITY)
+                    .setMatch(match)
+                    .setActions(actions)
+                    .build();
+            String flowName = "--RoundTripLatencyRule--" + dpid.toString();
+            pushFlow(sw, flowName, flowMod);
+        }
+    }
+
     private Match catchRuleMatch(DatapathId dpid, OFFactory ofFactory) {
         return ofFactory.buildMatch()
             .setExact(MatchField.ETH_DST, dpIdToMac(dpid))
@@ -995,6 +1040,15 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
             .setExact(MatchField.UDP_DST, TransportPort.of(BDF_DEFAULT_PORT))
             .build();
+    }
+
+    private Match roundTripLatencyRuleMatch(DatapathId dpid, OFFactory ofFactory) {
+        return ofFactory.buildMatch()
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                .setExact(MatchField.ETH_SRC, dpIdToMac(dpid))
+                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                .setExact(MatchField.UDP_DST, TransportPort.of(LATENCY_PACKET_UDP_PORT))
+                .build();
     }
 
     void installDropLoopRule(DatapathId dpid) throws SwitchOperationException {

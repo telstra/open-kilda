@@ -15,20 +15,17 @@
 
 package org.openkilda.floodlight.pathverification;
 
-import lombok.Builder;
-import lombok.Data;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
+import static org.junit.Assert.assertEquals;
 
-@Builder
-@Data
-class VerificationPacketData {
-    private long timestamp;
-    private int pathOrdinal;
-    private long switchT0;
-    private long switchT1;
-    private DatapathId remoteSwitchId;
-    private OFPort remotePort;
-    private Long packetId;
-    private boolean signed;
+import org.junit.Test;
+
+public class TimestampTests {
+    private byte[] timestampT0 = new byte[] {
+            0x5b, (byte) 0x8c, (byte) 0xf5, (byte) 0xad,
+            0x14, (byte) 0xe0, (byte) 0xf8, 0x3d};
+
+    @Test
+    public void testNoviflowTimstampToLong() {
+        assertEquals(1535964589350287933L, PathVerificationService.noviflowTimestamp(timestampT0));
+    }
 }

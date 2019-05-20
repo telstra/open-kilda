@@ -91,6 +91,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -104,11 +105,16 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
     public static final String VERIFICATION_BCAST_PACKET_DST = "08:ED:02:E3:FF:FF";
     public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
+    public static final int LATENCY_PACKET_UDP_PORT = 61232;
+
+    public static int tenToNine = 1_000_000_000;
     public static final String VERIFICATION_PACKET_IP_DST = "192.168.0.255";
     public static final byte REMOTE_SWITCH_OPTIONAL_TYPE = 0x00;
     public static final byte TIMESTAMP_OPTIONAL_TYPE = 0x01;
     public static final byte PATH_ORDINAL_OPTIONAL_TYPE = 0x02;
     public static final byte TOKEN_OPTIONAL_TYPE = 0x03;
+    public static final byte SWITCH_T0_OPTIONAL_TYPE = 0x04;
+    public static final byte SWITCH_T1_OPTIONAL_TYPE = 0x05;
 
     private IKafkaProducerService producerService;
     private IOFSwitchService switchService;
@@ -251,6 +257,19 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         return result;
     }
 
+    private static LLDPTLV switchTimestampTlv(byte type) {
+        byte[] timestampArray = ByteBuffer.allocate(12)
+                .put((byte) 0x00)
+                .put((byte) 0x26)
+                .put((byte) 0xe1)
+                .put(type)
+                .putLong(0L)
+                .array();
+
+        return new LLDPTLV().setType(OPTIONAL_LLDPTV_PACKET_TYPE)
+                .setLength((short) timestampArray.length).setValue(timestampArray);
+    }
+
     /**
      * Return verification packet.
      *
@@ -313,6 +332,12 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                     .putInt(PathType.ISL.ordinal()).array();
             LLDPTLV typeTlv = makeIdLldptvPacket(typeTlvValue, OPTIONAL_LLDPTV_PACKET_TYPE);
             vp.getOptionalTlvList().add(typeTlv);
+
+            // Add TLV for t0, this will be overwritten by the switch if it supports switch timestamps
+            vp.getOptionalTlvList().add(switchTimestampTlv(SWITCH_T0_OPTIONAL_TYPE));
+
+            // Add TLV for t1, this will be overwritten by the switch if it supports switch timestamps
+            vp.getOptionalTlvList().add(switchTimestampTlv(SWITCH_T1_OPTIONAL_TYPE));
 
             if (sign) {
                 Builder builder = JWT.create()
@@ -377,7 +402,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             if (ip.getPayload() instanceof UDP) {
                 UDP udp = (UDP) ip.getPayload();
 
-                if (isUdpHasSpecifiedSrdDstPort(udp, PathVerificationService.VERIFICATION_PACKET_UDP_PORT)) {
+                if (isUdpHasSpecifiedSrdDstPort(udp, VERIFICATION_PACKET_UDP_PORT)) {
                     return new VerificationPacket((Data) udp.getPayload());
                 }
             }
@@ -387,6 +412,22 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
     private boolean isUdpHasSpecifiedSrdDstPort(UDP udp, int port) {
         return udp.getSourcePort().getPort() == port && udp.getDestinationPort().getPort() == port;
+    }
+
+    /**
+     * Create a representation of a timestamp from a noviflow Switch software timestamp. The timestamp is presented
+     * in 8 bytes with the first 4 bytes representing EPOCH in seconds and the second set of 4 bytes nanoseconds.
+     *
+     * @param timestamp Noviflow timestamp
+     * @return timestamp in nanoseconds
+     */
+    @VisibleForTesting
+    static long noviflowTimestamp(byte[] timestamp) {
+        ByteBuffer buffer = ByteBuffer.wrap(timestamp);
+        long seconds = buffer.getInt(0);
+        long nanoseconds = buffer.getInt(4);
+
+        return seconds * tenToNine + nanoseconds;
     }
 
     void handlePacketIn(OfInput input) {
@@ -466,6 +507,8 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         VerificationPacketData.VerificationPacketDataBuilder builder = VerificationPacketData.builder();
         builder.remotePort(remotePort);
         builder.pathOrdinal(10);
+        builder.switchT0(-1);
+        builder.switchT1(-1);
 
         for (LLDPTLV lldptlv : verificationPacket.getOptionalTlvList()) {
             if (matchOptionalLldptlv(lldptlv, REMOTE_SWITCH_OPTIONAL_TYPE, 12)) {
@@ -477,6 +520,12 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             } else if (matchOptionalLldptlv(lldptlv, PATH_ORDINAL_OPTIONAL_TYPE, 8)) {
                 ByteBuffer typeBb = ByteBuffer.wrap(lldptlv.getValue());
                 builder.pathOrdinal(typeBb.getInt(4));
+            } else if (matchOptionalLldptlv(lldptlv, SWITCH_T0_OPTIONAL_TYPE, 12)) {
+                builder.switchT0(
+                        noviflowTimestamp(Arrays.copyOfRange(lldptlv.getValue(), 4, lldptlv.getValue().length)));
+            } else if (matchOptionalLldptlv(lldptlv, SWITCH_T1_OPTIONAL_TYPE, 12)) {
+                builder.switchT1(
+                        noviflowTimestamp(Arrays.copyOfRange(lldptlv.getValue(), 4, lldptlv.getValue().length)));
             } else if (matchOptionalLldptlv(lldptlv, TOKEN_OPTIONAL_TYPE)) {
                 ByteBuffer bb = ByteBuffer.wrap(lldptlv.getValue());
                 bb.position(4);
