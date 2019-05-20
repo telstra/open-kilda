@@ -22,6 +22,7 @@ import org.openkilda.floodlight.feature.BfdReviewFeature;
 import org.openkilda.floodlight.feature.GroupPacketOutController;
 import org.openkilda.floodlight.feature.LimitedBurstSizeFeature;
 import org.openkilda.floodlight.feature.MeterFeature;
+import org.openkilda.floodlight.feature.NoviFlowCopyFieldFeature;
 import org.openkilda.floodlight.feature.ResetCountsFlagFeature;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
@@ -65,6 +66,7 @@ public class FeatureDetectorService implements IService {
                 new BfdReviewFeature(),
                 new GroupPacketOutController(),
                 new ResetCountsFlagFeature(),
-                new LimitedBurstSizeFeature());
+                new LimitedBurstSizeFeature(),
+                new NoviFlowCopyFieldFeature());
     }
 }
