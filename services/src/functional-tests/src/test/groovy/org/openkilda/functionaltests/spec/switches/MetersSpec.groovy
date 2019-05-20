@@ -312,20 +312,16 @@ meters in flow rules at all (#data.flowType flow)"() {
         when: "Update flow bandwidth to #flowRate kbps"
         flow = northbound.getFlow(flow.id)
         flow.setMaximumBandwidth(flowRate)
-        northbound.updateFlow(flow.id, flow)
+        flowHelper.updateFlow(flow.id, flow)
 
         then: "New meters should be installed on the switch"
-        def newMeters = null
-
-        Wrappers.wait(Constants.RULES_DELETION_TIME + Constants.RULES_INSTALLATION_TIME) {
-            newMeters = northbound.getAllMeters(sw.dpId).meterEntries.findAll {
-                !defaultMeters.meterEntries.contains(it)
-            }
-            assert newMeters.size() == 2
+        def newMeters = northbound.getAllMeters(sw.dpId).meterEntries.findAll {
+            !defaultMeters.meterEntries.contains(it)
         }
+        assert newMeters.size() == 2
 
         and: "New meters rate should be equal to flow bandwidth"
-        newMeters*.rate.every { it == flowRate }
+        newMeters*.rate.each { assert it == flowRate }
 
         and: "New meters burst size matches the expected value for given switch model"
         newMeters*.burstSize.each { assert it == switchHelper.getExpectedBurst(sw.dpId, flowRate) }
