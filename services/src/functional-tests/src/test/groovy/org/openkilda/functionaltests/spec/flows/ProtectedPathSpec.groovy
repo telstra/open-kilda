@@ -15,12 +15,16 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
+
+import javax.inject.Provider
 
 @Narrative("""Protected path - it is pre-calculated, reserved, and deployed (except ingress rule),
 so we can switch traffic fast.
@@ -36,6 +40,9 @@ Main and protected paths can't use the same link.""")
 class ProtectedPathSpec extends BaseSpecification {
     @Autowired
     SwitchHelper switchHelper
+
+    @Autowired
+    Provider<TraffExamService> traffExamProvider
 
     @Unroll
     def "Able to create a flow with protected path when maximumBandwidth=#bandwidth, vlan=#vlanId"() {
@@ -636,17 +643,22 @@ class ProtectedPathSpec extends BaseSpecification {
     }
 
     def "Able to swap main and protected paths manually"() {
-        given: "Two active not neighboring switches with two possible paths at least"
-        def (Switch srcSwitch, Switch dstSwitch) = getNotNeighboringSwitchPair(2)
+        given: "A simple flow"
+        def tgSwitches = topology.getActiveTraffGens()*.getSwitchConnected()
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
+            def allowsTraffexam = it.src in tgSwitches && it.dst in tgSwitches
+            def usesUniqueSwitches = it.paths.collectMany { pathHelper.getInvolvedSwitches(it) }
+                    .unique { it.dpId }.size() > 3
+            return allowsTraffexam && usesUniqueSwitches
+        }
 
-        and: "Create a flow without protected path"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelper.randomFlow(switchPair, true)
         flow.allocateProtectedPath = false
         flowHelper.addFlow(flow)
         assert !northbound.getFlowPath(flow.id).protectedPath
 
         and: "Cookies are created by flow"
-        def createdCookies = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+        def createdCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
             !Cookie.isDefaultRule(it.cookie)
         }*.cookie
         assert createdCookies.size() == 2
@@ -664,7 +676,7 @@ class ProtectedPathSpec extends BaseSpecification {
         and: "Rules for main and protected paths are created"
         Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
 
-        def cookiesAfterEnablingProtectedPath = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+        def cookiesAfterEnablingProtectedPath = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
             !Cookie.isDefaultRule(it.cookie)
         }*.cookie
         // two for main path + one for protected path
@@ -678,9 +690,18 @@ class ProtectedPathSpec extends BaseSpecification {
         def protectedSwitches = pathHelper.getInvolvedSwitches(currentProtectedPath)
         protectedSwitches.each { verifySwitchRules(it.dpId) }
 
+        and: "The flow allows traffic(on the main path)"
+        def traffExam = traffExamProvider.get()
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 0)
+        [exam.forward, exam.reverse].each { direction ->
+            def resources = traffExam.startExam(direction)
+            direction.setResources(resources)
+            assert traffExam.waitExam(direction).hasTraffic()
+        }
+
         when: "Swap flow paths"
-        def srcSwitchCreatedMeterIds = getCreatedMeterIds(srcSwitch.dpId)
-        def dstSwitchCreatedMeterIds = getCreatedMeterIds(dstSwitch.dpId)
+        def srcSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.src.dpId)
+        def dstSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.dst.dpId)
         def currentLastUpdate = northbound.getFlow(flow.id).lastUpdated
         northbound.swapFlowPath(flow.id)
 
@@ -697,8 +718,8 @@ class ProtectedPathSpec extends BaseSpecification {
         currentLastUpdate < northbound.getFlow(flow.id).lastUpdated
 
         and: "New meter is created on the src and dst switches"
-        def newSrcSwitchCreatedMeterIds = getCreatedMeterIds(srcSwitch.dpId)
-        def newDstSwitchCreatedMeterIds = getCreatedMeterIds(dstSwitch.dpId)
+        def newSrcSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.src.dpId)
+        def newDstSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.dst.dpId)
         newSrcSwitchCreatedMeterIds.sort() != srcSwitchCreatedMeterIds.sort()
         newDstSwitchCreatedMeterIds.sort() != dstSwitchCreatedMeterIds.sort()
 
@@ -707,7 +728,7 @@ class ProtectedPathSpec extends BaseSpecification {
 
         and: "Old meter is deleted on the src and dst switches"
         Wrappers.wait(WAIT_OFFSET) {
-            [srcSwitch.dpId, dstSwitch.dpId].each { switchId ->
+            [switchPair.src.dpId, switchPair.dst.dpId].each { switchId ->
                 def switchValidateInfo = northbound.validateSwitch(switchId)
                 assert switchValidateInfo.meters.proper.size() == 1
                 assert switchValidateInfo.rules.proper.size() == 3
@@ -749,6 +770,13 @@ class ProtectedPathSpec extends BaseSpecification {
         and: "No rule discrepancies on every switch of the flow on the protected path)"
         def newProtectedSwitches = pathHelper.getInvolvedSwitches(newCurrentProtectedPath)
         newProtectedSwitches.each { verifySwitchRules(it.dpId) }
+
+        and: "The flow allows traffic(on the protected path)"
+        [exam.forward, exam.reverse].each { direction ->
+            def resources = traffExam.startExam(direction)
+            direction.setResources(resources)
+            assert traffExam.waitExam(direction).hasTraffic()
+        }
 
         and: "Cleanup: revert system to original state"
         flowHelper.deleteFlow(flow.id)
@@ -831,7 +859,7 @@ class ProtectedPathSpec extends BaseSpecification {
         northbound.portDown(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
 
         then: "Flow state is still DOWN"
-        Wrappers.timedLoop(WAIT_OFFSET){ assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.timedLoop(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
 
         when: "Try to swap paths when main/protected paths are not available"
         northbound.swapFlowPath(flow.id)
@@ -847,7 +875,7 @@ class ProtectedPathSpec extends BaseSpecification {
         northbound.portUp(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
 
         then: "Flow state is still DOWN"
-        Wrappers.timedLoop(WAIT_OFFSET){ assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
+        Wrappers.timedLoop(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
 
         when: "Try to swap paths when the main path is available and the protected path is not available"
         northbound.swapFlowPath(flow.id)
