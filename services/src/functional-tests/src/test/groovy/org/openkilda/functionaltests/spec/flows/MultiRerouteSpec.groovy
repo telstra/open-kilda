@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
@@ -9,7 +8,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
 
 import java.util.concurrent.TimeUnit
 
@@ -29,8 +27,6 @@ class MultiRerouteSpec extends BaseSpecification {
         def currentPath = pathHelper.convert(northbound.getFlowPath(flows[0].id))
         //ensure both flows are on the same path
         assert pathHelper.convert(northbound.getFlowPath(flows[1].id)) == currentPath
-        def srcSwitchCreatedMetersIds = getCreatedMeterIds(switchPair.src.dpId)
-        def dstSwitchCreatedMetersIds = getCreatedMeterIds(switchPair.dst.dpId)
 
         when: "Make another path more preferable"
         def newPath = switchPair.paths.find { it != currentPath }
@@ -70,15 +66,9 @@ class MultiRerouteSpec extends BaseSpecification {
         flows.each { flowHelper.deleteFlow(it.id) }
         [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
-        srcSwitchCreatedMetersIds.each { northbound.deleteMeter(switchPair.src.dpId, it) }
-        dstSwitchCreatedMetersIds.each { northbound.deleteMeter(switchPair.dst.dpId, it) }
         database.resetCosts()
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
-    }
-
-    List<Integer> getCreatedMeterIds(SwitchId switchId) {
-        return northbound.getAllMeters(switchId).meterEntries.findAll { it.meterId > MAX_SYSTEM_RULE_METER_ID }*.meterId
     }
 }
