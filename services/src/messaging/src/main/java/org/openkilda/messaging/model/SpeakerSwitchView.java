@@ -79,6 +79,7 @@ public class SpeakerSwitchView implements Serializable {
         METERS,
         BFD,
         BFD_REVIEW,
-        GROUP_PACKET_OUT_CONTROLLER
+        GROUP_PACKET_OUT_CONTROLLER,
+        NOVIFLOW_COPY_FIELD
     }
 }

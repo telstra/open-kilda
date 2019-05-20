@@ -26,7 +26,10 @@ import static org.openkilda.floodlight.pathverification.DiscoveryPacket.TTL_LLDP
 import static org.openkilda.floodlight.pathverification.PathVerificationService.ORGANIZATIONALLY_UNIQUE_IDENTIFIER;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.PATH_ORDINAL_OPTIONAL_TYPE;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.REMOTE_SWITCH_OPTIONAL_TYPE;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.SWITCH_T0_OPTIONAL_TYPE;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.SWITCH_T1_OPTIONAL_TYPE;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.TIMESTAMP_OPTIONAL_TYPE;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.noviflowTimestamp;
 
 import org.openkilda.floodlight.FloodlightTestCase;
 import org.openkilda.floodlight.KildaCore;
@@ -75,6 +78,8 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
     public static final byte[] REMOTE_SWITCH_ID = {1, 2, 3, 4, 5, 6, 7, 8};
     public static final byte[] TIMESTAMP = {8, 7, 6, 5, 4, 3, 2, 1};
     public static final byte[] PATH_ORDINAL = {1, 2, 3, 4};
+    public static final byte[] SWITCH_T0 = {1, 2, 3, 4, 1, 2, 3, 4};
+    public static final byte[] SWITCH_T1 = {4, 3, 2, 1, 4, 3, 2, 1};
     protected CommandContextFactory commandContextFactory = new CommandContextFactory();
 
     protected FloodlightContext cntx;
@@ -97,19 +102,19 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
             0x08, 0x00,                                                            // ether-type
             // IP
             0x45, 0x00,                                                            // ver,ihl, dscp, ecn
-            0x00, 0x56,                                                            // total length
+            0x00, 0x72,                                                            // total length
             0x00, 0x00,                                                            // tcp ident
             0x00, 0x00,                                                            // flags, frag offset
             0x00,                                                                  // ttl
             0x11,                                                                  // protocol
-            0x38, (byte) 0x47,                                                     // header checksum
+            0x38, (byte) 0x2B,                                                     // header checksum
             (byte) 0xC0, (byte) 0xA8, 0x00, 0x01,                                  // src ip
             (byte) 0xC0, (byte) 0xA8, 0x00, (byte) 0xFF,                           // dst ip
             // UDP
             (byte) 0xEF, 0x2F,                                                     // src port
             (byte) 0xEF, 0x2F,                                                     // dst port
-            0x00, 0x42,                                                            // length
-            (byte) 0xc8, (byte) 0x6c,                                              // checksum
+            0x00, 0x5E,                                                            // length
+            (byte) 0xF5, (byte) 0xAF,                                              // checksum
             // LLDP TLVs
             0x02, 0x07,                                                            // type, len
             0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,                              // chassisid
@@ -118,6 +123,16 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
             0x06, 0x02,                                                            // type, len
             0x00, 0x78,                                                            // ttl
             // Optional LLDP TLVs:
+            // switch T0 timestamp
+            (byte) 0xfe, 0x0C,                                                     // optional type, len
+            0x00, 0x26, (byte) 0xe1,                                               // organizationally unique identifier
+            SWITCH_T0_OPTIONAL_TYPE,                                               // switch t0 type
+            0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04,                        // t0 timestamp
+            // switch T1 timestamp
+            (byte) 0xfe, 0x0C,                                                     // optional type, len
+            0x00, 0x26, (byte) 0xe1,                                               // organizationally unique identifier
+            SWITCH_T1_OPTIONAL_TYPE,                                               // switch t1 type
+            0x04, 0x03, 0x02, 0x01, 0x04, 0x03, 0x02, 0x01,                        // t1 timestamp
             // dpid
             (byte) 0xfe, 0x0C,                                                     // optional type, len
             0x00, 0x26, (byte) 0xe1,                                               // organizationally unique identifier
@@ -145,6 +160,20 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
                         TransportPort.of(PathVerificationService.DISCOVERY_PACKET_UDP_PORT));
 
         List<LLDPTLV> optional = Lists.newArrayList(
+                new LLDPTLV() // switch t0
+                        .setType(OPTIONAL_LLDPTV_PACKET_TYPE)
+                        .setLength((short) 12)
+                        .setValue(Arrays.concatenate(
+                                ORGANIZATIONALLY_UNIQUE_IDENTIFIER,
+                                new byte[] {SWITCH_T0_OPTIONAL_TYPE},
+                                SWITCH_T0)),
+                new LLDPTLV() // switch t1
+                        .setType(OPTIONAL_LLDPTV_PACKET_TYPE)
+                        .setLength((short) 12)
+                        .setValue(Arrays.concatenate(
+                                ORGANIZATIONALLY_UNIQUE_IDENTIFIER,
+                                new byte[] {SWITCH_T1_OPTIONAL_TYPE},
+                                SWITCH_T1)),
                 new LLDPTLV() // dpid
                         .setType(OPTIONAL_LLDPTV_PACKET_TYPE)
                         .setLength((short) 12)
@@ -166,7 +195,7 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
                                 ORGANIZATIONALLY_UNIQUE_IDENTIFIER,
                                 new byte[] {PATH_ORDINAL_OPTIONAL_TYPE},
                                 PATH_ORDINAL))
-        );
+                );
 
         DiscoveryPacket discoveryPacket = DiscoveryPacket.builder()
                 .chassisId(new LLDPTLV().setType(CHASSIS_ID_LLDPTV_PACKET_TYPE).setLength((short) 7)
@@ -279,5 +308,7 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         assertEquals(DatapathId.of(REMOTE_SWITCH_ID).toString(), data.getRemoteSwitchId().toString());
         assertEquals(ByteBuffer.wrap(TIMESTAMP).getLong() + switchLatency, data.getTimestamp());
         assertEquals(ByteBuffer.wrap(PATH_ORDINAL).getInt(), data.getPathOrdinal());
+        assertEquals(noviflowTimestamp(SWITCH_T0), data.getSwitchT0());
+        assertEquals(noviflowTimestamp(SWITCH_T1), data.getSwitchT1());
     }
 }
