@@ -8,7 +8,6 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.model.FlowDto
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.util.logging.Slf4j
 import org.springframework.web.client.HttpClientErrorException
@@ -120,8 +119,8 @@ class FlowValidationNegativeSpec extends BaseSpecification {
 
     def "Able to detect discrepancies for a flow with protected path"() {
         when: "Create a flow with protected path"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def flow = flowHelper.randomFlow(switchPair)
         flow.allocateProtectedPath = true
         flowHelper.addFlow(flow)
 
@@ -136,7 +135,7 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         when: "Delete rule of protected path on the srcSwitch"
         def flowPathInfo = northbound.getFlowPath(flow.id)
         def protectedPath = flowPathInfo.protectedPath.forwardPath
-        def rules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
+        def rules = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
             !org.openkilda.model.Cookie.isDefaultRule(it.cookie)
         }
 
@@ -145,9 +144,9 @@ class FlowValidationNegativeSpec extends BaseSpecification {
                     it.match.inPort == protectedPath[0].outputPort.toString()
         }.cookie
 
-        northbound.deleteSwitchRules(srcSwitch.dpId, ruleToDelete)
+        northbound.deleteSwitchRules(switchPair.src.dpId, ruleToDelete)
 
-        then: "Flow validate detect discrepancies"
+        then: "Flow validate detects discrepancies"
         //TODO(andriidovhan) try to extend this test when the issues/2302 is fixed
         def responseValidateFlow = northbound.validateFlow(flow.id).findAll { !it.discrepancies.empty }*.discrepancies
         assert responseValidateFlow.size() == 1

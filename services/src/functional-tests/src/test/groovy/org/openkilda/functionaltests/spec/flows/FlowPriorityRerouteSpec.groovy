@@ -34,9 +34,6 @@ class FlowPriorityRerouteSpec extends BaseSpecification {
             flows << flow
         }
 
-        def srcSwitchCreatedMetersIds = getCreatedMeterIds(switchPair.src.dpId)
-        def dstSwitchCreatedMetersIds = getCreatedMeterIds(switchPair.dst.dpId)
-
         def currentPath = pathHelper.convert(northbound.getFlowPath(flows[0].id))
         //ensure all flows are on the same path
         assert pathHelper.convert(northbound.getFlowPath(flows[1].id)) == currentPath
@@ -68,9 +65,6 @@ class FlowPriorityRerouteSpec extends BaseSpecification {
         and: "Cleanup: revert system to original state"
         northbound.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         flows.each { flowHelper.deleteFlow(it.id) }
-        srcSwitchCreatedMetersIds.each { northbound.deleteMeter(switchPair.src.dpId, it) }
-        dstSwitchCreatedMetersIds.each { northbound.deleteMeter(switchPair.dst.dpId, it) }
-        database.resetCosts()
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
