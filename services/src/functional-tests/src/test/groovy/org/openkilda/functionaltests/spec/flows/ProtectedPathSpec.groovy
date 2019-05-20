@@ -707,7 +707,7 @@ class ProtectedPathSpec extends BaseSpecification {
         and: "Old meter is deleted on the src and dst switches"
         Wrappers.wait(WAIT_OFFSET) {
             [srcSwitch.dpId, dstSwitch.dpId].each { switchId ->
-                def switchValidateInfo = northbound.switchValidate(switchId)
+                def switchValidateInfo = northbound.validateSwitch(switchId)
                 assert switchValidateInfo.meters.proper.size() == 1
                 assert switchValidateInfo.rules.proper.size() == 3
                 switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
@@ -721,7 +721,7 @@ class ProtectedPathSpec extends BaseSpecification {
             involvedTransitSwitches.each { switchId ->
                 def amountOfRules = (switchId in currentProtectedPath*.switchId && switchId in currentPath*.switchId)
                         ? 4 : 2
-                def switchValidateInfo = northbound.switchValidate(switchId)
+                def switchValidateInfo = northbound.validateSwitch(switchId)
                 assert switchValidateInfo.rules.proper.size() == amountOfRules
                 switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
                 switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo)
