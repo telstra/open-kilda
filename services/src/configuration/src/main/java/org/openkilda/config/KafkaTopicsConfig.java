@@ -77,27 +77,27 @@ public interface KafkaTopicsConfig {
     String getSpeakerRegionTopic();
 
     @Key("stats.request.priv")
-    @Default("stats.request.priv")
+    @Default("kilda.stats.request.priv")
     String getStatsRequestPrivTopic();
 
     @Key("stats.request.priv.region")
-    @Default("stats.request.priv.region")
+    @Default("kilda.stats.request.priv.region")
     String getStatsRequestPrivRegionTopic();
 
     @Key("stats.stats-request.priv")
-    @Default("stats.stats-request.priv")
+    @Default("kilda.stats.stats-request.priv")
     String getStatsStatsRequestPrivTopic();
 
     @Key("stats.stats-request.priv.region")
-    @Default("stats.stats-request.priv.region")
+    @Default("kilda.stats.stats-request.priv.region")
     String getStatsStatsRequestPrivRegionTopic();
 
     @Key("fl-stats.switches.priv")
-    @Default("fl-stats.switches.priv")
+    @Default("kilda.fl-stats.switches.priv")
     String getFlStatsSwitchesPrivTopic();
 
     @Key("fl-stats.switches.priv.region")
-    @Default("fl-stats.switches.priv.region")
+    @Default("kilda.fl-stats.switches.priv.region")
     String getFlStatsSwitchesPrivRegionTopic();
 
     @Key("speaker.disco")
