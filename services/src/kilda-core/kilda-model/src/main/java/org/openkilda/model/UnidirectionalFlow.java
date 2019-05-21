@@ -29,7 +29,6 @@ import java.util.Optional;
  */
 @ToString
 @Deprecated
-@ToString
 public class UnidirectionalFlow implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -105,14 +104,6 @@ public class UnidirectionalFlow implements Serializable {
 
     public void setAllocateProtectedPath(boolean allocateProtectedPath) {
         getFlow().setAllocateProtectedPath(allocateProtectedPath);
-    }
-
-    public boolean isAllocateProtectedPath() {
-        return flow.isAllocateProtectedPath();
-    }
-
-    public void setAllocateProtectedPath(boolean allocateProtectedPath) {
-        flow.setAllocateProtectedPath(allocateProtectedPath);
     }
 
     public FlowStatus getStatus() {

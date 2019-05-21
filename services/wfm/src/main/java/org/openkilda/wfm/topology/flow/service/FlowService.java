@@ -650,23 +650,6 @@ public class FlowService extends BaseFlowService {
                 toCreateBuilder.flow(flow).build(), toRemoveBuilder.build());
     }
 
-    private void revertProtectedPath(Flow flow, FlowPath currentForwardPath, FlowPath currentReversePath) {
-        // neo4j lacks creating new objects with the entityId that have been deleted in the same transaction
-        currentForwardPath = currentForwardPath.toBuilder().build();
-        currentForwardPath.setSegments(currentForwardPath.getSegments().stream()
-                .map(e -> e.toBuilder().build()).collect(Collectors.toList()));
-        currentReversePath = currentReversePath.toBuilder().build();
-        currentReversePath.setSegments(currentReversePath.getSegments().stream()
-                .map(e -> e.toBuilder().build()).collect(Collectors.toList()));
-
-        flow.setProtectedForwardPath(currentForwardPath);
-        flow.setProtectedReversePath(currentReversePath);
-
-        flowRepository.createOrUpdate(flow);
-        updateIslsForFlowPath(currentForwardPath);
-        updateIslsForFlowPath(currentReversePath);
-    }
-
     /**
      * Swaps primary path for the flow with protected paths.
      *
@@ -1316,23 +1299,19 @@ public class FlowService extends BaseFlowService {
         existingFirstFlow = existingFirstFlow.toBuilder()
                 .srcSwitch(Switch.builder().switchId(firstFlow.getSourceSwitch()).build())
                 .srcPort(firstFlow.getSourcePort())
-                .srcPort(firstFlow.getSourceVlan())
+                .srcVlan(firstFlow.getSourceVlan())
                 .destSwitch(Switch.builder().switchId(firstFlow.getDestinationSwitch()).build())
                 .destPort(firstFlow.getDestinationPort())
                 .destVlan(firstFlow.getDestinationVlan())
-                .forwardPath(null)
-                .reversePath(null)
                 .build();
 
         existingSecondFlow = existingSecondFlow.toBuilder()
                 .srcSwitch(Switch.builder().switchId(secondFlow.getSourceSwitch()).build())
                 .srcPort(secondFlow.getSourcePort())
-                .srcPort(secondFlow.getSourceVlan())
+                .srcVlan(secondFlow.getSourceVlan())
                 .destSwitch(Switch.builder().switchId(secondFlow.getDestinationSwitch()).build())
                 .destPort(secondFlow.getDestinationPort())
                 .destVlan(secondFlow.getDestinationVlan())
-                .forwardPath(null)
-                .reversePath(null)
                 .build();
 
 
@@ -1350,7 +1329,7 @@ public class FlowService extends BaseFlowService {
             throws ResourceAllocationException, RecoverableException, FlowValidationException, UnroutableFlowException,
             FlowNotFoundException {
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair newPathPair = pathComputer.getPath(updatingFlow, true);
+        PathPair newPathPair = pathComputer.getPath(updatingFlow, updatingFlow.getFlowPathIds());
 
         log.info("Updating the flow with {} and path: {}", updatingFlow, newPathPair);
 

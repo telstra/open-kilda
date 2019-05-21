@@ -154,7 +154,7 @@ public class FlowOperationsBolt extends BaseRichBolt {
         } catch (FeatureTogglesNotEnabledException e) {
             // TODO (vborisovskii): Change INTERNAL_ERROR to ErrorType.NOT_PERMITTED after merge #2250
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.INTERNAL_ERROR, errorType, "Feature toggles not enabled for UPDATE_FLOW operation.");
+                    ErrorType.NOT_PERMITTED, errorType, "Feature toggles not enabled for UPDATE_FLOW operation.");
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, e.getMessage());

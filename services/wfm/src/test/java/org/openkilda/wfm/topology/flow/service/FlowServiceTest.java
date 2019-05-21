@@ -95,8 +95,6 @@ public class FlowServiceTest extends Neo4jBasedTest {
     private FlowService flowService;
     private PathComputer pathComputer;
 
-    private static String FLOW_ID = "test-flow";
-
     private static long BANDWIDTH = 1000L;
 
     private SwitchRepository switchRepository;
@@ -104,8 +102,6 @@ public class FlowServiceTest extends Neo4jBasedTest {
     private FlowRepository flowRepository;
     private FlowPathRepository flowPathRepository;
 
-    private PathComputer pathComputer;
-    private FlowService flowService;
 
     @Before
     public void setUp() {
