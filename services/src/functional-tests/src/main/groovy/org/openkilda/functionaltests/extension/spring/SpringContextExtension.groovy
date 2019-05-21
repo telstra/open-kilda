@@ -29,7 +29,8 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
         //it will always be first in the execution order
         specInfo.getAllFeatures().find {
             it.featureMethod.getAnnotation(PrepareSpringContextDummy)
-        }?.excluded = !specInfo.getFeatures().find { it.parameterized } as boolean
+        }?.excluded = !specInfo.getFeatures().find { it.parameterized } as boolean || 
+                specInfo.getFeatures().every { it.excluded || it.skipped } as boolean
 
         specInfo.allFixtureMethods*.addInterceptor(new IMethodInterceptor() {
             boolean autowired = false

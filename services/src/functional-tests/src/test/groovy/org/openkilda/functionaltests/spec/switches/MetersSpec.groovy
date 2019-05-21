@@ -2,8 +2,8 @@ package org.openkilda.functionaltests.spec.switches
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static spock.util.matcher.HamcrestSupport.expect
 
@@ -37,8 +37,8 @@ class MetersSpec extends BaseSpecification {
 
     static DISCO_PKT_RATE = 200 // Number of packets per second for the default flows
     static DISCO_PKT_SIZE = 250 // Default size of the discovery packet
-    static NOVIFLOW_BURST_COEFFICIENT = 1.005 // Driven by the Noviflow specification
     static DISCO_PKT_BURST = 4096 // Default desired packet burst rate for the default flows (ignored by Noviflow)
+    static MIN_RATE_KBPS = 64
     static CENTEC_MIN_BURST = 1024 // Driven by the Centec specification
     static CENTEC_MAX_BURST = 32000 // Driven by the Centec specification
 
@@ -105,13 +105,15 @@ class MetersSpec extends BaseSpecification {
     def "Default meters should express bandwidth in kbps re-calculated from pktps on Centec switches"() {
         setup: "Collect all Centec switches"
         def switches = getCentecSwitches()
-        assumeTrue("Unable to find required switches in topology", switches as boolean)
+        assumeTrue("Unable to find Centec switches in topology", switches as boolean)
 
         expect: "Only the default meters should be present on each switch"
         switches.each { sw ->
             def meters = northbound.getAllMeters(sw.dpId)
             assert meters.meterEntries.size() == 2
-            assert meters.meterEntries.every { Math.abs(it.rate - (DISCO_PKT_RATE * DISCO_PKT_SIZE) / 1024L) <= 1 }
+            assert meters.meterEntries.each {
+                assert it.rate == Math.max((long)(DISCO_PKT_RATE * DISCO_PKT_SIZE / 1024L), MIN_RATE_KBPS)
+            }
             //unable to use #getExpectedBurst. For Centects there's special burst due to KBPS
             assert meters.meterEntries.every { it.burstSize == (long) ((DISCO_PKT_BURST * DISCO_PKT_SIZE) / 1024) }
             assert meters.meterEntries.every(defaultMeters)
