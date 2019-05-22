@@ -1,0 +1,43 @@
+@startuml
+
+[Statistics topo] as st
+[StatisticsRouter topo] as srt
+[Router] as r
+
+interface stats.request.priv as s.r.p
+interface "stats.mgmt-request.priv" as s.mr.p
+interface "stats.stats-request.priv" as s.sr.p
+interface "stats.mgmt-request.priv.region1" as s.mr.p.r
+interface "stats.stats-request.priv.region1" as s.sr.p.r
+interface "fl-stats.switches.priv.region1" as fs.s.p.r
+interface "fl-stats.switches.priv" as fs.s.p
+interface "fl.stats.priv.region1" as f.s.p.r
+interface "fl.stats.priv" as f.s.p
+
+node "Region 1" {
+package "Floodlight" {
+ [FL Statistics] as fls
+ [FL Management] as flm
+}
+}
+
+st -up-> s.r.p
+s.r.p -down-> srt
+srt -down-> s.mr.p
+srt -down-> s.sr.p
+s.mr.p -down-> r
+s.sr.p -down-> r
+r -down-> s.mr.p.r
+r -down-> s.sr.p.r
+s.sr.p.r -down-> fls
+s.mr.p.r -down-> flm
+fls -up-> fs.s.p.r
+fs.s.p.r -up-> r
+r -up-> fs.s.p
+fs.s.p -up-> srt
+flm -up-> f.s.p.r
+fls -up-> f.s.p.r
+f.s.p.r -up-> r
+r -up-> f.s.p
+f.s.p -up-> st
+@enduml
