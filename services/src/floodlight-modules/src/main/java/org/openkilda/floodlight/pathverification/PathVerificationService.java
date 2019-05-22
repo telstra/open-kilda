@@ -413,10 +413,6 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
             VerificationPacketData data = parseVerificationPacket(verificationPacket, input.getLatency());
 
-            if (data.getRemoteSwitch() == null) {
-                logger.warn("detected unknown remote switch {}", data.getRemoteSwitchId());
-            }
-
             if (!data.isSigned()) {
                 logger.warn("verification packet without sign");
                 return;
@@ -442,13 +438,8 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         PathNode source = new PathNode(new SwitchId(data.getRemoteSwitchId().getLong()),
                 data.getRemotePort().getPortNumber(), 0, latency);
         PathNode destination = new PathNode(new SwitchId(input.getDpId().getLong()), inPort.getPortNumber(), 1);
-        long speed;
-        if (data.getRemoteSwitch() == null) {
-            speed = getSwitchPortSpeed(destSwitch, inPort);
-        }  else {
-            speed = Math.min(getSwitchPortSpeed(destSwitch, inPort),
-                    getSwitchPortSpeed(data.getRemoteSwitch(), data.getRemotePort()));
-        }
+        long speed = getSwitchPortSpeed(destSwitch, inPort);
+
         IslInfoData path = IslInfoData.builder()
                 .latency(latency)
                 .source(source)
@@ -472,24 +463,20 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         portBb.position(1);
         OFPort remotePort = OFPort.of(portBb.getShort());
 
-        long timestamp = 0;
-        int pathOrdinal = 10;
-        IOFSwitch remoteSwitch = null;
-        DatapathId remoteSwitchId = null;
-        Long packetId = null;
-        boolean signed = false;
+        VerificationPacketData.VerificationPacketDataBuilder builder = VerificationPacketData.builder();
+        builder.remotePort(remotePort);
+        builder.pathOrdinal(10);
 
         for (LLDPTLV lldptlv : verificationPacket.getOptionalTlvList()) {
             if (matchOptionalLldptlv(lldptlv, REMOTE_SWITCH_OPTIONAL_TYPE, 12)) {
                 ByteBuffer dpidBb = ByteBuffer.wrap(lldptlv.getValue());
-                remoteSwitchId = DatapathId.of(dpidBb.getLong(4));
-                remoteSwitch = switchService.getSwitch(remoteSwitchId);
+                builder.remoteSwitchId(DatapathId.of(dpidBb.getLong(4)));
             } else if (matchOptionalLldptlv(lldptlv, TIMESTAMP_OPTIONAL_TYPE, 12)) {
-                ByteBuffer tsBb = ByteBuffer.wrap(lldptlv.getValue()); /* skip OpenFlow OUI (4 bytes above) */
-                timestamp = tsBb.getLong(4) + switchLatency; /* include the RX switch latency to "subtract" it */
+                ByteBuffer tsBb = ByteBuffer.wrap(lldptlv.getValue()); // skip OpenFlow OUI (4 bytes above)
+                builder.timestamp(tsBb.getLong(4) + switchLatency);    // include the RX switch latency to "subtract" it
             } else if (matchOptionalLldptlv(lldptlv, PATH_ORDINAL_OPTIONAL_TYPE, 8)) {
                 ByteBuffer typeBb = ByteBuffer.wrap(lldptlv.getValue());
-                pathOrdinal = typeBb.getInt(4);
+                builder.pathOrdinal(typeBb.getInt(4));
             } else if (matchOptionalLldptlv(lldptlv, TOKEN_OPTIONAL_TYPE)) {
                 ByteBuffer bb = ByteBuffer.wrap(lldptlv.getValue());
                 bb.position(4);
@@ -501,33 +488,25 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                     DecodedJWT jwt = verifier.verify(token);
                     Claim idClaim = jwt.getClaim("id");
                     if (!idClaim.isNull()) {
-                        packetId = idClaim.asLong();
+                        builder.packetId(idClaim.asLong());
                     }
-                    signed = true;
+                    builder.signed(true);
                 } catch (JWTVerificationException e) {
                     logger.error("Packet verification failed", e);
-                    signed = false;
+                    builder.signed(false);
                 }
             }
         }
 
-        return VerificationPacketData.builder()
-                .timestamp(timestamp)
-                .pathOrdinal(pathOrdinal)
-                .remotePort(remotePort)
-                .remoteSwitch(remoteSwitch)
-                .remoteSwitchId(remoteSwitchId)
-                .packetId(packetId)
-                .signed(signed)
-                .build();
+        return builder.build();
     }
 
-    private boolean matchOptionalLldptlv(LLDPTLV lldptlv, int type) {
-        return lldptlv.getType() == OPTIONAL_LLDPTV_PACKET_TYPE
-                && lldptlv.getValue()[0] == 0x0
-                && lldptlv.getValue()[1] == 0x26
-                && lldptlv.getValue()[2] == (byte) 0xe1
-                && lldptlv.getValue()[3] == type;
+    private boolean matchOptionalLldptlv(LLDPTLV lldpTlv, int type) {
+        return lldpTlv.getType() == OPTIONAL_LLDPTV_PACKET_TYPE
+                && lldpTlv.getValue()[0] == 0x0
+                && lldpTlv.getValue()[1] == 0x26
+                && lldpTlv.getValue()[2] == (byte) 0xe1
+                && lldpTlv.getValue()[3] == type;
     }
 
     private boolean matchOptionalLldptlv(LLDPTLV lldptlv, int type, int length) {
