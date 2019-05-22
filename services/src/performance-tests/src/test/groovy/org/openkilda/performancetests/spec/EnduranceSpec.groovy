@@ -54,6 +54,7 @@ class EnduranceSpec extends BaseSpecification {
         setup: "Create a topology"
         def topo = topoHelper.createRandomTopology(switchesAmount, islsAmount)
         topoHelper.setTopology(topo)
+        flowHelper.setTopology(topo)
 
         and: "As starting point, create some amount of random flows in it"
         flowsToStartWith.times { createFlow() }
