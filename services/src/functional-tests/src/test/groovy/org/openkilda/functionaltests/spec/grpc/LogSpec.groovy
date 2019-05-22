@@ -11,14 +11,12 @@ import org.openkilda.grpc.speaker.model.RemoteLogServerDto
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.model.grpc.OnOffState
 
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Unroll
 
-@Slf4j
 @Narrative("""This test suite checks that we are able to enable/disable:
  - log messages;
  - OF log messages.
@@ -29,79 +27,102 @@ class LogSpec extends GrpcBaseSpecification {
     @Value('${grpc.remote.log.server.port}')
     Integer defaultRemoteLogServerPort
 
-    def "Able to enable 'log messages'"() {
+    @Unroll
+    def "Able to enable 'log messages' on the #switches.switchId switch"() {
         when: "Try to turn on 'log messages'"
-        def responseAfterTurningOn = grpc.enableLogMessagesOnSwitch(switchIp, new LogMessagesDto(OnOffState.ON))
+        def responseAfterTurningOn = grpc.enableLogMessagesOnSwitch(switches.address, new LogMessagesDto(OnOffState.ON))
 
         then: "The 'log messages' is turned on"
         responseAfterTurningOn.enabled == OnOffState.ON
 
         when: "Try to turn off 'log messages'"
-        def responseAfterTurningOff = grpc.enableLogMessagesOnSwitch(switchIp, new LogMessagesDto(OnOffState.OFF))
+        def responseAfterTurningOff = grpc.enableLogMessagesOnSwitch(switches.address,
+                new LogMessagesDto(OnOffState.OFF))
 
         then: "The 'log messages' is turned off"
         responseAfterTurningOff.enabled == OnOffState.OFF
 
         cleanup: "Restore default state"
-        grpc.enableLogMessagesOnSwitch(switchIp, new LogMessagesDto(DEFAULT_LOG_MESSAGES_STATE))
+        grpc.enableLogMessagesOnSwitch(switches.address, new LogMessagesDto(DEFAULT_LOG_MESSAGES_STATE))
+
+        where:
+        switches << getNoviflowSwitches()
     }
 
-    def "Able to enable 'OF log messages'"() {
+    @Unroll
+    def "Able to enable 'OF log messages'  on the #switches.switchId switch"() {
         when: "Try to turn on 'OF log messages'"
-        def responseAfterTurningOn = grpc.enableLogOfErrorsOnSwitch(switchIp, new LogOferrorsDto(OnOffState.ON))
+        def responseAfterTurningOn = grpc.enableLogOfErrorsOnSwitch(switches.address,
+                new LogOferrorsDto(OnOffState.ON))
 
         then: "The 'OF log messages' is turned on"
         responseAfterTurningOn.enabled == OnOffState.ON
 
         when: "Try to turn off 'OF log messages'"
-        def responseAfterTurningOff = grpc.enableLogOfErrorsOnSwitch(switchIp, new LogOferrorsDto(OnOffState.OFF))
+        def responseAfterTurningOff = grpc.enableLogOfErrorsOnSwitch(switches.address,
+                new LogOferrorsDto(OnOffState.OFF))
 
         then: "The 'OF log messages' is turned off"
         responseAfterTurningOff.enabled == OnOffState.OFF
 
         cleanup: "Restore default state"
-        grpc.enableLogOfErrorsOnSwitch(switchIp, new LogOferrorsDto(DEFAULT_LOG_OF_MESSAGES_STATE))
+        grpc.enableLogOfErrorsOnSwitch(switches.address, new LogOferrorsDto(DEFAULT_LOG_OF_MESSAGES_STATE))
+
+        where:
+        switches << getNoviflowSwitches()
     }
 
-    def "Able to manipulate(CRUD) with a remote log server"() {
+    @Unroll
+    def "Able to manipulate(CRUD) with a remote log server on the #switches.switchId switch"() {
         when: "Remove current remote log server configuration"
-        def response = grpc.deleteRemoteLogServerForSwitch(switchIp)
+        def response = grpc.deleteRemoteLogServerForSwitch(switches.address)
 
         then: "Current remote log server configuration is deleted"
         response.deleted
 
-        def response1 = grpc.getRemoteLogServerForSwitch(switchIp)
+        def response1 = grpc.getRemoteLogServerForSwitch(switches.address)
         response1.ipAddress == ""
         response1.port == 0
 
         when: "Try to set custom remote log server"
-        def response2 = grpc.setRemoteLogServerForSwitch(switchIp, new RemoteLogServerDto(REMOTE_LOG_IP, REMOTE_LOG_PORT))
+        def response2 = grpc.setRemoteLogServerForSwitch(switches.address,
+                new RemoteLogServerDto(REMOTE_LOG_IP, REMOTE_LOG_PORT))
         assert response2.ipAddress == REMOTE_LOG_IP
         assert response2.port == REMOTE_LOG_PORT
 
         then: "New custom remote log server configuration is set"
-        def response3 = grpc.getRemoteLogServerForSwitch(switchIp)
+        def response3 = grpc.getRemoteLogServerForSwitch(switches.address)
         response3.ipAddress == REMOTE_LOG_IP
         response3.port == REMOTE_LOG_PORT
 
         cleanup: "Restore original configuration"
-        grpc.setRemoteLogServerForSwitch(switchIp,
+        grpc.setRemoteLogServerForSwitch(switches.address,
                 new RemoteLogServerDto(defaultRemoteLogServerIp, defaultRemoteLogServerPort))
+
+        where:
+        switches << getNoviflowSwitches()
     }
 
     @Unroll
-    def "Not able to set incorrect remote log server configuration(ip/port): #remoteIp/#remotePort"() {
+    def "Not able to set incorrect remote log server configuration(ip/port): #data.remoteIp/#data.remotePort \
+on the #sw.switchId switch"() {
         when: "Try to set incorrect configuration"
-        grpc.setRemoteLogServerForSwitch(switchIp, new RemoteLogServerDto(remoteIp, remotePort))
+        grpc.setRemoteLogServerForSwitch(sw.address, new RemoteLogServerDto(data.remoteIp, data.remotePort))
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).errorMessage == errorMessage
+        exc.responseBodyAsString.to(MessageError).errorMessage == data.errorMessage
 
         where:
-        remoteIp      | remotePort      | errorMessage
-        "1.1.1.1111"  | REMOTE_LOG_PORT | "Invalid IPv4 address."
-        REMOTE_LOG_IP | 65537           | "Invalid remotelogserver port."
+        [data, sw] << [
+                [
+                        [remoteIp    : "1.1.1.1111",
+                         remotePort  : REMOTE_LOG_PORT,
+                         errorMessage: "Invalid IPv4 address."],
+                        [remoteIp    : REMOTE_LOG_IP,
+                         remotePort  : 65537,
+                         errorMessage: "Invalid remotelogserver port."]
+                ], noviflowSwitches].combinations()
     }
 }
