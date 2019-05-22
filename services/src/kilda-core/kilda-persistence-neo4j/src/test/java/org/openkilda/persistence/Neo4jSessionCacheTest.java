@@ -17,6 +17,8 @@ package org.openkilda.persistence;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
 
 import org.openkilda.model.Cookie;
@@ -28,6 +30,8 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
+import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 
@@ -43,35 +47,38 @@ import java.util.Collections;
 import java.util.Map;
 
 public class Neo4jSessionCacheTest extends Neo4jBasedTest {
-    static final String FLOW_ID_PROPERTY_NAME = "flow_id";
-    static final String TEST_FLOW_ID = "test_flow";
+    private static final String FLOW_ID_PROPERTY_NAME = "flow_id";
+    private static final String TEST_FLOW_ID = "test_flow";
 
     @Test
     public void shouldSessionSharesEntityInstances() {
-        initFlow();
+        // flow is detached
+        Flow flow = initFlow();
 
         Session session = ((Neo4jSessionFactory) persistenceManager.getTransactionManager()).getSession();
         Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, TEST_FLOW_ID);
         Flow fetchedFlow = session.loadAll(Flow.class, flowIdFilter).iterator().next();
 
-        assertEquals(FlowStatus.IN_PROGRESS, fetchedFlow.getStatus());
+        assertEquals(flow, fetchedFlow);
 
         Flow anotherInstance = session.loadAll(Flow.class, flowIdFilter).iterator().next();
         anotherInstance.setStatus(FlowStatus.DOWN);
         session.save(anotherInstance);
 
+        // OGM managed, should be the same instance
+        assertSame(fetchedFlow, anotherInstance);
         assertEquals(FlowStatus.DOWN, fetchedFlow.getStatus());
     }
 
     @Test
     public void shouldReloadEntityAfterDetaching() {
-        initFlow();
+        Flow flow = initFlow();
 
         Session session = ((Neo4jSessionFactory) persistenceManager.getTransactionManager()).getSession();
         Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, TEST_FLOW_ID);
         Flow fetchedFlow = session.loadAll(Flow.class, flowIdFilter).iterator().next();
 
-        assertEquals(FlowStatus.IN_PROGRESS, fetchedFlow.getStatus());
+        assertEquals(flow, fetchedFlow);
 
         String query = "MATCH ()-[:source]-(f:flow {flow_id: {flow_id}})-[:destination]-() "
                 + "SET f.status='up' RETURN id(f)";
@@ -80,6 +87,7 @@ public class Neo4jSessionCacheTest extends Neo4jBasedTest {
         // 'refresh' the Flow entity in OGM cache.
         flowRelationIds.forEach(session::detachNodeEntity);
 
+        assertEquals(flow, fetchedFlow);
         assertEquals(FlowStatus.IN_PROGRESS, fetchedFlow.getStatus());
 
         Collection<Flow> flows = session.loadAll(Flow.class, flowIdFilter);
@@ -87,17 +95,18 @@ public class Neo4jSessionCacheTest extends Neo4jBasedTest {
         Flow afterUpdateFlow = flows.iterator().next();
 
         assertEquals(FlowStatus.UP, afterUpdateFlow.getStatus());
+        assertNotEquals(afterUpdateFlow, fetchedFlow);
     }
 
     @Test
     public void shouldSaveEntityAfterDetaching() {
-        initFlow();
+        Flow flow = initFlow();
 
         Session session = ((Neo4jSessionFactory) persistenceManager.getTransactionManager()).getSession();
         Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, TEST_FLOW_ID);
         Flow fetchedFlow = session.loadAll(Flow.class, flowIdFilter).iterator().next();
 
-        assertEquals(FlowStatus.IN_PROGRESS, fetchedFlow.getStatus());
+        assertEquals(flow, fetchedFlow);
 
         String query = "MATCH ()-[:source]-(f:flow {flow_id: {flow_id}})-[:destination]-() "
                 + "SET f.status='up' RETURN id(f)";
@@ -106,6 +115,7 @@ public class Neo4jSessionCacheTest extends Neo4jBasedTest {
         // 'refresh' the Flow entity in OGM cache.
         flowRelationIds.forEach(session::detachRelationshipEntity);
 
+        assertEquals(flow, fetchedFlow);
         assertEquals(FlowStatus.IN_PROGRESS, fetchedFlow.getStatus());
 
         fetchedFlow.setStatus(FlowStatus.DOWN);
@@ -116,9 +126,47 @@ public class Neo4jSessionCacheTest extends Neo4jBasedTest {
         Flow afterUpdateFlow = flows.iterator().next();
 
         assertEquals(FlowStatus.DOWN, afterUpdateFlow.getStatus());
+        assertEquals(afterUpdateFlow, fetchedFlow);
+        assertSame(afterUpdateFlow, fetchedFlow);
     }
 
-    private void initFlow() {
+    @Test
+    public void shouldSessionSharesEntityInstancesInTransaction() {
+        FlowPathRepository flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        FlowRepository flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+
+        persistenceManager.getTransactionManager().doInTransaction(() -> {
+            Flow flow = initFlow();
+
+            flowPathRepository.delete(flow.getForwardPath());
+
+            FlowPath path = FlowPath.builder()
+                    .pathId(new PathId(TEST_FLOW_ID + "_forward_path"))
+                    .flow(flow)
+                    .cookie(new Cookie(1))
+                    .meterId(new MeterId(1))
+                    .srcSwitch(flow.getSrcSwitch())
+                    .destSwitch(flow.getDestSwitch())
+                    .status(FlowPathStatus.ACTIVE)
+                    .segments(Collections.emptyList())
+                    .timeCreate(Instant.now())
+                    .timeModify(Instant.now())
+                    .build();
+            flowPathRepository.createOrUpdate(path);
+
+            flow.setForwardPath(path);
+            flowRepository.createOrUpdate(flow);
+
+            assertThat(flow.getPaths(), hasSize(2));
+
+            Flow fetchedFlow = flowRepository.findById(TEST_FLOW_ID)
+                    .orElseThrow(() -> new AssertionError("Flow not found"));
+            assertSame(flow, fetchedFlow);
+            assertSame(path, fetchedFlow.getForwardPath());
+        });
+    }
+
+    private Flow initFlow() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
 
         Switch switchA = buildTestSwitch(1);
@@ -168,5 +216,7 @@ public class Neo4jSessionCacheTest extends Neo4jBasedTest {
         flow.setReversePath(reversePath);
 
         repositoryFactory.createFlowRepository().createOrUpdate(flow);
+
+        return flow;
     }
 }

@@ -43,7 +43,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -254,24 +253,7 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
             Collection<PathSegment> currentSegments = findPathSegmentsByPathId(flowPath.getPathId());
             lockSwitches(getInvolvedSwitches(flowPath, currentSegments));
 
-            updateSegments(currentSegments, flowPath.getSegments());
-
             super.createOrUpdate(flowPath);
-        });
-    }
-
-    private void updateSegments(Collection<PathSegment> currentSegments, List<PathSegment> newSegments) {
-        Session session = getSession();
-
-        Set<Long> updatedEntities = newSegments.stream()
-                .map(session::resolveGraphIdFor)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        currentSegments.forEach(segment -> {
-            if (!updatedEntities.contains(session.resolveGraphIdFor(segment))) {
-                session.delete(segment);
-            }
         });
     }
 
@@ -368,8 +350,9 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
 
             // A segment must reference the same flow path.
             if (pathSegment.getPath() != flowPath) {
-                throw new IllegalArgumentException(format("Segment %s references different flow path, but expect %s",
-                        pathSegment, flowPath));
+                throw new IllegalArgumentException(
+                        format("Segment %s references different flow path %s, but expect %s",
+                        pathSegment, pathSegment.getPath(), flowPath));
             }
         });
     }

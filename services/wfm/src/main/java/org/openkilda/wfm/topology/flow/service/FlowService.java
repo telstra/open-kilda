@@ -489,7 +489,6 @@ public class FlowService extends BaseFlowService {
                 getFlowPathPairWithEncapsulation(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
         Flow flow = currentFlow.getFlow();
-        Flow initialFlow = flow.toBuilder().build();
 
         featureTogglesRepository.find().ifPresent(featureToggles ->
                 Optional.ofNullable(featureToggles.getFlowsRerouteUsingDefaultEncapType()).ifPresent(toggle -> {
@@ -499,7 +498,7 @@ public class FlowService extends BaseFlowService {
                 }));
 
         FlowPathsWithEncapsulationBuilder toCreateBuilder = FlowPathsWithEncapsulation.builder();
-        FlowPathsWithEncapsulationBuilder toRemoveBuilder = currentFlow.toBuilder().flow(initialFlow);
+        FlowPathsWithEncapsulationBuilder toRemoveBuilder = currentFlow.toBuilder().flow(flow);
         Instant timestamp = Instant.now();
 
         boolean reroutePrimary = pathIds.isEmpty() || pathIds.contains(flow.getForwardPathId())
@@ -551,16 +550,14 @@ public class FlowService extends BaseFlowService {
                 updateIslsForFlowPath(currentForwardPath);
                 updateIslsForFlowPath(currentReversePath);
 
-                flowPathRepository.createOrUpdate(newForwardPath);
-                flowPathRepository.createOrUpdate(newReversePath);
-                updateIslsForFlowPath(newForwardPath);
-                updateIslsForFlowPath(newReversePath);
-
                 flow.setStatus(FlowStatus.IN_PROGRESS);
                 flow.setTimeModify(timestamp);
                 flow.setForwardPath(newFlowPathPair.getForward());
                 flow.setReversePath(newFlowPathPair.getReverse());
                 flowRepository.createOrUpdate(flow);
+
+                updateIslsForFlowPath(newForwardPath);
+                updateIslsForFlowPath(newReversePath);
 
                 toCreateBuilder.forwardPath(newForwardPath)
                         .reversePath(newReversePath)
@@ -616,15 +613,13 @@ public class FlowService extends BaseFlowService {
                     updateIslsForFlowPath(currentForwardPath);
                     updateIslsForFlowPath(currentReversePath);
 
-                    flowPathRepository.createOrUpdate(newForwardPath);
-                    flowPathRepository.createOrUpdate(newReversePath);
-                    updateIslsForFlowPath(newForwardPath);
-                    updateIslsForFlowPath(newReversePath);
-
                     flow.setStatus(FlowStatus.IN_PROGRESS);
                     flow.setProtectedForwardPath(newFlowPathPair.getForward());
                     flow.setProtectedReversePath(newFlowPathPair.getReverse());
                     flowRepository.createOrUpdate(flow);
+
+                    updateIslsForFlowPath(newForwardPath);
+                    updateIslsForFlowPath(newReversePath);
 
                     toCreateBuilder.protectedForwardPath(newForwardPath)
                             .protectedReversePath(newReversePath)
@@ -637,8 +632,6 @@ public class FlowService extends BaseFlowService {
                     currentForwardPath.setStatus(FlowPathStatus.INACTIVE);
                     currentReversePath.setStatus(FlowPathStatus.INACTIVE);
 
-                    flowPathRepository.createOrUpdate(currentForwardPath);
-                    flowPathRepository.createOrUpdate(currentReversePath);
                     flowRepository.createOrUpdate(flow);
 
                     toRemoveBuilder.protectedForwardPath(null).protectedReversePath(null);
@@ -651,7 +644,7 @@ public class FlowService extends BaseFlowService {
         FlowPathsWithEncapsulation updatedFlow =
                 getFlowPathPairWithEncapsulation(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
-        return new RerouteResult(currentFlow.toBuilder().flow(initialFlow).build(), updatedFlow,
+        return new RerouteResult(currentFlow.toBuilder().flow(flow).build(), updatedFlow,
                 toCreateBuilder.flow(flow).build(), toRemoveBuilder.build());
     }
 

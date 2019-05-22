@@ -24,8 +24,6 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.converters.FlowStatusConverter;
-import org.openkilda.persistence.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowRepository;
 
 import com.google.common.collect.ImmutableMap;
@@ -33,14 +31,11 @@ import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
-import org.neo4j.ogm.session.Session;
 
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -56,9 +51,6 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     static final String DST_PORT_PROPERTY_NAME = "dst_port";
     static final String PERIODIC_PINGS_PROPERTY_NAME = "periodic_pings";
     static final String STATUS_PROPERTY_NAME = "status";
-
-    private final FlowStatusConverter flowStatusConverter = new FlowStatusConverter();
-    private final SwitchIdConverter switchIdConverter = new SwitchIdConverter();
 
     private final Neo4jFlowPathRepository flowPathRepository;
 
@@ -165,28 +157,7 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
             flowPathRepository.lockInvolvedSwitches(Stream.concat(currentPaths.stream(), flow.getPaths().stream())
                     .toArray(FlowPath[]::new));
 
-            updatePaths(currentPaths, flow.getPaths());
-
             super.createOrUpdate(flow);
-        });
-    }
-
-    private void updatePaths(Collection<FlowPath> currentPaths, Collection<FlowPath> newPaths) {
-        Session session = getSession();
-
-        Set<Long> updatedEntities = newPaths.stream()
-                .map(session::resolveGraphIdFor)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        currentPaths.forEach(path -> {
-            if (path.getTimeCreate() == null) {
-                path.setTimeCreate(Instant.now());
-            }
-
-            if (!updatedEntities.contains(session.resolveGraphIdFor(path))) {
-                flowPathRepository.delete(path);
-            }
         });
     }
 
@@ -241,23 +212,13 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
         requireManagedEntity(flow.getSrcSwitch());
         requireManagedEntity(flow.getDestSwitch());
 
-        // it must reference the same object.
-        FlowPath forwardPath = flow.getForwardPath();
-        if (forwardPath != null) {
-            if (forwardPath.getFlow() != flow) {
-                throw new IllegalArgumentException(format("Flow path %s references different flow, but expect %s",
-                        forwardPath, flow));
+        for (FlowPath path : flow.getPaths()) {
+            if (path.getFlow() != flow) {
+                // it must reference the same object.
+                throw new IllegalArgumentException(format("Flow path %s references different flow %s, but expect %s",
+                        path, path.getFlow(), flow));
             }
-            flowPathRepository.validateFlowPath(forwardPath);
-        }
-
-        FlowPath reversePath = flow.getReversePath();
-        if (reversePath != null) {
-            if (reversePath.getFlow() != flow) {
-                throw new IllegalArgumentException(format("Flow path %s references different flow, but expect %s",
-                        reversePath, flow));
-            }
-            flowPathRepository.validateFlowPath(reversePath);
+            flowPathRepository.validateFlowPath(path);
         }
     }
 }

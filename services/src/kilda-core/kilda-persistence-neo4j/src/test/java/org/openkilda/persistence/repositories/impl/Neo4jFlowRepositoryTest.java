@@ -94,6 +94,20 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         assertEquals(switchB.getSwitchId(), foundFlow.getDestSwitch().getSwitchId());
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldFailValidationOnCreateFlow() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+
+        flow.setProtectedForwardPath(FlowPath.builder()
+                .pathId(new PathId("faked_path"))
+                .flow(buildTestFlow(TEST_FLOW_ID, switchA, switchB))
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .build());
+
+        flowRepository.createOrUpdate(flow);
+    }
+
     @Test
     public void shouldDeleteFlow() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);

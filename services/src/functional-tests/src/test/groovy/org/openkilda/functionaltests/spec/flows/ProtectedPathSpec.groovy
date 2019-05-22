@@ -21,7 +21,6 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -240,7 +239,6 @@ class ProtectedPathSpec extends BaseSpecification {
         "an unmetered"  | 0
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2377")
     @Unroll
     def "System reroutes #flowDescription flow to more preferable path and ignores protected path when reroute\
  is intentional"() {
