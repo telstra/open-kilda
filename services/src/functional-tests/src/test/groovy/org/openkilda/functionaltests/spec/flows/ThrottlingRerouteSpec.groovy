@@ -1,9 +1,11 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -29,15 +31,11 @@ System should stop refreshing the timer if 'reroute.hardtimeout' is reached and 
 for each flowId).
 """)
 @Slf4j
+@Tags(VIRTUAL)
 class ThrottlingRerouteSpec extends BaseSpecification {
 
     @Value('${reroute.hardtimeout}')
     int rerouteHardTimeout
-
-    def setupOnce() {
-        //TODO(rtretiak): unstable on 'hardware' atm, needs investigation
-        requireProfiles("virtual")
-    }
 
     def "Reroute is not performed while new reroutes are being issued"() {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"

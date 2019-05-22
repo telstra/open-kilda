@@ -1,10 +1,12 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -154,9 +156,8 @@ class SwitchMaintenanceSpec extends BaseSpecification {
 
     // That logic will be reworked to fit new use cases
     @Ignore("Not implemented in new discovery-topology")
+    @Tags(VIRTUAL)
     def "System is correctly handling actions performing on a maintained switch disconnected from the controller"() {
-        requireProfiles("virtual")
-
         given: "An active switch under maintenance disconnected from the controller"
         def sw = topology.activeSwitches.first()
         northbound.setSwitchMaintenance(sw.dpId, true, false)
@@ -191,7 +192,7 @@ class SwitchMaintenanceSpec extends BaseSpecification {
         exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
         exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found : Failed to find path with " +
+                "Could not create flow: Not enough bandwidth found or path not found. Failed to find path with " +
                 "requested bandwidth=$flow.maximumBandwidth: Switch $sw.dpId doesn't have links with enough bandwidth"
 
         and: "Connect the switch back to the controller and unset maintenance mode"

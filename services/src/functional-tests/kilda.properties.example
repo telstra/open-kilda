@@ -6,7 +6,7 @@ floodlight.endpoint=http://localhost:8081
 floodlight.username=kilda
 floodlight.password=kilda
 floodlight.controller.uri=tcp:kilda:6653
-floodlight.alive.timeout=5
+floodlight.alive.timeout=10
 floodlight.alive.interval=2
 
 neo.uri=bolt://localhost:7687

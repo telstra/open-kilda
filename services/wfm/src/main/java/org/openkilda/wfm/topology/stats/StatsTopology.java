@@ -22,9 +22,13 @@ import static org.openkilda.wfm.topology.stats.StatsComponentType.METER_STATS_ME
 import static org.openkilda.wfm.topology.stats.StatsComponentType.PORT_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FILTER_BOLT;
+import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_KILDA_SPEAKER_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_KILDA_SPEAKER_SPOUT;
+import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_REQUESTER_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.SYSTEM_RULE_STATS_METRIC_GEN;
+import static org.openkilda.wfm.topology.stats.StatsComponentType.TICK_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
+import static org.openkilda.wfm.topology.stats.StatsStreamType.STATS_REQUEST;
 import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.statsWithCacheFields;
 
 import org.openkilda.persistence.PersistenceManager;
@@ -34,6 +38,8 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.stats.bolts.CacheBolt;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
 import org.openkilda.wfm.topology.stats.bolts.SpeakerBolt;
+import org.openkilda.wfm.topology.stats.bolts.StatsRequesterBolt;
+import org.openkilda.wfm.topology.stats.bolts.TickBolt;
 import org.openkilda.wfm.topology.stats.metrics.FlowMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.MeterConfigMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.MeterStatsMetricGenBolt;
@@ -118,6 +124,14 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         builder.setBolt(METER_STATS_METRIC_GEN.name(),
                 new MeterStatsMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
                 .fieldsGrouping(STATS_CACHE_BOLT.name(), StatsStreamType.METER_STATS.toString(), statsWithCacheFields);
+
+        builder.setBolt(TICK_BOLT.name(), new TickBolt(topologyConfig.getStatisticsRequestInterval()));
+
+        builder.setBolt(STATS_REQUESTER_BOLT.name(), new StatsRequesterBolt(), parallelism)
+                .shuffleGrouping(TICK_BOLT.name());
+
+        builder.setBolt(STATS_KILDA_SPEAKER_BOLT.name(), buildKafkaBolt(topologyConfig.getSpeakerTopic()))
+                .shuffleGrouping(STATS_REQUESTER_BOLT.name(), STATS_REQUEST.name());
 
         String openTsdbTopic = topologyConfig.getKafkaOtsdbTopic();
         builder.setBolt("stats-opentsdb", createKafkaBolt(openTsdbTopic))

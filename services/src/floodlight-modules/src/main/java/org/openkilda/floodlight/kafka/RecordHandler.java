@@ -38,6 +38,7 @@ import org.openkilda.floodlight.kafka.dispatcher.CommandDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.PingRequestDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.RemoveBfdSessionDispatcher;
 import org.openkilda.floodlight.kafka.dispatcher.SetupBfdSessionDispatcher;
+import org.openkilda.floodlight.kafka.dispatcher.StatsRequestDispatcher;
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -1089,7 +1090,13 @@ class RecordHandler implements Runnable {
 
         // Process the message within the message correlation context.
         try (CorrelationContextClosable closable = CorrelationContext.create(message.getCorrelationId())) {
-            if (!dispatch(message)) {
+            if (logger.isDebugEnabled()) {
+                logger.debug("Receive command: key={}, payload={}", record.key(), message.getData());
+            }
+
+            CommandContext commandContext = new CommandContext(context.getModuleContext(), message.getCorrelationId(),
+                                                               record.key());
+            if (!dispatch(commandContext, message)) {
                 doControllerMsg(message);
             }
         } catch (Exception exception) {
@@ -1102,8 +1109,7 @@ class RecordHandler implements Runnable {
         parseRecord(record);
     }
 
-    private boolean dispatch(CommandMessage message) {
-        CommandContext commandContext = new CommandContext(context.getModuleContext(), message.getCorrelationId());
+    private boolean dispatch(CommandContext commandContext, CommandMessage message) {
         CommandData payload = message.getData();
 
         for (CommandDispatcher<?> entry : dispatchers) {
@@ -1128,7 +1134,8 @@ class RecordHandler implements Runnable {
         private final List<CommandDispatcher<?>> dispatchers = ImmutableList.of(
                 new PingRequestDispatcher(),
                 new SetupBfdSessionDispatcher(),
-                new RemoveBfdSessionDispatcher());
+                new RemoveBfdSessionDispatcher(),
+                new StatsRequestDispatcher());
 
         public Factory(ConsumerContext context) {
             this.context = context;

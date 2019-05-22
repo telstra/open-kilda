@@ -36,8 +36,8 @@ UP --> moveChoice : discovery
 UP --> DOWN : fail
 UP --> DOWN : physical-down
 UP --> BFD : bfd-up
-UP : enter / set remote
-UP : enter / emit isl-up
+UP : enter [have speaker event] / set remote
+UP : enter [have speaker event] / emit isl-up
 
 moveChoice --> UP : [remote not changed]
 moveChoice --> UP : [remote is changed] / emit isl-move

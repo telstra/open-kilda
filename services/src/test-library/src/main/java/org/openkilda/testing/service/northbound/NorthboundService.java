@@ -88,6 +88,8 @@ public interface NorthboundService {
 
     FlowMeterEntries resetMeters(String flowId);
 
+    FlowPayload swapFlowPath(String flowId);
+
     //switches
 
     SwitchFlowEntries getSwitchRules(SwitchId switchId);
@@ -116,7 +118,7 @@ public interface NorthboundService {
 
     SwitchMeterEntries getAllMeters(SwitchId switchId);
 
-    SwitchValidationResult switchValidate(SwitchId switchId);
+    SwitchValidationResult validateSwitch(SwitchId switchId);
 
     DeleteSwitchResult deleteSwitch(SwitchId switchId, boolean force);
 

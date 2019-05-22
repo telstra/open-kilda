@@ -17,18 +17,20 @@ package org.openkilda.model;
 
 /**
  * Represents flow path statuses.
+ * </p>
+ * IMPORTANT: definition order is significant, corresponds with disorder level.
  */
 public enum FlowPathStatus {
-
-    /**
-     * Flow path is installing/removing.
-     */
-    IN_PROGRESS,
 
     /**
      * Flow path is installed and active.
      */
     ACTIVE,
+
+    /**
+     * Flow path is installing/removing.
+     */
+    IN_PROGRESS,
 
     /**
      * Flow path is installed, but inactive.

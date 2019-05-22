@@ -26,5 +26,6 @@ public enum StatsStreamType {
     FLOW_STATS,
     SYSTEM_RULE_STATS,
     STATS_RESPONSE,
+    STATS_REQUEST,
     CACHE_UPDATE,
 }

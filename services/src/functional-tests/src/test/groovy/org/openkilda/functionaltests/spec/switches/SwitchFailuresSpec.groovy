@@ -1,9 +1,11 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -19,12 +21,8 @@ import java.util.concurrent.TimeUnit
 This spec verifies different situations when Kilda switches suddenly disconnect from the controller.
 Note: For now it is only runnable on virtual env due to no ability to disconnect hardware switches
 """)
+@Tags(VIRTUAL)
 class SwitchFailuresSpec extends BaseSpecification {
-
-    def setupOnce() {
-        requireProfiles("virtual")
-    }
-
     def "ISL is still able to properly fail even after switches were reconnected"() {
         given: "A flow"
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
@@ -49,7 +47,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
 
         and: "ISL fails after discovery timeout"
-        //TODO(rtretiak): Using big timeout here. This is an abnormal behavior, currently investigating.
+        //TODO(rtretiak): Using big timeout here. This is an abnormal behavior
         Wrappers.wait(untilIslShouldFail() / 1000 + WAIT_OFFSET * 1.5) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
@@ -91,9 +89,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         then: "The flow is UP and valid"
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-            northbound.validateFlow(flow.id).each { direction ->
-                assert direction.discrepancies.findAll { it.field != "meterId" }.empty
-            }
+            northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
         }
 
         and: "Rules are valid on the knocked out switch"
@@ -136,9 +132,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         then: "The flow is UP and valid"
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-            northbound.validateFlow(flow.id).each { direction ->
-                assert direction.discrepancies.findAll { it.field != "meterId" }.empty
-            }
+            northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
         }
 
         and: "Rules are valid on the knocked out switch"

@@ -123,8 +123,13 @@ public class StatsIntegrationService {
                     Filter filter = new Filter();
                     filter.setGroupBy(Boolean.valueOf(OpenTsDb.GROUP_BY));
                     if ((statsType.equals(StatsType.SWITCH_PORT) && param.getKey().equals("port"))
-                            || (statsType.equals(StatsType.FLOW_RAW_PACKET) && param.getKey().equals("cookie"))
-                            || (statsType.equals(StatsType.FLOW_RAW_PACKET) && param.getKey().equals("switchid"))) {
+                            || ((statsType.equals(StatsType.FLOW_RAW_PACKET) || statsType.equals(StatsType.METER))
+                            && param.getKey().equals("cookie"))
+                            || ((statsType.equals(StatsType.FLOW_RAW_PACKET) || statsType.equals(StatsType.METER)) 
+                            && param.getKey().equals("switchid"))
+                            || (statsType.equals(StatsType.METER) && param.getKey().equals("direction")
+                            && index == -1)
+                            || (statsType.equals(StatsType.METER) && param.getKey().equals("meterid"))) {
                         filter.setType(OpenTsDb.TYPE_WILDCARD);
                     } else {
                         filter.setType(OpenTsDb.TYPE);
@@ -134,6 +139,8 @@ public class StatsIntegrationService {
                         filter.setFilter("forward");
                     } else if (index == 1 && param.getKey().equals("direction")) {
                         filter.setFilter("reverse");
+                    } else if (index == -1 && param.getKey().equals("direction")) {
+                        filter.setFilter("*");
                     } else {
                         filter.setFilter(param.getValue()[0]);
                     }
@@ -245,8 +252,9 @@ public class StatsIntegrationService {
             metricList = Metrics.flowRawValue(metric);
         } else if (statsType.equals(StatsType.SWITCH_PORT)) {
             metricList = Metrics.getStartsWith("Switch_");
+        } else if (statsType.equals(StatsType.METER)) {
+            metricList = Metrics.meterValue(metric);
         }
-
         return metricList;
     }
 
@@ -287,6 +295,8 @@ public class StatsIntegrationService {
                     direction);
         } else if (statsType.equals(StatsType.SWITCH_PORT)) {
             queries = getSwitchPortQueries(queries, switchIds, metricList, statsType, downsample);
+        } else if (statsType.equals(StatsType.METER)) {
+            queries = getFlowMeterQueries(queries, downsample, flowId, direction, statsType, metricList);
         } else {
             String switchId = (switchIds == null || switchIds.isEmpty()) ? null : switchIds.get(0);
             Map<String, String[]> params = getParam(statsType, switchId, port, flowId, srcSwitch, srcPort, dstSwitch,
@@ -296,6 +306,23 @@ public class StatsIntegrationService {
                     String metricName = metricList.get(index);
                     queries.add(getQuery(downsample, metricName, params, index, statsType));
                 }
+            }
+        }
+        return queries;
+    }
+    
+    
+    
+    private List<Query> getFlowMeterQueries(List<Query> queries, final String downsample, 
+            final String flowId, final String direction, final StatsType statsType, 
+            final List<String> metricList) {
+        Map<String, String[]> params  =  getParam(statsType, null, null, flowId, null, null, null, null);
+        int indexDirection = (direction.isEmpty() 
+                             || "forward".equalsIgnoreCase(direction)) ? 0 : 
+                             ("reverse".equalsIgnoreCase(direction)) ? 1 : -1;
+        if (metricList != null && !metricList.isEmpty()) {
+            for (int index = 0; index < metricList.size(); index++) {
+                queries.add(getQuery(downsample, metricList.get(index), params, indexDirection, statsType));
             }
         }
         return queries;
@@ -431,6 +458,12 @@ public class StatsIntegrationService {
         } else if (statsType.equals(StatsType.FLOW_RAW_PACKET)) {
             params.put("flowid", new String[] { flowId });
             params.put("cookie", new String[] { "*" });
+        } else if (statsType.equals(StatsType.METER)) {
+            params.put("flowid", new String[] { flowId });
+            params.put("cookie", new String[] { "*" });
+            params.put("meterid", new String[] { "*" });
+            params.put("switchid", new String[] { "*" });
+            params.put("direction", new String[] {});
         }
         return params;
     }

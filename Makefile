@@ -25,6 +25,7 @@ up-test-mode:
 	@echo ~~ Once the topology deployments are done, it should be safe to test
 	@echo ~~
 	@echo
+	cp -n .env.example .env
 	OK_TESTS="DISABLE_LOGIN" docker-compose up -d
 	docker-compose logs -f wfm
 	$(MAKE) -C tools/elk-dashboards

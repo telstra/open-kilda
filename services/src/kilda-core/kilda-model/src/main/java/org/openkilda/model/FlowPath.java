@@ -16,6 +16,7 @@
 package org.openkilda.model;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.lang.String.format;
 import static org.neo4j.ogm.annotation.Relationship.INCOMING;
 import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
 
@@ -137,6 +138,25 @@ public class FlowPath implements Serializable {
     }
 
     /**
+     * Sets the current flow path status corresponds with passed {@link FlowStatus} .
+     */
+    public void setStatusLikeFlow(FlowStatus flowStatus) {
+        switch (flowStatus) {
+            case UP:
+                setStatus(FlowPathStatus.ACTIVE);
+                break;
+            case DOWN:
+                setStatus(FlowPathStatus.INACTIVE);
+                break;
+            case IN_PROGRESS:
+                setStatus(FlowPathStatus.IN_PROGRESS);
+                break;
+            default:
+                throw new IllegalArgumentException(format("Unsupported status value: %s", status));
+        }
+    }
+
+    /**
      * Checks whether the flow path goes through a single switch.
      *
      * @return true if source and destination switches are the same, otherwise false
@@ -163,6 +183,10 @@ public class FlowPath implements Serializable {
         }
 
         this.segments = segments;
+    }
+
+    public boolean isProtected() {
+        return pathId.equals(flow.getProtectedForwardPathId()) || pathId.equals(flow.getProtectedReversePathId());
     }
 
     @PostLoad

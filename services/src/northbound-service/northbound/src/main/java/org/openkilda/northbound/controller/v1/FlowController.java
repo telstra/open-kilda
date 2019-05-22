@@ -265,6 +265,19 @@ public class FlowController extends BaseController {
     }
 
     /**
+     * Initiates flow paths swapping for flow with protected path.
+     *
+     * @param flowId id of flow to swap paths.
+     * @return flow payload.
+     */
+    @ApiOperation(value = "Swap paths for flow with protected path", response = FlowPayload.class)
+    @PatchMapping(path = "/{flow_id}/swap")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowPayload> swapFlowPaths(@PathVariable("flow_id") String flowId) {
+        return flowService.swapFlowPaths(flowId);
+    }
+
+    /**
      * Initiates flow synchronization (reinstalling). In other words it means flow update with newly generated rules.
      *
      * @param flowId id of flow to be rerouted.

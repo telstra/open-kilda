@@ -108,10 +108,47 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         isl.setSrcSwitch(switchA);
         isl.setSrcPort(111);
         isl.setDestSwitch(switchB);
+        isl.setDestPort(112);
+
+        islRepository.createOrUpdate(isl);
+
+        List<Isl> foundIsls = Lists.newArrayList(islRepository.findByEndpoint(TEST_SWITCH_A_ID, 111));
+        assertEquals(1, foundIsls.size());
+        assertEquals(switchA.getSwitchId(), foundIsls.get(0).getSrcSwitch().getSwitchId());
+        assertEquals(switchB.getSwitchId(), foundIsls.get(0).getDestSwitch().getSwitchId());
+
+        foundIsls = Lists.newArrayList(islRepository.findByEndpoint(TEST_SWITCH_B_ID, 112));
+        assertEquals(1, foundIsls.size());
+        assertEquals(switchA.getSwitchId(), foundIsls.get(0).getSrcSwitch().getSwitchId());
+        assertEquals(switchB.getSwitchId(), foundIsls.get(0).getDestSwitch().getSwitchId());
+    }
+
+    @Test
+    public void shouldFindIslBySrcEndpoint() {
+        Isl isl = new Isl();
+        isl.setSrcSwitch(switchA);
+        isl.setSrcPort(111);
+        isl.setDestSwitch(switchB);
 
         islRepository.createOrUpdate(isl);
 
         List<Isl> foundIsls = Lists.newArrayList(islRepository.findBySrcEndpoint(TEST_SWITCH_A_ID, 111));
+        assertEquals(1, foundIsls.size());
+        assertEquals(switchA.getSwitchId(), foundIsls.get(0).getSrcSwitch().getSwitchId());
+        assertEquals(switchB.getSwitchId(), foundIsls.get(0).getDestSwitch().getSwitchId());
+    }
+
+    @Test
+    public void shouldFindIslByDestEndpoint() {
+        Isl isl = new Isl();
+        isl.setSrcSwitch(switchA);
+        isl.setSrcPort(111);
+        isl.setDestSwitch(switchB);
+        isl.setDestPort(112);
+
+        islRepository.createOrUpdate(isl);
+
+        List<Isl> foundIsls = Lists.newArrayList(islRepository.findByDestEndpoint(TEST_SWITCH_B_ID, 112));
         assertEquals(1, foundIsls.size());
         assertEquals(switchA.getSwitchId(), foundIsls.get(0).getSrcSwitch().getSwitchId());
         assertEquals(switchB.getSwitchId(), foundIsls.get(0).getDestSwitch().getSwitchId());
@@ -217,10 +254,10 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
 
         islRepository.createOrUpdate(isl);
 
-        buildFlowWithPath(0, 0);
+        Flow flow = buildFlowWithPath(0, 0);
 
         List<Isl> foundIsls = Lists.newArrayList(
-                islRepository.findActiveAndOccupiedByFlowWithAvailableBandwidth(TEST_FLOW_ID, 100));
+                islRepository.findActiveAndOccupiedByFlowPathWithAvailableBandwidth(flow.getFlowPathIds(), 100));
         assertThat(foundIsls, Matchers.hasSize(1));
     }
 
@@ -236,10 +273,10 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
 
         islRepository.createOrUpdate(isl);
 
-        buildFlowWithPath(0, 0);
+        Flow flow = buildFlowWithPath(0, 0);
 
         List<Isl> foundIsls = Lists.newArrayList(
-                islRepository.findActiveAndOccupiedByFlowWithAvailableBandwidth(TEST_FLOW_ID, 100));
+                islRepository.findActiveAndOccupiedByFlowPathWithAvailableBandwidth(flow.getFlowPathIds(), 100));
         assertThat(foundIsls, Matchers.hasSize(0));
     }
 
@@ -378,7 +415,7 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         assertEquals(0, islRepository.findSymmetricActiveWithAvailableBandwidth(availableBandwidth).size());
     }
 
-    private void buildFlowWithPath(int forwardBandwidth, int reverseBandwidth) {
+    private Flow buildFlowWithPath(int forwardBandwidth, int reverseBandwidth) {
         Flow flow = Flow.builder()
                 .flowId(TEST_FLOW_ID)
                 .srcSwitch(switchA)
@@ -435,5 +472,6 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         reversePath.setSegments(Collections.singletonList(reverseSegment));
 
         flowRepository.createOrUpdate(flow);
+        return flow;
     }
 }

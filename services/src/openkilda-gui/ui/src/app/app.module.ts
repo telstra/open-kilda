@@ -26,7 +26,6 @@ import { DatatableComponent } from './modules/isl/datatable/datatable.component'
 import { FlowLayoutComponent, FlowComponent, FlowSearchComponent, FlowListComponent, FlowAddComponent, FlowEditComponent,FlowDetailComponent  } from './modules/flows';
 import { UsermanagementComponent } from './modules/usermanagement/usermanagement.component';
 import { UseractivityComponent } from './modules/useractivity/useractivity.component';
-import { IslEditComponent } from './modules/isl/isl-edit/isl-edit.component';
 import { IslListComponent } from './modules/isl/isl-list/isl-list.component';
 import { BreadcrumbComponent } from './common/components/breadcrumb/breadcrumb.component';
 import { UserListComponent } from './modules/usermanagement/users/user-list/user-list.component';
@@ -87,6 +86,7 @@ import { FlowReRouteModalComponent } from './common/components/flow-re-route-mod
 import { SessionComponent } from './modules/settings/session/session.component';
 import { ImportTopologySettingComponent } from './modules/topology/import-topology-setting/import-topology-setting.component';
 import { ExportTopologySettingComponent } from './modules/topology/export-topology-setting/export-topology-setting.component';
+import { IslmaintenancemodalComponent } from './common/components/islmaintenancemodal/islmaintenancemodal.component';
 
 @NgModule({
   declarations: [
@@ -103,7 +103,6 @@ import { ExportTopologySettingComponent } from './modules/topology/export-topolo
     UsermanagementComponent,
     UseractivityComponent,
     BreadcrumbComponent,
-    IslEditComponent,
     IslListComponent,
     UserListComponent,
     UserEditComponent,
@@ -159,7 +158,8 @@ import { ExportTopologySettingComponent } from './modules/topology/export-topolo
     PortGraphComponent,
     ResetPasswordComponent,
     ImportTopologySettingComponent,
-    ExportTopologySettingComponent
+    ExportTopologySettingComponent,
+    IslmaintenancemodalComponent,
   ],
   imports: [
     HttpClientModule,
@@ -200,7 +200,8 @@ import { ExportTopologySettingComponent } from './modules/topology/export-topolo
     FlowContractsComponent,
     ResetPasswordComponent,
     ImportTopologySettingComponent,    
-    ExportTopologySettingComponent
+    ExportTopologySettingComponent,
+    IslmaintenancemodalComponent,
   ]
 })
 export class AppModule { }

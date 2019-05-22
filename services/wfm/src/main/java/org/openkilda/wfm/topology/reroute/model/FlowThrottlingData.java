@@ -15,11 +15,16 @@
 
 package org.openkilda.wfm.topology.reroute.model;
 
+import org.openkilda.model.PathId;
+
+import com.google.common.annotations.VisibleForTesting;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.Set;
 
 @Data
 @AllArgsConstructor
@@ -27,4 +32,12 @@ public class FlowThrottlingData implements Serializable {
     private String correlationId;
     private Integer priority;
     private Instant timeCreate;
+    private Set<PathId> pathIdSet;
+
+    @VisibleForTesting
+    public FlowThrottlingData(String correlationId, Integer priority) {
+        this.correlationId = correlationId;
+        this.priority = priority;
+        pathIdSet = Collections.emptySet();
+    }
 }

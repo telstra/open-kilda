@@ -392,7 +392,7 @@ public class InMemoryPathComputerTest {
         PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
                 new BestCostAndShortestPathFinder(200,
                         pathComputerFactory.getWeightFunctionByStrategy(WeightStrategy.COST)));
-        PathPair path = pathComputer.getPath(f1, false);
+        PathPair path = pathComputer.getPath(f1);
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(278));
 
@@ -464,9 +464,10 @@ public class InMemoryPathComputerTest {
                 .bandwidth(bandwidth)
                 .ignoreBandwidth(false)
                 .build();
+        Flow oldFlow = flowRepository.findById(flowId).orElseThrow(() -> new AssertionError("Flow not found"));
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair result = pathComputer.getPath(flow, true);
+        PathPair result = pathComputer.getPath(flow, oldFlow.getFlowPathIds());
 
         assertThat(result.getForward().getSegments(), Matchers.hasSize(2));
         assertThat(result.getReverse().getSegments(), Matchers.hasSize(2));
@@ -502,7 +503,7 @@ public class InMemoryPathComputerTest {
         thrown.expect(UnroutableFlowException.class);
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        pathComputer.getPath(flow, true);
+        pathComputer.getPath(flow, flow.getFlowPathIds());
     }
 
     @Test
@@ -566,7 +567,7 @@ public class InMemoryPathComputerTest {
 
         flowRepository.createOrUpdate(flow);
 
-        PathPair path2 = pathComputer.getPath(flow, true);
+        PathPair path2 = pathComputer.getPath(flow, flow.getFlowPathIds());
         assertEquals(diversePath, path2);
     }
 

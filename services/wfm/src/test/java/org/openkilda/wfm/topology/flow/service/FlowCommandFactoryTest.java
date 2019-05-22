@@ -31,28 +31,35 @@ import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.model.Cookie;
-import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
 
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class FlowCommandFactoryTest {
     private static final String TEST_FLOW = "test-flow";
     private static final long TEST_COOKIE = Cookie.FORWARD_FLOW_COOKIE_MASK | 1;
+    private static final int METER_ID = 42;
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId SWITCH_ID_2 = new SwitchId("00:00:00:00:00:00:00:02");
     private static final SwitchId SWITCH_ID_3 = new SwitchId("00:00:00:00:00:00:00:03");
     private static final SwitchId SWITCH_ID_4 = new SwitchId("00:00:00:00:00:00:00:04");
+
+    private FlowCommandFactory factory;
+
+    @Before
+    public void setup() {
+        factory = new FlowCommandFactory();
+    }
 
     @Test
     public void shouldCreateInstallRulesFor1SegmentPath() {
@@ -69,8 +76,7 @@ public class FlowCommandFactoryTest {
                 destSwitch, 2, 201, 301, 0, true,
                 asList(segment1to2));
 
-        FlowCommandFactory factory = new FlowCommandFactory();
-        List<InstallTransitFlow> rules = factory.createInstallTransitAndEgressRulesForFlow(flow.getFlow(),
+        List<InstallTransitFlow> rules = factory.createInstallTransitAndEgressRulesForFlow(
                 flow.getFlowPath(), flow.getTransitVlanEntity());
         assertThat(rules, hasSize(1));
         assertThat(rules, everyItem(hasProperty("cookie", equalTo(TEST_COOKIE))));
@@ -80,7 +86,7 @@ public class FlowCommandFactoryTest {
         assertEquals(301, (int) rules.get(0).getTransitVlanId());
         assertEquals(201, (int) ((InstallEgressFlow) rules.get(0)).getOutputVlanId());
 
-        BaseInstallFlow ingressRule = factory.createInstallIngressRulesForFlow(flow.getFlow(),
+        BaseInstallFlow ingressRule = factory.createInstallIngressRulesForFlow(
                 flow.getFlowPath(), flow.getTransitVlanEntity());
         assertEquals(TEST_COOKIE, (long) ingressRule.getCookie());
         assertEquals(SWITCH_ID_1, ingressRule.getSwitchId());
@@ -94,7 +100,6 @@ public class FlowCommandFactoryTest {
         Switch srcSwitch = Switch.builder().switchId(SWITCH_ID_1).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_ID_2).build();
 
-        PathId pathId = new PathId(UUID.randomUUID().toString());
         PathSegment.PathSegmentBuilder segment1to2 = PathSegment.builder()
                 .srcSwitch(srcSwitch)
                 .srcPort(11)
@@ -105,8 +110,7 @@ public class FlowCommandFactoryTest {
                 destSwitch, 2, 201, 301, 0, true,
                 asList(segment1to2));
 
-        FlowCommandFactory factory = new FlowCommandFactory();
-        List<RemoveFlow> rules = factory.createRemoveTransitAndEgressRulesForFlow(flow.getFlow(),
+        List<RemoveFlow> rules = factory.createRemoveTransitAndEgressRulesForFlow(
                 flow.getFlowPath(), flow.getTransitVlanEntity());
         assertThat(rules, hasSize(1));
         assertThat(rules, everyItem(hasProperty("criteria",
@@ -116,7 +120,7 @@ public class FlowCommandFactoryTest {
         assertEquals(2, (int) rules.get(0).getCriteria().getOutPort());
         assertEquals(301, (int) rules.get(0).getCriteria().getInVlan());
 
-        RemoveFlow ingressRule = factory.createRemoveIngressRulesForFlow(flow.getFlow(), flow.getFlowPath());
+        RemoveFlow ingressRule = factory.createRemoveIngressRulesForFlow(flow.getFlowPath());
         assertEquals(TEST_COOKIE, (long) ingressRule.getCookie());
         assertEquals(SWITCH_ID_1, ingressRule.getSwitchId());
         assertEquals(1, (int) ingressRule.getCriteria().getInPort());
@@ -145,8 +149,7 @@ public class FlowCommandFactoryTest {
                 destSwitch, 2, 201, 301, 0, true,
                 asList(segment1to2, segment2to3));
 
-        FlowCommandFactory factory = new FlowCommandFactory();
-        List<InstallTransitFlow> rules = factory.createInstallTransitAndEgressRulesForFlow(flow.getFlow(),
+        List<InstallTransitFlow> rules = factory.createInstallTransitAndEgressRulesForFlow(
                 flow.getFlowPath(), flow.getTransitVlanEntity());
         assertThat(rules, hasSize(2));
         assertThat(rules, everyItem(hasProperty("cookie", equalTo(TEST_COOKIE))));
@@ -161,7 +164,7 @@ public class FlowCommandFactoryTest {
         assertEquals(301, (int) rules.get(1).getTransitVlanId());
         assertEquals(201, (int) ((InstallEgressFlow) rules.get(1)).getOutputVlanId());
 
-        BaseInstallFlow ingressRule = factory.createInstallIngressRulesForFlow(flow.getFlow(),
+        BaseInstallFlow ingressRule = factory.createInstallIngressRulesForFlow(
                 flow.getFlowPath(), flow.getTransitVlanEntity());
         assertEquals(TEST_COOKIE, (long) ingressRule.getCookie());
         assertEquals(SWITCH_ID_1, ingressRule.getSwitchId());
@@ -177,7 +180,6 @@ public class FlowCommandFactoryTest {
         Switch switch3 = Switch.builder().switchId(SWITCH_ID_3).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_ID_4).build();
 
-        PathId pathId = new PathId(UUID.randomUUID().toString());
         PathSegment.PathSegmentBuilder segment1to2 = PathSegment.builder()
                 .srcSwitch(srcSwitch)
                 .srcPort(11)
@@ -198,8 +200,7 @@ public class FlowCommandFactoryTest {
                 destSwitch, 2, 201, 301, 0, true,
                 asList(segment1to2, segment2to3, segment3to4));
 
-        FlowCommandFactory factory = new FlowCommandFactory();
-        List<InstallTransitFlow> rules = factory.createInstallTransitAndEgressRulesForFlow(flow.getFlow(),
+        List<InstallTransitFlow> rules = factory.createInstallTransitAndEgressRulesForFlow(
                 flow.getFlowPath(), flow.getTransitVlanEntity());
         assertThat(rules, hasSize(3));
         assertThat(rules, everyItem(hasProperty("cookie", equalTo(TEST_COOKIE))));
@@ -219,7 +220,7 @@ public class FlowCommandFactoryTest {
         assertEquals(301, (int) rules.get(2).getTransitVlanId());
         assertEquals(201, (int) ((InstallEgressFlow) rules.get(2)).getOutputVlanId());
 
-        BaseInstallFlow ingressRule = factory.createInstallIngressRulesForFlow(flow.getFlow(),
+        BaseInstallFlow ingressRule = factory.createInstallIngressRulesForFlow(
                 flow.getFlowPath(), flow.getTransitVlanEntity());
         assertEquals(TEST_COOKIE, (long) ingressRule.getCookie());
         assertEquals(SWITCH_ID_1, ingressRule.getSwitchId());
@@ -235,7 +236,6 @@ public class FlowCommandFactoryTest {
         Switch switch2 = Switch.builder().switchId(SWITCH_ID_2).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_ID_3).build();
 
-        PathId pathId = new PathId(UUID.randomUUID().toString());
         PathSegment.PathSegmentBuilder segment1to2 = PathSegment.builder()
                 .srcSwitch(srcSwitch)
                 .srcPort(11)
@@ -251,8 +251,7 @@ public class FlowCommandFactoryTest {
                 destSwitch, 2, 201, 301, 0, true,
                 asList(segment2to3, segment1to2));
 
-        FlowCommandFactory factory = new FlowCommandFactory();
-        List<InstallTransitFlow> rules = factory.createInstallTransitAndEgressRulesForFlow(flow.getFlow(),
+        List<InstallTransitFlow> rules = factory.createInstallTransitAndEgressRulesForFlow(
                 flow.getFlowPath(), flow.getTransitVlanEntity());
         assertThat(rules, hasSize(2));
         assertThat(rules, everyItem(hasProperty("cookie", equalTo(TEST_COOKIE))));
@@ -267,7 +266,7 @@ public class FlowCommandFactoryTest {
         assertEquals(301, (int) rules.get(1).getTransitVlanId());
         assertEquals(201, (int) ((InstallEgressFlow) rules.get(1)).getOutputVlanId());
 
-        BaseInstallFlow ingressRule = factory.createInstallIngressRulesForFlow(flow.getFlow(),
+        BaseInstallFlow ingressRule = factory.createInstallIngressRulesForFlow(
                 flow.getFlowPath(), flow.getTransitVlanEntity());
         assertEquals(TEST_COOKIE, (long) ingressRule.getCookie());
         assertEquals(SWITCH_ID_1, ingressRule.getSwitchId());
@@ -283,7 +282,6 @@ public class FlowCommandFactoryTest {
         Switch switch2 = Switch.builder().switchId(SWITCH_ID_2).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_ID_3).build();
 
-        PathId pathId = new PathId(UUID.randomUUID().toString());
         PathSegment.PathSegmentBuilder segment1to2 = PathSegment.builder()
                 .srcSwitch(srcSwitch)
                 .srcPort(11)
@@ -299,8 +297,7 @@ public class FlowCommandFactoryTest {
                 destSwitch, 2, 201, 301, 0, true,
                 asList(segment1to2, segment2to3));
 
-        FlowCommandFactory factory = new FlowCommandFactory();
-        List<RemoveFlow> rules = factory.createRemoveTransitAndEgressRulesForFlow(flow.getFlow(),
+        List<RemoveFlow> rules = factory.createRemoveTransitAndEgressRulesForFlow(
                 flow.getFlowPath(), flow.getTransitVlanEntity());
         assertThat(rules, hasSize(2));
         assertThat(rules, everyItem(hasProperty("criteria",
@@ -315,7 +312,7 @@ public class FlowCommandFactoryTest {
         assertEquals(2, (int) rules.get(1).getCriteria().getOutPort());
         assertEquals(301, (int) rules.get(1).getCriteria().getInVlan());
 
-        RemoveFlow ingressRule = factory.createRemoveIngressRulesForFlow(flow.getFlow(), flow.getFlowPath());
+        RemoveFlow ingressRule = factory.createRemoveIngressRulesForFlow(flow.getFlowPath());
         assertEquals(TEST_COOKIE, (long) ingressRule.getCookie());
         assertEquals(SWITCH_ID_1, ingressRule.getSwitchId());
         assertEquals(1, (int) ingressRule.getCriteria().getInPort());
@@ -330,7 +327,6 @@ public class FlowCommandFactoryTest {
         Switch switch2 = Switch.builder().switchId(SWITCH_ID_2).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_ID_3).build();
 
-        PathId pathId = new PathId(UUID.randomUUID().toString());
         PathSegment.PathSegmentBuilder segment1to2 = PathSegment.builder()
                 .srcSwitch(srcSwitch)
                 .srcPort(11)
@@ -346,8 +342,7 @@ public class FlowCommandFactoryTest {
                 destSwitch, 2, 201, 301, 0, true,
                 asList(segment2to3, segment1to2));
 
-        FlowCommandFactory factory = new FlowCommandFactory();
-        List<RemoveFlow> rules = factory.createRemoveTransitAndEgressRulesForFlow(flow.getFlow(),
+        List<RemoveFlow> rules = factory.createRemoveTransitAndEgressRulesForFlow(
                 flow.getFlowPath(), flow.getTransitVlanEntity());
         assertThat(rules, hasSize(2));
         assertThat(rules, everyItem(hasProperty("criteria",
@@ -362,8 +357,7 @@ public class FlowCommandFactoryTest {
         assertEquals(2, (int) rules.get(1).getCriteria().getOutPort());
         assertEquals(301, (int) rules.get(1).getCriteria().getInVlan());
 
-        RemoveFlow ingressRule = factory.createRemoveIngressRulesForFlow(flow.getFlow(),
-                flow.getFlowPath());
+        RemoveFlow ingressRule = factory.createRemoveIngressRulesForFlow(flow.getFlowPath());
         assertEquals(TEST_COOKIE, (long) ingressRule.getCookie());
         assertEquals(SWITCH_ID_1, ingressRule.getSwitchId());
         assertEquals(1, (int) ingressRule.getCriteria().getInPort());
@@ -378,7 +372,6 @@ public class FlowCommandFactoryTest {
         Switch switch3 = Switch.builder().switchId(SWITCH_ID_3).build();
         Switch destSwitch = Switch.builder().switchId(SWITCH_ID_4).build();
 
-        PathId pathId = new PathId(UUID.randomUUID().toString());
         PathSegment.PathSegmentBuilder segment1to2 = PathSegment.builder()
                 .srcSwitch(srcSwitch)
                 .srcPort(11)
@@ -399,8 +392,7 @@ public class FlowCommandFactoryTest {
                 destSwitch, 2, 201, 301, 0, true,
                 asList(segment1to2, segment2to3, segment3to4));
 
-        FlowCommandFactory factory = new FlowCommandFactory();
-        List<RemoveFlow> rules = factory.createRemoveTransitAndEgressRulesForFlow(flow.getFlow(),
+        List<RemoveFlow> rules = factory.createRemoveTransitAndEgressRulesForFlow(
                 flow.getFlowPath(), flow.getTransitVlanEntity());
         assertThat(rules, hasSize(3));
         assertThat(rules, everyItem(hasProperty("criteria",
@@ -420,7 +412,7 @@ public class FlowCommandFactoryTest {
         assertEquals(2, (int) rules.get(2).getCriteria().getOutPort());
         assertEquals(301, (int) rules.get(2).getCriteria().getInVlan());
 
-        RemoveFlow ingressRule = factory.createRemoveIngressRulesForFlow(flow.getFlow(), flow.getFlowPath());
+        RemoveFlow ingressRule = factory.createRemoveIngressRulesForFlow(flow.getFlowPath());
         assertEquals(TEST_COOKIE, (long) ingressRule.getCookie());
         assertEquals(SWITCH_ID_1, ingressRule.getSwitchId());
         assertEquals(1, (int) ingressRule.getCriteria().getInPort());
@@ -433,7 +425,6 @@ public class FlowCommandFactoryTest {
         Switch srcSwitch = Switch.builder().switchId(SWITCH_ID_1).build();
         Switch dstSwitch = Switch.builder().switchId(SWITCH_ID_2).build();
 
-        PathId pathId = new PathId(UUID.randomUUID().toString());
         PathSegment.PathSegmentBuilder segment1to2 = PathSegment.builder()
                 .srcSwitch(srcSwitch)
                 .srcPort(11)
@@ -443,9 +434,9 @@ public class FlowCommandFactoryTest {
         UnidirectionalFlow flow = buildFlow(srcSwitch, 1, 101,
                 dstSwitch, 2, 201, 301, 0, true,
                 asList(segment1to2));
+        flow.getFlowPath().setMeterId(null);
 
-        FlowCommandFactory factory = new FlowCommandFactory();
-        RemoveFlow command = factory.createRemoveIngressRulesForFlow(flow.getFlow(), flow.getFlowPath());
+        RemoveFlow command = factory.createRemoveIngressRulesForFlow(flow.getFlowPath());
 
         assertEquals(SWITCH_ID_1, command.getSwitchId());
         assertEquals(1, (int) command.getCriteria().getInPort());
@@ -464,11 +455,11 @@ public class FlowCommandFactoryTest {
 
         FlowCommandFactory factory = new FlowCommandFactory();
         List<InstallTransitFlow> rules =
-                factory.createInstallTransitAndEgressRulesForFlow(flow.getFlow(),
+                factory.createInstallTransitAndEgressRulesForFlow(
                         flow.getFlowPath(), flow.getTransitVlanEntity());
         assertThat(rules, hasSize(0));
 
-        BaseInstallFlow ingressRule = factory.createInstallIngressRulesForFlow(flow.getFlow(),
+        BaseInstallFlow ingressRule = factory.createInstallIngressRulesForFlow(
                 flow.getFlowPath(), flow.getTransitVlanEntity());
         assertEquals(TEST_COOKIE, (long) ingressRule.getCookie());
         assertEquals(SWITCH_ID_1, ingressRule.getSwitchId());
@@ -486,12 +477,11 @@ public class FlowCommandFactoryTest {
                 theSwitch, 2, 201, 0, 0, true,
                 Collections.emptyList());
 
-        FlowCommandFactory factory = new FlowCommandFactory();
-        List<RemoveFlow> rules = factory.createRemoveTransitAndEgressRulesForFlow(flow.getFlow(),
+        List<RemoveFlow> rules = factory.createRemoveTransitAndEgressRulesForFlow(
                 flow.getFlowPath(), flow.getTransitVlanEntity());
         assertThat(rules, hasSize(0));
 
-        RemoveFlow ingressRule = factory.createRemoveIngressRulesForFlow(flow.getFlow(), flow.getFlowPath());
+        RemoveFlow ingressRule = factory.createRemoveIngressRulesForFlow(flow.getFlowPath());
         assertEquals(TEST_COOKIE, (long) ingressRule.getCookie());
         assertEquals(SWITCH_ID_1, ingressRule.getSwitchId());
         assertEquals(1, (int) ingressRule.getCriteria().getInPort());
@@ -513,6 +503,7 @@ public class FlowCommandFactoryTest {
                 .bandwidth(bandwidth)
                 .ignoreBandwidth(ignoreBandwidth)
                 .cookie(TEST_COOKIE)
+                .meterId(METER_ID)
                 .transitVlan(transitVlan)
                 .buildUnidirectionalFlow();
 

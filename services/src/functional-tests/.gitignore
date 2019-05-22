@@ -1,5 +1,6 @@
 /target/
 /logs/
 
-/topology.yaml
-/kilda.properties
+/topology*.yaml
+/kilda*.properties
+.surefire-*
