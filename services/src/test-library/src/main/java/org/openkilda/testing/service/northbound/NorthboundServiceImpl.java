@@ -36,8 +36,6 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
-import org.openkilda.messaging.payload.flow.SwapFlowEndpointPayload;
-import org.openkilda.messaging.payload.flow.SwapFlowPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.PortStatus;
@@ -61,6 +59,8 @@ import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import com.google.common.collect.ImmutableMap;
@@ -303,9 +303,10 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public SwapFlowEndpointPayload swapFlowEndpoint(SwapFlowPayload firstFlow, SwapFlowPayload secondFlow) {
+        log.debug("Swap flow endpoints. First flow: {}. Second flow: {}", firstFlow, secondFlow);
         HttpEntity<SwapFlowEndpointPayload> httpEntity = new HttpEntity<>(
                 new SwapFlowEndpointPayload(firstFlow, secondFlow), buildHeadersWithCorrelationId());
-        return restTemplate.exchange("/api/v2/flows/swap-endpoint", HttpMethod.PATCH, httpEntity,
+        return restTemplate.exchange("/api/v2/flows/swap-endpoint", HttpMethod.POST, httpEntity,
                 SwapFlowEndpointPayload.class).getBody();
     }
 

@@ -37,8 +37,6 @@ System can start to use protected path in two case:
 
 Main and protected paths can't use the same link.""")
 class ProtectedPathSpec extends BaseSpecification {
-    @Autowired
-    SwitchHelper switchHelper
 
     @Autowired
     Provider<TraffExamService> traffExamProvider
