@@ -34,6 +34,6 @@ public class StatsRequestDispatcher extends CommandDispatcher<StatsRequest> {
 
     @Override
     protected Command makeCommand(CommandContext context, StatsRequest data) {
-        return new StatsCommand(context);
+        return new StatsCommand(context, data);
     }
 }

@@ -16,6 +16,23 @@
 package org.openkilda.messaging.command.stats;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
+import lombok.Value;
+
+import java.util.List;
+
+@Value
+@Builder
 public class StatsRequest extends CommandData {
+    @JsonProperty("exclude_switch_ids")
+    private List<SwitchId> excludeSwitchIds;
+
+    @JsonCreator
+    public StatsRequest(@JsonProperty("exclude_switch_ids") List<SwitchId> excludeSwitchIds) {
+        this.excludeSwitchIds = excludeSwitchIds;
+    }
 }

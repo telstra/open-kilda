@@ -86,12 +86,17 @@ public class KafkaMessageCollector implements IFloodlightModule {
         FloodlightModuleConfigurationProvider provider = FloodlightModuleConfigurationProvider.of(moduleContext, this);
         KafkaMessageCollectorConfig consumerConfig = provider.getConfiguration(KafkaMessageCollectorConfig.class);
 
-        ExecutorService generalExecutor = buildExecutorWithNoQueue(consumerConfig.getGeneralExecutorCount());
-        logger.info("Kafka Consumer: general executor threads = {}", consumerConfig.getGeneralExecutorCount());
-
         KafkaChannel kafkaChannel = moduleContext.getServiceImpl(KafkaUtilityService.class).getKafkaChannel();
         logger.info("region: {}", kafkaChannel.getRegion());
         ConsumerLauncher launcher = new ConsumerLauncher(moduleContext, consumerConfig);
+        launchTopics(consumerConfig, kafkaChannel, launcher);
+    }
+
+    protected void launchTopics(KafkaMessageCollectorConfig consumerConfig,
+                                KafkaChannel kafkaChannel,
+                                ConsumerLauncher launcher) {
+        ExecutorService generalExecutor = buildExecutorWithNoQueue(consumerConfig.getGeneralExecutorCount());
+        logger.info("Kafka Consumer: general executor threads = {}", consumerConfig.getGeneralExecutorCount());
         launcher.launch(generalExecutor, new KafkaConsumerSetup(kafkaChannel.getSpeakerTopic()));
         launcher.launch(generalExecutor, new KafkaConsumerSetup(kafkaChannel.getSpeakerFlowTopic()));
         launcher.launch(generalExecutor, new KafkaConsumerSetup(kafkaChannel.getSpeakerFlowPingTopic()));
@@ -104,13 +109,13 @@ public class KafkaMessageCollector implements IFloodlightModule {
         launcher.launch(discoCommandExecutor, kafkaSetup);
     }
 
-    private ExecutorService buildExecutorWithNoQueue(int executorCount) {
+    protected ExecutorService buildExecutorWithNoQueue(int executorCount) {
         // A thread pool of fixed sized and no work queue.
         return new ThreadPoolExecutor(executorCount, executorCount, 0L, TimeUnit.MILLISECONDS,
                 new SynchronousQueue<>(), new RetryableExecutionHandler());
     }
 
-    private static class ConsumerLauncher {
+    protected static class ConsumerLauncher {
         private final FloodlightModuleContext moduleContext;
         private final KafkaMessageCollectorConfig consumerConfig;
 
@@ -127,7 +132,7 @@ public class KafkaMessageCollector implements IFloodlightModule {
             isTestingMode = moduleContext.getServiceImpl(KafkaUtilityService.class).isTestingMode();
         }
 
-        private void launch(ExecutorService handlerExecutor, KafkaConsumerSetup kafkaSetup) {
+        protected void launch(ExecutorService handlerExecutor, KafkaConsumerSetup kafkaSetup) {
             Consumer consumer;
             if (!isTestingMode) {
                 consumer = new Consumer(moduleContext, handlerExecutor, kafkaSetup, handlerFactory,

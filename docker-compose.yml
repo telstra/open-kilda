@@ -262,6 +262,29 @@ services:
          - kilda
     mem_limit: ${FL_1_MEM_LIMIT:-1073741824}
 
+  floodlight_second:
+    container_name: floodlight_second
+    build:
+      context: services/src/floodlight-modules
+    image: "kilda/floodlight:${full_build_number:-latest}"
+    command: ["floodlightStats", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1"]
+    ports:
+      - "6654:6653"
+      - "8181:8080"
+      - "6656:6655"
+      - "6643:6642"
+      - "8082:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      logstash:
+        condition: service_started
+    networks:
+      default:
+        aliases:
+          - floodlight_second.pendev
+    mem_limit: ${FL_2_MEM_LIMIT:-1073741824}
+
   northbound:
     container_name: openkilda-northbound
     build:
