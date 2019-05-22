@@ -42,7 +42,7 @@ import java.util.Optional;
 @Slf4j
 public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
-    private static final String ERROR = "Failed to create a flow";
+    private static final String ERROR = "Could not create flow";
 
     private final FlowValidator flowValidator;
     private final FlowRepository flowRepository;

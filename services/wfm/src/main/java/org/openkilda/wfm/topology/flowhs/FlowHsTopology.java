@@ -75,7 +75,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 Component.FLOW_SPOUT.name());
         tb.setSpout(Component.FLOW_SPOUT.name(), mainSpout, parallelism);
 
-        tb.setBolt(Component.ROUTER_BOLT.name(), new RouterBolt())
+        tb.setBolt(Component.ROUTER_BOLT.name(), new RouterBolt(), parallelism)
             .shuffleGrouping(Component.FLOW_SPOUT.name());
 
         PersistenceManager persistenceManager =

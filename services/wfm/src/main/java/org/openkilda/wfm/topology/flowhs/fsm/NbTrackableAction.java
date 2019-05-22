@@ -15,23 +15,29 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 
+import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 import java.util.Optional;
 
+@Slf4j
 public abstract class NbTrackableAction<T extends NbTrackableStateMachine<T, S, E, C>, S, E, C>
         extends AnonymousAction<T, S, E, C> {
 
     @Override
     public final void execute(S from, S to, E event, C context, T stateMachine) {
+        Optional<Message> message = null;
         try {
-            Optional<Message> message = perform(from, to, event, context, stateMachine);
+            message = perform(from, to, event, context, stateMachine);
             if (message.isPresent()) {
                 stateMachine.sendResponse(message.get());
             } else {
@@ -39,11 +45,22 @@ public abstract class NbTrackableAction<T extends NbTrackableStateMachine<T, S, 
             }
         } catch (FlowProcessingException e) {
             CommandContext commandContext = stateMachine.getCommandContext();
-            ErrorData error = new ErrorData(e.getErrorType(), e.getErrorMessage(), e.getErrorDescription());
-            Message message = new ErrorMessage(error, commandContext.getCreateTime(),
-                    commandContext.getCorrelationId());
-            stateMachine.sendResponse(message);
+
+            String errorMessage = format("%s: %s", e.getErrorMessage(), e.getErrorDescription());
+            ErrorData error = new ErrorData(e.getErrorType(), errorMessage, e.getErrorDescription());
+            message = Optional.of(new ErrorMessage(error, commandContext.getCreateTime(),
+                    commandContext.getCorrelationId()));
             stateMachine.fireError();
+        } catch (Exception e) {
+            String errorMessage = "Failed to process flow request";
+            log.error(errorMessage, e);
+            ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, errorMessage, e.getMessage());
+            message = Optional.of(new ErrorMessage(error, stateMachine.getCommandContext().getCreateTime(),
+                    stateMachine.getCommandContext().getCorrelationId()));        
+        } finally {
+            if (message != null && message.isPresent()) {
+                stateMachine.sendResponse(message.get());
+            }
         }
     }
 

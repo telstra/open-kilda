@@ -169,7 +169,7 @@ public class GetRuleCommand extends FlowCommand {
                 .map(OFVlanVidMatch::getVlan)
                 .map(Integer::valueOf)
                 .findAny()
-                .orElse(null);
+                .orElse(0);
     }
 
 }
