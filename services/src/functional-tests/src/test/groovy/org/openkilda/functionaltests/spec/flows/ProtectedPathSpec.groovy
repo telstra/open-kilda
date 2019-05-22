@@ -719,8 +719,8 @@ class ProtectedPathSpec extends BaseSpecification {
         def involvedTransitSwitches = (currentPath[1..-2].switchId + currentProtectedPath[1..-2].switchId).unique()
         Wrappers.wait(WAIT_OFFSET) {
             involvedTransitSwitches.each { switchId ->
-                def amountOfRules = (switchId in currentProtectedPath*.switchId && switchId in currentPath*.switchId)
-                        ? 4 : 2
+                def amountOfRules = (switchId in currentProtectedPath*.switchId &&
+                        switchId in currentPath*.switchId) ? 4 : 2
                 def switchValidateInfo = northbound.validateSwitch(switchId)
                 assert switchValidateInfo.rules.proper.size() == amountOfRules
                 switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
@@ -875,7 +875,7 @@ class ProtectedPathSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.allocateProtectedPath = true
         flow.maximumBandwidth = bandwidth
-        flow.ignoreBandwidth = (bandwidth == 0) ? true : false
+        flow.ignoreBandwidth = bandwidth == 0
         flowHelper.addFlow(flow)
         def flowInfoPath = northbound.getFlowPath(flow.id)
         assert flowInfoPath.protectedPath
