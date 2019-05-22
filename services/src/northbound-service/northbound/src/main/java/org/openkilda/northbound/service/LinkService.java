@@ -20,6 +20,8 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.links.LinkDto;
 import org.openkilda.northbound.dto.v1.links.LinkEnableBfdDto;
+import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthDto;
+import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthRequest;
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto;
 import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
 import org.openkilda.northbound.dto.v1.links.LinkUnderMaintenanceDto;
@@ -111,4 +113,18 @@ public interface LinkService {
      * @return updated link.
      */
     CompletableFuture<List<LinkDto>> updateLinkEnableBfd(LinkEnableBfdDto link);
+
+    /**
+     * Update maximum bandwidth for link.
+     *
+     * @param srcSwitch a source switch id.
+     * @param srcPort a source port id.
+     * @param dstSwitch a destination switch id.
+     * @param dstPort a destination port id.
+     * @param linkMaxBandwidth a link parameters.
+     * @return updated link parameters.
+     */
+    CompletableFuture<LinkMaxBandwidthDto> updateLinkBandwidth(
+            SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort,
+            LinkMaxBandwidthRequest linkMaxBandwidth);
 }

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,25 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v1.switches;
+package org.openkilda.northbound.dto.links;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Value;
 
-@Data
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public class PortDto {
+import java.io.Serializable;
 
-    @JsonProperty("switch_id")
-    private String switchId;
+@Value
+@JsonInclude(Include.NON_NULL)
+@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
+public class LinkMaxBandwidthDto implements Serializable {
 
-    @JsonProperty("port_no")
-    private int portNumber;
+    private String srcSwitch;
+    private Integer srcPort;
+    private String dstSwitch;
+    private Integer dstPort;
+    private Long maxBandwidth;
 
-    public PortDto(@JsonProperty("switch_id") String switchId,
-            @JsonProperty("port_id") int portNumber) {
-        this.switchId = switchId;
-        this.portNumber = portNumber;
-    }
 }
