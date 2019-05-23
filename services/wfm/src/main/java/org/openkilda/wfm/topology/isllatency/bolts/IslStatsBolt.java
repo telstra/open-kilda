@@ -88,7 +88,11 @@ public class IslStatsBolt extends AbstractBolt {
             if (data instanceof IslInfoData) {
                 handleIslInfoData(input, message, (IslInfoData) data);
             } else {
-                unhandledInput(input);
+                // There are much info data messages in kilda.topo.disco.storm topic.
+                // All of them except IslInfoData are useless for stats bolt so they will be ignored.
+                // It will be fixed by round trip latency feature. https://github.com/telstra/open-kilda/issues/580
+                // This feature adds separate topic for latency data.
+                // TODO: add unhandledInput(input) when round trip latency feature will be merged
             }
         } else {
             unhandledInput(input);
