@@ -18,7 +18,7 @@ package org.openkilda.testing.service.kafka;
 import org.openkilda.messaging.ctrl.KafkaBreakTarget;
 
 public interface KafkaBreaker {
-    void shutoff(KafkaBreakTarget target) throws KafkaBreakException;
+    void shutoff(KafkaBreakTarget target, int region) throws KafkaBreakException;
 
-    void restore(KafkaBreakTarget target) throws KafkaBreakException;
+    void restore(KafkaBreakTarget target, int region) throws KafkaBreakException;
 }

@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.ping.bolt;
 
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.model.PingMeters;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.ping.model.PingContext;
@@ -44,7 +43,7 @@ public class StatsProducer extends Abstract {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         PingContext pingContext = pullPingContext(input);
 
         HashMap<String, String> tags = new HashMap<>();

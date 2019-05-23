@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslDownReason;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.controller.IslFsm;
@@ -27,6 +28,7 @@ import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
+import org.openkilda.wfm.topology.network.storm.bolt.isl.BfdManager;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -35,7 +37,7 @@ import java.util.Map;
 
 @Slf4j
 public class NetworkIslService {
-    private final Map<IslReference, IslFsm> controller = new HashMap<>();
+    private final Map<IslReference, IslController> controller = new HashMap<>();
 
     private final FsmExecutor<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> controllerExecutor
             = IslFsm.makeExecutor();
@@ -58,12 +60,12 @@ public class NetworkIslService {
         if (!controller.containsKey(reference)) {
             ensureControllerIsMissing(reference);
 
-            IslFsm fsm = IslFsm.create(persistenceManager, options, reference);
-            controller.put(reference, fsm);
+            IslController islController = new IslController(persistenceManager, options, reference);
+            controller.put(reference, islController);
             IslFsmContext context = IslFsmContext.builder(carrier, endpoint)
                     .history(history)
                     .build();
-            controllerExecutor.fire(fsm, IslFsmEvent.HISTORY, context);
+            controllerExecutor.fire(islController.fsm, IslFsmEvent.HISTORY, context);
         } else {
             log.error("Receive HISTORY data for already created ISL - ignore history "
                               + "(possible start-up race condition)");
@@ -75,7 +77,7 @@ public class NetworkIslService {
      */
     public void islUp(Endpoint endpoint, IslReference reference, IslDataHolder islData) {
         log.debug("ISL service receive DISCOVERY notification for {} (on {})", reference, endpoint);
-        IslFsm islFsm = locateControllerCreateIfAbsent(reference);
+        IslFsm islFsm = locateControllerCreateIfAbsent(reference).fsm;
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint)
                 .islData(islData)
                 .build();
@@ -85,11 +87,11 @@ public class NetworkIslService {
     /**
      * .
      */
-    public void islDown(Endpoint endpoint, IslReference reference, boolean isPhysicalDown) {
+    public void islDown(Endpoint endpoint, IslReference reference, IslDownReason reason) {
         log.debug("ISL service receive FAIL notification for {} (on {})", reference, endpoint);
-        IslFsm islFsm = locateController(reference);
+        IslFsm islFsm = locateController(reference).fsm;
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint)
-                .physicalLinkDown(isPhysicalDown)
+                .downReason(reason)
                 .build();
         controllerExecutor.fire(islFsm, IslFsmEvent.ISL_DOWN, context);
     }
@@ -99,7 +101,7 @@ public class NetworkIslService {
      */
     public void islMove(Endpoint endpoint, IslReference reference) {
         log.debug("ISL service receive MOVED(FAIL) notification for {} (on {})", reference, endpoint);
-        IslFsm islFsm = locateController(reference);
+        IslFsm islFsm = locateController(reference).fsm;
         IslFsmContext context = IslFsmContext.builder(carrier, endpoint).build();
         controllerExecutor.fire(islFsm, IslFsmEvent.ISL_MOVE, context);
     }
@@ -110,29 +112,34 @@ public class NetworkIslService {
     public void bfdEnableDisable(IslReference reference, IslBfdFlagUpdated payload) {
         log.debug("ISL service receive allow-BFD switch update notification for {} new-status:{}",
                   reference, payload.isEnableBfd());
-        IslFsm islFsm = locateController(reference);
-        IslFsmContext context = IslFsmContext.builder(carrier, reference.getSource())
-                .bfdEnable(payload.isEnableBfd())
-                .build();
-        controllerExecutor.fire(islFsm, IslFsmEvent.BFD_UPDATE, context);
+        BfdManager bfdManager = locateController(reference).bfdManager;
+        if (payload.isEnableBfd()) {
+            bfdManager.enable(carrier);
+        } else {
+            bfdManager.disable(carrier);
+        }
     }
 
     /**
      * Remove isl by request.
      */
     public void remove(IslReference reference) {
-        IslFsm fsm = controller.get(reference);
-        if (fsm == null) {
+        log.debug("ISL service receive remove for {}", reference);
+
+        IslController islController = controller.get(reference);
+        if (islController == null) {
             log.info("Got DELETE request for not existing ISL {}", reference);
             return;
         }
 
+        IslFsm fsm = islController.fsm;
         IslFsmContext context = IslFsmContext.builder(carrier, reference.getSource())
                 .build();
         controllerExecutor.fire(fsm, IslFsmEvent.ISL_REMOVE, context);
         if (fsm.isTerminated()) {
             controller.remove(reference);
-            log.debug("ISL service removed FSM {}", reference);
+            islController.bfdManager.disable(carrier);
+            log.info("ISL {} have been removed", reference);
         } else {
             log.error("ISL service remove failed for FSM {}, state: {}", reference, fsm.getCurrentState());
         }
@@ -141,22 +148,32 @@ public class NetworkIslService {
     // -- private --
 
     private void ensureControllerIsMissing(IslReference reference) {
-        IslFsm fsm = controller.get(reference);
-        if (fsm != null) {
+        IslController islController = controller.get(reference);
+        if (islController != null) {
             throw new IllegalStateException(String.format("ISL FSM for %s already exist (it's state is %s)",
-                                                          reference, fsm.getCurrentState()));
+                                                          reference, islController.fsm.getCurrentState()));
         }
     }
 
-    private IslFsm locateController(IslReference reference) {
-        IslFsm fsm = controller.get(reference);
-        if (fsm == null) {
+    private IslController locateController(IslReference reference) {
+        IslController islController = controller.get(reference);
+        if (islController == null) {
             throw new IllegalStateException(String.format("There is no ISL FSM for %s", reference));
         }
-        return fsm;
+        return islController;
     }
 
-    private IslFsm locateControllerCreateIfAbsent(IslReference reference) {
-        return controller.computeIfAbsent(reference, key -> IslFsm.create(persistenceManager, options, reference));
+    private IslController locateControllerCreateIfAbsent(IslReference reference) {
+        return controller.computeIfAbsent(reference, key -> new IslController(persistenceManager, options, reference));
+    }
+
+    private static final class IslController {
+        private final IslFsm fsm;
+        private final BfdManager bfdManager;
+
+        private IslController(PersistenceManager persistenceManager, NetworkOptions options, IslReference reference) {
+            bfdManager = new BfdManager(reference);
+            fsm = IslFsm.create(persistenceManager, bfdManager, options, reference);
+        }
     }
 }

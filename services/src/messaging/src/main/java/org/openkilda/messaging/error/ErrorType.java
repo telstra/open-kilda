@@ -89,7 +89,12 @@ public enum ErrorType {
     /**
      * The error message for invalid request credentials.
      */
-    AUTH_FAILED("Invalid credentials");
+    AUTH_FAILED("Invalid credentials"),
+
+    /**
+     * The error message for not permitted operation.
+     */
+    NOT_PERMITTED("Operation not permitted");
 
     /**
      * The text type value.

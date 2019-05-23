@@ -15,12 +15,11 @@
 
 package org.openkilda.wfm.share.history.bolt;
 
+import org.openkilda.messaging.Utils;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.history.service.HistoryService;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
@@ -39,8 +38,8 @@ public class HistoryBolt extends AbstractBolt {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
-        Object payload = input.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
+    protected void handleInput(Tuple input) throws Exception {
+        Object payload = input.getValueByField(Utils.PAYLOAD);
         if (payload instanceof FlowHistoryHolder) {
             historyService.store((FlowHistoryHolder) payload);
         } else {

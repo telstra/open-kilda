@@ -22,6 +22,7 @@ import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
+import org.openkilda.wfm.topology.network.storm.bolt.SpeakerEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.bfdport.BfdPortHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.bfdport.command.BfdPortCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.bfdport.command.BfdPortSpeakerBfdSessionResponseCommand;
@@ -38,11 +39,12 @@ import org.apache.storm.tuple.Values;
 public class SpeakerWorker extends WorkerBolt {
     public static final String BOLT_ID = WorkerBolt.ID + ".speaker";
 
-    public static final String FIELD_ID_COMMAND = BfdPortHandler.FIELD_ID_COMMAND;
+    public static final String FIELD_ID_PAYLOAD = SpeakerEncoder.FIELD_ID_PAYLOAD;
+    public static final String FIELD_ID_KEY = SpeakerEncoder.FIELD_ID_KEY;
 
     public static final String STREAM_HUB_ID = "hub";
 
-    public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
+    public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     public SpeakerWorker(Config config) {
         super(config);
@@ -85,12 +87,12 @@ public class SpeakerWorker extends WorkerBolt {
     }
 
     public void processBfdSessionResponse(String key, BfdSessionResponse response) {
-        emitResponseToHub(getCurrentTuple(), makeBfdPortTuple(
-                new BfdPortSpeakerBfdSessionResponseCommand(key, response)));
+        emitResponseToHub(getCurrentTuple(), makeHubTuple(
+                key, new BfdPortSpeakerBfdSessionResponseCommand(key, response)));
     }
 
     public void timeoutBfdRequest(String key, NoviBfdSession bfdSession) {
-        emitResponseToHub(getCurrentTuple(), makeBfdPortTuple(new BfdPortSpeakerTimeoutCommand(key, bfdSession)));
+        emitResponseToHub(getCurrentTuple(), makeHubTuple(key, new BfdPortSpeakerTimeoutCommand(key, bfdSession)));
     }
 
     // -- setup --
@@ -120,7 +122,7 @@ public class SpeakerWorker extends WorkerBolt {
         return new Values(key, payload, getCommandContext());
     }
 
-    private Values makeBfdPortTuple(BfdPortCommand command) {
-        return new Values(command, getCommandContext());
+    private Values makeHubTuple(String key, BfdPortCommand command) {
+        return new Values(key, command, getCommandContext());
     }
 }

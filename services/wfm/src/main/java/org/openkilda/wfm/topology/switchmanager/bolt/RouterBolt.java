@@ -22,7 +22,6 @@ import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.switchmanager.command.RemoveKeyRouterBolt;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
@@ -42,7 +41,7 @@ public class RouterBolt extends AbstractBolt {
     private Map<String, String> streams = new HashMap<>();
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String key = input.getStringByField(MessageTranslator.KEY_FIELD);
         Message message = pullValue(input, MessageTranslator.FIELD_ID_PAYLOAD, Message.class);
 

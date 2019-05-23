@@ -18,6 +18,7 @@ package org.openkilda.floodlight.service;
 import org.openkilda.floodlight.feature.AbstractFeature;
 import org.openkilda.floodlight.feature.BfdFeature;
 import org.openkilda.floodlight.feature.BfdReviewFeature;
+import org.openkilda.floodlight.feature.GroupPacketOutController;
 import org.openkilda.floodlight.feature.LimitedBurstSizeFeature;
 import org.openkilda.floodlight.feature.MeterFeature;
 import org.openkilda.floodlight.feature.ResetCountsFlagFeature;
@@ -41,6 +42,7 @@ public class FeatureDetectorService implements IService {
                 new MeterFeature(),
                 new BfdFeature(),
                 new BfdReviewFeature(),
+                new GroupPacketOutController(),
                 new ResetCountsFlagFeature(),
                 new LimitedBurstSizeFeature());
     }

@@ -20,18 +20,20 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import lombok.Data;
 
 import java.io.Serializable;
-
 /**
  * The Class Switchrelation.
  *
  * @author Gaurav Chugh
  */
+
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({"src_port", "latency", "source_switch", "available_bandwidth", "dst_port",
         "target_switch", "speed", "state"})
+@Data
 public class IslLinkInfo implements Serializable {
 
     private static final long serialVersionUID = 8274573430947748236L;
@@ -75,7 +77,13 @@ public class IslLinkInfo implements Serializable {
 
     @JsonProperty("affected")
     private boolean affected;
+    
+    @JsonProperty("under_maintenance")
+    private boolean underMaintenance;
 
+    @JsonProperty("evacuate")
+    private boolean evacuate;
+    
     public String getCost() {
         return cost;
     }

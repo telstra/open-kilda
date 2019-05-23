@@ -93,6 +93,8 @@ public class IslLinkConverter {
         islLinkInfo.setAvailableBandwidth(islLink.getAvailableBandwidth());
         islLinkInfo.setSpeed(islLink.getSpeed());
         islLinkInfo.setState(islLink.getState());
+        islLinkInfo.setUnderMaintenance(islLink.isUnderMaintenance());
+        islLinkInfo.setEvacuate(islLink.isEvacuate());
         List<IslPath> islPaths = islLink.getPath();
         if (islPaths != null && !islPaths.isEmpty()) {
             if (islPaths.get(0) != null) {

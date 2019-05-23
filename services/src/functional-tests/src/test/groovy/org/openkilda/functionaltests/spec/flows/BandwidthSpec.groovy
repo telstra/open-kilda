@@ -9,7 +9,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -19,14 +18,13 @@ class BandwidthSpec extends BaseSpecification {
 
     def "Available bandwidth on ISLs changes respectively when creating/updating/deleting a flow"() {
         given: "Two active not neighboring switches"
-        def linksBeforeFlowCreate = northbound.getAllLinks()
-        def potentialFlow = topologyHelper.findNonNeighbors() ?:
-                assumeTrue("No suiting switches found", false)
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
 
         when: "Create a flow with a valid bandwidth"
+        def linksBeforeFlowCreate = northbound.getAllLinks()
         def maximumBandwidth = 1000
 
-        def flow = flowHelper.randomFlow(potentialFlow)
+        def flow = flowHelper.randomFlow(switchPair)
         flow.maximumBandwidth = maximumBandwidth
         flowHelper.addFlow(flow)
         assert northbound.getFlow(flow.id).maximumBandwidth == maximumBandwidth
@@ -65,32 +63,31 @@ class BandwidthSpec extends BaseSpecification {
 
     def "Longer path is chosen in case of not enough available bandwidth on a shorter path"() {
         given: "Two active switches with two possible flow paths at least"
-        def potentialFlow = topologyHelper.findPotentialFlows().find {
-            it.paths.size() > 1
-        } ?: assumeTrue("No suiting switches found", false)
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue("No suiting switches found", false)
 
         // Make the first path more preferable than others.
-        potentialFlow.paths[1..-1].each { pathHelper.makePathMorePreferable(potentialFlow.paths.first(), it) }
+        switchPair.paths[1..-1].each { pathHelper.makePathMorePreferable(switchPair.paths.first(), it) }
 
         // Get min available bandwidth on the preferable path.
         def involvedBandwidths = []
         def allLinks = northbound.getAllLinks()
-        pathHelper.getInvolvedIsls(potentialFlow.paths.first()).each {
+        pathHelper.getInvolvedIsls(switchPair.paths.first()).each {
             involvedBandwidths.add(islUtils.getIslInfo(allLinks, it).get().availableBandwidth)
         }
         def minAvailableBandwidth = involvedBandwidths.min()
 
         when: "Create a flow to reduce available bandwidth on links of the expected preferable path"
-        def flow1 = flowHelper.randomFlow(potentialFlow)
+        def flow1 = flowHelper.randomFlow(switchPair)
         flow1.maximumBandwidth = minAvailableBandwidth - 100
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
         then: "The flow is really built through the expected preferable path"
-        flow1Path == potentialFlow.paths.first()
+        flow1Path == switchPair.paths.first()
 
         when: "Create another flow. One path is shorter but available bandwidth is not enough, another path is longer"
-        def flow2 = flowHelper.randomFlow(potentialFlow)
+        def flow2 = flowHelper.randomFlow(switchPair)
         flow2.maximumBandwidth = 101
         flowHelper.addFlow(flow2)
 
@@ -104,21 +101,17 @@ class BandwidthSpec extends BaseSpecification {
 
     def "Unable to exceed bandwidth limit on ISL when creating a flow"() {
         given: "Two active switches"
-        def switches = topology.getActiveSwitches()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .find { Switch src, Switch dst -> src != dst }
+        def switchPair = topologyHelper.getNeighboringSwitchPair()
 
         when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL"
-        def possibleFlowPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         def involvedBandwidths = []
-
-        possibleFlowPaths.each { path ->
+        switchPair.paths.each { path ->
             pathHelper.getInvolvedIsls(path).each { link ->
                 involvedBandwidths.add(islUtils.getIslInfo(link).get().availableBandwidth)
             }
         }
 
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelper.randomFlow(switchPair)
         flow.maximumBandwidth = involvedBandwidths.max() + 1
         northbound.addFlow(flow)
 
@@ -129,23 +122,19 @@ class BandwidthSpec extends BaseSpecification {
 
     def "Unable to exceed bandwidth limit on ISL when updating a flow"() {
         given: "Two active switches"
-        def switches = topology.getActiveSwitches()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .find { Switch src, Switch dst -> src != dst }
+        def switchPair = topologyHelper.getNeighboringSwitchPair()
 
         when: "Create a flow with a valid bandwidth"
         def maximumBandwidth = 1000
 
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelper.randomFlow(switchPair)
         flow.maximumBandwidth = maximumBandwidth
         flowHelper.addFlow(flow)
         assert northbound.getFlow(flow.id).maximumBandwidth == maximumBandwidth
 
         and: "Update the flow with a bandwidth that exceeds available bandwidth on ISL"
-        def possibleFlowPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
         List<Long> involvedBandwidths = []
-
-        possibleFlowPaths.each { path ->
+        switchPair.paths.each { path ->
             pathHelper.getInvolvedIsls(path).each { link ->
                 involvedBandwidths.add(islUtils.getIslInfo(link).get().availableBandwidth)
             }
@@ -164,13 +153,11 @@ class BandwidthSpec extends BaseSpecification {
 
     def "Able to exceed bandwidth limit on ISL when creating/updating a flow with ignore_bandwidth=true"() {
         given: "Two active switches"
-        def switches = topology.getActiveSwitches()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .find { Switch src, Switch dst -> src != dst }
+        def switchPair = topologyHelper.getNeighboringSwitchPair()
 
         when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL (ignore_bandwidth=true)"
         def linksBeforeFlowCreate = northbound.getAllLinks()
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelper.randomFlow(switchPair)
         long maxBandwidth = northbound.getAllLinks()*.availableBandwidth.max()
         flow.maximumBandwidth = maxBandwidth + 1
         flow.ignoreBandwidth = true
@@ -207,11 +194,11 @@ class BandwidthSpec extends BaseSpecification {
 
     def "Able to update bandwidth to maximum link speed without using alternate links"() {
         given: "Two active neighboring switches"
-        def potentialFlow = topologyHelper.findNeighbors()
+        def switchPair = topologyHelper.getNeighboringSwitchPair()
 
         // We need to handle the case when there are parallel links between chosen switches. So we make all parallel
         // links except the first link not preferable to avoid flow reroute when updating the flow.
-        List<List<PathNode>> parallelPaths = potentialFlow.paths.findAll { it.size() == 2 }
+        List<List<PathNode>> parallelPaths = switchPair.paths.findAll { it.size() == 2 }
         if (parallelPaths.size() > 1) {
             parallelPaths[1..-1].each { pathHelper.makePathMorePreferable(parallelPaths.first(), it) }
         }
@@ -219,7 +206,7 @@ class BandwidthSpec extends BaseSpecification {
         when: "Create a flow with a valid small bandwidth"
         def maximumBandwidth = 1000
 
-        def flow = flowHelper.randomFlow(potentialFlow)
+        def flow = flowHelper.randomFlow(switchPair)
         flow.maximumBandwidth = maximumBandwidth
         flowHelper.addFlow(flow)
         assert northbound.getFlow(flow.id).maximumBandwidth == maximumBandwidth

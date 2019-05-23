@@ -23,6 +23,13 @@ export class IslListService {
 		return this.httpClient.get<any>(`${environment.apiEndPoint}/switch/links?src_switch=${src_switch}&src_port=${src_port}&dst_switch=${dst_switch}&dst_port=${dst_port}`);
 	}
 
+	islUnderMaintenance(data){
+		const url = `${environment.apiEndPoint}/switch/links/under-maintenance`; 
+    return this.httpClient.patch(url,data);
+	}
+
+	
+
   updateCost(src_switch, src_port, dst_switch, dst_port, cost): Observable<{}>{
 	let requestPayload = [
 		{"src_switch":src_switch,

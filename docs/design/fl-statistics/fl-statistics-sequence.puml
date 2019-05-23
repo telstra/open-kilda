@@ -1,0 +1,16 @@
+@startuml
+participant "Statistics topo" as st
+participant "StatisticsRouter topo" as srt
+participant "FL Management" as flm
+participant "FL Statistics" as fls
+group Periodic task
+  srt -> fls: Request connected switches
+  fls --> srt
+  srt -> srt: Update switches list
+end
+st -> srt: Statistics request
+srt -> flm: Stats request with exclusion list
+flm -> st: Send statistics
+srt -> fls: Stats request with no exclusion
+fls -> st: Send statistics
+@enduml

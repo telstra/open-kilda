@@ -58,7 +58,7 @@ class Switch:
         name = sw_def['name']
         controller = None
         if 'controller' in sw_def:
-            controller = resolve_host(sw_def['controller'])
+            controller = " ".join([resolve_host(cnt) for cnt in sw_def['controller'].split(" ")])
         switch = cls(name, of_ver, controller)
 
         cmd = [
@@ -106,7 +106,7 @@ class Switch:
     def force_update_controller_host(self, controller, batch=True):
         cmd = [
             'set-controller {} {}'.format(self.name, controller),
-            'set controller {} connection-mode=out-of-band'.format(self.name)
+            'set bridge {} other-config:disable-in-band=true'.format(self.name)
         ]
         self.vscmd.extend(cmd) if batch else vsctl(cmd)
 
@@ -114,7 +114,7 @@ class Switch:
         if self.controller:
             cmd = [
                 'set-controller {} {}'.format(self.name, self.controller),
-                'set controller {} connection-mode=out-of-band'.format(self.name)
+                'set bridge {} other-config:disable-in-band=true'.format(self.name)
             ]
             self.vscmd.extend(cmd) if batch else vsctl(cmd)
 

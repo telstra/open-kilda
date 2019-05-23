@@ -3,9 +3,8 @@ package org.openkilda.functionaltests.spec.toggles
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.model.system.FeatureTogglesDto
-
 import org.springframework.http.HttpStatus
-import org.springframework.web.client.HttpServerErrorException
+import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
 @Narrative("""
@@ -27,9 +26,8 @@ class FeatureTogglesSpec extends BaseSpecification {
         northbound.addFlow(flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
-        def e = thrown(HttpServerErrorException)
-        //TODO(rtretiak): inappropriate status code. Issue #1920
-        e.statusCode == HttpStatus.INTERNAL_SERVER_ERROR
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.FORBIDDEN
         e.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not create flow: Feature toggles not enabled for CREATE_FLOW operation."
 
@@ -55,9 +53,8 @@ class FeatureTogglesSpec extends BaseSpecification {
         northbound.updateFlow(flow.id, flow.tap { it.description = it.description + "updated" })
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
-        def e = thrown(HttpServerErrorException)
-        //TODO(rtretiak): inappropriate status code. Issue #1920
-        e.statusCode == HttpStatus.INTERNAL_SERVER_ERROR
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.FORBIDDEN
         e.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not update flow: Feature toggles not enabled for UPDATE_FLOW operation."
 
@@ -84,9 +81,8 @@ class FeatureTogglesSpec extends BaseSpecification {
         northbound.deleteFlow(flow.id)
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
-        def e = thrown(HttpServerErrorException)
-        //TODO(rtretiak): inappropriate status code. Issue #1920
-        e.statusCode == HttpStatus.INTERNAL_SERVER_ERROR
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.FORBIDDEN
         e.responseBodyAsString.to(MessageError).errorMessage ==
                 "Can not delete flow: Feature toggles not enabled for DELETE_FLOW operation."
 

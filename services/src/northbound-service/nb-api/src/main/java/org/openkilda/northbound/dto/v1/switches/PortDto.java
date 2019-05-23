@@ -17,7 +17,6 @@ package org.openkilda.northbound.dto.v1.switches;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import lombok.Data;
 
 @Data

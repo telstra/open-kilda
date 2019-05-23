@@ -478,7 +478,7 @@ public class OfeLinkBolt
     // TODO: Who are some of the recipients of IslFail message? ie who are we emitting this to?
     //      - From a code search, we see these code bases refering to IslInfoData:
     //          - wfm/topology/cache
-    //          - wfm/topology/islstats
+    //          - wfm/topology/isllatency
     //          - simulator/bolts/SpeakerBolt
     //          - services/topology-engine/queue-engine/topologylistener/eventhandler.py
     //          - services/src/topology .. service/impl/IslServiceImpl .. service/IslService

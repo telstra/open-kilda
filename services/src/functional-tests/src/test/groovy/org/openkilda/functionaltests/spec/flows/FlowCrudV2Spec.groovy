@@ -5,7 +5,7 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.PotentialFlow
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
@@ -458,7 +458,7 @@ class FlowCrudV2Spec extends BaseSpecification {
      * if their uniqueness criteria will be equal.
      */
     @Shared
-    def taffgensPrioritized = { PotentialFlow potentialFlow ->
+    def taffgensPrioritized = { SwitchPair switchPair ->
         [potentialFlow.src, potentialFlow.dst].count { Switch sw ->
             !topology.activeTraffGens.find { it.switchConnected == sw }
         }

@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.PathId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -23,6 +24,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.Value;
+
+import java.util.Collections;
+import java.util.Set;
 
 @Value
 @EqualsAndHashCode(callSuper = false)
@@ -36,20 +40,25 @@ public class FlowRerouteRequest extends CommandData {
     @JsonProperty("flowid")
     protected String flowId;
 
+    @JsonProperty("path_ids")
+    protected Set<PathId> pathIds;
+
     /**
      * Update flow even if path will not be changed.
      */
     @JsonProperty("force")
     private boolean force;
 
-    public FlowRerouteRequest(String flowId) {
-        this(flowId, false);
+    public FlowRerouteRequest(String flowId, boolean force) {
+        this(flowId, force, Collections.emptySet());
     }
 
     @JsonCreator
     public FlowRerouteRequest(@NonNull @JsonProperty("flowid") String flowId,
-                              @JsonProperty("force") boolean force) {
+                              @JsonProperty("force") boolean force,
+                              @NonNull @JsonProperty("path_ids") Set<PathId> pathIds) {
         this.flowId = flowId;
         this.force = force;
+        this.pathIds = pathIds;
     }
 }

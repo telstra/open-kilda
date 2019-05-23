@@ -28,7 +28,9 @@ import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.request.RerouteFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.PersistenceManager;
@@ -43,8 +45,10 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class FlowOperationsBolt extends PersistenceOperationsBolt {
@@ -88,7 +92,14 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         Integer dstPort = request.getDestination().getPortNumber();
 
         try {
-            return flowOperationsService.getFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
+            // TODO not optimal and should be rewrited
+            return flowOperationsService.getFlowPathsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
+                    .map(FlowPath::getFlow)
+                    .map(Flow::getFlowId)
+                    .distinct()
+                    .map(flowOperationsService::getFlowPairById)
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
                     .map(FlowPair::getForward)
                     .map(FlowMapper.INSTANCE::map)
                     .map(FlowResponse::new)
@@ -104,22 +115,25 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         SwitchId dstSwitch = message.getDestination().getDatapath();
         Integer dstPort = message.getDestination().getPortNumber();
 
-        List<String> flowIds;
+        Collection<FlowPath> paths;
         try {
-            flowIds = flowOperationsService.getFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
-                    .map(FlowPair::getForward)
-                    .map(UnidirectionalFlow::getFlowId)
-                    .collect(Collectors.toList());
+            paths = flowOperationsService.getFlowPathsForLink(srcSwitch, srcPort, dstSwitch, dstPort);
         } catch (IslNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
         }
 
+        flowOperationsService.groupFlowIdWithPathIdsForRerouting(paths)
+                .forEach((flowId, pathIds) -> {
+                    FlowRerouteRequest request = new FlowRerouteRequest(flowId, false, pathIds);
+                    getOutput().emit(StreamType.REROUTE.toString(), tuple,
+                            new Values(request, message.getCorrelationId()));
+                });
 
-        flowIds.forEach(flowId -> {
-            FlowRerouteRequest request = new FlowRerouteRequest(flowId);
-            getOutput().emit(StreamType.REROUTE.toString(), tuple, new Values(request, message.getCorrelationId()));
-        });
-
+        List<String> flowIds = paths.stream()
+                .map(FlowPath::getFlow)
+                .map(Flow::getFlowId)
+                .distinct()
+                .collect(Collectors.toList());
         return Collections.singletonList(new FlowsResponse(flowIds));
     }
 
@@ -144,7 +158,7 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         FlowDto flowDto = request.getFlow();
 
         try {
-            UnidirectionalFlow flow = flowOperationsService.updateFlow(FlowMapper.INSTANCE.map(flowDto));
+            UnidirectionalFlow flow = flowOperationsService.updateFlow(flowDto);
             return Collections.singletonList(new FlowResponse(FlowMapper.INSTANCE.map(flow)));
 
         } catch (FlowNotFoundException e) {

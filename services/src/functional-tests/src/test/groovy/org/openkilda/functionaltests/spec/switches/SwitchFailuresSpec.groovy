@@ -1,13 +1,14 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
@@ -20,12 +21,8 @@ import java.util.concurrent.TimeUnit
 This spec verifies different situations when Kilda switches suddenly disconnect from the controller.
 Note: For now it is only runnable on virtual env due to no ability to disconnect hardware switches
 """)
+@Tags(VIRTUAL)
 class SwitchFailuresSpec extends BaseSpecification {
-
-    def setupOnce() {
-        requireProfiles("virtual")
-    }
-
     def "ISL is still able to properly fail even after switches were reconnected"() {
         given: "A flow"
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
@@ -50,7 +47,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
 
         and: "ISL fails after discovery timeout"
-        //TODO(rtretiak): Using big timeout here. This is an abnormal behavior, currently investigating.
+        //TODO(rtretiak): Using big timeout here. This is an abnormal behavior
         Wrappers.wait(untilIslShouldFail() / 1000 + WAIT_OFFSET * 1.5) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
         }
@@ -92,9 +89,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         then: "The flow is UP and valid"
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-            northbound.validateFlow(flow.id).each { direction ->
-                assert direction.discrepancies.findAll { it.field != "meterId" }.empty
-            }
+            northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
         }
 
         and: "Rules are valid on the knocked out switch"
@@ -107,25 +102,20 @@ class SwitchFailuresSpec extends BaseSpecification {
     @Ignore("This is a known Kilda limitation and feature is not implemented yet.")
     def "System can handle situation when switch reconnects while flow is being rerouted"() {
         given: "A flow with alternative paths available"
-        def switches = topology.getActiveSwitches()
-        List<List<PathNode>> allPaths = []
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.unique { it.sort() }.find { Switch src, Switch dst ->
-            allPaths = database.getPaths(src.dpId, dst.dpId)*.path
-            allPaths.size() > 1
-        } ?: assumeTrue("No suiting switches found", false)
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue("No suiting switches found", false)
+        def flow = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow)
         def currentPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
         and: "There is a more preferable alternative path"
-        def alternativePaths = allPaths.findAll { it != currentPath }
+        def alternativePaths = switchPair.paths.findAll { it != currentPath }
         def preferredPath = alternativePaths.first()
         def uniqueSwitch = pathHelper.getInvolvedSwitches(preferredPath).find {
             !pathHelper.getInvolvedSwitches(currentPath).contains(it)
         }
         assumeTrue("Didn't find a unique switch for alternative path", uniqueSwitch.asBoolean())
-        allPaths.findAll { it != preferredPath }.each { pathHelper.makePathMorePreferable(preferredPath, it) }
+        switchPair.paths.findAll { it != preferredPath }.each { pathHelper.makePathMorePreferable(preferredPath, it) }
 
         when: "Init reroute of the flow to a better path"
         def reroute = new Thread({ northbound.rerouteFlow(flow.id) })
@@ -142,9 +132,7 @@ class SwitchFailuresSpec extends BaseSpecification {
         then: "The flow is UP and valid"
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-            northbound.validateFlow(flow.id).each { direction ->
-                assert direction.discrepancies.findAll { it.field != "meterId" }.empty
-            }
+            northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
         }
 
         and: "Rules are valid on the knocked out switch"

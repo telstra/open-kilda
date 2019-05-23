@@ -17,10 +17,12 @@ package org.openkilda.northbound.dto.v1.switches;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class SwitchDto {
@@ -42,4 +44,19 @@ public class SwitchDto {
 
     @JsonProperty("under_maintenance")
     private boolean underMaintenance;
+
+    @JsonProperty("of_version")
+    private String ofVersion;
+
+    @JsonProperty("manufacturer")
+    private String manufacturer;
+
+    @JsonProperty("hardware")
+    private String hardware;
+
+    @JsonProperty("software")
+    private String software;
+
+    @JsonProperty("serial_number")
+    private String serialNumber;
 }

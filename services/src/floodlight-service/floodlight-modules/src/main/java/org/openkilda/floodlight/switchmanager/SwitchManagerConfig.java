@@ -64,4 +64,8 @@ public interface SwitchManagerConfig {
     @Key("ovs-meters-enabled")
     @Default("false")
     boolean isOvsMetersEnabled();
+
+    @Key("tracking-enabled")
+    @Default("true")
+    boolean isTrackingEnabled();
 }

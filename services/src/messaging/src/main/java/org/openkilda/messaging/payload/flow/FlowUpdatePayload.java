@@ -22,9 +22,11 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class FlowUpdatePayload extends FlowPayload {
 
@@ -34,19 +36,20 @@ public class FlowUpdatePayload extends FlowPayload {
     /**
      * Instance constructor.
      *
-     * @param id               flow id
-     * @param source           flow source
-     * @param destination      flow destination
-     * @param maximumBandwidth flow maximum bandwidth
-     * @param ignoreBandwidth  should ignore bandwidth in path computation
-     * @param periodicPings    enable periodic flow pings
-     * @param description      flow description
-     * @param created          flow created timestamp
-     * @param lastUpdated      flow last updated timestamp
-     * @param diverseFlowId    make new flow diverse with FlowId
-     * @param status           flow status
-     * @param maxLatency       max latency
-     * @param priority         flow priority
+     * @param id                    flow id
+     * @param source                flow source
+     * @param destination           flow destination
+     * @param maximumBandwidth      flow maximum bandwidth
+     * @param ignoreBandwidth       should ignore bandwidth in path computation
+     * @param periodicPings         enable periodic flow pings
+     * @param allocateProtectedPath allocate flow protected path
+     * @param description           flow description
+     * @param created               flow created timestamp
+     * @param lastUpdated           flow last updated timestamp
+     * @param diverseFlowId         make new flow diverse with FlowId
+     * @param status                flow status
+     * @param maxLatency            max latency
+     * @param priority              flow priority
      */
     @JsonCreator
     public FlowUpdatePayload(@JsonProperty(Utils.FLOW_ID) String id,
@@ -55,6 +58,7 @@ public class FlowUpdatePayload extends FlowPayload {
                              @JsonProperty("maximum-bandwidth") long maximumBandwidth,
                              @JsonProperty("ignore_bandwidth") Boolean ignoreBandwidth,
                              @JsonProperty("periodic-pings") Boolean periodicPings,
+                             @JsonProperty("allocate_protected_path") Boolean allocateProtectedPath,
                              @JsonProperty("description") String description,
                              @JsonProperty("created") String created,
                              @JsonProperty("last-updated") String lastUpdated,
@@ -62,8 +66,8 @@ public class FlowUpdatePayload extends FlowPayload {
                              @JsonProperty("status") String status,
                              @JsonProperty("max-latency") Integer maxLatency,
                              @JsonProperty("priority") Integer priority) {
-        super(id, source, destination, maximumBandwidth, ignoreBandwidth, periodicPings, description, created,
-                lastUpdated, status, maxLatency, priority);
+        super(id, source, destination, maximumBandwidth, ignoreBandwidth, periodicPings, allocateProtectedPath,
+                description, created, lastUpdated, status, maxLatency, priority);
         this.diverseFlowId = diverseFlowId;
     }
 }

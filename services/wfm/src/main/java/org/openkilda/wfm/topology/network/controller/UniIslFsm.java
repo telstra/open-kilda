@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.network.controller;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslDownReason;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmContext;
@@ -122,6 +123,7 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
         Isl history = context.getHistory();
         if (history != null) {
             islReference = IslReference.of(history);
+            islData = new IslDataHolder(history);
             context.getOutput().setupIslFromHistory(endpoint, islReference, history);
         }
     }
@@ -155,7 +157,7 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
 
     public void downEnter(UniIslFsmState from, UniIslFsmState to, UniIslFsmEvent event, UniIslFsmContext context) {
         if (!islReference.isIncomplete()) {
-            emitIslDown(context, event == UniIslFsmEvent.PHYSICAL_DOWN);
+            emitIslDown(context, mapDownReason(event));
         }
     }
 
@@ -169,13 +171,37 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
         context.getOutput().notifyIslUp(endpoint, islReference, islData);
     }
 
-    private void emitIslDown(UniIslFsmContext context, boolean isPhysicalDown) {
-        context.getOutput().notifyIslDown(endpoint, islReference, isPhysicalDown);
+    private void emitIslDown(UniIslFsmContext context, IslDownReason reason) {
+        context.getOutput().notifyIslDown(endpoint, islReference, reason);
     }
 
     private void emitIslMove(UniIslFsmContext context) {
         context.getOutput().notifyIslMove(endpoint, islReference);
     }
+
+    private IslDownReason mapDownReason(UniIslFsmEvent event) {
+        IslDownReason reason;
+        switch (event) {
+            case FAIL:
+                reason = IslDownReason.POLL_TIMEOUT;
+                break;
+            case PHYSICAL_DOWN:
+                reason = IslDownReason.PORT_DOWN;
+                break;
+            case BFD_DOWN:
+                reason = IslDownReason.BFD_DOWN;
+                break;
+
+            default:
+                throw new IllegalArgumentException(String.format(
+                        "Unable to map %s.%s into %s",
+                        UniIslFsmEvent.class.getName(), event, IslDownReason.class.getName()));
+        }
+
+        return reason;
+    }
+
+    // -- service data types --
 
     @Value
     @Builder

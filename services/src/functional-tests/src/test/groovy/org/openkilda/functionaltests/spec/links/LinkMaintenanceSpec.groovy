@@ -10,7 +10,6 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.Constants
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Value
 
@@ -49,16 +48,16 @@ class LinkMaintenanceSpec extends BaseSpecification {
     }
 
     def "Flows can be evacuated (rerouted) from a particular link when setting maintenance mode for it"() {
-        given: "Two active not neighboring switches with two possible paths at least"        
-        def potentialFlow = topologyHelper.findAllNonNeighbors().find { it.paths.size() > 1 } ?: 
+        given: "Two active not neighboring switches with two possible paths at least"
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)
 
         and: "Create a couple of flows going through these switches"
-        def flow1 = flowHelper.randomFlow(potentialFlow)
+        def flow1 = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
-        def flow2 = flowHelper.randomFlow(potentialFlow)
+        def flow2 = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
 
@@ -97,22 +96,22 @@ class LinkMaintenanceSpec extends BaseSpecification {
 
     def "Flows are rerouted to a path with link under maintenance when there are no other paths available"() {
         given: "Two active not neighboring switches with two possible paths at least"
-        def potentialFlow = topologyHelper.findAllNonNeighbors().find { it.paths.size() > 1 } ?:
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)
 
         and: "Create a couple of flows going through these switches"
-        def flow1 = flowHelper.randomFlow(potentialFlow)
+        def flow1 = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
-        def flow2 = flowHelper.randomFlow(potentialFlow)
+        def flow2 = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
 
         assert flow1Path == flow2Path
 
         and: "Make only one alternative path available for both flows"
-        def altPaths = potentialFlow.paths.findAll {
+        def altPaths = switchPair.paths.findAll {
             it != flow1Path && it.first().portNo != flow1Path.first().portNo
         }.sort { it.size() }
         def availablePath = altPaths.first()

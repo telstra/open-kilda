@@ -16,7 +16,6 @@
 package org.openkilda.wfm.share.hubandspoke;
 
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt.CoordinatorCommand;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
@@ -41,7 +40,7 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
     }
 
     @Override
-    protected void dispatch(Tuple input) throws AbstractException {
+    protected void dispatch(Tuple input) throws Exception {
         if (CoordinatorBolt.ID.equals(input.getSourceComponent())) {
             String key = input.getStringByField(MessageTranslator.KEY_FIELD);
             onTimeout(key, input);

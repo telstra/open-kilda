@@ -22,7 +22,6 @@ import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +36,7 @@ import java.util.UUID;
 public class RouterBolt extends AbstractBolt {
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         CommandMessage message = (CommandMessage) input.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
         MessageData data = message.getData();
         if (!(data instanceof FlowRequest)) {

@@ -20,7 +20,6 @@ import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.TaskIdBasedKeyFactory;
 import org.openkilda.wfm.topology.network.error.ControllerNotFoundException;
@@ -35,6 +34,7 @@ import org.openkilda.wfm.topology.network.storm.ComponentId;
 import org.openkilda.wfm.topology.network.storm.bolt.bfdport.command.BfdPortCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
+import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerWorker;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast.ISpeakerBcastConsumer;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast.SpeakerBcast;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.command.SpeakerBfdSessionRemoveCommand;
@@ -79,12 +79,14 @@ public class BfdPortHandler extends AbstractBolt
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String source = input.getSourceComponent();
         if (SwitchHandler.BOLT_ID.equals(source)) {
             handleSwitchCommand(input);
         } else if (IslHandler.BOLT_ID.equals(source)) {
             handleIslCommand(input);
+        } else if (SpeakerWorker.BOLT_ID.equals(source)) {
+            handleWorkerCommand(input);
         } else if (SpeakerRouter.BOLT_ID.equals(source)) {
             handleSpeakerBcast(input);
         } else {
@@ -107,6 +109,10 @@ public class BfdPortHandler extends AbstractBolt
 
     private void handleIslCommand(Tuple input) throws PipelineException {
         handleCommand(input, IslHandler.FIELD_ID_COMMAND);
+    }
+
+    private void handleWorkerCommand(Tuple input) throws PipelineException {
+        handleCommand(input, SpeakerWorker.FIELD_ID_PAYLOAD);
     }
 
     private void handleCommand(Tuple input, String fieldName) throws PipelineException {
@@ -174,8 +180,8 @@ public class BfdPortHandler extends AbstractBolt
         globalToggleService.setup(Endpoint.of(endpoint.getDatapath(), physicalPortNumber));
     }
 
-    public void processRemove(Endpoint logicalEndpoint) {
-        Endpoint physicalEndpoint = bfdPortService.remove(logicalEndpoint);
+    public void processRemove(Endpoint endpoint) {
+        Endpoint physicalEndpoint = bfdPortService.remove(endpoint);
         globalToggleService.remove(physicalEndpoint);
     }
 

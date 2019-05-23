@@ -1,14 +1,16 @@
 package org.openkilda.functionaltests.spec.switches
 
-import groovy.util.logging.Slf4j
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.extension.rerun.Rerun
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.PortBlinker
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PortChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
@@ -16,8 +18,6 @@ import spock.lang.Issue
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
-
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Slf4j
 @Narrative("""
@@ -52,8 +52,6 @@ class PortAntiflapSpec extends BaseSpecification {
         getNorthbound().toggleFeature(FeatureTogglesDto.builder().floodlightRoutePeriodicSync(true).build())
     }
 
-    //rerun is required to check the #1790 issue
-    @Rerun(times = 2)
     def "Flapping port is brought down only after antiflap warmup and stable port is brought up only after cooldown \
 timeout"() {
         given: "Switch, port and ISL related to that port"
@@ -123,9 +121,6 @@ timeout"() {
      * directly to kafka, because currently it is the only way to simulate an incredibly rapid port flapping that
      * may sometimes occur on hardware switches(overheat?)
      */
-    @Issue("https://github.com/telstra/open-kilda/issues/1827")
-    //there is a possible race condition that we exercise, so this needs couple reruns
-    @Rerun(times = 2)
     def "System properly registers events order when port flaps incredibly fast (end with Up)"() {
 
         when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in UP state"
@@ -152,9 +147,6 @@ timeout"() {
      * directly to kafka, because currently it is the only way to simulate an incredibly rapid port flapping that
      * may sometimes occur on hardware switches(overheat?)
      */
-    @Issue("https://github.com/telstra/open-kilda/issues/1827")
-    //there is a possible race condition that we exercise, so this needs couple reruns
-    @Rerun(times = 2)
     def "System properly registers events order when port flaps incredibly fast (end with Down)"() {
 
         when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in DOWN state"

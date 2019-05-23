@@ -94,6 +94,10 @@ public class Isl implements Serializable {
     @Convert(graphPropertyType = String.class)
     private IslStatus actualStatus;
 
+    @Property(name = "down_reason")
+    @Convert(graphPropertyType = String.class)
+    private IslDownReason downReason;
+
     @NonNull
     @Property(name = "time_create")
     @Convert(InstantStringConverter.class)

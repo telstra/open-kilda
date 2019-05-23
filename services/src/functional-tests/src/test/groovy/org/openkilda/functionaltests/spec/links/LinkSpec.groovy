@@ -1,10 +1,14 @@
 package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -98,14 +102,14 @@ class LinkSpec extends BaseSpecification {
 
     def "Get all flows (UP/DOWN) going through a particular link"() {
         given: "Two active not neighboring switches"
-        def potentialFlow = topologyHelper.findNonNeighbors()
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
 
         and: "Forward flow from source switch to destination switch"
-        def flow1 = flowHelper.randomFlow(potentialFlow)
+        def flow1 = flowHelper.randomFlow(switchPair)
         flow1 = flowHelper.addFlow(flow1)
 
         and: "Reverse flow from destination switch to source switch"
-        def flow2 = flowHelper.randomFlow(potentialFlow)
+        def flow2 = flowHelper.randomFlow(switchPair)
         flow2 = flowHelper.addFlow(flow2)
 
         and: "Forward flow from source switch to some 'internal' switch"
@@ -135,7 +139,7 @@ class LinkSpec extends BaseSpecification {
 
         when: "Bring all ports down on source switch that are involved in current and alternative paths"
         List<PathNode> broughtDownPorts = []
-        potentialFlow.paths.unique { it.first() }.each { path ->
+        switchPair.paths.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
             northbound.portDown(src.switchId, src.portNo)
@@ -174,9 +178,8 @@ class LinkSpec extends BaseSpecification {
         database.resetCosts()
     }
 
+    @Tags(VIRTUAL)
     def "ISL should immediately fail if the port went down while switch was disconnected"() {
-        requireProfiles("virtual")
-
         when: "A switch disconnects"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
         lockKeeper.knockoutSwitch(isl.srcSwitch.dpId)
@@ -213,7 +216,7 @@ class LinkSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "Unable to get flows for NOT existing link (#item doesn't exist) "() {
+    def "Unable to get flows for NOT existing link (#item doesn't exist)"() {
         when: "Get flows for NOT existing link"
         northbound.getLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
 
@@ -232,7 +235,7 @@ class LinkSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "Unable to get flows with specifying invalid query parameters (#item is invalid) "() {
+    def "Unable to get flows with specifying invalid query parameters (#item is invalid)"() {
         when: "Get flows with specifying invalid #item"
         northbound.getLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
 
@@ -293,6 +296,7 @@ class LinkSpec extends BaseSpecification {
     }
 
     @Unroll
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = /bfd link/)
     def "Able to delete an inactive #islDescription link and re-discover it back afterwards"() {
         given: "An inactive link"
         assumeTrue("Unable to locate $islDescription ISL for this test", isl as boolean)
@@ -319,37 +323,40 @@ class LinkSpec extends BaseSpecification {
         database.resetCosts()
 
         where:
-        islDescription | isl
-        "direct"       | getTopology().islsForActiveSwitches.find { !it.aswitch && !it.bfd }
-        "a-switch"     | getTopology().islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd }
-        "bfd"          | getTopology().islsForActiveSwitches.find { it.bfd }
+        [islDescription, isl] << [
+                ["direct", getTopology().islsForActiveSwitches.find { !it.aswitch && !it.bfd }],
+                ["a-switch", getTopology().islsForActiveSwitches.find {
+                    it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd
+                }],
+                ["bfd", getTopology().islsForActiveSwitches.find { it.bfd }]
+        ]
     }
 
     def "Reroute all flows going through a particular link"() {
         given: "Two active not neighboring switches with two possible paths at least"
-        def potentialFlow = topologyHelper.findAllNonNeighbors().find { it.paths.size() > 1 } ?:
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)
 
         and: "Make the first path more preferable than others by setting corresponding link props"
-        potentialFlow.paths[1..-1].each { pathHelper.makePathMorePreferable(potentialFlow.paths.first(), it) }
+        switchPair.paths[1..-1].each { pathHelper.makePathMorePreferable(switchPair.paths.first(), it) }
 
         and: "Create a couple of flows going through these switches"
-        def flow1 = flowHelper.randomFlow(potentialFlow)
+        def flow1 = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.id))
 
-        def flow2 = flowHelper.randomFlow(potentialFlow)
+        def flow2 = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
 
-        assert flow1Path == potentialFlow.paths.first()
-        assert flow2Path == potentialFlow.paths.first()
+        assert flow1Path == switchPair.paths.first()
+        assert flow2Path == switchPair.paths.first()
 
         and: "Delete link props from all links of alternative paths to allow rerouting flows"
         northbound.deleteLinkProps(northbound.getAllLinkProps())
 
         and: "Make the current flows path not preferable"
-        potentialFlow.paths[1..-1].each { pathHelper.makePathMorePreferable(it, potentialFlow.paths.first()) }
+        switchPair.paths[1..-1].each { pathHelper.makePathMorePreferable(it, switchPair.paths.first()) }
 
         when: "Submit request for rerouting flows"
         def isl = pathHelper.getInvolvedIsls(flow1Path).first()
@@ -358,15 +365,10 @@ class LinkSpec extends BaseSpecification {
         then: "Flows are rerouted"
         response.containsAll([flow1, flow2]*.id)
 
-        def flow1PathUpdated
-        def flow2PathUpdated
-
         Wrappers.wait(WAIT_OFFSET) {
-            flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.id))
-            flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.id))
-
-            assert flow1PathUpdated != flow1Path
-            assert flow2PathUpdated != flow2Path
+            [flow1, flow2].each { assert northbound.getFlowStatus(it.id).status == FlowState.UP }
+            assert PathHelper.convert(northbound.getFlowPath(flow1.id)) != flow1Path
+            assert PathHelper.convert(northbound.getFlowPath(flow2.id)) != flow2Path
         }
 
         and: "Delete flows and delete link props"
@@ -375,7 +377,7 @@ class LinkSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "Unable to reroute flows with specifying NOT existing link (#item doesn't exist) "() {
+    def "Unable to reroute flows with specifying NOT existing link (#item doesn't exist)"() {
         when: "Reroute flows with specifying NOT existing link"
         northbound.rerouteLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
 
@@ -394,7 +396,7 @@ class LinkSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "Unable to reroute flows with specifying invalid query parameters (#item is invalid) "() {
+    def "Unable to reroute flows with specifying invalid query parameters (#item is invalid)"() {
         when: "Reroute flows with specifying invalid #item"
         northbound.rerouteLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
 
@@ -446,7 +448,7 @@ class LinkSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "Get links with specifying NOT existing query parameters (#item doesn't exist) "() {
+    def "Get links with specifying NOT existing query parameters (#item doesn't exist)"() {
         when: "Get links with specifying NOT existing query parameters"
         def links = northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
 
@@ -462,7 +464,7 @@ class LinkSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "Unable to get links with specifying invalid query parameters (#item is invalid) "() {
+    def "Unable to get links with specifying invalid query parameters (#item is invalid)"() {
         when: "Get links with specifying invalid #item"
         northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
 
@@ -478,10 +480,9 @@ class LinkSpec extends BaseSpecification {
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
     }
 
-    def "Isl is able to properly fail when both src and dst switches suddenly disconnect"() {
-        requireProfiles("virtual")
-
-        given: "An ISL under test"
+    @Tags(VIRTUAL)
+    def "ISL is able to properly fail when both src and dst switches suddenly disconnect"() {
+        given: "An active ISL"
         def isl = topology.islsForActiveSwitches.first()
 
         when: "Source and destination switches of the ISL suddenly disconnect"
@@ -504,6 +505,136 @@ class LinkSpec extends BaseSpecification {
                 assert it.state == IslChangeType.DISCOVERED
             }
         }
+    }
+
+    def "Able to update max bandwidth for a link"() {
+        given: "An active ISL"
+        // Find such an ISL that is the only ISL between switches.
+        def isl = topology.islsForActiveSwitches.find { isl ->
+            topology.islsForActiveSwitches.findAll {
+                isl.srcSwitch == it.srcSwitch && isl.dstSwitch == it.dstSwitch
+            }.size() == 1
+        }
+        def islInfo = islUtils.getIslInfo(isl).get()
+        def initialMaxBandwidth = islInfo.maxBandwidth
+        def initialAvailableBandwidth = islInfo.availableBandwidth
+
+        when: "Create a flow going through this ISL"
+        def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
+        def flowMaxBandwidth = 12345
+        flow.maximumBandwidth = flowMaxBandwidth
+        flowHelper.addFlow(flow)
+
+        and: "Update max bandwidth for the link"
+        def offset = 10000
+        def newMaxBandwidth = initialMaxBandwidth - offset
+        northbound.updateLinkMaxBandwidth(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort,
+                newMaxBandwidth)
+        def links = northbound.getActiveLinks()
+        def linkProps = northbound.getAllLinkProps()
+
+        then: "Max bandwidth is really updated and available bandwidth is also recalculated"
+        [isl, isl.reversed].each {
+            assert islUtils.getIslInfo(links, it).get().defaultMaxBandwidth == initialMaxBandwidth
+            assert islUtils.getIslInfo(links, it).get().maxBandwidth == newMaxBandwidth
+            assert islUtils.getIslInfo(links, it).get().availableBandwidth ==
+                    initialAvailableBandwidth - offset - flowMaxBandwidth
+        }
+
+        and: "The corresponding link props are created"
+        assert linkProps.size() == 2
+        linkProps.each { assert it.props["max_bandwidth"].toLong() == newMaxBandwidth }
+
+        when: "Update max bandwidth to a value lesser than max bandwidth of the created flow"
+        northbound.updateLinkMaxBandwidth(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort,
+                flowMaxBandwidth - 1)
+
+        then: "An error is received (400 code)"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Requested maximum bandwidth is too small"
+
+        when: "Update max bandwidth to the value equal to max bandwidth of the created flow"
+        northbound.updateLinkMaxBandwidth(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort,
+                flowMaxBandwidth)
+        links = northbound.getActiveLinks()
+        linkProps = northbound.getAllLinkProps()
+
+        then: "Max bandwidth is really updated and available bandwidth is also recalculated"
+        [isl, isl.reversed].each {
+            assert islUtils.getIslInfo(links, it).get().maxBandwidth == flowMaxBandwidth
+            assert islUtils.getIslInfo(links, it).get().availableBandwidth == 0
+        }
+
+        and: "Link props are also updated"
+        assert linkProps.size() == 2
+        linkProps.each { assert it.props["max_bandwidth"].toLong() == flowMaxBandwidth }
+
+        when: "Update max bandwidth to the initial value"
+        northbound.updateLinkMaxBandwidth(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort,
+                initialMaxBandwidth)
+        links = northbound.getActiveLinks()
+        linkProps = northbound.getAllLinkProps()
+
+        then: "Max bandwidth is really updated and available bandwidth is also recalculated"
+        [isl, isl.reversed].each {
+            assert islUtils.getIslInfo(links, it).get().maxBandwidth == initialMaxBandwidth
+            assert islUtils.getIslInfo(links, it).get().availableBandwidth ==
+                    initialAvailableBandwidth - flowMaxBandwidth
+        }
+
+        and: "Link props are also updated"
+        assert linkProps.size() == 2
+        linkProps.each { assert it.props["max_bandwidth"].toLong() == initialMaxBandwidth }
+
+        when: "Delete link props"
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
+        links = northbound.getActiveLinks()
+
+        then: "Max bandwidth and available bandwidth are not changed"
+        [isl, isl.reversed].each {
+            assert islUtils.getIslInfo(links, it).get().maxBandwidth == initialMaxBandwidth
+            assert islUtils.getIslInfo(links, it).get().availableBandwidth ==
+                    initialAvailableBandwidth - flowMaxBandwidth
+        }
+
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+    }
+
+    @Unroll
+    def "Unable to update max bandwidth with specifying invalid query parameters (#item is invalid)"() {
+        when: "Update max bandwidth with specifying invalid #item"
+        northbound.updateLinkMaxBandwidth(srcSwId, srcSwPort, dstSwId, dstSwPort, 1000000)
+
+        then: "An error is received (400 code)"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage.matches("Invalid value of (source|destination) port")
+
+        where:
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
+        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"
+        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
+    }
+
+    @Unroll
+    def "Unable to update max bandwidth without full specifying a particular link (#item is missing)"() {
+        when: "Update max bandwidth without specifying #item"
+        northbound.updateLinkMaxBandwidth(srcSwId, srcSwPort, dstSwId, dstSwPort, 1000000)
+
+        then: "An error is received (400 code)"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage.contains("parameter '$item' is not present")
+
+        where:
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item
+        null                    | null             | null                    | null      | "src_switch"
+        getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
     }
 
     @Memoized
