@@ -1,0 +1,27 @@
+{%- macro render_section(name, dict) -%}
+{% if dict %}
+### {{ name }}:
+{%- for p in dict %}
+-  [#{{ p.id }}](https://github.com/telstra/open-kilda/pull/{{ p.id }}) {{ p.title }} 
+{%- if p.issues %} (
+{%- if p.issues|count == 1 %}Issue{% else %}Issues{% endif %}:
+{%- for i in p.issues %} [#{{ i }}](https://github.com/telstra/open-kilda/issues/{{ i }}){% endfor -%})
+{%- endif %} {% for t in p.topics -%}
+[**{{ t }}**]
+{%- endfor -%}
+{%- endfor -%}
+{%- endif %}
+{%- endmacro -%}
+## v{{ to_ver }} ({{ date }})
+{{ render_section('Features', features) }}
+{{ render_section('Bug Fixes', bugs) }}
+{{ render_section('Improvements', improvements) }}
+{{ render_section('Other changes', issues) }}
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v{{ from_ver }}...v{{ to_ver }}).
+{% if components %}
+### Affected Components:
+{{ components|join(', ') }}
+{%- endif %}
+
+### Upgrade notes:
