@@ -25,6 +25,7 @@ import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
+import org.openkilda.model.LinkParametersDto;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.SwitchInfo;
@@ -65,7 +66,7 @@ public class SwitchController {
 
     @Autowired
     private ActivityLogger activityLogger;
-
+    
     @Autowired
     private ServerContext serverContext;
 
@@ -133,6 +134,25 @@ public class SwitchController {
             required = false) final String dstSwitch, @RequestParam(value = "dst_port",
             required = false) final String dstPort) {
         return serviceSwitch.getIslLinks(srcSwitch, srcPort, dstSwitch, dstPort);
+    }
+    
+    /**
+     * Delete Isl.
+     *
+     * @param linkParametersDto
+     *            the link parameters
+     * @return the IslLinkInfo
+     */
+    @RequestMapping(value = "/links", method = RequestMethod.DELETE)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = { IConstants.Permission.ISL_DELETE_LINK })
+    public @ResponseBody List<IslLinkInfo> deleteIsl(@RequestBody final LinkParametersDto linkParametersDto) {
+        Long userId = null;
+        if (serverContext.getRequestContext() != null) {
+            userId = serverContext.getRequestContext().getUserId();
+        }
+        activityLogger.log(ActivityType.DELETE_ISL, linkParametersDto.toString());
+        return serviceSwitch.deleteLink(linkParametersDto, userId);
     }
 
     /**

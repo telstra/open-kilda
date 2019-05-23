@@ -40,8 +40,26 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
     private renderer: Renderer2,
     private commonService: CommonService
   ) { 
-    this.storedData  = JSON.parse(localStorage.getItem("flows")) || [];
-    this.dataSet = this.storedData;
+    var flowListData = JSON.parse(localStorage.getItem("flows"));
+    if(flowListData){
+      var storageTime = flowListData.timeStamp;
+      var startTime = new Date(storageTime).getTime();
+      var lastTime = new Date().getTime();
+      let timeminDiff = lastTime - startTime;
+      var diffMins = Math.round(((timeminDiff % 86400000) % 3600000) / 60000);
+      if(diffMins < 5){
+        this.storedData  = flowListData.list_data || [];
+        this.dataSet = this.storedData;
+      }else{
+        this.storedData  =  [];
+        this.dataSet = this.storedData;
+      }
+      
+    }else{
+        this.storedData  =  [];
+        this.dataSet = this.storedData;
+    }
+    
 
     let storeSetting = localStorage.getItem("haslinkStoreSetting") || false;
     this.storeLinkSetting = storeSetting && storeSetting == "1" ? true : false
@@ -84,7 +102,8 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
         if(this.dataSet.length == 0){
           this.toastr.info("No Flows Available",'Information');
         }else{
-          localStorage.setItem('flows',JSON.stringify(data));
+          var flowListData = JSON.stringify({'timeStamp':new Date().getTime(),"list_data":data});
+          localStorage.setItem('flows',flowListData);
         }
         this.loadingData = false;     
       },error=>{

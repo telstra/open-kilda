@@ -27,6 +27,7 @@ import org.openkilda.integration.source.store.SwitchStoreService;
 import org.openkilda.integration.source.store.dto.InventorySwitch;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
+import org.openkilda.model.LinkParametersDto;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.PopLocation;
@@ -39,13 +40,11 @@ import org.openkilda.store.service.StoreService;
 import org.openkilda.utility.StringUtil;
 
 import org.apache.log4j.Logger;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.usermanagement.service.UserService;
 
 import java.util.ArrayList;
-
 import java.util.Date;
 import java.util.List;
 
@@ -64,12 +63,12 @@ public class SwitchService {
 
     @Autowired
     private SwitchStoreService switchStoreService;
-
-    @Autowired
-    private StoreService storeService;
     
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private StoreService storeService;
     
     @Autowired
     private SwitchNameRepository switchNameRepository;
@@ -83,6 +82,9 @@ public class SwitchService {
      */
     public List<SwitchInfo> getSwitches(boolean storeConfigurationStatus) throws IntegrationException {
         List<SwitchInfo> switchInfo = switchIntegrationService.getSwitches();
+        if (switchInfo == null) {
+            switchInfo = new ArrayList<SwitchInfo>();
+        }
         if (storeConfigurationStatus && storeService.getSwitchStoreConfig().getUrls().size() > 0) {
             try {
                 List<InventorySwitch> inventorySwitches = new ArrayList<InventorySwitch>();
@@ -462,5 +464,21 @@ public class SwitchService {
     */
     public List<IslLinkInfo> updateLinkMaintenanceStatus(LinkUnderMaintenanceDto linkUnderMaintenanceDto) {
         return switchIntegrationService.updateIslLinks(linkUnderMaintenanceDto);
+    }
+    
+    
+    /** Delete link.
+     *
+     * @param linkParametersDto
+     *            the link parameters
+     * @return the IslLinkInfo
+     */
+    public List<IslLinkInfo> deleteLink(LinkParametersDto linkParametersDto, Long userId) {
+        if (userService.validateOtp(userId, linkParametersDto.getCode())) {
+            List<IslLinkInfo> status = switchIntegrationService.deleteLink(linkParametersDto);
+            return status;
+        } else {
+            return null;
+        }
     }
 }
