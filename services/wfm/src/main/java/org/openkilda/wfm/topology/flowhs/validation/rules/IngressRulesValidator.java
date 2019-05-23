@@ -41,12 +41,11 @@ public class IngressRulesValidator extends RulesValidator {
             valid = false;
         }
 
-        // FIXME: some switches don't support meters at all
-        /*if (actual != null && !Objects.equals(expected.getMeterId(), actual.getMeterId())) {
+        if (actual != null && !Objects.equals(expected.getMeterId(), actual.getMeterId())) {
             log.warn("Meter mismatch for the flow {} on the switch {}. Expected {}, actual {}",
                     expected.getFlowId(), expected.getSwitchId(), expected.getMeterId(), actual.getMeterId());
             valid = false;
-        }*/
+        }
 
         return valid;
     }

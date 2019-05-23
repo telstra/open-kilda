@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.feature;
 
+import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -23,13 +24,20 @@ import org.projectfloodlight.openflow.protocol.OFVersion;
 import java.util.Optional;
 
 public class MeterFeature extends AbstractFeature {
+    private final SwitchManagerConfig switchManagerConfig;
+
+    public MeterFeature(SwitchManagerConfig switchManagerConfig) {
+        this.switchManagerConfig = switchManagerConfig;
+    }
+
     @Override
     public Optional<SpeakerSwitchView.Feature> discover(IOFSwitch sw) {
         Optional<SpeakerSwitchView.Feature> empty = Optional.empty();
         if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) < 0) {
             return empty;
         }
-        if (MANUFACTURER_NICIRA.equals(sw.getSwitchDescription().getManufacturerDescription())) {
+        if (MANUFACTURER_NICIRA.equals(sw.getSwitchDescription().getManufacturerDescription())
+                && !switchManagerConfig.isOvsMetersEnabled()) {
             return empty;
         }
 

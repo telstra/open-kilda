@@ -160,6 +160,7 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
                 .destSwitch(switchRepository.reload(Switch.builder()
                         .switchId(path.getDestSwitchId()).build()))
                 .meterId(pathResources.getMeterId())
+                .bandwidth(flow.getBandwidth())
                 .cookie(cookie)
                 .build();
 

@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.service;
 
+import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.feature.AbstractFeature;
 import org.openkilda.floodlight.feature.BfdFeature;
 import org.openkilda.floodlight.feature.BfdReviewFeature;
@@ -22,6 +23,8 @@ import org.openkilda.floodlight.feature.GroupPacketOutController;
 import org.openkilda.floodlight.feature.LimitedBurstSizeFeature;
 import org.openkilda.floodlight.feature.MeterFeature;
 import org.openkilda.floodlight.feature.ResetCountsFlagFeature;
+import org.openkilda.floodlight.switchmanager.SwitchManager;
+import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
 import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 
 import com.google.common.collect.ImmutableList;
@@ -35,17 +38,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class FeatureDetectorService implements IService {
-    private final List<AbstractFeature> features;
-
-    public FeatureDetectorService() {
-        features = ImmutableList.of(
-                new MeterFeature(),
-                new BfdFeature(),
-                new BfdReviewFeature(),
-                new GroupPacketOutController(),
-                new ResetCountsFlagFeature(),
-                new LimitedBurstSizeFeature());
-    }
+    private List<AbstractFeature> features;
 
     /**
      * Detect features supported by switch.
@@ -62,7 +55,17 @@ public class FeatureDetectorService implements IService {
     }
 
     @Override
-    public void setup(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
-        // there is nothing to initialize here
+    public void setup(FloodlightModuleContext context) throws FloodlightModuleException {
+        FloodlightModuleConfigurationProvider provider =
+                FloodlightModuleConfigurationProvider.of(context, SwitchManager.class);
+        SwitchManagerConfig switchManagerConfig = provider.getConfiguration(SwitchManagerConfig.class);
+
+        features = ImmutableList.of(
+                new MeterFeature(switchManagerConfig),
+                new BfdFeature(),
+                new BfdReviewFeature(),
+                new GroupPacketOutController(),
+                new ResetCountsFlagFeature(),
+                new LimitedBurstSizeFeature());
     }
 }
