@@ -75,6 +75,15 @@ public class NorthboundReplyBolt extends BaseRichBolt {
                     outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
 
                     break;
+                case FLOW_OPERATION_BOLT:
+                    logger.debug("Flow response: {}={}, component={}, stream={}, message={}",
+                            Utils.CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
+
+                    message.setDestination(Destination.NORTHBOUND);
+                    values = new Values(MAPPER.writeValueAsString(message));
+                    outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+
+                    break;
 
                 default:
                     logger.debug("Flow UNKNOWN response: {}={}, component={}, stream={}, message={}",

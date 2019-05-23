@@ -23,6 +23,8 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandGroup;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
+import org.openkilda.messaging.ctrl.AbstractDumpState;
+import org.openkilda.messaging.ctrl.state.OperationsBoltState;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoMessage;
@@ -31,12 +33,15 @@ import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPair;
+import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.ctrl.CtrlAction;
+import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.error.FeatureTogglesNotEnabledException;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
@@ -64,8 +69,9 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 
-public class FlowOperationsBolt extends BaseRichBolt {
+public class FlowOperationsBolt extends BaseRichBolt implements ICtrlBolt {
 
+    private static final String STREAM_ID_CTRL = "ctrl";
 
     private transient FlowService flowService;
 
@@ -88,6 +94,7 @@ public class FlowOperationsBolt extends BaseRichBolt {
 
     private transient FlowValidator flowValidator;
     private transient FlowCommandFactory commandFactory;
+    private transient TopologyContext context;
 
     private static final Logger logger = LoggerFactory.getLogger(FlowOperationsBolt.class);
 
@@ -100,21 +107,28 @@ public class FlowOperationsBolt extends BaseRichBolt {
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        this.outputCollector = outputCollector;
-        flowValidator = new FlowValidator(repositoryFactory);
+        this.context = context;
+        this.outputCollector = collector;
         commandFactory = new FlowCommandFactory();
         repositoryFactory = persistenceManager.getRepositoryFactory();
+        AvailableNetworkFactory availableNetworkFactory =
+                new AvailableNetworkFactory(pathComputerConfig, repositoryFactory);
+        pathComputerFactory = new PathComputerFactory(pathComputerConfig, availableNetworkFactory);
+        flowValidator = new FlowValidator(repositoryFactory);
+        flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         flowService = new FlowService(persistenceManager, pathComputerFactory, flowResourcesManager,
                 flowValidator, commandFactory);
         featureTogglesService = new FeatureTogglesService(persistenceManager.getRepositoryFactory());
 
-        AvailableNetworkFactory availableNetworkFactory =
-                new AvailableNetworkFactory(pathComputerConfig, repositoryFactory);
-        pathComputerFactory = new PathComputerFactory(pathComputerConfig, availableNetworkFactory);
     }
 
     @Override
     public void execute(Tuple tuple) {
+
+        if (CtrlAction.boltHandlerEntrance(this, tuple)) {
+            return;
+        }
+
         StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
         String flowId = tuple.getStringByField(Utils.FLOW_ID);
         String correlationId = Utils.DEFAULT_CORRELATION_ID;
@@ -152,7 +166,6 @@ public class FlowOperationsBolt extends BaseRichBolt {
                     message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FeatureTogglesNotEnabledException e) {
-            // TODO (vborisovskii): Change INTERNAL_ERROR to ErrorType.NOT_PERMITTED after merge #2250
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_PERMITTED, errorType, "Feature toggles not enabled for UPDATE_FLOW operation.");
         } catch (FlowNotFoundException e) {
@@ -179,6 +192,32 @@ public class FlowOperationsBolt extends BaseRichBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
+        declarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
+    }
+
+    @Override
+    public AbstractDumpState dumpState() {
+        return new OperationsBoltState();
+    }
+
+    @Override
+    public String getCtrlStreamId() {
+        return STREAM_ID_CTRL;
+    }
+
+    @Override
+    public AbstractDumpState dumpStateBySwitchId(SwitchId switchId) {
+        return null;
+    }
+
+    @Override
+    public TopologyContext getContext() {
+        return context;
+    }
+
+    @Override
+    public OutputCollector getOutput() {
+        return outputCollector;
     }
 
     class FlowCommandSenderImpl implements FlowCommandSender {

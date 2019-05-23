@@ -15,8 +15,8 @@
 
 package org.openkilda.messaging.command.flow;
 
-import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.model.SwapFlowDto;
+import org.openkilda.messaging.nbtopology.request.FlowsBaseRequest;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.EqualsAndHashCode;
@@ -28,7 +28,7 @@ import lombok.Value;
  */
 @Value
 @EqualsAndHashCode(callSuper = false)
-public class SwapFlowEndpointRequest extends CommandData {
+public class SwapFlowEndpointRequest extends FlowsBaseRequest {
     private static final long serialVersionUID = 1L;
 
     @NonNull
