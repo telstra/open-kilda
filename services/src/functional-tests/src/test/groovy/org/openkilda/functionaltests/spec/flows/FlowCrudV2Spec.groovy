@@ -315,7 +315,10 @@ class FlowCrudV2Spec extends BaseSpecification {
         data << getConflictingData() + [
                 conflict            : "the same flow ID",
                 makeFlowsConflicting: { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict ->
-                    flowToConflict.toBuilder().flowId(dominantFlow.flowId).build()
+                    def conflictedFlow = flowToConflict.toBuilder()
+                            .flowId(dominantFlow.flowId)
+                            .build()
+                    return [dominantFlow, conflictedFlow]
                 },
                 getError            : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict ->
                     "Could not create flow: Flow $dominantFlow.flowId already exists"
@@ -399,13 +402,13 @@ class FlowCrudV2Spec extends BaseSpecification {
                 [
                         isolatedSwitchType: "source",
                         getFlow           : { Switch theSwitch ->
-                            getFlowHelper().randomFlow(theSwitch, getTopology().activeSwitches.find { it != theSwitch })
+                            getFlowHelperV2().randomFlow(theSwitch, getTopology().activeSwitches.find { it != theSwitch })
                         }
                 ],
                 [
                         isolatedSwitchType: "destination",
                         getFlow           : { Switch theSwitch ->
-                            getFlowHelper().randomFlow(getTopology().activeSwitches.find { it != theSwitch }, theSwitch)
+                            getFlowHelperV2().randomFlow(getTopology().activeSwitches.find { it != theSwitch }, theSwitch)
                         }
                 ]
         ]
@@ -459,7 +462,7 @@ class FlowCrudV2Spec extends BaseSpecification {
      */
     @Shared
     def taffgensPrioritized = { SwitchPair switchPair ->
-        [potentialFlow.src, potentialFlow.dst].count { Switch sw ->
+        [switchPair.src, switchPair.dst].count { Switch sw ->
             !topology.activeTraffGens.find { it.switchConnected == sw }
         }
     }
@@ -469,17 +472,17 @@ class FlowCrudV2Spec extends BaseSpecification {
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithoutTransitSwitch() {
-        def potentialFlows = topologyHelper.findAllNeighbors().sort(taffgensPrioritized)
+        def potentialFlows = topologyHelper.getAllNeighboringSwitchPairs().sort(taffgensPrioritized)
                 .unique { [it.src, it.dst]*.description.sort() }
 
         return potentialFlows.inject([]) { r, potentialFlow ->
             r << [
                     description: "flow without transit switch and with random vlans",
-                    flow       : flowHelperV2.randomFlow(potentialFlow)
+                    flow       : getFlowHelperV2().randomFlow(potentialFlow)
             ]
             r << [
                     description: "flow without transit switch and without vlans",
-                    flow       : flowHelperV2.randomFlow(potentialFlow).tap {
+                    flow       : getFlowHelperV2().randomFlow(potentialFlow).tap {
                         it.toBuilder()
                                 .source(it.source.toBuilder().vlanId(0).build())
                                 .destination(it.destination.toBuilder().vlanId(0).build())
@@ -488,7 +491,7 @@ class FlowCrudV2Spec extends BaseSpecification {
             ]
             r << [
                     description: "flow without transit switch and vlan only on src",
-                    flow       : flowHelperV2.randomFlow(potentialFlow).tap { it.toBuilder()
+                    flow       : getFlowHelperV2().randomFlow(potentialFlow).tap { it.toBuilder()
                             .source(it.destination.toBuilder().vlanId(0).build())
                             .build()
                     }
@@ -502,17 +505,17 @@ class FlowCrudV2Spec extends BaseSpecification {
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithTransitSwitch() {
-        def potentialFlows = topologyHelper.findAllNonNeighbors().sort(taffgensPrioritized)
+        def potentialFlows = topologyHelper.getAllNotNeighboringSwitchPairs().sort(taffgensPrioritized)
                 .unique { [it.src, it.dst]*.description.sort() }
 
         return potentialFlows.inject([]) { r, potentialFlow ->
             r << [
                     description: "flow with transit switch and random vlans",
-                    flow       : flowHelperV2.randomFlow(potentialFlow)
+                    flow       : getFlowHelperV2().randomFlow(potentialFlow)
             ]
             r << [
                     description: "flow with transit switch and no vlans",
-                    flow       : flowHelperV2.randomFlow(potentialFlow).tap {
+                    flow       : getFlowHelperV2().randomFlow(potentialFlow).tap {
                         it.toBuilder()
                                 .source(it.source.toBuilder().vlanId(0).build())
                                 .destination(it.destination.toBuilder().vlanId(0).build())
@@ -521,7 +524,7 @@ class FlowCrudV2Spec extends BaseSpecification {
             ]
             r << [
                     description: "flow with transit switch and vlan only on dst",
-                    flow       : flowHelperV2.randomFlow(potentialFlow).tap {
+                    flow       : getFlowHelperV2().randomFlow(potentialFlow).tap {
                         it.toBuilder()
                                 .source(it.source.toBuilder().vlanId(0).build())
                                 .build()
@@ -542,11 +545,11 @@ class FlowCrudV2Spec extends BaseSpecification {
                 .inject([]) { r, sw ->
             r << [
                     description: "single-switch flow with vlans",
-                    flow       : flowHelperV2.singleSwitchFlow(sw)
+                    flow       : getFlowHelperV2().singleSwitchFlow(sw)
             ]
             r << [
                     description: "single-switch flow without vlans",
-                    flow       : flowHelperV2.singleSwitchFlow(sw).with {
+                    flow       : getFlowHelperV2().singleSwitchFlow(sw).with {
                         it.toBuilder()
                                 .source(it.getSource().toBuilder().vlanId(0).build())
                                 .destination(it.getDestination().toBuilder().vlanId(0).build())
@@ -555,7 +558,7 @@ class FlowCrudV2Spec extends BaseSpecification {
             ]
             r << [
                     description: "single-switch flow with vlan only on dst",
-                    flow       : flowHelperV2.singleSwitchFlow(sw).tap {
+                    flow       : getFlowHelperV2().singleSwitchFlow(sw).tap {
                         it.toBuilder().source(it.getSource().toBuilder().vlanId(0).build()).build()
                     }
             ]

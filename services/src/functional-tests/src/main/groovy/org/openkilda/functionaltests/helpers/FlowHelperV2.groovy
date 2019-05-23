@@ -61,7 +61,7 @@ class FlowHelperV2 {
 
     FlowRequestV2 randomFlow(SwitchPair switchPair, boolean useTraffgenPorts = true,
             List<FlowRequestV2> existingFlows = []) {
-        randomFlow(potentialFlow.src, potentialFlow.dst, useTraffgenPorts, existingFlows)
+        randomFlow(switchPair.src, switchPair.dst, useTraffgenPorts, existingFlows)
     }
 
     FlowRequestV2 randomMultiSwitchFlow(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true,
