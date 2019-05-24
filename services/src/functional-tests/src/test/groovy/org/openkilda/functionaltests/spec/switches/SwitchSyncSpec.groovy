@@ -87,7 +87,7 @@ class SwitchSyncSpec extends BaseSpecification {
         involvedSwitches.each { northbound.deleteSwitchRules(it.dpId, DeleteRulesAction.IGNORE_DEFAULTS) }
         [srcSwitch, dstSwitch].each { northbound.deleteMeter(it.dpId, metersMap[it.dpId][0]) }
         Wrappers.wait(RULES_DELETION_TIME) {
-            def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.switchValidate(it.dpId)] }
+            def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
             involvedSwitches.each { assert validationResultsMap[it.dpId].rules.missing.size() == 2 }
             [srcSwitch, dstSwitch].each { assert validationResultsMap[it.dpId].meters.missing.size() == 1 }
         }
@@ -114,7 +114,7 @@ class SwitchSyncSpec extends BaseSpecification {
         and: "Switch validation doesn't complain about missing rules and meters"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             involvedSwitches.each {
-                def validationResult = northbound.switchValidate(it.dpId)
+                def validationResult = northbound.validateSwitch(it.dpId)
                 assert validationResult.rules.missing.size() == 0
                 assert validationResult.meters.missing.size() == 0
             }
@@ -168,7 +168,7 @@ class SwitchSyncSpec extends BaseSpecification {
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId)).toJson()))
 
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.switchValidate(it.dpId)] }
+            def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
             involvedSwitches.each { assert validationResultsMap[it.dpId].rules.excess.size() == 1 }
             [srcSwitch, dstSwitch].each { assert validationResultsMap[it.dpId].meters.excess.size() == 1 }
         }
@@ -195,7 +195,7 @@ class SwitchSyncSpec extends BaseSpecification {
         and: "Switch validation doesn't complain about excess rules and meters"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             involvedSwitches.each {
-                def validationResult = northbound.switchValidate(it.dpId)
+                def validationResult = northbound.validateSwitch(it.dpId)
                 assert validationResult.rules.excess.size() == 0
                 assert validationResult.meters.excess.size() == 0
             }
