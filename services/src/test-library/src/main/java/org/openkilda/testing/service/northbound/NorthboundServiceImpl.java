@@ -269,7 +269,7 @@ public class NorthboundServiceImpl implements NorthboundService {
     public SwitchSyncResult synchronizeSwitch(SwitchId switchId, boolean removeExcess) {
         HttpEntity<SwitchSyncRequest> httpEntity = new HttpEntity<>(new SwitchSyncRequest(removeExcess),
                 buildHeadersWithCorrelationId());
-        return restTemplate.exchange("/api/v1/switches/{switch_id}/synchronize", HttpMethod.POST, httpEntity,
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/synchronize", HttpMethod.PATCH, httpEntity,
                 SwitchSyncResult.class, switchId).getBody();
     }
 

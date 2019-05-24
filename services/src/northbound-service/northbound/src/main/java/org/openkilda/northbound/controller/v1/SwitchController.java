@@ -56,6 +56,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -272,10 +273,10 @@ public class SwitchController extends BaseController {
      * @return the synchronization result.
      */
     @ApiOperation(value = "Synchronize rules on the switch", response = RulesSyncResult.class)
-    @PostMapping(path = "/{switch_id}/synchronize")
+    @PatchMapping(path = "/{switch_id}/synchronize")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<SwitchSyncResult> syncRules(@PathVariable(name = "switch_id") SwitchId switchId,
-                                                         @RequestBody SwitchSyncRequest request) {
+    public CompletableFuture<SwitchSyncResult> syncSwitch(@PathVariable(name = "switch_id") SwitchId switchId,
+                                                          @RequestBody SwitchSyncRequest request) {
         return switchService.syncSwitch(switchId, request.isRemoveExcess());
     }
 

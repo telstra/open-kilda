@@ -30,8 +30,8 @@ import org.openkilda.messaging.command.flow.BatchRemoveFlowForSwitchManagerReque
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
-import org.openkilda.messaging.command.switches.BatchRemoveMeters;
 import org.openkilda.messaging.command.stats.StatsRequest;
+import org.openkilda.messaging.command.switches.BatchRemoveMeters;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;

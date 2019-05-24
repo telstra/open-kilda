@@ -18,8 +18,10 @@ package org.openkilda.wfm.topology.switchmanager.service.impl;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
@@ -27,12 +29,15 @@ import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
+import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.switches.MeterInfoEntry;
+import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
@@ -62,7 +67,9 @@ import java.util.UUID;
 public class SwitchSyncServiceImplTest {
 
     private static SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
+    private static String FLOW_ID = "flow_id";
     private static String KEY = "KEY";
+    private static long EXCESS_COOKIE = 50L;
 
     @Mock
     private SwitchManagerCarrier carrier;
@@ -77,7 +84,10 @@ public class SwitchSyncServiceImplTest {
 
     private SwitchValidateRequest request;
     private FlowEntry flowEntry;
+
     private List<Long> missingRules;
+    private List<Long> excessRules;
+    private List<MeterInfoEntry> excessMeters;
 
     @Before
     public void setUp() {
@@ -94,26 +104,26 @@ public class SwitchSyncServiceImplTest {
         service = new SwitchSyncServiceImpl(carrier, persistenceManager);
         service.commandBuilder = commandBuilder;
 
-        request = new SwitchValidateRequest(SWITCH_ID, true);
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).build();
         flowEntry = new FlowEntry(-1L, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
 
-        InstallIngressFlow installingRule = new InstallIngressFlow(UUID.randomUUID(), "flow", flowEntry.getCookie(),
+        InstallIngressFlow installingRule = new InstallIngressFlow(UUID.randomUUID(), FLOW_ID, flowEntry.getCookie(),
                 SWITCH_ID, 1, 2, 50, 60,
                 FlowEncapsulationType.TRANSIT_VLAN, OutputVlanType.POP, 10L, 100L);
-        when(commandBuilder.buildCommandsToSyncRules(eq(SWITCH_ID), any()))
+        when(commandBuilder.buildCommandsToSyncMissingRules(eq(SWITCH_ID), any()))
                 .thenReturn(singletonList(installingRule));
 
         missingRules = singletonList(flowEntry.getCookie());
+        excessRules = emptyList();
+        excessMeters = emptyList();
     }
 
     @Test
-    public void handleNothingToSync() {
+    public void handleNothingRulesToSync() {
         missingRules = emptyList();
-        when(commandBuilder.buildCommandsToSyncRules(eq(SWITCH_ID), any())).thenReturn(emptyList());
 
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
-        verify(commandBuilder).buildCommandsToSyncRules(eq(SWITCH_ID), eq(emptyList()));
         verify(carrier).endProcessing(eq(KEY));
         verify(carrier).response(eq(KEY), any(InfoMessage.class));
 
@@ -122,14 +132,14 @@ public class SwitchSyncServiceImplTest {
     }
 
     @Test
-    public void handleCommandBuilderException() {
+    public void handleCommandBuilderMissingRulesException() {
         String errorMessage = "test error";
-        when(commandBuilder.buildCommandsToSyncRules(eq(SWITCH_ID), any()))
+        when(commandBuilder.buildCommandsToSyncMissingRules(eq(SWITCH_ID), any()))
                 .thenThrow(new IllegalArgumentException(errorMessage));
 
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
-        verify(commandBuilder).buildCommandsToSyncRules(eq(SWITCH_ID), eq(missingRules));
+        verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
         verify(carrier).endProcessing(eq(KEY));
         ArgumentCaptor<ErrorMessage> errorCaptor = ArgumentCaptor.forClass(ErrorMessage.class);
         verify(carrier).response(eq(KEY), errorCaptor.capture());
@@ -151,7 +161,7 @@ public class SwitchSyncServiceImplTest {
     public void handleRuleSyncSuccess() {
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
-        verify(commandBuilder).buildCommandsToSyncRules(eq(SWITCH_ID), eq(missingRules));
+        verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
         verify(carrier).sendCommand(eq(KEY), any(CommandMessage.class));
 
         service.handleInstallRulesResponse(KEY);
@@ -167,7 +177,7 @@ public class SwitchSyncServiceImplTest {
     public void receiveRuleSyncTimeout() {
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
-        verify(commandBuilder).buildCommandsToSyncRules(eq(SWITCH_ID), eq(missingRules));
+        verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
         verify(carrier).sendCommand(eq(KEY), any(CommandMessage.class));
 
         service.handleTaskTimeout(KEY);
@@ -183,7 +193,7 @@ public class SwitchSyncServiceImplTest {
     public void receiveRuleSyncError() {
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
-        verify(commandBuilder).buildCommandsToSyncRules(eq(SWITCH_ID), eq(missingRules));
+        verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
         verify(carrier).sendCommand(eq(KEY), any(CommandMessage.class));
 
         ErrorMessage errorMessage = getErrorMessage();
@@ -196,10 +206,119 @@ public class SwitchSyncServiceImplTest {
         verifyNoMoreInteractions(carrier);
     }
 
+    @Test
+    public void receiveMetersSyncError() {
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).removeExcess(true).build();
+        missingRules = emptyList();
+        excessMeters = singletonList(
+                new MeterInfoEntry(EXCESS_COOKIE, EXCESS_COOKIE, FLOW_ID, 0L, 0L, new String[]{}, null, null));
+
+        service.handleSwitchSync(KEY, request, makeValidationResult());
+        verify(carrier).sendCommand(eq(KEY), any(CommandMessage.class));
+
+        ErrorMessage errorMessage = getErrorMessage();
+        service.handleTaskError(KEY, errorMessage);
+
+        verify(carrier).endProcessing(eq(KEY));
+        verify(carrier).response(eq(KEY), eq(errorMessage));
+
+        verifyNoMoreInteractions(commandBuilder);
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void handleNothingToSyncWithExcess() {
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).removeExcess(true).build();
+        missingRules = emptyList();
+
+        service.handleSwitchSync(KEY, request, makeValidationResult());
+
+        verify(carrier).endProcessing(eq(KEY));
+        verify(carrier).response(eq(KEY), any(InfoMessage.class));
+
+        verifyNoMoreInteractions(commandBuilder);
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void handleSyncExcess() {
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).removeExcess(true).build();
+
+        excessRules = singletonList(EXCESS_COOKIE);
+        excessMeters = singletonList(
+                new MeterInfoEntry(EXCESS_COOKIE, EXCESS_COOKIE, FLOW_ID, 0L, 0L, new String[]{}, null, null));
+
+        RemoveFlow removeFlow = new RemoveFlow(UUID.randomUUID(),
+                FLOW_ID, EXCESS_COOKIE, SWITCH_ID, EXCESS_COOKIE, null);
+        when(commandBuilder.buildCommandsToRemoveExcessRules(eq(SWITCH_ID), any(), any()))
+                .thenReturn(singletonList(removeFlow));
+
+        service.handleSwitchSync(KEY, request, makeValidationResult());
+
+        verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
+        verify(commandBuilder).buildCommandsToRemoveExcessRules(
+                eq(SWITCH_ID), eq(singletonList(flowEntry)), eq(excessRules));
+        verify(carrier, times(2)).sendCommand(eq(KEY), any(CommandMessage.class));
+
+        service.handleInstallRulesResponse(KEY);
+        service.handleRemoveRulesResponse(KEY);
+
+        service.handleRemoveMetersResponse(KEY);
+        verify(carrier, times(3)).sendCommand(eq(KEY), any(CommandMessage.class));
+
+        verify(carrier).endProcessing(eq(KEY));
+        verify(carrier).response(eq(KEY), any(InfoMessage.class));
+
+        verifyNoMoreInteractions(commandBuilder);
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void handleSyncOnlyExcessMeters() {
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).removeExcess(true).build();
+        missingRules = emptyList();
+        excessMeters = singletonList(
+                new MeterInfoEntry(EXCESS_COOKIE, EXCESS_COOKIE, FLOW_ID, 0L, 0L, new String[]{}, null, null));
+
+        service.handleSwitchSync(KEY, request, makeValidationResult());
+
+        verify(carrier).sendCommand(eq(KEY), any(CommandMessage.class));
+        service.handleRemoveMetersResponse(KEY);
+
+        verify(carrier).endProcessing(eq(KEY));
+        verify(carrier).response(eq(KEY), any(InfoMessage.class));
+
+        verifyNoMoreInteractions(commandBuilder);
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void handleSyncWhenNotProcessMeters() {
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).removeExcess(true).build();
+
+        ValidationResult tempResult = makeValidationResult();
+        service.handleSwitchSync(KEY, request, new ValidationResult(
+                tempResult.getFlowEntries(), false, tempResult.getValidateRulesResult(), null));
+
+        verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
+        verify(carrier).sendCommand(eq(KEY), any(CommandMessage.class));
+
+        service.handleInstallRulesResponse(KEY);
+
+        verify(carrier).endProcessing(eq(KEY));
+        ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
+        verify(carrier).response(eq(KEY), responseCaptor.capture());
+        assertNull(((SwitchSyncResponse) responseCaptor.getValue().getData()).getMeters());
+
+        verifyNoMoreInteractions(commandBuilder);
+        verifyNoMoreInteractions(carrier);
+    }
+
     private ValidationResult makeValidationResult() {
         return new ValidationResult(singletonList(flowEntry),
-                new ValidateRulesResult(missingRules, singletonList(flowEntry.getCookie()), emptyList()),
-                new ValidateMetersResult(emptyList(), emptyList(), emptyList(), emptyList()));
+                true,
+                new ValidateRulesResult(missingRules, singletonList(flowEntry.getCookie()), excessRules),
+                new ValidateMetersResult(emptyList(), emptyList(), emptyList(), excessMeters));
     }
 
     private ErrorMessage getErrorMessage() {

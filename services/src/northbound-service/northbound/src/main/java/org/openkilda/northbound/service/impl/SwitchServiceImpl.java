@@ -30,7 +30,6 @@ import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
-import org.openkilda.messaging.command.switches.ValidateRulesRequest;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
@@ -44,7 +43,6 @@ import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
-import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
@@ -217,10 +215,11 @@ public class SwitchServiceImpl implements SwitchService {
         final String correlationId = RequestCorrelationId.getId();
 
         CommandMessage validateCommandMessage = new CommandMessage(
-                new ValidateRulesRequest(switchId), System.currentTimeMillis(), correlationId);
+                SwitchValidateRequest.builder().switchId(switchId).build(),
+                System.currentTimeMillis(), correlationId);
 
-        return messagingChannel.sendAndGet(floodlightTopic, validateCommandMessage)
-                .thenApply(SyncRulesResponse.class::cast)
+        return messagingChannel.sendAndGet(switchManagerTopic, validateCommandMessage)
+                .thenApply(SwitchValidationResponse.class::cast)
                 .thenApply(switchMapper::toRulesValidationResult);
     }
 
@@ -229,7 +228,7 @@ public class SwitchServiceImpl implements SwitchService {
         logger.info("Validate request for switch {}", switchId);
 
         CommandMessage syncCommandMessage = new CommandMessage(
-                new SwitchValidateRequest(switchId, false, false),
+                SwitchValidateRequest.builder().switchId(switchId).processMeters(true).build(),
                 System.currentTimeMillis(), RequestCorrelationId.getId());
 
         return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
@@ -242,8 +241,8 @@ public class SwitchServiceImpl implements SwitchService {
         logger.info("Sync rules request for switch {}", switchId);
 
         CommandMessage syncCommandMessage = new CommandMessage(
-                new SwitchValidateRequest(switchId, true, false), System.currentTimeMillis(),
-                RequestCorrelationId.getId());
+                SwitchValidateRequest.builder().switchId(switchId).performSync(true).build(),
+                System.currentTimeMillis(), RequestCorrelationId.getId());
 
         return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
                 .thenApply(SwitchSyncResponse.class::cast)
@@ -255,8 +254,9 @@ public class SwitchServiceImpl implements SwitchService {
         logger.info("Sync request for switch {}. Remove excess {}", switchId, removeExcess);
 
         CommandMessage syncCommandMessage = new CommandMessage(
-                new SwitchValidateRequest(switchId, true, removeExcess), System.currentTimeMillis(),
-                RequestCorrelationId.getId());
+                SwitchValidateRequest.builder().switchId(switchId).processMeters(true).performSync(true)
+                        .removeExcess(removeExcess).build(),
+                System.currentTimeMillis(), RequestCorrelationId.getId());
 
         return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
                 .thenApply(SwitchSyncResponse.class::cast)

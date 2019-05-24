@@ -124,7 +124,8 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
 
     void process(SwitchSyncFsm fsm) {
         final List<SwitchSyncState> stopStates = Arrays.asList(
-                SwitchSyncState.COMMANDS_SEND,
+                SwitchSyncState.RULES_COMMANDS_SEND,
+                SwitchSyncState.METERS_COMMANDS_SEND,
                 SwitchSyncState.FINISHED,
                 SwitchSyncState.FINISHED_WITH_ERROR
         );

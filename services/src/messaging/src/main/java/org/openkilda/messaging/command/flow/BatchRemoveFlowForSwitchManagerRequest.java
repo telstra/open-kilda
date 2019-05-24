@@ -29,10 +29,10 @@ import java.util.List;
 public class BatchRemoveFlowForSwitchManagerRequest extends CommandData {
 
     @JsonProperty("switch_id")
-    private SwitchId switchId;
+    SwitchId switchId;
 
     @JsonProperty("flow_commands")
-    private List<RemoveFlow> flowCommands;
+    List<RemoveFlow> flowCommands;
 
     public BatchRemoveFlowForSwitchManagerRequest(
             @JsonProperty("switch_id") SwitchId switchId,

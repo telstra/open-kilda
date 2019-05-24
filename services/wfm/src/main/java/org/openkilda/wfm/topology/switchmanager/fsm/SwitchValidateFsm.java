@@ -73,7 +73,7 @@ public class SwitchValidateFsm
     private final SwitchManagerCarrier carrier;
     private final ValidationService validationService;
     private SwitchId switchId;
-    private boolean isSwitchSupportMeters = true;
+    private boolean processMeters;
     private List<FlowEntry> flowEntries;
     private List<MeterEntry> presentMeters;
     private ValidateRulesResult validateRulesResult;
@@ -85,6 +85,7 @@ public class SwitchValidateFsm
         this.key = key;
         this.request = request;
         this.validationService = validationService;
+        this.processMeters = request.isProcessMeters();
     }
 
     /**
@@ -148,8 +149,12 @@ public class SwitchValidateFsm
         carrier.sendCommand(key, new CommandMessage(new DumpRulesForSwitchManagerRequest(switchId),
                 System.currentTimeMillis(), key));
 
-        carrier.sendCommand(key, new CommandMessage(new DumpMetersForSwitchManagerRequest(switchId),
-                System.currentTimeMillis(), key));
+        if (processMeters) {
+            carrier.sendCommand(key, new CommandMessage(new DumpMetersForSwitchManagerRequest(switchId),
+                    System.currentTimeMillis(), key));
+        } else {
+            presentMeters = emptyList();
+        }
     }
 
     protected void rulesReceived(SwitchValidateState from, SwitchValidateState to,
@@ -170,7 +175,7 @@ public class SwitchValidateFsm
                                   SwitchValidateEvent event, Object context) {
         log.info("Key: {}, switch meters unsupported", key);
         this.presentMeters = emptyList();
-        this.isSwitchSupportMeters = false;
+        this.processMeters = false;
         checkAllDataReceived();
     }
 
@@ -209,7 +214,7 @@ public class SwitchValidateFsm
     protected void validateMeters(SwitchValidateState from, SwitchValidateState to,
                                   SwitchValidateEvent event, Object context) {
         try {
-            if (isSwitchSupportMeters) {
+            if (processMeters) {
                 log.info("Key: {}, validate meters", key);
                 validateMetersResult = validationService.validateMeters(switchId, presentMeters,
                         carrier.getFlowMeterMinBurstSizeInKbits(), carrier.getFlowMeterBurstCoefficient());
@@ -224,13 +229,13 @@ public class SwitchValidateFsm
                             SwitchValidateEvent event, Object context) {
         if (request.isPerformSync()) {
             carrier.runSwitchSync(key, request,
-                    new ValidationResult(flowEntries, validateRulesResult, validateMetersResult));
+                    new ValidationResult(flowEntries, processMeters, validateRulesResult, validateMetersResult));
         } else {
             RulesValidationEntry rulesValidationEntry = new RulesValidationEntry(validateRulesResult.getMissingRules(),
                     validateRulesResult.getProperRules(), validateRulesResult.getExcessRules());
 
             MetersValidationEntry metersValidationEntry = null;
-            if (isSwitchSupportMeters) {
+            if (processMeters) {
                 metersValidationEntry = new MetersValidationEntry(
                         validateMetersResult.getMissingMeters(), validateMetersResult.getMisconfiguredMeters(),
                         validateMetersResult.getProperMeters(), validateMetersResult.getExcessMeters());

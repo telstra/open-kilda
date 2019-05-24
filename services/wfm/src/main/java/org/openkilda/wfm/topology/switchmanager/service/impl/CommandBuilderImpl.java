@@ -67,7 +67,7 @@ public class CommandBuilderImpl implements CommandBuilder {
     }
 
     @Override
-    public List<BaseInstallFlow> buildCommandsToCreateMissingRules(SwitchId switchId, List<Long> switchRules) {
+    public List<BaseInstallFlow> buildCommandsToSyncMissingRules(SwitchId switchId, List<Long> switchRules) {
         List<BaseInstallFlow> commands = new ArrayList<>();
 
         flowPathRepository.findBySegmentDestSwitch(switchId)
@@ -123,11 +123,11 @@ public class CommandBuilderImpl implements CommandBuilder {
                                                              List<Long> excessRulesCookies) {
         return flows.stream()
                 .filter(flow -> excessRulesCookies.contains(flow.getCookie()))
-                .map(entry -> buildRemoveFlowFromFlowEntry(switchId, entry))
+                .map(entry -> buildRemoveFlowWithoutMeterFromFlowEntry(switchId, entry))
                 .collect(Collectors.toList());
     }
 
-    private RemoveFlow buildRemoveFlowFromFlowEntry(SwitchId switchId, FlowEntry entry) {
+    private RemoveFlow buildRemoveFlowWithoutMeterFromFlowEntry(SwitchId switchId, FlowEntry entry) {
         Optional<FlowMatchField> entryMatch = Optional.ofNullable(entry.getMatch());
 
         Integer inPort = entryMatch.map(FlowMatchField::getInPort).map(Integer::valueOf).orElse(null);
@@ -137,13 +137,12 @@ public class CommandBuilderImpl implements CommandBuilder {
                 .map(FlowInstructions::getApplyActions);
 
         Integer outPort = actions.map(FlowApplyActions::getFlowOutput).map(Integer::valueOf).orElse(null);
-        Long meterId = actions.map(FlowApplyActions::getMeter).map(Long::valueOf).orElse(null);
 
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(entry.getCookie(), inPort, vlan,
-                0, outPort);
-        // TODO flowId check
-        return new RemoveFlow(transactionIdGenerator.generate(), "BATCH_REMOVE", entry.getCookie(),
-                switchId, meterId, criteria);
+                0, outPort, FlowEncapsulationType.TRANSIT_VLAN);
+
+        return new RemoveFlow(transactionIdGenerator.generate(), "SWMANAGER_BATCH_REMOVE", entry.getCookie(),
+                switchId, null, criteria);
     }
 
     private List<BaseInstallFlow> buildInstallCommandFromSegment(FlowPath flowPath, PathSegment segment) {

@@ -24,7 +24,6 @@ import org.openkilda.messaging.info.switches.RulesSyncEntry;
 import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
-import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto;
 import org.openkilda.northbound.dto.v1.switches.MeterMisconfiguredInfoDto;
@@ -92,9 +91,6 @@ public interface SwitchMapper {
     @Mapping(source = "rules.proper", target = "properRules")
     RulesValidationResult toRulesValidationResult(SwitchValidationResponse response);
 
-    RulesValidationResult toRulesValidationResult(SyncRulesResponse response);
-
-    RulesValidationDto toRulesValidationResult(RulesValidationEntry data);
     RulesValidationDto toRulesValidationDto(RulesValidationEntry data);
 
     MetersValidationDto toMetersValidationDto(MetersValidationEntry data);
