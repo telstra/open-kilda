@@ -27,6 +27,7 @@ import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
@@ -48,6 +49,8 @@ import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyAct
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.ArrayList;
@@ -72,12 +75,15 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
                                      @JsonProperty("switch_id") SwitchId switchId,
                                      @JsonProperty("input_port") Integer inputPort,
                                      @JsonProperty("output_port") Integer outputPort,
-                                     @JsonProperty("transit_vlan_id") Integer transitVlanId,
+                                     @JsonProperty("transit_tunnel_id") Integer transitTunnelId,
+                                     @JsonProperty("flow_encapsulation_type")
+                                                 FlowEncapsulationType flowEncapsulationType,
                                      @JsonProperty("bandwidth") Long bandwidth,
                                      @JsonProperty("input_vlan_id") Integer inputVlanId,
                                      @JsonProperty("output_vlan_type") OutputVlanType outputVlanType,
                                      @JsonProperty("meter_id") MeterId meterId) {
-        super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort, transitVlanId);
+        super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort, transitTunnelId,
+                flowEncapsulationType);
         this.bandwidth = bandwidth;
         this.inputVlanId = inputVlanId;
         this.outputVlanType = outputVlanType;
@@ -123,7 +129,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
         OFInstructionApplyActions actions = applyActions(ofFactory, actionList);
 
         // build match by input port and input vlan id
-        Match match = matchFlow(inputPort, inputVlanId, ofFactory);
+        Match match = matchFlow(inputPort, inputVlanId, flowEncapsulationType, ofFactory);
 
         // build FLOW_MOD command with meter
         OFFlowAdd.Builder builder = prepareFlowModBuilder(ofFactory)
@@ -139,16 +145,38 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
 
     private List<OFAction> inputVlanTypeToOfActionList(OFFactory ofFactory) {
         List<OFAction> actionList = new ArrayList<>(3);
-        if (outputVlanType == OutputVlanType.PUSH || outputVlanType == OutputVlanType.NONE) {
-            actionList.add(actionPushVlan(ofFactory, ETH_TYPE));
+        switch (flowEncapsulationType) {
+            case TRANSIT_VLAN:
+                if (outputVlanType == OutputVlanType.PUSH || outputVlanType == OutputVlanType.NONE) {
+                    actionList.add(actionPushVlan(ofFactory, ETH_TYPE));
+                }
+                actionList.add(actionReplaceVlan(ofFactory, transitTunnelId));
+                break;
+            case VXLAN:
+                actionList.add(actionPushVxlan(ofFactory, transitTunnelId));
+                break;
+            default:
+                throw new UnsupportedOperationException(
+                        String.format("Unknown encapsulation type: %s", flowEncapsulationType));
         }
-        actionList.add(actionReplaceVlan(ofFactory, transitVlanId));
         return actionList;
     }
 
     final OFAction actionPushVlan(OFFactory ofFactory, int etherType) {
         OFActions actions = ofFactory.actions();
         return actions.buildPushVlan().setEthertype(EthType.of(etherType)).build();
+    }
+
+    final OFAction actionPushVxlan(OFFactory ofFactory, long tunnelId) {
+        OFActions actions = ofFactory.actions();
+        return actions.buildNoviflowPushVxlanTunnel()
+                .setVni(tunnelId)
+                .setEthSrc(MacAddress.of(switchId.toLong()))
+                .setEthDst(MacAddress.of(new SwitchId("00:04").toLong()))
+                .setUdpSrc(4500)
+                .setIpv4Src(IPv4Address.of("127.0.0.1"))
+                .setIpv4Dst(IPv4Address.of("127.0.0.1"))
+                .build();
     }
 
     OFInstructionMeter getMeterInstructions(Set<Feature> supportedFeatures, OFFactory ofFactory,

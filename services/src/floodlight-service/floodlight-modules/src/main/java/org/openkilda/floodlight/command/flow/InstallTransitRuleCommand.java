@@ -21,6 +21,7 @@ import org.openkilda.floodlight.command.MessageWriter;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -44,7 +45,8 @@ import java.util.List;
 import java.util.UUID;
 
 public class InstallTransitRuleCommand extends FlowInstallCommand {
-    final Integer transitVlanId;
+    final Integer transitTunnelId;
+    final FlowEncapsulationType flowEncapsulationType;
 
     @JsonCreator
     public InstallTransitRuleCommand(@JsonProperty("command_id") UUID commandId,
@@ -54,9 +56,12 @@ public class InstallTransitRuleCommand extends FlowInstallCommand {
                                      @JsonProperty("switch_id") SwitchId switchId,
                                      @JsonProperty("input_port") Integer inputPort,
                                      @JsonProperty("output_port") Integer outputPort,
-                                     @JsonProperty("transit_vlan_id") Integer transitVlanId) {
+                                     @JsonProperty("transit_tunnel_id") Integer transitTunnelId,
+                                     @JsonProperty("flow_encapsulation_type")
+                                                 FlowEncapsulationType flowEncapsulationType) {
         super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort);
-        this.transitVlanId = transitVlanId;
+        this.transitTunnelId = transitTunnelId;
+        this.flowEncapsulationType = flowEncapsulationType;
     }
 
     @Override
@@ -65,7 +70,7 @@ public class InstallTransitRuleCommand extends FlowInstallCommand {
         OFFactory factory = sw.getOFFactory();
         List<OFAction> actionList = new ArrayList<>();
 
-        Match match = matchFlow(inputPort, transitVlanId, factory);
+        Match match = matchFlow(inputPort, transitTunnelId, flowEncapsulationType, factory);
         actionList.add(setOutputPort(factory, OFPort.of(outputPort)));
 
         OFFlowMod flowMod = prepareFlowModBuilder(factory)

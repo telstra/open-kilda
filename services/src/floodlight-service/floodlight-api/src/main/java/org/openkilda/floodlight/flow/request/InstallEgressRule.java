@@ -19,6 +19,7 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -57,10 +58,12 @@ public class InstallEgressRule extends InstallTransitRule {
                              @JsonProperty("switch_id") SwitchId switchId,
                              @JsonProperty("input_port") Integer inputPort,
                              @JsonProperty("output_port") Integer outputPort,
-                             @JsonProperty("transit_vlan_id") Integer transitVlanId,
+                             @JsonProperty("transit_tunnel_id") Integer transitTunnelId,
+                             @JsonProperty("flow_encapsulation_type") FlowEncapsulationType flowEncapsulationType,
                              @JsonProperty("output_vlan_type") OutputVlanType outputVlanType,
                              @JsonProperty("output_vlan_id") Integer outputVlanId) {
-        super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort, transitVlanId);
+        super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort, transitTunnelId,
+                flowEncapsulationType);
         this.outputVlanType = outputVlanType;
         this.outputVlanId = outputVlanId;
     }

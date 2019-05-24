@@ -26,6 +26,7 @@ import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.floodlight.utils.CompletableFutureAdapter;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.SwitchId;
 
 import lombok.Getter;
@@ -92,11 +93,22 @@ public abstract class FlowCommand extends OfCommand {
                 .build();
     }
 
-    final Match matchFlow(Integer inputPort, Integer inputVlan, OFFactory ofFactory) {
+    final Match matchFlow(Integer inputPort, Integer tunnelId, FlowEncapsulationType flowEncapsulationType,
+                          OFFactory ofFactory) {
         Match.Builder mb = ofFactory.buildMatch();
         mb.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
-        if (inputVlan > 0) {
-            matchVlan(ofFactory, mb, inputVlan);
+        if (tunnelId > 0) {
+            switch (flowEncapsulationType) {
+                case TRANSIT_VLAN:
+                    matchVlan(ofFactory, mb, tunnelId);
+                    break;
+                case VXLAN:
+                    matchVxlan(ofFactory, mb, tunnelId);
+                    break;
+                default:
+                    throw new UnsupportedOperationException(
+                            String.format("Unknown encapsulation type: %s", flowEncapsulationType));
+            }
         }
 
         return mb.build();
@@ -108,6 +120,14 @@ public abstract class FlowCommand extends OfCommand {
                     OFVlanVidMatch.ofRawVid(OF10_VLAN_MASK));
         } else {
             matchBuilder.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(vlanId));
+        }
+    }
+
+    final void matchVxlan(OFFactory ofFactory, Match.Builder matchBuilder, long tunnelId) {
+        if (OF_12.compareTo(ofFactory.getVersion()) >= 0) {
+            matchBuilder.setMasked(MatchField.TUNNEL_ID, U64.of(tunnelId), U64.FULL_MASK);
+        } else {
+            matchBuilder.setExact(MatchField.TUNNEL_ID, U64.of(tunnelId));
         }
     }
 

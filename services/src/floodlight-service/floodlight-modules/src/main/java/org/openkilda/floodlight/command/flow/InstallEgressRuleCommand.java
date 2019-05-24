@@ -18,6 +18,7 @@ package org.openkilda.floodlight.command.flow;
 import org.openkilda.floodlight.command.MessageWriter;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -47,10 +48,13 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
                                     @JsonProperty("switch_id") SwitchId switchId,
                                     @JsonProperty("input_port") Integer inputPort,
                                     @JsonProperty("output_port") Integer outputPort,
-                                    @JsonProperty("transit_vlan_id") Integer transitVlanId,
+                                    @JsonProperty("transit_tunnel_id") Integer transitTunnelId,
+                                    @JsonProperty("flow_encapsulation_type")
+                                            FlowEncapsulationType flowEncapsulationType,
                                     @JsonProperty("output_vlan_type") OutputVlanType outputVlanType,
                                     @JsonProperty("output_vlan_id")Integer outputVlanId) {
-        super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort, transitVlanId);
+        super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort, transitTunnelId,
+                flowEncapsulationType);
         this.outputVlanType = outputVlanType;
         this.outputVlanId = outputVlanId;
     }
@@ -61,7 +65,7 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
         OFFactory ofFactory = sw.getOFFactory();
 
         // output action based on encap scheme
-        actionList.add(getOutputAction(ofFactory));
+        actionList.addAll(getOutputActions(ofFactory));
 
         // transmit packet from outgoing port
         actionList.add(setOutputPort(ofFactory));
@@ -71,14 +75,26 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
 
         // build FLOW_MOD command, no meter
         OFFlowMod flowMod = prepareFlowModBuilder(ofFactory)
-                .setMatch(matchFlow(inputPort, transitVlanId, ofFactory))
+                .setMatch(matchFlow(inputPort, transitTunnelId, flowEncapsulationType, ofFactory))
                 .setInstructions(ImmutableList.of(actions))
                 .build();
 
         return Collections.singletonList(new MessageWriter(flowMod));
     }
 
-    private OFAction getOutputAction(OFFactory ofFactory) {
+    private List<OFAction> getOutputActions(OFFactory ofFactory) {
+        switch (flowEncapsulationType) {
+            case TRANSIT_VLAN:
+                return ImmutableList.of(getOutputVlanAction(ofFactory));
+            case VXLAN:
+                return getOutputVxlanAction(ofFactory);
+            default:
+                throw new UnsupportedOperationException(
+                        String.format("Unknown encapsulation type: %s", flowEncapsulationType));
+        }
+    }
+
+    private OFAction getOutputVlanAction(OFFactory ofFactory) {
         OFAction action;
 
         switch (outputVlanType) {
@@ -95,6 +111,15 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
         }
 
         return action;
+    }
+
+    private List<OFAction> getOutputVxlanAction(OFFactory ofFactory) {
+        List<OFAction> actionList = new ArrayList<>(2);
+        actionList.add(ofFactory.actions().noviflowPopVxlanTunnel());
+        if (outputVlanType == OutputVlanType.REPLACE) {
+            actionList.add(actionReplaceVlan(ofFactory, outputVlanId));
+        }
+        return actionList;
     }
 
 }

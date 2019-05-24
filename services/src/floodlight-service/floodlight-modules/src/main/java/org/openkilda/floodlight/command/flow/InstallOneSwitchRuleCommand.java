@@ -19,6 +19,7 @@ import static org.openkilda.messaging.Utils.ETH_TYPE;
 
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
@@ -46,14 +47,16 @@ public class InstallOneSwitchRuleCommand extends InstallIngressRuleCommand {
                                        @JsonProperty("switch_id") SwitchId switchId,
                                        @JsonProperty("input_port") Integer inputPort,
                                        @JsonProperty("output_port") Integer outputPort,
-                                       @JsonProperty("transit_vlan_id") Integer transitVlanId,
+                                       @JsonProperty("transit_tunnel_id") Integer transitTunnelId,
+                                       @JsonProperty("flow_encapsulation_type")
+                                                   FlowEncapsulationType flowEncapsulationType,
                                        @JsonProperty("bandwidth") Long bandwidth,
                                        @JsonProperty("input_vlan_id") Integer inputVlanId,
                                        @JsonProperty("output_vlan_type") OutputVlanType outputVlanType,
                                        @JsonProperty("meter_id") MeterId meterId,
                                        @JsonProperty("output_vlan_id") Integer outputVlanId) {
-        super(commandId, flowid, messageContext, cookie, switchId, inputPort, outputPort, transitVlanId, bandwidth,
-                inputVlanId, outputVlanType, meterId);
+        super(commandId, flowid, messageContext, cookie, switchId, inputPort, outputPort, transitTunnelId,
+                flowEncapsulationType, bandwidth, inputVlanId, outputVlanType, meterId);
         this.outputVlanId = outputVlanId;
     }
 

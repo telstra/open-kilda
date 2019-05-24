@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging.command.switches;
 
+import org.openkilda.model.FlowEncapsulationType;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
@@ -36,8 +38,12 @@ public class DeleteRulesCriteria implements Serializable {
 
     @JsonProperty("in_port")
     Integer inPort;
+
     @JsonProperty("in_vlan")
     Integer inVlan;
+
+    @JsonProperty("flow_incapsulation_type")
+    FlowEncapsulationType flowEncapsulationType;
 
     @JsonProperty("priority")
     Integer priority;
@@ -50,6 +56,7 @@ public class DeleteRulesCriteria implements Serializable {
             @JsonProperty("cookie") Long cookie,
             @JsonProperty("in_port") Integer inPort,
             @JsonProperty("in_vlan") Integer inVlan,
+            @JsonProperty("flow_incapsulation_type") FlowEncapsulationType flowEncapsulationType,
             @JsonProperty("priority") Integer priority,
             @JsonProperty("out_port") Integer outPort) {
         if ((cookie == null || cookie == 0)
@@ -60,9 +67,14 @@ public class DeleteRulesCriteria implements Serializable {
             throw new IllegalArgumentException("DeleteRulesCriteria can't be constructed empty.");
         }
 
+        if (flowEncapsulationType == null) {
+            flowEncapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
+        }
+
         this.cookie = cookie;
         this.inPort = inPort;
         this.inVlan = inVlan;
+        this.flowEncapsulationType = flowEncapsulationType;
         this.priority = priority;
         this.outPort = outPort;
     }
