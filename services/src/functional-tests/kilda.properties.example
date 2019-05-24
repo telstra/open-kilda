@@ -1,42 +1,60 @@
 northbound.endpoint=http://localhost:8080
-northbound.username=username
-northbound.password=password
-
-topology-engine-rest.endpoint=http://localhost
-topology-engine-rest.username=username
-topology-engine-rest.password=password
+northbound.username=kilda
+northbound.password=kilda
 
 floodlight.endpoint=http://localhost:8081
-floodlight.username=username
-floodlight.password=password
-floodlight.controller.uri=tcp:kilda:6653
+floodlight.username=kilda
+floodlight.password=kilda
+floodlight.controller.uri=tcp:floodlight_one.pendev:6653 tcp:floodlight_second.pendev:6653
+floodlight.alive.timeout=10
+floodlight.alive.interval=2
 
-lockkeeper.endpoint=http://localhost:5001
 neo.uri=bolt://localhost:7687
-neo.user=user
-neo.password=password
-lab-api.endpoint=http://localhost:8288
-otsdb.endpoint=http://localhost:4242
+neo.user=
+neo.password=
 
 elasticsearch.endpoint=http://localhost:9200
-elasticsearch.username=username
-elasticsearch.password=password
+elasticsearch.username=kilda
+elasticsearch.password=kilda
+elasticsearch.index=kilda-*
 
 environment.naming.prefix=
 kafka.bootstrap.server=kafka.pendev:9092
-kafka.topic.topo.disco=kilda.topo.disco
+kafka.topic.topo.disco=kilda.topo.disco.storm
+
+lab-api.endpoint=http://localhost:8288
+lockkeeper.endpoint=http://localhost:5001
+
+opentsdb.endpoint=http://localhost:4242
+opentsdb.metric.prefix=kilda.
 
 spring.profiles.active=virtual
-# not delete topology after test runs
-# for now in case of hardware profile it must be set to True if topology already exists
-mode.topology.single=true
 
 reroute.delay=3
 reroute.hardtimeout=15
+
 discovery.interval=3
 discovery.timeout=15
+
 antiflap.min=1
 antiflap.warmup=5
 antiflap.cooldown=5
 
+isl.cost.when.port.down=10000
 isl.cost.when.under.maintenance=10000
+
+burst.coefficient=1.05
+
+bfd.offset=200
+
+env.hardware.cleanup=false
+
+diversity.isl.weight=1000
+diversity.switch.weight=100
+
+grpc.endpoint=http://localhost:8091
+grpc.username=kilda
+grpc.password=kilda
+#please use the correct ip address and port for the remote log server
+grpc.remote.log.server.ip=1.1.1.1
+grpc.remote.log.server.port=321

@@ -40,7 +40,7 @@ public class UserActivityConfigurator {
      * @param activityTypeRepository the activity type repository
      */
     public UserActivityConfigurator(
-            @SuppressWarnings("unused") @Autowired final DatabaseConfigurator databaseConfigurator,
+            @Autowired final DatabaseConfigurator databaseConfigurator,
             @Autowired final ActivityTypeRepository activityTypeRepository) {
         this.activityTypeRepository = activityTypeRepository;
         init();

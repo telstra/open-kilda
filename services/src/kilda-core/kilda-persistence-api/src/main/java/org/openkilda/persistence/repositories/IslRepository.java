@@ -16,29 +16,48 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.Isl;
+import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface IslRepository extends Repository<Isl> {
+    Collection<Isl> findByEndpoint(SwitchId switchId, int port);
+
     Collection<Isl> findBySrcEndpoint(SwitchId srcSwitchId, int srcPort);
 
     Collection<Isl> findByDestEndpoint(SwitchId dstSwitchId, int dstPort);
 
+    Collection<Isl> findBySrcSwitch(SwitchId switchId);
+
+    Collection<Isl> findByDestSwitch(SwitchId switchId);
+
     Optional<Isl> findByEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
 
     /**
-     * Finds active ISLs for the path occupied by the flow, filtering out ISLs that don't have enough available
+     * Finds ISLs by incomplete ISL information. If all parameters are null, will be returned a list of all ISLs.
+     *
+     * @param srcSwitchId       source switch id.
+     * @param srcPort           source port.
+     * @param dstSwitchId       destination switch id.
+     * @param dstPort           destination port.
+     */
+    Collection<Isl> findByPartialEndpoints(SwitchId srcSwitchId, Integer srcPort,
+                                           SwitchId dstSwitchId, Integer dstPort);
+
+    /**
+     * Finds active ISLs for the path occupied by the flow paths, filtering out ISLs that don't have enough available
      * bandwidth.
      * <p/>
      * ISLs must have available bandwidth to satisfy the difference between newly requested and already taken by the
      * same flow.
      *
-     * @param flowId            the flow ID.
+     * @param pathIds           list of the pathId.
      * @param requiredBandwidth required bandwidth amount that should be available on ISLs.
      */
-    Collection<Isl> findActiveAndOccupiedByFlowWithAvailableBandwidth(String flowId, long requiredBandwidth);
+    Collection<Isl> findActiveAndOccupiedByFlowPathWithAvailableBandwidth(List<PathId> pathIds, long requiredBandwidth);
 
     /**
      * Finds all active ISLs.

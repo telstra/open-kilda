@@ -31,11 +31,10 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
-import org.openkilda.messaging.payload.flow.FlowPayloadToFlowConverter;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.SwitchId;
-import org.openkilda.northbound.dto.switches.RulesSyncResult;
-import org.openkilda.northbound.dto.switches.RulesValidationResult;
+import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.floodlight.FloodlightService;
@@ -136,7 +135,7 @@ public class StubServiceFactory {
         List<ASwitchFlow> aswitchFlows = topologyDefinition.getIslsForActiveSwitches().stream()
                 .filter(isl -> isl.getAswitch() != null)
                 .map(isl -> {
-                    TopologyDefinition.ASwitch asw = isl.getAswitch();
+                    ASwitchFlow asw = isl.getAswitch();
                     return Arrays.asList(new ASwitchFlow(asw.getInPort(), asw.getOutPort()),
                             new ASwitchFlow(asw.getOutPort(), asw.getInPort()));
                 }).flatMap(List::stream).collect(toList());
@@ -202,24 +201,29 @@ public class StubServiceFactory {
         when(serviceMock.getActiveSwitches())
                 .thenAnswer(invocation -> topologyDefinition.getActiveSwitches().stream()
                         .map(sw -> new SwitchInfoData(sw.getDpId(),
-                                SwitchChangeType.ACTIVATED, "", "", "", ""))
+                                SwitchChangeType.ACTIVATED, "", "", "", "", false))
                         .collect(toList()));
 
         when(serviceMock.getActiveLinks())
                 .thenAnswer(invocation -> topologyDefinition.getIslsForActiveSwitches().stream()
                         .flatMap(link -> Stream.of(
-                                new IslInfoData(0,
-                                        new PathNode(link.getSrcSwitch().getDpId(),
-                                                link.getSrcPort(), 0),
-                                        new PathNode(link.getDstSwitch().getDpId(),
-                                                link.getDstPort(), 1),
-                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0, false),
-                                new IslInfoData(0,
-                                        new PathNode(link.getDstSwitch().getDpId(),
-                                                link.getDstPort(), 0),
-                                        new PathNode(link.getSrcSwitch().getDpId(),
-                                                link.getSrcPort(), 1),
-                                        link.getMaxBandwidth(), IslChangeType.DISCOVERED, 0, false)
+                                IslInfoData.builder()
+                                        .latency(0)
+                                        .source(new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 0))
+                                        .destination(new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 1))
+                                        .speed(link.getMaxBandwidth())
+                                        .state(IslChangeType.DISCOVERED)
+                                        .availableBandwidth(0)
+                                        .build(),
+
+                                IslInfoData.builder()
+                                        .latency(0)
+                                        .source(new PathNode(link.getDstSwitch().getDpId(), link.getDstPort(), 0))
+                                        .destination(new PathNode(link.getSrcSwitch().getDpId(), link.getSrcPort(), 1))
+                                        .speed(link.getMaxBandwidth())
+                                        .state(IslChangeType.DISCOVERED)
+                                        .availableBandwidth(0)
+                                        .build()
                         ))
                         .collect(toList()));
 
@@ -275,16 +279,17 @@ public class StubServiceFactory {
     private void putFlow(String flowId, FlowPayload flowPayload) {
         flowPayloads.put(flowId, flowPayload);
 
-        FlowDto forwardFlow = FlowPayloadToFlowConverter.buildFlowByFlowPayload(flowPayload);
+        FlowDto forwardFlow = new FlowDto(flowPayload);
         forwardFlow.setMeterId(meterCounter++);
 
-        FlowDto reverseFlow = new FlowDto(forwardFlow);
-        reverseFlow.setSourceSwitch(forwardFlow.getDestinationSwitch());
-        reverseFlow.setSourcePort(forwardFlow.getDestinationPort());
-        reverseFlow.setSourceVlan(forwardFlow.getDestinationVlan());
-        reverseFlow.setDestinationSwitch(forwardFlow.getSourceSwitch());
-        reverseFlow.setDestinationPort(forwardFlow.getSourcePort());
-        reverseFlow.setDestinationVlan(forwardFlow.getSourceVlan());
+        FlowDto reverseFlow = forwardFlow.toBuilder()
+                .sourceSwitch(forwardFlow.getDestinationSwitch())
+                .sourcePort(forwardFlow.getDestinationPort())
+                .sourceVlan(forwardFlow.getDestinationVlan())
+                .destinationSwitch(forwardFlow.getSourceSwitch())
+                .destinationPort(forwardFlow.getSourcePort())
+                .destinationVlan(forwardFlow.getSourceVlan())
+                .build();
 
         flows.put(flowId, new FlowPairDto<>(forwardFlow, reverseFlow));
     }

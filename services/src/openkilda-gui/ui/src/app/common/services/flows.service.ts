@@ -67,6 +67,10 @@ export class FlowsService {
     return this.httpClient.get(`${environment.apiEndPoint}/stats/flowid/${flowid}/${convertedStartDate}/${convertedEndDate}/${downsampling}/${metric}`);
   }
 
+  getMeterGraphData(flowid, convertedStartDate, convertedEndDate, downsampling, metric,direction):Observable<any>{
+    return this.httpClient.get(`${environment.apiEndPoint}/stats/meter/${flowid}/${convertedStartDate}/${convertedEndDate}/${downsampling}/${metric}/${direction}`);
+  }
+
   getFlowPacketGraphData(flowid,convertedStartDate, convertedEndDate, downsampling, direction):Observable<any>{
 	  return this.httpClient.get(`${environment.apiEndPoint}/stats/flow/losspackets/${flowid}/${convertedStartDate}/${convertedEndDate}/${downsampling}/${direction}`);
   }
@@ -79,6 +83,10 @@ export class FlowsService {
     return this.httpClient.patch(`${environment.apiEndPoint}/flows/${flowId}/sync`,{});
   }
 
+  pingFlow(flowId):Observable<any>{
+    return this.httpClient.put(`${environment.apiEndPoint}/flows/${flowId}/ping`,{timeout:3000});
+  }
+
   getcontract(flowid):Observable<any>{
     return this.httpClient.get(`${environment.apiEndPoint}/contracts/list/${flowid}`);
   }
@@ -89,6 +97,10 @@ export class FlowsService {
 
   getStatusList() : Observable<any[]>{
     return this.httpClient.get<any[]>(`${environment.apiEndPoint}/flows/status`);
+  }
+
+  getFlowStatus(flowid) : Observable<any>{
+    return this.httpClient.get<any>(`${environment.apiEndPoint}/flows/${flowid}/status`);
   }
   
 }

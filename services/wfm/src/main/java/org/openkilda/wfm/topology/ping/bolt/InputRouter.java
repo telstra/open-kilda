@@ -24,7 +24,6 @@ import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -47,7 +46,7 @@ public class InputRouter extends Abstract {
     public static final String STREAM_ON_DEMAND_REQUEST_ID = "ping_request";
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         Message message = pullInput(input);
 
         if (message instanceof InfoMessage) {

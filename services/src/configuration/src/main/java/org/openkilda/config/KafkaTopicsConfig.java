@@ -36,8 +36,13 @@ public interface KafkaTopicsConfig {
 
     @Key("flow")
     @FallbackKey("kafka.flow.topic")
-    @Default("kilda.flow")
+    @Default("kilda.flow.storm")
     String getFlowTopic();
+
+    @Key("flow.region")
+    @FallbackKey("kafka.flow.topic.region")
+    @Default("kilda.flow")
+    String getFlowRegionTopic();
 
     @Key("flow.status")
     @Default("kilda.flow.status")
@@ -45,8 +50,13 @@ public interface KafkaTopicsConfig {
 
     @Key("northbound")
     @FallbackKey("kafka.northbound.topic")
-    @Default("kilda.northbound")
+    @Default("kilda.northbound.storm")
     String getNorthboundTopic();
+
+    @Key("northbound.region")
+    @FallbackKey("kafka.northbound.topic.region")
+    @Default("kilda.northbound")
+    String getNorthboundRegionTopic();
 
     @Key("opentsdb")
     @Default("kilda.otsdb")
@@ -58,53 +68,115 @@ public interface KafkaTopicsConfig {
 
     @Key("speaker")
     @FallbackKey("kafka.speaker.topic")
-    @Default("kilda.speaker")
+    @Default("kilda.speaker.storm")
     String getSpeakerTopic();
+
+    @Key("speaker.region")
+    @FallbackKey("kafka.speaker.region.topic")
+    @Default("kilda.speaker")
+    String getSpeakerRegionTopic();
+
+    @Key("stats.request.priv")
+    @Default("kilda.stats.request.priv")
+    String getStatsRequestPrivTopic();
+
+    @Key("stats.request.priv.region")
+    @Default("kilda.stats.request.priv.region")
+    String getStatsRequestPrivRegionTopic();
+
+    @Key("stats.stats-request.priv")
+    @Default("kilda.stats.stats-request.priv")
+    String getStatsStatsRequestPrivTopic();
+
+    @Key("stats.stats-request.priv.region")
+    @Default("kilda.stats.stats-request.priv.region")
+    String getStatsStatsRequestPrivRegionTopic();
+
+    @Key("fl-stats.switches.priv")
+    @Default("kilda.fl-stats.switches.priv")
+    String getFlStatsSwitchesPrivTopic();
+
+    @Key("fl-stats.switches.priv.region")
+    @Default("kilda.fl-stats.switches.priv.region")
+    String getFlStatsSwitchesPrivRegionTopic();
 
     @Key("speaker.disco")
     @FallbackKey("kafka.speaker.disco")
-    @Default("kilda.speaker.disco")
+    @Default("kilda.speaker.disco.storm")
     String getSpeakerDiscoTopic();
+
+    @Key("speaker.disco.region")
+    @FallbackKey("kafka.speaker.disco.region")
+    @Default("kilda.speaker.disco")
+    String getSpeakerDiscoRegionTopic();
 
     @Key("speaker.flow")
     @FallbackKey("kafka.speaker.flow")
-    @Default("kilda.speaker.flow")
+    @Default("kilda.speaker.flow.storm")
     String getSpeakerFlowTopic();
+
+    @Key("speaker.flow.region")
+    @FallbackKey("kafka.speaker.flow.region")
+    @Default("kilda.speaker.flow")
+    String getSpeakerFlowRegionTopic();
 
     @Key("speaker.flow.ping")
     @FallbackKey("kafka.speaker.flow.ping")
-    @Default("kilda.speaker.flow.ping")
+    @Default("kilda.speaker.flow.ping.storm")
     String getSpeakerFlowPingTopic();
 
+    @Key("speaker.flow.ping.region")
+    @FallbackKey("kafka.speaker.flow.ping.region")
+    @Default("kilda.speaker.flow.ping")
+    String getSpeakerFlowPingRegionTopic();
+
+    @Key("grpc.speaker")
+    @Default("kilda.grpc.speaker")
+    String getGrpcSpeakerTopic();
+
     @Key("ping")
-    @Default("kilda.ping")
+    @Default("kilda.ping.storm")
     String getPingTopic();
 
+    @Key("ping.region")
+    @Default("kilda.ping")
+    String getPingRegionTopic();
+
     @Key("stats")
-    @Default("kilda.stats")
+    @Default("kilda.stats.storm")
     String getStatsTopic();
 
-    /**
-     * TE incoming topic name.
-     *
-     * @deprecated as TE module is going to be decommissioned / replaced with FlowTopology & NbWorkerTopology.
-     */
-    @Deprecated
-    @Key("topo.eng")
-    @FallbackKey("kafka.topo.eng.topic")
-    @Default("kilda.topo.eng")
-    String getTopoEngTopic();
+    @Key("stats.region")
+    @Default("kilda.stats")
+    String getStatsRegionTopic();
 
     @Key("topo.disco")
-    @Default("kilda.topo.disco")
+    @Default("kilda.topo.disco.storm")
     String getTopoDiscoTopic();
+
+    @Key("topo.disco.region")
+    @Default("kilda.topo.disco")
+    String getTopoDiscoRegionTopic();
 
     @Key("topo.nbworker")
     @FallbackKey("kafka.nbworker.topic")
-    @Default("kilda.topo.nb")
+    @Default("kilda.topo.nb.storm")
     String getTopoNbTopic();
 
+    @Key("topo.nbworker.region")
+    @FallbackKey("kafka.nbworker.topic.region")
+    @Default("kilda.topo.nb")
+    String getTopoNbRegionTopic();
+
     @Key("topo.reroute")
-    @Default("kilda.topo.reroute")
+    @Default("kilda.topo.reroute.storm")
     String getTopoRerouteTopic();
+
+    @Key("topo.switch.manager")
+    @Default("kilda.topo.switch.manager.storm")
+    String getTopoSwitchManagerTopic();
+
+    @Key("topo.switch.manager.region")
+    @Default("kilda.topo.switch.manager")
+    String getTopoSwitchManagerRegionTopic();
 }

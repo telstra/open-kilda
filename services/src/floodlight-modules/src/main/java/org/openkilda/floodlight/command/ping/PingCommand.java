@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.command.ping;
 
-import org.openkilda.config.KafkaTopicsConfig;
+import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
@@ -37,7 +37,7 @@ abstract class PingCommand extends Command {
     private final IKafkaProducerService producerService;
     private final PingService pingService;
 
-    private final KafkaTopicsConfig topics;
+    private final KafkaChannel kafkaChannel;
 
     PingCommand(CommandContext context) {
         super(context);
@@ -45,7 +45,7 @@ abstract class PingCommand extends Command {
         FloodlightModuleContext moduleContext = getContext().getModuleContext();
         pingService = moduleContext.getServiceImpl(PingService.class);
         producerService = moduleContext.getServiceImpl(IKafkaProducerService.class);
-        topics = moduleContext.getServiceImpl(KafkaUtilityService.class).getTopics();
+        kafkaChannel = moduleContext.getServiceImpl(KafkaUtilityService.class).getKafkaChannel();
     }
 
     void sendErrorResponse(UUID pingId, Ping.Errors errorCode) {
@@ -56,7 +56,7 @@ abstract class PingCommand extends Command {
     void sendResponse(PingResponse response) {
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), getContext().getCorrelationId());
         // TODO(surabujin): return future to avoid thread occupation during wait period(use CommandProcessorService)
-        producerService.sendMessageAndTrack(topics.getPingTopic(), message);
+        producerService.sendMessageAndTrack(kafkaChannel.getPingTopic(), message);
     }
 
     protected PingService getPingService() {

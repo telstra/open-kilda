@@ -15,7 +15,6 @@
 
 package org.openkilda.testing.config;
 
-import org.openkilda.testing.service.labservice.LabService;
 import org.openkilda.testing.tools.ExtendedErrorHandler;
 import org.openkilda.testing.tools.LoggingRequestInterceptor;
 
@@ -54,14 +53,6 @@ public class DefaultServiceConfig {
         return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
-    @Bean(name = "topologyEngineRestTemplate")
-    public RestTemplate topologyEngineRestTemplate(
-            @Value("${topology-engine-rest.endpoint}") String endpoint,
-            @Value("${topology-engine-rest.username}") String username,
-            @Value("${topology-engine-rest.password}") String password) {
-        return buildRestTemplateWithAuth(endpoint, username, password);
-    }
-
     @Bean(name = "elasticSearchRestTemplate")
     public RestTemplate elasticSearchRestTemplate(
             @Value("${elasticsearch.endpoint}") String endpoint,
@@ -76,20 +67,26 @@ public class DefaultServiceConfig {
     }
 
     @Bean(name = "lockKeeperRestTemplate")
-    public RestTemplate lockKeeperRestTemplate(
-            @Value("${lab-api.endpoint}") String baseEndpoint,
-            LabService labService) {
-        return buildLoggingRestTemplate(baseEndpoint + "/api/" + labService.getLab().getLabId() + "/lock-keeper");
+    public RestTemplate lockKeeperRestTemplate(@Value("${lab-api.endpoint}") String baseEndpoint) {
+        return buildLoggingRestTemplate(baseEndpoint + "/api/");
     }
 
     @Bean(name = "otsdbRestTemplate")
-    public RestTemplate otsdbRestTemplate(@Value("${otsdb.endpoint}") String endpoint) {
+    public RestTemplate otsdbRestTemplate(@Value("${opentsdb.endpoint}") String endpoint) {
         return buildLoggingRestTemplate(endpoint);
     }
 
     @Bean(name = "labApiRestTemplate")
     public RestTemplate labApiRestTemplate(@Value("${lab-api.endpoint}") String endpoint) {
         return buildLoggingRestTemplate(endpoint);
+    }
+
+    @Bean(name = "grpcRestTemplate")
+    public RestTemplate grpcRestTemplate(
+            @Value("${grpc.endpoint}") String endpoint,
+            @Value("${grpc.username}") String username,
+            @Value("${grpc.password}") String password) {
+        return buildRestTemplateWithAuth(endpoint, username, password);
     }
 
     private RestTemplate buildLoggingRestTemplate(String endpoint) {

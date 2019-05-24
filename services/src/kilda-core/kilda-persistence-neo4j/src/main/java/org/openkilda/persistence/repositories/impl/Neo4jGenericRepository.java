@@ -20,26 +20,28 @@ import static org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository.
 
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.Repository;
 
 import com.google.common.collect.ImmutableMap;
+import org.neo4j.driver.v1.exceptions.ClientException;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
+import org.neo4j.ogm.cypher.Filters;
 import org.neo4j.ogm.session.Session;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
- * Base Neo4J OGM implementation of {@link Repository}.
+ * Base Neo4j OGM implementation of {@link Repository}.
+ * Provides basic implementation of findAll, createOrUpdate and delete methods.
  */
 abstract class Neo4jGenericRepository<T> implements Repository<T> {
-    static final int DEPTH_LOAD_ENTITY = 1;
-    static final int DEPTH_CREATE_UPDATE_ENTITY = 0;
     private static final String SRC_SWITCH_FIELD = "srcSwitch";
     private static final String DEST_SWITCH_FIELD = "destSwitch";
 
@@ -51,34 +53,67 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
         this.transactionManager = transactionManager;
     }
 
-    Session getSession() {
-        return sessionFactory.getSession();
-    }
-
     @Override
     public Collection<T> findAll() {
-        return getSession().loadAll(getEntityType(), DEPTH_LOAD_ENTITY);
-    }
-
-    @Override
-    public void delete(T entity) {
-        Session session = getSession();
-        if (session.resolveGraphIdFor(entity) == null) {
-            throw new PersistenceException("Required GraphId wasn't set: " + entity.toString());
-        }
-        session.delete(entity);
+        return getSession().loadAll(getEntityType(), getDepthLoadEntity());
     }
 
     @Override
     public void createOrUpdate(T entity) {
-        getSession().save(entity, DEPTH_CREATE_UPDATE_ENTITY);
+        try {
+            getSession().save(entity, getDepthCreateUpdateEntity());
+        } catch (ClientException ex) {
+            if (ex.code().endsWith("ConstraintValidationFailed")) {
+                throw new ConstraintViolationException(ex.getMessage(), ex);
+            } else {
+                throw ex;
+            }
+        }
     }
 
-    abstract Class<T> getEntityType();
+    @Override
+    public void delete(T entity) {
+        getSession().delete(requireManagedEntity(entity));
+    }
+
+    protected abstract Class<T> getEntityType();
+
+    protected int getDepthLoadEntity() {
+        // the default depth for loading an entity.
+        return 1;
+    }
+
+    protected int getDepthCreateUpdateEntity() {
+        // the default depth for creating/updating an entity.
+        return 0;
+    }
+
+    protected Session getSession() {
+        return sessionFactory.getSession();
+    }
+
+    protected Collection<T> loadAll(Filter filter) {
+        return getSession().loadAll(getEntityType(), filter, getDepthLoadEntity());
+    }
+
+    protected Collection<T> loadAll(Filters filters) {
+        return getSession().loadAll(getEntityType(), filters, getDepthLoadEntity());
+    }
+
+    protected Filter createSrcSwitchFilter(SwitchId switchId) {
+        Filter srcSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId.toString());
+        srcSwitchFilter.setNestedPath(new Filter.NestedPathSegment(SRC_SWITCH_FIELD, Switch.class));
+        return srcSwitchFilter;
+    }
+
+    protected Filter createDstSwitchFilter(SwitchId switchId) {
+        Filter dstSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId.toString());
+        dstSwitchFilter.setNestedPath(new Filter.NestedPathSegment(DEST_SWITCH_FIELD, Switch.class));
+        return dstSwitchFilter;
+    }
 
     protected <V> V requireManagedEntity(V entity) {
-        Session session = getSession();
-        if (session.resolveGraphIdFor(entity) == null) {
+        if (getSession().resolveGraphIdFor(entity) == null) {
             throw new PersistenceException(
                     format("Entity %s is not managed by Neo4j OGM (forget to reload or save?): ", entity));
         }
@@ -86,7 +121,15 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
         return entity;
     }
 
-    protected void lockSwitch(Switch sw) {
+    protected void lockSwitches(Switch... switches) {
+        // Lock switches in ascending order of switchId.
+        Arrays.stream(switches).map(this::requireManagedEntity)
+                .<Map<SwitchId, Switch>>collect(TreeMap::new, (m, e) -> m.put(e.getSwitchId(), e), Map::putAll)
+                .values()
+                .forEach(this::lockSwitch);
+    }
+
+    private void lockSwitch(Switch sw) {
         Map<String, Object> parameters = ImmutableMap.of("name", sw.getSwitchId().toString());
         Long updatedEntityId = getSession().queryForObject(Long.class,
                 "MATCH (sw:switch {name: $name}) "
@@ -95,24 +138,5 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
         if (updatedEntityId == null) {
             throw new PersistenceException(format("Switch not found to be locked: %s", sw.getSwitchId()));
         }
-    }
-
-    public void lockSwitches(Switch... switches) {
-        // Lock switches in ascending order of switchId.
-        Arrays.stream(switches)
-                .sorted(Comparator.comparing(Switch::getSwitchId))
-                .forEach(this::lockSwitch);
-    }
-
-    Filter createSrcSwitchFilter(SwitchId switchId) {
-        Filter srcSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId.toString());
-        srcSwitchFilter.setNestedPath(new Filter.NestedPathSegment(SRC_SWITCH_FIELD, Switch.class));
-        return srcSwitchFilter;
-    }
-
-    Filter createDstSwitchFilter(SwitchId switchId) {
-        Filter dstSwitchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId.toString());
-        dstSwitchFilter.setNestedPath(new Filter.NestedPathSegment(DEST_SWITCH_FIELD, Switch.class));
-        return dstSwitchFilter;
     }
 }

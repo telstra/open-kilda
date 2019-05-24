@@ -15,6 +15,12 @@
 
 package org.openkilda.floodlight.pathverification;
 
+import static org.openkilda.floodlight.pathverification.VerificationPacket.CHASSIS_ID_LLDPTV_PACKET_TYPE;
+import static org.openkilda.floodlight.pathverification.VerificationPacket.OPTIONAL_LLDPTV_PACKET_TYPE;
+import static org.openkilda.floodlight.pathverification.VerificationPacket.PORT_ID_LLDPTV_PACKET_TYPE;
+import static org.openkilda.floodlight.pathverification.VerificationPacket.TTL_LLDPTV_PACKET_TYPE;
+
+import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
@@ -27,19 +33,21 @@ import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.of.IInputTranslator;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.service.ping.PingService;
-import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
 
 import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTCreator.Builder;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -92,7 +100,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     private static final Logger logIsl = LoggerFactory.getLogger(
             String.format("%s.ISL", PathVerificationService.class.getName()));
 
-    public static final U64 OF_CATCH_RULE_COOKIE = U64.of(ISwitchManager.VERIFICATION_BROADCAST_RULE_COOKIE);
+    public static final U64 OF_CATCH_RULE_COOKIE = U64.of(Cookie.VERIFICATION_BROADCAST_RULE_COOKIE);
 
     public static final String VERIFICATION_BCAST_PACKET_DST = "08:ED:02:E3:FF:FF";
     public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
@@ -102,6 +110,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     private IOFSwitchService switchService;
 
     private String topoDiscoTopic;
+    private String region;
     private double islBandwidthQuotient = 1.0;
     private Algorithm algorithm;
     private JWTVerifier verifier;
@@ -168,9 +177,10 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.info("Stating {}", PathVerificationService.class.getCanonicalName());
-
-        topoDiscoTopic = context.getServiceImpl(KafkaUtilityService.class).getTopics().getTopoDiscoTopic();
-
+        KafkaChannel kafkaChannel = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel();
+        logger.info("region: {}", kafkaChannel.getRegion());
+        topoDiscoTopic = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getTopoDiscoTopic();
+        region = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getRegion();
         InputService inputService = context.getServiceImpl(InputService.class);
         inputService.addTranslator(OFType.PACKET_IN, this);
 
@@ -202,36 +212,32 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     }
 
     @Override
-    public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port) {
-        return sendDiscoveryMessage(srcSwId, port, null);
-    }
-
-    @Override
-    public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port, DatapathId dstSwId) {
+    public boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port, Long packetId) {
         boolean result = false;
 
         try {
             IOFSwitch srcSwitch = switchService.getSwitch(srcSwId);
             if (srcSwitch != null && srcSwitch.getPort(port) != null) {
-                IOFSwitch dstSwitch = (dstSwId == null) ? null : switchService.getSwitch(dstSwId);
-                OFPacketOut ofPacketOut = generateVerificationPacket(srcSwitch, port, dstSwitch, true);
+                OFPacketOut ofPacketOut = generateVerificationPacket(srcSwitch, port, true, packetId);
 
                 if (ofPacketOut != null) {
-                    logger.debug("==> Sending verification packet out {}/{}: {}", srcSwitch.getId().toString(),
+                    logger.debug("==> Sending verification packet out {}/{} id {}: {}", srcSwitch.getId().toString(),
                             port.getPortNumber(),
+                            packetId,
                             Hex.encodeHexString(ofPacketOut.getData()));
                     result = srcSwitch.write(ofPacketOut);
                 } else {
                     logger.error("<== Received null from generateVerificationPacket, inputs where: "
-                            + "srcSwitch: {}, port: {}, dstSwitch: {}", srcSwitch, port, dstSwitch);
+                            + "srcSwitch: {}, port: {} id: {}", srcSwitch, port, packetId);
                 }
 
                 if (result) {
-                    logIsl.info("push discovery package via: {}-{}", srcSwitch.getId(), port.getPortNumber());
+                    logIsl.info("push discovery package via: {}-{} id:{}", srcSwitch.getId(), port.getPortNumber(),
+                            packetId);
                 } else {
                     logger.error(
-                            "Failed to send PACKET_OUT(ISL discovery packet) via {}-{}",
-                            srcSwitch.getId(), port.getPortNumber());
+                            "Failed to send PACKET_OUT(ISL discovery packet) via {}-{} id: {}",
+                            srcSwitch.getId(), port.getPortNumber(), packetId);
                 }
             }
         } catch (Exception exception) {
@@ -241,21 +247,16 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         return result;
     }
 
-    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port) {
-        return generateVerificationPacket(srcSw, port, null, true);
-    }
-
     /**
      * Return verification packet.
      *
      * @param srcSw source switch.
      * @param port port.
-     * @param dstSw destination switch
      * @param sign sign.
+     * @param packetId id of the packet.
      * @return verification packet.
      */
-    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, IOFSwitch dstSw,
-                                                  boolean sign) {
+    public OFPacketOut generateVerificationPacket(IOFSwitch srcSw, OFPort port, boolean sign, Long packetId) {
         try {
             byte[] dpidArray = new byte[8];
             ByteBuffer dpidBb = ByteBuffer.wrap(dpidArray);
@@ -277,18 +278,14 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             ByteBuffer portBb = ByteBuffer.wrap(portId, 1, 2);
             portBb.putShort(port.getShortPortNumber());
 
-            VerificationPacket vp = new VerificationPacket();
-            vp.setChassisId(
-                    new LLDPTLV().setType((byte) 1).setLength((short) chassisId.length).setValue(chassisId));
-
-            vp.setPortId(new LLDPTLV().setType((byte) 2).setLength((short) portId.length).setValue(portId));
-
             byte[] ttlValue = new byte[]{0, 0x78};
-            vp.setTtl(
-                    new LLDPTLV().setType((byte) 3).setLength((short) ttlValue.length).setValue(ttlValue));
+            VerificationPacket vp = VerificationPacket.builder()
+                    .chassisId(makeIdLldptvPacket(chassisId, CHASSIS_ID_LLDPTV_PACKET_TYPE))
+                    .portId(makeIdLldptvPacket(portId, PORT_ID_LLDPTV_PACKET_TYPE))
+                    .ttl(makeIdLldptvPacket(ttlValue, TTL_LLDPTV_PACKET_TYPE))
+                    .build();
 
-            LLDPTLV dpidTlv = new LLDPTLV().setType((byte) 127).setLength((short) dpidTlvValue.length)
-                    .setValue(dpidTlvValue);
+            LLDPTLV dpidTlv = makeIdLldptvPacket(dpidTlvValue, OPTIONAL_LLDPTV_PACKET_TYPE);
             vp.getOptionalTlvList().add(dpidTlv);
             // Add the controller identifier to the TLV value.
             //    vp.getOptionalTlvList().add(controllerTLV);
@@ -302,8 +299,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                     .putLong(time + swLatency /* account for our switch's one-way latency */)
                     .array();
 
-            LLDPTLV timestampTlv = new LLDPTLV().setType((byte) 127)
-                    .setLength((short) timestampTlvValue.length).setValue(timestampTlvValue);
+            LLDPTLV timestampTlv = makeIdLldptvPacket(timestampTlvValue, OPTIONAL_LLDPTV_PACKET_TYPE);
 
             vp.getOptionalTlvList().add(timestampTlv);
 
@@ -312,15 +308,17 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                     .put((byte) 0x26).put((byte) 0xe1)
                     .put((byte) 0x02)
                     .putInt(PathType.ISL.ordinal()).array();
-            LLDPTLV typeTlv = new LLDPTLV().setType((byte) 127)
-                    .setLength((short) typeTlvValue.length).setValue(typeTlvValue);
+            LLDPTLV typeTlv = makeIdLldptvPacket(typeTlvValue, OPTIONAL_LLDPTV_PACKET_TYPE);
             vp.getOptionalTlvList().add(typeTlv);
 
             if (sign) {
-                String token = JWT.create()
+                Builder builder = JWT.create()
                         .withClaim("dpid", dpid.getLong())
-                        .withClaim("ts", time + swLatency)
-                        .sign(algorithm);
+                        .withClaim("ts", time + swLatency);
+                if (packetId != null) {
+                    builder.withClaim("id", packetId);
+                }
+                String token = builder.sign(algorithm);
 
                 byte[] tokenBytes = token.getBytes(Charset.forName("UTF-8"));
 
@@ -328,23 +326,13 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                         .put((byte) 0x26).put((byte) 0xe1)
                         .put((byte) 0x03)
                         .put(tokenBytes).array();
-                LLDPTLV tokenTlv = new LLDPTLV().setType((byte) 127)
-                        .setLength((short) tokenTlvValue.length).setValue(tokenTlvValue);
+                LLDPTLV tokenTlv = makeIdLldptvPacket(tokenTlvValue, OPTIONAL_LLDPTV_PACKET_TYPE);
 
                 vp.getOptionalTlvList().add(tokenTlv);
             }
 
             MacAddress dstMac = MacAddress.of(VERIFICATION_BCAST_PACKET_DST);
-            if (dstSw != null) {
-                OFPortDesc sw2OfPortDesc = dstSw.getPort(port);
-                dstMac = sw2OfPortDesc.getHwAddr();
-            }
-
             IPv4Address dstIp = IPv4Address.of(VERIFICATION_PACKET_IP_DST);
-            if (dstSw != null) {
-                dstIp = IPv4Address
-                        .of(((InetSocketAddress) dstSw.getInetAddress()).getAddress().getAddress());
-            }
             IPv4 l3 = new IPv4()
                     .setSourceAddress(
                             IPv4Address.of(((InetSocketAddress) srcSw.getInetAddress()).getAddress().getAddress()))
@@ -374,6 +362,10 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         return null;
     }
 
+    private LLDPTLV makeIdLldptvPacket(byte[] data, byte type) {
+        return new LLDPTLV().setType(type).setLength((short) data.length).setValue(data);
+    }
+
     private VerificationPacket deserialize(Ethernet eth) throws Exception {
         if (eth.getPayload() instanceof IPv4) {
             IPv4 ip = (IPv4) eth.getPayload();
@@ -399,7 +391,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             return;
         }
 
-        VerificationPacket verificationPacket = null;
+        VerificationPacket verificationPacket;
         try {
             verificationPacket = deserialize(input.getPacketInPayload());
         } catch (Exception exception) {
@@ -408,6 +400,12 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         }
 
         try {
+            IOFSwitch destSwitch = switchService.getSwitch(input.getDpId());
+            if (destSwitch == null) {
+                logger.error("Destination switch {} was not found", input.getDpId());
+                return;
+            }
+
             ByteBuffer portBb = ByteBuffer.wrap(verificationPacket.getPortId().getValue());
             portBb.position(1);
 
@@ -415,9 +413,10 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             int pathOrdinal = 10;
             IOFSwitch remoteSwitch = null;
             DatapathId remoteSwitchId = null;
+            Long packetId = null;
             boolean signed = false;
             for (LLDPTLV lldptlv : verificationPacket.getOptionalTlvList()) {
-                if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
+                if (lldptlv.getType() == OPTIONAL_LLDPTV_PACKET_TYPE && lldptlv.getLength() == 12
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
                         && lldptlv.getValue()[2] == (byte) 0xe1
@@ -425,7 +424,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                     ByteBuffer dpidBb = ByteBuffer.wrap(lldptlv.getValue());
                     remoteSwitchId = DatapathId.of(dpidBb.getLong(4));
                     remoteSwitch = switchService.getSwitch(remoteSwitchId);
-                } else if (lldptlv.getType() == 127 && lldptlv.getLength() == 12
+                } else if (lldptlv.getType() == OPTIONAL_LLDPTV_PACKET_TYPE && lldptlv.getLength() == 12
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
                         && lldptlv.getValue()[2] == (byte) 0xe1
@@ -433,14 +432,14 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                     ByteBuffer tsBb = ByteBuffer.wrap(lldptlv.getValue()); /* skip OpenFlow OUI (4 bytes above) */
                     timestamp = tsBb.getLong(4); /* include the RX switch latency to "subtract" it */
                     timestamp = timestamp + input.getLatency();
-                } else if (lldptlv.getType() == 127 && lldptlv.getLength() == 8
+                } else if (lldptlv.getType() == OPTIONAL_LLDPTV_PACKET_TYPE && lldptlv.getLength() == 8
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
                         && lldptlv.getValue()[2] == (byte) 0xe1
                         && lldptlv.getValue()[3] == 0x02) {
                     ByteBuffer typeBb = ByteBuffer.wrap(lldptlv.getValue());
                     pathOrdinal = typeBb.getInt(4);
-                } else if (lldptlv.getType() == 127
+                } else if (lldptlv.getType() == OPTIONAL_LLDPTV_PACKET_TYPE
                         && lldptlv.getValue()[0] == 0x0
                         && lldptlv.getValue()[1] == 0x26
                         && lldptlv.getValue()[2] == (byte) 0xe1
@@ -453,6 +452,10 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
                     try {
                         DecodedJWT jwt = verifier.verify(token);
+                        Claim idClaim = jwt.getClaim("id");
+                        if (!idClaim.isNull()) {
+                            packetId = idClaim.asLong();
+                        }
                         signed = true;
                     } catch (JWTVerificationException e) {
                         logger.error("Packet verification failed", e);
@@ -469,7 +472,6 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
             if (remoteSwitch == null) {
                 logger.warn("detected unknown remote switch {}", remoteSwitchId);
-                return;
             }
 
             if (!signed) {
@@ -480,21 +482,34 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             OFPort inPort = OFMessageUtils.getInPort((OFPacketIn) input.getMessage());
             OFPort remotePort = OFPort.of(portBb.getShort());
             long latency = measureLatency(input, timestamp);
-            logIsl.info("link discovered: {}-{} ===( {} ms )===> {}-{}",
-                    remoteSwitch.getId(), remotePort, latency, input.getDpId(), inPort);
+            logIsl.info("link discovered: {}-{} ===( {} ms )===> {}-{} id:{}",
+                        remoteSwitchId, remotePort, latency, input.getDpId(), inPort, packetId);
 
             // this verification packet was sent from remote switch/port to received switch/port
             // so the link direction is from remote switch/port to received switch/port
-            PathNode source = new PathNode(new SwitchId(remoteSwitch.getId().getLong()), remotePort.getPortNumber(), 0,
+            PathNode source = new PathNode(new SwitchId(remoteSwitchId.getLong()), remotePort.getPortNumber(), 0,
                             latency);
             PathNode destination = new PathNode(new SwitchId(input.getDpId().getLong()), inPort.getPortNumber(), 1);
-            long speed = getSwitchPortSpeed(input.getDpId(), inPort);
-            IslInfoData path = new IslInfoData(latency, source, destination, speed, IslChangeType.DISCOVERED,
-                    getAvailableBandwidth(speed), false);
+            long speed = 0L;
+            if (remoteSwitch == null) {
+                speed = getSwitchPortSpeed(destSwitch, inPort);
+            }  else {
+                speed = Math.min(getSwitchPortSpeed(destSwitch, inPort), getSwitchPortSpeed(remoteSwitch, remotePort));
+            }
+            IslInfoData path = IslInfoData.builder()
+                    .latency(latency)
+                    .source(source)
+                    .destination(destination)
+                    .speed(speed)
+                    .state(IslChangeType.DISCOVERED)
+                    .availableBandwidth(getAvailableBandwidth(speed))
+                    .packetId(packetId)
+                    .build();
 
-            Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null);
+            Message message = new InfoMessage(path, System.currentTimeMillis(), CorrelationContext.getId(), null,
+                    region);
 
-            producerService.sendMessageAndTrack(topoDiscoTopic, message);
+            producerService.sendMessageAndTrack(topoDiscoTopic, source.getSwitchId().toString(), message);
             logger.debug("packet_in processed for {}-{}", input.getDpId(), inPort);
 
         } catch (UnsupportedOperationException exception) {
@@ -517,8 +532,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         return latency;
     }
 
-    private long getSwitchPortSpeed(DatapathId dpId, OFPort inPort) {
-        IOFSwitch sw = switchService.getSwitch(dpId);
+    private long getSwitchPortSpeed(IOFSwitch sw, OFPort inPort) {
         OFPortDesc port = sw.getPort(inPort);
         long speed = -1;
 

@@ -57,8 +57,8 @@ public class BaseTest {
             while ((readLine = bufferedReader.readLine()) != null) {
                 urlList.add(readLine);
             }
-        } catch (Exception exception) {
-            LOGGER.error("exception occured Inside method executeKildaFiles: " + exception.getMessage());
+        } catch (Exception e) {
+            LOGGER.error("exception occurred Inside method executeKildaFiles", e);
         }
 
         for (String url : urlList) {
@@ -86,8 +86,8 @@ public class BaseTest {
                     Assert.assertTrue(true);
                 }
 
-            } catch (Exception exception) {
-                LOGGER.error("exception occured Inside method executeKildaFiles : " + exception.getMessage());
+            } catch (Exception e) {
+                LOGGER.error("exception occurred Inside method executeKildaFiles.", e);
                 Assert.assertTrue(false);
             }
         }
@@ -145,14 +145,14 @@ public class BaseTest {
             }
 
         } catch (MalformedURLException malformedUrlException) {
-            LOGGER.error("exception occured during accessing file url" + urlStr + " : exception : "
+            LOGGER.error("Error occurred during accessing file url" + urlStr + " : exception : "
                     + malformedUrlException.getMessage());
         } catch (IOException ioException) {
             LOGGER.error(
-                    "exception occured during downloading file " + file + " : exception : " + ioException.getMessage());
+                    "Error occurred during downloading file " + file + " : exception : " + ioException.getMessage());
         } catch (Exception exception) {
             LOGGER.error(
-                    "exception occured during downloading file " + file + " : exception : " + exception.getMessage());
+                    "Error occurred during downloading file " + file + " : exception : " + exception.getMessage());
         } finally {
             IoUtil.close(fileOutputStream);
             IoUtil.close(bufferedInputStream);

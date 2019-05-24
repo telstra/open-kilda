@@ -32,7 +32,19 @@ public interface PathComputerConfig extends Serializable {
     @Default("700")
     int getDefaultIslCost();
 
+    @Key("diversity.isl.weight")
+    @Default("1000")
+    int getDiversityIslWeight();
+
+    @Key("diversity.switch.weight")
+    @Default("100")
+    int getDiversitySwitchWeight();
+
     @Key("strategy")
     @Default("COST")
     String getStrategy();
+
+    @Key("network.strategy")
+    @Default("COST")
+    String getNetworkStrategy();
 }

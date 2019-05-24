@@ -21,6 +21,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
@@ -36,12 +37,13 @@ import java.util.Optional;
 public class FlowValidator {
 
     private final FlowRepository flowRepository;
-
     private final SwitchRepository switchRepository;
+    private final IslRepository islRepository;
 
     public FlowValidator(RepositoryFactory repositoryFactory) {
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.switchRepository = repositoryFactory.createSwitchRepository();
+        this.islRepository = repositoryFactory.createIslRepository();
     }
 
     /**
@@ -52,6 +54,7 @@ public class FlowValidator {
      */
     public void validate(Flow flow) throws FlowValidationException, SwitchValidationException {
         checkBandwidth(flow);
+        checkFlowForIslConflicts(flow);
         checkFlowForEndpointConflicts(flow);
         checkOneSwitchFlowHasNoConflicts(flow);
         checkSwitchesExists(flow);
@@ -69,6 +72,31 @@ public class FlowValidator {
     }
 
     /**
+     * Checks a flow for conflicts with ISL ports.
+     *
+     * @param requestedFlow a flow to be validated.
+     * @throws FlowValidationException is thrown in a case when flow endpoints conflict with existing ISL ports.
+     */
+    @VisibleForTesting
+    void checkFlowForIslConflicts(Flow requestedFlow) throws FlowValidationException {
+        // Check the source
+        if (!islRepository.findByEndpoint(requestedFlow.getSrcSwitch().getSwitchId(),
+                requestedFlow.getSrcPort()).isEmpty()) {
+            String errorMessage = format("The port %d on the switch '%s' is occupied by an ISL.",
+                    requestedFlow.getSrcPort(), requestedFlow.getSrcSwitch().getSwitchId());
+            throw new FlowValidationException(errorMessage, ErrorType.PARAMETERS_INVALID);
+        }
+
+        // Check the destination
+        if (!islRepository.findByEndpoint(requestedFlow.getDestSwitch().getSwitchId(),
+                requestedFlow.getDestPort()).isEmpty()) {
+            String errorMessage = format("The port %d on the switch '%s' is occupied by an ISL.",
+                    requestedFlow.getDestPort(), requestedFlow.getDestSwitch().getSwitchId());
+            throw new FlowValidationException(errorMessage, ErrorType.PARAMETERS_INVALID);
+        }
+    }
+
+    /**
      * Checks a flow for endpoints' conflicts.
      *
      * @param requestedFlow a flow to be validated.
@@ -77,58 +105,101 @@ public class FlowValidator {
     @VisibleForTesting
     void checkFlowForEndpointConflicts(Flow requestedFlow) throws FlowValidationException {
         // Check the source
-        Collection<Flow> conflictsOnSource;
-        conflictsOnSource = flowRepository.findFlowIdsByEndpoint(requestedFlow.getSrcSwitch().getSwitchId(),
-                                                                 requestedFlow.getSrcPort());
+        Collection<Flow> conflictsOnSource = flowRepository.findByEndpoint(requestedFlow.getSrcSwitch().getSwitchId(),
+                requestedFlow.getSrcPort());
 
-
-        Optional<String> conflictedFlow = conflictsOnSource.stream()
+        Optional<Flow> conflictSrcSrc = conflictsOnSource.stream()
                 .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId()))
-                .filter(flow -> (flow.getSrcSwitch().getSwitchId().equals(requestedFlow.getSrcSwitch().getSwitchId())
-                            && flow.getSrcPort() == requestedFlow.getSrcPort()
-                            && (flow.getSrcVlan() == requestedFlow.getSrcVlan() || flow.getSrcVlan() == 0
-                                || requestedFlow.getSrcVlan() == 0))
-                        || (flow.getDestSwitch().getSwitchId().equals(requestedFlow.getSrcSwitch().getSwitchId())
-                            && flow.getDestPort() == requestedFlow.getSrcPort()
-                            && (flow.getDestVlan() == requestedFlow.getSrcVlan() || flow.getDestVlan() == 0
-                                || requestedFlow.getSrcVlan() == 0)))
-                .map(Flow::getFlowId)
+                .filter(flow -> flow.getSrcSwitch().getSwitchId().equals(requestedFlow.getSrcSwitch().getSwitchId())
+                        && flow.getSrcPort() == requestedFlow.getSrcPort()
+                        && (flow.getSrcVlan() == requestedFlow.getSrcVlan()
+                        || flow.getSrcVlan() == 0 || requestedFlow.getSrcVlan() == 0))
                 .findAny();
-        if (conflictedFlow.isPresent()) {
-            throw new FlowValidationException(
-                    format("The port %d on the switch '%s' has already occupied by the flow '%s'.",
-                            requestedFlow.getSrcPort(),
-                            requestedFlow.getSrcSwitch().getSwitchId(),
-                            conflictedFlow.get()),
-                    ErrorType.ALREADY_EXISTS);
+
+        if (conflictSrcSrc.isPresent()) {
+            String errorMessage = format("Requested flow '%s' conflicts with existing flow '%s'. "
+                            + "Details: "
+                            + "requested flow '%s' source: switch=%s port=%d vlan=%d, "
+                            + "existing flow '%s' source: switch=%s port=%d vlan=%d",
+                    requestedFlow.getFlowId(), conflictSrcSrc.get().getFlowId(),
+                    requestedFlow.getFlowId(), requestedFlow.getSrcSwitch().getSwitchId().toString(),
+                    requestedFlow.getSrcPort(), requestedFlow.getSrcVlan(),
+                    conflictSrcSrc.get().getFlowId(),
+                    conflictSrcSrc.get().getSrcSwitch().getSwitchId().toString(),
+                    conflictSrcSrc.get().getSrcPort(), conflictSrcSrc.get().getSrcVlan());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
+        }
+
+        Optional<Flow> conflictDstSrc = conflictsOnSource.stream()
+                .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> flow.getDestSwitch().getSwitchId().equals(requestedFlow.getSrcSwitch().getSwitchId())
+                        && flow.getDestPort() == requestedFlow.getSrcPort()
+                        && (flow.getDestVlan() == requestedFlow.getSrcVlan()
+                        || flow.getDestVlan() == 0 || requestedFlow.getSrcVlan() == 0))
+                .findAny();
+
+        if (conflictDstSrc.isPresent()) {
+            String errorMessage = format("Requested flow '%s' conflicts with existing flow '%s'. "
+                            + "Details: "
+                            + "requested flow '%s' source: switch=%s port=%d vlan=%d, "
+                            + "existing flow '%s' destination: switch=%s port=%d vlan=%d",
+                    requestedFlow.getFlowId(), conflictDstSrc.get().getFlowId(),
+                    requestedFlow.getFlowId(), requestedFlow.getSrcSwitch().getSwitchId().toString(),
+                    requestedFlow.getSrcPort(), requestedFlow.getSrcVlan(),
+                    conflictDstSrc.get().getFlowId(),
+                    conflictDstSrc.get().getDestSwitch().getSwitchId().toString(),
+                    conflictDstSrc.get().getDestPort(), conflictDstSrc.get().getDestVlan());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
 
         // Check the destination
-        Collection<Flow> conflictsOnDest;
-        conflictsOnDest = flowRepository.findFlowIdsByEndpoint(
-                    requestedFlow.getDestSwitch().getSwitchId(),
-                    requestedFlow.getDestPort());
+        Collection<Flow> conflictsOnDest = flowRepository.findByEndpoint(
+                requestedFlow.getDestSwitch().getSwitchId(),
+                requestedFlow.getDestPort());
 
 
-        conflictedFlow = conflictsOnDest.stream()
+        Optional<Flow> conflictSrcDst = conflictsOnDest.stream()
                 .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId()))
-                .filter(flow -> (flow.getSrcSwitch().getSwitchId().equals(requestedFlow.getDestSwitch().getSwitchId())
-                            && flow.getSrcPort() == requestedFlow.getDestPort()
-                            && (flow.getSrcVlan() == requestedFlow.getDestVlan() || flow.getSrcVlan() == 0
-                                || requestedFlow.getDestVlan() == 0))
-                      || (flow.getDestSwitch().getSwitchId().equals(requestedFlow.getDestSwitch().getSwitchId())
-                            && flow.getDestPort() == requestedFlow.getDestPort()
-                            && (flow.getDestVlan() == requestedFlow.getDestVlan() || flow.getDestVlan() == 0
-                                || requestedFlow.getDestVlan() == 0)))
-                .map(Flow::getFlowId)
+                .filter(flow -> flow.getSrcSwitch().getSwitchId().equals(requestedFlow.getDestSwitch().getSwitchId())
+                        && flow.getSrcPort() == requestedFlow.getDestPort()
+                        && (flow.getSrcVlan() == requestedFlow.getDestVlan()
+                        || flow.getSrcVlan() == 0 || requestedFlow.getDestVlan() == 0))
                 .findAny();
-        if (conflictedFlow.isPresent()) {
-            throw new FlowValidationException(
-                    format("The port %d on the switch '%s' has already occupied by the flow '%s'.",
-                            requestedFlow.getDestPort(),
-                            requestedFlow.getDestSwitch().getSwitchId(),
-                            conflictedFlow.get()),
-                    ErrorType.ALREADY_EXISTS);
+
+        if (conflictSrcDst.isPresent()) {
+            String errorMessage = format("Requested flow '%s' conflicts with existing flow '%s'. "
+                            + "Details: "
+                            + "requested flow '%s' destination: switch=%s port=%d vlan=%d, "
+                            + "existing flow '%s' source: switch=%s port=%d vlan=%d",
+                    requestedFlow.getFlowId(), conflictSrcDst.get().getFlowId(),
+                    requestedFlow.getFlowId(), requestedFlow.getDestSwitch().getSwitchId().toString(),
+                    requestedFlow.getDestPort(), requestedFlow.getDestVlan(),
+                    conflictSrcDst.get().getFlowId(),
+                    conflictSrcDst.get().getSrcSwitch().getSwitchId().toString(),
+                    conflictSrcDst.get().getSrcPort(), conflictSrcDst.get().getSrcVlan());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
+        }
+
+        Optional<Flow> conflictDstDst = conflictsOnDest.stream()
+                .filter(flow -> !requestedFlow.getFlowId().equals(flow.getFlowId()))
+                .filter(flow -> flow.getDestSwitch().getSwitchId().equals(requestedFlow.getDestSwitch().getSwitchId())
+                        && flow.getDestPort() == requestedFlow.getDestPort()
+                        && (flow.getDestVlan() == requestedFlow.getDestVlan()
+                        || flow.getDestVlan() == 0 || requestedFlow.getDestVlan() == 0))
+                .findAny();
+
+        if (conflictDstDst.isPresent()) {
+            String errorMessage = format("Requested flow '%s' conflicts with existing flow '%s'. "
+                            + "Details: "
+                            + "requested flow '%s' destination: switch=%s port=%d vlan=%d, "
+                            + "existing flow '%s' destination: switch=%s port=%d vlan=%d",
+                    requestedFlow.getFlowId(), conflictDstDst.get().getFlowId(),
+                    requestedFlow.getFlowId(), requestedFlow.getDestSwitch().getSwitchId().toString(),
+                    requestedFlow.getDestPort(), requestedFlow.getDestVlan(),
+                    conflictDstDst.get().getFlowId(),
+                    conflictDstDst.get().getDestSwitch().getSwitchId().toString(),
+                    conflictDstDst.get().getDestPort(), conflictDstDst.get().getDestVlan());
+            throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
     }
 
@@ -171,7 +242,7 @@ public class FlowValidator {
      */
     @VisibleForTesting
     void checkOneSwitchFlowHasNoConflicts(Flow requestedFlow) throws SwitchValidationException {
-        if (requestedFlow.getSrcSwitch().equals(requestedFlow.getDestSwitch())
+        if (requestedFlow.isOneSwitchFlow()
                 && requestedFlow.getSrcPort() == requestedFlow.getDestPort()
                 && requestedFlow.getSrcVlan() == requestedFlow.getDestVlan()) {
 

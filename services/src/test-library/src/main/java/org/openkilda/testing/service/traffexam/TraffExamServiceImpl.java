@@ -45,6 +45,9 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.context.annotation.Scope;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
@@ -68,6 +71,8 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 
 @Service
+@Lazy
+@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
 
     @Value("${lab-api.endpoint}")
@@ -168,6 +173,11 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
 
     @Override
     public ExamResources startExam(Exam exam) throws NoResultsFoundException, OperationalException {
+        return startExam(exam, false);
+    }
+
+    @Override
+    public ExamResources startExam(Exam exam, boolean udp) throws NoResultsFoundException, OperationalException {
         checkHostPresence(exam.getSource());
         checkHostPresence(exam.getDest());
 
@@ -202,6 +212,7 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
             if (exam.getTimeLimitSeconds() != null) {
                 producer.setTime(exam.getTimeLimitSeconds());
             }
+            producer.setUseUdp(udp);
             try {
                 //give consumer some time to fully roll. Probably should be fixed on service's side, this is workaround
                 TimeUnit.MILLISECONDS.sleep(300);
@@ -246,6 +257,16 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         }
 
         return result;
+    }
+
+    @Override
+    public boolean isFinished(Exam exam) {
+        try {
+            fetchReport(exam);
+        } catch (ExamNotFinishedException e) {
+            return false;
+        }
+        return true;
     }
 
     @Override

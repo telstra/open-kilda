@@ -53,8 +53,6 @@ public class DaoInterceptor {
      */
     @Before("execution(* org.springframework.data.jpa.repository.JpaRepository.save(..))")
     public void updateUserInformation(final JoinPoint joinPoint) {
-        _log.info("[updateUserInformation] - Start");
-
         Object objEntity = joinPoint.getArgs()[0];
 
         if (objEntity instanceof Collection) {
@@ -67,7 +65,6 @@ public class DaoInterceptor {
         } else {
             updateUserInformation(objEntity);
         }
-        _log.info("[updateUserInformation] - End");
     }
 
 
@@ -77,7 +74,6 @@ public class DaoInterceptor {
      * @param objEntity the obj entity
      */
     public void updateUserInformation(final Object objEntity) {
-        _log.info("[updateUserInformation] - Start");
         RequestContext requestContext = serverContext.getRequestContext();
         if (objEntity instanceof BaseEntity) {
             BaseEntity entity = (BaseEntity) objEntity;
@@ -94,6 +90,5 @@ public class DaoInterceptor {
                 _log.debug("[updateUserInformation] Update created and updated by in entity.");
             }
         }
-        _log.info("[updateUserInformation] - End");
     }
 }

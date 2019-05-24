@@ -28,4 +28,6 @@ public interface SwitchRepository extends Repository<Switch> {
     Switch reload(Switch entity);
 
     void lockSwitches(Switch... switches);
+
+    void forceDelete(SwitchId switchId);
 }

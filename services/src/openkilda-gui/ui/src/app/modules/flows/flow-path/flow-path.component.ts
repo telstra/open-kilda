@@ -2,6 +2,7 @@ import { Component, OnInit, Input, OnDestroy } from "@angular/core";
 import { FlowsService } from "../../../common/services/flows.service";
 import { NgxSpinnerService } from "ngx-spinner";
 import { LoaderService } from "../../../common/services/loader.service";
+import { Router } from "@angular/router";
 
 @Component({
   selector: "app-flow-path",
@@ -20,7 +21,8 @@ export class FlowPathComponent implements OnInit, OnDestroy {
 
   constructor(
     private flowService: FlowsService,
-    private loaderService: LoaderService
+    private loaderService: LoaderService,
+    private router:Router
   ) {}
 
   ngOnInit() {
@@ -45,7 +47,26 @@ export class FlowPathComponent implements OnInit, OnDestroy {
       }
     );
   }
+ loadIslDetail(type){
+   if(type=='forward'){
+    var src_switch = (this.forwardPathData && this.forwardPathData.length && this.forwardPathData[0]['switch_id'] ) ? this.forwardPathData[0]['switch_id']:null;
+    var src_port = (this.forwardPathData && this.forwardPathData.length && this.forwardPathData[0]['output_port'] ) ? this.forwardPathData[0]['output_port'] : null;
+    var dst_switch = (this.forwardPathData && this.forwardPathData.length && this.forwardPathData[1]['switch_id'] ) ? this.forwardPathData[1]['switch_id'] : null;
+    var dst_port = (this.forwardPathData && this.forwardPathData.length && this.forwardPathData[1]['output_port'] ) ? this.forwardPathData[1]['input_port'] : null;
+   }else if(type=='reverse'){
+    var src_switch = (this.reversePathData && this.reversePathData.length && this.reversePathData[0]['switch_id'] ) ? this.reversePathData[0]['switch_id']:null;
+    var src_port = (this.reversePathData && this.reversePathData.length && this.reversePathData[0]['output_port'] ) ? this.reversePathData[0]['output_port'] : null;
+    var dst_switch = (this.reversePathData && this.reversePathData.length && this.reversePathData[1]['switch_id'] ) ? this.reversePathData[1]['switch_id'] : null;
+    var dst_port = (this.reversePathData && this.reversePathData.length && this.reversePathData[1]['output_port'] ) ? this.reversePathData[1]['input_port'] : null;
+  
+   }
+  this.router.navigate(["/isl/switch/isl/"+src_switch+"/"+src_port+"/"+dst_switch+"/"+dst_port]);
+ }
 
+
+ loadSwitchDetail(switchId){   
+     this.router.navigate(["/switches/details/" + switchId]);
+ }
   viewPathGraph(type) {
     if (type == "forward") {
       this.reversePathGraph = false;

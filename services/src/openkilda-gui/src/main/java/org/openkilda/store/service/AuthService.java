@@ -19,12 +19,14 @@ import org.openkilda.store.auth.constants.AuthType;
 import org.openkilda.store.auth.dao.entity.OauthConfigEntity;
 import org.openkilda.store.auth.dao.repository.OauthConfigRepository;
 import org.openkilda.store.common.constants.StoreType;
-import org.openkilda.store.common.dao.repository.StoreTypeRepository;
 import org.openkilda.store.model.AuthConfigDto;
 import org.openkilda.store.model.AuthTypeDto;
 import org.openkilda.store.model.OauthTwoConfigDto;
 import org.openkilda.store.service.converter.AuthTypeConverter;
 import org.openkilda.store.service.converter.OauthConfigConverter;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,11 +43,10 @@ import java.util.List;
 @Service
 public class AuthService {
     
-    @Autowired
-    private OauthConfigRepository oauthConfigRepository;
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthService.class);
     
     @Autowired
-    private StoreTypeRepository storeTypeRepository;
+    private OauthConfigRepository oauthConfigRepository;
     
     /**
      * Gets the auth types.
@@ -54,6 +55,7 @@ public class AuthService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public List<AuthTypeDto> getAuthTypes() {
+        LOGGER.info("Get auth types");
         List<AuthTypeDto> list = new ArrayList<AuthTypeDto>();
         AuthType[] authTypes = AuthType.values();
         for (AuthType authType : authTypes) {
@@ -70,6 +72,7 @@ public class AuthService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public OauthTwoConfigDto saveOrUpdateOauthConfig(final OauthTwoConfigDto oauthTwoConfigDto) {
+        LOGGER.info("Save or update oauth configuration");
         List<OauthConfigEntity> oauthConfigEntityList = oauthConfigRepository
                 .findByAuthType_authTypeId(AuthType.OAUTH_TWO.getAuthTypeEntity().getAuthTypeId());
         OauthConfigEntity oauthConfigEntity = null;
@@ -83,9 +86,6 @@ public class AuthService {
 
         oauthConfigEntity = oauthConfigRepository.save(oauthConfigEntity);
 
-        StoreType.LINK_STORE.getStoreTypeEntity().setOauthConfigEntity(oauthConfigEntity);
-        storeTypeRepository.save(StoreType.LINK_STORE.getStoreTypeEntity());
-
         return OauthConfigConverter.toOauthTwoConfigDto(oauthConfigEntity);
     }
     
@@ -96,6 +96,7 @@ public class AuthService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public OauthTwoConfigDto getOauthConfig() {
+        LOGGER.info("Get oauth configuration");
         List<OauthConfigEntity> oauthConfigEntityList = oauthConfigRepository
                 .findByAuthType_authTypeId(AuthType.OAUTH_TWO.getAuthTypeEntity().getAuthTypeId());
         OauthConfigEntity oauthConfigEntity = null;
@@ -116,7 +117,8 @@ public class AuthService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public AuthConfigDto getAuth(final StoreType storeType) {
-        if (storeType == StoreType.LINK_STORE) {
+        LOGGER.info("Get auth for store type");
+        if (storeType == StoreType.LINK_STORE || storeType == StoreType.SWITCH_STORE) {
             return OauthConfigConverter.toOauthTwoConfigDto(storeType.getStoreTypeEntity().getOauthConfigEntity());
         }
         return null;

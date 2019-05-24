@@ -16,6 +16,7 @@
 package org.openkilda.pce.finder;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 
 import org.openkilda.model.Isl;
@@ -23,6 +24,8 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.impl.AvailableNetwork;
+import org.openkilda.pce.model.Edge;
+import org.openkilda.pce.model.WeightFunction;
 
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
@@ -30,12 +33,16 @@ import org.hamcrest.Matchers;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class BestCostAndShortestPathFinderTest {
 
     private static final int ALLOWED_DEPTH = 35;
-    private static final int DEFAULT_COST = 700;
+    private static final WeightFunction WEIGHT_FUNCTION = edge -> (long) edge.getCost();
 
     private static final SwitchId SWITCH_ID_A = new SwitchId("00:00:00:22:3d:5a:04:87");
     private static final SwitchId SWITCH_ID_B = new SwitchId("00:00:70:72:cf:d2:48:6c");
@@ -53,15 +60,14 @@ public class BestCostAndShortestPathFinderTest {
     @Test
     public void shouldChooseExpensiveOverTooDeep() throws  UnroutableFlowException {
         AvailableNetwork network = buildLongAndExpensivePathsNetwork();
-        network.reduceByCost();
 
-        BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(2, DEFAULT_COST);
-        Pair<List<Isl>, List<Isl>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_4);
-        List<Isl> fpath = pairPath.getLeft();
+        BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(2, WEIGHT_FUNCTION);
+        Pair<List<Edge>, List<Edge>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_4);
+        List<Edge> fpath = pairPath.getLeft();
         assertThat(fpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_2, fpath.get(1).getSrcSwitch().getSwitchId());
 
-        List<Isl> rpath = pairPath.getRight();
+        List<Edge> rpath = pairPath.getRight();
         assertThat(rpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_2, rpath.get(0).getDestSwitch().getSwitchId());
     }
@@ -70,15 +76,14 @@ public class BestCostAndShortestPathFinderTest {
     public void shouldChooseExpensiveOverTooDeepForReverseOrder()
             throws  UnroutableFlowException {
         AvailableNetwork network = buildLongAndExpensivePathsNetwork();
-        network.reduceByCost();
 
-        BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(2, DEFAULT_COST);
-        Pair<List<Isl>, List<Isl>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_4, SWITCH_ID_1);
-        List<Isl> fpath = pairPath.getLeft();
+        BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(2, WEIGHT_FUNCTION);
+        Pair<List<Edge>, List<Edge>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_4, SWITCH_ID_1);
+        List<Edge> fpath = pairPath.getLeft();
         assertThat(fpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_2, fpath.get(1).getSrcSwitch().getSwitchId());
 
-        List<Isl> rpath = pairPath.getRight();
+        List<Edge> rpath = pairPath.getRight();
         assertThat(rpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_2, rpath.get(0).getDestSwitch().getSwitchId());
     }
@@ -86,15 +91,14 @@ public class BestCostAndShortestPathFinderTest {
     @Test
     public void shouldChooseDeeperOverExpensive() throws  UnroutableFlowException {
         AvailableNetwork network = buildLongAndExpensivePathsNetwork();
-        network.reduceByCost();
 
-        BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(4, DEFAULT_COST);
-        Pair<List<Isl>, List<Isl>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_4);
-        List<Isl> fpath = pairPath.getLeft();
+        BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(4, WEIGHT_FUNCTION);
+        Pair<List<Edge>, List<Edge>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_4);
+        List<Edge> fpath = pairPath.getLeft();
         assertThat(fpath, Matchers.hasSize(4));
         assertEquals(SWITCH_ID_5, fpath.get(3).getSrcSwitch().getSwitchId());
 
-        List<Isl> rpath = pairPath.getRight();
+        List<Edge> rpath = pairPath.getRight();
         assertThat(rpath, Matchers.hasSize(4));
         assertEquals(SWITCH_ID_5, rpath.get(0).getDestSwitch().getSwitchId());
     }
@@ -102,15 +106,14 @@ public class BestCostAndShortestPathFinderTest {
     @Test
     public void shouldChooseCheaperWithSameDepth() throws  UnroutableFlowException {
         AvailableNetwork network = buildLongAndExpensivePathsNetwork();
-        network.reduceByCost();
 
-        BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(3, DEFAULT_COST);
-        Pair<List<Isl>, List<Isl>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_5);
-        List<Isl> fpath = pairPath.getLeft();
+        BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(3, WEIGHT_FUNCTION);
+        Pair<List<Edge>, List<Edge>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_5);
+        List<Edge> fpath = pairPath.getLeft();
         assertThat(fpath, Matchers.hasSize(3));
         assertEquals(SWITCH_ID_3, fpath.get(2).getSrcSwitch().getSwitchId());
 
-        List<Isl> rpath = pairPath.getRight();
+        List<Edge> rpath = pairPath.getRight();
         assertThat(rpath, Matchers.hasSize(3));
         assertEquals(SWITCH_ID_3, rpath.get(0).getDestSwitch().getSwitchId());
     }
@@ -131,6 +134,8 @@ public class BestCostAndShortestPathFinderTest {
         addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 5, 6, 100);
         addBidirectionalLink(network, SWITCH_ID_3, SWITCH_ID_5, 7, 8, 100);
         addBidirectionalLink(network, SWITCH_ID_4, SWITCH_ID_5, 9, 10, 100);
+
+        network.reduceByWeight(WEIGHT_FUNCTION);
         return network;
     }
 
@@ -138,16 +143,15 @@ public class BestCostAndShortestPathFinderTest {
     @Test
     public void shouldReturnTheShortestPath() throws  UnroutableFlowException {
         AvailableNetwork network = buildTestNetwork();
-        network.reduceByCost();
 
-        BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST);
-        Pair<List<Isl>, List<Isl>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_E, SWITCH_ID_F);
-        List<Isl> fpath = pairPath.getLeft();
+        BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, WEIGHT_FUNCTION);
+        Pair<List<Edge>, List<Edge>> pairPath = forward.findPathInNetwork(network, SWITCH_ID_E, SWITCH_ID_F);
+        List<Edge> fpath = pairPath.getLeft();
         assertThat(fpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_E, fpath.get(0).getSrcSwitch().getSwitchId());
         assertEquals(SWITCH_ID_F, fpath.get(1).getDestSwitch().getSwitchId());
 
-        List<Isl> rpath = pairPath.getRight();
+        List<Edge> rpath = pairPath.getRight();
         assertThat(rpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_F, rpath.get(0).getSrcSwitch().getSwitchId());
         assertEquals(SWITCH_ID_E, rpath.get(1).getDestSwitch().getSwitchId());
@@ -156,31 +160,65 @@ public class BestCostAndShortestPathFinderTest {
     @Test(expected = UnroutableFlowException.class)
     public void failToFindASwitch() throws  UnroutableFlowException {
         AvailableNetwork network = buildTestNetwork();
-        network.reduceByCost();
 
         SwitchId srcDpid = new SwitchId("00:00:00:00:00:00:00:ff");
 
-        BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST);
+        BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, WEIGHT_FUNCTION);
         forward.findPathInNetwork(network, srcDpid, SWITCH_ID_F);
     }
 
-    @Test(expected = UnroutableFlowException.class)
-    public void failToFindReversePath() throws  UnroutableFlowException {
-        AvailableNetwork network = buildNetworkWithoutReversePathAvailable();
-        BestCostAndShortestPathFinder forward = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST);
-        forward.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_3);
-    }
-
     @Test
-    public void testForwardAndBackwardPathsEquality() throws  UnroutableFlowException {
+    public void testForwardAndBackwardPathsEquality() throws UnroutableFlowException {
         AvailableNetwork network = buildEqualCostsNetwork();
-        network.reduceByCost();
-        BestCostAndShortestPathFinder pathFinder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST);
-        Pair<List<Isl>, List<Isl>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_5);
+        BestCostAndShortestPathFinder pathFinder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, WEIGHT_FUNCTION);
+        Pair<List<Edge>, List<Edge>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_5);
 
         List<SwitchId> forwardSwitchPath = getSwitchIdsFlowPath(paths.getLeft());
         List<SwitchId> backwardSwitchPath = Lists.reverse(getSwitchIdsFlowPath(paths.getRight()));
         assertEquals(forwardSwitchPath, backwardSwitchPath);
+    }
+
+    @Test
+    public void shouldAddIntermediateSwitchWeightOnce() throws UnroutableFlowException {
+        AvailableNetwork network = buildTestNetwork();
+        // shouldn't affect path if added once
+        network.getSwitch(SWITCH_ID_A).setDiversityWeight(100);
+
+        BestCostAndShortestPathFinder pathFinder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, WEIGHT_FUNCTION);
+        Pair<List<Edge>, List<Edge>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_D, SWITCH_ID_F);
+
+        assertEquals(Arrays.asList(SWITCH_ID_D, SWITCH_ID_A, SWITCH_ID_F), getSwitchIdsFlowPath(paths.getLeft()));
+    }
+
+    @Test
+    public void shouldFindSymmetricPath() throws UnroutableFlowException {
+        AvailableNetwork network = buildLinearNetworkWithPairLinks();
+        BestCostAndShortestPathFinder finder = new BestCostAndShortestPathFinder(2, WEIGHT_FUNCTION);
+
+        Pair<List<Edge>, List<Edge>> pathPair = finder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_3);
+        List<Edge> forward = pathPair.getLeft();
+        List<Edge> reverse = Lists.reverse(pathPair.getRight());
+
+        List<Boolean> validation = IntStream.range(0, forward.size())
+                .mapToObj(i -> Objects.equals(forward.get(i).getSrcPort(), reverse.get(i).getDestPort()))
+                .collect(Collectors.toList());
+        assertFalse(validation.contains(false));
+    }
+
+    private AvailableNetwork buildLinearNetworkWithPairLinks() {
+        /*
+         * Topology:
+         *
+         * SW1===SW2===SW3
+         *
+         * All ISLs have equal cost.
+         */
+        AvailableNetwork network = new AvailableNetwork();
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_2, 1, 2, 10000);
+        addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_2, 3, 4, 10000);
+        addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 5, 6, 10000);
+        addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 7, 8, 10000);
+        return network;
     }
 
     private AvailableNetwork buildEqualCostsNetwork() {
@@ -199,6 +237,8 @@ public class BestCostAndShortestPathFinderTest {
         addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 5, 6, 100);
         addBidirectionalLink(network, SWITCH_ID_3, SWITCH_ID_5, 7, 8, 100);
         addBidirectionalLink(network, SWITCH_ID_4, SWITCH_ID_5, 9, 10, 100);
+
+        network.reduceByWeight(WEIGHT_FUNCTION);
         return network;
     }
 
@@ -208,9 +248,9 @@ public class BestCostAndShortestPathFinderTest {
         // since our ISLs are bidirectional and cost may vary, we need to be sure that cost on reverse ISL won't be
         // taken into account during searching of reverse path.
         AvailableNetwork network = buildNetworkWithBandwidthInReversePathBiggerThanForward();
-        network.reduceByCost();
-        BestCostAndShortestPathFinder pathFinder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST);
-        Pair<List<Isl>, List<Isl>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_5);
+
+        BestCostAndShortestPathFinder pathFinder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, WEIGHT_FUNCTION);
+        Pair<List<Edge>, List<Edge>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_5);
 
         List<SwitchId> forwardSwitchPath = getSwitchIdsFlowPath(paths.getLeft());
         List<SwitchId> backwardSwitchPath = Lists.reverse(getSwitchIdsFlowPath(paths.getRight()));
@@ -236,6 +276,7 @@ public class BestCostAndShortestPathFinderTest {
         addLink(network, SWITCH_ID_4, SWITCH_ID_5, 9, 10, 100, 100);
         addLink(network, SWITCH_ID_5, SWITCH_ID_4, 10, 9, 100, 100);
 
+        network.reduceByWeight(WEIGHT_FUNCTION);
         return network;
     }
 
@@ -243,9 +284,9 @@ public class BestCostAndShortestPathFinderTest {
     @Test
     public void shouldHandleVeryExpensiveLinks() throws  UnroutableFlowException {
         AvailableNetwork network = buildExpensiveNetwork();
-        network.reduceByCost();
-        BestCostAndShortestPathFinder pathFinder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, DEFAULT_COST);
-        Pair<List<Isl>, List<Isl>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_3);
+
+        BestCostAndShortestPathFinder pathFinder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, WEIGHT_FUNCTION);
+        Pair<List<Edge>, List<Edge>> paths = pathFinder.findPathInNetwork(network, SWITCH_ID_1, SWITCH_ID_3);
 
         List<SwitchId> forwardSwitchPath = getSwitchIdsFlowPath(paths.getLeft());
         List<SwitchId> reverseSwitchPath = Lists.reverse(getSwitchIdsFlowPath(paths.getRight()));
@@ -266,15 +307,17 @@ public class BestCostAndShortestPathFinderTest {
         addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_2, 1, 2, 2000000000); //cost near to MAX_INTEGER
         addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 3, 4, 2000000000); //cost near to MAX_INTEGER
         addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_3, 5, 6, 1);
+
+        network.reduceByWeight(WEIGHT_FUNCTION);
         return network;
     }
 
-    private List<SwitchId> getSwitchIdsFlowPath(List<Isl> path) {
+    private List<SwitchId> getSwitchIdsFlowPath(List<Edge> path) {
         List<SwitchId> switchIds = new ArrayList<>();
         if (!path.isEmpty()) {
             switchIds.add(path.get(0).getSrcSwitch().getSwitchId());
-            for (Isl isl : path) {
-                switchIds.add(isl.getDestSwitch().getSwitchId());
+            for (Edge edge : path) {
+                switchIds.add(edge.getDestSwitch().getSwitchId());
             }
         }
         return switchIds;
@@ -333,6 +376,8 @@ public class BestCostAndShortestPathFinderTest {
                 19, 6, 10, 3);
         addLink(network, SWITCH_ID_F, SWITCH_ID_A,
                 50, 7, 0, 3);
+
+        network.reduceByWeight(WEIGHT_FUNCTION);
         return network;
     }
 

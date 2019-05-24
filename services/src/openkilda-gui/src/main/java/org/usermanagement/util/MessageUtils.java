@@ -69,6 +69,9 @@ public class MessageUtils {
 
     @Value("${attribute.password.must.not.contain}")
     private String attributePasswordMustNotContain;
+    
+    @Value("${store.not.configured.message}")
+    private String storeMustConfigured;
 
     /**
      * Gets the attribute unique.
@@ -205,5 +208,15 @@ public class MessageUtils {
     public String getAttributePasswordMustNotContain() {
         return attributePasswordMustNotContain;
     }
-
+    
+    /**
+     * Gets the attribute store must be configured.
+     *
+     * @return store must be configured
+     */
+    public String getStoreMustConfigured() {
+        return storeMustConfigured;
+    }
+    
+    
 }

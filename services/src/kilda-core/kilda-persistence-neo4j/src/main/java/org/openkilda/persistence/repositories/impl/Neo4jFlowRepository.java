@@ -16,41 +16,66 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singleton;
 
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPair;
-import org.openkilda.model.FlowPair.FlowPairBuilder;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.converters.FlowStatusConverter;
+import org.openkilda.persistence.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowRepository;
 
 import com.google.common.collect.ImmutableMap;
+import lombok.extern.slf4j.Slf4j;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
+import org.neo4j.ogm.session.Session;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
- * Neo4J OGM implementation of {@link FlowRepository}.
+ * Neo4j OGM implementation of {@link FlowRepository}.
  */
+@Slf4j
 public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements FlowRepository {
-    private static final String FLOW_ID_PROPERTY_NAME = "flowid";
-    private static final String PERIODIC_PINGS_PROPERTY_NAME = "periodic_pings";
+    static final String FLOW_ID_PROPERTY_NAME = "flow_id";
+    static final String GROUP_ID_PROPERTY_NAME = "group_id";
+    static final String SRC_PORT_PROPERTY_NAME = "src_port";
+    static final String DST_PORT_PROPERTY_NAME = "dst_port";
+    static final String PERIODIC_PINGS_PROPERTY_NAME = "periodic_pings";
+    static final String STATUS_PROPERTY_NAME = "status";
 
     private final FlowStatusConverter flowStatusConverter = new FlowStatusConverter();
+    private final SwitchIdConverter switchIdConverter = new SwitchIdConverter();
+
+    private final Neo4jFlowPathRepository flowPathRepository;
 
     public Neo4jFlowRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
+
+        flowPathRepository = new Neo4jFlowPathRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public Collection<Flow> findAll() {
+        return getSession().loadAll(getEntityType(), 1);
+    }
+
+    @Override
+    public long countFlows() {
+        return getSession().countEntitiesOfType(getEntityType());
     }
 
     @Override
@@ -61,153 +86,191 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     }
 
     @Override
-    public Collection<Flow> findById(String flowId) {
+    public Optional<Flow> findById(String flowId) {
         Filter flowIdFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowId);
 
-        return getSession().loadAll(getEntityType(), flowIdFilter, DEPTH_LOAD_ENTITY);
-    }
-
-    @Override
-    public Optional<FlowPair> findFlowPairById(String flowId) {
-        Collection<FlowPair> flowPairs = buildFlowPairs(findById(flowId));
-        if (flowPairs.size() > 1) {
-            throw new PersistenceException(format("Found more that 1 FlowPair entity by %s as flowId", flowId));
+        Collection<Flow> flows = loadAll(flowIdFilter);
+        if (flows.size() > 1) {
+            throw new PersistenceException(format("Found more that 1 Flow entity by %s as flowId", flowId));
+        } else if (flows.isEmpty()) {
+            return Optional.empty();
         }
-        return flowPairs.isEmpty() ? Optional.empty() : Optional.of(flowPairs.iterator().next());
+
+        return Optional.of(flows.iterator().next());
     }
 
     @Override
-    public Collection<FlowPair> findAllFlowPairs() {
-        return buildFlowPairs(findAll());
+    public Collection<Flow> findByGroupId(String flowGroupId) {
+        Filter groupIdFilter = new Filter(GROUP_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowGroupId);
+
+        return loadAll(groupIdFilter);
     }
 
     @Override
-    public Collection<FlowPair> findFlowPairsWithPeriodicPingsEnabled() {
+    public Collection<Flow> findWithPeriodicPingsEnabled() {
         Filter periodicPingsFilter = new Filter(PERIODIC_PINGS_PROPERTY_NAME, ComparisonOperator.EQUALS, true);
 
-        Collection<Flow> flows = getSession().loadAll(getEntityType(), periodicPingsFilter, DEPTH_LOAD_ENTITY);
-        return buildFlowPairs(flows);
-    }
-
-
-    private Collection<FlowPair> buildFlowPairs(Iterable<Flow> flows) {
-        Map<String, FlowPair.FlowPairBuilder> flowPairsMap = new HashMap<>();
-
-        flows.forEach(flow -> {
-            FlowPair.FlowPairBuilder builder = flowPairsMap.computeIfAbsent(flow.getFlowId(), k -> FlowPair.builder());
-            if (flow.isForward()) {
-                builder.forward(flow);
-            } else {
-                builder.reverse(flow);
-            }
-        });
-
-        return flowPairsMap.values().stream().map(FlowPairBuilder::build).collect(Collectors.toList());
+        return loadAll(periodicPingsFilter);
     }
 
     @Override
-    public Collection<Flow> findFlowIdsByEndpoint(SwitchId switchId, int port) {
-        Map<String, Object> parameters = ImmutableMap.of(
-                "switch_id", switchId.toString(),
-                "port", port);
+    public Collection<Flow> findByEndpoint(SwitchId switchId, int port) {
+        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
+        Filter srcPortFilter = new Filter(SRC_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, port);
+        Filter dstSwitchFilter = createDstSwitchFilter(switchId);
+        Filter dstPortFilter = new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, port);
 
-        Set<Flow> flows = new HashSet<>();
-        getSession().query(Flow.class, "MATCH (src:switch)-[f:flow]->(dst:switch) "
-                + "WHERE src.name=$switch_id AND f.src_port=$port "
-                + " OR dst.name=$switch_id AND f.dst_port=$port "
-                + "RETURN src,f, dst", parameters).forEach(flows::add);
-        return flows;
+        return Stream.concat(
+                loadAll(srcSwitchFilter.and(srcPortFilter)).stream(),
+                loadAll(dstSwitchFilter.and(dstPortFilter)).stream())
+                .collect(Collectors.toList());
     }
 
     @Override
-    public Collection<String> findActiveFlowIdsWithPortInPath(SwitchId switchId, int port) {
+    public Collection<Flow> findByEndpointSwitch(SwitchId switchId) {
+        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
+        Filter dstSwitchFilter = createDstSwitchFilter(switchId);
+
+        return Stream.concat(loadAll(srcSwitchFilter).stream(), loadAll(dstSwitchFilter).stream())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Collection<Flow> findActiveFlowsWithPortInPath(SwitchId switchId, int port) {
         Map<String, Object> parameters = ImmutableMap.of(
-                "switch_id", switchId.toString(),
+                "switch_id", switchIdConverter.toGraphProperty(switchId),
                 "port", port,
                 "flow_status", flowStatusConverter.toGraphProperty(FlowStatus.UP));
 
         Set<String> flowIds = new HashSet<>();
-        // Treat empty status as UP to support old storage schema.
-        getSession().query(String.class, "MATCH (src:switch)-[f:flow]->(dst:switch) "
-                + "WHERE (src.name=$switch_id AND f.src_port=$port "
-                + " OR dst.name=$switch_id AND f.dst_port=$port) "
-                + " AND (f.status=$flow_status OR f.status IS NULL)"
-                + "RETURN f.flowid", parameters).forEach(flowIds::add);
-
-        getSession().query(String.class, "MATCH (src:switch)-[fs:flow_segment]->(dst:switch) "
-                + "WHERE (src.name=$switch_id AND fs.src_port=$port "
-                + " OR dst.name=$switch_id AND fs.dst_port=$port) "
-                + "WITH fs "
-                + "MATCH ()-[f:flow]->() "
-                + "WHERE fs.flowid = f.flowid AND (f.status=$flow_status OR f.status IS NULL)"
-                + "RETURN f.flowid", parameters).forEach(flowIds::add);
-        return flowIds;
-    }
-
-    @Override
-    public Collection<String> findDownFlowIds() {
-        Map<String, Object> parameters = ImmutableMap.of(
-                "flow_status", flowStatusConverter.toGraphProperty(FlowStatus.DOWN));
-
-        Set<String> flowIds = new HashSet<>();
         getSession().query(String.class,
-                "MATCH ()-[f:flow{status: {flow_status}}]->() RETURN f.flowid", parameters).forEach(flowIds::add);
-        return flowIds;
+                "MATCH (src:switch)-[:source]-(f:flow)-[:destination]-(dst:switch) "
+                        + "WHERE (src.name=$switch_id AND f.src_port=$port "
+                        + " OR dst.name=$switch_id AND f.dst_port=$port) "
+                        + " AND (f.status=$flow_status OR f.status IS NULL) "
+                        + "RETURN f.flow_id "
+                        + "UNION ALL "
+                        + "MATCH (src:switch)-[:source]-(ps:path_segment)-[:destination]-(dst:switch) "
+                        + "WHERE src.name=$switch_id AND ps.src_port=$port "
+                        + " OR dst.name=$switch_id AND ps.dst_port=$port "
+                        + "MATCH (f:flow)-[:owns]-(:flow_path)-[:owns]-(ps) "
+                        + "WHERE f.status=$flow_status OR f.status IS NULL "
+                        + "RETURN f.flow_id", parameters).forEach(flowIds::add);
+
+        if (flowIds.isEmpty()) {
+            return emptyList();
+        }
+
+        Filter flowIdsFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.IN, flowIds);
+
+        return loadAll(flowIdsFilter);
     }
 
     @Override
-    public Collection<Flow> findBySrcSwitchId(SwitchId switchId) {
-        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
-        return getSession().loadAll(getEntityType(), srcSwitchFilter, DEPTH_LOAD_ENTITY);
+    public Collection<Flow> findDownFlows() {
+        Filter flowStatusFilter = new Filter(STATUS_PROPERTY_NAME, ComparisonOperator.EQUALS, FlowStatus.DOWN);
+
+        return loadAll(flowStatusFilter);
     }
 
     @Override
     public void createOrUpdate(Flow flow) {
+        validateFlow(flow);
+
         transactionManager.doInTransaction(() -> {
-            lockSwitches(requireManagedEntity(flow.getSrcSwitch()), requireManagedEntity(flow.getDestSwitch()));
+            Collection<FlowPath> currentPaths = flowPathRepository.findByFlowId(flow.getFlowId());
+            flowPathRepository.lockInvolvedSwitches(Stream.concat(currentPaths.stream(), flow.getPaths().stream())
+                    .toArray(FlowPath[]::new));
+
+            updatePaths(currentPaths, flow.getPaths());
+
             super.createOrUpdate(flow);
         });
     }
 
-    @Override
-    public void createOrUpdate(FlowPair flowPair) {
-        transactionManager.doInTransaction(() -> {
-            createOrUpdate(flowPair.getForward());
-            createOrUpdate(flowPair.getReverse());
+    private void updatePaths(Collection<FlowPath> currentPaths, Collection<FlowPath> newPaths) {
+        Session session = getSession();
+
+        Set<Long> updatedEntities = newPaths.stream()
+                .map(session::resolveGraphIdFor)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        currentPaths.forEach(path -> {
+            if (!updatedEntities.contains(session.resolveGraphIdFor(path))) {
+                flowPathRepository.delete(path);
+            }
         });
     }
 
     @Override
-    public void delete(FlowPair flowPair) {
+    public void delete(Flow flow) {
         transactionManager.doInTransaction(() -> {
-            delete(flowPair.getForward());
-            delete(flowPair.getReverse());
+            Collection<FlowPath> flowPaths = flowPathRepository.findByFlowId(flow.getFlowId());
+            flowPathRepository.lockInvolvedSwitches(flowPaths.toArray(new FlowPath[0]));
+
+            flowPaths.forEach(flowPathRepository::delete);
+
+            super.delete(flow);
         });
     }
 
     @Override
-    public Collection<FlowPair> findAllFlowPairsWithSegment(SwitchId srcSwitchId, int srcPort,
-                                                            SwitchId dstSwitchId, int dstPort) {
-        Map<String, Object> parameters = ImmutableMap.of(
-                "src_switch", srcSwitchId,
-                "src_port", srcPort,
-                "dst_switch", dstSwitchId,
-                "dst_port", dstPort);
+    public Optional<String> getOrCreateFlowGroupId(String flowId) {
+        return transactionManager.doInTransaction(() -> findById(flowId)
+                .map(diverseFlow -> {
+                    if (diverseFlow.getGroupId() == null) {
+                        String groupId = UUID.randomUUID().toString();
 
-        Iterable<Flow> flows = getSession().query(Flow.class, "MATCH (:switch)-[fc:flow_segment]->(:switch) "
-                + "WHERE fc.src_switch=$src_switch "
-                + "AND fc.src_port=$src_port  "
-                + "AND fc.dst_switch=$dst_switch "
-                + "AND fc.dst_port=$dst_port  "
-                + "MATCH (src:switch)-[f:flow]->(dst:switch) "
-                + "WHERE fc.flowid=f.flowid  "
-                + "RETURN src, f, dst", parameters);
-
-        return buildFlowPairs(flows);
+                        diverseFlow.setGroupId(groupId);
+                        super.createOrUpdate(diverseFlow);
+                    }
+                    return diverseFlow.getGroupId();
+                }));
     }
 
     @Override
-    Class<Flow> getEntityType() {
+    protected Class<Flow> getEntityType() {
         return Flow.class;
+    }
+
+    @Override
+    protected int getDepthLoadEntity() {
+        // depth 3 is needed to load switches in PathSegment entity.
+        return 3;
+    }
+
+    @Override
+    protected int getDepthCreateUpdateEntity() {
+        // depth 3 is needed to create/update relations to switches, flow paths,
+        // path segments and switches of path segments.
+        return 3;
+    }
+
+    /**
+     * Validate the flow relations and flow path to be managed by Neo4j OGM and reference the same flow.
+     */
+    private void validateFlow(Flow flow) {
+        requireManagedEntity(flow.getSrcSwitch());
+        requireManagedEntity(flow.getDestSwitch());
+
+        // it must reference the same object.
+        FlowPath forwardPath = flow.getForwardPath();
+        if (forwardPath != null) {
+            if (forwardPath.getFlow() != flow) {
+                throw new IllegalArgumentException(format("Flow path %s references different flow, but expect %s",
+                        forwardPath, flow));
+            }
+            flowPathRepository.validateFlowPath(forwardPath);
+        }
+
+        FlowPath reversePath = flow.getReversePath();
+        if (reversePath != null) {
+            if (reversePath.getFlow() != flow) {
+                throw new IllegalArgumentException(format("Flow path %s references different flow, but expect %s",
+                        reversePath, flow));
+            }
+            flowPathRepository.validateFlowPath(reversePath);
+        }
     }
 }

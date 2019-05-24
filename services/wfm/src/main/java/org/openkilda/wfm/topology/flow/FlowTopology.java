@@ -24,13 +24,14 @@ import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.error.NameCollisionException;
+import org.openkilda.wfm.share.bolt.HistoryBolt;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.bolts.CrudBolt;
 import org.openkilda.wfm.topology.flow.bolts.ErrorBolt;
 import org.openkilda.wfm.topology.flow.bolts.NorthboundReplyBolt;
 import org.openkilda.wfm.topology.flow.bolts.SpeakerBolt;
 import org.openkilda.wfm.topology.flow.bolts.SplitterBolt;
-import org.openkilda.wfm.topology.flow.bolts.StatusBolt;
 import org.openkilda.wfm.topology.flow.bolts.TransactionBolt;
 
 import org.apache.storm.generated.StormTopology;
@@ -92,10 +93,10 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         PersistenceManager persistenceManager =
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
-        CrudBolt crudBolt = new CrudBolt(persistenceManager, pathComputerConfig);
+        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        CrudBolt crudBolt = new CrudBolt(persistenceManager, pathComputerConfig, flowResourcesConfig);
         BoltDeclarer boltSetup = builder.setBolt(ComponentType.CRUD_BOLT.toString(), crudBolt, parallelism)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
-                // TODO: this READ is used for single and for all flows. But all flows shouldn't be fieldsGrouping.
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.READ.toString(), fieldFlowId)
                 .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.DUMP.toString())
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.UPDATE.toString(), fieldFlowId)
@@ -103,14 +104,14 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.PUSH.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.UNPUSH.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.REROUTE.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.PATH_SWAP.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.METER_MODE.toString(), fieldFlowId)
                 // TODO: this CACHE_SYNC shouldn't be fields-grouping - there is no field - it should be all - but
                 // tackle during multi instance testing
-                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.CACHE_SYNC.toString(), fieldFlowId);
+                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.DEALLOCATE_RESOURCES.toString(),
+                        fieldFlowId)
+                .fieldsGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.STATUS.toString(), fieldFlowId);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
-
-        StatusBolt statusBolt = new StatusBolt(persistenceManager);
-        builder.setBolt(ComponentType.STATUS_BOLT.toString(), statusBolt, parallelism)
-                .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.STATUS.toString());
 
         /*
          * Spout receives Speaker responses
@@ -144,7 +145,15 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         KafkaBolt speakerKafkaBolt = createKafkaBolt(topologyConfig.getKafkaSpeakerFlowTopic());
         builder.setBolt(ComponentType.SPEAKER_KAFKA_BOLT.toString(), speakerKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.CREATE.toString())
-                .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.DELETE.toString());
+                .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString(), StreamType.DELETE.toString())
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.METER_MODE.toString());
+
+        /*
+         * Bolt sends requests back to CrudBolt
+         */
+        KafkaBolt flowKafkaBolt = createKafkaBolt(topologyConfig.getKafkaFlowTopic());
+        builder.setBolt(ComponentType.FLOW_KAFKA_BOLT.toString(), flowKafkaBolt, parallelism)
+                .shuffleGrouping(ComponentType.TRANSACTION_BOLT.toString());
 
         /*
          * Error processing bolt
@@ -168,6 +177,13 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         KafkaBolt northboundKafkaBolt = createKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         builder.setBolt(ComponentType.NORTHBOUND_KAFKA_BOLT.toString(), northboundKafkaBolt, parallelism)
                 .shuffleGrouping(ComponentType.NORTHBOUND_REPLY_BOLT.toString(), StreamType.RESPONSE.toString());
+
+        /*
+         * Bolt saves History data
+         */
+        HistoryBolt historyBolt = new HistoryBolt(persistenceManager);
+        builder.setBolt(ComponentType.HISTORY_BOLT.toString(), historyBolt, parallelism)
+                .shuffleGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.HISTORY.toString());
 
         createCtrlBranch(builder, ctrlTargets);
 

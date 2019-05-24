@@ -43,6 +43,9 @@ public enum DeleteRulesAction {
     // Remove the verification loop drop rule only
     REMOVE_VERIFICATION_LOOP,
 
+    // Remove BFD catch rule
+    REMOVE_BFD_CATCH,
+
     // Drop all default rules (ie a combination of the above)
     REMOVE_DEFAULTS,
 

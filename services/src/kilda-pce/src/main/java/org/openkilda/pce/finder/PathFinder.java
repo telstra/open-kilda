@@ -15,10 +15,11 @@
 
 package org.openkilda.pce.finder;
 
-import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.impl.AvailableNetwork;
+import org.openkilda.pce.model.Edge;
+import org.openkilda.pce.model.WeightFunction;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -33,7 +34,22 @@ public interface PathFinder {
      *
      * @return an ordered list that represents the path from start to end, or an empty list if no path found.
      */
-    Pair<List<Isl>, List<Isl>> findPathInNetwork(AvailableNetwork network,
-                                                 SwitchId startSwitchId, SwitchId endSwitchId)
+    Pair<List<Edge>, List<Edge>> findPathInNetwork(AvailableNetwork network,
+                                                  SwitchId startSwitchId, SwitchId endSwitchId)
             throws UnroutableFlowException;
+
+    /**
+     * Find N (or less) best paths.
+     *
+     * @return an list of N (or less) best paths.
+     */
+    List<List<Edge>> findNPathsBetweenSwitches(AvailableNetwork network, SwitchId startSwitchId, SwitchId endSwitchId,
+                                               int count) throws UnroutableFlowException;
+
+    /**
+     * Returns weight function for current finder.
+     *
+     * @return the weight function.
+     */
+    WeightFunction getWeightFunction();
 }

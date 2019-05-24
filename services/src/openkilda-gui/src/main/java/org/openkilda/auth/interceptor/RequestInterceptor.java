@@ -19,6 +19,7 @@ import org.openkilda.auth.context.ServerContext;
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.auth.model.RequestContext;
 import org.openkilda.constants.IConstants;
+import org.openkilda.constants.IConstants.ApplicationSetting;
 import org.openkilda.constants.Status;
 import org.openkilda.service.ApplicationSettingService;
 
@@ -74,36 +75,32 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
     private UserRepository userRepository;
     
     @Autowired
-    private ApplicationSettingService sessionTimeoutService;
+    private ApplicationSettingService applicationSettingService;
 
     @Override
     public boolean preHandle(final HttpServletRequest request, final HttpServletResponse response, final Object handler)
-            throws Exception {
+            throws AccessDeniedException {
         String correlationId = request.getParameter(CORRELATION_ID);
         correlationId = correlationId == null ? UUID.randomUUID().toString() : correlationId;
 
-        try {
-            HttpSession session = request.getSession();
-            UserInfo userInfo = null;
-            if (IConstants.SessionTimeout.TIME_IN_MINUTE == null) {
-                IConstants.SessionTimeout.TIME_IN_MINUTE = sessionTimeoutService.getSessionTimeout();
-            }
-            session.setMaxInactiveInterval(IConstants.SessionTimeout.TIME_IN_MINUTE * 60);
-            userInfo = (UserInfo) session.getAttribute(IConstants.SESSION_OBJECT);
-            if (userInfo != null) {
-                validateUser(userInfo);
-                if (handler instanceof HandlerMethod) {
-                    HandlerMethod handlerMethod = (HandlerMethod) handler;
-                    Permissions permissions = handlerMethod.getMethod().getAnnotation(Permissions.class);
-                    if (permissions != null) {
-                        validateAndPopulatePermisssion(userInfo, permissions);
-                    }
+        HttpSession session = request.getSession();
+        UserInfo userInfo = null;
+        if (IConstants.SessionTimeout.TIME_IN_MINUTE == null) {
+            IConstants.SessionTimeout.TIME_IN_MINUTE = Integer.valueOf(applicationSettingService
+                    .getApplicationSettings().get(ApplicationSetting.SESSION_TIMEOUT.name()));
+        }
+        session.setMaxInactiveInterval(IConstants.SessionTimeout.TIME_IN_MINUTE * 60);
+        userInfo = (UserInfo) session.getAttribute(IConstants.SESSION_OBJECT);
+        if (userInfo != null) {
+            validateUser(userInfo);
+            if (handler instanceof HandlerMethod) {
+                HandlerMethod handlerMethod = (HandlerMethod) handler;
+                Permissions permissions = handlerMethod.getMethod().getAnnotation(Permissions.class);
+                if (permissions != null) {
+                    validateAndPopulatePermisssion(userInfo, permissions);
                 }
-                updateRequestContext(correlationId, request, userInfo);
             }
-        } catch (IllegalStateException ex) {
-            LOGGER.error("[getLoggedInUser] Exception while retrieving user information from session. Exception: "
-                    + ex.getLocalizedMessage(), ex);
+            updateRequestContext(correlationId, request, userInfo);
         }
         return true;
     }
@@ -138,10 +135,10 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
     }
 
     private void validateAndPopulatePermisssion(final UserInfo userInfo, final Permissions permissions)
-            throws Exception {
+            throws AccessDeniedException {
         if (!permissions.checkObjectAccessPermissions()) {
             if (!hasPermissions(userInfo, permissions.values())) {
-                LOGGER.error("Access Denied. User(id: " + userInfo.getUserId()
+                LOGGER.warn("Access Denied. User(id: " + userInfo.getUserId()
                         + ") not have the permission to perform this operation. Permissions required "
                         + permissions.values());
                 throw new AccessDeniedException(messageUtils.getUnauthorizedMessage());

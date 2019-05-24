@@ -340,7 +340,7 @@ public class UserInfo implements Serializable {
     @Override
     public String toString() {
         return "UserInfo [userId=" + userId + ", username=" + username + ", name=" + name + ", roles=" + roles
-                + ", email=" + email + ", roleIds=" + roleIds + ", password=" + password + ", status=" + status
-                + ", is2FaEnabled=" + is2FaEnabled + ", newPassword=" + newPassword + ", code=" + code + "]";
+                + ", email=" + email + ", roleIds=" + roleIds + ", status=" + status + ", is2FaEnabled=" + is2FaEnabled
+                + ", code=" + code + "]";
     }
 }

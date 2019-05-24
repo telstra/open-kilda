@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import static org.openkilda.messaging.Utils.PAYLOAD;
 
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.HeartBeat;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
@@ -31,10 +30,8 @@ import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
-import org.openkilda.messaging.info.discovery.NetworkDumpBeginMarker;
-import org.openkilda.messaging.info.discovery.NetworkDumpEndMarker;
-import org.openkilda.messaging.info.discovery.NetworkDumpPortData;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
+import org.openkilda.messaging.info.event.DeactivateIslInfoData;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -42,11 +39,13 @@ import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.NetworkEndpoint;
+import org.openkilda.messaging.model.SpeakerSwitchPortView;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.OfeMessageUtils;
-import org.openkilda.wfm.WatchDog;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.isl.DiscoveryManager;
@@ -54,12 +53,12 @@ import org.openkilda.wfm.isl.DummyIIslFilter;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.event.OFEventWfmTopologyConfig.DiscoveryConfig;
 import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
+import org.openkilda.wfm.topology.utils.KibanaLogWrapper;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
-import org.apache.storm.kafka.spout.internal.Timer;
 import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.state.KeyValueState;
 import org.apache.storm.task.OutputCollector;
@@ -70,13 +69,14 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -100,11 +100,13 @@ public class OfeLinkBolt
         extends AbstractTickStatefulBolt<KeyValueState<String, Object>>
         implements ICtrlBolt {
     private static final Logger logger = LoggerFactory.getLogger(OfeLinkBolt.class);
+    private static final KibanaLogWrapper logWrapper = new KibanaLogWrapper(logger);
     private static final int BOLT_TICK_INTERVAL = 1;
 
     private static final String STREAM_ID_CTRL = "ctrl";
     @VisibleForTesting
     static final String STATE_ID_DISCOVERY = "discovery-manager";
+    static final String STATE_ID_UNMANGED_SWITCHES = "unmanaged_switches";
     static final String SPEAKER_DISCO_STREAM = "speaker.disco";
     static final String SPEAKER_STREAM = "speaker";
     static final String NETWORK_TOPOLOGY_CHANGE_STREAM = "network-topology-change";
@@ -115,20 +117,20 @@ public class OfeLinkBolt
     private final int islHealthCheckTimeout;
     private final int islHealthFailureLimit;
     private final int islKeepRemovedTimeout;
-    private final float watchDogInterval;
-    private WatchDog watchDog;
+    private final int bfdPortOffset;
     private TopologyContext context;
     private OutputCollector collector;
 
     private DummyIIslFilter islFilter;
-    private DiscoveryManager discovery;
-    private Map<SwitchId, Set<DiscoveryLink>> linksBySwitch;
-
-    private String dumpRequestCorrelationId = null;
-    private float dumpRequestTimeout;
-    private Timer dumpRequestTimer;
     @VisibleForTesting
-    State state = State.NEED_SYNC;
+    DiscoveryManager discovery;
+    private Map<SwitchId, Set<DiscoveryLink>> linksBySwitch;
+    private Set<SwitchId> unmanagedSwitches;
+
+    @VisibleForTesting
+    State state = State.MAIN;
+
+    long packetId = 0;
 
     /**
      * Default constructor .. default health check frequency
@@ -146,10 +148,8 @@ public class OfeLinkBolt
         islHealthFailureLimit = discoveryConfig.getDiscoveryLimit();
         islKeepRemovedTimeout = discoveryConfig.getKeepRemovedIslTimeout();
 
-        watchDogInterval = discoveryConfig.getDiscoverySpeakerFailureTimeout();
-        dumpRequestTimeout = discoveryConfig.getDiscoveryDumpRequestTimeout();
-
         islDiscoveryTopic = config.getKafkaSpeakerDiscoTopic();
+        bfdPortOffset = config.getBfdPortOffset();
     }
 
     @Override
@@ -163,7 +163,6 @@ public class OfeLinkBolt
     @Override
     @SuppressWarnings("unchecked")
     public void initState(KeyValueState<String, Object> state) {
-        watchDog = new WatchDog(watchDogInterval);
 
         // NB: First time the worker is created this will be null
         // TODO: what happens to state as workers go up or down
@@ -173,6 +172,14 @@ public class OfeLinkBolt
             state.put(islDiscoveryTopic, payload);
         } else {
             linksBySwitch = (Map<SwitchId, Set<DiscoveryLink>>) payload;
+        }
+
+        Object unmanagedSwitchesFromState = state.get(STATE_ID_UNMANGED_SWITCHES);
+        if (unmanagedSwitchesFromState == null) {
+            unmanagedSwitches = new HashSet<SwitchId>();
+            state.put(STATE_ID_UNMANGED_SWITCHES, unmanagedSwitches);
+        } else {
+            unmanagedSwitches = (Set<SwitchId>) unmanagedSwitchesFromState;
         }
 
         // DiscoveryManager counts failures as failed attempts,
@@ -188,43 +195,9 @@ public class OfeLinkBolt
      */
     @Override
     protected void doTick(Tuple tuple) {
-        boolean isSpeakerAvailable = watchDog.isAvailable();
-
-        if (!isSpeakerAvailable) {
-            stateTransition(State.OFFLINE);
-        }
-
-        String correlationId = UUID.randomUUID().toString();
-
-        switch (state) {
-            case NEED_SYNC:
-                dumpRequestCorrelationId = correlationId;
-                sendNetworkRequest(tuple, correlationId);
-                enableDumpRequestTimer();
-                stateTransition(State.WAIT_SYNC);
-                break;
-
-            case WAIT_SYNC:
-            case SYNC_IN_PROGRESS:
-                if (dumpRequestTimer.isExpiredResetOnTrue()) {
-                    logger.error("Did not get network dump, send one more dump request");
-                    dumpRequestCorrelationId = correlationId;
-                    sendNetworkRequest(tuple, correlationId);
-                }
-                break;
-
-            case OFFLINE:
-                if (isSpeakerAvailable) {
-                    logger.info("Switch into ONLINE mode");
-                    stateTransition(State.NEED_SYNC);
-                }
-                break;
-
-            case MAIN:
-                processDiscoveryPlan(tuple, correlationId);
-                break;
-            default:
-                logger.error("Illegal state of OfeLinkBolt: {}", state);
+        if (unmanagedSwitches.isEmpty()) {
+            String correlationId = UUID.randomUUID().toString();
+            processDiscoveryPlan(tuple, correlationId);
         }
     }
 
@@ -277,7 +250,7 @@ public class OfeLinkBolt
      * Helper method for sending an ISL Discovery Message.
      */
     private void sendDiscoveryMessage(Tuple tuple, NetworkEndpoint node, String correlationId) throws IOException {
-        DiscoverIslCommandData data = new DiscoverIslCommandData(node.getDatapath(), node.getPortNumber());
+        DiscoverIslCommandData data = new DiscoverIslCommandData(node.getDatapath(), node.getPortNumber(), packetId++);
         CommandMessage message = new CommandMessage(data, System.currentTimeMillis(),
                 correlationId, Destination.CONTROLLER);
         logger.debug("LINK: Send ISL discovery command: {}", message);
@@ -307,7 +280,6 @@ public class OfeLinkBolt
         BaseMessage message;
         try {
             message = MAPPER.readValue(json, BaseMessage.class);
-            watchDog.reset();
         } catch (IOException e) {
             collector.ack(tuple);
             logger.error("Unknown Message type={}", json);
@@ -316,10 +288,8 @@ public class OfeLinkBolt
 
         try {
             if (message instanceof InfoMessage) {
+                preHandleMessage((InfoMessage) message);
                 dispatch(tuple, (InfoMessage) message);
-            } else if (message instanceof HeartBeat) {
-                logger.debug("Got speaker's heart beat");
-                stateTransition(State.NEED_SYNC, State.OFFLINE);
             }
         } catch (Exception e) {
             logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
@@ -328,100 +298,74 @@ public class OfeLinkBolt
         }
     }
 
-    private void dispatch(Tuple tuple, InfoMessage infoMessage) {
-        switch (state) {
-            case NEED_SYNC:
-                dispatchNeedSync(tuple, infoMessage);
-                break;
-            case WAIT_SYNC:
-                dispatchWaitSync(tuple, infoMessage);
-                break;
-            case SYNC_IN_PROGRESS:
-                dispatchSyncInProgress(tuple, infoMessage);
-                break;
-            case OFFLINE:
-                dispatchOffline(tuple, infoMessage);
-                break;
-            case MAIN:
-                dispatchMain(tuple, infoMessage);
-                break;
-            default:
-                reportInvalidEvent(infoMessage.getData());
+    private void preHandleMessage(InfoMessage message) {
+        InfoData data = message.getData();
+        if (data instanceof DeactivateIslInfoData) {
+            DeactivateIslInfoData deactivateIslInfoData = (DeactivateIslInfoData) data;
+            discovery.handleFailed(deactivateIslInfoData.getSource().getSwitchId(),
+                    deactivateIslInfoData.getSource().getPortNo());
         }
     }
 
-    private void dispatchNeedSync(Tuple tuple, InfoMessage infoMessage) {
-        logger.warn("Bolt internal state is out of sync with FL, skip tuple");
-    }
-
-    private void dispatchWaitSync(Tuple tuple, InfoMessage infoMessage) {
-        InfoData data = infoMessage.getData();
-        if (data instanceof NetworkDumpBeginMarker) {
-            if (dumpRequestCorrelationId.equals(infoMessage.getCorrelationId())) {
-                logger.info("Got response on network sync request, start processing network events");
-                enableDumpRequestTimer();
-                stateTransition(State.SYNC_IN_PROGRESS);
-            } else {
-                logger.warn(
-                        "Got response on network sync request with invalid "
-                                + "correlation-id(expect: \"{}\", got: \"{}\")",
-                        dumpRequestCorrelationId, infoMessage.getCorrelationId());
-            }
-        } else {
-            reportInvalidEvent(data);
+    private SpeakerSwitchView cleanUpLogicalPorts(SpeakerSwitchView originalSwitch) {
+        if (originalSwitch == null) {
+            return null;
         }
+        return originalSwitch.toBuilder()
+                .ports(originalSwitch.getPorts()
+                        .stream()
+                        .filter(port -> port.getNumber() <= bfdPortOffset).collect(Collectors.toList()))
+                .build();
     }
 
-    private void dispatchSyncInProgress(Tuple tuple, InfoMessage infoMessage) {
+    @VisibleForTesting
+    protected void dispatch(Tuple tuple, InfoMessage infoMessage) {
         InfoData data = infoMessage.getData();
-        if (data instanceof NetworkDumpSwitchData) {
+        if (data instanceof UnmanagedSwitchNotification) {
+            UnmanagedSwitchNotification notification = (UnmanagedSwitchNotification) data;
+            unmanagedSwitches.add(notification.getSwitchId());
+        } else if (data instanceof NetworkDumpSwitchData) {
+            NetworkDumpSwitchData networkDumpSwitchData = (NetworkDumpSwitchData) data;
+            SpeakerSwitchView switchWithNoBfdPorts = cleanUpLogicalPorts(networkDumpSwitchData.getSwitchView());
+            unmanagedSwitches.remove(switchWithNoBfdPorts.getDatapath());
             logger.info("Event/WFM Sync: switch {}", data);
-            // no sync actions required for switches.
-
-        } else if (data instanceof NetworkDumpPortData) {
-            logger.info("Event/WFM Sync: port {}", data);
-            NetworkDumpPortData portData = (NetworkDumpPortData) data;
-            discovery.registerPort(portData.getSwitchId(), portData.getPortNo());
-
-        } else if (data instanceof NetworkDumpEndMarker) {
-            logger.info("End of network sync stream received");
-            stateTransition(State.MAIN);
-        } else {
-            reportInvalidEvent(data);
-        }
-    }
-
-    private void dispatchOffline(Tuple tuple, InfoMessage infoMessage) {
-        logger.warn("Got input while in offline mode, it mean the possibility to try sync state");
-        watchDog.reset();
-        stateTransition(State.NEED_SYNC);
-    }
-
-    private void dispatchMain(Tuple tuple, InfoMessage infoMessage) {
-        InfoData data = infoMessage.getData();
-        if (data instanceof SwitchInfoData) {
-            handleSwitchEvent(tuple, infoMessage);
+            discovery.registerSwitch(switchWithNoBfdPorts);
+        } else if (data instanceof SwitchInfoData) {
+            SwitchInfoData switchData = (SwitchInfoData) infoMessage.getData();
+            unmanagedSwitches.remove(switchData.getSwitchId());
+            SpeakerSwitchView switchWithNoBfdPorts = cleanUpLogicalPorts(switchData.getSwitchView());
+            SwitchInfoData switchDataWithNoBfdPorts = switchData.toBuilder().switchView(switchWithNoBfdPorts).build();
+            InfoMessage cleanedInfoMessage = infoMessage.toBuilder().data(switchDataWithNoBfdPorts).build();
+            handleSwitchEvent(tuple, cleanedInfoMessage);
             passToNetworkTopologyBolt(tuple, infoMessage);
         } else if (data instanceof PortInfoData) {
+            PortInfoData portInfoData = (PortInfoData) data;
+            int portNo = portInfoData.getPortNo();
+            if (portNo > bfdPortOffset) {
+                PortChangeType state = portInfoData.getState();
+                if (state != PortChangeType.UP && state != PortChangeType.DOWN) {
+                    return;
+                }
+                ((PortInfoData) data).setPortNo(portNo - bfdPortOffset);
+            }
+            unmanagedSwitches.remove(portInfoData.getSwitchId());
             handlePortEvent(tuple, (PortInfoData) data);
             passToNetworkTopologyBolt(tuple, infoMessage);
         } else if (data instanceof IslInfoData) {
+            IslInfoData islInfoData = (IslInfoData) data;
+            unmanagedSwitches.remove(islInfoData.getSource().getSwitchId());
             handleIslEvent(tuple, infoMessage);
         } else if (data instanceof DiscoPacketSendingConfirmation) {
-            handleSentDiscoPacket((DiscoPacketSendingConfirmation) data);
+            DiscoPacketSendingConfirmation confirmation = (DiscoPacketSendingConfirmation) data;
+            unmanagedSwitches.remove(confirmation.getEndpoint().getDatapath());
+            handleSentDiscoPacket(confirmation);
+        } else if (data instanceof DeactivateIslInfoData) {
+            DeactivateIslInfoData deactivateIslInfoData = (DeactivateIslInfoData) data;
+            unmanagedSwitches.remove(((DeactivateIslInfoData) data).getSource().getSwitchId());
+            discovery.handleFailed(deactivateIslInfoData.getSource().getSwitchId(),
+                    deactivateIslInfoData.getSource().getPortNo());
         } else {
             reportInvalidEvent(data);
-        }
-    }
-
-    private void stateTransition(State switchTo) {
-        logger.info("State transition to {} (current {})", switchTo, state);
-        state = switchTo;
-    }
-
-    private void stateTransition(State switchTo, State onlyInState) {
-        if (state == onlyInState) {
-            stateTransition(switchTo);
         }
     }
 
@@ -431,11 +375,13 @@ public class OfeLinkBolt
                 event.getClass().getName());
     }
 
-    private void handleSwitchEvent(Tuple tuple, InfoMessage infoMessage) {
+    protected void handleSwitchEvent(Tuple tuple, InfoMessage infoMessage) {
         SwitchInfoData switchData = (SwitchInfoData) infoMessage.getData();
         SwitchId switchId = switchData.getSwitchId();
         SwitchChangeType switchState = switchData.getState();
-        logger.info("DISCO: Switch Event: switch={} state={}", switchId, switchState);
+
+        String logMessage = format("DISCO: Switch Event: switch=%s state=%s", switchId, switchState);
+        logWrapper.onSwitchDiscovery(Level.INFO, logMessage, switchId, switchState);
 
         if (switchState == SwitchChangeType.DEACTIVATED) {
             passToNetworkTopologyBolt(tuple, infoMessage);
@@ -443,7 +389,16 @@ public class OfeLinkBolt
             // It's possible that we get duplicated switch up events .. particulary if
             // FL goes down and then comes back up; it'll rebuild its switch / port information.
             // NB: need to account for this, and send along to TE to be conservative.
-            discovery.handleSwitchUp(switchId);
+            discovery.registerSwitch(switchData.getSwitchView());
+
+            // Produce port UP log records to match with current behavior i.e. switch-ADD event is a predecessor
+            // for set of port-UP events.
+            for (SpeakerSwitchPortView port : switchData.getSwitchView().getPorts()) {
+                if (SpeakerSwitchPortView.State.UP == port.getState()) {
+                    logger.info("DISCO: Port Event: switch={} port={} state={}",
+                                switchId, port.getNumber(), PortChangeType.UP);
+                }
+            }
         } else {
             // TODO: Should this be a warning? Evaluate whether any other state needs to be handled
             logger.warn("SWITCH Event: ignoring state: {}", switchState);
@@ -458,7 +413,8 @@ public class OfeLinkBolt
         final SwitchId switchId = portData.getSwitchId();
         final int portId = portData.getPortNo();
         String updown = portData.getState().toString();
-        logger.info("DISCO: Port Event: switch={} port={} state={}", switchId, portId, updown);
+        String logMessage = format("DISCO: Port Event: switch=%s port=%d state=%s", switchId, portId, updown);
+        logWrapper.onPortDiscovery(Level.INFO, logMessage, switchId, portId, updown);
 
         if (isPortUpOrCached(updown)) {
             discovery.handlePortUp(switchId, portId);
@@ -492,11 +448,11 @@ public class OfeLinkBolt
          */
         if (IslChangeType.DISCOVERED.equals(islState)) {
             if (discoveredIsl.isSelfLooped()) {
-                logger.info("DISCO: ISL Event: loop detected: switch={} srcPort={} dstPort={}",
+                String logMessage = format("DISCO: ISL Event: loop detected: switch=%s srcPort=%d dstPort=%d",
                         srcSwitch, srcPort, dstPort);
+                logWrapper.onIslDiscoveryLoop(Level.INFO, logMessage, srcSwitch, srcPort, dstPort, islState);
                 return;
             }
-
             if (discovery.isIslMoved(srcSwitch, srcPort, dstSwitch, dstPort)) {
                 handleMovedIsl(tuple, srcSwitch, srcPort, dstSwitch, dstPort, correlationId);
             }
@@ -513,7 +469,8 @@ public class OfeLinkBolt
 
         if (stateChanged) {
             // If the state changed, notify the TE.
-            logger.info("DISCO: ISL Event: switch={} port={} state={}", srcSwitch, srcPort, islState);
+            String logMessage = format("DISCO: ISL Event: switch=%s port=%d state=%s", srcSwitch, srcPort, islState);
+            logWrapper.onIslDiscovery(Level.INFO, logMessage, srcSwitch, srcPort, dstPort, islState);
             passToNetworkTopologyBolt(tuple, infoMessage);
         }
     }
@@ -521,7 +478,7 @@ public class OfeLinkBolt
     // TODO: Who are some of the recipients of IslFail message? ie who are we emitting this to?
     //      - From a code search, we see these code bases refering to IslInfoData:
     //          - wfm/topology/cache
-    //          - wfm/topology/islstats
+    //          - wfm/topology/isllatency
     //          - simulator/bolts/SpeakerBolt
     //          - services/topology-engine/queue-engine/topologylistener/eventhandler.py
     //          - services/src/topology .. service/impl/IslServiceImpl .. service/IslService
@@ -529,9 +486,17 @@ public class OfeLinkBolt
     //          - services/src/pce .. NetworkCache .. FlowCache ..
     private void sendDiscoveryFailed(SwitchId switchId, int portId, Tuple tuple, String correlationId) {
         PathNode node = new PathNode(switchId, portId, 0, 0L);
-        InfoData data = new IslInfoData(0L, node, null, 0L, IslChangeType.FAILED, 0L, false);
+        InfoData data = IslInfoData.builder()
+                .source(node)
+                .state(IslChangeType.FAILED)
+                .build();
+
         InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), correlationId);
 
+        if (unmanagedSwitches.contains(switchId)) {
+            logger.warn("LINK: Ignoring ISL discovery failure since Floodlight is unavailable={}", message);
+            return;
+        }
         passToNetworkTopologyBolt(tuple, message);
         discovery.handleFailed(switchId, portId);
         logger.warn("LINK: Send ISL discovery failure message={}", message);
@@ -540,11 +505,6 @@ public class OfeLinkBolt
     private boolean isPortUpOrCached(String state) {
         return OfeMessageUtils.PORT_UP.equals(state) || OfeMessageUtils.PORT_ADD.equals(state)
                 || PortChangeType.CACHED.getType().equals(state);
-    }
-
-    private void enableDumpRequestTimer() {
-        long expireDelay = (int) (dumpRequestTimeout * 1000);
-        dumpRequestTimer = new Timer(expireDelay, expireDelay, TimeUnit.MILLISECONDS);
     }
 
     private void handleMovedIsl(Tuple tuple, SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort,

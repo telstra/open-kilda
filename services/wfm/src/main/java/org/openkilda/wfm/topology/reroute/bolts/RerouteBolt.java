@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,41 +15,48 @@
 
 package org.openkilda.wfm.topology.reroute.bolts;
 
-import static java.lang.String.format;
-import static org.openkilda.messaging.Utils.MAPPER;
-
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.topology.reroute.RerouteTopology;
+import org.openkilda.wfm.topology.reroute.StreamType;
+import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 import org.openkilda.wfm.topology.reroute.service.RerouteService;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
+@Slf4j
 public class RerouteBolt extends AbstractBolt {
 
-    private static final Logger logger = LoggerFactory.getLogger(RerouteBolt.class);
-
     public static final String FLOW_ID_FIELD = "flow-id";
-    public static final String CORRELATION_ID_FIELD = "correlation-id";
+    public static final String THROTTLING_DATA_FIELD = "throttling-data";
 
     private PersistenceManager persistenceManager;
     private transient RerouteService rerouteService;
+
 
     public RerouteBolt(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
@@ -69,55 +76,68 @@ public class RerouteBolt extends AbstractBolt {
      * {@inheritDoc}
      */
     @Override
-    protected void handleInput(Tuple tuple) {
-        String request = tuple.getString(0);
-
-        CommandMessage message;
-        try {
-            message = MAPPER.readValue(request, CommandMessage.class);
-        } catch (IOException e) {
-            logger.error("Error during parsing request for Reroute topology", e);
-            return;
-        }
-
+    protected void handleInput(Tuple tuple) throws PipelineException {
+        CommandMessage message = pullValue(tuple, MessageTranslator.FIELD_ID_PAYLOAD, CommandMessage.class);
         CommandData commandData = message.getData();
 
         if (commandData instanceof RerouteAffectedFlows) {
             RerouteAffectedFlows rerouteAffectedFlows = (RerouteAffectedFlows) commandData;
             PathNode pathNode = rerouteAffectedFlows.getPathNode();
-            Collection<String> affectedFlows
-                    = rerouteService.getAffectedFlowIds(pathNode.getSwitchId(), pathNode.getPortNo());
+            Collection<FlowPath> affectedFlowPaths
+                    = rerouteService.getAffectedFlowPaths(pathNode.getSwitchId(), pathNode.getPortNo());
 
-            emitRerouteCommands(tuple, affectedFlows, message.getCorrelationId(),
+            // swapping affected primary paths with available protected
+            List<FlowPath> pathsForSwapping = rerouteService.getPathsForSwapping(affectedFlowPaths);
+            emitPathSwapCommands(tuple, pathsForSwapping, message.getCorrelationId(),
                     rerouteAffectedFlows.getReason());
+
+            Map<Flow, Set<PathId>> flowsForRerouting = rerouteService.groupFlowsForRerouting(affectedFlowPaths);
+            for (Entry<Flow, Set<PathId>> entry : flowsForRerouting.entrySet()) {
+
+                emitRerouteCommand(tuple, message.getCorrelationId(), entry.getKey(), entry.getValue(),
+                        rerouteAffectedFlows.getReason());
+            }
 
         } else if (commandData instanceof RerouteInactiveFlows) {
             RerouteInactiveFlows rerouteInactiveFlows = (RerouteInactiveFlows) commandData;
-            Collection<String> inactiveFlows = rerouteService.getInactiveFlows();
+            Map<Flow, Set<PathId>> flowsForRerouting = rerouteService.getInactiveFlowsForRerouting();
 
-            emitRerouteCommands(tuple, inactiveFlows, message.getCorrelationId(),
-                    rerouteInactiveFlows.getReason());
+            for (Entry<Flow, Set<PathId>> entry : flowsForRerouting.entrySet()) {
+
+                emitRerouteCommand(tuple, message.getCorrelationId(), entry.getKey(), entry.getValue(),
+                        rerouteInactiveFlows.getReason());
+            }
 
         } else {
-            logger.warn("Skip undefined message type {}", request);
+            log.warn("Skip undefined message type {}", message);
         }
 
     }
 
-    private void emitRerouteCommands(Tuple tuple, Collection<String> flows,
-                                     String initialCorrelationId, String reason) {
-        for (String flowId : flows) {
-            String correlationId = format("%s-%s", initialCorrelationId, flowId);
+    private void emitRerouteCommand(Tuple tuple, String correlationId, Flow flow, Set<PathId> paths, String reason) {
+        getOutput().emit(tuple, new Values(flow.getFlowId(),
+                new FlowThrottlingData(correlationId, flow.getPriority(), flow.getTimeCreate(), paths)));
 
-            getOutput().emit(tuple, new Values(flowId, correlationId));
+        log.warn("Flow {} reroute command message sent with correlationId {}, reason \"{}\"",
+                flow.getFlowId(), correlationId, reason);
 
-            logger.warn("Flow {} reroute command message sent with correlationId {}, reason \"{}\"",
-                    flowId, correlationId, reason);
+    }
+
+    private void emitPathSwapCommands(Tuple tuple, Collection<FlowPath> paths,
+                                     String correlationId, String reason) {
+        for (FlowPath path : paths) {
+            FlowPathSwapRequest request = new FlowPathSwapRequest(path.getFlow().getFlowId(), path.getPathId());
+            getOutput().emit(StreamType.SWAP.toString(), tuple, new Values(correlationId,
+                    new CommandMessage(request, System.currentTimeMillis(), correlationId)));
+
+            log.warn("Flow {} swap path command message sent with correlationId {}, reason \"{}\"",
+                    path.getFlow().getFlowId(), correlationId, reason);
         }
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer output) {
-        output.declare(new Fields(FLOW_ID_FIELD, CORRELATION_ID_FIELD));
+        output.declare(new Fields(FLOW_ID_FIELD, THROTTLING_DATA_FIELD));
+        output.declareStream(StreamType.SWAP.toString(), RerouteTopology.KAFKA_FIELDS);
     }
 }

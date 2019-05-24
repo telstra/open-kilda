@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,29 +15,18 @@
 
 package org.openkilda.wfm.topology.stats.metrics;
 
-import static org.openkilda.messaging.Utils.CORRELATION_ID;
-import static org.openkilda.wfm.topology.AbstractTopology.MESSAGE_FIELD;
-import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.CACHE_FIELD;
+import static org.openkilda.messaging.Utils.TIMESTAMP;
+import static org.openkilda.wfm.topology.stats.StatsTopology.STATS_FIELD;
+import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.COOKIE_CACHE_FIELD;
 
-import org.openkilda.messaging.Destination;
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
-import org.openkilda.messaging.info.stats.FlowStatsReply;
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.PersistenceException;
-import org.openkilda.wfm.error.JsonEncodeException;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.FlowCookieException;
 import org.openkilda.wfm.topology.stats.FlowDirectionHelper;
-import org.openkilda.wfm.topology.stats.StatsComponentType;
-import org.openkilda.wfm.topology.stats.StatsStreamType;
 
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.tuple.Tuple;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -49,60 +38,32 @@ import javax.annotation.Nullable;
  */
 public class FlowMetricGenBolt extends MetricGenBolt {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(FlowMetricGenBolt.class);
-
-
-    @Override
-    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
-        this.collector = collector;
+    public FlowMetricGenBolt(String metricPrefix) {
+        super(metricPrefix);
     }
 
     @Override
-    public void execute(Tuple input) {
-        StatsComponentType componentId = StatsComponentType.valueOf(input.getSourceComponent());
-        InfoMessage message = (InfoMessage) input.getValueByField(MESSAGE_FIELD);
+    protected void handleInput(Tuple input) throws Exception {
+        Map<Long, CacheFlowEntry> dataCache = (Map<Long, CacheFlowEntry>) input.getValueByField(COOKIE_CACHE_FIELD);
+        log.debug("dataCache in FlowMetricGenBolt {}", dataCache);
 
-        Map<Long, CacheFlowEntry> dataCache =
-                (Map<Long, CacheFlowEntry>) input.getValueByField(CACHE_FIELD);
-
-        LOGGER.debug("dataCache in FlowMetricGenBolt {}", dataCache);
-
-        if (!Destination.WFM_STATS.equals(message.getDestination())) {
-            collector.ack(input);
-            return;
-        }
-
-        LOGGER.debug("Flow stats message: {}={}, component={}, stream={}",
-                CORRELATION_ID, message.getCorrelationId(), componentId,
-                StatsStreamType.valueOf(input.getSourceStreamId()));
-        FlowStatsData data = (FlowStatsData) message.getData();
-        long timestamp = message.getTimestamp();
+        FlowStatsData data = (FlowStatsData) input.getValueByField(STATS_FIELD);
+        long timestamp = input.getLongByField(TIMESTAMP);
         SwitchId switchId = data.getSwitchId();
 
-        try {
-            for (FlowStatsReply reply : data.getStats()) {
-                for (FlowStatsEntry entry : reply.getEntries()) {
-                    @Nullable CacheFlowEntry flowEntry = dataCache.get(entry.getCookie());
-                    emit(entry, timestamp, switchId, flowEntry);
-                }
-            }
-            collector.ack(input);
-        } catch (PersistenceException e) {
-            LOGGER.error("Error process: {}", input.toString(), e);
-            collector.ack(input); // If we can't connect to Neo then don't know if valid input,
-            // but if NEO is down puts a loop to kafka, so fail the request.
-        } catch (Exception e) {
-            collector.ack(input); // We tried, no need to try again
+        for (FlowStatsEntry entry : data.getStats()) {
+            @Nullable CacheFlowEntry flowEntry = dataCache.get(entry.getCookie());
+            emit(entry, timestamp, switchId, flowEntry);
         }
     }
 
     private void emit(FlowStatsEntry entry, long timestamp, @Nonnull SwitchId switchId,
-                      @Nullable CacheFlowEntry flowEntry) throws Exception {
+                      @Nullable CacheFlowEntry flowEntry) throws FlowCookieException {
         String flowId = "unknown";
         if (flowEntry != null) {
             flowId = flowEntry.getFlowId();
         } else {
-            LOGGER.warn("missed cache for sw {} cookie {}", switchId, entry.getCookie());
+            log.warn("missed cache for sw {} cookie {}", switchId, entry.getCookie());
         }
 
         emitAnySwitchMetrics(entry, timestamp, switchId, flowId);
@@ -120,8 +81,8 @@ public class FlowMetricGenBolt extends MetricGenBolt {
                 isMatch = true;
             }
 
-            if (!isMatch && LOGGER.isDebugEnabled()) {
-                LOGGER.debug("FlowStatsEntry with cookie {} and flow {} is not ingress not egress bc switch {} "
+            if (!isMatch && log.isDebugEnabled()) {
+                log.debug("FlowStatsEntry with cookie {} and flow {} is not ingress not egress bc switch {} "
                                 + "is not any of {}, {}", entry.getCookie(), flowId, switchId,
                         flowEntry.getIngressSwitch(), flowEntry.getEgressSwitch());
             }
@@ -129,7 +90,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
     }
 
     private void emitAnySwitchMetrics(FlowStatsEntry entry, long timestamp, SwitchId switchId, String flowId)
-            throws JsonEncodeException, FlowCookieException {
+            throws FlowCookieException {
         Map<String, String> tags = new HashMap<>();
         tags.put("switchid", switchId.toOtsdFormat());
         tags.put("cookie", String.valueOf(entry.getCookie()));
@@ -137,23 +98,21 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         tags.put("flowid", flowId);
         tags.put("direction", FlowDirectionHelper.findDirection(entry.getCookie()).name().toLowerCase());
 
-        collector.emit(tuple("pen.flow.raw.packets", timestamp, entry.getPacketCount(), tags));
-        collector.emit(tuple("pen.flow.raw.bytes", timestamp, entry.getByteCount(), tags));
-        collector.emit(tuple("pen.flow.raw.bits", timestamp, entry.getByteCount() * 8, tags));
+        emitMetric("flow.raw.packets", timestamp, entry.getPacketCount(), tags);
+        emitMetric("flow.raw.bytes", timestamp, entry.getByteCount(), tags);
+        emitMetric("flow.raw.bits", timestamp, entry.getByteCount() * 8, tags);
     }
 
-    private void emitIngressMetrics(FlowStatsEntry entry, long timestamp, Map<String, String> tags)
-            throws JsonEncodeException {
-        collector.emit(tuple("pen.flow.ingress.packets", timestamp, entry.getPacketCount(), tags));
-        collector.emit(tuple("pen.flow.ingress.bytes", timestamp, entry.getByteCount(), tags));
-        collector.emit(tuple("pen.flow.ingress.bits", timestamp, entry.getByteCount() * 8, tags));
+    private void emitIngressMetrics(FlowStatsEntry entry, long timestamp, Map<String, String> tags) {
+        emitMetric("flow.ingress.packets", timestamp, entry.getPacketCount(), tags);
+        emitMetric("flow.ingress.bytes", timestamp, entry.getByteCount(), tags);
+        emitMetric("flow.ingress.bits", timestamp, entry.getByteCount() * 8, tags);
     }
 
-    private void emitEgressMetrics(FlowStatsEntry entry, long timestamp, Map<String, String> tags)
-            throws JsonEncodeException {
-        collector.emit(tuple("pen.flow.packets", timestamp, entry.getPacketCount(), tags));
-        collector.emit(tuple("pen.flow.bytes", timestamp, entry.getByteCount(), tags));
-        collector.emit(tuple("pen.flow.bits", timestamp, entry.getByteCount() * 8, tags));
+    private void emitEgressMetrics(FlowStatsEntry entry, long timestamp, Map<String, String> tags) {
+        emitMetric("flow.packets", timestamp, entry.getPacketCount(), tags);
+        emitMetric("flow.bytes", timestamp, entry.getByteCount(), tags);
+        emitMetric("flow.bits", timestamp, entry.getByteCount() * 8, tags);
     }
 
     private Map<String, String> makeFlowTags(FlowStatsEntry entry, String flowId) throws FlowCookieException {

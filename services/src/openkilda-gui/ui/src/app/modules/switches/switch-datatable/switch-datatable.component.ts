@@ -4,6 +4,8 @@ import { DataTableDirective } from 'angular-datatables';
 import { LoaderService } from 'src/app/common/services/loader.service';
 import { Router } from '@angular/router';
 import { Switch } from 'src/app/common/data-models/switch';
+import { StoreSettingtService } from 'src/app/common/services/store-setting.service';
+import { ClipboardService } from 'ngx-clipboard';
 
 @Component({
   selector: 'app-switch-datatable',
@@ -18,18 +20,24 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
   dtOptions: any = {};
   dtTrigger: Subject<any> = new Subject();
   wrapperHide = false;
+  hasStoreSetting =false;
 
   switch_id : boolean = false;
+  commonname : boolean = false;
   name : boolean = false;
   address : boolean = false;
   hostname : boolean = false;
+  poplocation : boolean = false;
   description : boolean = false;
   state : boolean = false;
-
+  clipBoardItems = [];
+  typeFilter = 'all';
   constructor(private loaderService : LoaderService,
-    private renderer: Renderer2, private router:Router) { 
-
-  }
+    private renderer: Renderer2, 
+    private router:Router,
+    private storeSwitchService: StoreSettingtService,
+    private clipboardService:ClipboardService
+  ) { }
 
   ngOnInit() {
     this.wrapperHide = false;
@@ -38,15 +46,16 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       pageLength: 10,
       retrieve: true,
       autoWidth: false,
-      dom: 'tpl',
+      dom: 'tpli',
       colResize:false,
       "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
       "responsive": true,
       "aoColumns": [
-        { sWidth: '15%' },
-        { sWidth: '15%',"sType": "name","bSortable": true },
-        { sWidth: '15%' },
-        { sWidth: '15%' },
+        { sWidth: '10%' },
+        { sWidth: '10%',"sType": "name","bSortable": true },
+        { sWidth: '10%' },
+        { sWidth: '10%' },
+        { sWidth: '10%' },
         { sWidth: '30%' },
         { sWidth: '10%' }],
       language: {
@@ -57,9 +66,13 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
           ref.loaderService.hide();
           ref.wrapperHide = true;
         },this.data.length/2);
-      }
+      },
+      columnDefs:[
+        { targets: [4], visible: false},
+        { targets: [7], visible: false},
+      ]
     };
-
+  
   }
 
   ngAfterViewInit(): void {
@@ -74,6 +87,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
         });
       });
     });
+    this.checkSwitchSettings();
   }
 
   ngOnDestroy(): void {
@@ -85,6 +99,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
   }
   fulltextSearch(e:any){ 
       var value = e.target.value;
+      this.typeFilter = 'all';
         this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
           dtInstance.search(value)
                   .draw();
@@ -95,18 +110,20 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
     if(change.data){
       if(change.data.currentValue){
         this.data  = change.data.currentValue;
+        this.clipBoardItems = this.data;
       }
     }
   }
 
   showSwitch(switchObj: Switch) {
     var switchDetailsJSON = {
-      switch_id: switchObj.switch_id,
-      name: switchObj.name,
-      address: switchObj.address,
-      hostname: switchObj.hostname,
-      description: switchObj.description,
-      state: switchObj.state
+      "switch_id": switchObj.switch_id,
+      "name": switchObj.name,
+      "common-name":switchObj['common-name'],
+      "address": switchObj.address,
+      "hostname": switchObj.hostname,
+      "description": switchObj.description,
+      "state": switchObj.state
     };
 
     localStorage.setItem(
@@ -145,6 +162,63 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
     if (e.key === "Enter") {
       return false;
     }
+  }
+  descrepancyString(row){
+    let text = [];
+    if(row.hasOwnProperty('controller-switch')){
+        if(row['controller-switch']){
+          text.push("controller:true");
+        }else{
+          text.push("controller:false");
+        }
+    }else{
+      text.push("controller:false");
+    }
+
+    if(row.hasOwnProperty('inventory-switch')){
+      if(row['inventory-switch']){
+        text.push("inventory:true");
+      }else{
+        text.push("inventory:false");
+      }
+    }else{
+      text.push("inventory:false");
+    }
+
+    return text.join(", ");
+  }
+  toggleType(type){
+    this.typeFilter = type;
+    let searchString = type =='all' ? '' : type+":true";
+    console.log('searchString',searchString);
+    this.renderer.selectRootElement('#search-input').value="";
+    this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
+      dtInstance.search(searchString).draw();
+    });
+  }
+  checkSwitchSettings(){
+
+    this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
+    if(this.hasStoreSetting){
+      this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
+        dtInstance.columns( [4] ).visible( true );
+      });
+    }else{
+      this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
+        dtInstance.columns( [4] ).visible( false );
+      });
+      
+    }
+  }
+
+  copyToClip(event, copyItem,index) {
+    if(copyItem == 'name'){
+      var copyData = (this.clipBoardItems[index]['common-name']) ? this.checkValue(this.clipBoardItems[index]['common-name']) : this.checkValue(this.clipBoardItems[index][copyItem]);
+    }else{
+      var copyData = this.checkValue(this.clipBoardItems[index][copyItem]);
+    }
+    
+    this.clipboardService.copyFromContent(copyData);
   }
 
 

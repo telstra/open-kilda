@@ -1,25 +1,6 @@
 version: '2.1'
 services:
 
-  mininet:
-    container_name: mininet
-    build:
-      context: services/mininet/
-    ports:
-      - "38080:38080"
-      - "17191:17191"
-    privileged: true
-    volumes:
-      - /lib/modules:/lib/modules
-    depends_on:
-      logstash:
-        condition: service_started
-    networks:
-      default:
-        aliases:
-         - mininet.pendev
-    mem_limit: 1073741824
-
   lab-api:
     container_name: lab-api
     image: kilda_lab-service
@@ -35,7 +16,7 @@ services:
       default:
         aliases:
         - lab-api.pendev
-    mem_limit: 256741824
+    mem_limit: ${LAB_API_MEM_LIMIT:-256741824}
 
   neo4j:
     container_name: neo4j
@@ -66,74 +47,7 @@ services:
       default:
         aliases:
          - neo4j.pendev
-    mem_limit: 1073741824
-
-##
-## Python based topology-engine
-##
-  topology-engine:
-    container_name: topology-engine
-    hostname: topology-engine.pendev
-    build:
-      context: services/topology-engine/
-      dockerfile: Dockerfile
-    image: "kilda/topology-engine:${full_build_number:-latest}"
-    command: ./entrypoint.sh
-    environment:
-      neo4jhost: 'neo4j'
-      neo4juser: 'neo4j'
-      neo4jpass: 'temppass'
-      neo4jbolt: 'http://neo4j:7474/db/data/cypher'
-      bootstrapserver: 'kafka.pendev:9092'
-      speaker_in_topic: 'speaker.in'
-      group: 'python-tpe-tl-consumer'
-      OK_TESTS: "${OK_TESTS:-none}"
-    depends_on:
-      kafka:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      logstash:
-        condition: service_started
-    networks:
-      default:
-        aliases:
-         - topology-engine.pendev
-    mem_limit: 1073741824
-
-
-  topology-engine-rest:
-    container_name: topology-engine-rest
-    hostname: topology-engine-rest.pendev
-    build:
-      context: services/topology-engine-rest/
-      dockerfile: Dockerfile
-    image: "kilda/topology-engine-rest:${full_build_number:-latest}"
-    volumes:
-      - app_server_data:/var/data
-    ports:
-      - "80:80"
-    environment:
-      neo4jhost: 'neo4j'
-      neo4juser: 'neo4j'
-      neo4jpass: 'temppass'
-      neo4jbolt: 'http://neo4j:7474/db/data/cypher'
-      bootstrapserver: 'kafka.pendev:9092'
-      speaker_in_topic: 'speaker.in'
-      group: 'python-tpe-tl-consumer'
-      OK_TESTS: "${OK_TESTS:-none}"
-    depends_on:
-      kafka:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      logstash:
-        condition: service_started
-    networks:
-      default:
-        aliases:
-         - topology-engine-rest.pendev
-    mem_limit: 1073741824
+    mem_limit: ${NEO4J_MEM_LIMIT:-1073741824}
 
 
   zookeeper:
@@ -152,7 +66,7 @@ services:
       default:
         aliases:
          - zookeeper.pendev
-    mem_limit: 1073741824
+    mem_limit: ${ZOOKEEPER_MEM_LIMIT:-1073741824}
 
 
   kafka:
@@ -182,7 +96,7 @@ services:
          - kafka.pendev
     environment:
       KAFKA_HEAP_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XshowSettings:all"
-    mem_limit: 1073741824
+    mem_limit: ${KAFKA_MEM_LIMIT:-1073741824}
 
   wfm:
     container_name: wfm
@@ -228,7 +142,7 @@ services:
       default:
         aliases:
          - hbase.pendev
-    mem_limit: 1073741824
+    mem_limit: ${HBASE_MEM_LIMIT:-1073741824}
 
   storm-nimbus:
     container_name: storm-nimbus
@@ -323,11 +237,12 @@ services:
          - storm-supervisor.pendev
 
 
-  floodlight:
-    container_name: floodlight
+  floodlight_one:
+    container_name: floodlight_one
     build:
       context: services/src/floodlight-modules
     image: "kilda/floodlight:${full_build_number:-latest}"
+    command: ["floodlight", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1"]
     ports:
       - "6653:6653"
       - "8180:8080"
@@ -342,15 +257,38 @@ services:
     networks:
       default:
         aliases:
-         - floodlight.pendev
+         - floodlight_one.pendev
 # we use kilda as hostname for FL in atdd topologies
          - kilda
-    mem_limit: 1073741824
+    mem_limit: ${FL_1_MEM_LIMIT:-1073741824}
+
+  floodlight_second:
+    container_name: floodlight_second
+    build:
+      context: services/src/floodlight-modules
+    image: "kilda/floodlight:${full_build_number:-latest}"
+    command: ["floodlightStats", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1"]
+    ports:
+      - "6654:6653"
+      - "8181:8080"
+      - "6656:6655"
+      - "6643:6642"
+      - "8082:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      logstash:
+        condition: service_started
+    networks:
+      default:
+        aliases:
+          - floodlight_second.pendev
+    mem_limit: ${FL_2_MEM_LIMIT:-1073741824}
 
   northbound:
     container_name: openkilda-northbound
     build:
-      context: services/src/northbound/
+      context: services/src/northbound-service/northbound/
     ports:
       - "8080:8080"
     environment:
@@ -367,7 +305,24 @@ services:
       default:
         aliases:
          - northbound.pendev
-    mem_limit: 1073741824
+    mem_limit: ${NB_MEM_LIMIT:-1073741824}
+
+  grpc-speaker:
+    container_name: grpc-speaker
+    build:
+      context: services/src/grpc-speaker/grpc-service/
+    ports:
+    - "8091:8091"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      logstash:
+        condition: service_started
+    networks:
+      default:
+        aliases:
+         - grpc-speaker.pendev
+    mem_limit: ${GRPC_MEM_LIMIT:-1073741824}
 
 
   opentsdb:
@@ -386,7 +341,7 @@ services:
       default:
         aliases:
          - opentsdb.pendev
-    mem_limit: 1073741824
+    mem_limit: ${OTSDB_MEM_LIMIT:-1073741824}
 
 
   gui:
@@ -404,7 +359,7 @@ services:
       default:
         aliases:
          - openkilda-gui.pendev
-    mem_limit: 1073741824
+    mem_limit: ${GUI_MEM_LIMIT:-1073741824}
 
   elasticsearch:
     container_name: elasticsearch
@@ -414,15 +369,15 @@ services:
       dockerfile: Dockerfile
     hostname: elasticsearch.pendev
     ports:
-      - "127.0.0.1:9200:9200"
-      - "127.0.0.1:9300:9300"
+      - "9200:9200"
+      - "9300:9300"
     networks:
       default:
         aliases:
          - elasticsearch.pendev
     environment:
       ES_JAVA_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
-    mem_limit: 1073741824
+    mem_limit: ${ELASTIC_MEM_LIMIT:-1073741824}
 
 
   kibana:
@@ -438,7 +393,7 @@ services:
       default:
         aliases:
          - kibana.pendev
-    mem_limit: 1073741824
+    mem_limit: ${KIBANA_MEM_LIMIT:-1073741824}
 
 
   logstash:
@@ -459,7 +414,7 @@ services:
       LS_OPTS: "--debug-config"
       # remove default 500m heap size in /usr/share/logstash/vendor/jruby/bin/jruby
       JAVA_MEM: " "
-    mem_limit: 1073741824
+    mem_limit: ${LOGSTASH_MEM_LIMIT:-1073741824}
 
 volumes:
   zookeeper_data:

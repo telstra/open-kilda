@@ -1,9 +1,9 @@
-
-# Kilda Domain Model Proposal
+# Kilda Domain Model
 
 Based on
-[Data Mapper](https://martinfowler.com/eaaCatalog/dataMapper.html) and
-[Domain Model](https://martinfowler.com/eaaCatalog/domainModel.html)
+[Data Mapper](https://martinfowler.com/eaaCatalog/dataMapper.html),
+[Domain Model](https://martinfowler.com/eaaCatalog/domainModel.html),
+[Service Layer](https://martinfowler.com/eaaCatalog/serviceLayer.html)
 
 ## Goals
 - Create separate layers for domain and database representation.
@@ -17,9 +17,9 @@ separate domain logic from DB and Transport layers.
 
 ## Diagrams
 
-![classes](./classes.png)
+![classes](./domain-model-with-encapsulation.png)
 
-![seq](./seq.png)
+![data-mapper](./data-mapper.png)
 
 ![path-calculation](./path-calculation.png)
 

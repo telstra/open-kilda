@@ -84,7 +84,7 @@ const routes: Routes = [{
 					breadcrumb: ""
 				},
 			},{
-				path:"switch/isl",
+				path:"switch/isl/:src_switch/:src_port/:dst_switch/:dst_port",
 				component: IslDetailComponent,
 				data:{
 					breadcrumb: "ISL Details"
@@ -138,7 +138,7 @@ const routes: Routes = [{
 		path: 'storesetting',
 		component: SettingsComponent,
 		data:{
-			breadcrumb: "Store Setting"
+			breadcrumb: "Store Settings"
 		}
 	},
 	{

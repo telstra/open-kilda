@@ -20,6 +20,11 @@ public enum StreamType {
     ISL,
     FLOW,
     REROUTE,
+    FEATURE_TOGGLES,
+    NOTIFICATION,
+    PATHS,
     VALIDATION,
-    ERROR
+    DISCO,
+    ERROR,
+    HISTORY
 }

@@ -85,4 +85,28 @@ public final class IoUtil {
         }
         return false;
     }
+    
+    /**
+     * Switch code to switch id.
+     *
+     * @param switchCode the switch code
+     * @return the string
+     */
+    public static String switchCodeToSwitchId(String switchCode) {
+        if (!StringUtil.isNullOrEmpty(switchCode)) {
+            if (switchCode.contains("SW")) {
+                switchCode = switchCode.replace("SW", "");
+                StringBuffer switchId = new StringBuffer();
+                char[] code = switchCode.toCharArray();
+                for (int i = 0; i < code.length; i++) {
+                    switchId.append(code[i]);
+                    if ((i != 0) && (i % 2 != 0) && (i != code.length - 1)) {
+                        switchId.append(":");
+                    }
+                }
+                return switchId.toString();
+            }
+        }
+        return switchCode;
+    }
 }

@@ -1,0 +1,32 @@
+
+Input signals:
+* enable
+* disable
+* bfd-up
+* bfd-down
+* bfd-kill
+
+Output signals:
+* bfd-up
+* bfd-down
+* bfd-kill
+
+@startuml
+title BFD global toggle
+[*] --> DOWN_ENABLED : [enabled]
+[*] --> DOWN_DISABLED : [disabled]
+
+DOWN_ENABLED -r-> DOWN_DISABLED : disable
+DOWN_ENABLED --> UP_ENABLED : bfd-up
+
+DOWN_DISABLED -l-> DOWN_ENABLED : enable
+DOWN_DISABLED --> UP_DISABLED : bfd-up
+
+UP_ENABLED -r-> UP_DISABLED : disable / emit bfd-kill
+UP_ENABLED -u-> DOWN_ENABLED : bfd-down / proxy bfd-down\nbfd-kill / proxy bfd-kill
+UP_ENABLED : enter / emit bfd-up
+
+UP_DISABLED -l-> UP_ENABLED : enable
+UP_DISABLED -u-> DOWN_DISABLED : bfd-down
+
+@enduml

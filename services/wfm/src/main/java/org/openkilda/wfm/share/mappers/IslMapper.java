@@ -59,7 +59,9 @@ public abstract class IslMapper {
         Long timeCreateMillis = Optional.ofNullable(isl.getTimeCreate()).map(Instant::toEpochMilli).orElse(null);
         Long timeModifyMillis = Optional.ofNullable(isl.getTimeModify()).map(Instant::toEpochMilli).orElse(null);
         return new IslInfoData(isl.getLatency(), src, dst, isl.getSpeed(), isl.getAvailableBandwidth(),
-                map(isl.getStatus()), timeCreateMillis, timeModifyMillis, isl.isUnderMaintenance());
+                isl.getMaxBandwidth(), isl.getDefaultMaxBandwidth(), map(isl.getStatus()), map(isl.getActualStatus()),
+                isl.getCost(), timeCreateMillis, timeModifyMillis, isl.isUnderMaintenance(), isl.isEnableBfd(),
+                isl.getBfdSessionStatus(), null);
     }
 
     /**
@@ -74,24 +76,23 @@ public abstract class IslMapper {
 
         PathNode sourcePathNode = islInfoData.getSource();
         if (sourcePathNode != null) {
-            Switch sourceSwitch = new Switch();
-            sourceSwitch.setSwitchId(sourcePathNode.getSwitchId());
-            isl.setSrcSwitch(sourceSwitch);
+            isl.setSrcSwitch(Switch.builder().switchId(sourcePathNode.getSwitchId()).build());
             isl.setSrcPort(sourcePathNode.getPortNo());
         }
 
         PathNode destinationPathNode = islInfoData.getDestination();
         if (destinationPathNode != null) {
-            Switch destinationSwitch = new Switch();
-            destinationSwitch.setSwitchId(destinationPathNode.getSwitchId());
-            isl.setDestSwitch(destinationSwitch);
+            isl.setDestSwitch(Switch.builder().switchId(destinationPathNode.getSwitchId()).build());
             isl.setDestPort(destinationPathNode.getPortNo());
         }
         isl.setLatency((int) islInfoData.getLatency());
         isl.setSpeed(islInfoData.getSpeed());
         isl.setAvailableBandwidth(islInfoData.getAvailableBandwidth());
         isl.setStatus(map(islInfoData.getState()));
+        isl.setCost(islInfoData.getCost());
         isl.setUnderMaintenance(islInfoData.isUnderMaintenance());
+        isl.setEnableBfd(islInfoData.isEnableBfd());
+        isl.setBfdSessionStatus(islInfoData.getBfdSessionStatus());
 
         return isl;
     }

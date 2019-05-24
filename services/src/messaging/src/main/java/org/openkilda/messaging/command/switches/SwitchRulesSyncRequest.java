@@ -21,22 +21,14 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
 
-import java.util.List;
-
 @Value
 public class SwitchRulesSyncRequest extends CommandData {
 
     @JsonProperty("switch_id")
     private SwitchId switchId;
 
-    @JsonProperty("rules")
-    private List<Long> rules;
-
-    public SwitchRulesSyncRequest(
-            @JsonProperty("switch_id") SwitchId switchId,
-            @JsonProperty("rules") List<Long> rules) {
+    public SwitchRulesSyncRequest(@JsonProperty("switch_id") SwitchId switchId) {
         this.switchId = switchId;
-        this.rules = rules;
     }
 }
 

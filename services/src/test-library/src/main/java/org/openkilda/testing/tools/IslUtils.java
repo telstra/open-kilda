@@ -23,12 +23,11 @@ import static org.hamcrest.core.Every.everyItem;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.northbound.dto.links.LinkParametersDto;
-import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
+import org.openkilda.northbound.dto.v1.links.LinkParametersDto;
+import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
+import org.openkilda.northbound.dto.v1.links.LinkUnderMaintenanceDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
-import org.openkilda.testing.model.topology.TopologyDefinition.ASwitch;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
-import org.openkilda.testing.service.database.Database;
 import org.openkilda.testing.service.lockkeeper.LockKeeperService;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 import org.openkilda.testing.service.northbound.NorthboundService;
@@ -40,6 +39,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -53,9 +53,6 @@ public class IslUtils {
 
     @Autowired
     private LockKeeperService lockKeeper;
-
-    @Autowired
-    private Database database;
 
     /**
      * Waits until all passed ISLs have the specified status. Fails after defined timeout.
@@ -108,20 +105,14 @@ public class IslUtils {
     }
 
     /**
-     * Returns 'reverse' version of the passed ISL.
+     * Converts a given Isl object to LinkPropsDto object.
      *
-     * @param isl ISL to reverse
+     * @param isl Isl object to convert
+     * @param props Isl props to set when creating LinkPropsDto
      */
-    public Isl reverseIsl(Isl isl) {
-        if (isl.getDstSwitch() == null) {
-            return isl; //don't reverse not connected ISL
-        }
-        ASwitch reversedAsw = null;
-        if (isl.getAswitch() != null) {
-            reversedAsw = ASwitch.factory(isl.getAswitch().getOutPort(), isl.getAswitch().getInPort());
-        }
-        return Isl.factory(isl.getDstSwitch(), isl.getDstPort(), isl.getSrcSwitch(),
-                isl.getSrcPort(), isl.getMaxBandwidth(), reversedAsw);
+    public LinkPropsDto toLinkProps(Isl isl, HashMap props) {
+        return new LinkPropsDto(isl.getSrcSwitch().getDpId().toString(), isl.getSrcPort(),
+                isl.getDstSwitch().getDpId().toString(), isl.getDstPort(), props);
     }
 
     /**
@@ -129,7 +120,7 @@ public class IslUtils {
      *
      * @param isl Isl object to convert
      */
-    public LinkParametersDto getLinkParameters(Isl isl) {
+    public LinkParametersDto toLinkParameters(Isl isl) {
         return new LinkParametersDto(isl.getSrcSwitch().getDpId().toString(), isl.getSrcPort(),
                 isl.getDstSwitch().getDpId().toString(), isl.getDstPort());
     }
@@ -139,7 +130,7 @@ public class IslUtils {
      *
      * @param isl Isl object to convert
      */
-    public LinkUnderMaintenanceDto getLinkUnderMaintenance(Isl isl, boolean underMaintenance, boolean evacuate) {
+    public LinkUnderMaintenanceDto toLinkUnderMaintenance(Isl isl, boolean underMaintenance, boolean evacuate) {
         return new LinkUnderMaintenanceDto(isl.getSrcSwitch().getDpId().toString(), isl.getSrcPort(),
                 isl.getDstSwitch().getDpId().toString(), isl.getDstPort(), underMaintenance, evacuate);
     }
@@ -149,8 +140,8 @@ public class IslUtils {
      *
      * @param isl IslInfoData object to convert
      */
-    public LinkUnderMaintenanceDto getLinkUnderMaintenance(IslInfoData isl, boolean underMaintenance,
-                                                           boolean evacuate) {
+    public LinkUnderMaintenanceDto toLinkUnderMaintenance(IslInfoData isl, boolean underMaintenance,
+                                                          boolean evacuate) {
         return new LinkUnderMaintenanceDto(isl.getSource().getSwitchId().toString(), isl.getSource().getPortNo(),
                 isl.getDestination().getSwitchId().toString(), isl.getDestination().getPortNo(), underMaintenance,
                 evacuate);
@@ -167,8 +158,8 @@ public class IslUtils {
      */
     public TopologyDefinition.Isl replug(TopologyDefinition.Isl srcIsl, boolean replugSource,
                                          TopologyDefinition.Isl dstIsl, boolean plugIntoSource) {
-        ASwitch srcASwitch = srcIsl.getAswitch();
-        ASwitch dstASwitch = dstIsl.getAswitch();
+        ASwitchFlow srcASwitch = srcIsl.getAswitch();
+        ASwitchFlow dstASwitch = dstIsl.getAswitch();
         //unplug
         List<Integer> portsToUnplug = Collections.singletonList(
                 replugSource ? srcASwitch.getInPort() : srcASwitch.getOutPort());
@@ -177,15 +168,12 @@ public class IslUtils {
         //change flow on aSwitch
         //delete old flow
         if (srcASwitch.getInPort() != null && srcASwitch.getOutPort() != null) {
-            lockKeeper.removeFlows(Arrays.asList(
-                    new ASwitchFlow(srcASwitch.getInPort(), srcASwitch.getOutPort()),
-                    new ASwitchFlow(srcASwitch.getOutPort(), srcASwitch.getInPort())));
+            lockKeeper.removeFlows(Arrays.asList(srcASwitch, srcASwitch.getReversed()));
         }
         //create new flow
         ASwitchFlow aswFlowForward = new ASwitchFlow(srcASwitch.getInPort(),
                 plugIntoSource ? dstASwitch.getInPort() : dstASwitch.getOutPort());
-        ASwitchFlow aswFlowReverse = new ASwitchFlow(aswFlowForward.getOutPort(), aswFlowForward.getInPort());
-        lockKeeper.addFlows(Arrays.asList(aswFlowForward, aswFlowReverse));
+        lockKeeper.addFlows(Arrays.asList(aswFlowForward, aswFlowForward.getReversed()));
 
         //plug back
         lockKeeper.portsUp(portsToUnplug);
@@ -195,18 +183,7 @@ public class IslUtils {
                 replugSource ? (plugIntoSource ? dstIsl.getSrcPort() : dstIsl.getDstPort()) : srcIsl.getSrcPort(),
                 replugSource ? srcIsl.getDstSwitch() : (plugIntoSource ? dstIsl.getSrcSwitch() : dstIsl.getDstSwitch()),
                 replugSource ? srcIsl.getDstPort() : (plugIntoSource ? dstIsl.getSrcPort() : dstIsl.getDstPort()),
-                0,
-                new TopologyDefinition.ASwitch(aswFlowForward.getInPort(), aswFlowForward.getOutPort()));
-    }
-
-    /**
-     * Get cost of a certain ISL from the database.
-     *
-     * @param isl ISL for which cost should be retrieved
-     * @return ISL cost
-     */
-    public int getIslCost(Isl isl) {
-        return database.getIslCost(isl);
+                0, aswFlowForward, srcIsl.isBfd());
     }
 
     private RetryPolicy retryPolicy() {

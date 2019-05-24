@@ -18,9 +18,6 @@ package org.usermanagement.controller;
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -45,8 +42,6 @@ import java.util.List;
 @RequestMapping(path = "/api/role", produces = MediaType.APPLICATION_JSON_VALUE)
 public class RoleController {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RoleController.class);
-
     @Autowired
     private RoleService roleService;
 
@@ -60,7 +55,6 @@ public class RoleController {
     @RequestMapping(method = RequestMethod.POST)
     @Permissions(values = { IConstants.Permission.UM_ROLE_ADD })
     public Role createRole(@RequestBody final Role role) {
-        LOGGER.info("[createRole] (name: " + role.getName() + ")");
         Role roleResponse = roleService.createRole(role);
         return roleResponse;
     }
@@ -73,7 +67,6 @@ public class RoleController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.GET)
     public List<Role> getRoles() {
-        LOGGER.info("[getRoles]");
         List<Role> roleResponseList = roleService.getAllRole();
         return roleResponseList;
     }
@@ -87,7 +80,6 @@ public class RoleController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{role_id}", method = RequestMethod.GET)
     public Role getRoleById(@PathVariable("role_id") final Long roleId) {
-        LOGGER.info("[getRoleById] (id: " + roleId + ")");
         Role role = roleService.getRoleById(roleId);
         return role;
     }
@@ -101,7 +93,6 @@ public class RoleController {
     @RequestMapping(value = "/{role_id}", method = RequestMethod.DELETE)
     @Permissions(values = { IConstants.Permission.UM_ROLE_DELETE })
     public void deleteRole(@PathVariable("role_id") Long roleId) {
-        LOGGER.info("[deleteRoleById] (id: " + roleId + ")");
         roleService.deleteRoleById(roleId);
 
     }
@@ -116,7 +107,6 @@ public class RoleController {
     @RequestMapping(value = "/permission/{permission_id}", method = RequestMethod.GET)
     @Permissions(values = { IConstants.Permission.UM_PERMISSION_VIEW_ROLES })
     public Permission getRolesByPermissionId(@PathVariable("permission_id") final Long permissionId) {
-        LOGGER.info("[getRolesByPermissionId] (permissionId: " + permissionId + ")");
         Permission permission = roleService.getRolesByPermissionId(permissionId);
         return permission;
     }
@@ -132,7 +122,6 @@ public class RoleController {
     @RequestMapping(value = "/{role_id}", method = RequestMethod.PUT)
     @Permissions(values = { IConstants.Permission.UM_ROLE_EDIT })
     public Role updateRole(@PathVariable("role_id") Long roleId, @RequestBody final Role role) {
-        LOGGER.info("[updateRole] (id: " + roleId + ", name: " + role.getName() + ")");
         Role roleResponse = roleService.updateRole(roleId, role);
         return roleResponse;
     }
@@ -149,7 +138,6 @@ public class RoleController {
     @Permissions(values = { IConstants.Permission.UM_PERMISSION_ASSIGN_ROLES })
     public Permission assignRolesToPermission(@PathVariable("permission_id") final Long permissionId,
             @RequestBody Permission permission) {
-        LOGGER.info("[assignRoleToPermission] (permissionId: " + permissionId + ")");
         permission = roleService.assignRoleByPermissionId(permissionId, permission);
         return permission;
     }

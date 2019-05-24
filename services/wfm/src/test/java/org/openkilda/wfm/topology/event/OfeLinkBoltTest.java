@@ -19,23 +19,34 @@ import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
+import static org.openkilda.wfm.topology.event.OfeLinkBolt.NETWORK_TOPOLOGY_CHANGE_STREAM;
 import static org.openkilda.wfm.topology.event.OfeLinkBolt.STATE_ID_DISCOVERY;
 
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.PortChangeType;
 import org.openkilda.messaging.info.event.PortInfoData;
+import org.openkilda.messaging.info.event.SwitchChangeType;
+import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.DiscoveryLink.LinkState;
+import org.openkilda.messaging.model.SpeakerSwitchDescription;
+import org.openkilda.messaging.model.SpeakerSwitchPortView;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractStormTest;
 import org.openkilda.wfm.error.ConfigurationException;
+import org.openkilda.wfm.isl.DiscoveryManager;
 import org.openkilda.wfm.protocol.KafkaMessage;
 import org.openkilda.wfm.topology.OutputCollectorMock;
 import org.openkilda.wfm.topology.event.OfeLinkBolt.State;
@@ -54,9 +65,15 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.kohsuke.args4j.CmdLineException;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -64,7 +81,17 @@ import java.util.stream.Collectors;
 public class OfeLinkBoltTest extends AbstractStormTest {
 
     private static final Integer TASK_ID_BOLT = 0;
+    private static final int BFD_OFFSET = 200;
     private static final String STREAM_ID_INPUT = "input";
+
+    private static final SpeakerSwitchDescription switchDescription = SpeakerSwitchDescription.builder()
+            .manufacturer("OF switch manufacturer")
+            .hardware("OF cappable HW")
+            .software("software")
+            .serialNumber("aabbcc")
+            .datapath("datapath description")
+            .build();
+    private static InetSocketAddress speakerAddress;
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -76,6 +103,8 @@ public class OfeLinkBoltTest extends AbstractStormTest {
     @BeforeClass
     public static void setupOnce() throws Exception {
         AbstractStormTest.startZooKafkaAndStorm();
+
+        speakerAddress = new InetSocketAddress(InetAddress.getByAddress(new byte[]{127, 0, 0, (byte) 254}), 6653);
     }
 
     @Before
@@ -129,7 +158,7 @@ public class OfeLinkBoltTest extends AbstractStormTest {
 
         // when
         PortInfoData dumpPortData = new PortInfoData(new SwitchId("ff:01"), 2, PortChangeType.UP);
-        InfoMessage dumpBeginMessage = new InfoMessage(dumpPortData, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        InfoMessage dumpBeginMessage = new InfoMessage(dumpPortData, 0, DEFAULT_CORRELATION_ID, Destination.WFM, null);
         Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(dumpBeginMessage)),
                 TASK_ID_BOLT, STREAM_ID_INPUT);
         bolt.doWork(tuple);
@@ -166,11 +195,99 @@ public class OfeLinkBoltTest extends AbstractStormTest {
         PathNode source = new PathNode(switchId, port, 0);
         PathNode destination = new PathNode(switchId, port, 1);
         IslInfoData isl = new IslInfoData(source, destination, IslChangeType.DISCOVERED, false);
-        InfoMessage inputMessage = new InfoMessage(isl, 0, DEFAULT_CORRELATION_ID, Destination.WFM);
+        InfoMessage inputMessage = new InfoMessage(isl, 0, DEFAULT_CORRELATION_ID, Destination.WFM, null);
         Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
                 TASK_ID_BOLT, STREAM_ID_INPUT);
         bolt.doWork(tuple);
 
         assertFalse(discoveryLink.getState().isActive());
+    }
+
+    @Test
+    public void checkBfdOffset() throws JsonProcessingException {
+        final SwitchId switchId = new SwitchId("00:01");
+        final int port = 205;
+        KeyValueState<String, Object> boltState = new InMemoryKeyValueState<>();
+        boltState.put(STATE_ID_DISCOVERY, Collections.emptyMap());
+        bolt.state = State.MAIN;
+
+        PortInfoData portInfoData = new PortInfoData(switchId, port, PortChangeType.DOWN);
+        InfoMessage inputMessage = new InfoMessage(portInfoData, 0, DEFAULT_CORRELATION_ID, Destination.WFM,
+                null);
+        Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
+                TASK_ID_BOLT, STREAM_ID_INPUT);
+        bolt.doWork(tuple);
+
+
+        PortInfoData updatedData = new PortInfoData(switchId, port - config.getBfdPortOffset(), PortChangeType.DOWN);
+        InfoMessage outputMessage = new InfoMessage(updatedData, 0, DEFAULT_CORRELATION_ID, Destination.WFM,
+                null);
+
+        Mockito.verify(outputDelegate).ack(tuple);
+        Mockito.verify(outputDelegate).emit(eq(NETWORK_TOPOLOGY_CHANGE_STREAM),
+                anyCollection(), eq(new Values(outputMessage)));
+    }
+
+    @Test
+    public void testDispatchSyncInProgressMaskLogicalPorts() throws JsonProcessingException, UnknownHostException {
+        final SwitchId switchId = new SwitchId("00:01");
+        final InetSocketAddress swAddress = new InetSocketAddress(
+                InetAddress.getByAddress(new byte[]{127, 0, 0, 1}), 32768);
+        KeyValueState<String, Object> boltState = new InMemoryKeyValueState<>();
+        boltState.put(STATE_ID_DISCOVERY, Collections.emptyMap());
+        bolt.state = State.SYNC_IN_PROGRESS;
+        List<SpeakerSwitchPortView> switchPorts = new ArrayList<>();
+        switchPorts.add(new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP));
+        switchPorts.add(new SpeakerSwitchPortView(BFD_OFFSET + 1, SpeakerSwitchPortView.State.UP));
+        switchPorts.add(new SpeakerSwitchPortView(3, SpeakerSwitchPortView.State.UP));
+        switchPorts.add(new SpeakerSwitchPortView(BFD_OFFSET + 3, SpeakerSwitchPortView.State.UP));
+        SpeakerSwitchView switchRecord = new SpeakerSwitchView(
+                switchId, swAddress, speakerAddress, "OF_13", switchDescription, new HashSet<>(), switchPorts);
+        NetworkDumpSwitchData data = new NetworkDumpSwitchData(switchRecord);
+        InfoMessage inputMessage = new InfoMessage(data, 0, DEFAULT_CORRELATION_ID, Destination.WFM, null);
+        Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
+                TASK_ID_BOLT, STREAM_ID_INPUT);
+        bolt.discovery = Mockito.mock(DiscoveryManager.class);
+        ArgumentCaptor<SpeakerSwitchView> switchCaptor = ArgumentCaptor.forClass(SpeakerSwitchView.class);
+        bolt.dispatch(tuple, inputMessage);
+        Mockito.verify(bolt.discovery, Mockito.times(1)).registerSwitch(switchCaptor.capture());
+
+        assertEquals(2, switchCaptor.getValue().getPorts().size());
+        assertEquals(0, switchCaptor.getValue().getPorts().stream()
+                .filter(switchPort -> (switchPort.getNumber() > BFD_OFFSET)).count());
+    }
+
+    @Test
+    public void testDispatchMainMaskLogicalPortsSwitchActivated() throws JsonProcessingException, UnknownHostException {
+        final SwitchId switchId = new SwitchId("00:01");
+        final String ipAddress = "127.0.0.1";
+        KeyValueState<String, Object> boltState = new InMemoryKeyValueState<>();
+        boltState.put(STATE_ID_DISCOVERY, Collections.emptyMap());
+        bolt.state = State.SYNC_IN_PROGRESS;
+        List<SpeakerSwitchPortView> switchPorts = new ArrayList<>();
+        switchPorts.add(new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP));
+        switchPorts.add(new SpeakerSwitchPortView(BFD_OFFSET + 1, SpeakerSwitchPortView.State.UP));
+        switchPorts.add(new SpeakerSwitchPortView(3, SpeakerSwitchPortView.State.UP));
+        switchPorts.add(new SpeakerSwitchPortView(BFD_OFFSET + 3, SpeakerSwitchPortView.State.UP));
+        SpeakerSwitchView switchRecord = SpeakerSwitchView.builder()
+                .datapath(switchId)
+                .switchSocketAddress(InetSocketAddress.createUnresolved(ipAddress, 1000))
+                .speakerSocketAddress(InetSocketAddress.createUnresolved(ipAddress, 1000))
+                .ports(switchPorts)
+                .ofVersion("OF_13")
+                .build();
+        SwitchInfoData data = new SwitchInfoData(switchId, SwitchChangeType.ACTIVATED, null, null,
+                null, null, false, switchRecord);
+        InfoMessage inputMessage = new InfoMessage(data, 0, DEFAULT_CORRELATION_ID, Destination.WFM, null);
+        Tuple tuple = new TupleImpl(context, new Values(objectMapper.writeValueAsString(inputMessage)),
+                TASK_ID_BOLT, STREAM_ID_INPUT);
+        bolt.discovery = Mockito.mock(DiscoveryManager.class);
+        ArgumentCaptor<SpeakerSwitchView> switchCaptor = ArgumentCaptor.forClass(SpeakerSwitchView.class);
+        bolt.dispatch(tuple, inputMessage);
+        Mockito.verify(bolt.discovery, Mockito.times(1)).registerSwitch(switchCaptor.capture());
+
+        assertEquals(2, switchCaptor.getValue().getPorts().size());
+        assertEquals(0, switchCaptor.getValue().getPorts().stream()
+                .filter(switchPort -> (switchPort.getNumber() > BFD_OFFSET)).count());
     }
 }

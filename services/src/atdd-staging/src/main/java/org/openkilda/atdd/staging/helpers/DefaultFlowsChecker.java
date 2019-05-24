@@ -121,5 +121,4 @@ public final class DefaultFlowsChecker {
 
     private DefaultFlowsChecker() {
     }
-
 }

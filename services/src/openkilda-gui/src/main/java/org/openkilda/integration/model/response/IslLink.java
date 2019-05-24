@@ -20,11 +20,14 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import lombok.Data;
+
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({"speed", "path", "available_bandwidth", "state"})
+@Data
 public class IslLink {
 
     @JsonProperty("speed")
@@ -36,6 +39,12 @@ public class IslLink {
 
     @JsonProperty("state")
     private String state;
+    
+    @JsonProperty("under_maintenance")
+    private boolean underMaintenance;
+    
+    @JsonProperty("evacuate")
+    private boolean evacuate;
 
     public Integer getSpeed() {
         return speed;

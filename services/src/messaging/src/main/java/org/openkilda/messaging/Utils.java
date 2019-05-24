@@ -41,13 +41,18 @@ public final class Utils {
      */
     public static final String CORRELATION_ID = "correlation_id";
     /**
-     * The correlation ID header name.
+     * The Extra auth header name.
      */
     public static final String EXTRA_AUTH = "EXTRA_AUTH";
     /**
      * The destination property.
      */
     public static final String DESTINATION = "destination";
+
+    /**
+     * The region of message origination.
+     */
+    public static final String REGION = "region";
 
     public static final String ROUTE = "route";
     /**

@@ -20,8 +20,12 @@ package org.openkilda.wfm.topology.stats;
  */
 public enum StatsStreamType {
     PORT_STATS,
+    METER_STATS,
+    CACHE_DATA,
     METER_CONFIG_STATS,
     FLOW_STATS,
+    SYSTEM_RULE_STATS,
     STATS_RESPONSE,
+    STATS_REQUEST,
     CACHE_UPDATE,
 }

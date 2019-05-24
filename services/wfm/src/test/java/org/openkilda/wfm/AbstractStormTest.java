@@ -37,11 +37,13 @@ import java.util.Properties;
 
 @Slf4j
 public abstract class AbstractStormTest {
+    public static final int TOPOLOGY_START_TIMEOUT = 20000;
+
     protected static String CONFIG_NAME = "class-level-overlay.properties";
 
     protected static TestKafkaProducer kProducer;
     protected static LocalCluster cluster;
-    static TestUtils.KafkaTestFixture server;
+    protected static TestUtils.KafkaTestFixture server;
 
     @ClassRule
     public static TemporaryFolder fsData = new TemporaryFolder();

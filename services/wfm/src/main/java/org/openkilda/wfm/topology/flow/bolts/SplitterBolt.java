@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -21,13 +21,16 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.flow.FlowCacheSyncRequest;
+import org.openkilda.messaging.command.flow.DeallocateFlowResourcesRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
+import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
+import org.openkilda.messaging.command.flow.MeterModifyRequest;
+import org.openkilda.messaging.command.flow.UpdateFlowPathStatusRequest;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowInfoData;
@@ -171,6 +174,14 @@ public class SplitterBolt extends BaseRichBolt {
                 values = new Values(message, flowId);
                 outputCollector.emit(StreamType.REROUTE.toString(), tuple, values);
 
+            } else if (data instanceof FlowPathSwapRequest) {
+                String flowId = ((FlowPathSwapRequest) data).getFlowId();
+
+                logger.info("Flow {} path swap message: values={}", flowId, values);
+
+                values = new Values(message, flowId);
+                outputCollector.emit(StreamType.PATH_SWAP.toString(), tuple, values);
+
             } else if (data instanceof FlowReadRequest) {
                 String flowId = ((FlowReadRequest) data).getFlowId();
 
@@ -184,12 +195,29 @@ public class SplitterBolt extends BaseRichBolt {
 
                 values = new Values(message, null);
                 outputCollector.emit(StreamType.DUMP.toString(), tuple, values);
-            } else if (data instanceof FlowCacheSyncRequest) {
-                logger.info("FlowCacheSyncRequest: values={}", values);
 
-                values = new Values(message, null);
-                outputCollector.emit(StreamType.CACHE_SYNC.toString(), tuple, values);
+            } else if (data instanceof MeterModifyRequest) {
+                String flowId = ((MeterModifyRequest) data).getFlowId();
 
+                logger.info("Update meter for flow {}", flowId);
+
+                values = new Values(message, flowId);
+                outputCollector.emit(StreamType.METER_MODE.toString(), tuple, values);
+
+            } else if (data instanceof DeallocateFlowResourcesRequest) {
+                String flowId = ((DeallocateFlowResourcesRequest) data).getFlowId();
+
+                logger.info("Deallocate resources for flow {}", flowId);
+
+                values = new Values(message, flowId);
+                outputCollector.emit(StreamType.DEALLOCATE_RESOURCES.toString(), tuple, values);
+            } else if (data instanceof UpdateFlowPathStatusRequest) {
+                String flowId = ((UpdateFlowPathStatusRequest) data).getFlowId();
+
+                logger.info("Update status for flow {}", flowId);
+
+                values = new Values(message, flowId);
+                outputCollector.emit(StreamType.STATUS.toString(), tuple, values);
             } else {
                 logger.debug("Skip undefined CommandMessage: {}={}", Utils.CORRELATION_ID, message.getCorrelationId());
             }
@@ -216,9 +244,13 @@ public class SplitterBolt extends BaseRichBolt {
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.PUSH.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.UNPUSH.toString(), FlowTopology.fieldsMessageFlowId);
-        outputFieldsDeclarer.declareStream(StreamType.CACHE_SYNC.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.REROUTE.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.PATH_SWAP.toString(), FlowTopology.fieldsMessageFlowId);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
+        outputFieldsDeclarer.declareStream(StreamType.METER_MODE.toString(), FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.DEALLOCATE_RESOURCES.toString(),
+                FlowTopology.fieldsMessageFlowId);
+        outputFieldsDeclarer.declareStream(StreamType.STATUS.toString(), FlowTopology.fieldsMessageFlowId);
     }
 
     /**

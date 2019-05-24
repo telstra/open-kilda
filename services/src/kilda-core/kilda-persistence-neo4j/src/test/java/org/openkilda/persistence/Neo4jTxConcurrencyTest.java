@@ -17,18 +17,19 @@ package org.openkilda.persistence;
 
 import static org.junit.Assert.assertNull;
 
+import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPair;
-import org.openkilda.model.FlowSegment;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.impl.Neo4jFlowPathRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jFlowRepository;
-import org.openkilda.persistence.repositories.impl.Neo4jFlowSegmentRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jIslRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository;
 
@@ -40,6 +41,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -58,14 +60,14 @@ public class Neo4jTxConcurrencyTest extends Neo4jBasedTest {
 
     static SwitchRepository switchRepository;
     static FlowRepository flowRepository;
-    static FlowSegmentRepository flowSegmentRepository;
+    static FlowPathRepository flowPathRepository;
     static IslRepository islRepository;
 
     @BeforeClass
     public static void setUp() {
         switchRepository = new Neo4jSwitchRepository(neo4jSessionFactory, txManager);
         flowRepository = new Neo4jFlowRepository(neo4jSessionFactory, txManager);
-        flowSegmentRepository = new Neo4jFlowSegmentRepository(neo4jSessionFactory, txManager);
+        flowPathRepository = new Neo4jFlowPathRepository(neo4jSessionFactory, txManager);
         islRepository = new Neo4jIslRepository(neo4jSessionFactory, txManager);
     }
 
@@ -76,6 +78,7 @@ public class Neo4jTxConcurrencyTest extends Neo4jBasedTest {
         switchRepository.createOrUpdate(srcSwitch);
         Switch dstSwitch = Switch.builder().switchId(TEST_SWITCH_B_ID).build();
         switchRepository.createOrUpdate(dstSwitch);
+
         Flow flow = Flow.builder().flowId(TEST_FLOW_1_ID)
                 .srcSwitch(srcSwitch).srcPort(1).destSwitch(dstSwitch).destPort(2).build();
         flowRepository.createOrUpdate(flow);
@@ -87,11 +90,11 @@ public class Neo4jTxConcurrencyTest extends Neo4jBasedTest {
 
             try {
                 txManager.doInTransaction(() -> {
-                    Flow flowToUpdate = flowRepository.findById(TEST_FLOW_1_ID).iterator().next();
+                    Flow flowToUpdate = flowRepository.findById(TEST_FLOW_1_ID).get();
                     flowToUpdate.setTimeModify(timestamp);
                     flowRepository.createOrUpdate(flowToUpdate);
 
-                    Flow updated = flowRepository.findById(TEST_FLOW_1_ID).iterator().next();
+                    Flow updated = flowRepository.findById(TEST_FLOW_1_ID).get();
                     if (!updated.getTimeModify().equals(timestamp)) {
                         throw new RuntimeException("Failed to update timeModify: " + updated);
                     }
@@ -118,6 +121,7 @@ public class Neo4jTxConcurrencyTest extends Neo4jBasedTest {
         switchRepository.createOrUpdate(dstSwitch);
         Switch dst2Switch = Switch.builder().switchId(TEST_SWITCH_C_ID).build();
         switchRepository.createOrUpdate(dst2Switch);
+
         Flow flow1 = Flow.builder().flowId(TEST_FLOW_1_ID)
                 .srcSwitch(srcSwitch).srcPort(1).destSwitch(dstSwitch).destPort(2).build();
         flowRepository.createOrUpdate(flow1);
@@ -136,11 +140,11 @@ public class Neo4jTxConcurrencyTest extends Neo4jBasedTest {
 
             try {
                 txManager.doInTransaction(() -> {
-                    Flow flowToUpdate = flowRepository.findById(flowId).iterator().next();
+                    Flow flowToUpdate = flowRepository.findById(flowId).get();
                     flowToUpdate.setTimeModify(timestamp);
                     flowRepository.createOrUpdate(flowToUpdate);
 
-                    Flow updated = flowRepository.findById(flowId).iterator().next();
+                    Flow updated = flowRepository.findById(flowId).get();
                     if (!updated.getTimeModify().equals(timestamp)) {
                         throw new RuntimeException("Failed to update timeModify: " + updated);
                     }
@@ -168,23 +172,15 @@ public class Neo4jTxConcurrencyTest extends Neo4jBasedTest {
         Switch dst2Switch = Switch.builder().switchId(TEST_SWITCH_C_ID).build();
         switchRepository.createOrUpdate(dst2Switch);
 
-        Flow flow1 = Flow.builder().flowId(TEST_FLOW_1_ID).cookie(Flow.FORWARD_FLOW_COOKIE_MASK | 1L)
+        Flow flow1 = Flow.builder().flowId(TEST_FLOW_1_ID)
                 .srcSwitch(srcSwitch).srcPort(1).destSwitch(dstSwitch).destPort(2).build();
-        Flow reverseFlow1 = Flow.builder().flowId(TEST_FLOW_1_ID).cookie(Flow.REVERSE_FLOW_COOKIE_MASK | 1L)
-                .srcSwitch(dstSwitch).srcPort(2).destSwitch(srcSwitch).destPort(1).build();
-        flowRepository.createOrUpdate(FlowPair.builder().forward(flow1).reverse(reverseFlow1).build());
-
-        Flow flow2 = Flow.builder().flowId(TEST_FLOW_2_ID).cookie(Flow.FORWARD_FLOW_COOKIE_MASK | 2L)
+        flowRepository.createOrUpdate(flow1);
+        Flow flow2 = Flow.builder().flowId(TEST_FLOW_2_ID)
                 .srcSwitch(dstSwitch).srcPort(1).destSwitch(dst2Switch).destPort(2).build();
-        Flow reverseFlow2 = Flow.builder().flowId(TEST_FLOW_2_ID).cookie(Flow.REVERSE_FLOW_COOKIE_MASK | 2L)
-                .srcSwitch(dst2Switch).srcPort(2).destSwitch(dstSwitch).destPort(1).build();
-        flowRepository.createOrUpdate(FlowPair.builder().forward(flow2).reverse(reverseFlow2).build());
-
-        Flow flow3 = Flow.builder().flowId(TEST_FLOW_3_ID).cookie(Flow.FORWARD_FLOW_COOKIE_MASK | 3L)
+        flowRepository.createOrUpdate(flow2);
+        Flow flow3 = Flow.builder().flowId(TEST_FLOW_3_ID)
                 .srcSwitch(dst2Switch).srcPort(1).destSwitch(srcSwitch).destPort(2).build();
-        Flow reverseFlow3 = Flow.builder().flowId(TEST_FLOW_3_ID).cookie(Flow.REVERSE_FLOW_COOKIE_MASK | 3L)
-                .srcSwitch(srcSwitch).srcPort(2).destSwitch(dst2Switch).destPort(1).build();
-        flowRepository.createOrUpdate(FlowPair.builder().forward(flow3).reverse(reverseFlow3).build());
+        flowRepository.createOrUpdate(flow3);
 
         // when
         ExecutorService executor = Executors.newCachedThreadPool();
@@ -194,14 +190,12 @@ public class Neo4jTxConcurrencyTest extends Neo4jBasedTest {
 
             try {
                 txManager.doInTransaction(() -> {
-                    FlowPair flowToUpdate = flowRepository.findFlowPairById(flowId).get();
-                    flowToUpdate.getForward().setTimeModify(timestamp);
-                    flowToUpdate.getReverse().setTimeModify(timestamp);
+                    Flow flowToUpdate = flowRepository.findById(flowId).get();
+                    flowToUpdate.setTimeModify(timestamp);
                     flowRepository.createOrUpdate(flowToUpdate);
 
-                    FlowPair updated = flowRepository.findFlowPairById(flowId).get();
-                    if (!updated.getForward().getTimeModify().equals(timestamp)
-                            || !updated.getReverse().getTimeModify().equals(timestamp)) {
+                    Flow updated = flowRepository.findById(flowId).get();
+                    if (!updated.getTimeModify().equals(timestamp)) {
                         throw new RuntimeException("Failed to update timeModify: " + updated);
                     }
                 });
@@ -226,27 +220,26 @@ public class Neo4jTxConcurrencyTest extends Neo4jBasedTest {
         Switch dstSwitch = Switch.builder().switchId(TEST_SWITCH_B_ID).build();
         switchRepository.createOrUpdate(dstSwitch);
 
-        Flow flow1 = Flow.builder().flowId(TEST_FLOW_1_ID).cookie(Flow.FORWARD_FLOW_COOKIE_MASK | 1L)
+        Flow flow1 = Flow.builder().flowId(TEST_FLOW_1_ID)
                 .srcSwitch(srcSwitch).srcPort(1).destSwitch(dstSwitch).destPort(2).build();
-        Flow reverseFlow1 = Flow.builder().flowId(TEST_FLOW_1_ID).cookie(Flow.REVERSE_FLOW_COOKIE_MASK | 1L)
-                .srcSwitch(dstSwitch).srcPort(2).destSwitch(srcSwitch).destPort(1).build();
-        flowRepository.createOrUpdate(FlowPair.builder().forward(flow1).reverse(reverseFlow1).build());
-
-        Flow flow2 = Flow.builder().flowId(TEST_FLOW_2_ID).cookie(Flow.FORWARD_FLOW_COOKIE_MASK | 2L)
+        flowRepository.createOrUpdate(flow1);
+        Flow flow2 = Flow.builder().flowId(TEST_FLOW_2_ID)
                 .srcSwitch(dstSwitch).srcPort(1).destSwitch(srcSwitch).destPort(2).build();
-        Flow reverseFlow2 = Flow.builder().flowId(TEST_FLOW_2_ID).cookie(Flow.REVERSE_FLOW_COOKIE_MASK | 2L)
-                .srcSwitch(srcSwitch).srcPort(2).destSwitch(dstSwitch).destPort(1).build();
-        flowRepository.createOrUpdate(FlowPair.builder().forward(flow2).reverse(reverseFlow2).build());
+        flowRepository.createOrUpdate(flow2);
 
-        FlowSegment flowSegment1 = FlowSegment.builder().flowId(TEST_FLOW_3_ID)
-                .cookie(Flow.FORWARD_FLOW_COOKIE_MASK | 3L)
+        Flow flow3 = Flow.builder().flowId(TEST_FLOW_3_ID)
                 .srcSwitch(srcSwitch).srcPort(1).destSwitch(dstSwitch).destPort(2).build();
-        flowSegmentRepository.createOrUpdate(flowSegment1);
-
-        FlowSegment flowSegment2 = FlowSegment.builder().flowId(TEST_FLOW_3_ID)
-                .cookie(Flow.REVERSE_FLOW_COOKIE_MASK | 3L)
-                .srcSwitch(dstSwitch).srcPort(2).destSwitch(srcSwitch).destPort(1).build();
-        flowSegmentRepository.createOrUpdate(flowSegment2);
+        FlowPath flowPath1 = FlowPath.builder().pathId(new PathId(UUID.randomUUID().toString()))
+                .flow(flow3)
+                .cookie(Cookie.buildForwardCookie(3L))
+                .srcSwitch(srcSwitch).destSwitch(dstSwitch).build();
+        flow3.setForwardPath(flowPath1);
+        FlowPath flowPath2 = FlowPath.builder().pathId(new PathId(UUID.randomUUID().toString()))
+                .flow(flow3)
+                .cookie(Cookie.buildReverseCookie(3L))
+                .srcSwitch(dstSwitch).destSwitch(srcSwitch).build();
+        flow3.setReversePath(flowPath2);
+        flowRepository.createOrUpdate(flow3);
 
         // when
         Random random = new Random();
@@ -256,29 +249,26 @@ public class Neo4jTxConcurrencyTest extends Neo4jBasedTest {
                 txManager.doInTransaction(() -> {
                     if (index % 3 == 0) {
                         String flowId = Arrays.asList(TEST_FLOW_1_ID, TEST_FLOW_2_ID).get(index % 2);
-                        FlowPair flowToUpdate = flowRepository.findFlowPairById(flowId).get();
+                        Flow flowToUpdate = flowRepository.findById(flowId).get();
                         Instant timestamp = Instant.now().plus(index, ChronoUnit.DAYS);
-                        flowToUpdate.getForward().setTimeModify(timestamp);
-                        flowToUpdate.getReverse().setTimeModify(timestamp);
+                        flowToUpdate.setTimeModify(timestamp);
                         flowRepository.createOrUpdate(flowToUpdate);
 
-                        FlowPair updated = flowRepository.findFlowPairById(flowId).get();
-                        if (!updated.getForward().getTimeModify().equals(timestamp)
-                                || !updated.getReverse().getTimeModify().equals(timestamp)) {
+                        Flow updated = flowRepository.findById(flowId).get();
+                        if (!updated.getTimeModify().equals(timestamp)) {
                             throw new RuntimeException("Failed to update timeModify: " + updated);
                         }
 
                     } else {
-                        long cookie = Arrays.asList(Flow.FORWARD_FLOW_COOKIE_MASK, Flow.REVERSE_FLOW_COOKIE_MASK)
-                                .get(index % 2) | 3L;
-                        FlowSegment segmentToUpdate =
-                                flowSegmentRepository.findByFlowIdAndCookie(TEST_FLOW_3_ID, cookie).iterator().next();
+                        Cookie cookie = new Cookie(Arrays.asList(Cookie.FORWARD_FLOW_COOKIE_MASK,
+                                Cookie.REVERSE_FLOW_COOKIE_MASK).get(index % 2) | 3L);
+                        FlowPath pathToUpdate =
+                                flowPathRepository.findByFlowIdAndCookie(TEST_FLOW_3_ID, cookie).get();
                         long latency = Math.abs(random.nextLong());
-                        segmentToUpdate.setLatency(latency);
-                        flowSegmentRepository.createOrUpdate(segmentToUpdate);
+                        pathToUpdate.setLatency(latency);
+                        flowPathRepository.createOrUpdate(pathToUpdate);
 
-                        FlowSegment updated = flowSegmentRepository.findByFlowIdAndCookie(TEST_FLOW_3_ID, cookie)
-                                .iterator().next();
+                        FlowPath updated = flowPathRepository.findByFlowIdAndCookie(TEST_FLOW_3_ID, cookie).get();
                         if (updated.getLatency() != latency) {
                             throw new RuntimeException("Failed to update latency: " + updated);
                         }

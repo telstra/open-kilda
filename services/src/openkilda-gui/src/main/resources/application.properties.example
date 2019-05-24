@@ -26,6 +26,7 @@ nb.base.url=http://northbound.pendev:8080/api/v1
 
 #OPEN TSDB Base URL
 opentsdb.base.url=http://opentsdb.pendev:4242
+opentsdb.metric.prefix = kilda.
 
 #Kilda username and password
 kilda.username = kilda
@@ -51,3 +52,6 @@ spring.mvc.view.prefix= /views/
 spring.mvc.view.suffix= .jsp
 
 status.cron.time=43200000
+
+#Currently working for 2FA app name
+application.name=Open Kilda

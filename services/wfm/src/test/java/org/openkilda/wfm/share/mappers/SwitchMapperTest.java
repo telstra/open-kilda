@@ -15,8 +15,9 @@
 
 package org.openkilda.wfm.share.mappers;
 
-import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.model.SpeakerSwitchDescription;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
@@ -30,17 +31,41 @@ public class SwitchMapperTest {
 
     @Test
     public void switchMapperTest() {
+        SpeakerSwitchView switchView = SpeakerSwitchView.builder()
+                .ofVersion("13")
+                .description(SpeakerSwitchDescription.builder()
+                        .datapath("datapath")
+                        .hardware("hardware")
+                        .manufacturer("manufacturer")
+                        .serialNumber("serial_number")
+                        .software("software")
+                        .build())
+                .build();
 
-        SwitchInfoData switchInfoData = new SwitchInfoData(TEST_SWITCH_ID, SwitchChangeType.ACTIVATED, "address",
-                "hostname", "description", "controller");
-        Switch sw = SwitchMapper.INSTANCE.map(switchInfoData);
+        Switch sw = Switch.builder()
+                .switchId(TEST_SWITCH_ID)
+                .status(SwitchStatus.ACTIVE)
+                .address("address")
+                .hostname("hostname")
+                .description("description")
+                .controller("controller")
+                .underMaintenance(false)
+                .build();
+        sw.setOfVersion(switchView.getOfVersion());
+        sw.setOfDescriptionDatapath(switchView.getDescription().getDatapath());
+        sw.setOfDescriptionManufacturer(switchView.getDescription().getManufacturer());
+        sw.setOfDescriptionHardware(switchView.getDescription().getHardware());
+        sw.setOfDescriptionSoftware(switchView.getDescription().getSoftware());
+        sw.setOfDescriptionSerialNumber(switchView.getDescription().getSerialNumber());
 
-        Assert.assertEquals(SwitchStatus.ACTIVE, sw.getStatus());
+        SwitchInfoData switchInfoData = new SwitchInfoData(TEST_SWITCH_ID, SwitchMapper.INSTANCE.map(sw.getStatus()),
+                sw.getAddress(), sw.getHostname(), sw.getDescription(), sw.getController(), sw.isUnderMaintenance(),
+                switchView);
 
         SwitchInfoData switchInfoDataMapping = SwitchMapper.INSTANCE.map(sw);
-        switchInfoDataMapping.setState(SwitchChangeType.ACTIVATED);
-
         Assert.assertEquals(switchInfoData, switchInfoDataMapping);
-    }
 
+        Switch swMapping = SwitchMapper.INSTANCE.map(switchInfoData);
+        Assert.assertEquals(sw, swMapping);
+    }
 }

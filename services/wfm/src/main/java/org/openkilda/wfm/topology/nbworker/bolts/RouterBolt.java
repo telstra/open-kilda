@@ -26,7 +26,10 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
+import org.openkilda.messaging.nbtopology.request.FeatureTogglesBaseRequest;
 import org.openkilda.messaging.nbtopology.request.FlowsBaseRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
+import org.openkilda.messaging.nbtopology.request.GetPathsRequest;
 import org.openkilda.messaging.nbtopology.request.LinksBaseRequest;
 import org.openkilda.messaging.nbtopology.request.SwitchesBaseRequest;
 import org.openkilda.wfm.AbstractBolt;
@@ -75,6 +78,12 @@ public class RouterBolt extends AbstractBolt {
             getOutput().emit(StreamType.ISL.toString(), input, new Values(request, correlationId));
         } else if (request instanceof FlowsBaseRequest) {
             getOutput().emit(StreamType.FLOW.toString(), input, new Values(request, correlationId));
+        } else if (request instanceof FeatureTogglesBaseRequest) {
+            getOutput().emit(StreamType.FEATURE_TOGGLES.toString(), input, new Values(request, correlationId));
+        } else if (request instanceof GetPathsRequest) {
+            getOutput().emit(StreamType.PATHS.toString(), input, new Values(request, correlationId));
+        } else if (request instanceof GetFlowHistoryRequest) {
+            getOutput().emit(StreamType.HISTORY.toString(), input, new Values(request, correlationId));
         } else {
             unhandledInput(input);
         }
@@ -99,9 +108,14 @@ public class RouterBolt extends AbstractBolt {
         declarer.declareStream(StreamType.SWITCH.toString(), fields);
         declarer.declareStream(StreamType.ISL.toString(), fields);
         declarer.declareStream(StreamType.FLOW.toString(), fields);
+        declarer.declareStream(StreamType.FEATURE_TOGGLES.toString(), fields);
+        declarer.declareStream(StreamType.PATHS.toString(), fields);
+        declarer.declareStream(StreamType.HISTORY.toString(), fields);
+
         declarer.declareStream(StreamType.VALIDATION.toString(),
                 new Fields(SwitchValidationsBolt.FIELD_ID_REQUEST,
                         SwitchValidationsBolt.FIELD_ID_CORELLATION_ID));
+
         declarer.declareStream(StreamType.ERROR.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
     }

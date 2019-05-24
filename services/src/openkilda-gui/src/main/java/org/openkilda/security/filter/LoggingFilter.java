@@ -90,12 +90,12 @@ public class LoggingFilter extends OncePerRequestFilter {
                         logResponse(responseWrapper);
                     }
                 } catch (Exception e) {
-                    LOGGER.error("[doFilterInternal] Exception: " + e.getMessage(), e);
+                    LOGGER.error("Logging filter. Exception: " + e.getMessage(), e);
                 }
             }
             long elapsedTime = System.currentTimeMillis() - startTime;
             if (60000 - elapsedTime < 0) {
-                LOGGER.debug("[DelayedRequestDetail] - Time Taken: '{}', URL: '{}'", elapsedTime,
+                LOGGER.debug("Logging filter delayed request detail - Time Taken: '{}', URL: '{}'", elapsedTime,
                         request.getRequestURL());
             }
         } else {
@@ -123,7 +123,7 @@ public class LoggingFilter extends OncePerRequestFilter {
             msg.append("', \n\tparams: '").append(key + " : " + parameters.get(key));
         });
 
-        LOGGER.debug("[logRequest] Request: " + msg.toString());
+        LOGGER.debug("Log request. Request: " + msg.toString());
     }
 
     /**
@@ -148,10 +148,10 @@ public class LoggingFilter extends OncePerRequestFilter {
 
             msg.append("\nResponse: \n").append(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(json));
         } catch (UnsupportedEncodingException e) {
-            LOGGER.error("[logResponse] Exception: " + e.getMessage(), e);
+            LOGGER.error("Log response. Exception: " + e.getMessage(), e);
         } catch (MismatchedInputException e) {
             msg.append("\nResponse: \n").append(content);
         }
-        LOGGER.debug("[logResponse] Response: " + msg.toString());
+        LOGGER.debug("Log response. Response: " + msg.toString());
     }
 }

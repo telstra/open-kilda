@@ -15,13 +15,18 @@
 
 package org.openkilda.wfm.topology.nbworker;
 
+import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.nbworker.bolts.DiscoveryEncoderBolt;
+import org.openkilda.wfm.topology.nbworker.bolts.FeatureTogglesBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsBolt;
+import org.openkilda.wfm.topology.nbworker.bolts.HistoryOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.LinkOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.MessageEncoder;
+import org.openkilda.wfm.topology.nbworker.bolts.PathsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.ResponseSplitterBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.RouterBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.SwitchOperationsBolt;
@@ -40,6 +45,7 @@ import org.apache.storm.topology.TopologyBuilder;
  *                                     | ---> flows-operations-bolt      ---> |  \ \                      |
  *                                     | ---> switches-operations-bolt   ---> | \ \ \                     |
  *                                     | ---> switch-validations-bolt    ---> |\ \ \ \                    |
+ *                                     | ---> history-operations-bolt    ---> | \ \ \ \                   |
  *                                     | --->                   message-encoder-bolt (in error case) ---> |
  *
  * <p>kilda.topo.nb-spout: reads data from kafka.
@@ -53,11 +59,16 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String SWITCHES_BOLT_NAME = "switches-operations-bolt";
     private static final String LINKS_BOLT_NAME = "links-operations-bolt";
     private static final String FLOWS_BOLT_NAME = "flows-operations-bolt";
+    private static final String FEATURE_TOGGLES_BOLT_NAME = "feature-toggles-bolt";
+    private static final String PATHS_BOLT_NAME = "paths-bolt";
     private static final String SWITCH_VALIDATIONS_BOLT_NAME = "switch-validations-bolt";
     private static final String MESSAGE_ENCODER_BOLT_NAME = "message-encoder-bolt";
+    private static final String DISCOVERY_ENCODER_BOLT_NAME = "discovery-encoder-bolt";
     private static final String SPLITTER_BOLT_NAME = "response-splitter-bolt";
     private static final String NB_KAFKA_BOLT_NAME = "nb-kafka-bolt";
     private static final String FLOW_KAFKA_BOLT_NAME = "flow-kafka-bolt";
+    private static final String DISCO_KAFKA_BOLT_NAME = "disco-kafka-bolt";
+    private static final String HISTORY_BOLT_NAME = "history-operations-bolt";
     private static final String NB_SPOUT_ID = "nb-spout";
 
     public NbWorkerTopology(LaunchEnvironment env) {
@@ -81,8 +92,10 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
         PersistenceManager persistenceManager =
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+        PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
 
-        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(persistenceManager);
+        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(persistenceManager,
+                topologyConfig.getIslCostWhenUnderMaintenance());
         tb.setBolt(SWITCHES_BOLT_NAME, switchesBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.SWITCH.toString());
 
@@ -95,25 +108,50 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         tb.setBolt(FLOWS_BOLT_NAME, flowsBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.FLOW.toString());
 
+        FeatureTogglesBolt featureTogglesBolt = new FeatureTogglesBolt(persistenceManager);
+        tb.setBolt(FEATURE_TOGGLES_BOLT_NAME, featureTogglesBolt, parallelism)
+                .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.FEATURE_TOGGLES.toString());
+
+        PathsBolt pathsBolt = new PathsBolt(persistenceManager, pathComputerConfig);
+        tb.setBolt(PATHS_BOLT_NAME, pathsBolt, parallelism)
+                .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.PATHS.toString());
+
         SwitchValidationsBolt validationBolt = new SwitchValidationsBolt(persistenceManager);
         tb.setBolt(SWITCH_VALIDATIONS_BOLT_NAME, validationBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.VALIDATION.toString());
+
+        HistoryOperationsBolt historyBolt = new HistoryOperationsBolt(persistenceManager);
+        tb.setBolt(HISTORY_BOLT_NAME, historyBolt, parallelism)
+                .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.HISTORY.toString());
 
         ResponseSplitterBolt splitterBolt = new ResponseSplitterBolt();
         tb.setBolt(SPLITTER_BOLT_NAME, splitterBolt, parallelism)
                 .shuffleGrouping(SWITCHES_BOLT_NAME)
                 .shuffleGrouping(LINKS_BOLT_NAME)
                 .shuffleGrouping(FLOWS_BOLT_NAME)
-                .shuffleGrouping(SWITCH_VALIDATIONS_BOLT_NAME);
+                .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME)
+                .shuffleGrouping(PATHS_BOLT_NAME)
+                .shuffleGrouping(SWITCH_VALIDATIONS_BOLT_NAME)
+                .shuffleGrouping(HISTORY_BOLT_NAME);
 
         MessageEncoder messageEncoder = new MessageEncoder();
         tb.setBolt(MESSAGE_ENCODER_BOLT_NAME, messageEncoder, parallelism)
                 .shuffleGrouping(LINKS_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(LINKS_BOLT_NAME, StreamType.REROUTE.toString())
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.ERROR.toString())
-                .shuffleGrouping(LINKS_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(FLOWS_BOLT_NAME, StreamType.REROUTE.toString())
-                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.ERROR.toString());
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.ERROR.toString())
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.REROUTE.toString())
+                .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ERROR.toString())
+                .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME, StreamType.ERROR.toString())
+                .shuffleGrouping(PATHS_BOLT_NAME, StreamType.ERROR.toString())
+                .shuffleGrouping(HISTORY_BOLT_NAME, StreamType.ERROR.toString());
+
+        DiscoveryEncoderBolt discoveryEncoder = new DiscoveryEncoderBolt();
+        tb.setBolt(DISCOVERY_ENCODER_BOLT_NAME, discoveryEncoder, parallelism)
+                .shuffleGrouping(LINKS_BOLT_NAME, StreamType.DISCO.toString())
+                .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.DISCO.toString())
+                .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME, FeatureTogglesBolt.STREAM_NOTIFICATION_ID);
 
         KafkaBolt kafkaNbBolt = buildKafkaBolt(topologyConfig.getKafkaNorthboundTopic());
         tb.setBolt(NB_KAFKA_BOLT_NAME, kafkaNbBolt, parallelism)
@@ -123,6 +161,10 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         KafkaBolt kafkaFlowBolt = buildKafkaBolt(topologyConfig.getKafkaFlowTopic());
         tb.setBolt(FLOW_KAFKA_BOLT_NAME, kafkaFlowBolt, parallelism)
                 .shuffleGrouping(MESSAGE_ENCODER_BOLT_NAME, StreamType.REROUTE.toString());
+
+        KafkaBolt kafkaDiscoBolt = buildKafkaBolt(topologyConfig.getKafkaDiscoTopic());
+        tb.setBolt(DISCO_KAFKA_BOLT_NAME, kafkaDiscoBolt, parallelism)
+                .shuffleGrouping(DISCOVERY_ENCODER_BOLT_NAME);
 
         return tb.createTopology();
     }

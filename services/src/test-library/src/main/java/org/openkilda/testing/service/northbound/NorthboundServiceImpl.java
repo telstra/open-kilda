@@ -23,32 +23,41 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.model.HealthCheck;
-import org.openkilda.messaging.payload.FeatureTogglePayload;
+import org.openkilda.messaging.model.SpeakerSwitchDescription;
+import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.history.FlowEventPayload;
+import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
-import org.openkilda.northbound.dto.flows.FlowValidationDto;
-import org.openkilda.northbound.dto.flows.PingInput;
-import org.openkilda.northbound.dto.flows.PingOutput;
-import org.openkilda.northbound.dto.links.LinkDto;
-import org.openkilda.northbound.dto.links.LinkParametersDto;
-import org.openkilda.northbound.dto.links.LinkPropsDto;
-import org.openkilda.northbound.dto.links.LinkUnderMaintenanceDto;
-import org.openkilda.northbound.dto.switches.DeleteLinkResult;
-import org.openkilda.northbound.dto.switches.DeleteMeterResult;
-import org.openkilda.northbound.dto.switches.PortDto;
-import org.openkilda.northbound.dto.switches.RulesSyncResult;
-import org.openkilda.northbound.dto.switches.RulesValidationResult;
-import org.openkilda.northbound.dto.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
+import org.openkilda.northbound.dto.v1.flows.PingInput;
+import org.openkilda.northbound.dto.v1.flows.PingOutput;
+import org.openkilda.northbound.dto.v1.links.LinkDto;
+import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthDto;
+import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthRequest;
+import org.openkilda.northbound.dto.v1.links.LinkParametersDto;
+import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
+import org.openkilda.northbound.dto.v1.links.LinkUnderMaintenanceDto;
+import org.openkilda.northbound.dto.v1.switches.DeleteMeterResult;
+import org.openkilda.northbound.dto.v1.switches.DeleteSwitchResult;
+import org.openkilda.northbound.dto.v1.switches.PortDto;
+import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
+import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
+import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
+import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
@@ -86,16 +95,28 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public FlowPayload getFlow(String flowId) {
-        try {
-            return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.GET,
-                    new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
-        } catch (HttpClientErrorException ex) {
-            if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {
-                throw ex;
-            }
+        return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
+    }
 
-            return null;
+    @Override
+    public List<FlowEventPayload> getFlowHistory(String flowId) {
+        return getFlowHistory(flowId, null, null);
+    }
+
+    @Override
+    public List<FlowEventPayload> getFlowHistory(String flowId, Long timeFrom, Long timeTo) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/flows/{flow_id}/history");
+        if (timeFrom != null) {
+            uriBuilder.queryParam("timeFrom", timeFrom);
         }
+        if (timeTo != null) {
+            uriBuilder.queryParam("timeTo", timeTo);
+        }
+
+        FlowEventPayload[] flowHistory = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowEventPayload[].class, flowId).getBody();
+        return Arrays.asList(flowHistory);
     }
 
     @Override
@@ -265,6 +286,18 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public FlowMeterEntries resetMeters(String flowId) {
+        return restTemplate.exchange("/api/v1/flows/{flowId}/meters", HttpMethod.PATCH,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowMeterEntries.class, flowId).getBody();
+    }
+
+    @Override
+    public FlowPayload swapFlowPath(String flowId) {
+        return restTemplate.exchange("/api/v1/flows/{flowId}/swap", HttpMethod.PATCH,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
+    }
+
+    @Override
     public SwitchFlowEntries getSwitchRules(SwitchId switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/rules", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchFlowEntries.class, switchId).getBody();
@@ -278,9 +311,26 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public List<IslInfoData> getAllLinks() {
-        LinkDto[] links = restTemplate.exchange("/api/v1/links", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
+        return getLinks(null, null, null, null);
+    }
 
+    @Override
+    public List<IslInfoData> getLinks(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/links");
+        if (srcSwitch != null) {
+            uriBuilder.queryParam("src_switch", srcSwitch);
+        }
+        if (srcPort != null) {
+            uriBuilder.queryParam("src_port", srcPort);
+        }
+        if (dstSwitch != null) {
+            uriBuilder.queryParam("dst_switch", dstSwitch);
+        }
+        if (dstPort != null) {
+            uriBuilder.queryParam("dst_port", dstPort);
+        }
+        LinkDto[] links = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
         return Stream.of(links)
                 .map(this::convertToIslInfoData)
                 .collect(Collectors.toList());
@@ -368,30 +418,52 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public DeleteLinkResult deleteLink(LinkParametersDto linkParameters) {
-        return restTemplate.exchange("/api/v1/links", HttpMethod.DELETE,
+    public List<LinkDto> deleteLink(LinkParametersDto linkParameters) {
+        LinkDto[] updatedLink = restTemplate.exchange("/api/v1/links", HttpMethod.DELETE,
                 new HttpEntity<>(linkParameters, buildHeadersWithCorrelationId()),
-                DeleteLinkResult.class).getBody();
+                LinkDto[].class).getBody();
+        return Arrays.asList(updatedLink);
     }
 
     @Override
-    public List<LinkDto> updateLinkUnderMaintenance(LinkUnderMaintenanceDto link) {
+    public List<LinkDto> setLinkMaintenance(LinkUnderMaintenanceDto link) {
         LinkDto[] updatedLink = restTemplate.exchange("api/v1/links/under-maintenance", HttpMethod.PATCH,
                 new HttpEntity<>(link, buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
         return Arrays.asList(updatedLink);
     }
 
     @Override
-    public FeatureTogglePayload getFeatureToggles() {
-        return restTemplate.exchange("/api/v1/features", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), FeatureTogglePayload.class).getBody();
+    public LinkMaxBandwidthDto updateLinkMaxBandwidth(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch,
+                                                      Integer dstPort, Long linkMaxBandwidth) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/links/bandwidth");
+        if (srcSwitch != null) {
+            uriBuilder.queryParam("src_switch", srcSwitch);
+        }
+        if (srcPort != null) {
+            uriBuilder.queryParam("src_port", srcPort);
+        }
+        if (dstSwitch != null) {
+            uriBuilder.queryParam("dst_switch", dstSwitch);
+        }
+        if (dstPort != null) {
+            uriBuilder.queryParam("dst_port", dstPort);
+        }
+        return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.PATCH,
+                new HttpEntity<>(new LinkMaxBandwidthRequest(linkMaxBandwidth), buildHeadersWithCorrelationId()),
+                LinkMaxBandwidthDto.class).getBody();
     }
 
     @Override
-    public FeatureTogglePayload toggleFeature(FeatureTogglePayload request) {
-        HttpEntity<FeatureTogglePayload> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
-        return restTemplate.exchange("/api/v1/features", HttpMethod.POST, httpEntity,
-                FeatureTogglePayload.class).getBody();
+    public FeatureTogglesDto getFeatureToggles() {
+        return restTemplate.exchange("/api/v1/features", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FeatureTogglesDto.class).getBody();
+    }
+
+    @Override
+    public FeatureTogglesDto toggleFeature(FeatureTogglesDto request) {
+        HttpEntity<FeatureTogglesDto> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v1/features", HttpMethod.PATCH, httpEntity,
+                FeatureTogglesDto.class).getBody();
     }
 
     @Override
@@ -410,6 +482,13 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public SwitchDto setSwitchMaintenance(SwitchId switchId, boolean maintenance, boolean evacuate) {
+        return restTemplate.exchange("api/v1/switches/{switch_id}/under-maintenance", HttpMethod.POST,
+                new HttpEntity<>(new UnderMaintenanceDto(maintenance, evacuate), buildHeadersWithCorrelationId()),
+                SwitchDto.class, switchId).getBody();
+    }
+
+    @Override
     public DeleteMeterResult deleteMeter(SwitchId switchId, Long meterId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/meter/{meter_id}", HttpMethod.DELETE,
                 new HttpEntity(buildHeadersWithCorrelationId()), DeleteMeterResult.class, switchId, meterId).getBody();
@@ -419,6 +498,22 @@ public class NorthboundServiceImpl implements NorthboundService {
     public SwitchMeterEntries getAllMeters(SwitchId switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/meters", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchMeterEntries.class, switchId).getBody();
+    }
+
+    @Override
+    public SwitchValidationResult validateSwitch(SwitchId switchId) {
+        log.debug("Switch validating '{}'", switchId);
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/validate", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResult.class, switchId).getBody();
+    }
+
+    @Override
+    public DeleteSwitchResult deleteSwitch(SwitchId switchId, boolean force) {
+        HttpHeaders httpHeaders = buildHeadersWithCorrelationId();
+        httpHeaders.set(Utils.EXTRA_AUTH, String.valueOf(System.currentTimeMillis()));
+        String url = "/api/v1/switches/{switch_id}?force={force}";
+        return restTemplate.exchange(url, HttpMethod.DELETE, new HttpEntity(httpHeaders),
+                DeleteSwitchResult.class, switchId, force).getBody();
     }
 
     @Override
@@ -453,6 +548,13 @@ public class NorthboundServiceImpl implements NorthboundService {
                 new HttpEntity(buildHeadersWithCorrelationId()), PortDescription.class, switchId, portNo).getBody();
     }
 
+    @Override
+    public PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch) {
+        return restTemplate.exchange(
+                "/api/v1/network/paths?src_switch={src_switch}&dst_switch={dst_switch}", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), PathsDto.class, srcSwitch, dstSwitch).getBody();
+    }
+
     private HttpHeaders buildHeadersWithCorrelationId() {
         HttpHeaders headers = new HttpHeaders();
         headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
@@ -467,17 +569,38 @@ public class NorthboundServiceImpl implements NorthboundService {
                         pathDto.getSeqId(),
                         pathDto.getSegLatency()))
                 .collect(Collectors.toList());
-        return new IslInfoData(0, path.get(0), path.get(1), dto.getSpeed(),
-                IslChangeType.from(dto.getState().toString()), dto.getAvailableBandwidth(), dto.isUnderMaintenance());
+        return IslInfoData.builder()
+                .source(path.get(0))
+                .destination(path.get(1))
+                .speed(dto.getSpeed())
+                .state(IslChangeType.from(dto.getState().toString()))
+                .actualState(IslChangeType.from(dto.getActualState().toString()))
+                .cost(dto.getCost())
+                .availableBandwidth(dto.getAvailableBandwidth())
+                .defaultMaxBandwidth(dto.getDefaultMaxBandwidth())
+                .maxBandwidth(dto.getMaxBandwidth())
+                .underMaintenance(dto.isUnderMaintenance())
+                .build();
     }
 
     private SwitchInfoData convertToSwitchInfoData(SwitchDto dto) {
+        SpeakerSwitchView switchView = SpeakerSwitchView.builder()
+                .ofVersion(dto.getOfVersion())
+                .description(SpeakerSwitchDescription.builder()
+                        .hardware(dto.getHardware())
+                        .manufacturer(dto.getManufacturer())
+                        .serialNumber(dto.getSerialNumber())
+                        .software(dto.getSoftware())
+                        .build())
+                .build();
         return new SwitchInfoData(
                 new SwitchId(dto.getSwitchId()),
                 SwitchChangeType.from(dto.getState()),
                 dto.getAddress(),
                 dto.getHostname(),
                 dto.getDescription(),
-                KILDA_CONTROLLER);
+                KILDA_CONTROLLER,
+                dto.isUnderMaintenance(),
+                switchView);
     }
 }

@@ -48,7 +48,7 @@ public class IslLinkConverter {
     public List<IslLinkInfo> toIslLinksInfo(final List<IslLink> islLinks, Map<String, String> islCostMap) {
         if (islLinks != null) {
             final List<IslLinkInfo> islLinkInfos = new ArrayList<>();
-            final Map<String, String> csNames = switchIntegrationService.getCustomSwitchNameFromFile();
+            final Map<String, String> csNames = switchIntegrationService.getSwitchNames();
             islLinks.forEach(islLink -> {
 
                 IslLinkInfo islLinkInfo = toIslLinkInfo(islLink, csNames, islCostMap);
@@ -93,6 +93,8 @@ public class IslLinkConverter {
         islLinkInfo.setAvailableBandwidth(islLink.getAvailableBandwidth());
         islLinkInfo.setSpeed(islLink.getSpeed());
         islLinkInfo.setState(islLink.getState());
+        islLinkInfo.setUnderMaintenance(islLink.isUnderMaintenance());
+        islLinkInfo.setEvacuate(islLink.isEvacuate());
         List<IslPath> islPaths = islLink.getPath();
         if (islPaths != null && !islPaths.isEmpty()) {
             if (islPaths.get(0) != null) {

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,35 +16,37 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
 import java.util.Optional;
 
 public interface FlowRepository extends Repository<Flow> {
+    long countFlows();
+
+    /**
+     * Fetches all flows.
+     * <p/>
+     * IMPORTANT: the method doesn't complete the flow and flow path entities with related path segments!
+     */
+    Collection<Flow> findAll();
+
     boolean exists(String flowId);
 
-    Collection<Flow> findById(String flowId);
+    Optional<Flow> findById(String flowId);
 
-    Optional<FlowPair> findFlowPairById(String flowId);
+    Collection<Flow> findByGroupId(String flowGroupId);
 
-    Collection<FlowPair> findAllFlowPairs();
+    Collection<Flow> findWithPeriodicPingsEnabled();
 
-    Collection<FlowPair> findFlowPairsWithPeriodicPingsEnabled();
+    Collection<Flow> findByEndpoint(SwitchId switchId, int port);
 
-    Collection<Flow> findFlowIdsByEndpoint(SwitchId switchId, int port);
+    Collection<Flow> findByEndpointSwitch(SwitchId switchId);
 
-    Collection<String> findActiveFlowIdsWithPortInPath(SwitchId switchId, int port);
+    Collection<Flow> findActiveFlowsWithPortInPath(SwitchId switchId, int port);
 
-    Collection<String> findDownFlowIds();
+    Collection<Flow> findDownFlows();
 
-    Collection<Flow> findBySrcSwitchId(SwitchId switchId);
+    Optional<String> getOrCreateFlowGroupId(String flowId);
 
-    void createOrUpdate(FlowPair flowPair);
-
-    void delete(FlowPair flowPair);
-
-    Collection<FlowPair> findAllFlowPairsWithSegment(SwitchId srcSwitchId, int srcPort,
-                                                     SwitchId dstSwitchId, int dstPort);
 }

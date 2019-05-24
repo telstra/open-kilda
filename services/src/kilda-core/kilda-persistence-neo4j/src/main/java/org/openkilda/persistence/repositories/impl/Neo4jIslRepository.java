@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
+import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceException;
@@ -31,13 +32,16 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
+import org.neo4j.ogm.cypher.Filters;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
- * Neo4J OGM implementation of {@link IslRepository}.
+ * Neo4j OGM implementation of {@link IslRepository}.
  */
 public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements IslRepository {
     private static final String SRC_PORT_PROPERTY_NAME = "src_port";
@@ -51,11 +55,25 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     }
 
     @Override
+    public Collection<Isl> findByEndpoint(SwitchId switchId, int port) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_id", switchId.toString(),
+                "port", port);
+
+        String query = "MATCH (s:switch)-[i:isl]->(d:switch) "
+                + "WHERE (s.name = $switch_id AND i.src_port = $port) "
+                + " OR (d.name = $switch_id AND i.dst_port = $port) "
+                + "RETURN s, i, d";
+
+        return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
+    }
+
+    @Override
     public Collection<Isl> findBySrcEndpoint(SwitchId srcSwitchId, int srcPort) {
         Filter srcSwitchFilter = createSrcSwitchFilter(srcSwitchId);
         Filter srcPortFilter = new Filter(SRC_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, srcPort);
 
-        return getSession().loadAll(getEntityType(), srcSwitchFilter.and(srcPortFilter), DEPTH_LOAD_ENTITY);
+        return loadAll(srcSwitchFilter.and(srcPortFilter));
     }
 
     @Override
@@ -63,7 +81,19 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
         Filter dstSwitchFilter = createDstSwitchFilter(dstSwitchId);
         Filter dstPortFilter = new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, dstPort);
 
-        return getSession().loadAll(getEntityType(), dstSwitchFilter.and(dstPortFilter), DEPTH_LOAD_ENTITY);
+        return loadAll(dstSwitchFilter.and(dstPortFilter));
+    }
+
+    @Override
+    public Collection<Isl> findBySrcSwitch(SwitchId switchId) {
+        Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
+        return loadAll(srcSwitchFilter);
+    }
+
+    @Override
+    public Collection<Isl> findByDestSwitch(SwitchId switchId) {
+        Filter destSwitchFilter = createDstSwitchFilter(switchId);
+        return loadAll(destSwitchFilter);
     }
 
     @Override
@@ -73,8 +103,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
         Filter dstSwitchFilter = createDstSwitchFilter(dstSwitchId);
         Filter dstPortFilter = new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, dstPort);
 
-        Collection<Isl> isls = getSession().loadAll(getEntityType(),
-                srcSwitchFilter.and(srcPortFilter).and(dstSwitchFilter).and(dstPortFilter), DEPTH_LOAD_ENTITY);
+        Collection<Isl> isls = loadAll(srcSwitchFilter.and(srcPortFilter).and(dstSwitchFilter).and(dstPortFilter));
         if (isls.size() > 1) {
             throw new PersistenceException(format("Found more that 1 ISL entity with %s_%d - %s_%d",
                     srcSwitchId, srcPort, dstSwitchId, dstPort));
@@ -83,18 +112,41 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     }
 
     @Override
-    public Collection<Isl> findActiveAndOccupiedByFlowWithAvailableBandwidth(String flowId, long requiredBandwidth) {
+    public Collection<Isl> findByPartialEndpoints(SwitchId srcSwitchId, Integer srcPort,
+                                                  SwitchId dstSwitchId, Integer dstPort) {
+        Filters filters = new Filters();
+        if (srcSwitchId != null) {
+            filters.and(createSrcSwitchFilter(srcSwitchId));
+        }
+        if (srcPort != null) {
+            filters.and(new Filter(SRC_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, srcPort));
+        }
+        if (dstSwitchId != null) {
+            filters.and(createDstSwitchFilter(dstSwitchId));
+        }
+        if (dstPort != null) {
+            filters.and(new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, dstPort));
+        }
+
+        return loadAll(filters);
+    }
+
+    @Override
+    public Collection<Isl> findActiveAndOccupiedByFlowPathWithAvailableBandwidth(List<PathId> pathIds,
+                                                                                 long requiredBandwidth) {
         Map<String, Object> parameters = ImmutableMap.of(
-                "flow_id", flowId,
+                "path_ids", pathIds.stream().map(PathId::getId).collect(Collectors.toList()),
                 "requested_bandwidth", requiredBandwidth,
                 "switch_status", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
                 "isl_status", islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
 
-        String query = "MATCH (src:switch)-[fs:flow_segment{flowid: $flow_id}]->(dst:switch) "
+        String query = "MATCH (fp:flow_path)-[:owns]-(ps:path_segment) "
+                + "WHERE fp.path_id IN $path_ids "
+                + "MATCH (src:switch)-[:source]-(ps)-[:destination]-(dst:switch) "
                 + "MATCH (src)-[link:isl]->(dst) "
                 + "WHERE src.state = $switch_status AND dst.state = $switch_status AND link.status = $isl_status "
-                + " AND link.src_port = fs.src_port AND link.dst_port = fs.dst_port "
-                + " AND link.available_bandwidth + fs.bandwidth >= $requested_bandwidth "
+                + " AND link.src_port = ps.src_port AND link.dst_port = ps.dst_port "
+                + " AND link.available_bandwidth + fp.bandwidth >= $requested_bandwidth "
                 + "RETURN src, link, dst";
 
         return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
@@ -129,7 +181,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                 "active_isl", islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
 
         String query = "MATCH (source:switch)-[link:isl]->(dest:switch) "
-                + "MATCH (dest)-[reverse:isl{src_port: link.dst_port, dst_port: link.src_port}]->(source) "
+                + "MATCH (dest)-[reverse:isl {src_port: link.dst_port, dst_port: link.src_port}]->(source) "
                 + "WHERE source.state = $active_switch AND dest.state = $active_switch AND link.status = $active_isl "
                 + " AND link.available_bandwidth >= $required_bandwidth "
                 + " AND reverse.available_bandwidth >= $required_bandwidth "
@@ -141,14 +193,14 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     @Override
     public void createOrUpdate(Isl link) {
         transactionManager.doInTransaction(() -> {
-            lockSwitches(requireManagedEntity(link.getSrcSwitch()), requireManagedEntity(link.getDestSwitch()));
+            lockSwitches(link.getSrcSwitch(), link.getDestSwitch());
 
             super.createOrUpdate(link);
         });
     }
 
     @Override
-    Class<Isl> getEntityType() {
+    protected Class<Isl> getEntityType() {
         return Isl.class;
     }
 }

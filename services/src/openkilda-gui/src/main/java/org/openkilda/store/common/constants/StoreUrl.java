@@ -29,7 +29,9 @@ import java.util.List;
 public enum StoreUrl {
 
     LINK_STORE(StoreType.LINK_STORE, new Url[] { Url.GET_LINK, Url.GET_STATUS_LIST, Url.GET_LINKS_WITH_PARAMS,
-            Url.GET_CONTRACT, Url.DELETE_CONTRACT });
+            Url.GET_CONTRACT, Url.DELETE_CONTRACT }),
+    SWITCH_STORE(StoreType.SWITCH_STORE, new Url[] { Url.GET_ALL_SWITCHES, Url.GET_SWITCH,
+            Url.GET_SWITCH_PORTS, Url.GET_SWITCH_PORT_FLOWS});
 
     private StoreType storeType;
     

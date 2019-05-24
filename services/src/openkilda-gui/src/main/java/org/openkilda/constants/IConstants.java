@@ -15,12 +15,18 @@
 
 package org.openkilda.constants;
 
-import java.util.ArrayList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
-
 
 /**
  * The Interface IConstants.
@@ -30,7 +36,29 @@ import java.util.TreeSet;
 
 public abstract class IConstants {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(IConstants.class);
+    
     public static final String SESSION_OBJECT = "sessionObject";
+    
+    public static final String APPLICATION_PROPERTIES_FILE = "application.properties";
+
+    public static final String FILE_PATH_PREFIX = "file:./";
+    
+    private static String prefix;
+    
+    static {
+        Properties p = new Properties();
+        try {
+            Resource resource = new ClassPathResource(FILE_PATH_PREFIX + APPLICATION_PROPERTIES_FILE);
+            if (!resource.exists()) {
+                resource = new ClassPathResource(APPLICATION_PROPERTIES_FILE);
+            }
+            p.load(new FileReader(resource.getFile()));
+            prefix = p.getProperty("opentsdb.metric.prefix");
+        } catch (IOException e) {
+            LOGGER.error("Error occurred while metric prefix getting propetry", e);
+        }
+    }
 
     private IConstants() {
 
@@ -46,13 +74,32 @@ public abstract class IConstants {
         public static Integer DEFAULT_TIME_IN_MINUTE = 45;
     }
     
-    public static final class ApplicationSetting {
-        private ApplicationSetting() {
+    public enum ApplicationSetting {
 
+        SESSION_TIMEOUT(String.valueOf(SessionTimeout.DEFAULT_TIME_IN_MINUTE)), SWITCH_NAME_STORAGE_TYPE(
+                StorageType.FILE_STORAGE.name());
+
+        final String value;
+
+        private ApplicationSetting(final String value) {
+            this.value = value;
         }
-        
-        public static String SESSION_TIMEOUT = "session_timeout";
+
+        public String getValue() {
+            return value;
+        }
     }
+    
+    public enum StorageType {
+
+        DATABASE_STORAGE, FILE_STORAGE;
+        
+        public static StorageType get(final String name) {
+            return name.equalsIgnoreCase(DATABASE_STORAGE.name()) ? DATABASE_STORAGE : FILE_STORAGE;
+        }
+    }
+    
+    public static StorageType STORAGE_TYPE_FOR_SWITCH_NAME = null;
     
     public final class Role {
         
@@ -86,6 +133,7 @@ public abstract class IConstants {
         public static final String GET_FLOW_VALIDATE = GET_FLOW + "/{flow_id}/validate";
         public static final String GET_PATH_FLOW = GET_FLOW + "/path";
         public static final String GET_SWITCHES = "/switches";
+        public static final String GET_SWITCH = GET_SWITCHES + "/{switch_id}";
         public static final String GET_SWITCH_RULES = GET_SWITCHES + "/{switch_id}/rules";
         public static final String GET_LINKS = "/links";
         public static final String GET_LINK_PROPS = "/link/props";
@@ -96,6 +144,10 @@ public abstract class IConstants {
         public static final String GET_ISL_FLOW = 
                 "/links/flows?src_switch={src_switch}&src_port={src_port}&dst_switch={dst_switch}&dst_port={dst_port}";
         public static final String GET_SWITCH_METERS =  GET_SWITCHES + "/{switch_id}/meters";
+        public static final String FLOW_PING = GET_FLOW + "/{flow_id}/ping";
+        public static final String UPDATE_SWITCH_UNDER_MAINTENANCE = GET_SWITCHES + "/{switch_id}/under-maintenance";
+        public static final String UPDATE_LINK_UNDER_MAINTENANCE = GET_LINKS + "/under-maintenance";
+        public static final String UPDATE_LINK_MAINTENANCE = GET_LINKS + "/under-maintenance";
     }
     
     public final class OpenTsDbUrl {
@@ -185,11 +237,19 @@ public abstract class IConstants {
 
         public static final String FW_FLOW_RESYNC = "fw_flow_resync";
         
+        public static final String FW_FLOW_PING = "fw_flow_ping";
+        
         public static final String SW_PORT_CONFIG = "sw_port_config";
         
         public static final String STORE_SETTING = "store_setting";
+                
+        public static final String APPLICATION_SETTING = "application_setting";
         
-        public static final String SESSION_TIMEOUT_SETTING = "session_timeout_setting";
+        public static final String SW_SWITCH_UPDATE_NAME = "sw_switch_update_name";
+        
+        public static final String SW_SWITCH_MAINTENANCE = "sw_switch_maintenance";
+        
+        public static final String ISL_UPDATE_MAINTENANCE = "isl_update_maintenance";
         
     }
 
@@ -250,53 +310,59 @@ public abstract class IConstants {
 
     public enum Metrics {
 
-        PEN_FLOW_BITS("Flow_bits", "pen.flow.bits"),
+        FLOW_BITS("Flow_bits", "flow.bits"),
 
-        PEN_FLOW_BYTES("Flow_bytes", "pen.flow.bytes"),
+        FLOW_BYTES("Flow_bytes", "flow.bytes"),
 
-        PEN_FLOW_PACKETS("Flow_packets", "pen.flow.packets"),
+        FLOW_PACKETS("Flow_packets", "flow.packets"),
 
-        PEN_FLOW_INGRESS_PACKETS("Flow_ingress_packets", "pen.flow.ingress.packets"),
+        FLOW_INGRESS_PACKETS("Flow_ingress_packets", "flow.ingress.packets"),
 
-        PEN_FLOW_RAW_PACKETS("Flow_raw_packets", "pen.flow.raw.packets"),
+        FLOW_RAW_PACKETS("Flow_raw_packets", "flow.raw.packets"),
         
-        PEN_FLOW_RAW_BITS("Flow_raw_bits", "pen.flow.raw.bits"),
+        FLOW_RAW_BITS("Flow_raw_bits", "flow.raw.bits"),
         
-        PEN_FLOW_RAW_BYTES("Flow_raw_bytes", "pen.flow.raw.bytes"),
+        FLOW_RAW_BYTES("Flow_raw_bytes", "flow.raw.bytes"),
 
-        PEN_FLOW_TABLEID("Flow_tableid", "pen.flow.tableid"),
+        FLOW_TABLEID("Flow_tableid", "flow.tableid"),
 
-        PEN_ISL_LATENCY("Isl_latency", "pen.isl.latency"),
+        ISL_LATENCY("Isl_latency", "isl.latency"),
 
-        PEN_SWITCH_COLLISIONS("Switch_collisions", "pen.switch.collisions"),
+        SWITCH_COLLISIONS("Switch_collisions", "switch.collisions"),    
 
-        PEN_SWITCH_RX_CRC_ERROR("Switch_crcerror", "pen.switch.rx-crc-error"),
+        SWITCH_RX_CRC_ERROR("Switch_crcerror", "switch.rx-crc-error"),
 
-        PEN_SWITCH_RX_FRAME_ERROR("Switch_frameerror", "pen.switch.rx-frame-error"),
+        SWITCH_RX_FRAME_ERROR("Switch_frameerror", "switch.rx-frame-error"),
 
-        PEN_SWITCH_RX_OVER_ERROR("Switch_overerror", "pen.switch.rx-over-error"),
+        SWITCH_RX_OVER_ERROR("Switch_overerror", "switch.rx-over-error"),
 
-        PEN_SWITCH_RX_BITS("Switch_bits", "pen.switch.rx-bits"),
+        SWITCH_RX_BITS("Switch_bits", "switch.rx-bits"),
 
-        PEN_SWITCH_TX_BITS("Switch_bits", "pen.switch.tx-bits"),
+        SWITCH_TX_BITS("Switch_bits", "switch.tx-bits"),
 
-        PEN_SWITCH_RX_BYTES("Switch_bytes", "pen.switch.rx-bytes"),
+        SWITCH_RX_BYTES("Switch_bytes", "switch.rx-bytes"),
 
-        PEN_SWITCH_TX_BYTES("Switch_bytes", "pen.switch.tx-bytes"),
+        SWITCH_TX_BYTES("Switch_bytes", "switch.tx-bytes"),
 
-        PEN_SWITCH_RX_DROPPED("Switch_drops", "pen.switch.rx-dropped"),
+        SWITCH_RX_DROPPED("Switch_drops", "switch.rx-dropped"),
 
-        PEN_SWITCH_TX_DROPPED("Switch_drops", "pen.switch.tx-dropped"),
+        SWITCH_TX_DROPPED("Switch_drops", "switch.tx-dropped"),
 
-        PEN_SWITCH_RX_ERRORS("Switch_errors", "pen.switch.rx-errors"),
+        SWITCH_RX_ERRORS("Switch_errors", "switch.rx-errors"),
 
-        PEN_SWITCH_TX_ERRORS("Switch_errors", "pen.switch.tx-errors"),
+        SWITCH_TX_ERRORS("Switch_errors", "switch.tx-errors"),
 
-        PEN_SWITCH_TX_PACKETS("Switch_packets", "pen.switch.tx-packets"),
+        SWITCH_TX_PACKETS("Switch_packets", "switch.rx-packets"),
 
-        PEN_SWITCH_RX_PACKETS("Switch_packets", "pen.switch.rx-packets"),
+        SWITCH_RX_PACKETS("Switch_packets", "switch.tx-packets"),
+        
+        SWITCH_STATE("Switch_state", "switch.state"),
+        
+        METER_BITS("Meter_bits", "flow.meter.bits"),
 
-        PEN_SWITCH_STATE("Switch_state", "pen.switch.state");
+        METER_BYTES("Meter_bytes", "flow.meter.bytes"),
+
+        METER_PACKETS("Meter_packets", "flow.meter.packets");
 
         private String tag;
         
@@ -310,7 +376,7 @@ public abstract class IConstants {
          */
         private Metrics(final String tag, final String displayTag) {
             setTag(tag);
-            setDisplayTag(displayTag);
+            setDisplayTag(prefix + displayTag);
         }
 
         /**
@@ -419,6 +485,23 @@ public abstract class IConstants {
             List<String> list = new ArrayList<String>();
             for (Metrics metric : values()) {
                 if (metric.getTag().startsWith(tag)) {
+                    list.add(metric.getDisplayTag());
+                }
+            }
+            return list;
+        }
+        
+        /**
+         * Meter value.
+         *
+         * @param tag the tag
+         * @return the list
+         */
+        public static List<String> meterValue(String tag) {
+            List<String> list = new ArrayList<String>();
+            tag = "Meter_" + tag;
+            for (Metrics metric : values()) {
+                if (metric.getTag().equalsIgnoreCase(tag)) {
                     list.add(metric.getDisplayTag());
                 }
             }

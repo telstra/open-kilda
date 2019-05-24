@@ -18,7 +18,6 @@ package org.usermanagement.dao.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import org.usermanagement.dao.entity.RoleEntity;
 import org.usermanagement.dao.entity.UserEntity;
 
 import java.util.List;
@@ -45,15 +44,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      * @param activeFlag the active flag
      * @return the list
      */
-    List<UserEntity> findByActiveFlag(boolean activeFlag);
-
-    /**
-     * Find byroles.
-     *
-     * @param roleEntity the role entity
-     * @return the list
-     */
-    List<UserEntity> findByroles(RoleEntity roleEntity);
+    List<UserEntity> findByActiveFlag(Boolean activeFlag);
 
     /**
      * Find byUserId.
@@ -61,7 +52,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      * @param userId the user id
      * @return UserEntity
      */
-    UserEntity findByUserId(long userId);
+    UserEntity findByUserId(Long userId);
 
     /**
      * Find by roles role id.

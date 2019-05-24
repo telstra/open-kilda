@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.ping.bolt;
 
 import org.openkilda.messaging.Utils;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 
@@ -40,7 +39,7 @@ public class PeriodicResultManager extends ResultManager {
     public static final String STREAM_BLACKLIST_ID = "blacklist";
 
     @Override
-    protected void handle(Tuple input, PingContext pingContext) throws AbstractException {
+    protected void handle(Tuple input, PingContext pingContext) throws Exception {
         updateFailReporter(input, pingContext);
         super.handle(input, pingContext);
     }

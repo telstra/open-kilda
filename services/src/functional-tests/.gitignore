@@ -1,3 +1,6 @@
-.idea/ 
-target/
-*.iml
+/target/
+/logs/
+
+/topology*.yaml
+/kilda*.properties
+.surefire-*

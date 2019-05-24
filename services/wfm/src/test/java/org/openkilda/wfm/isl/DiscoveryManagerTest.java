@@ -15,27 +15,31 @@
 
 package org.openkilda.wfm.isl;
 
-import static org.hamcrest.Matchers.everyItem;
-import static org.hamcrest.Matchers.hasProperty;
-import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.messaging.model.DiscoveryLink;
 import org.openkilda.messaging.model.DiscoveryLink.LinkState;
 import org.openkilda.messaging.model.NetworkEndpoint;
+import org.openkilda.messaging.model.SpeakerSwitchDescription;
+import org.openkilda.messaging.model.SpeakerSwitchPortView;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-
+import java.util.stream.Collectors;
 
 /**
  * The DiscoveryManager is the main class that governs ISL discovery. It develops a list of
@@ -326,12 +330,9 @@ public class DiscoveryManagerTest {
     }
 
     @Test
-    public void handleSwitchUp() {
+    public void handleSwitchUp() throws Exception {
         // Verify that all switch/ports on this switch of the ISL flag cleared
-
-        // Generally speaking, nothing interesting happens on a SwitchUp, since all of the action is
-        // in PortUp.  However, this one area, when pre-existing ISLs are already in the DM, should
-        // be tested. We need to create some ISLs, then send the SwitchUp, and confirm isFoundIsl
+        // We need to create some ISLs, then send the SwitchUp, and confirm isFoundIsl
         // is cleared.
         setupThreeLinks();
 
@@ -343,27 +344,49 @@ public class DiscoveryManagerTest {
         dm.handleDiscovered(srcNode3.getDatapath(), srcNode3.getPortNumber(),
                 dstNode3.getDatapath(), dstNode3.getPortNumber());
 
-        Set<DiscoveryLink> links = dm.findAllBySwitch(srcNode1.getDatapath());
-        assertThat(links, everyItem(hasProperty("state", is(LinkState.ACTIVE))));
-        links = dm.findAllBySwitch(srcNode3.getDatapath());
-        assertThat(links, everyItem(hasProperty("state", is(LinkState.ACTIVE))));
+        ensureLinkIsActive(srcNode1);
+        ensureLinkIsActive(srcNode2);
+        ensureLinkIsActive(srcNode3);
 
         // now send SwitchUp and confirm sw1 all go back to not found, sw2 unchanged
-        dm.handleSwitchUp(srcNode1.getDatapath());
-        links = dm.findAllBySwitch(srcNode1.getDatapath());
-        assertThat(links, everyItem(hasProperty("state", is(LinkState.UNKNOWN))));
-        links = dm.findAllBySwitch(srcNode3.getDatapath());
-        assertThat(links, everyItem(hasProperty("state", is(LinkState.ACTIVE))));
+        List<NetworkEndpoint> allEndpoints = ImmutableList.of(srcNode1, srcNode2, srcNode3);
+        List<NetworkEndpoint> affectedEndpoints = filterEndpointsByDatapath(srcNode1.getDatapath(), allEndpoints);
+
+        InetSocketAddress switchAddress = new InetSocketAddress(
+                InetAddress.getByAddress(new byte[]{127, 0, 0, 1}), 32768);
+        InetSocketAddress speakerAddress = new InetSocketAddress(
+                InetAddress.getByAddress(new byte[]{127, 0, 0, (byte) 254}), 6653);
+        SpeakerSwitchDescription switchDescription = SpeakerSwitchDescription.builder()
+                    .manufacturer("OF switch manufacturer")
+                    .hardware("OF cappable HW")
+                    .software("software")
+                    .serialNumber("aabbcc")
+                    .datapath("datapath description")
+                    .build();
+        SpeakerSwitchView switchView = new SpeakerSwitchView(
+                srcNode1.getDatapath(),
+                switchAddress,
+                speakerAddress,
+                "OF_13", switchDescription,
+                ImmutableSet.of(SpeakerSwitchView.Feature.METERS),
+                affectedEndpoints.stream()
+                        .map(entry -> new SpeakerSwitchPortView(entry.getPortNumber(), SpeakerSwitchPortView.State.UP))
+                        .collect(Collectors.toList()));
+        dm.registerSwitch(switchView);
+
+        for (NetworkEndpoint entry : allEndpoints) {
+            LinkState expectedState = affectedEndpoints.contains(entry) ? LinkState.UNKNOWN : LinkState.ACTIVE;
+            ensureLinkState(entry, expectedState);
+        }
 
         // now confirm they go back to found upon next Discovery.
         dm.handleDiscovered(srcNode1.getDatapath(), srcNode1.getPortNumber(),
                 dstNode1.getDatapath(), dstNode1.getPortNumber());
         dm.handleDiscovered(srcNode2.getDatapath(), srcNode2.getPortNumber(),
                 dstNode2.getDatapath(), dstNode2.getPortNumber());
-        links = dm.findAllBySwitch(srcNode1.getDatapath());
-        assertThat(links, everyItem(hasProperty("state", is(LinkState.ACTIVE))));
-        links = dm.findAllBySwitch(srcNode3.getDatapath());
-        assertThat(links, everyItem(hasProperty("state", is(LinkState.ACTIVE))));
+        for (NetworkEndpoint entry: allEndpoints) {
+            ensureLinkState(entry, LinkState.ACTIVE);
+        }
     }
 
     @Test
@@ -529,5 +552,25 @@ public class DiscoveryManagerTest {
         // then
         Optional<DiscoveryLink> foundAsLink4After = dm.findBySourceEndpoint(srcNode4);
         assertTrue(foundAsLink4After.isPresent());
+    }
+
+    private List<NetworkEndpoint> filterEndpointsByDatapath(SwitchId key, List<NetworkEndpoint> endpoints) {
+        List<NetworkEndpoint> results = new ArrayList<>();
+        for (NetworkEndpoint entry : endpoints) {
+            if (key.equals(entry.getDatapath())) {
+                results.add(entry);
+            }
+        }
+        return results;
+    }
+
+    private void ensureLinkIsActive(NetworkEndpoint srcEndpoint) {
+        ensureLinkState(srcEndpoint, LinkState.ACTIVE);
+    }
+
+    private void ensureLinkState(NetworkEndpoint srcEndpoint, LinkState expectedState) {
+        Optional<DiscoveryLink> link = dm.findBySourceEndpoint(srcEndpoint);
+        Assert.assertTrue(link.isPresent());
+        Assert.assertEquals(expectedState, link.get().getState());
     }
 }

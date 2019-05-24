@@ -16,15 +16,26 @@
 package org.openkilda.persistence.repositories.impl;
 
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.BfdSessionRepository;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.persistence.repositories.FlowCookieRepository;
+import org.openkilda.persistence.repositories.FlowMeterRepository;
+import org.openkilda.persistence.repositories.FlowPairRepository;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.FlowSegmentRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.TransitVlanRepository;
+import org.openkilda.persistence.repositories.history.FlowEventRepository;
+import org.openkilda.persistence.repositories.history.FlowHistoryRepository;
+import org.openkilda.persistence.repositories.history.FlowStateRepository;
+import org.openkilda.persistence.repositories.history.HistoryLogRepository;
+import org.openkilda.persistence.repositories.history.StateLogRepository;
 
 /**
- * Neo4J OGM implementation of {@link RepositoryFactory}.
+ * Neo4j OGM implementation of {@link RepositoryFactory}.
  */
 public class Neo4jRepositoryFactory implements RepositoryFactory {
 
@@ -37,13 +48,28 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     }
 
     @Override
+    public FlowCookieRepository createFlowCookieRepository() {
+        return new Neo4jFlowCookieRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public FlowMeterRepository createFlowMeterRepository() {
+        return new Neo4jFlowMeterRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public FlowPathRepository createFlowPathRepository() {
+        return new Neo4jFlowPathRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
     public FlowRepository createFlowRepository() {
         return new Neo4jFlowRepository(sessionFactory, transactionManager);
     }
 
     @Override
-    public FlowSegmentRepository createFlowSegmentRepository() {
-        return new Neo4jFlowSegmentRepository(sessionFactory, transactionManager);
+    public FlowPairRepository createFlowPairRepository() {
+        return new Neo4jFlowPairRepository(sessionFactory, transactionManager);
     }
 
     @Override
@@ -52,12 +78,52 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     }
 
     @Override
+    public LinkPropsRepository createLinkPropsRepository() {
+        return new Neo4jLinkPropsRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
     public SwitchRepository createSwitchRepository() {
         return new Neo4jSwitchRepository(sessionFactory, transactionManager);
     }
 
     @Override
-    public LinkPropsRepository createLinkPropsRepository() {
-        return new Neo4jLinkPropsRepository(sessionFactory, transactionManager);
+    public TransitVlanRepository createTransitVlanRepository() {
+        return new Neo4jTransitVlanRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public FeatureTogglesRepository createFeatureTogglesRepository() {
+        return new Neo4jFeatureTogglesRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public FlowEventRepository createFlowEventRepository() {
+        return new Neo4jFlowEventRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public FlowHistoryRepository createFlowHistoryRepository() {
+        return new Neo4jFlowHistoryRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public FlowStateRepository createFlowStateRepository() {
+        return new Neo4jFlowStateRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public HistoryLogRepository createHistoryLogRepository() {
+        return new Neo4jHistoryLogRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public StateLogRepository createStateLogRepository() {
+        return new Neo4jStateLogRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public BfdSessionRepository createBfdSessionRepository() {
+        return new Neo4JBfdSessionRepository(sessionFactory, transactionManager);
     }
 }

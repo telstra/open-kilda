@@ -1,0 +1,73 @@
+@startuml
+title Ability to create diverse flows
+
+participant Client
+participant NB
+participant FlowTopology
+participant PathComputerFactory
+participant PathComputer
+participant AvailableNetworkFactory
+participant AvailableNetwork
+database Neo4J
+
+activate Client
+Client -> NB: create diverse flow
+activate FlowTopology
+NB -> FlowTopology: create diverse flow
+
+FlowTopology -> Neo4J: get diverse flow by id
+Neo4J --> FlowTopology: Flow instance
+alt diverse flow "flow group" property is not defined
+   FlowTopology -> Neo4J: generate and save "flow group" id into diverse flow
+end
+
+FlowTopology -> PathComputerFactory: getPathComputer
+create PathComputer
+PathComputerFactory -> PathComputer: create
+PathComputer --> FlowTopology: PathComputer
+
+FlowTopology -> PathComputer: getPath with flow group id
+activate PathComputer
+
+PathComputer -> AvailableNetworkFactory: getAvailableNetwork\nwith flow group id
+activate AvailableNetworkFactory
+
+group Build AvailableNetwork
+    AvailableNetworkFactory -> Neo4J: get active links
+    Neo4J--> AvailableNetworkFactory
+    create AvailableNetwork
+    AvailableNetworkFactory -> AvailableNetwork: create from retrieved links
+    AvailableNetwork --> AvailableNetworkFactory
+
+    group Fill network diversity weights
+        AvailableNetworkFactory -> Neo4J: get flow segments for flows with the "flow group" id
+        Neo4J--> AvailableNetworkFactory: diverse flow segments
+
+        AvailableNetworkFactory -> AvailableNetwork: fill diverse weighs using\ndiverse flow segments
+    end
+    AvailableNetworkFactory --> PathComputer: AvailableNetwork
+    deactivate AvailableNetworkFactory
+end
+
+group Find path
+    PathComputer -> PathComputer: PathFinder.findPathInNetwork
+    PathComputer --> FlowTopology: computed PathPair
+    deactivate PathComputer
+end
+
+alt path found
+    FlowTopology -> Neo4J: create new flow with "flow group" id
+    FlowTopology -> Neo4J: install flow segments
+
+    FlowTopology --> NB: computed FlowPair
+    NB --> Client: Flow Response
+
+else path don't found
+   FlowTopology --> NB: Creation error
+   NB --> Client: Creation error
+end
+
+deactivate FlowTopology
+deactivate Client
+
+@enduml

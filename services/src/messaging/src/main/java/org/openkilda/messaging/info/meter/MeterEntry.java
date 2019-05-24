@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging.info.meter;
 
+import org.openkilda.messaging.info.InfoData;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -26,7 +28,7 @@ import java.io.Serializable;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Value
 @Builder
-public class MeterEntry implements Serializable {
+public class MeterEntry extends InfoData implements Serializable {
 
     @JsonProperty("meter_id")
     private long meterId;

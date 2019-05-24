@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.ping.bolt;
 
 import org.openkilda.messaging.model.PingReport;
 import org.openkilda.messaging.model.PingReport.State;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.ping.model.FlowObserver;
 import org.openkilda.wfm.topology.ping.model.FlowRef;
@@ -63,7 +62,7 @@ public class FailReporter extends Abstract {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String component = input.getSourceComponent();
 
         if (TickDeduplicator.BOLT_ID.equals(component)) {

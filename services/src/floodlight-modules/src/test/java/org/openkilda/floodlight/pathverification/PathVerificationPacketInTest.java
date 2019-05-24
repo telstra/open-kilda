@@ -18,6 +18,9 @@ package org.openkilda.floodlight.pathverification;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertArrayEquals;
+import static org.openkilda.floodlight.pathverification.VerificationPacket.CHASSIS_ID_LLDPTV_PACKET_TYPE;
+import static org.openkilda.floodlight.pathverification.VerificationPacket.PORT_ID_LLDPTV_PACKET_TYPE;
+import static org.openkilda.floodlight.pathverification.VerificationPacket.TTL_LLDPTV_PACKET_TYPE;
 
 import org.openkilda.floodlight.FloodlightTestCase;
 import org.openkilda.floodlight.KildaCore;
@@ -110,13 +113,14 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
                 .setSourcePort(
                         TransportPort.of(PathVerificationService.VERIFICATION_PACKET_UDP_PORT));
 
-        VerificationPacket verificationPacket = new VerificationPacket()
-                .setChassisId(new LLDPTLV().setType((byte) 1).setLength((short) 7)
+        VerificationPacket verificationPacket = VerificationPacket.builder()
+                .chassisId(new LLDPTLV().setType(CHASSIS_ID_LLDPTV_PACKET_TYPE).setLength((short) 7)
                         .setValue(new byte[] {0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}))
-                .setPortId(new LLDPTLV().setType((byte) 2).setLength((short) 3)
+                .portId(new LLDPTLV().setType(PORT_ID_LLDPTV_PACKET_TYPE).setLength((short) 3)
                         .setValue(new byte[] {0x02, 0x00, 0x01}))
-                .setTtl(new LLDPTLV().setType((byte) 3).setLength((short) 2)
-                        .setValue(new byte[] {0x00, 0x78}));
+                .ttl(new LLDPTLV().setType(TTL_LLDPTV_PACKET_TYPE).setLength((short) 2)
+                        .setValue(new byte[] {0x00, 0x78}))
+                .build();
 
         udp.setPayload(new Data(verificationPacket.serialize()));
 
@@ -186,7 +190,7 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
         OFPortDesc sw2Port1 = EasyMock.createMock(OFPortDesc.class);
         expect(sw2Port1.getHwAddr()).andReturn(MacAddress.of(sw2HwAddrTarget)).anyTimes();
         expect(sw2Port1.getVersion()).andReturn(OFVersion.OF_12).anyTimes();
-        expect(sw2Port1.getCurrSpeed()).andReturn(100000L).anyTimes();
+        expect(sw2Port1.getCurrSpeed()).andReturn(400000L).anyTimes();
         replay(sw1Port1);
         replay(sw2Port1);
 
