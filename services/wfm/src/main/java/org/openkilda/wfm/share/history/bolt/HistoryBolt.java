@@ -15,7 +15,8 @@
 
 package org.openkilda.wfm.share.history.bolt;
 
-import org.openkilda.messaging.Utils;
+import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
+
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
@@ -39,7 +40,7 @@ public class HistoryBolt extends AbstractBolt {
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        Object payload = input.getValueByField(Utils.PAYLOAD);
+        Object payload = input.getValueByField(FIELD_ID_PAYLOAD);
         if (payload instanceof FlowHistoryHolder) {
             historyService.store((FlowHistoryHolder) payload);
         } else {
