@@ -1,11 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.junit.Assume.assumeTrue
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
-import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Message
@@ -14,15 +10,19 @@ import org.openkilda.messaging.command.CommandMessage
 import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.OutputVlanType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Unroll
+
+import static org.junit.Assume.assumeTrue
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 
 class SwitchSyncSpec extends BaseSpecification {
 
@@ -87,7 +87,7 @@ class SwitchSyncSpec extends BaseSpecification {
         involvedSwitches.each { northbound.deleteSwitchRules(it.dpId, DeleteRulesAction.IGNORE_DEFAULTS) }
         [srcSwitch, dstSwitch].each { northbound.deleteMeter(it.dpId, metersMap[it.dpId][0]) }
         Wrappers.wait(RULES_DELETION_TIME) {
-            def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.switchValidate(it.dpId)] }
+            def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
             involvedSwitches.each { assert validationResultsMap[it.dpId].rules.missing.size() == 2 }
             [srcSwitch, dstSwitch].each { assert validationResultsMap[it.dpId].meters.missing.size() == 1 }
         }
@@ -114,9 +114,11 @@ class SwitchSyncSpec extends BaseSpecification {
         and: "Switch validation doesn't complain about missing rules and meters"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             involvedSwitches.each {
-                def validationResult = northbound.switchValidate(it.dpId)
+                def validationResult = northbound.validateSwitch(it.dpId)
                 assert validationResult.rules.missing.size() == 0
-                assert validationResult.meters.missing.size() == 0
+                if(!it.dpId.description.contains("OF_12")) {
+                    assert validationResult.meters.missing.size() == 0
+                }
             }
         }
 
@@ -157,18 +159,21 @@ class SwitchSyncSpec extends BaseSpecification {
 
         producer.send(new ProducerRecord(flowTopic, srcSwitch.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), flow.id, excessRuleCookie, srcSwitch.dpId, 1, 2, 1, 1,
-                        OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId)).toJson()))
+                        FlowEncapsulationType.TRANSIT_VLAN,
+                        OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, )).toJson()))
         involvedSwitches[1..-2].each { transitSw ->
             producer.send(new ProducerRecord(flowTopic, transitSw.toString(), buildMessage(
-                    new InstallTransitFlow(UUID.randomUUID(), flow.id, excessRuleCookie, transitSw.dpId, 1, 2, 1))
+                    new InstallTransitFlow(UUID.randomUUID(), flow.id, excessRuleCookie, transitSw.dpId, 1, 2, 1,
+                            FlowEncapsulationType.TRANSIT_VLAN))
                     .toJson()))
         }
         producer.send(new ProducerRecord(flowTopic, dstSwitch.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), flow.id, excessRuleCookie, dstSwitch.dpId, 1, 2, 1, 1,
+                        FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId)).toJson()))
 
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.switchValidate(it.dpId)] }
+            def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
             involvedSwitches.each { assert validationResultsMap[it.dpId].rules.excess.size() == 1 }
             [srcSwitch, dstSwitch].each { assert validationResultsMap[it.dpId].meters.excess.size() == 1 }
         }
@@ -195,9 +200,11 @@ class SwitchSyncSpec extends BaseSpecification {
         and: "Switch validation doesn't complain about excess rules and meters"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             involvedSwitches.each {
-                def validationResult = northbound.switchValidate(it.dpId)
+                def validationResult = northbound.validateSwitch(it.dpId)
                 assert validationResult.rules.excess.size() == 0
-                assert validationResult.meters.excess.size() == 0
+                if(!it.dpId.description.contains("OF_12")) {
+                    assert validationResult.meters.missing.size() == 0
+                }
             }
         }
 

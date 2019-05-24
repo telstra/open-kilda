@@ -22,10 +22,10 @@ import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.meter.SwitchMeterData;
 import org.openkilda.messaging.info.flow.BatchFlowInstallResponse;
 import org.openkilda.messaging.info.flow.BatchFlowRemoveResponse;
 import org.openkilda.messaging.info.meter.BatchMetersRemoveResponse;
+import org.openkilda.messaging.info.meter.SwitchMeterData;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
@@ -53,10 +53,9 @@ import org.apache.storm.tuple.Values;
 
 import java.util.Map;
 
-public class SwitchValidateManager extends HubBolt implements SwitchManagerCarrier {
+public class SwitchManager extends HubBolt implements SwitchManagerCarrier {
     public static final String ID = "switch.validate";
     public static final String INCOME_STREAM = "validate.command";
-    private static final int TIMEOUT_MS = 10000;
     private static final boolean AUTO_ACK = true;
 
     private final PersistenceManager persistenceManager;
@@ -66,11 +65,11 @@ public class SwitchValidateManager extends HubBolt implements SwitchManagerCarri
     private long flowMeterMinBurstSizeInKbits;
     private double flowMeterBurstCoefficient;
 
-    public SwitchValidateManager(String requestSenderComponent, PersistenceManager persistenceManager,
-                                 long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
+    public SwitchManager(String requestSenderComponent, PersistenceManager persistenceManager, int operationTimeout,
+                         long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
         super(HubBolt.Config.builder()
                 .requestSenderComponent(requestSenderComponent)
-                .timeoutMs(TIMEOUT_MS)
+                .timeoutMs(operationTimeout)
                 .autoAck(AUTO_ACK)
                 .build());
 

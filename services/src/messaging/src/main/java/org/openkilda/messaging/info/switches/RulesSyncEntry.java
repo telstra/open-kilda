@@ -28,19 +28,19 @@ import java.util.List;
 public class RulesSyncEntry implements Serializable {
 
     @JsonProperty("missing")
-    private List<Long> missing;
+    List<Long> missing;
 
     @JsonProperty("proper")
-    private List<Long> proper;
+    List<Long> proper;
 
     @JsonProperty("excess")
-    private List<Long> excess;
+    List<Long> excess;
 
     @JsonProperty("installed")
-    private List<Long> installed;
+    List<Long> installed;
 
     @JsonProperty("removed")
-    private List<Long> removed;
+    List<Long> removed;
 
     @JsonCreator
     public RulesSyncEntry(@JsonProperty("missing") List<Long> missing,

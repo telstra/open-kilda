@@ -27,10 +27,10 @@ import lombok.Value;
 public class SwitchSyncResponse extends InfoData {
 
     @JsonProperty("rules")
-    private RulesSyncEntry rules;
+    RulesSyncEntry rules;
 
     @JsonProperty("meters")
-    private MetersSyncEntry meters;
+    MetersSyncEntry meters;
 
     @JsonCreator
     public SwitchSyncResponse(@JsonProperty("rules") RulesSyncEntry rules,
