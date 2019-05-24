@@ -3,7 +3,7 @@ title Switch rules and meters validation
 
 actor User
 boundary Northbound as NB
-participant SwitchValidateManager << Hub >>
+participant SwitchManager << Hub >>
 participant ValidationService
 participant Floodlight as FL
 database DAO
@@ -11,47 +11,49 @@ database DAO
 User -> NB : Switch validate
 
 activate NB
-NB -> SwitchValidateManager : SwitchValidateRequest
-activate SwitchValidateManager
+NB -> SwitchManager : SwitchValidateRequest
+activate SwitchManager
 
-SwitchValidateManager -> FL : DumpRulesRequest
-deactivate SwitchValidateManager
-FL -> SwitchValidateManager : SwitchFlowEntries
-activate SwitchValidateManager
-SwitchValidateManager -> ValidationService : Validate rules
+SwitchManager ->> FL : DumpRulesRequest
+SwitchManager ->> FL : DumpMetersRequest
+deactivate SwitchManager
+
+FL ->> SwitchManager : SwitchFlowEntries
+FL ->> SwitchManager : SwitchMeterData
+
+activate SwitchManager
+SwitchManager -> ValidationService : Validate rules
 activate ValidationService
-ValidationService -> DAO : Get flow segments\nby dst switch id
+ValidationService -> DAO : Get path segments\nby dst switch id
 activate DAO
-DAO -> ValidationService : Flow segments
+DAO -> ValidationService : Path segments
 deactivate DAO
-ValidationService -> DAO : Get flows\nby src switch id
+ValidationService -> DAO : Get paths\nby src switch id
 activate DAO
-DAO -> ValidationService : Flows
+DAO -> ValidationService : Flow paths
 deactivate DAO
 ValidationService -> ValidationService : Compute\nmissing/proper/excess\nrules
 
-ValidationService -> SwitchValidateManager : Validate rules\nresult
+ValidationService -> SwitchManager : Validate rules\nresult
 deactivate ValidationService
 
-SwitchValidateManager -> FL : DumpMetersRequest
-deactivate SwitchValidateManager
-FL -> SwitchValidateManager : SwitchMeterEntries
-activate SwitchValidateManager
-SwitchValidateManager -> ValidationService : Validate meters
-activate ValidationService
+opt Switch support meters
+    SwitchManager -> ValidationService : Validate meters
+    activate ValidationService
 
-ValidationService -> DAO : Get flows\nby src switch id
-activate DAO
-DAO -> ValidationService : Flows
-deactivate DAO
-ValidationService -> ValidationService : Compute\nmissing/misconfigured\n/proper/excess\nmeters
+    ValidationService -> DAO : Get paths\nby src switch id
+    activate DAO
+    DAO -> ValidationService : Flow paths
+    deactivate DAO
+    ValidationService -> ValidationService : Compute\nmissing/misconfigured\n/proper/excess\nmeters
 
-ValidationService -> SwitchValidateManager : Validate meters\nresult
-deactivate ValidationService
+    ValidationService -> SwitchManager : Validate meters\nresult
+    deactivate ValidationService
+end
 
-SwitchValidateManager -> NB : SwitchValidationResponse
-deactivate SwitchValidateManager
+SwitchManager -> NB : SwitchValidationResponse
+deactivate SwitchManager
 NB -> User : SwitchValidationResult
 deactivate NB
 
- @enduml
+@enduml

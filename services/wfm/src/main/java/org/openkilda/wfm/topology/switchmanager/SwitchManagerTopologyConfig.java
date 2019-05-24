@@ -51,4 +51,9 @@ public interface SwitchManagerTopologyConfig  extends AbstractTopologyConfig {
             + "It will be used instead of calculated flow meter burst size "
             + "if calculated value will be less than value of this option.")
     long getFlowMeterMinBurstSizeInKbits();
+
+    @Key("swmanager.operation.timeout")
+    @Default("10000")
+    @Description("The timeout for performing async operations")
+    int getOperationTimeout();
 }

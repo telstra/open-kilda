@@ -66,7 +66,7 @@ public class CommandBuilderImpl implements CommandBuilder {
     }
 
     @Override
-    public List<BaseInstallFlow> buildCommandsToCreateMissingRules(SwitchId switchId, List<Long> switchRules) {
+    public List<BaseInstallFlow> buildCommandsToSyncMissingRules(SwitchId switchId, List<Long> switchRules) {
         List<BaseInstallFlow> commands = new ArrayList<>();
 
         flowPathRepository.findBySegmentDestSwitch(switchId)
@@ -139,8 +139,8 @@ public class CommandBuilderImpl implements CommandBuilder {
 
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(entry.getCookie(), inPort, vlan,
                 0, outPort);
-        // TODO flowId check
-        return new RemoveFlow(transactionIdGenerator.generate(), "BATCH_REMOVE", entry.getCookie(),
+
+        return new RemoveFlow(transactionIdGenerator.generate(), "SWMANAGER_BATCH_REMOVE", entry.getCookie(),
                 switchId, meterId, criteria);
     }
 

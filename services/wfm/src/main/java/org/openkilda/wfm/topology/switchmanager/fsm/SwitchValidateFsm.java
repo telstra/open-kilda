@@ -224,7 +224,8 @@ public class SwitchValidateFsm
                             SwitchValidateEvent event, Object context) {
         if (request.isPerformSync()) {
             carrier.runSwitchSync(key, request,
-                    new ValidationResult(flowEntries, validateRulesResult, validateMetersResult));
+                    new ValidationResult(
+                            flowEntries, isSwitchSupportMeters, validateRulesResult, validateMetersResult));
         } else {
             RulesValidationEntry rulesValidationEntry = new RulesValidationEntry(validateRulesResult.getMissingRules(),
                     validateRulesResult.getProperRules(), validateRulesResult.getExcessRules());

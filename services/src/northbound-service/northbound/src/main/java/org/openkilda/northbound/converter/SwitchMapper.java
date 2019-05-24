@@ -94,7 +94,6 @@ public interface SwitchMapper {
 
     RulesValidationResult toRulesValidationResult(SyncRulesResponse response);
 
-    RulesValidationDto toRulesValidationResult(RulesValidationEntry data);
     RulesValidationDto toRulesValidationDto(RulesValidationEntry data);
 
     MetersValidationDto toMetersValidationDto(MetersValidationEntry data);
