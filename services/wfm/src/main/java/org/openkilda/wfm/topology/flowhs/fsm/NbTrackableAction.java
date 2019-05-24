@@ -35,14 +35,9 @@ public abstract class NbTrackableAction<T extends NbTrackableStateMachine<T, S, 
 
     @Override
     public final void execute(S from, S to, E event, C context, T stateMachine) {
-        Optional<Message> message = null;
+        Optional<Message> message = Optional.empty();
         try {
             message = perform(from, to, event, context, stateMachine);
-            if (message.isPresent()) {
-                stateMachine.sendResponse(message.get());
-            } else {
-                stateMachine.fireNext(context);
-            }
         } catch (FlowProcessingException e) {
             CommandContext commandContext = stateMachine.getCommandContext();
 
@@ -58,9 +53,7 @@ public abstract class NbTrackableAction<T extends NbTrackableStateMachine<T, S, 
             message = Optional.of(new ErrorMessage(error, stateMachine.getCommandContext().getCreateTime(),
                     stateMachine.getCommandContext().getCorrelationId()));        
         } finally {
-            if (message != null && message.isPresent()) {
-                stateMachine.sendResponse(message.get());
-            }
+            message.ifPresent(stateMachine::sendResponse);
         }
     }
 

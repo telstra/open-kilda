@@ -132,14 +132,13 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                 .on(Event.COMMAND_EXECUTED)
                 .perform(new ValidateNonIngressRuleAction());
 
-        // verify installed transit and egress rules
+        // install and validate ingress rules
         builder.transitions()
                 .from(State.VALIDATING_NON_INGRESS_RULES)
                 .toAmong(State.INSTALLING_INGRESS_RULES)
                 .onEach(Event.NEXT)
                 .perform(new InstallIngressRulesAction(persistenceManager));
 
-        // install and validate ingress rules
         builder.internalTransition()
                 .within(State.INSTALLING_INGRESS_RULES)
                 .on(Event.COMMAND_EXECUTED)

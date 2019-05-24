@@ -29,7 +29,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
-import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineLogger;
@@ -68,12 +67,12 @@ public class FlowCreateService {
         StateMachineLogger fsmLogger = new StateMachineLogger(fsm);
         fsmLogger.startLogging();
 
-        RequestedFlow request = RequestedFlowMapper.INSTANCE.toRequestedFlow(dto);
-        fsm.fire(Event.NEXT, FlowCreateContext.builder()
-                .flowDetails(request)
-                .build());
+        FlowCreateContext context = FlowCreateContext.builder()
+                .flowDetails(RequestedFlowMapper.INSTANCE.toRequestedFlow(dto))
+                .build();
+        fsm.fire(Event.NEXT, context);
 
-        processNext(fsm);
+        processNext(fsm, context);
         removeIfFinished(fsm, key, carrier);
     }
 
@@ -104,7 +103,7 @@ public class FlowCreateService {
             }
         }
 
-        processNext(fsm);
+        processNext(fsm, null);
         removeIfFinished(fsm, key, carrier);
     }
 
@@ -123,9 +122,9 @@ public class FlowCreateService {
         }
     }
 
-    private void processNext(FlowCreateFsm fsm) {
+    private void processNext(FlowCreateFsm fsm, FlowCreateContext context) {
         while (!fsm.getCurrentState().isBlocked()) {
-            fsm.fire(Event.NEXT);
+            fsm.fireNext(context);
         }
     }
 

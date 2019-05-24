@@ -60,7 +60,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         SpeakerWorkerBolt speakerWorker = new SpeakerWorkerBolt(Config.builder()
                 .autoAck(true)
-                .defaultTimeout(1000)
+                .defaultTimeout(2000)
                 .workerSpoutComponent(Component.SPEAKER_WORKER_SPOUT.name())
                 .hubComponent(Component.FLOW_CREATE_HUB.name())
                 .streamToHub(SPEAKER_WORKER_TO_HUB_CREATE.name())
@@ -83,7 +83,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
 
-        FlowCreateHubBolt hubBolt = new FlowCreateHubBolt(Component.ROUTER_BOLT.name(), 10000, true,
+        FlowCreateHubBolt hubBolt = new FlowCreateHubBolt(Component.ROUTER_BOLT.name(), 20000, true,
                 persistenceManager, pathComputerConfig, flowResourcesConfig);
         tb.setBolt(Component.FLOW_CREATE_HUB.name(), hubBolt, parallelism)
                 .fieldsGrouping(Component.ROUTER_BOLT.name(), ROUTER_TO_FLOW_CREATE_HUB.name(), FIELDS_KEY)
