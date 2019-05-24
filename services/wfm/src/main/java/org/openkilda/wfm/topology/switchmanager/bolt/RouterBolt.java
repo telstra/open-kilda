@@ -45,8 +45,8 @@ public class RouterBolt extends AbstractBolt {
             CommandMessage commandMessage = (CommandMessage) message;
             CommandData data = commandMessage.getData();
             if (data instanceof SwitchValidateRequest) {
-                emit(SwitchValidateManager.INCOME_STREAM, input, key, message);
-                streams.put(key, SwitchValidateManager.INCOME_STREAM);
+                emit(SwitchManager.INCOME_STREAM, input, key, message);
+                streams.put(key, SwitchManager.INCOME_STREAM);
             } else if (data instanceof RemoveKeyRouterBolt) {
                 streams.remove(((RemoveKeyRouterBolt) data).getKey());
             }
@@ -66,6 +66,6 @@ public class RouterBolt extends AbstractBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(SwitchValidateManager.INCOME_STREAM, MessageTranslator.STREAM_FIELDS);
+        declarer.declareStream(SwitchManager.INCOME_STREAM, MessageTranslator.STREAM_FIELDS);
     }
 }

@@ -24,7 +24,7 @@ import java.util.List;
 
 public interface CommandBuilder {
 
-    List<BaseInstallFlow> buildCommandsToCreateMissingRules(SwitchId switchId, List<Long> switchRules);
+    List<BaseInstallFlow> buildCommandsToSyncMissingRules(SwitchId switchId, List<Long> switchRules);
 
     List<RemoveFlow> buildCommandsToRemoveExcessRules(SwitchId switchId,
                                                       List<FlowEntry> flows,

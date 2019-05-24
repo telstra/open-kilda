@@ -28,10 +28,10 @@ import java.util.List;
 public class BatchRemoveMeters extends CommandData {
 
     @JsonProperty("switch_id")
-    private SwitchId switchId;
+    SwitchId switchId;
 
     @JsonProperty("meters_id")
-    private List<Long> metersId;
+    List<Long> metersId;
 
     @JsonCreator
     public BatchRemoveMeters(@JsonProperty("switch_id") SwitchId switchId,

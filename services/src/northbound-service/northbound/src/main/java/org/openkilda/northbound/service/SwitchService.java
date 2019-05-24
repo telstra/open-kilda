@@ -119,13 +119,13 @@ public interface SwitchService {
     /**
      * Validate the rules and the meters installed on the switch against the flows in Neo4J.
      *
-     * @param switchId switch to validate rules on.
+     * @param switchId switch to validate.
      * @return the validation details.
      */
     CompletableFuture<SwitchValidationResult> validateSwitch(SwitchId switchId);
 
     /**
-     * Synchronize (install) missing flows that should be on the switch but exist only in Neo4J.
+     * Synchronize (install) missing rules that should be on the switch but exist only in Neo4J.
      *
      * @param switchId switch to synchronize rules on.
      * @return the synchronization result.
@@ -133,9 +133,9 @@ public interface SwitchService {
     CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId);
 
     /**
-     * Synchronize (install) missing flows that should be on the switch but exist only in Neo4J.
+     * Synchronize (install) missing rules and optionally remove excess rules and meters on the switch.
      *
-     * @param switchId switch to synchronize rules on.
+     * @param switchId switch to synchronize.
      * @param removeExcess remove excess rules and meters flag.
      * @return the synchronization result.
      */

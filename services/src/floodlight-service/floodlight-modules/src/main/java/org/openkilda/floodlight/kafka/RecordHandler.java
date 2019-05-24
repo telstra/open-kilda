@@ -454,7 +454,7 @@ class RecordHandler implements Runnable {
     /**
      * Removes flow.
      *
-     * @param message command message for flow installation
+     * @param message command message for flow deletion
      */
     private void doDeleteFlow(final CommandMessage message, String replyToTopic, Destination replyDestination)
             throws FlowCommandException {
@@ -469,9 +469,9 @@ class RecordHandler implements Runnable {
     }
 
     /**
-     * Batch removes flow.
+     * Batch flow remove.
      *
-     * @param message command message for flow installation
+     * @param message command message for flow deletion
      */
     private void doBatchDeleteFlowForSwitchManager(final CommandMessage message)
             throws FlowCommandException {
@@ -895,7 +895,9 @@ class RecordHandler implements Runnable {
             DatapathId dpid = DatapathId.of(request.getSwitchId().toLong());
 
             for (Long meterId : request.getMetersId()) {
-                context.getSwitchManager().deleteMeter(dpid, meterId);
+                if (meterId != null) {
+                    context.getSwitchManager().deleteMeter(dpid, meterId);
+                }
             }
 
             BatchMetersRemoveResponse response = new BatchMetersRemoveResponse();

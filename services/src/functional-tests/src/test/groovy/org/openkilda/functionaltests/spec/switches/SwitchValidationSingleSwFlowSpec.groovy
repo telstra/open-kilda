@@ -34,7 +34,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -430,20 +429,20 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
         "Centec"     | getCentecSwitches()
         "non-Centec" | getNonCentecSwitches()
     }
-    @Ignore("This is not implemented yet.")
-    def "Not able to get the switch validate info on a NOT supported switch"() {
+
+    def "Able to get the switch validate info on a NOT supported switch"() {
         given: "Not supported switch"
         def sw = topology.activeSwitches.find { it.ofVersion == "OF_12" }
         assumeTrue("Unable to find required switches in topology", sw as boolean)
 
         when: "Try to invoke the switch validate request"
-        northbound.validateSwitch(sw.dpId)
+        def response = northbound.validateSwitch(sw.dpId)
 
-        then: "Human readable error is returned"
-        def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Meters are not supported on switch $sw.dpId because of OF version OF_12"
+        then: "Response without meter section is returned"
+        response.rules.proper.empty
+        response.rules.missing.empty
+        response.rules.excess.empty
+        !response.meters
     }
 
     @Memoized

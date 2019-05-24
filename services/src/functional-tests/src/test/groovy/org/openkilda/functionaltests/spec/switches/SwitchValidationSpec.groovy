@@ -560,7 +560,7 @@ class SwitchValidationSpec extends BaseSpecification {
         }
 
         then: "System detects excess rules and meters, then deletes them"
-        involvedSwitches.each { switchId ->
+        involvedSwitches.findAll { !it.description.contains("OF_12") }.each { switchId ->
             assert syncResultsMap[switchId].rules.excess.size() == 1
             assert syncResultsMap[switchId].rules.excess[0] == 1L
             assert syncResultsMap[switchId].rules.removed.size() == 1
