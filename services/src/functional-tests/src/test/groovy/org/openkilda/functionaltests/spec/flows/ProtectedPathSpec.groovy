@@ -891,7 +891,8 @@ class ProtectedPathSpec extends BaseSpecification {
         northbound.portUp(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
 
         then: "Flow state is changed to UP"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        //it often fails in scope of the whole spec on the hardware env, that's why '* 1.5' is added
+        Wrappers.wait(discoveryInterval * 1.5 + WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
         }
 
