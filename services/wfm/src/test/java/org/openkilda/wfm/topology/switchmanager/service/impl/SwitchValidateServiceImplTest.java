@@ -88,7 +88,7 @@ public class SwitchValidateServiceImplTest {
         service = new SwitchValidateServiceImpl(carrier, persistenceManager);
         service.validationService = validationService;
 
-        request = new SwitchValidateRequest(SWITCH_ID, false);
+        request = new SwitchValidateRequest(SWITCH_ID, false, false);
         flowEntry = new FlowEntry(-1L, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
         meterEntry = new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
 
@@ -187,7 +187,7 @@ public class SwitchValidateServiceImplTest {
 
     @Test
     public void validationPerformSync() {
-        request = new SwitchValidateRequest(SWITCH_ID, true);
+        request = new SwitchValidateRequest(SWITCH_ID, true, false);
 
         handleRequestAndInitDataReceive();
         handleDataReceiveAndValidate();

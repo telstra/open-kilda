@@ -1,10 +1,9 @@
 @startuml
-title Switch rules synchronization
+title Switch synchronization
 
 actor User
 boundary Northbound as NB
 participant SwitchManager << Hub >>
-participant ValidateService
 participant CommandBuilder
 participant Floodlight as FL
 database DAO
@@ -12,57 +11,56 @@ database DAO
 User -> NB : Switch sync rules
 
 activate NB
-NB -> SwitchManager : SwitchRulesSyncRequest
+NB -> SwitchManager : SwitchValidateRequest\nperformSync=true
 activate SwitchManager
 
-SwitchManager ->> FL : DumpRulesRequest
-deactivate SwitchManager
-FL ->> SwitchManager : SwitchFlowEntries
-activate SwitchManager
-SwitchManager -> ValidateService : Validate rules
-activate ValidateService
-ValidateService -> DAO : Get flow segments\nby dst switch id
-activate DAO
-DAO -> ValidateService : Flow segments
-deactivate DAO
-ValidateService -> DAO : Get flows\nby src switch id
-activate DAO
-DAO -> ValidateService : Flows
-deactivate DAO
-ValidateService -> ValidateService : Validate rules
+SwitchManager -> SwitchManager : Switch validate
 
-ValidateService -> SwitchManager : Validate result
-deactivate ValidateService
-
-alt Missing rules exists
+opt Missing rules exists
     SwitchManager -> CommandBuilder : buildCommandsToCreateMissingRules
     activate CommandBuilder
     CommandBuilder -> CommandBuilder : Build commands
     CommandBuilder -> SwitchManager : Rule installation commands
     deactivate CommandBuilder
-
-    SwitchManager ->> FL : BatchInstallRequest
-    deactivate SwitchManager
-    FL ->> SwitchManager : Rules has been installed
-    activate SwitchManager
 end
 
-alt Excess rules exists
+opt Excess rules exists and removeExcess=true
     SwitchManager -> CommandBuilder : buildCommandsToRemoveExcessRules
     activate CommandBuilder
     CommandBuilder -> CommandBuilder : Build commands
     CommandBuilder -> SwitchManager : Rule remove commands
     deactivate CommandBuilder
-
-    SwitchManager ->> FL : BatchRemoveRequest
-    deactivate SwitchManager
-    FL ->> SwitchManager : Rules has been deleted
-    activate SwitchManager
 end
 
-SwitchManager ->> NB: SyncRulesResponse
+opt Excess meters exists and removeExcess=true
+    SwitchManager -> SwitchManager : process excess meters id
+end
+
 deactivate SwitchManager
-NB -> User: SyncRulesResponse
+
+group Sending commands
+    opt Missing rules commands exists
+        SwitchManager ->> FL : BatchInstallRequest
+        FL ->> SwitchManager : BatchFlowInstallResponse
+    end
+    opt Excess rules commands exists
+        SwitchManager ->> FL : BatchRemoveRequest
+        FL ->> SwitchManager : BatchFlowRemoveResponse
+    end
+    opt Excess meters commands exists
+        SwitchManager ->> FL : BatchRemoveMeters
+        FL ->> SwitchManager : BatchMetersRemoveResponse
+    end
+end
+
+
+SwitchManager -> SwitchManager: make SwitchSyncResponse
+activate SwitchManager
+SwitchManager ->> NB: SwitchSyncResponse
+deactivate SwitchManager
+
+NB -> User: SwitchSyncResult
 deactivate NB
 
 @enduml
+

@@ -51,10 +51,9 @@ import org.apache.storm.tuple.Values;
 
 import java.util.Map;
 
-public class SwitchValidateManager extends HubBolt implements SwitchManagerCarrier {
+public class SwitchManager extends HubBolt implements SwitchManagerCarrier {
     public static final String ID = "switch.validate";
     public static final String INCOME_STREAM = "validate.command";
-    private static final int TIMEOUT_MS = 10000;
     private static final boolean AUTO_ACK = true;
 
     private final PersistenceManager persistenceManager;
@@ -64,9 +63,9 @@ public class SwitchValidateManager extends HubBolt implements SwitchManagerCarri
     private long flowMeterMinBurstSizeInKbits;
     private double flowMeterBurstCoefficient;
 
-    public SwitchValidateManager(String requestSenderComponent, PersistenceManager persistenceManager,
-                                 long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
-        super(requestSenderComponent, TIMEOUT_MS, AUTO_ACK);
+    public SwitchManager(String requestSenderComponent, PersistenceManager persistenceManager, int operationTimeout,
+                         long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
+        super(requestSenderComponent, operationTimeout, AUTO_ACK);
         this.persistenceManager = persistenceManager;
         this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
         this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;

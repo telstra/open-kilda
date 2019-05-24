@@ -137,8 +137,8 @@ public class CommandBuilderImpl implements CommandBuilder {
 
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(entry.getCookie(), inPort, vlan,
                 0, outPort);
-        // TODO flowId check
-        return new RemoveFlow(transactionIdGenerator.generate(), "BATCH_REMOVE", entry.getCookie(),
+
+        return new RemoveFlow(transactionIdGenerator.generate(), "SWMANAGER_BATCH_REMOVE", entry.getCookie(),
                 switchId, meterId, criteria);
     }
 
