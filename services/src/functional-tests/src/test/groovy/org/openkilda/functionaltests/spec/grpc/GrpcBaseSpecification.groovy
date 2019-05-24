@@ -13,6 +13,7 @@ class GrpcBaseSpecification extends BaseSpecification {
     @Memoized
     List<SwitchInfoData> getNoviflowSwitches() {
         northbound.activeSwitches.findAll {
+            // it is not working properly if version <= 6.4
             def matcher = it.description =~ /NW[0-9]+.([0-9].[0-9])/
             return matcher && matcher[0][1] > "6.4"
         }
