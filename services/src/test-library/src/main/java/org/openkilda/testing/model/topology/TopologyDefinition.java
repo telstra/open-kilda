@@ -308,7 +308,6 @@ public class TopologyDefinition {
         private int dstPort;
         private long maxBandwidth;
         private ASwitchFlow aswitch;
-        private boolean isBfd;
 
         @JsonCreator
         public static Isl factory(
@@ -317,10 +316,8 @@ public class TopologyDefinition {
                 @JsonProperty("dst_switch") Switch dstSwitch,
                 @JsonProperty("dst_port") int dstPort,
                 @JsonProperty("max_bandwidth") long maxBandwidth,
-                @JsonProperty("a_switch") ASwitchFlow aswitch,
-                //we only assume bi-directional bfd sessions for ISLs
-                @JsonProperty("bfd") boolean isBfd) {
-            return new Isl(srcSwitch, srcPort, dstSwitch, dstPort, maxBandwidth, aswitch, isBfd);
+                @JsonProperty("a_switch") ASwitchFlow aswitch) {
+            return new Isl(srcSwitch, srcPort, dstSwitch, dstPort, maxBandwidth, aswitch);
         }
 
         @Override
@@ -342,7 +339,7 @@ public class TopologyDefinition {
                 reversedAsw = this.getAswitch().getReversed();
             }
             return Isl.factory(this.getDstSwitch(), this.getDstPort(), this.getSrcSwitch(),
-                    this.getSrcPort(), this.getMaxBandwidth(), reversedAsw, this.isBfd());
+                    this.getSrcPort(), this.getMaxBandwidth(), reversedAsw);
         }
     }
 

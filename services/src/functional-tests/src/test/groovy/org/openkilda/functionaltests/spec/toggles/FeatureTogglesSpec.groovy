@@ -12,7 +12,8 @@ Feature Toggles is a special lever that allows to turn on/off certain Kilda feat
 creation of new flows via Northbound API. This spec verifies that Feature Toggle restrictions are applied correctly.
 """)
 /*Note that the 'flowReroute' toggle is tested under AutoRerouteSpec#"Flow goes to 'Down' status when an intermediate
-switch is disconnected and there is no ability to reroute"*/
+switch is disconnected and there is no ability to reroute".
+BFD toggle is tested in BfdSpec*/
 class FeatureTogglesSpec extends BaseSpecification {
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"

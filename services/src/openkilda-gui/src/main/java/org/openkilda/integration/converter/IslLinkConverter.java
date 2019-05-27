@@ -91,6 +91,10 @@ public class IslLinkConverter {
         IslLinkInfo islLinkInfo = new IslLinkInfo();
         islLinkInfo.setUnidirectional(true);
         islLinkInfo.setAvailableBandwidth(islLink.getAvailableBandwidth());
+        islLinkInfo.setMaxBandwidth(islLink.getMaxBandwidth());
+        islLinkInfo.setDefaultMaxBandwidth(islLink.getDefaultMaxBandwidth());
+        islLinkInfo.setCost(islLink.getCost());
+        islLinkInfo.setActualState(islLink.getActualState());
         islLinkInfo.setSpeed(islLink.getSpeed());
         islLinkInfo.setState(islLink.getState());
         islLinkInfo.setUnderMaintenance(islLink.isUnderMaintenance());

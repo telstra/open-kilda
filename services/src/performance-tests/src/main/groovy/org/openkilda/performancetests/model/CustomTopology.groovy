@@ -34,7 +34,7 @@ class CustomTopology extends TopologyDefinition {
         def dstPorts = getAllowedPortsForSwitch(dst)
         assert srcPorts, "Not enough free ports on switch $src.dpId"
         assert dstPorts, "Not enough free ports on switch $dst.dpId"
-        def isl = Isl.factory(src, srcPorts[0], dst, dstPorts[0], 1000000L, null, false)
+        def isl = Isl.factory(src, srcPorts[0], dst, dstPorts[0], 1000000L, null)
         isls << isl
         return isl
     }

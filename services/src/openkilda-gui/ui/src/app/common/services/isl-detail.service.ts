@@ -20,4 +20,11 @@ export class IslDetailService {
     getISLFlowsList(query? : any) : Observable<Flow[]>{
         return this.httpClient.get<Flow[]>(`${environment.apiEndPoint}/switch/links/flows`,{params:query});
   }
+  getIslLatencyfromGraph(src_switch,src_port,dst_switch,dst_port,from,to,frequency){
+    return this.httpClient.get<any[]>(
+        `${
+          environment.apiEndPoint
+        }/stats/isl/${src_switch}/${src_port}/${dst_switch}/${dst_port}/${from}/${to}/${frequency}/latency`
+      );
+  }
 }
