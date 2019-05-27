@@ -38,6 +38,7 @@ import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.links.LinkDto;
+import org.openkilda.northbound.dto.v1.links.LinkEnableBfdDto;
 import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthDto;
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto;
 import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
@@ -49,6 +50,7 @@ import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -137,6 +139,8 @@ public interface NorthboundService {
 
     List<IslInfoData> getAllLinks();
 
+    IslInfoData getLink(Isl isl);
+
     List<IslInfoData> getLinks(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort);
 
     List<LinkPropsDto> getAllLinkProps();
@@ -157,6 +161,8 @@ public interface NorthboundService {
 
     LinkMaxBandwidthDto updateLinkMaxBandwidth(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort,
                                                Long linkMaxBandwidth);
+
+    List<LinkDto> setLinkBfd(LinkEnableBfdDto link);
 
     //feature toggles
 

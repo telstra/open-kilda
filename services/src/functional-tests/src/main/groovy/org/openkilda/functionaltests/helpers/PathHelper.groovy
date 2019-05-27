@@ -99,7 +99,7 @@ class PathHelper {
                     topology.isls.collect { it.reversed }.find(matchingIsl) ?:
                             Isl.factory(topology.switches.find { it.dpId == src.switchId }, src.portNo,
                                     topology.switches.find { it.dpId == dst.switchId }, dst.portNo,
-                                    0, null, false)
+                                    0, null)
             involvedIsls << involvedIsl
         }
         return involvedIsls

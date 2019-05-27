@@ -52,6 +52,12 @@ public class IslLinkInfo implements Serializable {
 
     @JsonProperty("available_bandwidth")
     private int availableBandwidth;
+    
+    @JsonProperty("max_bandwidth")
+    private int maxBandwidth;
+
+    @JsonProperty("default_max_bandwidth")
+    private int defaultMaxBandwidth;
 
     @JsonProperty("dst_port")
     private int dstPort;
@@ -71,6 +77,9 @@ public class IslLinkInfo implements Serializable {
     @JsonProperty("state1")
     private String state1;
 
+    @JsonProperty("actual_state")
+    private String actualState;
+    
     private boolean isUnidirectional;
 
     private String cost;

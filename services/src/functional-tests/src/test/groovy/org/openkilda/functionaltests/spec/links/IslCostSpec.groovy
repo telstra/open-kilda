@@ -116,10 +116,11 @@ class IslCostSpec extends BaseSpecification {
         ]
     }
 
+    //'ISL with BFD session' case is covered in BfdSpec. Spoiler: it should act the same and don't change cost at all.
     def "ISL cost is NOT increased due to failing connection between switches (not port down)"() {
         given: "ISL going through a-switch with link props created"
         def isl = topology.islsForActiveSwitches.find {
-            it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd
+            it.aswitch?.inPort && it.aswitch?.outPort
         } ?: assumeTrue("Wasn't able to find suitable ISL", false)
         def isls = northbound.getAllLinks()
         int islCost = islUtils.getIslInfo(isls, isl).get().cost

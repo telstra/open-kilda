@@ -3,6 +3,7 @@ import { Title } from '@angular/platform-browser';
 import { LoaderService } from 'src/app/common/services/loader.service';
 import { IslListService } from 'src/app/common/services/isl-list.service';
 import { ToastrService } from 'ngx-toastr';
+import { timeDay } from 'd3';
 
 
 @Component({
@@ -23,13 +24,24 @@ export class IslListComponent implements OnInit, AfterViewInit {
 
   ngOnInit() {
     this.titleService.setTitle('OPEN KILDA - ISL');
-    var islList = JSON.parse(localStorage.getItem("ISL_LIST"));
-    if(islList){
-      this.dataSet = islList;
-      this.loadingData = false;
+    var islListData = JSON.parse(localStorage.getItem("ISL_LIST"));
+    if(islListData){
+      var storageTime = islListData.timeStamp;
+      var startTime = new Date(storageTime).getTime();
+      var lastTime = new Date().getTime();
+      let timeminDiff = lastTime - startTime;
+      var diffMins = Math.round(((timeminDiff % 86400000) % 3600000) / 60000);;
+      var islList = islListData.list_data;
+      if(islList && diffMins < 5){
+        this.dataSet = islList;
+        this.loadingData = false;
+      }else{
+        this.getISLlistService();
+      }
     }else{
       this.getISLlistService();
     }
+    
   }
 
   getISLlistService(){
@@ -38,7 +50,8 @@ export class IslListComponent implements OnInit, AfterViewInit {
     let query = {_:new Date().getTime()};
     this.islListService.getIslList(query).subscribe(
       (data: Array<object>) => {
-        localStorage.setItem('ISL_LIST',JSON.stringify(data));
+        var islListData = JSON.stringify({'timeStamp':new Date().getTime(),"list_data":data});
+        localStorage.setItem('ISL_LIST',islListData);
         if (!data || data.length == 0) {
           this.toastr.info("No ISL Available", "Information");
           this.dataSet = [];

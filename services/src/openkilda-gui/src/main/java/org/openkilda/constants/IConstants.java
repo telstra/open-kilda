@@ -148,6 +148,7 @@ public abstract class IConstants {
         public static final String UPDATE_SWITCH_UNDER_MAINTENANCE = GET_SWITCHES + "/{switch_id}/under-maintenance";
         public static final String UPDATE_LINK_UNDER_MAINTENANCE = GET_LINKS + "/under-maintenance";
         public static final String UPDATE_LINK_MAINTENANCE = GET_LINKS + "/under-maintenance";
+        public static final String DELETE_LINK = GET_LINKS;
     }
     
     public final class OpenTsDbUrl {
@@ -250,6 +251,8 @@ public abstract class IConstants {
         public static final String SW_SWITCH_MAINTENANCE = "sw_switch_maintenance";
         
         public static final String ISL_UPDATE_MAINTENANCE = "isl_update_maintenance";
+        
+        public static final String ISL_DELETE_LINK = "isl_delete_link";
         
     }
 

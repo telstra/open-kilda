@@ -32,6 +32,7 @@ import org.openkilda.integration.model.response.ConfiguredPort;
 import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
+import org.openkilda.model.LinkParametersDto;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.SwitchInfo;
@@ -544,6 +545,28 @@ public class SwitchIntegrationService {
             }
         } catch (JsonProcessingException e) {
             LOGGER.error("Error occurred while updating link", e);
+        }   
+        return null;
+    }    
+        
+    /** Deletes the isl.
+     *
+     * @return the IslLinkInfo
+     */
+    public List<IslLinkInfo> deleteLink(LinkParametersDto linkParametersDto) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.DELETE_LINK, HttpMethod.DELETE, 
+                    objectMapper.writeValueAsString(linkParametersDto), "application/json", 
+                    applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponseList(response, IslLinkInfo.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while deleting link", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Error occurred while deleting link", e);
             throw new IntegrationException(e);
         }
         return null;

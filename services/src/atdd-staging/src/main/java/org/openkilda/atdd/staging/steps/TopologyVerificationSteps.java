@@ -113,7 +113,7 @@ public class TopologyVerificationSteps implements En {
                         .flatMap(link -> {
                             //in kilda we have forward and reverse isl, that's why we have to divide into 2
                             Isl pairedLink = Isl.factory(link.getDstSwitch(), link.getDstPort(), link.getSrcSwitch(),
-                                    link.getSrcPort(), link.getMaxBandwidth(), link.getAswitch(), link.isBfd());
+                                    link.getSrcPort(), link.getMaxBandwidth(), link.getAswitch());
                             return Stream.of(link, pairedLink);
                         })
                         .map(IslMatcher::new)

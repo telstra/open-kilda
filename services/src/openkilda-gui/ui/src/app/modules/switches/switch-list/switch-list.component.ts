@@ -51,13 +51,24 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
 
   loadSwitchList(){
     this.dataSet = [];
-    var switchList = JSON.parse(localStorage.getItem("SWITCHES_LIST"));
-    if (switchList) {
-      this.dataSet = switchList;
-      this.loadingData = false;
-    } else {
-      this.getSwitchList();
+    var switchListData = JSON.parse(localStorage.getItem("SWITCHES_LIST"));
+    if(switchListData){
+      var storageTime = switchListData.timeStamp;
+      var startTime = new Date(storageTime).getTime();
+      var lastTime = new Date().getTime();
+      let timeminDiff = lastTime - startTime;
+      var diffMins = Math.round(((timeminDiff % 86400000) % 3600000) / 60000);;
+      var switchList = switchListData.list_data;
+      if (switchList && diffMins < 5) {
+        this.dataSet = switchList;
+        this.loadingData = false;
+      } else {
+        this.getSwitchList();
+      }
+    }else{
+       this.getSwitchList();
     }
+    
   }
 
   getSwitchList() {
@@ -66,7 +77,8 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
     let query = { _: new Date().getTime(),storeConfigurationStatus:this.hasStoreSetting };
     this.switchService.getSwitchList(query).subscribe(
       (data: any) => {
-        localStorage.setItem("SWITCHES_LIST", JSON.stringify(data));
+        var switchListData = JSON.stringify({'timeStamp':new Date().getTime(),"list_data":data});
+        localStorage.setItem("SWITCHES_LIST", switchListData);
         if (!data || data.length == 0) {
           this.toastr.info("No Switch Available", "Information");
           this.dataSet = [];
