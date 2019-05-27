@@ -19,10 +19,8 @@ import static com.nitorcreations.Matchers.reflectEquals;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
@@ -30,14 +28,11 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID;
 
 import org.openkilda.atdd.staging.helpers.FlowSet;
 import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
 import org.openkilda.atdd.staging.service.flowmanager.FlowManager;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -66,8 +61,6 @@ import cucumber.api.java8.En;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import org.apache.commons.collections4.ListValuedMap;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.client.HttpClientErrorException;
@@ -184,64 +177,6 @@ public class FlowSteps implements En {
             assertThat(format("A flow update request for '%s' failed.", flow.getId()), result,
                     reflectEquals(flow, "created", "lastUpdated", "status"));
         }
-    }
-
-    @And("^each flow has meters installed with (\\d+) max bandwidth$")
-    public void eachFlowHasMetersInstalledWithBandwidth(long bandwidth) {
-        for (FlowPayload flow : flows) {
-            FlowPairDto<FlowDto, FlowDto> flowPair = db.getFlow(flow.getId());
-
-            try {
-                MetersEntriesMap forwardSwitchMeters = floodlightService
-                        .getMeters(flowPair.getLeft().getSourceSwitch());
-                int forwardMeterId = flowPair.getLeft().getMeterId();
-                assertThat(forwardSwitchMeters, hasKey(forwardMeterId));
-                MeterEntry forwardMeter = forwardSwitchMeters.get(forwardMeterId);
-                assertThat(forwardMeter.getEntries(), contains(hasProperty("rate", equalTo(bandwidth))));
-
-                MetersEntriesMap reverseSwitchMeters = floodlightService
-                        .getMeters(flowPair.getRight().getSourceSwitch());
-                int reverseMeterId = flowPair.getRight().getMeterId();
-                assertThat(reverseSwitchMeters, hasKey(reverseMeterId));
-                MeterEntry reverseMeter = reverseSwitchMeters.get(reverseMeterId);
-                assertThat(reverseMeter.getEntries(), contains(hasProperty("rate", equalTo(bandwidth))));
-            } catch (UnsupportedOperationException ex) {
-                //TODO: a workaround for not implemented dumpMeters on OF_12 switches.
-                log.warn("Switch doesn't support dumping of meters. {}", ex.getMessage());
-            }
-        }
-    }
-
-    @And("^all active switches have no excessive meters installed$")
-    public void noExcessiveMetersInstalledOnActiveSwitches() {
-        ListValuedMap<SwitchId, Integer> switchMeters = new ArrayListValuedHashMap<>();
-        for (FlowPayload flow : flows) {
-            FlowPairDto<FlowDto, FlowDto> flowPair = db.getFlow(flow.getId());
-            if (flowPair != null) {
-                switchMeters.put(flowPair.getLeft().getSourceSwitch(), flowPair.getLeft().getMeterId());
-                switchMeters.put(flowPair.getRight().getSourceSwitch(), flowPair.getRight().getMeterId());
-            }
-        }
-
-        List<TopologyDefinition.Switch> switches = topologyDefinition.getActiveSwitches();
-        switches.forEach(sw -> {
-            List<Integer> expectedMeters = switchMeters.get(sw.getDpId());
-            try {
-                List<Integer> actualMeters = floodlightService.getMeters(sw.getDpId()).values().stream()
-                        .map(MeterEntry::getMeterId)
-                        .filter(meterId -> meterId > MAX_SYSTEM_RULE_METER_ID)
-                        .collect(toList());
-
-                if (!expectedMeters.isEmpty() || !actualMeters.isEmpty()) {
-                    assertThat(format("Meters of switch %s don't match expected.", sw), actualMeters,
-                            containsInAnyOrder(expectedMeters));
-                }
-
-            } catch (UnsupportedOperationException ex) {
-                //TODO: a workaround for not implemented dumpMeters on OF_12 switches.
-                log.warn("Switch doesn't support dumping of meters. {}", ex.getMessage());
-            }
-        });
     }
 
     @Then("^each flow can be deleted$")

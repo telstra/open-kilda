@@ -100,6 +100,9 @@ class ProtectedPathSpec extends BaseSpecification {
         then: "Protected path is enabled"
         def flowPathInfoAfterUpdating = northbound.getFlowPath(flow.id)
         flowPathInfoAfterUpdating.protectedPath
+        def flowInfo = database.getFlow(flow.id)
+        def protectedForwardCookie = flowInfo.protectedForwardPath.cookie.value
+        def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
 
         currentLastUpdate < northbound.getFlow(flow.id).lastUpdated
 
@@ -119,9 +122,7 @@ class ProtectedPathSpec extends BaseSpecification {
                 def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
                     !Cookie.isDefaultRule(it.cookie)
                 }
-
-                assert flowHelper.findForwardPathRules(rules, sw).size() == 0
-                assert flowHelper.findReversePathRules(rules, sw).size() == 0
+                assert rules.every { it != protectedForwardCookie && it != protectedReverseCookie }
             }
         }
 
@@ -227,6 +228,7 @@ class ProtectedPathSpec extends BaseSpecification {
 
         and: "Cleanup: revert system to original state"
         flowHelper.deleteFlow(flow.id)
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
 
         where:

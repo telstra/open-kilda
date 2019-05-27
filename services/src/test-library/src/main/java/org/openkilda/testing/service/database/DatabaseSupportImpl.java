@@ -23,9 +23,7 @@ import static org.openkilda.testing.Constants.DEFAULT_COST;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.MeterId;
@@ -295,14 +293,11 @@ public class DatabaseSupportImpl implements Database {
      * Get flow.
      *
      * @param flowId flow ID
-     * @return FlowPair object
+     * @return Flow
      */
     @Override
-    public FlowPairDto<FlowDto, FlowDto> getFlow(String flowId) {
-        Optional<FlowPair> flowPair = flowPairRepository.findById(flowId);
-        return flowPair
-                .map(flow -> new FlowPairDto<>(convert(flow.getForward()), convert(flow.getReverse())))
-                .orElse(null);
+    public Flow getFlow(String flowId) {
+        return flowRepository.findById(flowId).get();
     }
 
     /**
