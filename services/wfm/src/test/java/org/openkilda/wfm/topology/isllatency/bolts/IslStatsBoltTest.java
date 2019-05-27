@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,23 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.islstats.bolts;
+package org.openkilda.wfm.topology.isllatency.bolts;
 
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
-import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.model.SwitchId;
 
 import org.junit.Rule;
@@ -73,11 +67,6 @@ public class IslStatsBoltTest {
     private static final String METRIC_PREFIX = "kilda.";
     private IslStatsBolt statsBolt = new IslStatsBolt(METRIC_PREFIX);
 
-    private static final String CORRELATION_ID = "system";
-    private static final Destination DESTINATION = null;
-    private static final InfoMessage MESSAGE = new InfoMessage(ISL_INFO_DATA, TIMESTAMP, CORRELATION_ID, DESTINATION,
-            null);
-
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
@@ -96,24 +85,5 @@ public class IslStatsBoltTest {
         assertEquals(SWITCH2_ID_OTSD_FORMAT, pathNode.get("dst_switch"));
         assertEquals(SWITCH1_PORT, Integer.parseInt(pathNode.get("src_port")));
         assertEquals(SWITCH2_PORT, Integer.parseInt(pathNode.get("dst_port")));
-    }
-
-    @Test
-    public void getInfoData() throws Exception {
-        Object data = statsBolt.getInfoData(MESSAGE);
-        assertThat(data, instanceOf(InfoData.class));
-    }
-
-    @Test
-    public void getIslInfoData() throws Exception {
-        Object data = statsBolt.getIslInfoData(statsBolt.getInfoData(MESSAGE));
-        assertThat(data, instanceOf(IslInfoData.class));
-        assertEquals(ISL_INFO_DATA, data);
-
-        thrown.expect(Exception.class);
-        thrown.expectMessage(containsString("is not an IslInfoData"));
-        PortInfoData portData = new PortInfoData();
-        InfoMessage badMessage = new InfoMessage(portData, TIMESTAMP, CORRELATION_ID, null, null);
-        statsBolt.getIslInfoData(statsBolt.getIslInfoData(badMessage.getData()));
     }
 }

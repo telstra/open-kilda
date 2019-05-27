@@ -53,6 +53,12 @@ public final class ComponentType {
     public static final String NORTHBOUND_REPLY_KAFKA_SPOUT = "NORTHBOUND_REPLY_KAFKA_SPOUT";
     public static final String KILDA_NB_WORKER_KAFKA_SPOUT = "KILDA_NB_WORKER_KAFKA_SPOUT";
     public static final String KILDA_NB_WORKER_KAFKA_BOLT = "KILDA_NB_WORKER_KAFKA_BOLT";
+    public static final String STATS_STATS_REQUEST_KAFKA_SPOUT = "STATS_STATS_REQUEST_KAFKA_SPOUT";
+    public static final String STATS_STATS_REQUEST_KAFKA_BOLT = "STATS_STATS_REQUEST_KAFKA_BOLT";
+    public static final String STATS_STATS_REQUEST_BOLT = "STATS_STATS_REQUEST_BOLT";
+    public static final String FL_STATS_SWITCHES_SPOUT = "FL_STATS_SWITCHES_SPOUT";
+    public static final String FL_STATS_SWITCHES_REPLY_BOLT = "FL_STATS_SWITCHES_REPLY_BOLT";
+    public static final String FL_STATS_SWITCHES_KAFKA_BOLT = "FL_STATS_SWITCHES_KAFKA_BOLT";
 
     private ComponentType() {}
 }

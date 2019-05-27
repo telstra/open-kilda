@@ -17,7 +17,10 @@ package org.openkilda.floodlight.statistics;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import org.projectfloodlight.openflow.types.DatapathId;
+
+import java.util.Set;
 
 public interface IStatisticsService extends IFloodlightService {
-    void processStatistics(FloodlightModuleContext context);
+    void processStatistics(FloodlightModuleContext context, Set<DatapathId> excludeSwitches);
 }

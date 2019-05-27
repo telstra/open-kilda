@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,26 +13,34 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.islstats;
+package org.openkilda.wfm.topology.statsrouter;
 
 import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
-import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
 @Configuration
-public interface IslStatsTopologyConfig extends AbstractTopologyConfig {
+public interface StatsRouterTopologyConfig extends AbstractTopologyConfig {
+    @Key("statsrouter.timeout")
+    int getStatsRouterTimeout();
 
-    default String getKafkaTopoDiscoTopic() {
-        return getKafkaTopics().getTopoDiscoTopic();
+    @Key("statsrouter.request.interval")
+    int getStatsRouterRequestInterval();
+
+    default String getKafkaSpeakerTopic() {
+        return getKafkaTopics().getSpeakerTopic();
     }
 
-    default String getKafkaOtsdbTopic() {
-        return getKafkaTopics().getOtsdbTopic();
+    default String getStatsRequestPrivTopic() {
+        return getKafkaTopics().getStatsRequestPrivTopic();
     }
 
-    @Key("opentsdb.metric.prefix")
-    @Default("kilda.")
-    String getMetricPrefix();
+    default String getFlStatsSwtichesPrivTopic() {
+        return getKafkaTopics().getFlStatsSwitchesPrivTopic();
+    }
+
+    default String getStatsStatsRequestPrivTopic() {
+        return getKafkaTopics().getStatsStatsRequestPrivTopic();
+    }
 }

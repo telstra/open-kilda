@@ -22,7 +22,9 @@ import org.openkilda.messaging.model.LinkPropsMask;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
+import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthDto;
 
 import org.mapstruct.Mapper;
 
@@ -59,5 +61,17 @@ public interface LinkPropsMapper {
         NetworkEndpointMask source = new NetworkEndpointMask(new SwitchId(input.getSrcSwitch()), input.getSrcPort());
         NetworkEndpointMask dest = new NetworkEndpointMask(new SwitchId(input.getDstSwitch()), input.getDstPort());
         return new LinkPropsMask(source, dest);
+    }
+
+    /**
+     * Converts {@link LinkPropsDto} to {@link LinkMaxBandwidthDto}.
+     */
+    default LinkMaxBandwidthDto toLinkMaxBandwidth(LinkPropsDto input) {
+        NetworkEndpoint source = input.getSource();
+        NetworkEndpoint dest = input.getDest();
+        Long maxBandwidth = Long.valueOf(input.getProps().get(LinkProps.MAX_BANDWIDTH_PROP_NAME));
+        return new LinkMaxBandwidthDto(
+                source.getDatapath().toString(), source.getPortNumber(),
+                dest.getDatapath().toString(), dest.getPortNumber(), maxBandwidth);
     }
 }

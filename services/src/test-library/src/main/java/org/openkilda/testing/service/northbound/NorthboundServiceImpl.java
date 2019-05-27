@@ -45,6 +45,9 @@ import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.links.LinkDto;
+import org.openkilda.northbound.dto.v1.links.LinkEnableBfdDto;
+import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthDto;
+import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthRequest;
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto;
 import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
 import org.openkilda.northbound.dto.v1.links.LinkUnderMaintenanceDto;
@@ -56,6 +59,7 @@ import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
@@ -313,6 +317,12 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public IslInfoData getLink(Isl isl) {
+        return getLinks(isl.getSrcSwitch().getDpId(), isl.getSrcPort(), isl.getDstSwitch().getDpId(),
+                isl.getDstPort()).get(0);
+    }
+
+    @Override
     public List<IslInfoData> getLinks(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch, Integer dstPort) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/links");
         if (srcSwitch != null) {
@@ -428,6 +438,36 @@ public class NorthboundServiceImpl implements NorthboundService {
         LinkDto[] updatedLink = restTemplate.exchange("api/v1/links/under-maintenance", HttpMethod.PATCH,
                 new HttpEntity<>(link, buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
         return Arrays.asList(updatedLink);
+    }
+
+    @Override
+    public LinkMaxBandwidthDto updateLinkMaxBandwidth(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch,
+                                                      Integer dstPort, Long linkMaxBandwidth) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/links/bandwidth");
+        if (srcSwitch != null) {
+            uriBuilder.queryParam("src_switch", srcSwitch);
+        }
+        if (srcPort != null) {
+            uriBuilder.queryParam("src_port", srcPort);
+        }
+        if (dstSwitch != null) {
+            uriBuilder.queryParam("dst_switch", dstSwitch);
+        }
+        if (dstPort != null) {
+            uriBuilder.queryParam("dst_port", dstPort);
+        }
+        return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.PATCH,
+                new HttpEntity<>(new LinkMaxBandwidthRequest(linkMaxBandwidth), buildHeadersWithCorrelationId()),
+                LinkMaxBandwidthDto.class).getBody();
+    }
+
+    @Override
+    public List<LinkDto> setLinkBfd(LinkEnableBfdDto link) {
+        log.debug("Changing bfd status to '%s' for link %s:%s-%s:%s", link.isEnableBfd(), link.getSrcSwitch(),
+                link.getSrcPort(), link.getDstSwitch(), link.getDstPort());
+        LinkDto[] updatedLinks = restTemplate.exchange("api/v1/links/enable-bfd", HttpMethod.PATCH,
+                new HttpEntity<>(link, buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
+        return Arrays.asList(updatedLinks);
     }
 
     @Override

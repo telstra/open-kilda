@@ -14,7 +14,9 @@
        <totalSizeCap>20GB</totalSizeCap>
        <maxHistory>10</maxHistory>
     </rollingPolicy>
-    <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+       <customFields>{"role":"${FL_ROLE}","region":"${FL_REGION}"}</customFields>
+    </encoder>
   </appender>
 {{- end }}
 {{- if eq (getv "/kilda_logging_logstash") "true" }}
@@ -35,7 +37,9 @@
       <totalSizeCap>1GB</totalSizeCap>
       <maxHistory>4</maxHistory>
     </rollingPolicy>
-    <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+       <customFields>{"role":"${FL_ROLE}","region":"${FL_REGION}"}</customFields>
+    </encoder>
   </appender>
 {{- end }}
 

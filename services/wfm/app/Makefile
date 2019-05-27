@@ -1,12 +1,12 @@
 # WFM topology management
 
-TOPOLOGY := network flow stats islstats opentsdb portstate nbworker ping reroute swmanager floodlightrouter
+TOPOLOGY := network flow stats isllatency opentsdb portstate nbworker ping reroute swmanager floodlightrouter statsrouter
 
 ENTRY_network := org.openkilda.wfm.topology.network.NetworkTopology
 ENTRY_wfm := org.openkilda.wfm.topology.event.OfEventWfmTopology
 ENTRY_flow := org.openkilda.wfm.topology.flow.FlowTopology
 ENTRY_stats := org.openkilda.wfm.topology.stats.StatsTopology
-ENTRY_islstats := org.openkilda.wfm.topology.islstats.IslStatsTopology
+ENTRY_isllatency := org.openkilda.wfm.topology.isllatency.IslLatencyTopology
 ENTRY_opentsdb := org.openkilda.wfm.topology.opentsdb.OpenTsdbTopology
 ENTRY_portstate := org.openkilda.wfm.topology.portstate.PortStateTopology
 ENTRY_nbworker := org.openkilda.wfm.topology.nbworker.NbWorkerTopology
@@ -14,6 +14,7 @@ ENTRY_ping := org.openkilda.wfm.topology.ping.PingTopology
 ENTRY_reroute := org.openkilda.wfm.topology.reroute.RerouteTopology
 ENTRY_swmanager := org.openkilda.wfm.topology.switchmanager.SwitchManagerTopology
 ENTRY_floodlightrouter := org.openkilda.wfm.topology.floodlightrouter.FloodlightRouterTopology
+ENTRY_statsrouter := org.openkilda.wfm.topology.statsrouter.StatsRouterTopology
 
 TOPOLOGY_JAR := target/WorkflowManager-1.0-SNAPSHOT-jar-with-dependencies.jar
 TOPOLOGY_CONFIG := topology.properties
