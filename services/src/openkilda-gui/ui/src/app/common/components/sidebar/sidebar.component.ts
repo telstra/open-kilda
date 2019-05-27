@@ -21,15 +21,16 @@ export class SidebarComponent implements OnInit {
         localStorage.removeItem('linkStoreStatusList');
         localStorage.removeItem('activeFlowStatusFilter');        
       }
-            
-      if(this.currentUrl.includes('/topology') || this.currentUrl.includes('/flows') || this.currentUrl.includes('/home') || this.currentUrl.includes('/usermanagement') || this.currentUrl.includes('/useractivity') || this.currentUrl.includes('/storesetting')  ){
+      if(!this.currentUrl.includes('/isl')) {
+        localStorage.removeItem('linkData');
+        localStorage.removeItem('ISL_LIST');  
+      } 
+      if(!this.currentUrl.includes('/switches')) {
         localStorage.removeItem('SWITCHES_LIST');
         localStorage.removeItem('switchDetailsJSON');
         localStorage.removeItem('switchPortDetail');  
-        localStorage.removeItem('linkData');
-        localStorage.removeItem('ISL_LIST');  
-      }
-    
+      }  
+     
       this.commonService.setCurrentUrl(router.url);
       
     });

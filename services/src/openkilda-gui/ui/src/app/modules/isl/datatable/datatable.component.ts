@@ -50,7 +50,7 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
   expandedDestinationPort : boolean = false;
   expandedState : boolean = false;
   expandedAvailableSpeed: boolean = false;
-  expandedSpeed: boolean = false;
+  expandedMaxBandwidth: boolean = false;
   expandedAvailableBandwidth : boolean = false;
   expandedLatency : boolean = false;
   expandedUnidirectional : boolean = false;

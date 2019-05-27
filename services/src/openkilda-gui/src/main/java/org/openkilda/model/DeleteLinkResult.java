@@ -13,22 +13,29 @@
  *   limitations under the License.
  */
 
-package org.openkilda.util;
+package org.openkilda.model;
 
-public interface TestIslMock {
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-    static final int SRC_PORT = 1;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * The Class DeleteLinkResult.
+ *
+ * @author Gaurav Chugh
+ */
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
+@AllArgsConstructor
+@NoArgsConstructor
+@Data
+public class DeleteLinkResult {
+
+    @JsonProperty("deleted")
+    private boolean deleted;
     
-    static final String SRC_SWITCH = "00:00:00:00:00:00:00:01";
-
-    static final int DST_PORT = 3;
-
-    static final String DST_SWITCH = "00:00:00:00:00:00:00:02";
-
-    static final boolean UNDER_MAINTENANE_FLAG = true;
-
-    static final boolean EVACUATE_FLAG = false;
-
-    static final Long  USER_ID = (long) 1;
-
 }
