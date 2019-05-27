@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.model.Flow
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
 
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -215,9 +216,9 @@ class FlowHelperV2 {
     /**
      * Checks flow rules presence (or absence) on source and destination switches.
      */
-    private void checkRulesOnSwitches(FlowPairDto<FlowDto, FlowDto> flowEntry, int timeout, boolean rulesPresent) {
-        def cookies = [flowEntry.left.cookie, flowEntry.right.cookie]
-        def switches = [flowEntry.left.sourceSwitch, flowEntry.left.destinationSwitch].toSet()
+    private void checkRulesOnSwitches(Flow flowEntry, int timeout, boolean rulesPresent) {
+        def cookies = [flowEntry.forwardPath.cookie.value, flowEntry.reversePath.cookie.value]
+        def switches = [flowEntry.srcSwitch.switchId, flowEntry.destSwitch.switchId].toSet()
         switches.each { sw ->
             Wrappers.wait(timeout) {
                 try {
