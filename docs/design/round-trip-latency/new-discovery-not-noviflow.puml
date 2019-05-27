@@ -1,0 +1,53 @@
+@startuml
+title New implementation of ISL discovery and round-trip latency with NOT NoviFlow switch and with groups support
+
+participant Floodlight_A as FLA
+participant Floodlight_B as FLB
+participant "Switch_A\n(Not Noviflow)" as SWA
+participant "Switch_B\n(With/without\ngroups support)" as SWB
+control kilda.topo.disco as DI
+participant EventTopology as EV
+database DB
+control kilda.isl.latency as LT
+participant IslLatencyTopology as ILT
+control kilda.otsdb as OTSDB
+participant OpenTSDBTopology as OTOP
+activate FLA
+FLA -> FLA : set current timestemp **T**
+FLA -> SWA : Discovery Packet
+deactivate FLA
+activate SWA
+SWA -> SWB : Discovery Packet
+deactivate SWA
+activate SWB
+SWB -> FLB : Discovery Packet (old style)
+deactivate SWB
+activate FLB
+FLB -> DI : IslInfoData\n(without latency)
+DI -> EV : IslInfoData\n(without latency)
+activate EV
+EV -> DB : Store ISL
+deactivate EV
+FLB -> FLB : calculate one way latency \n**curTime - T - controller latency**
+FLB -> LT : IslOneWayLatency
+deactivate FLB
+group Decision maker Service
+    LT -> ILT : IslOneWayLatency
+    activate ILT
+    ILT -> DB : Set Latency
+    ILT -> OTSDB : latency metric
+    deactivate ILT
+    OTSDB -> OTOP : latency metric
+end
+group With group support case:
+    activate SWB
+    SWB -> SWB : Clone packet \n(get P1 and P2)
+    SWB -> SWB : Change UDP port in P2\n(to match P2 on Switch_A)
+    SWB -> SWA : Packet P2
+    deactivate SWB
+    activate SWA
+    SWA -> SWA : Drop packet P2
+    deactivate SWA
+end
+
+@enduml
