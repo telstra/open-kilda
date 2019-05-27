@@ -56,10 +56,10 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
     }
 
     private FlowPair toFlowPair(Flow flow) {
-        TransitVlan forwardTransitVlan = transitVlanRepository.findByPathId(flow.getForwardPathId()).stream()
-                .findAny().orElse(null);
-        TransitVlan reverseTransitVlan = transitVlanRepository.findByPathId(flow.getReversePathId()).stream()
-                .findAny().orElse(null);
+        TransitVlan forwardTransitVlan = transitVlanRepository.findByPathId(
+                flow.getForwardPathId(), flow.getReversePathId()).stream().findAny().orElse(null);
+        TransitVlan reverseTransitVlan = transitVlanRepository.findByPathId(
+                flow.getReversePathId(), flow.getForwardPathId()).stream().findAny().orElse(null);
 
         return new FlowPair(flow, forwardTransitVlan, reverseTransitVlan);
     }

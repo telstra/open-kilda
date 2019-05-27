@@ -355,6 +355,23 @@ public class Flow implements Serializable {
         return path;
     }
 
+    /**
+     * Return opposite pathId to passed pathId.
+     */
+    public PathId getOppositePathId(@NonNull PathId pathId) {
+        if (pathId.equals(forwardPathId)) {
+            return reversePathId;
+        } else if (pathId.equals(reversePathId)) {
+            return forwardPathId;
+        } else if (pathId.equals(protectedForwardPathId)) {
+            return protectedReversePathId;
+        } else if (pathId.equals(protectedReversePathId)) {
+            return protectedForwardPathId;
+        } else {
+            throw new IllegalArgumentException(String.format("Flow %s does not have path pathId=%s", flowId, pathId));
+        }
+    }
+
     public List<PathId> getFlowPathIds() {
         return paths.stream().map(FlowPath::getPathId).collect(Collectors.toList());
     }

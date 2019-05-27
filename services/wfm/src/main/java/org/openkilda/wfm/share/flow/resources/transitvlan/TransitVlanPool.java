@@ -54,7 +54,12 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
      * Allocates a vlan for the flow path.
      */
     @Override
-    public TransitVlanEncapsulation allocate(Flow flow, PathId pathId) {
+    public TransitVlanEncapsulation allocate(Flow flow, PathId pathId, PathId oppositePathId) {
+        return get(oppositePathId, null)
+                .orElseGet(() -> allocate(flow, pathId));
+    }
+
+    private TransitVlanEncapsulation allocate(Flow flow, PathId pathId) {
         return transactionManager.doInTransaction(() -> {
             int availableVlan = transitVlanRepository.findUnassignedTransitVlan(minTransitVlan)
                     .orElseThrow(() -> new ResourceNotAvailableException("No vlan available"));
@@ -81,7 +86,7 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
     @Override
     public void deallocate(PathId pathId) {
         transactionManager.doInTransaction(() ->
-                transitVlanRepository.findByPathId(pathId)
+                transitVlanRepository.findByPathId(pathId, null)
                         .forEach(transitVlanRepository::delete));
     }
 
@@ -89,8 +94,8 @@ public class TransitVlanPool implements EncapsulationResourcesProvider<TransitVl
      * Get allocated transit vlan(s) of the flow path.
      */
     @Override
-    public Optional<TransitVlanEncapsulation> get(PathId pathId) {
-        Collection<TransitVlan> transitVlans = transitVlanRepository.findByPathId(pathId);
+    public Optional<TransitVlanEncapsulation> get(PathId pathId, PathId oppositePathId) {
+        Collection<TransitVlan> transitVlans = transitVlanRepository.findByPathId(pathId, oppositePathId);
         return transitVlans.stream()
                 .findAny()
                 .map(transitVlan -> TransitVlanEncapsulation.builder().transitVlan(transitVlan).build());

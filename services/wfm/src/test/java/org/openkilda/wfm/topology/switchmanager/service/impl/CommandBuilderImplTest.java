@@ -47,7 +47,9 @@ import org.openkilda.wfm.topology.switchmanager.service.CommandBuilder;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -74,6 +76,8 @@ public class CommandBuilderImplTest {
     }
 
     private static class PersistenceManagerBuilder {
+        private final Map<SwitchId, Switch> switchStorage = new HashMap<>();
+
         private FlowRepository flowRepository = mock(FlowRepository.class);
         private FlowPathRepository flowPathRepository = mock(FlowPathRepository.class);
         private TransitVlanRepository transitVlanRepository = mock(TransitVlanRepository.class);
@@ -92,7 +96,8 @@ public class CommandBuilderImplTest {
 
             FlowPath flowPath = FlowPath.builder()
                     .flow(flow)
-                    .pathId(new PathId(UUID.randomUUID().toString()))
+                    .pathId(new PathId(String.format(
+                            "(%s-%s)--%s", srcSwitchId.toOtsdFormat(), destSwitchId.toOtsdFormat(), UUID.randomUUID())))
                     .srcSwitch(srcSwitch)
                     .destSwitch(destSwitch)
                     .cookie(new Cookie(cookie))
@@ -113,7 +118,7 @@ public class CommandBuilderImplTest {
                     .pathId(flowPath.getPathId())
                     .vlan(transitVlan)
                     .build();
-            when(transitVlanRepository.findByPathId(eq(flowPath.getPathId())))
+            when(transitVlanRepository.findByPathId(flowPath.getPathId(), null))
                     .thenReturn(singleton(transitVlanEntity));
 
             return flowPath;

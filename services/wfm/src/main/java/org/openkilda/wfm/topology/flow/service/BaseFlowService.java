@@ -67,8 +67,8 @@ public class BaseFlowService {
                 .collect(Collectors.toList());
     }
 
-    protected TransitVlan findTransitVlan(PathId pathId) {
-        return transitVlanRepository.findByPathId(pathId).stream()
+    protected TransitVlan findTransitVlan(PathId pathId, PathId oppositePathId) {
+        return transitVlanRepository.findByPathId(pathId, oppositePathId).stream()
                 .findAny().orElse(null);
     }
 
@@ -81,18 +81,20 @@ public class BaseFlowService {
                             .reversePath(flow.getReversePath())
                             //TODO: hard-coded encapsulation will be removed in Flow H&S
                             .forwardEncapsulation(TransitVlanEncapsulation.builder()
-                                    .transitVlan(findTransitVlan(flow.getForwardPathId()))
+                                    .transitVlan(findTransitVlan(flow.getForwardPathId(), flow.getReversePathId()))
                                     .build())
                             .reverseEncapsulation(TransitVlanEncapsulation.builder()
-                                    .transitVlan(findTransitVlan(flow.getReversePathId()))
+                                    .transitVlan(findTransitVlan(flow.getReversePathId(), flow.getForwardPathId()))
                                     .build())
                             .protectedForwardPath(flow.getProtectedForwardPath())
                             .protectedReversePath(flow.getProtectedReversePath())
                             .protectedForwardEncapsulation(TransitVlanEncapsulation.builder()
-                                    .transitVlan(findTransitVlan(flow.getProtectedForwardPathId()))
+                                    .transitVlan(findTransitVlan(flow.getProtectedForwardPathId(),
+                                                                 flow.getProtectedReversePathId()))
                                     .build())
                             .protectedReverseEncapsulation(TransitVlanEncapsulation.builder()
-                                    .transitVlan(findTransitVlan(flow.getProtectedReversePathId()))
+                                    .transitVlan(findTransitVlan(flow.getProtectedReversePathId(),
+                                                                 flow.getProtectedForwardPathId()))
                                     .build())
                             .build()
                 );
