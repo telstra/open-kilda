@@ -17,6 +17,9 @@ package org.openkilda.floodlight.service.kafka;
 
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.event.IslInfoData;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,8 +37,8 @@ import java.util.Map;
 public class KafkaProducerService implements IKafkaProducerService {
 
     private static final Logger logger = LoggerFactory.getLogger(KafkaProducerService.class);
-
-
+    private static final Logger discoLogger = LoggerFactory.getLogger(
+            String.format("%s.DISCO", KafkaProducerService.class.getName()));
 
     private int failedSendMessageCounter;
     private Producer<String, String> producer;
@@ -160,6 +163,13 @@ public class KafkaProducerService implements IKafkaProducerService {
 
             if (exception == null) {
                 service.failedSendMessageCounter = 0;
+                if (message instanceof InfoMessage) {
+                    InfoData infoData = ((InfoMessage) message).getData();
+                    if (infoData instanceof IslInfoData) {
+                        IslInfoData isl = (IslInfoData) infoData;
+                        discoLogger.debug("Isl discovery response was successfully sent: {}", isl.getPacketId());
+                    }
+                }
                 return;
             }
             service.failedSendMessageCounter++;
