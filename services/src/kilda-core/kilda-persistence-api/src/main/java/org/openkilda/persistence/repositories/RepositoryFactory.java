@@ -43,6 +43,8 @@ public interface RepositoryFactory {
 
     TransitVlanRepository createTransitVlanRepository();
 
+    VxlanRepository createVxlanRepository();
+
     FeatureTogglesRepository createFeatureTogglesRepository();
 
     FlowEventRepository createFlowEventRepository();
