@@ -42,4 +42,15 @@ export class SidebarComponent implements OnInit {
   urlmatch(url){
      return this.currentUrl.includes(url);
   }
+
+  closeSidebar() {
+    jQuery('body').removeClass('mini-sidebar');
+    localStorage.removeItem('sidebarToggled');
+  }
+
+  openSidebar() {
+    jQuery('body').addClass('mini-sidebar');
+    localStorage.setItem('sidebarToggled','1');
+  }
+  
 }
