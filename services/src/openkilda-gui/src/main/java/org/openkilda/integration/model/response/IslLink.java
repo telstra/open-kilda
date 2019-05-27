@@ -36,9 +36,21 @@ public class IslLink {
     private List<IslPath> path = null;
     @JsonProperty("available_bandwidth")
     private Integer availableBandwidth;
+    
+    @JsonProperty("max_bandwidth")
+    private Integer maxBandwidth;
+    
+    @JsonProperty("default_max_bandwidth")
+    private Integer defaultMaxBandwidth;
+    
+    @JsonProperty("cost")
+    private String cost;
 
     @JsonProperty("state")
     private String state;
+    
+    @JsonProperty("actual_state")
+    private String actualState;
     
     @JsonProperty("under_maintenance")
     private boolean underMaintenance;

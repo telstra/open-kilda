@@ -25,6 +25,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.openkilda.auth.context.ServerContext;
 import org.openkilda.auth.model.RequestContext;
 import org.openkilda.log.ActivityLogger;
+import org.openkilda.model.IslLinkInfo;
+import org.openkilda.model.LinkParametersDto;
 import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.service.SwitchService;
@@ -39,12 +41,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.runner.RunWith;
-
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.runners.MockitoJUnitRunner;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
@@ -137,12 +137,33 @@ public class SwitchControllerTest {
         linkUnderMaintenanceDto.setSrcPort(Integer.valueOf(TestIslMock.SRC_PORT));
         linkUnderMaintenanceDto.setSrcSwitch(TestIslMock.SRC_SWITCH);
         linkUnderMaintenanceDto.setDstPort(Integer.valueOf(TestIslMock.DST_PORT));
-        linkUnderMaintenanceDto.setDstSwitch(TestIslMock.DEST_SWITCH);
+        linkUnderMaintenanceDto.setDstSwitch(TestIslMock.DST_SWITCH);
         linkUnderMaintenanceDto.setUnderMaintenance(TestIslMock.UNDER_MAINTENANE_FLAG);
 
         String inputJson = mapToJson(linkUnderMaintenanceDto);
         MvcResult mvcResult = mockMvc.perform(MockMvcRequestBuilders
                 .patch("/api/switch/links/under-maintenance")
+                .content(inputJson)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON))
+                .andReturn();
+        int status = mvcResult.getResponse().getStatus();
+        assertEquals(200, status);
+    }
+    
+    @Test
+    public void testDeleteIsl() throws Exception {
+        LinkParametersDto linkParametersDto = new LinkParametersDto();
+        linkParametersDto.setSrcPort(Integer.valueOf(TestIslMock.SRC_PORT));
+        linkParametersDto.setSrcSwitch(TestIslMock.SRC_SWITCH);
+        linkParametersDto.setDstPort(Integer.valueOf(TestIslMock.DST_PORT));
+        linkParametersDto.setDstSwitch(TestIslMock.DST_SWITCH);
+
+        List<IslLinkInfo> islLinkInfo = new ArrayList<IslLinkInfo>();
+        String inputJson = mapToJson(linkParametersDto);
+        when(serviceSwitch.deleteLink(linkParametersDto, TestIslMock.USER_ID)).thenReturn(islLinkInfo);
+        MvcResult mvcResult = mockMvc.perform(MockMvcRequestBuilders
+                .delete("/api/switch/links")
                 .content(inputJson)
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON))

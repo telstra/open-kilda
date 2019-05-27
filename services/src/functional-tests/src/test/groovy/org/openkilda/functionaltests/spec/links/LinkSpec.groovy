@@ -29,7 +29,7 @@ class LinkSpec extends BaseSpecification {
     def "Link (not BFD) status is properly changed when link connectivity is broken (not port down)"() {
         given: "A link going through a-switch"
         def isl = topology.islsForActiveSwitches.find {
-            it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd
+            it.aswitch?.inPort && it.aswitch?.outPort
         } ?: assumeTrue("Wasn't able to find suitable link", false)
 
         double interval = discoveryTimeout * 0.2
@@ -324,11 +324,9 @@ class LinkSpec extends BaseSpecification {
 
         where:
         [islDescription, isl] << [
-                ["direct", getTopology().islsForActiveSwitches.find { !it.aswitch && !it.bfd }],
+                ["direct", getTopology().islsForActiveSwitches.find { !it.aswitch }],
                 ["a-switch", getTopology().islsForActiveSwitches.find {
-                    it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd
-                }],
-                ["bfd", getTopology().islsForActiveSwitches.find { it.bfd }]
+                    it.aswitch?.inPort && it.aswitch?.outPort }]
         ]
     }
 
