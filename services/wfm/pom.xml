@@ -89,6 +89,11 @@
         </dependency>
         <dependency>
             <groupId>org.openkilda</groupId>
+            <artifactId>floodlight-api</artifactId>
+            <version>${openkilda-messaging.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openkilda</groupId>
             <artifactId>configuration</artifactId>
             <version>${openkilda-configuration.version}</version>
         </dependency>

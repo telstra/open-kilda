@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Properties;
@@ -33,6 +34,8 @@ import java.util.concurrent.ExecutionException;
 @Slf4j
 @Service
 public class KafkaBreakerImpl implements KafkaBreaker {
+    @Value("#{kafkaTopicsConfig.getSpeakerRegionTopic()}")
+    private String speakerTopic;
 
     private KafkaProducer<String, String> producer;
 
@@ -40,33 +43,26 @@ public class KafkaBreakerImpl implements KafkaBreaker {
         producer = new KafkaProducer<>(kafkaConfig);
     }
 
-    public void shutoff(KafkaBreakTarget target) throws KafkaBreakException {
-        setState(target, KafkaBreakerAction.TERMINATE);
+    public void shutoff(KafkaBreakTarget target, int region) throws KafkaBreakException {
+        setState(target, KafkaBreakerAction.TERMINATE, region);
     }
 
-    public void restore(KafkaBreakTarget target) throws KafkaBreakException {
-        setState(target, KafkaBreakerAction.RESTORE);
+    public void restore(KafkaBreakTarget target, int region) throws KafkaBreakException {
+        setState(target, KafkaBreakerAction.RESTORE, region);
     }
 
-    private void setState(KafkaBreakTarget target, KafkaBreakerAction action) throws KafkaBreakException {
-        log.info("Target: {}, action: {}", target.toString(), action.toString());
-        String topic;
-
-        switch (target) {
-            case FLOODLIGHT_CONSUMER:
-            case FLOODLIGHT_PRODUCER:
-                topic = "kilda.speaker_1"; //TODO(rtretiak): read from config
-                break;
-            default:
-                throw new KafkaBreakException(String.format("Unsupported target: %s", target.toString()));
-        }
-
+    private void setState(KafkaBreakTarget target, KafkaBreakerAction action, int region) throws KafkaBreakException {
+        log.info("Target: {}, region: {}, action: {}", target.toString(), region, action.toString());
         ProducerRecord<String, String> record = new ProducerRecord<>(
-                topic, target.toString(), action.toString());
+                setRegion(speakerTopic, region), target.toString(), action.toString());
         try {
             producer.send(record).get();
         } catch (InterruptedException | ExecutionException e) {
             throw new KafkaBreakException(e.getMessage(), e);
         }
+    }
+
+    private String setRegion(String speakerTopic, int region) {
+        return String.format("%s_%s", speakerTopic, region);
     }
 }

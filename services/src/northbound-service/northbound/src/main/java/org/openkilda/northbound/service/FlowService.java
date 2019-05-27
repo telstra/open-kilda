@@ -148,6 +148,14 @@ public interface FlowService {
     CompletableFuture<FlowReroutePayload> rerouteFlow(final String flowId);
 
     /**
+     * Performs flow paths swapping for flow with protected path.
+     *
+     * @param flowId id of the flow to swap paths.
+     * @return flow payload.
+     */
+    CompletableFuture<FlowPayload> swapFlowPaths(final String flowId);
+
+    /**
      * Performs synchronization (reinstalling) of specific flow.
      *
      * @param flowId id of flow to be synchronized.

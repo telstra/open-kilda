@@ -13,6 +13,7 @@ import { StoreSettingtService } from 'src/app/common/services/store-setting.serv
 import { FormGroup, FormBuilder } from '@angular/forms';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ModalconfirmationComponent } from 'src/app/common/components/modalconfirmation/modalconfirmation.component';
+import { IslmaintenancemodalComponent } from 'src/app/common/components/islmaintenancemodal/islmaintenancemodal.component';
 
 @Component({
   selector: 'app-switch-detail',
@@ -31,6 +32,8 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
   openedTab : string = 'port';
   isSwitchNameEdit = false;
   isStorageDBType= false;
+  evacuate:boolean = false;;
+  underMaintenance:boolean;
   currentRoute: string = 'switch-details';
   clipBoardItems = {
     sourceSwitchName:"",
@@ -191,6 +194,7 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
         this.hostname =retrievedSwitchObject.hostname;
         this.description =retrievedSwitchObject.description;
         this.state =retrievedSwitchObject.state;
+        this.underMaintenance = retrievedSwitchObject["under_maintenance"];
         this.clipBoardItems = Object.assign(this.clipBoardItems,{
             
             sourceSwitchName: retrievedSwitchObject.name,
@@ -221,6 +225,68 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
 
     
     
+  }
+
+  switchMaintenance(e){
+    const modalRef = this.modalService.open(IslmaintenancemodalComponent);
+    modalRef.componentInstance.title = "Confirmation";
+    modalRef.componentInstance.isMaintenance = !this.underMaintenance;
+    modalRef.componentInstance.content = 'Are you sure ?';
+    this.underMaintenance = e.target.checked;
+    modalRef.result.then((response) =>{
+      if(!response){
+        this.underMaintenance = false;
+      }
+    },error => {
+      this.underMaintenance = false;
+    })
+    modalRef.componentInstance.emitService.subscribe(
+      evacuate => {
+        var data = {"under_maintenance":e.target.checked,"evacuate":evacuate};
+
+          this.switchService.switchMaintenance(data,this.switchId).subscribe((response)=>{
+            this.toastr.success('Maintenance mode changed successful','Success');
+            this.underMaintenance = e.target.checked;
+            if(evacuate){
+              location.reload();
+            }
+          },error => {
+            this.toastr.error('Error in changing maintenance mode! ','Error');
+          });
+      },
+      error => {
+      }
+    );
+    
+  }
+
+
+  evacuateSwitch(e){
+    const modalRef = this.modalService.open(ModalconfirmationComponent);
+    modalRef.componentInstance.title = "Confirmation";
+    this.evacuate = e.target.checked;
+    if(this.evacuate){      
+     modalRef.componentInstance.content = 'Are you sure you want to evacuate all flows?';
+    }else{
+      modalRef.componentInstance.content = 'Are you sure ?';
+    }
+     modalRef.result.then((response)=>{
+      if(response && response == true){
+        var data = {"under_maintenance":this.underMaintenance,"evacuate":e.target.checked};
+        this.switchService.switchMaintenance(data,this.switchId).subscribe((serverResponse)=>{
+          this.toastr.success('All flows are evacuated successfully!','Success');
+          location.reload();
+        },error => {
+          this.toastr.error('Error in evacuating flows! ','Error');
+        })
+      }else{
+        this.evacuate = false;
+      }
+    },error => {
+      this.evacuate = false;
+    })
+    
+   
   }
 
   ngOnDestroy(){

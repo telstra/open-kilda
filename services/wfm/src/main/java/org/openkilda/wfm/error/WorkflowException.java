@@ -21,7 +21,7 @@ import lombok.Getter;
 import org.apache.storm.tuple.Tuple;
 
 @Getter
-public class WorkflowException extends AbstractException {
+public class WorkflowException extends Exception {
     private final Tuple input;
 
     public WorkflowException(AbstractBolt consumer, Tuple input, String details) {

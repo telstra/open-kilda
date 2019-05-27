@@ -18,6 +18,7 @@ package org.openkilda.pce;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
+import org.openkilda.model.PathId;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.impl.AvailableNetwork;
 import org.openkilda.persistence.PersistenceException;
@@ -28,6 +29,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -49,34 +51,34 @@ public class AvailableNetworkFactory {
      * Gets a {@link AvailableNetwork}, built with specified strategy.
      *
      * @param flow                        the flow, for which {@link AvailableNetwork} is constructing.
-     * @param reuseAllocatedFlowResources reuse resources already allocated by {@param flow}.
+     * @param reuseResourcesForPaths      reuse resources already allocated by {@param reuseResourcesForPaths} paths.
      * @return {@link AvailableNetwork} instance.
      */
-    public AvailableNetwork getAvailableNetwork(Flow flow, boolean reuseAllocatedFlowResources)
+    public AvailableNetwork getAvailableNetwork(Flow flow, List<PathId> reuseResourcesForPaths)
             throws RecoverableException {
-        return getAvailableNetwork(flow, reuseAllocatedFlowResources, BuildStrategy.from(config.getNetworkStrategy()));
+        return getAvailableNetwork(flow, reuseResourcesForPaths, BuildStrategy.from(config.getNetworkStrategy()));
     }
 
     /**
      * Gets a {@link AvailableNetwork}, built with specified buildStrategy.
      *
      * @param flow                        the flow, for which {@link AvailableNetwork} is constructing.
-     * @param reuseAllocatedFlowResources reuse resources already allocated by {@param flow}.
+     * @param reusePathsResources         reuse resources already allocated by paths.
      * @param buildStrategy               the {@link AvailableNetwork} building buildStrategy.
      * @return {@link AvailableNetwork} instance
      */
     public AvailableNetwork getAvailableNetwork(
-            Flow flow, boolean reuseAllocatedFlowResources, BuildStrategy buildStrategy) throws RecoverableException {
+            Flow flow, List<PathId> reusePathsResources, BuildStrategy buildStrategy) throws RecoverableException {
         AvailableNetwork network = new AvailableNetwork();
         try {
             // Reads all active links from the database and creates representation of the network.
             Collection<Isl> links = getAvailableIsls(buildStrategy, flow);
             links.forEach(network::addLink);
 
-            if (reuseAllocatedFlowResources && !flow.isIgnoreBandwidth()) {
+            if (!reusePathsResources.isEmpty() && !flow.isIgnoreBandwidth()) {
                 // ISLs occupied by the flow (take the bandwidth already occupied by the flow into account).
-                Collection<Isl> flowLinks = islRepository.findActiveAndOccupiedByFlowWithAvailableBandwidth(
-                        flow.getFlowId(), flow.getBandwidth());
+                Collection<Isl> flowLinks = islRepository.findActiveAndOccupiedByFlowPathWithAvailableBandwidth(
+                        reusePathsResources, flow.getBandwidth());
                 flowLinks.forEach(network::addLink);
             }
         } catch (PersistenceException e) {
@@ -84,12 +86,12 @@ public class AvailableNetworkFactory {
         }
 
         if (flow.getGroupId() != null) {
-            log.info("Filling AvailableNetwork diverse weighs for group with id ", flow.getGroupId());
+            log.info("Filling AvailableNetwork diverse weighs for group with id {}", flow.getGroupId());
 
             Collection<FlowPath> flowPaths = flowPathRepository.findByFlowGroupId(flow.getGroupId());
-            if (reuseAllocatedFlowResources) {
+            if (!reusePathsResources.isEmpty()) {
                 flowPaths = flowPaths.stream()
-                        .filter(s -> !s.getFlowId().equals(flow.getFlowId()))
+                        .filter(s -> !reusePathsResources.contains(s.getPathId()))
                         .collect(Collectors.toList());
             }
 

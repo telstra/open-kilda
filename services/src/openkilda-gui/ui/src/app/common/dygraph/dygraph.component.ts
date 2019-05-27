@@ -199,6 +199,17 @@ export class DygraphComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       } catch (err) {}
     });
+
+    this.dygraphService.meterGraph.subscribe(data => {
+      this.plotMeterGraph(
+        data.data,
+        data.startDate,
+        data.endDate,
+        data.timezone);
+      try {
+        this.cdr.detectChanges();
+      } catch (err) {}
+    })
   }
 
 
@@ -332,6 +343,51 @@ export class DygraphComponent implements OnInit, OnDestroy {
     }
   }
 
+  plotMeterGraph(data, startDate, endDate, timezone){
+    var graph_data = this.dygraphService.computeMeterGraphData(
+      data,
+      startDate,
+      endDate,
+      timezone,
+    );
+    var graphData = graph_data["data"];
+    var labels = graph_data["labels"];
+    var series = {};
+    var colors = graph_data["color"];
+    if (labels && labels.length) {
+      for (var k = 0; k < labels.length; k++) {
+        if (k != 0) {
+          series[labels[k]] = { color: colors[k - 1] };
+        }
+      }
+    }
+ 
+
+    this.data = graphData;
+
+    if (timezone == "UTC") {
+        this.options = Object.assign(this.options,{
+          labels: labels,
+          labelsUTC: true,
+          series: series,
+          legend: "onmouseover",
+          connectSeparatedPoints:true,
+          legendFormatter:this.dygraphService.legendFormatter,
+          zoomCallback: this.zoomCallbackHandler
+        });
+      
+    } else {
+       this.options = Object.assign(this.options,{
+          labels: labels,
+          series: series,
+          labelsUTC: false,
+          legend: "onmouseover",
+          connectSeparatedPoints:true,
+          legendFormatter:this.dygraphService.legendFormatter,
+          zoomCallback: this.zoomCallbackHandler
+        });
+    }
+  }
   plotFlowGraph(data, startDate, endDate, timezone) {
     let graphData = this.dygraphService.constructGraphData(
       data,

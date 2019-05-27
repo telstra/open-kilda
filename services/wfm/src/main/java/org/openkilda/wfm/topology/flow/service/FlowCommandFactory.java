@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flow.service;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
+import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
@@ -47,12 +48,13 @@ public class FlowCommandFactory {
     /**
      * Generates install transit and egress rules commands for a flow.
      *
-     * @param flow     flow to be installed.
      * @param flowPath flow path with segments to be used for building of install rules.
      * @return list of commands
      */
-    public List<InstallTransitFlow> createInstallTransitAndEgressRulesForFlow(Flow flow, FlowPath flowPath,
+    public List<InstallTransitFlow> createInstallTransitAndEgressRulesForFlow(FlowPath flowPath,
                                                                               TransitVlan transitVlan) {
+        Flow flow = flowPath.getFlow();
+
         if (flow.isOneSwitchFlow()) {
             return Collections.emptyList();
         }
@@ -74,18 +76,19 @@ public class FlowCommandFactory {
             throw new IllegalStateException(
                     format("FlowSegment was not found for egress flow rule, flowId: %s", flow.getFlowId()));
         }
-        commands.add(buildInstallEgressFlow(flow, flowPath, egressSegment.getDestPort(), transitVlan));
+        commands.add(buildInstallEgressFlow(flowPath, egressSegment.getDestPort(), transitVlan));
         return commands;
     }
 
     /**
      * Generates install ingress / one switch rules commands for a flow.
      *
-     * @param flow     flow to be installed.
      * @param flowPath flow path with segments to be used for building of install rules.
      * @return list of commands
      */
-    public BaseInstallFlow createInstallIngressRulesForFlow(Flow flow, FlowPath flowPath, TransitVlan transitVlan) {
+    public BaseInstallFlow createInstallIngressRulesForFlow(FlowPath flowPath, TransitVlan transitVlan) {
+        Flow flow = flowPath.getFlow();
+
         if (flow.isOneSwitchFlow()) {
             return makeOneSwitchRule(flow, flowPath);
         }
@@ -104,12 +107,12 @@ public class FlowCommandFactory {
     /**
      * Generates remove transit and egress rules commands for a flow.
      *
-     * @param flow     flow to be deleted.
      * @param flowPath flow path with segments to be used for building of install rules.
      * @return list of commands
      */
-    public List<RemoveFlow> createRemoveTransitAndEgressRulesForFlow(Flow flow, FlowPath flowPath,
-                                                                     TransitVlan transitVlan) {
+    public List<RemoveFlow> createRemoveTransitAndEgressRulesForFlow(FlowPath flowPath, TransitVlan transitVlan) {
+        Flow flow = flowPath.getFlow();
+
         if (flow.isOneSwitchFlow()) {
             // Removing of single switch rules is done with no output port in criteria.
             return Collections.emptyList();
@@ -139,11 +142,11 @@ public class FlowCommandFactory {
     /**
      * Generates remove ingress rules commands for a flow.
      *
-     * @param flow     flow to be deleted.
      * @param flowPath flow path with segments to be used for building of install rules.
      * @return list of commands
      */
-    public RemoveFlow createRemoveIngressRulesForFlow(Flow flow, FlowPath flowPath) {
+    public RemoveFlow createRemoveIngressRulesForFlow(FlowPath flowPath) {
+        Flow flow = flowPath.getFlow();
         if (flow.isOneSwitchFlow()) {
             // Removing of single switch rules is done with no output port in criteria.
             return buildRemoveIngressFlow(flow, flowPath, null);
@@ -160,14 +163,28 @@ public class FlowCommandFactory {
         return buildRemoveIngressFlow(flow, flowPath, ingressSegment.getSrcPort());
     }
 
+    /**
+     * Generates delete meter command.
+     *
+     * @param flowPath  flow path to delete meter on
+     * @return delete meter command
+     */
+    public DeleteMeterRequest createDeleteMeter(FlowPath flowPath) {
+        if (flowPath.getMeterId() == null) {
+            throw new IllegalArgumentException("Trying delete null meter");
+        }
+        return new DeleteMeterRequest(flowPath.getSrcSwitch().getSwitchId(), flowPath.getMeterId().getValue());
+    }
+
     private void requireSegments(List<PathSegment> segments) {
         if (segments.isEmpty()) {
-            throw new IllegalArgumentException("Neither one switch flow nor flow segments provided");
+            throw new IllegalArgumentException("Neither one switch flow nor path segments provided");
         }
     }
 
-    private InstallEgressFlow buildInstallEgressFlow(Flow flow, FlowPath flowPath, int inputPortNo,
-                                                     TransitVlan transitVlan) {
+    private InstallEgressFlow buildInstallEgressFlow(FlowPath flowPath, int inputPortNo, TransitVlan transitVlan) {
+        Flow flow = flowPath.getFlow();
+
         boolean isForward = flow.isForward(flowPath);
         SwitchId switchId = isForward ? flow.getDestSwitch().getSwitchId() : flow.getSrcSwitch().getSwitchId();
         int outPort = isForward ? flow.getDestPort() : flow.getSrcPort();
@@ -192,7 +209,7 @@ public class FlowCommandFactory {
 
     private InstallTransitFlow buildInstallTransitFlow(FlowPath flowPath, SwitchId switchId,
                                                        int inputPortNo, int outputPortNo, TransitVlan transitVlan) {
-        return new InstallTransitFlow(transactionIdGenerator.generate(), flowPath.getFlowId(),
+        return new InstallTransitFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(),
                 flowPath.getCookie().getValue(), switchId, inputPortNo, outputPortNo, transitVlan.getVlan());
     }
 
@@ -201,7 +218,7 @@ public class FlowCommandFactory {
         long cookie = flowPath.getCookie().getValue();
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(cookie,
                 inputPortNo, transitVlan.getVlan(), 0, outputPortNo);
-        return new RemoveFlow(transactionIdGenerator.generate(), flowPath.getFlowId(), cookie,
+        return new RemoveFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(), cookie,
                 switchId, null, criteria);
     }
 

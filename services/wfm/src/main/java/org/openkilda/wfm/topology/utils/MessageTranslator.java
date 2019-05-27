@@ -20,12 +20,14 @@ import static org.openkilda.wfm.AbstractBolt.FIELD_ID_CONTEXT;
 import org.openkilda.messaging.Message;
 import org.openkilda.wfm.CommandContext;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
 
 import java.util.List;
 
+@Slf4j
 public class MessageTranslator extends KafkaRecordTranslator<String, Message> {
     // use FIELD_ID_KEY instead
     @Deprecated

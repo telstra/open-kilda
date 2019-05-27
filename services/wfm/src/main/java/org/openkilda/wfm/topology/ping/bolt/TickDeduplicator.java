@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.ping.bolt;
 
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -44,7 +43,7 @@ public class TickDeduplicator extends AbstractBolt {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         int taskId = input.getSourceTask();
         String stream = input.getSourceStreamId();
 

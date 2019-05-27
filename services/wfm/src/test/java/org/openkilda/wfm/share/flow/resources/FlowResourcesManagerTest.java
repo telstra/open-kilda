@@ -18,6 +18,7 @@ package org.openkilda.wfm.share.flow.resources;
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.mockito.ArgumentMatchers.any;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.model.FlowDto;
@@ -25,6 +26,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
@@ -32,6 +34,7 @@ import org.openkilda.wfm.share.mappers.FlowMapper;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.Properties;
 import java.util.stream.Stream;
@@ -158,8 +161,37 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
         }
     }
 
+    @Test(expected = ResourceAllocationException.class)
+    public void shouldThrowExceptionOnAllocationFailed() throws ResourceAllocationException {
+        FlowResourcesManager spy = Mockito.spy(resourcesManager);
+        Mockito.doThrow(ConstraintViolationException.class)
+                .when(spy).allocateResources(any(), any(), any());
+
+        Flow flow = convertFlow(firstFlow);
+        spy.allocateFlowResources(flow);
+    }
+
+    @Test
+    public void shouldSurviveConstraintViolation() throws ResourceAllocationException {
+        FlowResourcesManager spy = Mockito.spy(resourcesManager);
+        Mockito.doThrow(ConstraintViolationException.class).doCallRealMethod()
+                .when(spy).allocateResources(any(), any(), any());
+
+        Flow flow = convertFlow(firstFlow);
+        FlowResources flowResources = spy.allocateFlowResourcesInTransaction(flow);
+
+        assertEquals(1, flowResources.getUnmaskedCookie());
+        assertEquals(2, ((TransitVlanEncapsulation) flowResources.getForward().getEncapsulationResources())
+                .getTransitVlan().getVlan());
+        assertEquals(32, flowResources.getForward().getMeterId().getValue());
+
+        assertEquals(3, ((TransitVlanEncapsulation) flowResources.getReverse().getEncapsulationResources())
+                .getTransitVlan().getVlan());
+        assertEquals(32, flowResources.getReverse().getMeterId().getValue());
+    }
+
     private Flow convertFlow(FlowDto flowDto) {
-        Flow flow = FlowMapper.INSTANCE.map(flowDto).getFlowEntity();
+        Flow flow = FlowMapper.INSTANCE.map(flowDto).getFlow();
         flow.setSrcSwitch(switchRepository.reload(flow.getSrcSwitch()));
         flow.setDestSwitch(switchRepository.reload(flow.getDestSwitch()));
 

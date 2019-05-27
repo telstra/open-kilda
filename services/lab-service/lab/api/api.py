@@ -201,7 +201,7 @@ def flush_labs_api():
 
 
 def main():
-    server_th = run_thread(lambda: app.run(host='0.0.0.0', port=8288))
+    server_th = run_thread(lambda: app.run(host='0.0.0.0', port=8288, threaded=True))
 
     def teardown():
         logger.info('Terminating...')

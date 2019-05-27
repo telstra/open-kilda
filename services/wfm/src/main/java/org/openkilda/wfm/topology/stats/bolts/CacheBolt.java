@@ -27,9 +27,10 @@ import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsEntry;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FlowPairRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
@@ -79,24 +80,34 @@ public class CacheBolt extends AbstractBolt {
         this.persistenceManager = persistenceManager;
     }
 
-    private void initFlowCache(FlowPairRepository flowPairRepository) {
+    private void initFlowCache(FlowRepository flowRepository) {
         try {
-            flowPairRepository.findAll().stream()
-                    .flatMap(flowPair -> Stream.of(flowPair.getForward(), flowPair.getReverse()))
-                    .forEach(flow -> {
-                        CacheFlowEntry entry = new CacheFlowEntry(
-                                flow.getFlowId(),
-                                flow.getSrcSwitch().getSwitchId().toOtsdFormat(),
-                                flow.getDestSwitch().getSwitchId().toOtsdFormat(),
-                                flow.getCookie());
+            flowRepository.findAll().stream()
+                    .flatMap(flow -> {
+                        FlowPath forward = flow.getForwardPath();
+                        forward.setSrcSwitch(flow.getSrcSwitch());
+                        forward.setDestSwitch(flow.getDestSwitch());
 
-                        cookieToFlow.put(flow.getCookie(), entry);
-                        if (flow.getMeterId() != null) {
+                        FlowPath reverse = flow.getReversePath();
+                        reverse.setSrcSwitch(flow.getDestSwitch());
+                        reverse.setDestSwitch(flow.getSrcSwitch());
+
+                        return Stream.of(forward, reverse);
+                    })
+                    .forEach(path -> {
+                        CacheFlowEntry entry = new CacheFlowEntry(
+                                path.getFlow().getFlowId(),
+                                path.getSrcSwitch().getSwitchId().toOtsdFormat(),
+                                path.getDestSwitch().getSwitchId().toOtsdFormat(),
+                                path.getCookie().getValue());
+
+                        cookieToFlow.put(path.getCookie().getValue(), entry);
+                        if (path.getMeterId() != null) {
                             switchAndMeterToFlow.put(
                                     new MeterCacheKey(
-                                            flow.getSrcSwitch().getSwitchId(), flow.getMeterId()), entry);
+                                            path.getSrcSwitch().getSwitchId(), path.getMeterId().getValue()), entry);
                         } else {
-                            log.warn("Flow {} has no meter ID", flow.getFlowId());
+                            log.warn("Flow {} has no meter ID", path.getFlow().getFlowId());
                         }
                     });
             logger.debug("cookieToFlow cache: {}, switchAndMeterToFlow cache: {}", cookieToFlow, switchAndMeterToFlow);
@@ -112,7 +123,7 @@ public class CacheBolt extends AbstractBolt {
     @Override
     public void init() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        initFlowCache(repositoryFactory.createFlowPairRepository());
+        initFlowCache(repositoryFactory.createFlowRepository());
     }
 
     /**

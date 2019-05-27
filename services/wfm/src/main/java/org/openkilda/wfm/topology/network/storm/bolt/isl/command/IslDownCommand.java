@@ -15,20 +15,21 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.isl.command;
 
+import org.openkilda.model.IslDownReason;
 import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 
 public class IslDownCommand extends IslCommand {
-    private final boolean physicalDown;
+    private final IslDownReason reason;
 
-    public IslDownCommand(Endpoint endpoint, IslReference reference, boolean isPhysicalDown) {
+    public IslDownCommand(Endpoint endpoint, IslReference reference, IslDownReason reason) {
         super(endpoint, reference);
-        this.physicalDown = isPhysicalDown;
+        this.reason = reason;
     }
 
     @Override
     public void apply(IslHandler handler) {
-        handler.processIslDown(getEndpoint(), getReference(), physicalDown);
+        handler.processIslDown(getEndpoint(), getReference(), reason);
     }
 }

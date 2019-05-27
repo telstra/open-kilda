@@ -1,6 +1,0 @@
-org.openkilda.floodlight.KildaCore
-org.openkilda.floodlight.KafkaChannel
-org.openkilda.floodlight.kafka.KafkaMessageCollector
-org.openkilda.floodlight.pathverification.PathVerificationService
-org.openkilda.floodlight.switchmanager.SwitchManager
-org.openkilda.floodlight.statistics.StatisticsService

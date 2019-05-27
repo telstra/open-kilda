@@ -91,3 +91,6 @@ pce.diversity.switch.weight = 100
 
 burst.coefficient = 1.05
 min.burst.size.in.kbits = 1024
+
+statsrouter.timeout = 100
+statsrouter.request.interval = 60

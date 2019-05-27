@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 package org.openkilda.messaging.nbtopology.response;
 
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
+import org.openkilda.messaging.model.FlowPathDto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -30,10 +30,10 @@ public class GetFlowPathResponse extends InfoData {
     private static final long serialVersionUID = 1L;
 
     @JsonProperty("payload")
-    protected GroupFlowPathPayload payload;
+    protected FlowPathDto payload;
 
     @JsonCreator
-    public GetFlowPathResponse(@JsonProperty("payload") GroupFlowPathPayload payload) {
+    public GetFlowPathResponse(@JsonProperty("payload") FlowPathDto payload) {
         this.payload = payload;
     }
 }

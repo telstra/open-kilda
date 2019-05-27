@@ -28,13 +28,13 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanPool;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -75,46 +75,70 @@ public class FlowResourcesManager {
         PathId reversePathId = generatePathId(flow.getFlowId());
 
         try {
+            return allocateResources(flow, forwardPathId, reversePathId);
+        } catch (ConstraintViolationException | ResourceNotAvailableException ex) {
+            throw new ResourceAllocationException("Unable to allocate resources", ex);
+        }
+    }
+
+    /**
+     * Allocate resources for the flow paths. Performs retries on internal transaction.
+     * <p/>
+     * Provided two flows are considered as paired (forward and reverse),
+     * so some resources can be shared among them.
+     */
+    public FlowResources allocateFlowResourcesInTransaction(Flow flow) throws ResourceAllocationException {
+        log.debug("Allocate flow resources for {}.", flow);
+
+        PathId forwardPathId = generatePathId(flow.getFlowId());
+        PathId reversePathId = generatePathId(flow.getFlowId());
+
+        try {
             return Failsafe.with(new RetryPolicy()
                     .retryOn(ConstraintViolationException.class)
                     .retryOn(ResourceNotAvailableException.class)
                     .withMaxRetries(MAX_ALLOCATION_ATTEMPTS))
-                    .get(() -> transactionManager.doInTransaction(() -> {
-                        PathResources.PathResourcesBuilder forward = PathResources.builder()
-                                .pathId(forwardPathId);
-                        PathResources.PathResourcesBuilder reverse = PathResources.builder()
-                                .pathId(reversePathId);
-
-                        if (flow.getBandwidth() > 0L) {
-                            switchRepository.lockSwitches(switchRepository.reload(flow.getSrcSwitch()),
-                                    switchRepository.reload(flow.getDestSwitch()));
-
-                            forward.meterId(meterPool.allocate(
-                                    flow.getSrcSwitch().getSwitchId(), flow.getFlowId(), forwardPathId));
-
-                            reverse.meterId(meterPool.allocate(
-                                    flow.getDestSwitch().getSwitchId(), flow.getFlowId(), reversePathId));
-                        }
-
-                        if (!flow.isOneSwitchFlow()) {
-                            EncapsulationResourcesProvider encapsulationResourcesProvider =
-                                    getEncapsulationResourcesProvider(flow.getEncapsulationType());
-                            forward.encapsulationResources(
-                                    encapsulationResourcesProvider.allocate(flow, forwardPathId));
-
-                            reverse.encapsulationResources(
-                                    encapsulationResourcesProvider.allocate(flow, reversePathId));
-                        }
-
-                        return FlowResources.builder()
-                                .unmaskedCookie(cookiePool.allocate(flow.getFlowId()))
-                                .forward(forward.build())
-                                .reverse(reverse.build())
-                                .build();
-                    }));
+                    .onRetry(e -> log.info("Retrying resource allocation transaction finished with exception", e))
+                    .get(() -> transactionManager.doInTransaction(
+                            () -> allocateResources(flow, forwardPathId, reversePathId)));
         } catch (ConstraintViolationException | ResourceNotAvailableException ex) {
             throw new ResourceAllocationException("Unable to allocate resources", ex);
         }
+    }
+
+    @VisibleForTesting
+    FlowResources allocateResources(Flow flow, PathId forwardPathId, PathId reversePathId) {
+        PathResources.PathResourcesBuilder forward = PathResources.builder()
+                .pathId(forwardPathId);
+        PathResources.PathResourcesBuilder reverse = PathResources.builder()
+                .pathId(reversePathId);
+
+        if (flow.getBandwidth() > 0L) {
+            switchRepository.lockSwitches(switchRepository.reload(flow.getSrcSwitch()),
+                    switchRepository.reload(flow.getDestSwitch()));
+
+            forward.meterId(meterPool.allocate(
+                    flow.getSrcSwitch().getSwitchId(), flow.getFlowId(), forwardPathId));
+
+            reverse.meterId(meterPool.allocate(
+                    flow.getDestSwitch().getSwitchId(), flow.getFlowId(), reversePathId));
+        }
+
+        if (!flow.isOneSwitchFlow()) {
+            EncapsulationResourcesProvider encapsulationResourcesProvider =
+                    getEncapsulationResourcesProvider(flow.getEncapsulationType());
+            forward.encapsulationResources(
+                    encapsulationResourcesProvider.allocate(flow, forwardPathId));
+
+            reverse.encapsulationResources(
+                    encapsulationResourcesProvider.allocate(flow, reversePathId));
+        }
+
+        return FlowResources.builder()
+                .unmaskedCookie(cookiePool.allocate(flow.getFlowId()))
+                .forward(forward.build())
+                .reverse(reverse.build())
+                .build();
     }
 
     private EncapsulationResourcesProvider getEncapsulationResourcesProvider(FlowEncapsulationType type) {
@@ -146,13 +170,5 @@ public class FlowResourcesManager {
                     getEncapsulationResourcesProvider(encapsulationType);
             encapsulationResourcesProvider.deallocate(pathId);
         });
-    }
-
-    /**
-     * Get allocated encapsulation resources of the flow path.
-     */
-    public Optional<EncapsulationResources> getEncapsulationResources(PathId pathId,
-                                                                      FlowEncapsulationType encapsulationType) {
-        return getEncapsulationResourcesProvider(encapsulationType).get(pathId);
     }
 }

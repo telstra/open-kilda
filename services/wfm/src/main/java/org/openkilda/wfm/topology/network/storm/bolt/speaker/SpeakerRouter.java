@@ -31,7 +31,6 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
 import org.openkilda.messaging.model.system.FeatureTogglesDto;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.mappers.FeatureTogglesMapper;
 import org.openkilda.wfm.topology.network.model.Endpoint;
@@ -90,7 +89,7 @@ public class SpeakerRouter extends AbstractBolt {
     public static final Fields STREAM_WORKER_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_INPUT, FIELD_ID_CONTEXT);
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String source = input.getSourceComponent();
         if (ComponentId.INPUT_SPEAKER.toString().equals(source)) {
             Message message = pullValue(input, FIELD_ID_INPUT, Message.class);

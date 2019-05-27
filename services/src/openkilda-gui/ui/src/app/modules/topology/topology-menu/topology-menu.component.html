@@ -4,7 +4,10 @@
   <input type="hidden" id="m_s_dropdown">
   <input type="hidden" id="switch">
 
-  <span class="btn btn-dark btn-xsmall" data-toggle="modal" id="viewISL" (click)="showAffectedISL()">Affected ISL</span>
+  
+  <span class="affected-isl" ngbPopover="Affected ISL" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave" data-toggle="modal" id="viewISL" (click)="showAffectedISL()">
+    <i class="icon-affected-isl" aria-hidden="true"></i>
+  </span>
   <span (click)="showSwitch()" ngbPopover="Show Switch" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave" class="switch_icon custom-icon" id="switch_icon">
 
     <i [class.icon-switch]="this.defaultSetting.SWITCH_CHECKED" [class.inactive-icon-switch]="!this.defaultSetting.SWITCH_CHECKED"
@@ -19,6 +22,14 @@
 
     <i class="icon-flows" aria-hidden="true"></i>
   </span>
+  
+  <span class="export-setting" (click)="exportSetting()" ngbPopover="Export Topology Setting" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave">
+      <i class="icon-export-setting" aria-hidden="true"></i>
+  </span>
+  <span class="import-setting" ngbPopover="Import Topology Setting" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave" (click)="importSettingModal()">
+      <i class="icon-import-setting" aria-hidden="true"></i>
+  </span>
+
   <span (clickOutside)="onClickedOutside($event,'refreshMenu')" ngbPopover="Refresh" popoverClass="popover-sm" placement="bottom" container="body" triggers="mouseenter:mouseleave"
     class="refresh_toggle custom-icon" (click)="toggleRefreshMenu()">
     <i class="icon-refresh-kilda" [class.active]="defaultSetting.REFRESH_CHECKED"></i>

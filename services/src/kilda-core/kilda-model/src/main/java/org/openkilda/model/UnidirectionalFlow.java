@@ -15,237 +15,111 @@
 
 package org.openkilda.model;
 
-import static java.lang.String.format;
+import lombok.ToString;
 
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Optional;
 
 /**
- * Represents a unidirectional flow.
+ * Represents a unidirectional flow with transit vlan encapsulation.
  *
  * @deprecated Must be replaced with new model entities: {@link org.openkilda.model.Flow},
  * {@link org.openkilda.model.FlowPath}
  */
+@ToString
 @Deprecated
 public class UnidirectionalFlow implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private final Flow flow;
     private final FlowPath flowPath;
     private final TransitVlan transitVlan;
     private final boolean forward;
 
-    public UnidirectionalFlow(Flow flow, FlowPath flowPath, TransitVlan transitVlan, boolean forward) {
-        this.flow = flow;
+    public UnidirectionalFlow(FlowPath flowPath, TransitVlan transitVlan, boolean forward) {
         this.flowPath = flowPath;
         this.transitVlan = transitVlan;
         this.forward = forward;
     }
 
     public String getFlowId() {
-        return flow.getFlowId();
-    }
-
-    /**
-     * Set the flowId (propagate to wrapped flow, flowPath and transitVlan).
-     */
-    public void setFlowId(String flowId) {
-        flow.setFlowId(flowId);
-        flowPath.setFlowId(flowId);
-        if (transitVlan != null) {
-            transitVlan.setFlowId(flowId);
-        }
+        return getFlow().getFlowId();
     }
 
     public long getCookie() {
         return flowPath.getCookie().getValue();
     }
 
-    public void setCookie(long cookie) {
-        flowPath.setCookie(new Cookie(cookie));
-    }
-
     public Switch getSrcSwitch() {
-        return forward ? flow.getSrcSwitch() : flow.getDestSwitch();
-    }
-
-    /**
-     * Set the srcSwitch (propagate to wrapped flow and flowPath).
-     */
-    public void setSrcSwitch(Switch srcSwitch) {
-        flowPath.setSrcSwitch(srcSwitch);
-
-        if (forward) {
-            flow.setSrcSwitch(srcSwitch);
-        } else {
-            flow.setDestSwitch(srcSwitch);
-        }
+        return forward ? getFlow().getSrcSwitch() : getFlow().getDestSwitch();
     }
 
     public Switch getDestSwitch() {
-        return forward ? flow.getDestSwitch() : flow.getSrcSwitch();
-    }
-
-    /**
-     * Set the destSwitch (propagate to wrapped flow and flowPath).
-     */
-    public void setDestSwitch(Switch destSwitch) {
-        flowPath.setDestSwitch(destSwitch);
-
-        if (forward) {
-            flow.setDestSwitch(destSwitch);
-        } else {
-            flow.setSrcSwitch(destSwitch);
-        }
+        return forward ? getFlow().getDestSwitch() : getFlow().getSrcSwitch();
     }
 
     public int getSrcPort() {
-        return forward ? flow.getSrcPort() : flow.getDestPort();
-    }
-
-    /**
-     * Set the srcPort (propagate to wrapped flow).
-     */
-    public void setSrcPort(int srcPort) {
-        if (forward) {
-            flow.setSrcPort(srcPort);
-        } else {
-            flow.setDestPort(srcPort);
-        }
+        return forward ? getFlow().getSrcPort() : getFlow().getDestPort();
     }
 
     public int getSrcVlan() {
-        return forward ? flow.getSrcVlan() : flow.getDestVlan();
-    }
-
-    /**
-     * Set the srcVlan (propagate to wrapped flow).
-     */
-    public void setSrcVlan(int srcVlan) {
-        if (forward) {
-            flow.setSrcVlan(srcVlan);
-        } else {
-            flow.setDestVlan(srcVlan);
-        }
+        return forward ? getFlow().getSrcVlan() : getFlow().getDestVlan();
     }
 
     public int getDestPort() {
-        return forward ? flow.getDestPort() : flow.getSrcPort();
-    }
-
-    /**
-     * Set the destPort (propagate to wrapped flow).
-     */
-    public void setDestPort(int destPort) {
-        if (forward) {
-            flow.setDestPort(destPort);
-        } else {
-            flow.setSrcPort(destPort);
-        }
+        return forward ? getFlow().getDestPort() : getFlow().getSrcPort();
     }
 
     public int getDestVlan() {
-        return forward ? flow.getDestVlan() : flow.getSrcVlan();
-    }
-
-    /**
-     * Set the destVlan (propagate to wrapped flow).
-     */
-    public void setDestVlan(int destVlan) {
-        if (forward) {
-            flow.setDestVlan(destVlan);
-        } else {
-            flow.setSrcVlan(destVlan);
-        }
+        return forward ? getFlow().getDestVlan() : getFlow().getSrcVlan();
     }
 
     public long getBandwidth() {
-        return flow.getBandwidth();
-    }
-
-    public void setBandwidth(long bandwidth) {
-        flow.setBandwidth(bandwidth);
+        return getFlow().getBandwidth();
     }
 
     public String getDescription() {
-        return flow.getDescription();
-    }
-
-    public void setDescription(String description) {
-        flow.setDescription(description);
+        return getFlow().getDescription();
     }
 
     public int getTransitVlan() {
         return transitVlan != null ? transitVlan.getVlan() : 0;
     }
 
-    /**
-     * Set the transit vlan. Allowed only if the flow has been initialized with TransitVlan.
-     */
-    public void setTransitVlan(int vlan) {
-        if (transitVlan == null) {
-            throw new IllegalStateException("Transit Vlan entity hasn't been initialized.");
-        }
-
-        transitVlan.setVlan(vlan);
-    }
-
     public Long getMeterId() {
         return Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null);
     }
 
-    public void setMeterId(Long meterId) {
-        flowPath.setMeterId(meterId != null ? new MeterId(meterId) : null);
-    }
-
     public boolean isIgnoreBandwidth() {
-        return flow.isIgnoreBandwidth();
-    }
-
-    public void setIgnoreBandwidth(boolean ignoreBandwidth) {
-        flow.setIgnoreBandwidth(ignoreBandwidth);
+        return getFlow().isIgnoreBandwidth();
     }
 
     public boolean isPeriodicPings() {
-        return flow.isPeriodicPings();
+        return getFlow().isPeriodicPings();
     }
 
-    public void setPeriodicPings(boolean periodicPings) {
-        flow.setPeriodicPings(periodicPings);
+    public boolean isAllocateProtectedPath() {
+        return getFlow().isAllocateProtectedPath();
+    }
+
+    public void setAllocateProtectedPath(boolean allocateProtectedPath) {
+        getFlow().setAllocateProtectedPath(allocateProtectedPath);
     }
 
     public FlowStatus getStatus() {
-        return flow.getStatus();
+        return getFlow().getStatus();
     }
 
     /**
      * Set the status (propagate to wrapped flow and flowPath).
      */
     public void setStatus(FlowStatus status) {
-        flow.setStatus(status);
-
-        switch (status) {
-            case UP:
-                flowPath.setStatus(FlowPathStatus.ACTIVE);
-                break;
-            case DOWN:
-                flowPath.setStatus(FlowPathStatus.INACTIVE);
-                break;
-            case IN_PROGRESS:
-                flowPath.setStatus(FlowPathStatus.IN_PROGRESS);
-                break;
-            default:
-                throw new IllegalArgumentException(format("Unsupported status value: %s", status));
-        }
+        getFlow().setStatus(status);
+        flowPath.setStatusLikeFlow(status);
     }
 
     public Instant getTimeModify() {
-        return flow.getTimeModify();
-    }
-
-    public void setTimeModify(Instant timeModify) {
-        flow.setTimeModify(timeModify);
+        return getFlow().getTimeModify();
     }
 
     /**
@@ -254,7 +128,7 @@ public class UnidirectionalFlow implements Serializable {
      * @return boolean flag
      */
     public boolean isForward() {
-        return flowPath.getPathId().equals(flow.getForwardPathId());
+        return getFlow().isForward(flowPath);
     }
 
     /**
@@ -263,24 +137,15 @@ public class UnidirectionalFlow implements Serializable {
      * @return boolean flag
      */
     public boolean isReverse() {
-        return flowPath.getPathId().equals(flow.getReversePathId());
-    }
-
-    /**
-     * Checks whether the flow is through a single switch.
-     *
-     * @return true if source and destination switches are the same, otherwise false
-     */
-    public boolean isOneSwitchFlow() {
-        return getSrcSwitch().getSwitchId().equals(getDestSwitch().getSwitchId());
+        return getFlow().isReverse(flowPath);
     }
 
     public boolean isActive() {
         return getStatus() == FlowStatus.UP;
     }
 
-    public Flow getFlowEntity() {
-        return flow;
+    public Flow getFlow() {
+        return flowPath.getFlow();
     }
 
     public FlowPath getFlowPath() {
@@ -292,34 +157,18 @@ public class UnidirectionalFlow implements Serializable {
     }
 
     public String getGroupId() {
-        return flow.getGroupId();
-    }
-
-    public void setGroupId(String groupId) {
-        flow.setGroupId(groupId);
+        return getFlow().getGroupId();
     }
 
     public Instant getTimeCreate() {
-        return flow.getTimeCreate();
-    }
-
-    public void setTimeCreate(Instant timeCreate) {
-        flow.setTimeCreate(timeCreate);
+        return getFlow().getTimeCreate();
     }
 
     public Integer getMaxLatency() {
-        return flow.getMaxLatency();
-    }
-
-    public void setMaxLatency(Integer maxLatency) {
-        flow.setMaxLatency(maxLatency);
+        return getFlow().getMaxLatency();
     }
 
     public Integer getPriority() {
-        return flow.getPriority();
-    }
-
-    public void setPriority(Integer priority) {
-        flow.setPriority(priority);
+        return getFlow().getPriority();
     }
 }

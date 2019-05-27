@@ -1,0 +1,8 @@
+org.openkilda.floodlight.KildaCore
+org.openkilda.floodlight.KafkaChannel
+org.openkilda.floodlight.kafka.KafkaMessageCollector
+org.openkilda.floodlight.pathverification.PathVerificationService
+org.openkilda.floodlight.switchmanager.SwitchManager
+net.floodlightcontroller.core.internal.DefaultSwitchRoleService
+org.openkilda.floodlight.statistics.StatisticsService
+org.openkilda.floodlight.kafka.StatsKafkaMessageCollector

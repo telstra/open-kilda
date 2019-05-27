@@ -1,9 +1,11 @@
 package org.openkilda.functionaltests.spec.resilience
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Message
 import org.openkilda.messaging.info.InfoData
@@ -35,9 +37,8 @@ class StormHeavyLoadSpec extends BaseSpecification {
      * Test produces multiple port up/down messages to the topo.disco kafka topic,
      * expecting that Storm will be able to swallow them and continue to operate.
      */
+    @Tags(HARDWARE)
     def "Storm does not fail under heavy load of topo.disco topic"() {
-        requireProfiles("hardware")
-
         when: "Produce massive amount of messages into topo.disco topic"
         def messages = 100000 //total sum of messages of all types produced
         def operations = 2 //port up, port down

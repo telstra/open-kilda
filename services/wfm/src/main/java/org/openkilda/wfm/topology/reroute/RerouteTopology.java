@@ -21,6 +21,7 @@ import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.reroute.bolts.FlowThrottlingBolt;
 import org.openkilda.wfm.topology.reroute.bolts.RerouteBolt;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -34,6 +35,9 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
     private static final String BOLT_ID_REROUTE = "reroute-bolt";
     private static final String BOLT_ID_REROUTE_THROTTLING = "reroute-throttling-bolt";
     private static final String BOLT_ID_KAFKA_FLOW = "kafka-flow-bolt";
+
+    public static final Fields KAFKA_FIELDS =
+            new Fields(MessageTranslator.KEY_FIELD, MessageTranslator.FIELD_ID_PAYLOAD);
 
     public RerouteTopology(LaunchEnvironment env) {
         super(env, RerouteTopologyConfig.class);
@@ -70,6 +74,7 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
 
         KafkaBolt kafkaFlowBolt = buildKafkaBolt(topologyConfig.getKafkaFlowTopic());
         topologyBuilder.setBolt(BOLT_ID_KAFKA_FLOW, kafkaFlowBolt, parallelism)
+                .shuffleGrouping(BOLT_ID_REROUTE, StreamType.SWAP.toString())
                 .shuffleGrouping(BOLT_ID_REROUTE_THROTTLING);
 
         return topologyBuilder.createTopology();

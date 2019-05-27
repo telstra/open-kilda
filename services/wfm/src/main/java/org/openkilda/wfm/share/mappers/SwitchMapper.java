@@ -17,11 +17,12 @@ package org.openkilda.wfm.share.mappers;
 
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.model.SpeakerSwitchDescription;
+import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchStatus;
 
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 /**
@@ -36,13 +37,55 @@ public abstract class SwitchMapper {
      * Convert {@link Switch} to {@link SwitchInfoData}.
      */
     public SwitchInfoData map(Switch sw) {
-        return new SwitchInfoData(
-                sw.getSwitchId(), map(sw.getStatus()),
-                sw.getAddress(), sw.getHostname(), sw.getDescription(), sw.getController(), sw.isUnderMaintenance());
+        if (sw == null) {
+            return null;
+        }
+
+        SpeakerSwitchView switchView = SpeakerSwitchView.builder()
+                .ofVersion(sw.getOfVersion())
+                .description(SpeakerSwitchDescription.builder()
+                        .datapath(sw.getOfDescriptionDatapath())
+                        .hardware(sw.getOfDescriptionHardware())
+                        .manufacturer(sw.getOfDescriptionManufacturer())
+                        .serialNumber(sw.getOfDescriptionSerialNumber())
+                        .software(sw.getOfDescriptionSoftware())
+                        .build())
+                .build();
+        return new SwitchInfoData(sw.getSwitchId(), map(sw.getStatus()), sw.getAddress(), sw.getHostname(),
+                sw.getDescription(), sw.getController(), sw.isUnderMaintenance(), switchView);
     }
 
-    @Mapping(source = "state", target = "status")
-    public abstract Switch map(SwitchInfoData sw);
+    /**
+     * Convert {@link SwitchInfoData} to {@link Switch}.
+     */
+    public Switch map(SwitchInfoData data) {
+        if (data == null) {
+            return null;
+        }
+
+        Switch sw = Switch.builder()
+                .switchId(data.getSwitchId())
+                .status(map(data.getState()))
+                .address(data.getAddress())
+                .hostname(data.getHostname())
+                .description(data.getDescription())
+                .controller(data.getController())
+                .underMaintenance(data.isUnderMaintenance())
+                .build();
+
+        if (data.getSwitchView() != null) {
+            sw.setOfVersion(data.getSwitchView().getOfVersion());
+            if (data.getSwitchView().getDescription() != null) {
+                sw.setOfDescriptionDatapath(data.getSwitchView().getDescription().getDatapath());
+                sw.setOfDescriptionManufacturer(data.getSwitchView().getDescription().getManufacturer());
+                sw.setOfDescriptionHardware(data.getSwitchView().getDescription().getHardware());
+                sw.setOfDescriptionSoftware(data.getSwitchView().getDescription().getSoftware());
+                sw.setOfDescriptionSerialNumber(data.getSwitchView().getDescription().getSerialNumber());
+            }
+        }
+
+        return sw;
+    }
 
     /**
      * Convert {@link SwitchStatus} to {@link SwitchChangeType}.

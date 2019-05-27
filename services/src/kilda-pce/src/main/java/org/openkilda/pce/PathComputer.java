@@ -16,10 +16,12 @@
 package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -35,18 +37,18 @@ public interface PathComputer {
      * @return {@link PathPair} instances
      */
     default PathPair getPath(Flow flow) throws UnroutableFlowException, RecoverableException {
-        return getPath(flow, false);
+        return getPath(flow, Collections.emptyList());
     }
 
     /**
      * Gets path between source and destination switch for specified flow.
      *
      * @param flow the {@link Flow} instance.
-     * @param reuseAllocatedFlowResources allow already allocated {@param flow} resources (bandwidth, path)
-     *                                    be reused in new path computation.
+     * @param reusePathsResources    allow already allocated path resources (bandwidth)
+     *                               be reused in new path computation.
      * @return {@link PathPair} instances
      */
-    PathPair getPath(Flow flow, boolean reuseAllocatedFlowResources)
+    PathPair getPath(Flow flow, List<PathId> reusePathsResources)
             throws UnroutableFlowException, RecoverableException;
 
     /**

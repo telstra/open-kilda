@@ -65,6 +65,7 @@ class SimulateStatsSpec extends BaseSpecification {
             new FlowStatsEntry(0, it.cookie, NOVI_MAX_PACKET_COUNT, NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE)
         })
         producer.send(new ProducerRecord(statsTopic, sw.dpId.toString(), buildMessage(data).toJson()))
+        producer.flush()
         
         then: "Corresponding entries appear in otsdb"
         def expectedMetricValueMap = [
@@ -91,6 +92,9 @@ class SimulateStatsSpec extends BaseSpecification {
 
         and: "Remove flow"
         flowHelper.deleteFlow(flow.id)
+
+        cleanup:
+        producer && producer.close()
     }
 
     private static Message buildMessage(final InfoData data) {

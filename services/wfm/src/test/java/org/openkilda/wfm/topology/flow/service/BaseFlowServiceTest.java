@@ -15,17 +15,19 @@
 
 package org.openkilda.wfm.topology.flow.service;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
-import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
-import org.openkilda.persistence.repositories.FlowPairRepository;
+import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
+import org.openkilda.wfm.share.flow.TestFlowBuilder;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Optional;
@@ -34,29 +36,31 @@ public class BaseFlowServiceTest extends Neo4jBasedTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId SWITCH_ID_2 = new SwitchId("00:00:00:00:00:00:00:02");
 
+    private SwitchRepository switchRepository;
+    private FlowRepository flowRepository;
+    private BaseFlowService flowService;
+
+    @Before
+    public void setUp() {
+        switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        flowService = new BaseFlowService(persistenceManager);
+    }
+
     @Test
-    public void shouldUpdateFlowStatus() {
-        BaseFlowService flowService = new BaseFlowService(persistenceManager);
-        FlowPairRepository flowPairRepository = persistenceManager.getRepositoryFactory().createFlowPairRepository();
+    public void shouldFindFlowPair() {
+        Flow flow = new TestFlowBuilder()
+                .srcSwitch(getOrCreateSwitch(SWITCH_ID_1))
+                .destSwitch(getOrCreateSwitch(SWITCH_ID_2))
+                .build();
+        flowRepository.createOrUpdate(flow);
 
-        String flowId = "test-flow";
-        FlowPair flowPair = new FlowPair(flowId,
-                getOrCreateSwitch(SWITCH_ID_1), 1, 101,
-                getOrCreateSwitch(SWITCH_ID_2), 2, 102,
-                1);
-        flowPair.getForward().setBandwidth(0);
-        flowPair.setStatus(FlowStatus.IN_PROGRESS);
+        Optional<FlowPair> foundFlowPair = flowService.getFlowPair(flow.getFlowId());
 
-        flowPairRepository.createOrUpdate(flowPair);
-
-        flowService.updateFlowStatus(flowId, FlowStatus.UP);
-
-        Optional<FlowPair> foundFlow = flowPairRepository.findById(flowId);
-        assertEquals(FlowStatus.UP, foundFlow.get().getForward().getStatus());
+        assertTrue(foundFlowPair.isPresent());
     }
 
     private Switch getOrCreateSwitch(SwitchId switchId) {
-        SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         return switchRepository.findById(switchId).orElseGet(() -> {
             Switch sw = Switch.builder().switchId(switchId).status(SwitchStatus.ACTIVE).build();
             switchRepository.createOrUpdate(sw);

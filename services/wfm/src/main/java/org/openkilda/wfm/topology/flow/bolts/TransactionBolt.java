@@ -28,6 +28,7 @@ import org.openkilda.messaging.command.CommandGroup.FailureReaction;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
+import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.state.TransactionBoltState;
 import org.openkilda.messaging.error.ErrorData;
@@ -180,7 +181,7 @@ public class TransactionBolt extends AbstractTickStatefulBolt<InMemoryKeyValueSt
             }
 
             for (CommandData command : groupCommands) {
-                if (command instanceof BaseFlow) {
+                if (command instanceof BaseFlow || command instanceof DeleteMeterRequest) {
                     CommandMessage message = new CommandMessage(command, System.currentTimeMillis(), correlationId,
                             Destination.CONTROLLER);
                     StreamType streamId = command instanceof BaseInstallFlow ? StreamType.CREATE : StreamType.DELETE;

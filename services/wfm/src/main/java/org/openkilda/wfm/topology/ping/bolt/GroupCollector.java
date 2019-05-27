@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.ping.bolt;
 
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.error.WorkflowException;
 import org.openkilda.wfm.topology.ping.model.CollectorDescriptor;
 import org.openkilda.wfm.topology.ping.model.ExpirableMap;
@@ -55,7 +54,7 @@ public class GroupCollector extends Abstract {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String component = input.getSourceComponent();
         if (TickDeduplicator.BOLT_ID.equals(component)) {
             expire(input);
@@ -78,7 +77,7 @@ public class GroupCollector extends Abstract {
         }
     }
 
-    private void collect(Tuple input) throws AbstractException {
+    private void collect(Tuple input) throws Exception {
         CollectorDescriptor descriptor = saveCurrentRecord(input);
         if (descriptor.isCompleted()) {
             Group group = descriptor.makeGroup();
@@ -86,7 +85,7 @@ public class GroupCollector extends Abstract {
         }
     }
 
-    private CollectorDescriptor saveCurrentRecord(Tuple input) throws AbstractException {
+    private CollectorDescriptor saveCurrentRecord(Tuple input) throws Exception {
         final PingContext pingContext = pullPingContext(input);
 
         // expiring is only a memory leakage protection in this place
@@ -106,7 +105,7 @@ public class GroupCollector extends Abstract {
         return descriptor;
     }
 
-    private void emitGroup(Tuple input, Group group) throws AbstractException {
+    private void emitGroup(Tuple input, Group group) throws Exception {
         String stream = routeBack(input);
         Values output = new Values(group, pullContext(input));
         getOutput().emit(stream, input, output);
