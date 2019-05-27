@@ -6,10 +6,12 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
 
+import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
 @Narrative("""A new flag of flow that indicates that flow shouldn't be rerouted in case of auto-reroute.
@@ -116,6 +118,41 @@ class PinnedFlowSpec extends BaseSpecification {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
     }
-    //TODO(andriidovhan) add new test when protected path is issued: Able to swap pinned flow
-    // (create pinned flow with protected path, then swap)
+
+    def "System doesn't allow to create pinned and protected flow at the same time"() {
+        when: "Try to create pinned and protected flow"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue("No suiting switches found", false)
+        def flow = flowHelper.randomFlow(switchPair)
+        flow.pinned = true
+        flow.allocateProtectedPath = true
+        flowHelper.addFlow(flow)
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage ==
+                "Could not create flow: Flow flags are not valid, unable to create pinned protected flow"
+    }
+
+    def "System doesn't allow to enable the protected path flag on a pinned flow"() {
+        given: "A pinned flow"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue("No suiting switches found", false)
+        def flow = flowHelper.randomFlow(switchPair)
+        flow.pinned = true
+        flowHelper.addFlow(flow)
+
+        when: "Update flow: enable the allocateProtectedPath flag(allocateProtectedPath=true)"
+        northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage ==
+                "Could not update flow: Flow flags are not valid, unable to update pinned protected flow"
+
+        and: "Cleanup: Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+    }
 }
