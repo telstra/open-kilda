@@ -140,7 +140,8 @@ public class FlowValidationService {
     private List<SimpleSwitchRule> getSimpleSwitchRules(Flow flow, FlowPath flowPath) {
         TransitVlan transitVlan = null;
         if (!flow.isOneSwitchFlow()) {
-            transitVlan = transitVlanRepository.findByPathId(flowPath.getPathId()).stream()
+            transitVlan = transitVlanRepository.findByPathId(flowPath.getPathId(),
+                                                             flow.getOppositePathId(flowPath.getPathId())).stream()
                     .findAny()
                     .orElseThrow(() -> new IllegalStateException(
                             String.format("TransitVlan was not found, pathId: %s", flowPath.getPathId())));

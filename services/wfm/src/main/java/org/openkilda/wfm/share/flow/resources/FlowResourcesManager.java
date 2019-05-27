@@ -128,10 +128,10 @@ public class FlowResourcesManager {
             EncapsulationResourcesProvider encapsulationResourcesProvider =
                     getEncapsulationResourcesProvider(flow.getEncapsulationType());
             forward.encapsulationResources(
-                    encapsulationResourcesProvider.allocate(flow, forwardPathId));
+                    encapsulationResourcesProvider.allocate(flow, forwardPathId, reversePathId));
 
             reverse.encapsulationResources(
-                    encapsulationResourcesProvider.allocate(flow, reversePathId));
+                    encapsulationResourcesProvider.allocate(flow, reversePathId, forwardPathId));
         }
 
         return FlowResources.builder()

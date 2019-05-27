@@ -17,7 +17,6 @@ package org.openkilda.wfm.share.flow.resources;
 
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
@@ -82,16 +81,7 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
     @Test
     public void shouldAllocateForFlow() throws ResourceAllocationException {
         Flow flow = convertFlow(firstFlow);
-        FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
-
-        assertEquals(1, flowResources.getUnmaskedCookie());
-        assertEquals(2, ((TransitVlanEncapsulation) flowResources.getForward().getEncapsulationResources())
-                .getTransitVlan().getVlan());
-        assertEquals(32, flowResources.getForward().getMeterId().getValue());
-
-        assertEquals(3, ((TransitVlanEncapsulation) flowResources.getReverse().getEncapsulationResources())
-                .getTransitVlan().getVlan());
-        assertEquals(32, flowResources.getReverse().getMeterId().getValue());
+        verifyAllocation(resourcesManager.allocateFlowResources(flow));
     }
 
     @Test
@@ -103,31 +93,13 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
         resourcesManager.deallocatePathResources(flowResources.getReverse().getPathId(),
                 flowResources.getUnmaskedCookie(), flow.getEncapsulationType());
 
-        flowResources = resourcesManager.allocateFlowResources(flow);
-
-        assertEquals(1, flowResources.getUnmaskedCookie());
-        assertEquals(2, ((TransitVlanEncapsulation) flowResources.getForward().getEncapsulationResources())
-                .getTransitVlan().getVlan());
-        assertEquals(32, flowResources.getForward().getMeterId().getValue());
-
-        assertEquals(3, ((TransitVlanEncapsulation) flowResources.getReverse().getEncapsulationResources())
-                .getTransitVlan().getVlan());
-        assertEquals(32, flowResources.getReverse().getMeterId().getValue());
+        verifyAllocation(resourcesManager.allocateFlowResources(flow));
     }
 
     @Test
     public void shouldAllocateForNoBandwidthFlow() throws ResourceAllocationException {
         Flow flow = convertFlow(fourthFlow);
-        FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
-
-        assertEquals(1, flowResources.getUnmaskedCookie());
-        assertEquals(2, ((TransitVlanEncapsulation) flowResources.getForward().getEncapsulationResources())
-                .getTransitVlan().getVlan());
-        assertNull(flowResources.getForward().getMeterId());
-
-        assertEquals(3, ((TransitVlanEncapsulation) flowResources.getReverse().getEncapsulationResources())
-                .getTransitVlan().getVlan());
-        assertNull(flowResources.getReverse().getMeterId());
+        verifyMeterLessAllocation(resourcesManager.allocateFlowResources(flow));
     }
 
     @Test
@@ -178,16 +150,30 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
                 .when(spy).allocateResources(any(), any(), any());
 
         Flow flow = convertFlow(firstFlow);
-        FlowResources flowResources = spy.allocateFlowResourcesInTransaction(flow);
+        verifyAllocation(spy.allocateFlowResourcesInTransaction(flow));
+    }
 
-        assertEquals(1, flowResources.getUnmaskedCookie());
-        assertEquals(2, ((TransitVlanEncapsulation) flowResources.getForward().getEncapsulationResources())
-                .getTransitVlan().getVlan());
-        assertEquals(32, flowResources.getForward().getMeterId().getValue());
+    private void verifyAllocation(FlowResources resources) {
+        verifyCommonAllocation(resources);
+        verifyMetersAllocation(resources);
+    }
 
-        assertEquals(3, ((TransitVlanEncapsulation) flowResources.getReverse().getEncapsulationResources())
+    private void verifyMeterLessAllocation(FlowResources resources) {
+        verifyCommonAllocation(resources);
+    }
+
+    private void verifyCommonAllocation(FlowResources resources) {
+        assertEquals(1, resources.getUnmaskedCookie());
+        assertEquals(2, ((TransitVlanEncapsulation) resources.getForward().getEncapsulationResources())
                 .getTransitVlan().getVlan());
-        assertEquals(32, flowResources.getReverse().getMeterId().getValue());
+
+        assertEquals(2, ((TransitVlanEncapsulation) resources.getReverse().getEncapsulationResources())
+                .getTransitVlan().getVlan());
+    }
+
+    private void verifyMetersAllocation(FlowResources resources) {
+        assertEquals(32, resources.getForward().getMeterId().getValue());
+        assertEquals(32, resources.getReverse().getMeterId().getValue());
     }
 
     private Flow convertFlow(FlowDto flowDto) {

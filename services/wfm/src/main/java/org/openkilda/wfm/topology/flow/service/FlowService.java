@@ -300,7 +300,7 @@ public class FlowService extends BaseFlowService {
             flowPathRepository.lockInvolvedSwitches(flowPaths.toArray(new FlowPath[0]));
 
             List<FlowPathWithEncapsulation> flowPathWithEncapsulations = flowPaths.stream()
-                    .map(this::getFlowPathWithEncapsulation)
+                    .map(path -> getFlowPathWithEncapsulation(flow, path))
                     .collect(Collectors.toList());
 
             // Remove flow and all associated paths
@@ -1044,12 +1044,12 @@ public class FlowService extends BaseFlowService {
                 .orElse(null);
     }
 
-    private FlowPathWithEncapsulation getFlowPathWithEncapsulation(FlowPath flowPath) {
+    private FlowPathWithEncapsulation getFlowPathWithEncapsulation(Flow flow, FlowPath path) {
         //TODO: hard-coded encapsulation will be removed in Flow H&S
-        TransitVlan transitVlan = findTransitVlan(flowPath.getPathId());
+        TransitVlan transitVlan = findTransitVlan(path.getPathId(), flow.getOppositePathId(path.getPathId()));
 
         return FlowPathWithEncapsulation.builder()
-                .flowPath(flowPath)
+                .flowPath(path)
                 .encapsulation(TransitVlanEncapsulation.builder().transitVlan(transitVlan).build())
                 .build();
     }
