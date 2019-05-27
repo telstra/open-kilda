@@ -153,6 +153,7 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
           this.dst_switch =retrievedObject.target_switch;
           this.dst_switch_name =retrievedObject.target_switch_name;
           this.dst_port =retrievedObject.dst_port;
+          this.speed = retrievedObject.speed;
           this.max_bandwidth = retrievedObject.max_bandwidth;
           this.default_max_bandwidth = retrievedObject.default_max_bandwidth;
           this.latency = retrievedObject.latency;

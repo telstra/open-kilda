@@ -15,6 +15,7 @@ declare var jQuery: any;
 export class AppComponent implements OnInit, AfterViewChecked {
   loaderMessage:string = null;
   currentUrl :any = '';
+  sidebarSetting:any=false;
 
   constructor(
     private userService: UserService,
@@ -60,6 +61,16 @@ export class AppComponent implements OnInit, AfterViewChecked {
         this.loader.hide();
         this.loaderMessage = null;
       }
+    });
+
+    setTimeout(()=>{
+      this.sidebarSetting = localStorage.getItem('sidebarToggled') || false;
+      if(this.sidebarSetting){
+        jQuery('body').addClass('mini-sidebar');
+      }else{
+        jQuery('body').removeClass('mini-sidebar');
+      }
+      
     });
 
   }
