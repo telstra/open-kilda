@@ -6,7 +6,6 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -19,6 +18,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
 
@@ -225,6 +225,7 @@ class ProtectedPathSpec extends BaseSpecification {
         "an unmetered"  | 0
     }
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/2377")
     @Unroll
     def "System reroutes #flowDescription flow to more preferable path and ignore protected path when reroute is intentional"() {
         given: "Two active neighboring switches with two possible paths at least"
@@ -721,10 +722,17 @@ class ProtectedPathSpec extends BaseSpecification {
             involvedTransitSwitches.each { switchId ->
                 def amountOfRules = (switchId in currentProtectedPath*.switchId &&
                         switchId in currentPath*.switchId) ? 4 : 2
-                def switchValidateInfo = northbound.validateSwitch(switchId)
-                assert switchValidateInfo.rules.proper.size() == amountOfRules
-                switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
-                switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo)
+                if (northbound.getSwitch(switchId).description.contains("OF_12")) {
+                    def switchValidateInfo = northbound.validateSwitchRules(switchId)
+                    assert switchValidateInfo.properRules.size() == amountOfRules
+                    assert switchValidateInfo.missingRules.size() == 0
+                    assert switchValidateInfo.excessRules.size() == 0
+                } else {
+                    def switchValidateInfo = northbound.validateSwitch(switchId)
+                    assert switchValidateInfo.rules.proper.size() == amountOfRules
+                    switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
+                    switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo)
+                }
             }
         }
 
@@ -855,7 +863,9 @@ class ProtectedPathSpec extends BaseSpecification {
         northbound.portUp(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
 
         then: "Flow state is changed to UP"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
+        }
 
         and: "Cleanup: Restore topology, delete flows and reset costs"
         broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }

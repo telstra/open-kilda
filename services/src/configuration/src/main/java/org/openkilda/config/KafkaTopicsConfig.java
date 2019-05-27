@@ -44,6 +44,11 @@ public interface KafkaTopicsConfig {
     @Default("kilda.flow")
     String getFlowRegionTopic();
 
+    @Key("flowhs")
+    @FallbackKey("kafka.flowhs.topic")
+    @Default("kilda.flowhs.storm")
+    String getFlowHsTopic();
+
     @Key("flow.status")
     @Default("kilda.flow.status")
     String getFlowStatusTopic();
@@ -119,6 +124,16 @@ public interface KafkaTopicsConfig {
     @FallbackKey("kafka.speaker.flow.region")
     @Default("kilda.speaker.flow")
     String getSpeakerFlowRegionTopic();
+
+    @Key("flowhs.speaker")
+    @FallbackKey("kafka.flowhs.speaker.topic")
+    @Default("kilda.flowhs.speaker.storm")
+    String getFlowHsSpeakerTopic();
+
+    @Key("flowhs.speaker.region")
+    @FallbackKey("kafka.flowhs.speaker.topic.region")
+    @Default("kilda.flowhs.worker")
+    String getFlowHsSpeakerRegionTopic();
 
     @Key("speaker.flow.ping")
     @FallbackKey("kafka.speaker.flow.ping")

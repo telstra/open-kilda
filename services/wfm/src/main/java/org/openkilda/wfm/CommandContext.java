@@ -16,13 +16,19 @@
 package org.openkilda.wfm;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.MessageContext;
 
 import lombok.Data;
 
 import java.io.Serializable;
 import java.util.UUID;
 
+/**
+ * Class that contains command context information.
+ * @deprecated {@link MessageContext} should be used instead.
+ */
 @Data
+@Deprecated
 public class CommandContext implements Serializable {
     private final String correlationId;
     private final long createTime;
@@ -55,9 +61,9 @@ public class CommandContext implements Serializable {
     }
 
     /**
-     * Merge data from other CommandContext object.
+     * Merge data from other MessageContext object.
      *
-     * <p>Become useful when part of processing is done in external "branch" and separate CommandContext was
+     * <p>Become useful when part of processing is done in external "branch" and separate MessageContext was
      * created.
      */
     public void merge(CommandContext other) { }
