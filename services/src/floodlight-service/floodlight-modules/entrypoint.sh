@@ -22,4 +22,10 @@ if [ "$1" = 'floodlight' ]; then
     net.floodlightcontroller.core.Main -cf /app/floodlightkilda.properties
 fi
 
+if [ "$1" = 'floodlightStats' ]; then
+  exec java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap \
+    -Dlogback.configurationFile=/app/logback.xml ${extra_params} -cp /app/floodlight.jar:/app/floodlight-modules.jar \
+    net.floodlightcontroller.core.Main -cf /app/floodlightkildaStats.properties
+fi
+
 exec "$@"

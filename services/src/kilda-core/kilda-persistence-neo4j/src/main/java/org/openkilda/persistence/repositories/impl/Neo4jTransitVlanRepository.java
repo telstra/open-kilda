@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Neo4J OGM implementation of {@link TransitVlanRepository}.
+ * Neo4j OGM implementation of {@link TransitVlanRepository}.
  */
 public class Neo4jTransitVlanRepository extends Neo4jGenericRepository<TransitVlan> implements TransitVlanRepository {
     static final String PATH_ID_PROPERTY_NAME = "path_id";
@@ -62,11 +62,13 @@ public class Neo4jTransitVlanRepository extends Neo4jGenericRepository<TransitVl
                 + "RETURN vlan "
                 + "UNION ALL "
                 + "MATCH (n1:transit_vlan) "
+                + "WHERE n1.vlan >= $default_vlan "
                 + "OPTIONAL MATCH (n2:transit_vlan) "
                 + "WHERE (n1.vlan + 1) = n2.vlan "
                 + "WITH n1, n2 "
                 + "WHERE n2 IS NULL "
                 + "RETURN n1.vlan + 1 AS vlan "
+                + "ORDER BY vlan "
                 + "LIMIT 1";
 
         Iterator<Integer> results = getSession().query(Integer.class, query, parameters).iterator();

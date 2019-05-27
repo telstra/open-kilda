@@ -333,4 +333,11 @@ public interface ISwitchManager extends IFloodlightService {
      * @return {@link MacAddress}
      */
     MacAddress dpIdToMac(final DatapathId dpId);
+
+    /**
+     * Return if tracking is enabled.
+     *
+     * @return true if tracking is enabled.
+     */
+    boolean isTrackingEnabled();
 }

@@ -82,7 +82,18 @@
           <label class="col-sm-2 col-form-label">Manufacturer:</label>
           <p class="col-sm-4 switchdetails_div_address col-form-label">{{ switchDetail['manufacturer'] || '-' }}</p>
           <label class="col-sm-2 col-form-label">Software Version:</label>
-          <p class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['software-version'] || '-' }}</p>
+          <p class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['software'] || switchDetail['software-version'] || '-' }}</p>
+        </div>
+        
+        <div class="row">
+          <label class="col-sm-2 col-form-label">Hardware:</label>
+          <p class="col-sm-4 switchdetails_div_address col-form-label">{{ switchDetail['hardware'] || '-' }}</p>
+          <label class="col-sm-2 col-form-label">Of Version:</label>
+          <p class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['of_version'] || '-' }}</p>
+        </div>
+        <div class="row" *ngIf="!hasStoreSetting">
+          <label class="col-sm-2 col-form-label">Software Version:</label>
+           <p class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">{{ switchDetail['software'] || switchDetail['software-version'] || '-' }}</p>
         </div>
         <div class="row" *ngIf="hasStoreSetting">
           <label class="col-sm-2 col-form-label">Ref URL:</label>
@@ -90,7 +101,28 @@
             <a *ngIf="!switchDetail['reference-url']">-</a>
             <a *ngIf="switchDetail['reference-url']" href="{{ switchDetail['reference-url'] }}" target="blank">{{ switchDetail['reference-url'] }}</a>
           </p>
-        
+        </div>
+        <div class="row" *ngIf="commonService.hasPermission('sw_switch_maintenance') &&  !switchDetail['inventory-switch']">
+            <label class="col-sm-2 col-form-label">Evacuate:</label>
+            <div class="col-sm-4 switchdetails_div_address col-form-label">
+                <div class="onoffswitch">
+                    <input type="checkbox" (change)="evacuateSwitch($event)" name="onoffswitchevacuate" class="onoffswitch-checkbox" id="onoffswitchevacuate" [checked]="evacuate">
+                    <label class="onoffswitch-label" for="onoffswitchevacuate">
+                      <span class="onoffswitch-inner onoffswitch-inner-maintenance-switch"></span>
+                      <span class="onoffswitch-switch"></span>
+                    </label>
+                  </div>
+                </div>
+           <label class="col-sm-2 col-form-label">Under Maintenance:</label>
+           <div class="col-sm-4 copy_to_clipBoard switchdetails_div_name col-form-label">
+              <div class="onoffswitch">
+                  <input type="checkbox" (change)="switchMaintenance($event)" name="onoffswitchmaintenance" class="onoffswitch-checkbox" id="onoffswitchmaintenance" [checked]="underMaintenance">
+                  <label class="onoffswitch-label" for="onoffswitchmaintenance">
+                    <span class="onoffswitch-inner onoffswitch-inner-maintenance-switch"></span>
+                    <span class="onoffswitch-switch"></span>
+                  </label>
+                </div>
+           </div>
         </div>
       </div>
     </div>

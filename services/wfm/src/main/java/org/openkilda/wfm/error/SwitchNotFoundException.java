@@ -17,7 +17,7 @@ package org.openkilda.wfm.error;
 
 import org.openkilda.model.SwitchId;
 
-public class SwitchNotFoundException extends AbstractException {
+public class SwitchNotFoundException extends Exception {
     public SwitchNotFoundException(SwitchId switchId) {
         super(String.format("Switch %s not found.", switchId));
     }

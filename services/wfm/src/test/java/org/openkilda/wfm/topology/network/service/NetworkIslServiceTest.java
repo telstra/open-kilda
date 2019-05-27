@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslDownReason;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.Switch;
@@ -256,8 +257,6 @@ public class NetworkIslServiceTest {
                 endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
                 endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber())).thenReturn(10L);
 
-        when(featureTogglesRepository.find()).thenReturn(Optional.empty());
-
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
         service.islSetupFromHistory(endpointAlpha1, reference, islAlphaBeta);
 
@@ -314,6 +313,9 @@ public class NetworkIslServiceTest {
         when(islRepository.findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
                                            endpointBeta2.getDatapath(), endpointBeta2.getPortNumber()))
                 .thenReturn(Optional.of(islAlphaBeta.toBuilder().build()));
+        when(islRepository.findByEndpoints(endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
+                                           endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber()))
+                .thenReturn(Optional.of(islBetaAlpha.toBuilder().build()));
         service.islUp(endpointBeta2, reference, new IslDataHolder(islBetaAlpha));
 
         // mock/prepare persistent data
@@ -332,7 +334,7 @@ public class NetworkIslServiceTest {
                                  makeLinkProps(endpointAlpha1, endpointBeta2).cost(10).build());
 
         // isl fail by PORT DOWN
-        service.islDown(endpointAlpha1, reference, true);
+        service.islDown(endpointAlpha1, reference, IslDownReason.PORT_DOWN);
 
         // ensure we have stored cost update
         verify(islRepository, atLeastOnce()).createOrUpdate(argThat(
@@ -362,6 +364,62 @@ public class NetworkIslServiceTest {
         verify(linkPropsRepository).findByEndpoints(endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
                                                     endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber());
         verifyNoMoreInteractions(linkPropsRepository);
+    }
+
+    @Test
+    public void deleteWhenActive() {
+        prepareAndPerformDelete(IslStatus.ACTIVE);
+
+        // ISL can't be delete in ACTIVE state
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void deleteWhenInactive() {
+        prepareAndPerformDelete(IslStatus.INACTIVE);
+        verifyDelete();
+    }
+
+    @Test
+    public void deleteWhenMoved() {
+        prepareAndPerformDelete(IslStatus.MOVED);
+        verifyDelete();
+    }
+
+    private void prepareAndPerformDelete(IslStatus initialStatus) {
+        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2)
+                .actualStatus(initialStatus)
+                .status(initialStatus)
+                .build();
+        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1)
+                .actualStatus(initialStatus)
+                .status(initialStatus)
+                .build();
+
+        // prepare
+        mockPersistenceIsl(endpointAlpha1, endpointBeta2, islAlphaBeta);
+        mockPersistenceIsl(endpointBeta2, endpointAlpha1, islBetaAlpha);
+
+        mockPersistenceLinkProps(endpointAlpha1, endpointBeta2, null);
+        mockPersistenceLinkProps(endpointBeta2, endpointAlpha1, null);
+
+        mockPersistenceBandwidthAllocation(endpointAlpha1, endpointBeta2, 0);
+        mockPersistenceBandwidthAllocation(endpointBeta2, endpointAlpha1, 0);
+
+        IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
+        service.islSetupFromHistory(endpointAlpha1, reference, islAlphaBeta);
+
+        reset(carrier);
+
+        // remove
+        service.remove(reference);
+    }
+
+    private void verifyDelete() {
+        verify(carrier).bfdDisableRequest(endpointAlpha1);
+        verify(carrier).bfdDisableRequest(endpointBeta2);
+
+        verifyNoMoreInteractions(carrier);
     }
 
     private void emulateEmptyPersistentDb() {

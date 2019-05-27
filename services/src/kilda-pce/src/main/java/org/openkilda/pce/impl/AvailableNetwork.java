@@ -28,8 +28,8 @@ import com.google.common.annotations.VisibleForTesting;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -71,12 +71,18 @@ public class AvailableNetwork {
     }
 
     /**
-     * Adds diversity weights into {@link AvailableNetwork} based on passed flow segments and configuration.
+     * Adds diversity weights into {@link AvailableNetwork} based on passed path segments and configuration.
      */
-    public void processDiversitySegments(Collection<PathSegment> segments, PathComputerConfig config) {
+    public void processDiversitySegments(List<PathSegment> segments, PathComputerConfig config) {
         for (PathSegment segment : segments) {
             Node srcNode = getSwitch(segment.getSrcSwitch().getSwitchId());
             Node dstNode = getSwitch(segment.getDestSwitch().getSwitchId());
+
+            if (srcNode == null || dstNode == null) {
+                log.debug("Diversity segment {} don't present in AvailableNetwork", segment);
+                continue;
+            }
+
             Edge segmentEdge = Edge.builder()
                     .srcSwitch(srcNode)
                     .srcPort(segment.getSrcPort())

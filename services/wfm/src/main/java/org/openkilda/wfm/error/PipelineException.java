@@ -20,7 +20,7 @@ import org.openkilda.wfm.AbstractBolt;
 import lombok.Getter;
 import org.apache.storm.tuple.Tuple;
 
-public class PipelineException extends AbstractException {
+public class PipelineException extends Exception {
     @Getter
     private final Tuple input;
     @Getter

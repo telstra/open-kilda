@@ -59,6 +59,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -73,8 +74,10 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.util.FlowModUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
+import org.projectfloodlight.openflow.protocol.OFBucket;
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
@@ -83,6 +86,12 @@ import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFGroupAdd;
+import org.projectfloodlight.openflow.protocol.OFGroupDelete;
+import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
+import org.projectfloodlight.openflow.protocol.OFGroupDescStatsReply;
+import org.projectfloodlight.openflow.protocol.OFGroupDescStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFGroupType;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
@@ -95,6 +104,8 @@ import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFPortMod;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
@@ -121,6 +132,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -151,6 +163,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int CATCH_BFD_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
     public static final int BDF_DEFAULT_PORT = 3784;
+    public static final int MIN_RATE_IN_KBPS = 64;
+    public static final int ROUND_TRIP_LATENCY_GROUP_ID = 1;
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
     // 0x1FFF lead to rule reject during install attempt on accton based switches.
@@ -773,10 +787,28 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             }
         }
 
-        logger.debug("Installing verification rule for {}", dpid);
-        ArrayList<OFAction> actionList = new ArrayList<>(3);
-        actionList.add(actionSendToController(sw));
-        actionList.add(actionSetDstMac(sw, dpIdToMac(sw.getId())));
+        ArrayList<OFAction> actionList = new ArrayList<>();
+
+        if (isBroadcast && featureDetectorService.detectSwitch(sw).contains(Feature.GROUP_PACKET_OUT_CONTROLLER)) {
+            logger.debug("Installing round trip latency group actions on switch {}", dpid);
+
+            try {
+                OFGroup group = installRoundTripLatencyGroup(sw);
+                actionList.add(ofFactory.actions().group(group));
+                logger.debug("Round trip latency group was installed on switch {}", dpid);
+            } catch (OfInstallException | UnsupportedOperationException e) {
+                String message = String.format(
+                        "Couldn't install round trip latency group on switch %s. "
+                        + "Standard discovery actions will be installed instead. Error: %s", dpid, e.getMessage());
+                logger.warn(message, e);
+
+                actionList.add(actionSetDstMac(sw, dpIdToMac(sw.getId())));
+                actionList.add(actionSendToController(sw));
+            }
+        } else {
+            actionList.add(actionSendToController(sw));
+            actionList.add(actionSetDstMac(sw, dpIdToMac(sw.getId())));
+        }
 
         long cookie = isBroadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
         long meterId = createMeterIdForDefaultRule(cookie).getValue();
@@ -793,6 +825,98 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
         flowname += "--VerificationFlow--" + dpid.toString();
         pushFlow(sw, flowname, flowMod);
+    }
+
+    private OFGroup installRoundTripLatencyGroup(IOFSwitch sw) throws OfInstallException {
+        Optional<OFGroupDescStatsEntry> groupDesc = getGroup(sw, ROUND_TRIP_LATENCY_GROUP_ID);
+
+        if (groupDesc.isPresent()) {
+            if (validateRoundTripLatencyGroup(sw.getId(), groupDesc.get())) {
+                logger.debug("Skip installation of round trip latency group on switch {}. Group exists.", sw.getId());
+                return groupDesc.get().getGroup();
+            } else {
+                logger.debug("Found invalid round trip latency group on switch {}. Need to be deleted.", sw.getId());
+                deleteGroup(sw, ROUND_TRIP_LATENCY_GROUP_ID);
+            }
+        }
+
+        OFGroupAdd groupAdd = getInstallRoundTripLatencyGroupInstruction(sw);
+
+        pushFlow(sw, "--InstallGroup--", groupAdd);
+        sendBarrierRequest(sw);
+
+        return OFGroup.of(ROUND_TRIP_LATENCY_GROUP_ID);
+    }
+
+    private void deleteGroup(IOFSwitch sw, int groupId) throws OfInstallException {
+        OFGroupDelete groupDelete = sw.getOFFactory().buildGroupDelete()
+                .setGroup(OFGroup.of(groupId))
+                .setGroupType(OFGroupType.ALL)
+                .build();
+
+        pushFlow(sw, "--DeleteGroup--", groupDelete);
+        sendBarrierRequest(sw);
+    }
+
+    @VisibleForTesting
+    OFGroupAdd getInstallRoundTripLatencyGroupInstruction(IOFSwitch sw) {
+        OFFactory ofFactory = sw.getOFFactory();
+        List<OFBucket> bucketList = new ArrayList<>();
+        bucketList.add(ofFactory
+                .buildBucket()
+                .setActions(Lists.newArrayList(
+                        actionSetDstMac(sw, dpIdToMac(sw.getId())),
+                        actionSendToController(sw)))
+                .setWatchPort(OFPort.ANY)
+                .setWatchGroup(OFGroup.ANY)
+                .build());
+
+        return ofFactory.buildGroupAdd()
+                .setGroup(OFGroup.of(ROUND_TRIP_LATENCY_GROUP_ID))
+                .setGroupType(OFGroupType.ALL)
+                .setBuckets(bucketList)
+                .build();
+    }
+
+    @VisibleForTesting
+    boolean validateRoundTripLatencyGroup(DatapathId dpId, OFGroupDescStatsEntry groupDesc) {
+        return groupDesc.getBuckets().size() == 1
+                && validateRoundTripSendToControllerBucket(dpId, groupDesc.getBuckets().get(0));
+    }
+
+    private boolean validateRoundTripSendToControllerBucket(DatapathId dpId, OFBucket bucket) {
+        List<OFAction> actions = bucket.getActions();
+        return actions.size() == 2
+                && actions.get(0).getType() == OFActionType.SET_FIELD       // first action is set Dst mac address
+                && dpIdToMac(dpId).equals(((OFActionSetField) actions.get(0)).getField().getValue())
+                && actions.get(1).getType() == OFActionType.OUTPUT          // second action is send to controller
+                && OFPort.CONTROLLER.equals(((OFActionOutput) actions.get(1)).getPort());
+    }
+
+    private List<OFGroupDescStatsEntry> dumpGroups(IOFSwitch sw) {
+        OFFactory ofFactory = sw.getOFFactory();
+        OFGroupDescStatsRequest groupRequest = ofFactory.buildGroupDescStatsRequest().build();
+
+        List<OFGroupDescStatsReply> replies;
+
+        try {
+            ListenableFuture<List<OFGroupDescStatsReply>> future = sw.writeStatsRequest(groupRequest);
+            replies = future.get(10, TimeUnit.SECONDS);
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            logger.error(String.format("Could not dump groups on switch %s.", sw.getId()), e);
+            return Collections.emptyList();
+        }
+
+        return replies.stream()
+                .map(OFGroupDescStatsReply::getEntries)
+                .flatMap(List::stream)
+                .collect(Collectors.toList());
+    }
+
+    private Optional<OFGroupDescStatsEntry> getGroup(IOFSwitch sw, int groupId) {
+        return dumpGroups(sw).stream()
+                .filter(groupDesc -> groupDesc.getGroup().getGroupNumber() == groupId)
+                .findFirst();
     }
 
     /**
@@ -910,7 +1034,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     // FIXME: centec switches can't recognize PKTPS flag for meters.
     // Need to simplify detection if the switch don't support PKTPS flag.
     private boolean isSwitchSupportsPktpsFlag(IOFSwitch sw) {
-        return !isCentecSwitch(sw);
+        return !(isCentecSwitch(sw) || isESwitch(sw));
+    }
+
+    private boolean isESwitch(IOFSwitch sw) {
+        return StringUtils.equalsIgnoreCase(sw.getSwitchDescription().getManufacturerDescription(), "E");
     }
 
     private boolean isCentecSwitch(IOFSwitch sw) {
@@ -1400,7 +1528,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             } else {
                 flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
                 // With KBPS flag rate and burst size is in Kbits
-                rate = (ratePkts * config.getDiscoPacketSize()) / 1024L;
+                rate = Math.max(MIN_RATE_IN_KBPS, (ratePkts * config.getDiscoPacketSize()) / 1024L);
                 burstSize = config.getSystemMeterBurstSizeInPackets() * config.getDiscoPacketSize() / 1024L;
             }
 
@@ -1690,6 +1818,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         IOFSwitch sw = lookupSwitch(dpid);
 
         return new ArrayList<>(sw.getPorts());
+    }
+
+    @Override
+    public boolean isTrackingEnabled() {
+        return config.isTrackingEnabled();
     }
 
     private void updatePortStatus(IOFSwitch sw, int portNumber, boolean isAdminDown) throws SwitchOperationException {

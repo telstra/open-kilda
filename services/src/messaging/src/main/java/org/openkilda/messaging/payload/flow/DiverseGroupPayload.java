@@ -17,6 +17,7 @@ package org.openkilda.messaging.payload.flow;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -37,6 +38,7 @@ public class DiverseGroupPayload implements Serializable {
     @JsonProperty("other_flows")
     List<GroupFlowPathPayload> otherFlows;
 
+    @Builder
     @JsonCreator
     public DiverseGroupPayload(@JsonProperty("overlapping_segments") OverlappingSegmentsStats overlappingSegments,
                                @JsonProperty("other_flows") List<GroupFlowPathPayload> otherFlows) {

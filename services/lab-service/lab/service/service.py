@@ -43,7 +43,7 @@ def main():
 
         logger.info("Running rest server")
         lockkeeper_app = init_app(topo.switches)
-        lockkeeper_proc = run_process(lambda: lockkeeper_app.run('0.0.0.0', 5001))
+        lockkeeper_proc = run_process(lambda: lockkeeper_app.run('0.0.0.0', 5001, threaded=True))
     except Exception as ex:
         requests.post(activate_url, json={'error': traceback.format_exc()})
         raise ex

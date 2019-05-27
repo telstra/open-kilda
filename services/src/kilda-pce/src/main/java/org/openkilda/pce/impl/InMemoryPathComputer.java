@@ -19,6 +19,7 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory;
@@ -33,6 +34,7 @@ import org.openkilda.pce.model.Edge;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
@@ -54,9 +56,9 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     @Override
-    public PathPair getPath(Flow flow, boolean reuseAllocatedFlowResources)
+    public PathPair getPath(Flow flow, List<PathId> reusePathsResources)
             throws UnroutableFlowException, RecoverableException {
-        return getPath(availableNetworkFactory.getAvailableNetwork(flow, reuseAllocatedFlowResources), flow);
+        return getPath(availableNetworkFactory.getAvailableNetwork(flow, reusePathsResources), flow);
     }
 
     private PathPair getPath(AvailableNetwork network, Flow flow) throws UnroutableFlowException {
@@ -78,7 +80,7 @@ public class InMemoryPathComputer implements PathComputer {
         } catch (UnroutableFlowException e) {
             String message = format("Failed to find path with requested bandwidth=%s: %s",
                     flow.isIgnoreBandwidth() ? " ignored" : flow.getBandwidth(), e.getMessage());
-            throw new UnroutableFlowException(message, flow.getFlowId());
+            throw new UnroutableFlowException(message, e, flow.getFlowId());
         }
 
         return convertToPathPair(flow.getSrcSwitch().getSwitchId(), flow.getDestSwitch().getSwitchId(), biPath);
@@ -95,7 +97,7 @@ public class InMemoryPathComputer implements PathComputer {
                 .bandwidth(1) // to get ISLs with non zero available bandwidth
                 .build();
 
-        AvailableNetwork availableNetwork = availableNetworkFactory.getAvailableNetwork(flow, false);
+        AvailableNetwork availableNetwork = availableNetworkFactory.getAvailableNetwork(flow, Collections.emptyList());
 
         List<List<Edge>> paths =
                 pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitchId, dstSwitchId, count);

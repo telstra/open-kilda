@@ -16,6 +16,7 @@ ARG base_image=kilda/base-ubuntu
 FROM ${base_image}
 
 ADD src/main/resources/floodlightkilda.properties /app/floodlightkilda.properties
+ADD src/main/resources/floodlightkildaStats.properties /app/floodlightkildaStats.properties
 ADD src/main/resources/logback.xml /app
 ADD run-deps/floodlight.jar /app/floodlight.jar
 ADD target/floodlight-modules.jar /app/floodlight-modules.jar

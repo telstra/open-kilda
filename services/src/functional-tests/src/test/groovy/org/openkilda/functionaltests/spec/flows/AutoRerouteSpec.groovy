@@ -1,11 +1,15 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
@@ -23,7 +27,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
     def "Flow is rerouted when one of the flow ISLs fails"() {
         given: "A flow with one alternative path at least"
-        def (flow, allFlowPaths) = noIntermediateSwitchFlow(true, true)
+        def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -50,7 +54,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
     def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no ability to reroute"() {
         given: "A flow without alternative paths"
-        def (flow, allFlowPaths) = noIntermediateSwitchFlow(false, true)
+        def (flow, allFlowPaths) = noIntermediateSwitchFlow(0, true)
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -88,11 +92,10 @@ class AutoRerouteSpec extends BaseSpecification {
         }
     }
 
+    @Tags(VIRTUAL)
     def "Flow is rerouted when an intermediate switch is disconnected"() {
-        requireProfiles("virtual")
-
         given: "An intermediate-switch flow with one alternative path at least"
-        def flow = intermediateSwitchFlow(true)
+        def flow = intermediateSwitchFlow(1)
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -125,9 +128,8 @@ class AutoRerouteSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags(VIRTUAL)
     def "Flow goes to 'Down' status when #switchType switch is disconnected (#flowType)"() {
-        requireProfiles("virtual")
-
         given: "#flowType.capitalize()"
         //TODO(ylobankov): Remove this code once the issue #1464 is resolved.
         assumeTrue("Test is skipped because of the issue #1464", switchType != "single")
@@ -166,11 +168,10 @@ class AutoRerouteSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags(VIRTUAL)
     def "Flow goes to 'Down' status when an intermediate switch is disconnected and there is no ability to reroute"() {
-        requireProfiles("virtual")
-
         given: "An intermediate-switch flow without alternative paths"
-        def (flow, allFlowPaths) = intermediateSwitchFlow(false, true)
+        def (flow, allFlowPaths) = intermediateSwitchFlow(0, true)
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -200,15 +201,13 @@ class AutoRerouteSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches*.switchId.contains(flowPath[1].switchId) }
 
         then: "The flow is #flowStatus"
-        TimeUnit.SECONDS.sleep(discoveryInterval + rerouteDelay + WAIT_OFFSET * 2)
-        northbound.getFlowStatus(flow.id).status == flowStatus
+        TimeUnit.SECONDS.sleep(discoveryInterval + rerouteDelay + 2)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == flowStatus }
 
         and: "Restore topology to the original state, remove the flow, reset toggles"
-        northbound.toggleFeature(FeatureTogglesDto.builder()
-                .flowsRerouteOnIslDiscoveryEnabled(true)
-                .build())
-        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)
+        northbound.toggleFeature(FeatureTogglesDto.builder().flowsRerouteOnIslDiscoveryEnabled(true).build())
+        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -221,7 +220,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
     def "Flow in 'Down' status is rerouted when discovering a new ISL"() {
         given: "An intermediate-switch flow with one alternative path at least"
-        def (flow, allFlowPaths) = noIntermediateSwitchFlow(true, true)
+        def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -260,11 +259,10 @@ class AutoRerouteSpec extends BaseSpecification {
         }
     }
 
+    @Tags(VIRTUAL)
     def "Flow in 'Down' status is rerouted when connecting a new switch"() {
-        requireProfiles("virtual")
-
         given: "An intermediate-switch flow with one alternative path at least"
-        def (flow, allFlowPaths) = intermediateSwitchFlow(true, true)
+        def (flow, allFlowPaths) = intermediateSwitchFlow(1, true)
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -320,7 +318,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
     def "Flow in 'Up' status is not rerouted when discovering a new ISL and more preferable path is available"() {
         given: "A flow with one alternative path at least"
-        def (flow, allFlowPaths) = noIntermediateSwitchFlow(true, true)
+        def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -354,11 +352,10 @@ class AutoRerouteSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Tags(VIRTUAL)
     def "Flow in 'Up' status is not rerouted when connecting a new switch and more preferable path is available"() {
-        requireProfiles("virtual")
-
         given: "A flow with one alternative path at least"
-        def (flow, allFlowPaths) = noIntermediateSwitchFlow(true, true)
+        def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -388,11 +385,10 @@ class AutoRerouteSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Tags(HARDWARE)
     def "Flow is not rerouted when one of the flow ports goes down"() {
-        requireProfiles("hardware")
-
         given: "An intermediate-switch flow with one alternative path at least"
-        def (flow, allFlowPaths) = intermediateSwitchFlow(true, true)
+        def (flow, allFlowPaths) = intermediateSwitchFlow(1, true)
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -422,31 +418,20 @@ class AutoRerouteSpec extends BaseSpecification {
         flowHelper.singleSwitchFlow(topology.getActiveSwitches().first())
     }
 
-    def noIntermediateSwitchFlow(boolean ensureAltPathsExist = false, boolean getAllPaths = false) {
-        def flowWithPaths = getFlowWithPaths(2, 2, ensureAltPathsExist ? 1 : 0)
+    def noIntermediateSwitchFlow(int minAltPathsCount = 0, boolean getAllPaths = false) {
+        def flowWithPaths = getFlowWithPaths(topologyHelper.getAllNeighboringSwitchPairs(), minAltPathsCount)
         return getAllPaths ? flowWithPaths : flowWithPaths[0]
     }
 
-    def intermediateSwitchFlow(boolean ensureAltPathsExist = false, boolean getAllPaths = false) {
-        def flowWithPaths = getFlowWithPaths(3, Integer.MAX_VALUE, ensureAltPathsExist ? 1 : 0)
+    def intermediateSwitchFlow(int minAltPathsCount = 0, boolean getAllPaths = false) {
+        def flowWithPaths = getFlowWithPaths(topologyHelper.getAllNotNeighboringSwitchPairs(), minAltPathsCount)
         return getAllPaths ? flowWithPaths : flowWithPaths[0]
     }
 
-    def getFlowWithPaths(int minSwitchesInPath, int maxSwitchesInPath, int minAltPaths) {
-        def allFlowPaths = []
-        def switches = topology.getActiveSwitches()
-        def switchPair = [switches, switches].combinations().findAll {
-            src, dst -> src != dst
-        }.unique {
-            it.sort()
-        }.find { src, dst ->
-            allFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path
-            allFlowPaths.size() > minAltPaths && allFlowPaths.min {
-                it.size()
-            }.size() in (minSwitchesInPath..maxSwitchesInPath)
-        } ?: assumeTrue("No suiting switches found", false)
-
-        return [flowHelper.randomFlow(switchPair[0], switchPair[1]), allFlowPaths]
+    def getFlowWithPaths(List<SwitchPair> switchPairs, int minAltPathsCount) {
+        def switchPair = switchPairs.find { it.paths.size() > minAltPathsCount } ?:
+                assumeTrue("No suiting switches found", false)
+        return [flowHelper.randomFlow(switchPair), switchPair.paths]
     }
 
     def cleanup() {

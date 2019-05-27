@@ -24,7 +24,6 @@ import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.METER_CACHE_FIELD
 import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.topology.stats.CacheFlowEntry;
 import org.openkilda.wfm.topology.stats.FlowCookieException;
 import org.openkilda.wfm.topology.stats.FlowDirectionHelper;
@@ -45,7 +44,7 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         MeterStatsData data = (MeterStatsData) input.getValueByField(STATS_FIELD);
 
         log.debug("Received meter statistics: {}.", data);

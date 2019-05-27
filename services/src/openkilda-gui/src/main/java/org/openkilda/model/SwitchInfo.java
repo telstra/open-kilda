@@ -74,7 +74,7 @@ public class SwitchInfo implements Serializable {
     @JsonProperty("reference-url")
     private String referenceUrl;
 
-    @JsonProperty("serial-number")
+    @JsonProperty("serial_number")
     private String serialNumber;
 
     @JsonProperty("rack-number")
@@ -86,9 +86,27 @@ public class SwitchInfo implements Serializable {
     @JsonProperty("manufacturer")
     private String manufacturer;
     
+    @JsonProperty("of_version")
+    private String ofVersion;
+    
+    @JsonProperty("hardware")
+    private String hardware;
+    
+    @JsonProperty("software")
+    private String software;
+    
     @JsonProperty("controller-switch")
     private boolean controllerSwitch;
     
     @JsonProperty("inventory-switch")
     private boolean inventorySwitch;
+    
+    @JsonProperty("under_maintenance")
+    private boolean underMaintenance;
+    
+    @JsonProperty("evacuate")
+    private boolean evacuate;
+    
+    @JsonProperty("otp")
+    private String otp;
 }

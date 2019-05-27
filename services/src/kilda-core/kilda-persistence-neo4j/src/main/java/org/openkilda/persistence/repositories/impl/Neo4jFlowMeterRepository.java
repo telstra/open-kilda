@@ -35,7 +35,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Neo4J OGM implementation of {@link FlowMeterRepository}.
+ * Neo4j OGM implementation of {@link FlowMeterRepository}.
  */
 public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> implements FlowMeterRepository {
     static final String PATH_ID_PROPERTY_NAME = "path_id";
@@ -73,11 +73,13 @@ public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> 
                 + "RETURN meter "
                 + "UNION ALL "
                 + "MATCH (:switch {name: $switch_id})-[]-(n1:flow_meter) "
+                + "WHERE n1.meter_id >= $default_meter "
                 + "OPTIONAL MATCH (:switch {name: $switch_id})-[]-(n2:flow_meter) "
                 + "WHERE (n1.meter_id + 1) = n2.meter_id "
                 + "WITH n1, n2 "
                 + "WHERE n2 IS NULL "
                 + "RETURN n1.meter_id + 1 AS meter "
+                + "ORDER BY meter "
                 + "LIMIT 1";
 
         Iterator<Long> results = getSession().query(Long.class, query, parameters).iterator();

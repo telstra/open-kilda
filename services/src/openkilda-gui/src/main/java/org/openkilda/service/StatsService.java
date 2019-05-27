@@ -263,6 +263,32 @@ public class StatsService {
         }
         return portStats;
     }
+    
+    
+    /**
+     * Gets the meter stats.
+     *
+     * @param startDate
+     *            the start date
+     * @param endDate
+     *            the end date
+     * @param downsample
+     *            the downsample
+     * @param flowId
+     *            the flow id
+     * @param metric
+     *            the direction
+     * @return the flow stats
+     * @throws IntegrationException
+     *             the integration exception
+     */
+    public String getMeterStats(String startDate, String endDate, String downsample,
+            String flowId, String metric, String direction)
+            throws IntegrationException {
+        return statsIntegrationService.getStats(startDate, endDate, downsample, null, 
+                null, flowId, null, null, null, null, 
+                StatsType.METER, metric, direction);
+    }
 
     private void processInventoryPorts(final List<PortInfo> portStats, final List<Port> inventoryPorts) {
         if (!CollectionUtil.isEmpty(inventoryPorts)) {

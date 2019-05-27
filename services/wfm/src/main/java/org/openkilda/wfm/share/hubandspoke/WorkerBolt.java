@@ -18,7 +18,6 @@ package org.openkilda.wfm.share.hubandspoke;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
-import org.openkilda.wfm.error.AbstractException;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import lombok.Builder;
@@ -61,7 +60,7 @@ public abstract class WorkerBolt extends CoordinatedBolt {
     }
 
     @Override
-    protected void handleInput(Tuple input) throws AbstractException {
+    protected void handleInput(Tuple input) throws Exception {
         String key = input.getStringByField(MessageTranslator.KEY_FIELD);
         String sender = input.getSourceComponent();
 
@@ -95,9 +94,9 @@ public abstract class WorkerBolt extends CoordinatedBolt {
         getOutput().emitDirect(processingRequest.getSourceTask(), workerConfig.getStreamToHub(), values);
     }
 
-    protected abstract void onHubRequest(Tuple input) throws AbstractException;
+    protected abstract void onHubRequest(Tuple input) throws Exception;
 
-    protected abstract void onAsyncResponse(Tuple input) throws AbstractException;
+    protected abstract void onAsyncResponse(Tuple input) throws Exception;
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {

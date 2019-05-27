@@ -1694,7 +1694,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
 
   showLinkDetails = d => {
     localStorage.setItem("linkData", JSON.stringify(d));
-    let url = "isl/switch/isl";
+    let url = "isl/switch/isl/"+d.source_switch+"/"+d.src_port+"/"+d.target_switch+"/"+d.dst_port;
     window.location.href = url;
   };
 

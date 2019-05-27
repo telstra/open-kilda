@@ -16,6 +16,12 @@
 package org.openkilda.floodlight.service;
 
 import static org.easymock.EasyMock.expect;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.BFD;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.BFD_REVIEW;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.GROUP_PACKET_OUT_CONTROLLER;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.LIMITED_BURST_SIZE;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.METERS;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.RESET_COUNTS_FLAG;
 
 import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 
@@ -52,31 +58,37 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     @Test
     public void metersCommon() {
         discoveryCheck(makeSwitchMock("Common Inc", "Soft123", OFVersion.OF_13),
-                       ImmutableSet.of(Feature.METERS, Feature.RESET_COUNTS_FLAG));
+                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, METERS, RESET_COUNTS_FLAG));
     }
 
     @Test
     public void metersOf12() {
         discoveryCheck(makeSwitchMock("Common Inc", "Soft123", OFVersion.OF_12),
-                       ImmutableSet.of(Feature.RESET_COUNTS_FLAG));
+                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, RESET_COUNTS_FLAG));
     }
 
     @Test
     public void metersNicira() {
         discoveryCheck(makeSwitchMock("Nicira, Inc.", "Soft123", OFVersion.OF_13),
-                       ImmutableSet.of(Feature.RESET_COUNTS_FLAG));
+                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, RESET_COUNTS_FLAG));
     }
 
     @Test
     public void bfdCommon() {
         discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", OFVersion.OF_13),
-                       ImmutableSet.of(Feature.BFD, Feature.METERS, Feature.RESET_COUNTS_FLAG));
+                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG));
     }
 
     @Test
     public void bfdReview() {
         discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", OFVersion.OF_14),
-                       ImmutableSet.of(Feature.BFD, Feature.BFD_REVIEW, Feature.METERS, Feature.RESET_COUNTS_FLAG));
+                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, BFD_REVIEW, METERS, RESET_COUNTS_FLAG));
+    }
+
+    @Test
+    public void roundTripCentec() {
+        discoveryCheck(makeSwitchMock("2004-2016 Centec Networks Inc", "2.8.16.21", OFVersion.OF_13),
+                       ImmutableSet.of(METERS, LIMITED_BURST_SIZE));
     }
 
     private void discoveryCheck(IOFSwitch sw, Set<Feature> expectedFeatures) {

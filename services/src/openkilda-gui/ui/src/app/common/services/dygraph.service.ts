@@ -13,6 +13,7 @@ export class DygraphService {
 
   private flowPathGraphSource = new Subject<any>(); /*  */;
   private flowGraphSource = new Subject<any>();
+  private meterGraphSource = new Subject<any>();
 
 
 
@@ -30,7 +31,7 @@ export class DygraphService {
 
   flowPathGraph = this.flowPathGraphSource.asObservable();
   flowGraph = this.flowGraphSource.asObservable();
- 
+  meterGraph = this.meterGraphSource.asObservable();
 
   constructor(private httpClient: HttpClient) {}
 
@@ -106,6 +107,10 @@ export class DygraphService {
     this.flowPathGraphSource.next(pathGraphData);
   }
 
+  changeMeterGraphData(graphData){
+    this.meterGraphSource.next(graphData)
+  }
+
   changeFlowGraphData(graphData) {
     this.flowGraphSource.next(graphData);
   }
@@ -149,6 +154,14 @@ export class DygraphService {
 
   getPacketsMetricData() {
     return [
+      { label: "Forward", value: "forward" },
+      { label: "Reverse", value: "reverse" }
+    ];
+  }
+
+  getMetricDirections() {
+    return [
+      { label: "Both", value: "both" },
       { label: "Forward", value: "forward" },
       { label: "Reverse", value: "reverse" }
     ];
@@ -305,7 +318,7 @@ export class DygraphService {
      
      return constructedData;
   }
-
+  
   getCookieDataforFlowStats(data,type) {
     var constructedData = [];
     for(var i=0; i < data.length; i++){
@@ -319,6 +332,106 @@ export class DygraphService {
         }
      }
      return constructedData;
+  }
+
+  computeMeterGraphData(data, startDate, endDate, timezone){
+    let maxtrixArray = [];
+    let labels = ["Date"];
+    let color = [];
+    let meterChecked = {};
+    if (typeof startDate !== "undefined" && startDate != null) {
+      var dat = new Date(startDate);
+      var startTime = dat.getTime();
+      var usedDate = new Date();
+      if (typeof timezone !== "undefined" && timezone == "UTC") {
+        startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
+      }
+      var arr = [new Date(startTime)];
+      if(data && data.length){
+        for (var j = 0; j < data.length; j++) {
+          arr.push(null);
+        }
+      }
+      maxtrixArray.push(arr);
+    }
+    /** process graph data */
+
+    if (data) {
+      if (data.length > 0) {
+
+        /**getting all unique dps timestamps */
+        let timestampArray = []; 
+        let dpsArray= [];
+        for (let j = 0; j < data.length; j++) {
+          var dataValues = typeof data[j] !== "undefined" ? data[j].dps : null;
+          
+          var metric = typeof data[j] !== "undefined" ? data[j].metric : "";
+            metric = metric + "(switchid=" + data[j].tags.switchid + ", meterid="+data[j].tags['meterid']+")";
+            labels.push(metric);
+            var colorCode = this.getColorCode(j, color);
+            if(meterChecked && typeof(meterChecked[data[j].tags['meterid']])!='undefined' && typeof(meterChecked[data[j].tags['meterid']][data[j].tags.switchid])!='undefined'){
+              colorCode = meterChecked[data[j].tags['meterid']][data[j].tags.switchid]; 
+              color.push(colorCode);
+            }else{
+              if(meterChecked && typeof(meterChecked[data[j].tags['meterid']])!='undefined'){
+                meterChecked[data[j].tags['meterid']][data[j].tags.switchid]=colorCode;
+                color.push(colorCode);
+              }else{
+                meterChecked[data[j].tags['meterid']] = [];
+                meterChecked[data[j].tags['meterid']][data[j].tags.switchid]=colorCode;
+                color.push(colorCode);
+              }
+              
+            }
+            if(dataValues){
+              timestampArray = timestampArray.concat(Object.keys(dataValues));
+              dpsArray.push(dataValues);
+            }
+          
+        }
+
+        timestampArray = Array.from(new Set(timestampArray)); /**Extracting unique timestamps */
+        timestampArray.sort();
+
+        for(let m=0;m<timestampArray.length; m++){
+          let row=[];
+          for(let n=0;n<dpsArray.length;n++){
+            if(typeof dpsArray[n][timestampArray[m]] != 'undefined'){
+              row.push(dpsArray[n][timestampArray[m]]);
+            }else{
+              row.push(null);
+            }
+          }
+          row.unshift(new Date(Number(parseInt(timestampArray[m]) * 1000)));
+          maxtrixArray.push(row);
+        }
+      }
+    }
+
+
+
+
+    if (typeof endDate !== "undefined" && endDate != null) {
+      var dat = new Date(endDate);
+      var lastTime = dat.getTime();
+      var usedDate =
+      maxtrixArray && maxtrixArray.length
+          ? new Date(maxtrixArray[maxtrixArray.length - 1][0])
+          : new Date();
+      if (typeof timezone !== "undefined" && timezone == "UTC") {
+        lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
+      }
+      var arr = [new Date(lastTime)];
+      if(data && data.length){
+        for (var j = 0; j < data.length; j++) {
+          arr.push(null);
+        }
+      }
+     
+      maxtrixArray.push(arr);
+    }
+
+    return { labels: labels, data: maxtrixArray, color: color };
   }
   computeFlowPathGraphData(data, startDate, endDate, type, timezone,loadfromcookie) {
     let maxtrixArray = [];

@@ -38,7 +38,6 @@ public class PathVerificationServiceWebRoutable implements RestletRoutable {
     public Restlet getRestlet(Context context) {
         Router router = new Router(context);
         router.attach("/discover/send_packet/{src_switch}/{src_port}", PathDiscover.class);
-        router.attach("/discover/send_packet/{src_switch}/{src_port}/{dst_switch}", PathDiscover.class);
 
         Filter filter = new RequestCorrelationFilter();
         filter.setNext(router);

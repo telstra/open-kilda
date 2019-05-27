@@ -67,6 +67,10 @@ export class FlowsService {
     return this.httpClient.get(`${environment.apiEndPoint}/stats/flowid/${flowid}/${convertedStartDate}/${convertedEndDate}/${downsampling}/${metric}`);
   }
 
+  getMeterGraphData(flowid, convertedStartDate, convertedEndDate, downsampling, metric,direction):Observable<any>{
+    return this.httpClient.get(`${environment.apiEndPoint}/stats/meter/${flowid}/${convertedStartDate}/${convertedEndDate}/${downsampling}/${metric}/${direction}`);
+  }
+
   getFlowPacketGraphData(flowid,convertedStartDate, convertedEndDate, downsampling, direction):Observable<any>{
 	  return this.httpClient.get(`${environment.apiEndPoint}/stats/flow/losspackets/${flowid}/${convertedStartDate}/${convertedEndDate}/${downsampling}/${direction}`);
   }

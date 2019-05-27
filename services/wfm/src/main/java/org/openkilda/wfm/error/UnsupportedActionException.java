@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.error;
 
-public class UnsupportedActionException extends AbstractException {
+public class UnsupportedActionException extends Exception {
     private final String action;
 
     public UnsupportedActionException(String action) {

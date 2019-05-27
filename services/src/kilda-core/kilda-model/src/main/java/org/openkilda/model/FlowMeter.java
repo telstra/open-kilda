@@ -16,6 +16,7 @@
 package org.openkilda.model;
 
 import static java.lang.String.format;
+import static org.neo4j.ogm.annotation.Relationship.INCOMING;
 
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -53,7 +54,7 @@ public class FlowMeter implements Serializable {
     private Long entityId;
 
     @NonNull
-    @Relationship(type = "owned_by")
+    @Relationship(type = "owns", direction = INCOMING)
     private Switch theSwitch;
 
     @NonNull

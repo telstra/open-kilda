@@ -1,9 +1,11 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -29,25 +31,21 @@ System should stop refreshing the timer if 'reroute.hardtimeout' is reached and 
 for each flowId).
 """)
 @Slf4j
+@Tags(VIRTUAL)
 class ThrottlingRerouteSpec extends BaseSpecification {
 
     @Value('${reroute.hardtimeout}')
     int rerouteHardTimeout
 
-    def setupOnce() {
-        //TODO(rtretiak): unstable on 'hardware' atm, needs investigation
-        requireProfiles("virtual")
-    }
-
     def "Reroute is not performed while new reroutes are being issued"() {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
         /* Here we will pick only short flows that consist of 2 switches, so that we can maximize amount of unique
         flows found*/
-        def potentialFlows = topologyHelper.findAllNeighbors()
+        def switchPairs = topologyHelper.getAllNeighboringSwitchPairs()
 
-        assumeTrue("Topology is too small to run this test", potentialFlows.size() > 3)
-        def flows = potentialFlows.take(5).collect { potentialFlow ->
-            def flow = flowHelper.randomFlow(potentialFlow)
+        assumeTrue("Topology is too small to run this test", switchPairs.size() > 3)
+        def flows = switchPairs.take(5).collect { switchPair ->
+            def flow = flowHelper.randomFlow(switchPair)
             flowHelper.addFlow(flow)
             flow
         }
@@ -96,15 +94,15 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
         /* Here we will pick only short flows that consist of 2 switches, so that we can maximize amount of unique
         flows found*/
-        def potentialFlows = topologyHelper.findAllNeighbors()
-        
+        def switchPairs = topologyHelper.getAllNeighboringSwitchPairs()
+
         /*due to port anti-flap we cannot continuously quickly reroute one single flow until we reach hardTimeout,
         thus we need certain amount of flows to continuously provide reroute triggers for them in a loop.
         We can re-trigger a reroute on the same flow after antiflapCooldown + antiflapMin seconds*/
         int minFlowsRequired = (int) Math.min(rerouteHardTimeout / antiflapMin, antiflapCooldown / antiflapMin + 1) + 1
-        assumeTrue("Topology is too small to run this test", potentialFlows.size() >= minFlowsRequired)
-        def flows = potentialFlows.take(minFlowsRequired).collect { potentialFlow ->
-            def flow = flowHelper.randomFlow(potentialFlow)
+        assumeTrue("Topology is too small to run this test", switchPairs.size() >= minFlowsRequired)
+        def flows = switchPairs.take(minFlowsRequired).collect { switchPair ->
+            def flow = flowHelper.randomFlow(switchPair)
             flowHelper.addFlow(flow)
             flow
         }

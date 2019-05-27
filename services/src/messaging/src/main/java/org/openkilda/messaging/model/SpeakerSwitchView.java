@@ -79,6 +79,7 @@ public class SpeakerSwitchView implements Serializable {
         METERS,
         BFD,
         BFD_REVIEW,
+        GROUP_PACKET_OUT_CONTROLLER,
         RESET_COUNTS_FLAG,
         LIMITED_BURST_SIZE
     }

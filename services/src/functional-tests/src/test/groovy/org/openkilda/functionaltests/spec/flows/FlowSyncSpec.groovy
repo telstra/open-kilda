@@ -8,7 +8,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
@@ -24,17 +23,9 @@ class FlowSyncSpec extends BaseSpecification {
 
     def "Able to synchronize a flow (install missing flow rules, reinstall existing) without rerouting"() {
         given: "An intermediate-switch flow with one deleted rule on each switch"
-        def switches = topology.getActiveSwitches()
-        def allLinks = northbound.getAllLinks()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allLinks.every { link ->
-                def switchIds = [link.source.switchId, link.destination.switchId]
-                !(switchIds.contains(src.dpId) && switchIds.contains(dst.dpId))
-            }
-        } ?: assumeTrue("No suiting switches found to build an intermediate-switch flow.", false)
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
 
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -81,20 +72,11 @@ class FlowSyncSpec extends BaseSpecification {
 
     def "Able to synchronize a flow (install missing flow rules, reinstall existing) with rerouting"() {
         given: "An intermediate-switch flow with two possible paths at least and one deleted rule on each switch"
-        def switches = topology.getActiveSwitches()
-        List<List<PathNode>> possibleFlowPaths = []
-        def allLinks = northbound.getAllLinks()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            possibleFlowPaths = database.getPaths(src.dpId, dst.dpId)*.path.sort { it.size() }
-            allLinks.every { link ->
-                def switchIds = [link.source.switchId, link.destination.switchId]
-                !(switchIds.contains(src.dpId) && switchIds.contains(dst.dpId))
-            } && possibleFlowPaths.size() > 1
-        } ?: assumeTrue("No suiting switches found to build an intermediate-switch flow with two possible paths " +
-                "at least.", false)
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue("No suiting switches found to build an intermediate-switch flow " +
+                        "with two possible paths at least.", false)
 
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -106,7 +88,7 @@ class FlowSyncSpec extends BaseSpecification {
         }
 
         and: "Make one of the alternative flow paths more preferable than the current one"
-        possibleFlowPaths.findAll { it != flowPath }.each { pathHelper.makePathMorePreferable(it, flowPath) }
+        switchPair.paths.findAll { it != flowPath }.each { pathHelper.makePathMorePreferable(it, flowPath) }
 
         when: "Synchronize the flow"
         Map<SwitchId, Long> rulesDurationMap = involvedSwitches.collectEntries {

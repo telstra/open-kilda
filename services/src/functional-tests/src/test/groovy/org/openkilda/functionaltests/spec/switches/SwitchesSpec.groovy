@@ -25,6 +25,11 @@ class SwitchesSpec extends BaseSpecification {
         !response.hostname.empty
         !response.address.empty
         !response.description.empty
+        !response.switchView.ofVersion.empty
+        !response.switchView.description.hardware.empty
+        !response.switchView.description.software.empty
+        !response.switchView.description.serialNumber.empty
+        !response.switchView.description.manufacturer.empty
         response.state == SwitchChangeType.ACTIVATED
     }
 
