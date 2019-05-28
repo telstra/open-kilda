@@ -6,6 +6,7 @@ OPENFLOWJ_VERSION := 3.2.0-kilda-2
 FLOODLIGHT_VERSION := 1.2-kilda-2
 
 GIT_HEAD := .git/refs/heads/STABLE
+GIT_HEAD_LOXIGEN := .git/refs/heads/noviflow_experimenter_fix
 
 FLOODLIGHT_REPO_URL := https://github.com/kilda/floodlight.git
 FLOODLIGHT_DIR := floodlight
@@ -13,9 +14,9 @@ FLOODLIGHT_SOURCES := $(FLOODLIGHT_DIR)/$(GIT_HEAD)
 FLOODLIGHT_JAR := $(FLOODLIGHT_DIR)/target/floodlight-1.2-kilda-2.jar
 FLOODLIGHT_JAR += $(FLOODLIGHT_DIR)/target/floodlight.jar
 
-LOXIGEN_REPO_URL := https://github.com/kilda/loxigen.git
+LOXIGEN_REPO_URL := https://github.com/timofei-durakov/loxigen.git
 LOXIGEN_DIR := loxigen
-LOXIGEN_SOURCES := $(LOXIGEN_DIR)/$(GIT_HEAD)
+LOXIGEN_SOURCES := $(LOXIGEN_DIR)/$(GIT_HEAD_LOXIGEN)
 OPENFLOWJ_DIR := $(LOXIGEN_DIR)/loxi_output/openflowj
 OPENFLOWJ_JAR := $(OPENFLOWJ_DIR)/target/openflowj-$(OPENFLOWJ_VERSION).jar
 GENERATE_WIRESHARK := $(LOXIGEN_DIR)/loxi_output/wireshark
@@ -45,7 +46,7 @@ install-openflowj: $(OPENFLOWJ_JAR)
 clean: clean-loxigen clean-floodlight
 
 $(LOXIGEN_SOURCES):
-	git clone -b STABLE --single-branch $(LOXIGEN_REPO_URL) $(LOXIGEN_DIR)
+	git clone -b noviflow_experimenter_fix --single-branch $(LOXIGEN_REPO_URL) $(LOXIGEN_DIR)
 
 $(OPENFLOWJ_DIR)/pom.xml: $(LOXIGEN_SOURCES)
 	$(MAKE) -C $(LOXIGEN_DIR) java
@@ -77,7 +78,7 @@ clean-floodlight:
 	if [ -d "$(FLOODLIGHT_DIR)" ]; then  mvn -f $(FLOODLIGHT_DIR)/pom.xml clean; fi
 
 git-pull: $(LOXIGEN_SOURCES) $(FLOODLIGHT_SOURCES)
-	cd "$(LOXIGEN_DIR)" && git fetch origin && git checkout STABLE && git pull -r
+	cd "$(LOXIGEN_DIR)" && git fetch origin && git checkout noviflow_experimenter_fix && git pull -r
 	cd "$(FLOODLIGHT_DIR)" && git fetch origin && git checkout STABLE && git pull -r
 
 git-validate-repo: $(LOXIGEN_SOURCES) $(FLOODLIGHT_SOURCES)
