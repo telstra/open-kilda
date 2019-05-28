@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.topology.flowhs.validation;
 
+/**
+ * {@code UnavailableFlowEndpointException} indicates that one of flow endpoints are not available/exist.
+ */
 public class UnavailableFlowEndpointException extends Exception {
 
     public UnavailableFlowEndpointException(String message) {

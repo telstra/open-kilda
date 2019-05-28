@@ -67,12 +67,12 @@ public abstract class HistoryMapper {
     @Mapping(source = "flowId", target = "flowId")
     @Mapping(source = "bandwidth", target = "bandwidth")
     @Mapping(source = "ignoreBandwidth", target = "ignoreBandwidth")
-    @Mapping(target = "forwardCookie", expression = "java(flow.getForwardPath().getCookie())")
-    @Mapping(target = "reverseCookie", expression = "java(flow.getReversePath().getCookie())")
-    @Mapping(target = "forwardMeterId", expression = "java(flow.getReversePath().getMeterId())")
-    @Mapping(target = "reverseMeterId", expression = "java(flow.getReversePath().getMeterId())")
-    @Mapping(target = "forwardStatus", expression = "java(flow.getReversePath().getStatus())")
-    @Mapping(target = "reverseStatus", expression = "java(flow.getReversePath().getStatus())")
+    @Mapping(source = "forwardPath.cookie", target = "forwardCookie")
+    @Mapping(source = "reversePath.cookie", target = "reverseCookie")
+    @Mapping(source = "forwardPath.meterId", target = "forwardMeterId")
+    @Mapping(source = "reversePath.meterId", target = "reverseMeterId")
+    @Mapping(source = "forwardPath.status", target = "forwardStatus")
+    @Mapping(source = "reversePath.status", target = "reverseStatus")
     @BeanMapping(ignoreByDefault = true)
     public abstract FlowDumpData map(Flow flow);
 

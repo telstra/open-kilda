@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
@@ -27,6 +28,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Optional;
 
 @Slf4j
 public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
@@ -41,19 +44,22 @@ public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm
     @Override
     protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
-        flowRepository.findById(flowId).ifPresent(
-                flow -> {
-                    FlowPath newForward = flow.getForwardPath();
-                    newForward.setStatus(FlowPathStatus.ACTIVE);
-                    FlowPath newReverse = flow.getReversePath();
-                    newReverse.setStatus(FlowPathStatus.ACTIVE);
+        Optional<Flow> optionalFlow = flowRepository.findById(flowId);
+        if (optionalFlow.isPresent()) {
+            Flow flow = optionalFlow.get();
+            FlowPath newForward = flow.getForwardPath();
+            newForward.setStatus(FlowPathStatus.ACTIVE);
+            FlowPath newReverse = flow.getReversePath();
+            newReverse.setStatus(FlowPathStatus.ACTIVE);
 
-                    flow.setStatus(FlowStatus.UP);
+            flow.setStatus(FlowStatus.UP);
 
-                    flowRepository.createOrUpdate(flow);
-                });
-        log.info("Flow {} successfully created", stateMachine.getFlowId());
-        saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), "Created successfully");
+            flowRepository.createOrUpdate(flow);
+            log.info("Flow {} successfully created", stateMachine.getFlowId());
+            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), "Created successfully");
+        } else {
+            log.debug("Cannot complete flow {} creation: it was deleted", flowId);
+        }
     }
 
 }
