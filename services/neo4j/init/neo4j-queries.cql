@@ -26,3 +26,7 @@ CREATE CONSTRAINT ON (`switch`:`switch`) ASSERT `switch`.`name` IS UNIQUE;
 CREATE CONSTRAINT ON (`transit_vlan`:`transit_vlan`) ASSERT `transit_vlan`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`transit_vlan`:`transit_vlan`) ASSERT `transit_vlan`.`vlan` IS UNIQUE;
 CREATE INDEX ON :`transit_vlan`(`path_id`);
+CREATE CONSTRAINT ON (`vxlan`:`vxlan`) ASSERT `vxlan`.`entityId` IS UNIQUE;
+CREATE CONSTRAINT ON (`vxlan`:`vxlan`) ASSERT `vxlan`.`vni` IS UNIQUE;
+CREATE CONSTRAINT ON (`switch_features`:`switch_features`) ASSERT `switch_features`.`entityId` IS UNIQUE;
+CREATE INDEX ON :`vxlan`(`path_id`);
