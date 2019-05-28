@@ -24,6 +24,7 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -415,6 +416,96 @@ class FlowCrudV2Spec extends BaseSpecification {
                 assert rules.properRules.empty
             }
         }
+    }
+
+    @Ignore("Should be fixed after first H&S deployment")
+    @Unroll
+    def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {
+        given: "An isl"
+        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
+        assumeTrue("Unable to find required isl", isl as boolean)
+
+        when: "Try to create a flow using isl port"
+        def flow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch)
+        flow."$data.switchType".portNumber = isl."$data.port"
+        flowHelperV2.addFlow(flow)
+
+        then: "Flow is not created"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage == data.message(isl)
+
+        where:
+        data << [
+                [
+                        switchType: "source",
+                        port      : "srcPort",
+                        message   : { Isl violatedIsl ->
+                            getPortViolationError("create", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
+                        }
+                ],
+                [
+                        switchType: "destination",
+                        port      : "dstPort",
+                        message   : { Isl violatedIsl ->
+                            getPortViolationError("create", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
+                        }
+                ]
+        ]
+    }
+
+    @Ignore("Should be fixed after first H&S deployment")
+    def "Unable to create a flow on an isl port when ISL status is FAILED"() {
+        given: "An inactive isl with failed state"
+        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
+        assumeTrue("Unable to find required isl", isl as boolean)
+        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        islUtils.waitForIslStatus([isl, isl.reversed], FAILED)
+
+        when: "Try to create a flow using ISL src port"
+        def flow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch)
+        flow.source.portNumber = isl.srcPort
+        flowHelperV2.addFlow(flow)
+
+        then: "Flow is not created"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage ==
+                getPortViolationError("create", isl.srcPort, isl.srcSwitch.dpId)
+
+        and: "Cleanup: Restore state of the ISL"
+        northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+    }
+
+    @Ignore("Should be fixed after first H&S deployment")
+    def "Unable to create a flow on an isl port when ISL status is MOVED"() {
+        given: "An inactive isl with moved state"
+        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
+        assumeTrue("Unable to find required isl", isl as boolean)
+        def notConnectedIsl = topology.notConnectedIsls.first()
+        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true)
+
+        islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
+        islUtils.waitForIslStatus([newIsl, newIsl.reversed], DISCOVERED)
+
+        when: "Try to create a flow using ISL src port"
+        def flow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch)
+        flow.source.portNumber = isl.srcPort
+        flowHelperV2.addFlow(flow)
+
+        then: "Flow is not created"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage ==
+                getPortViolationError("create", isl.srcPort, isl.srcSwitch.dpId)
+
+        and: "Cleanup: Restore status of the ISL and delete new created ISL"
+        islUtils.replug(newIsl, true, isl, false)
+        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+        islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
+        northbound.deleteLink(islUtils.toLinkParameters(newIsl))
+        Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
     }
 
     @Shared

@@ -39,7 +39,7 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     @Override
     public FlowResponseV2 addFlow(FlowRequestV2 request) {
         HttpEntity<FlowRequestV2> httpEntity = new HttpEntity<>(request, buildHeadersWithCorrelationId());
-        return restTemplate.exchange("/api/v2/flows", HttpMethod.PUT, httpEntity, FlowResponseV2.class).getBody();
+        return restTemplate.exchange("/api/v2/flows", HttpMethod.POST, httpEntity, FlowResponseV2.class).getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {
