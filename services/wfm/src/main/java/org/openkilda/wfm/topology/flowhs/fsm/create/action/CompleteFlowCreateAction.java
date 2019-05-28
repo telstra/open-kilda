@@ -15,41 +15,32 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
-import static java.lang.String.format;
-
-import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.wfm.share.history.model.FlowDumpData;
-import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
-import org.openkilda.wfm.share.history.model.FlowHistoryData;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
-import org.openkilda.wfm.share.mappers.HistoryMapper;
+import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
-
-import java.time.Instant;
 
 @Slf4j
-public class CompleteFlowCreateAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
     private final FlowRepository flowRepository;
 
     public CompleteFlowCreateAction(PersistenceManager persistenceManager) {
+        super(persistenceManager);
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
     }
 
     @Override
-    public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        String flowId = stateMachine.getFlow().getFlowId();
+    protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
+        String flowId = stateMachine.getFlowId();
         flowRepository.findById(flowId).ifPresent(
                 flow -> {
                     FlowPath newForward = flow.getForwardPath();
@@ -61,28 +52,8 @@ public class CompleteFlowCreateAction extends AnonymousAction<FlowCreateFsm, Sta
 
                     flowRepository.createOrUpdate(flow);
                 });
-        log.info("Flow {} successfully created", stateMachine.getFlow().getFlowId());
-        saveHistory(stateMachine);
-    }
-
-
-    private void saveHistory(FlowCreateFsm stateMachine) {
-        Flow flow = stateMachine.getFlow();
-
-        FlowDumpData flowDumpData = HistoryMapper.INSTANCE.map(flow);
-        flowDumpData.setDumpType(DumpType.STATE_AFTER);
-        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowDumpData(flowDumpData)
-                .flowHistoryData(FlowHistoryData.builder()
-                        .action("Created successfully")
-                        .time(Instant.now())
-                        .description(format("Flow %s has been created successfully",
-                                stateMachine.getFlow().getFlowId()))
-                        .flowId(flow.getFlowId())
-                        .build())
-                .build();
-        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
+        log.info("Flow {} successfully created", stateMachine.getFlowId());
+        saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), "Created successfully");
     }
 
 }

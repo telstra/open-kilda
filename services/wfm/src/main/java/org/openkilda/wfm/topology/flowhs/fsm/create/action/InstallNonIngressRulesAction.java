@@ -19,8 +19,7 @@ import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.history.model.FlowHistoryData;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -28,9 +27,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.TransitVlanCommandFactory;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -38,19 +35,21 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class InstallNonIngressRulesAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+public class InstallNonIngressRulesAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
     private TransitVlanCommandFactory commandFactory;
 
     public InstallNonIngressRulesAction(PersistenceManager persistenceManager) {
+        super(persistenceManager);
         this.commandFactory =
                 new TransitVlanCommandFactory(persistenceManager.getRepositoryFactory().createTransitVlanRepository());
     }
 
     @Override
-    public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
+    protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
+        Flow flow = getFlow(stateMachine.getFlowId());
         List<InstallTransitRule> commands =
-                commandFactory.createInstallNonIngressRules(stateMachine.getCommandContext(), stateMachine.getFlow());
+                commandFactory.createInstallNonIngressRules(stateMachine.getCommandContext(), flow);
 
         if (commands.isEmpty()) {
             log.debug("No need to install non ingress rules for one switch flow");
@@ -64,21 +63,8 @@ public class InstallNonIngressRulesAction extends AnonymousAction<FlowCreateFsm,
                     .collect(Collectors.toSet());
             stateMachine.setPendingCommands(commandIds);
             log.debug("Commands for installing non ingress rules have been sent");
-            saveHistory(stateMachine);
+            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
+                    "Install non ingress commands have been sent.");
         }
-    }
-
-    private void saveHistory(FlowCreateFsm stateMachine) {
-        Flow flow = stateMachine.getFlow();
-
-        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowHistoryData(FlowHistoryData.builder()
-                        .action("Install non ingress commands have been sent.")
-                        .time(Instant.now())
-                        .flowId(flow.getFlowId())
-                        .build())
-                .build();
-        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
     }
 }

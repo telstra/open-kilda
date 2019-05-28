@@ -37,9 +37,9 @@ public class HandleNotCreatedFlowAction extends AnonymousAction<FlowCreateFsm, S
 
     @Override
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        log.warn("Failed to create flow {}", stateMachine.getFlow().getFlowId());
+        log.warn("Failed to create flow {}", stateMachine.getFlowId());
 
-        flowRepository.findById(stateMachine.getFlow().getFlowId()).ifPresent(
+        flowRepository.findById(stateMachine.getFlowId()).ifPresent(
                 flow -> {
                     flow.setStatus(FlowStatus.DOWN);
 

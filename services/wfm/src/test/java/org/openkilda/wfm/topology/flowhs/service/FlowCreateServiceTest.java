@@ -22,7 +22,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -154,7 +153,13 @@ public class FlowCreateServiceTest {
         when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
 
         when(flowRepository.exists(anyString())).thenReturn(false);
-        doNothing().when(flowRepository).createOrUpdate(any(Flow.class));
+        // "save" flow in repository if it is created
+        doAnswer((args) -> {
+            Flow flow = args.getArgument(0);
+            when(flowRepository.findById(eq(flow.getFlowId()))).thenReturn(Optional.of(flow));
+            return null;
+        }).when(flowRepository).createOrUpdate(any(Flow.class));
+
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         when(repositoryFactory.createTransitVlanRepository()).thenReturn(transitVlanRepository);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);

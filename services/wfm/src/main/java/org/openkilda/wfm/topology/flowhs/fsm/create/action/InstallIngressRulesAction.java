@@ -17,10 +17,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
-import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.history.model.FlowHistoryData;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -28,9 +26,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.TransitVlanCommandFactory;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -38,19 +34,20 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class InstallIngressRulesAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+public class InstallIngressRulesAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
     private final TransitVlanCommandFactory flowCommandFactory;
 
     public InstallIngressRulesAction(PersistenceManager persistenceManager) {
+        super(persistenceManager);
         this.flowCommandFactory = new TransitVlanCommandFactory(
                 persistenceManager.getRepositoryFactory().createTransitVlanRepository());
     }
 
     @Override
-    public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
+    protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         List<InstallIngressRule> commands = flowCommandFactory.createInstallIngressRules(
-                stateMachine.getCommandContext(), stateMachine.getFlow());
+                stateMachine.getCommandContext(), getFlow(stateMachine.getFlowId()));
         commands.forEach(command -> stateMachine.getCarrier().sendSpeakerRequest(command));
 
         stateMachine.setIngressCommands(commands.stream()
@@ -60,20 +57,7 @@ public class InstallIngressRulesAction extends AnonymousAction<FlowCreateFsm, St
                 .collect(Collectors.toSet());
         stateMachine.setPendingCommands(commandIds);
         log.debug("Commands for installing ingress rules have been sent");
-        saveHistory(stateMachine);
-    }
-
-    private void saveHistory(FlowCreateFsm stateMachine) {
-        Flow flow = stateMachine.getFlow();
-
-        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowHistoryData(FlowHistoryData.builder()
-                        .action("Install ingress commands have been sent.")
-                        .time(Instant.now())
-                        .flowId(flow.getFlowId())
-                        .build())
-                .build();
-        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
+        saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
+                "Install ingress commands have been sent.");
     }
 }

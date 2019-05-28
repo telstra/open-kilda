@@ -17,23 +17,28 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.request.GetInstalledRule;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class DumpIngressRulesAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+public class DumpIngressRulesAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+
+    public DumpIngressRulesAction(PersistenceManager persistenceManager) {
+        super(persistenceManager);
+    }
+
     @Override
-    public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        log.debug("Started validation of installed ingress rules for the flow {}",
-                stateMachine.getFlow().getFlowId());
+    protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
+        log.debug("Started validation of installed ingress rules for the flow {}", stateMachine.getFlowId());
 
         List<GetInstalledRule> dumpFlowRules = stateMachine.getIngressCommands().values()
                 .stream()

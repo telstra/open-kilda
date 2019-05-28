@@ -22,7 +22,6 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.model.Flow;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
@@ -65,7 +64,7 @@ import java.util.UUID;
 @Slf4j
 public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, State, Event, FlowCreateContext> {
 
-    private Flow flow;
+    private String flowId;
     private FlowCreateHubCarrier carrier;
     private FlowResources flowResources;
 
@@ -120,7 +119,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         builder.internalTransition()
                 .within(State.INSTALLING_NON_INGRESS_RULES)
                 .on(Event.COMMAND_EXECUTED)
-                .perform(new OnReceivedInstallResponseAction());
+                .perform(new OnReceivedInstallResponseAction(persistenceManager));
 
         builder.transition()
                 .from(State.INSTALLING_NON_INGRESS_RULES)
@@ -130,7 +129,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         builder.internalTransition()
                 .within(State.VALIDATING_NON_INGRESS_RULES)
                 .on(Event.COMMAND_EXECUTED)
-                .perform(new ValidateNonIngressRuleAction());
+                .perform(new ValidateNonIngressRuleAction(persistenceManager));
 
         // install and validate ingress rules
         builder.transitions()
@@ -142,17 +141,17 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         builder.internalTransition()
                 .within(State.INSTALLING_INGRESS_RULES)
                 .on(Event.COMMAND_EXECUTED)
-                .perform(new OnReceivedInstallResponseAction());
+                .perform(new OnReceivedInstallResponseAction(persistenceManager));
         builder.transition()
                 .from(State.INSTALLING_INGRESS_RULES)
                 .to(State.VALIDATING_INGRESS_RULES)
                 .on(Event.NEXT)
-                .perform(new DumpIngressRulesAction());
+                .perform(new DumpIngressRulesAction(persistenceManager));
 
         builder.internalTransition()
                 .within(State.VALIDATING_INGRESS_RULES)
                 .on(Event.COMMAND_EXECUTED)
-                .perform(new ValidateIngressRuleAction());
+                .perform(new ValidateIngressRuleAction(persistenceManager));
         builder.transition()
                 .from(State.VALIDATING_INGRESS_RULES)
                 .to(State.FINISHED)
@@ -200,7 +199,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                 .from(State.REMOVING_RULES)
                 .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
                 .onEach(Event.COMMAND_EXECUTED, Event.ERROR)
-                .perform(new OnReceivedDeleteResponseAction());
+                .perform(new OnReceivedDeleteResponseAction(persistenceManager));
         builder.transition()
                 .from(State.REMOVING_RULES)
                 .to(State.FINISHED_WITH_ERROR)

@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,10 @@ import java.util.UUID;
 @Slf4j
 public class OnReceivedDeleteResponseAction extends OnReceivedInstallResponseAction {
 
+    public OnReceivedDeleteResponseAction(PersistenceManager persistenceManager) {
+        super(persistenceManager);
+    }
+
     @Override
     void handleResponse(FlowCreateFsm stateMachine, FlowResponse response) {
         UUID commandId = response.getCommandId();
@@ -37,12 +42,13 @@ public class OnReceivedDeleteResponseAction extends OnReceivedInstallResponseAct
             return;
         }
 
-        RemoveRule removeRule = stateMachine.getRemoveCommands().get(commandId);
+        RemoveRule rule = stateMachine.getRemoveCommands().get(commandId);
         if (response.isSuccess()) {
-            log.debug("Received response after deletion {} from the switch {}",
-                    removeRule.getCookie(), response.getSwitchId());
-            sendHistoryUpdate(stateMachine, "Rule deleted: switch %s, cookie %s.",
-                    format("Rule %s was deleted from the switch %s", removeRule.getCookie(), removeRule.getSwitchId()));
+            log.debug("Received response after deletion {} from the switch {}", rule.getCookie(), rule.getSwitchId());
+            String description = format("Rule %s was deleted from the switch %s", rule.getCookie(), rule.getSwitchId());
+
+            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), "Rule deleted",
+                    description);
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) response;
             log.error(format("Failed to delete rule with id %s, on the switch %s: %s", errorResponse.getCommandId(),
@@ -51,7 +57,8 @@ public class OnReceivedDeleteResponseAction extends OnReceivedInstallResponseAct
             String description = format("Failed to delete rule with id %s, on the switch %s: %s. Description: %s",
                     errorResponse.getCommandId(), errorResponse.getSwitchId(), errorResponse.getErrorCode(),
                     errorResponse.getDescription());
-            sendHistoryUpdate(stateMachine, "Failed to delete rule", description);
+            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
+                    "Failed to delete rule", description);
         }
     }
 }

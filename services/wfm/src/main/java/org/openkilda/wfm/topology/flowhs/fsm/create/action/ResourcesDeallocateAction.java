@@ -21,16 +21,16 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
 @Slf4j
-public class ResourcesDeallocateAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+public class ResourcesDeallocateAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
     private FlowResourcesManager resourcesManager;
     private FlowRepository flowRepository;
@@ -38,15 +38,17 @@ public class ResourcesDeallocateAction extends AnonymousAction<FlowCreateFsm, St
     private IslRepository islRepository;
 
     public ResourcesDeallocateAction(FlowResourcesManager resourcesManager, PersistenceManager persistenceManager) {
+        super(persistenceManager);
         this.resourcesManager = resourcesManager;
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
     }
 
+
     @Override
-    public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        Flow flow = stateMachine.getFlow();
+    protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
+        Flow flow = getFlow(stateMachine.getFlowId());
         resourcesManager.deallocatePathResources(flow.getForwardPathId(),
                 flow.getForwardPath().getCookie().getUnmaskedValue(), flow.getEncapsulationType());
         resourcesManager.deallocatePathResources(flow.getReversePathId(),

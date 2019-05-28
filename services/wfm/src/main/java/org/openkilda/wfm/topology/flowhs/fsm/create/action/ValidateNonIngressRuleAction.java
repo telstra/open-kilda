@@ -19,9 +19,8 @@ import static java.lang.String.format;
 
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
-import org.openkilda.model.Flow;
-import org.openkilda.wfm.share.history.model.FlowHistoryData;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -30,16 +29,18 @@ import org.openkilda.wfm.topology.flowhs.validation.rules.NonIngressRulesValidat
 import org.openkilda.wfm.topology.flowhs.validation.rules.RulesValidator;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
-import java.time.Instant;
 import java.util.UUID;
 
 @Slf4j
-public class ValidateNonIngressRuleAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+public class ValidateNonIngressRuleAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+
+    public ValidateNonIngressRuleAction(PersistenceManager persistenceManager) {
+        super(persistenceManager);
+    }
 
     @Override
-    public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
+    protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         UUID commandId = context.getFlowResponse().getCommandId();
 
         InstallTransitRule expected = stateMachine.getNonIngressCommands().get(commandId);
@@ -51,26 +52,17 @@ public class ValidateNonIngressRuleAction extends AnonymousAction<FlowCreateFsm,
             saveHistory(stateMachine, expected);
             stateMachine.getPendingCommands().remove(commandId);
             if (stateMachine.getPendingCommands().isEmpty()) {
-                log.debug("Non ingress rules have been validated for flow {}", stateMachine.getFlow().getFlowId());
+                log.debug("Non ingress rules have been validated for flow {}", stateMachine.getFlowId());
                 stateMachine.fire(Event.NEXT);
             }
         }
     }
 
     private void saveHistory(FlowCreateFsm stateMachine, InstallTransitRule expected) {
-        Flow flow = stateMachine.getFlow();
-
-        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowHistoryData(FlowHistoryData.builder()
-                        .action(format("Rule is valid: switch %s, cookie %s",
-                                expected.getSwitchId().toString(), expected.getCookie()))
-                        .description(format("Non ingress rule has been validated successfully: switch %s, cookie %s",
-                                expected.getSwitchId().toString(), expected.getCookie()))
-                        .time(Instant.now())
-                        .flowId(flow.getFlowId())
-                        .build())
-                .build();
-        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
+        String action = format("Rule is valid: switch %s, cookie %s",
+                expected.getSwitchId().toString(), expected.getCookie());
+        String description = format("Non ingress rule has been validated successfully: switch %s, cookie %s",
+                expected.getSwitchId().toString(), expected.getCookie());
+        saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), action, description);
     }
 }

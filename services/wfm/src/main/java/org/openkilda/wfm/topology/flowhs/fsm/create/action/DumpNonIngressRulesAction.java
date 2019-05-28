@@ -34,8 +34,7 @@ import java.util.stream.Collectors;
 public class DumpNonIngressRulesAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
     @Override
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        log.debug("Started validation of installed non ingress rules for the flow {}",
-                stateMachine.getFlow().getFlowId());
+        log.debug("Started validation of installed non ingress rules for the flow {}", stateMachine.getFlowId());
 
         List<GetInstalledRule> dumpFlowRules = stateMachine.getNonIngressCommands().values()
                 .stream()

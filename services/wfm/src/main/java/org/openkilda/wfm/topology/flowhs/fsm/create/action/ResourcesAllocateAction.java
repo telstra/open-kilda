@@ -104,7 +104,7 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
         try {
             allocateResourcesForFlow(flow, pathPair);
             saveHistory(flow, stateMachine);
-            stateMachine.setFlow(flow);
+            stateMachine.setFlowId(flow.getFlowId());
 
             InfoData flowData = new FlowResponse(FlowMapper.INSTANCE.map(flow));
             Message response = new InfoMessage(flowData, commandContext.getCreateTime(),

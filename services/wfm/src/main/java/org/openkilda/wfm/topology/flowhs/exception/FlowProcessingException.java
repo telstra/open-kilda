@@ -20,7 +20,7 @@ import org.openkilda.messaging.error.ErrorType;
 import lombok.Getter;
 
 @Getter
-public class FlowProcessingException extends Exception {
+public class FlowProcessingException extends RuntimeException {
 
     private final ErrorType errorType;
     private final String errorMessage;
@@ -32,5 +32,9 @@ public class FlowProcessingException extends Exception {
         this.errorType = errorType;
         this.errorMessage = errorMessage;
         this.errorDescription = errorDescription;
+    }
+
+    public FlowProcessingException(String errorMessage) {
+        this(ErrorType.INTERNAL_ERROR, errorMessage, errorMessage);
     }
 }

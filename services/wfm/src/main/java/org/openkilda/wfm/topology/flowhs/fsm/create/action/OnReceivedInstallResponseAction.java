@@ -20,24 +20,27 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.flow.request.InstallFlowRule;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
-import org.openkilda.model.Flow;
-import org.openkilda.wfm.share.history.model.FlowHistoryData;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.squirrelframework.foundation.fsm.AnonymousAction;
 
-import java.time.Instant;
 import java.util.UUID;
 
 @Slf4j
-public class OnReceivedInstallResponseAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+public class OnReceivedInstallResponseAction extends
+        FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
+
+    public OnReceivedInstallResponseAction(PersistenceManager persistenceManager) {
+        super(persistenceManager);
+    }
+
     @Override
-    public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
+    protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         FlowResponse response = context.getFlowResponse();
         stateMachine.getPendingCommands().remove(response.getCommandId());
         handleResponse(stateMachine, response);
@@ -61,7 +64,7 @@ public class OnReceivedInstallResponseAction extends AnonymousAction<FlowCreateF
 
         if (response.isSuccess()) {
             log.debug("Rule {} was installed on switch {}", installRule.getCookie(), response.getSwitchId());
-            sendHistoryUpdate(stateMachine, "Rule installed",
+            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), "Rule installed",
                     format("Rule was installed successfully: cookie %s, switch %s",
                             installRule.getCookie(), response.getSwitchId()));
         } else {
@@ -70,22 +73,8 @@ public class OnReceivedInstallResponseAction extends AnonymousAction<FlowCreateF
                     installRule.getCookie(), errorResponse.getSwitchId(),
                     errorResponse.getErrorCode(), errorResponse.getDescription());
             log.error(message);
-            sendHistoryUpdate(stateMachine, "Rule not installed", message);
+            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), "Rule not installed",
+                    message);
         }
-    }
-
-    final void sendHistoryUpdate(FlowCreateFsm stateMachine, String action, String description) {
-        Flow flow = stateMachine.getFlow();
-
-        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowHistoryData(FlowHistoryData.builder()
-                        .action(action)
-                        .description(description)
-                        .time(Instant.now())
-                        .flowId(flow.getFlowId())
-                        .build())
-                .build();
-        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
     }
 }
