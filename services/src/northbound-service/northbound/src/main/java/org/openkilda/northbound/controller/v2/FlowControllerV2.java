@@ -23,7 +23,7 @@ import org.openkilda.northbound.service.FlowService;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -39,7 +39,7 @@ public class FlowControllerV2 extends BaseController {
     private FlowService flowService;
 
     @ApiOperation(value = "Creates new flow", response = FlowResponseV2.class)
-    @PutMapping
+    @PostMapping
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponseV2> createFlow(@RequestBody FlowRequestV2 flow) {
         return flowService.createFlow(flow);
