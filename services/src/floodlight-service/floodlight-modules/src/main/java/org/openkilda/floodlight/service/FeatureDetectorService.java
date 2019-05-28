@@ -24,7 +24,6 @@ import org.openkilda.floodlight.feature.LimitedBurstSizeFeature;
 import org.openkilda.floodlight.feature.MeterFeature;
 import org.openkilda.floodlight.feature.ResetCountsFlagFeature;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
 import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 
 import com.google.common.collect.ImmutableList;
@@ -58,10 +57,10 @@ public class FeatureDetectorService implements IService {
     public void setup(FloodlightModuleContext context) throws FloodlightModuleException {
         FloodlightModuleConfigurationProvider provider =
                 FloodlightModuleConfigurationProvider.of(context, SwitchManager.class);
-        SwitchManagerConfig switchManagerConfig = provider.getConfiguration(SwitchManagerConfig.class);
+        FeatureDetectorServiceConfig config = provider.getConfiguration(FeatureDetectorServiceConfig.class);
 
         features = ImmutableList.of(
-                new MeterFeature(switchManagerConfig),
+                new MeterFeature(config.isOvsMetersEnabled()),
                 new BfdFeature(),
                 new BfdReviewFeature(),
                 new GroupPacketOutController(),

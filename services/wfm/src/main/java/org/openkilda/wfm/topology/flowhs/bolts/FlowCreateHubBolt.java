@@ -43,7 +43,7 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class FlowCreateHubBolt extends HubBolt {
+public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
 
     private transient FlowCreateService service;
 
@@ -76,7 +76,7 @@ public class FlowCreateHubBolt extends HubBolt {
     protected void onRequest(Tuple input) throws PipelineException {
         String key = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
         FlowDto payload = (FlowDto) input.getValueByField(FIELD_ID_PAYLOAD);
-        service.handleRequest(key, pullContext(input), payload, new FlowCreateHubCarrierImpl(input));
+        service.handleRequest(key, pullContext(input), payload, this);
     }
 
     @Override
@@ -84,7 +84,7 @@ public class FlowCreateHubBolt extends HubBolt {
         String operationKey = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
         String parentKey = KeyProvider.getParentKey(operationKey);
         FlowResponse flowResponse = (FlowResponse) input.getValueByField(FIELD_ID_PAYLOAD);
-        service.handleAsyncResponse(parentKey, flowResponse, new FlowCreateHubCarrierImpl(input));
+        service.handleAsyncResponse(parentKey, flowResponse, this);
     }
 
     @Override
@@ -93,44 +93,37 @@ public class FlowCreateHubBolt extends HubBolt {
     }
 
     @Override
+    public void sendSpeakerRequest(FlowRequest command) {
+        String key = getCurrentTuple().getStringByField(MessageTranslator.FIELD_ID_KEY);
+        String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), key);
+
+        Values values = new Values(commandKey, command);
+        emitWithContext(HUB_TO_SPEAKER_WORKER.name(), getCurrentTuple(), values);
+    }
+
+    @Override
+    public void sendNorthboundResponse(Message message) {
+        String key = getCurrentTuple().getStringByField(MessageTranslator.FIELD_ID_KEY);
+        emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(key, message));
+    }
+
+    @Override
+    public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
+        //emitWithContext(Stream.HUB_TO_HISTORY_BOLT.name(), tuple, new Values(null, historyHolder));
+    }
+
+    @Override
+    public void cancelTimeoutCallback(String key) {
+        cancelCallback(key, getCurrentTuple());
+    }
+
+
+    @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
 
         declarer.declareStream(HUB_TO_SPEAKER_WORKER.name(), MessageTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), MessageTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), MessageTranslator.STREAM_FIELDS);
-    }
-
-    private class FlowCreateHubCarrierImpl implements FlowCreateHubCarrier {
-        private Tuple tuple;
-
-        public FlowCreateHubCarrierImpl(Tuple tuple) {
-            this.tuple = tuple;
-        }
-
-        @Override
-        public void sendSpeakerRequest(FlowRequest command) {
-            String key = tuple.getStringByField(MessageTranslator.FIELD_ID_KEY);
-            String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), key);
-
-            Values values = new Values(commandKey, command);
-            emitWithContext(HUB_TO_SPEAKER_WORKER.name(), tuple, values);
-        }
-
-        @Override
-        public void sendNorthboundResponse(Message message) {
-            String key = tuple.getStringByField(MessageTranslator.FIELD_ID_KEY);
-            emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), tuple, new Values(key, message));
-        }
-
-        @Override
-        public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
-            //emitWithContext(Stream.HUB_TO_HISTORY_BOLT.name(), tuple, new Values(null, historyHolder));
-        }
-
-        @Override
-        public void cancelTimeoutCallback(String key) {
-            cancelCallback(key, tuple);
-        }
     }
 }
