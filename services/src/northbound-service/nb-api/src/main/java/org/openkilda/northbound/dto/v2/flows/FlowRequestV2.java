@@ -18,10 +18,10 @@ package org.openkilda.northbound.dto.v2.flows;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
 
-@Value
-@Builder(toBuilder = true)
+@Data
+@Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class FlowRequestV2 {
     String flowId;

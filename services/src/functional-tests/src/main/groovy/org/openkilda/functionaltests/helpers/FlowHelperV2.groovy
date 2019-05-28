@@ -165,7 +165,7 @@ class FlowHelperV2 {
         List<FlowEndpointV2> existingEndpoints = existingFlows.collectMany { [it.source, it.destination] }
         [newFlow.source, newFlow.destination].any { newEp ->
             existingEndpoints.find {
-                newEp.datapath == it.datapath && newEp.portNumber == it.portNumber &&
+                newEp.switchId == it.switchId && newEp.portNumber == it.portNumber &&
                         (newEp.vlanId == it.vlanId || it.vlanId == 0 || newEp.vlanId == 0)
             }
         } || existingFlows*.flowId.contains(newFlow.flowId)
