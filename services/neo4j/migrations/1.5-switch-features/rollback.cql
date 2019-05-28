@@ -1,0 +1,1 @@
+DROP CONSTRAINT ON (switch_features:switch_features) ASSERT switch_features.entityId IS UNIQUE
