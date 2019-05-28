@@ -99,10 +99,10 @@ public class TransactionBolt extends AbstractTickStatefulBolt<InMemoryKeyValueSt
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
         Message message = (Message) tuple.getValueByField(FlowTopology.MESSAGE_FIELD);
         String flowId = tuple.getStringByField(Utils.FLOW_ID);
-
+        logger.debug("Request tuple: {}", tuple);
         try {
             switch (componentId) {
-                case CRUD_BOLT:
+                case CRUD_BOLT: case FLOW_OPERATION_BOLT:
                     if (message instanceof CommandMessage) {
                         CommandData data = ((CommandMessage) message).getData();
                         if (data instanceof BatchCommandsRequest) {

@@ -115,6 +115,11 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         ctrlTargets.add(new CtrlBoltRef(ComponentType.CRUD_BOLT.toString(), crudBolt, boltSetup));
 
 
+        FlowOperationsBolt flowOperationsBolt = new FlowOperationsBolt(persistenceManager, pathComputerConfig,
+                flowResourcesConfig);
+        boltSetup = builder.setBolt(ComponentType.FLOW_OPERATION_BOLT.toString(), flowOperationsBolt, parallelism)
+                .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.SWAP_ENDPOINT.toString());
+        ctrlTargets.add(new CtrlBoltRef(ComponentType.FLOW_OPERATION_BOLT.toString(), flowOperationsBolt, boltSetup));
 
         /*
          * Spout receives Speaker responses
@@ -138,15 +143,11 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
         boltSetup = builder.setBolt(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, parallelism)
                 .fieldsGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.UPDATE.toString(), fieldFlowId)
+                .fieldsGrouping(ComponentType.FLOW_OPERATION_BOLT.toString(), StreamType.UPDATE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), fieldFlowId);
         ctrlTargets.add(new CtrlBoltRef(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, boltSetup));
 
-        FlowOperationsBolt flowOperationsBolt = new FlowOperationsBolt(persistenceManager, pathComputerConfig,
-                flowResourcesConfig);
-        boltSetup = builder.setBolt(ComponentType.FLOW_OPERATION_BOLT.toString(), flowOperationsBolt, parallelism)
-                .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.SWAP_ENDPOINT.toString());
-        ctrlTargets.add(new CtrlBoltRef(ComponentType.FLOW_OPERATION_BOLT.toString(), flowOperationsBolt, boltSetup));
         /*
          * Bolt sends Speaker requests
          */

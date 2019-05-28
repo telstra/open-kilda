@@ -48,6 +48,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.AbstractTopology;
+import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
 import org.openkilda.wfm.topology.flow.service.FeatureToggle;
 import org.openkilda.wfm.topology.flow.service.FeatureTogglesService;
@@ -192,6 +193,7 @@ public class FlowOperationsBolt extends BaseRichBolt implements ICtrlBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
+        declarer.declareStream(StreamType.UPDATE.toString(), FlowTopology.fieldsMessageFlowId);
         declarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
 
