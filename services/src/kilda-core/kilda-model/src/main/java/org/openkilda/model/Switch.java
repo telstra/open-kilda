@@ -15,6 +15,8 @@
 
 package org.openkilda.model;
 
+import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -28,6 +30,7 @@ import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.Index;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
+import org.neo4j.ogm.annotation.Relationship;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
@@ -81,6 +84,10 @@ public class Switch implements Serializable {
     private String ofDescriptionSerialNumber;
     private String ofDescriptionDatapath;
 
+    @NonNull
+    @Relationship(type = "has", direction = OUTGOING)
+    private SwitchFeatures switchFeatures;
+
     @Property(name = "under_maintenance")
     private boolean underMaintenance;
 
@@ -95,7 +102,7 @@ public class Switch implements Serializable {
     @Builder(toBuilder = true)
     public Switch(@NonNull SwitchId switchId, SwitchStatus status, String address,
                   String hostname, String controller, String description, boolean underMaintenance,
-                  Instant timeCreate, Instant timeModify) {
+                  Instant timeCreate, Instant timeModify, SwitchFeatures switchFeatures) {
         this.switchId = switchId;
         this.status = status;
         this.address = address;
@@ -105,6 +112,7 @@ public class Switch implements Serializable {
         this.underMaintenance = underMaintenance;
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
+        this.switchFeatures = switchFeatures;
     }
 
     public static boolean isCentecSwitch(String manufacturerDescription) {
