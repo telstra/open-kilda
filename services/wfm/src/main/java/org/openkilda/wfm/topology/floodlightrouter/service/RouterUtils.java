@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.service;
 
+import org.openkilda.floodlight.flow.request.FlowRequest;
+import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -119,6 +121,18 @@ public final class RouterUtils {
             } else if (commandData instanceof RemoveBfdSession) {
                 return ((RemoveBfdSession) commandData).getBfdSession().getTarget().getDatapath();
             }
+        }
+        return null;
+    }
+
+    /**
+     * Lookup SwitchId in message object.
+     * @param message - target
+     * @return - SwitchId or null
+     */
+    public static SwitchId lookupSwitchIdInMessage(AbstractMessage message) {
+        if (message instanceof FlowRequest) {
+            return ((FlowRequest) message).getSwitchId();
         }
         return null;
     }

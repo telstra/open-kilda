@@ -80,7 +80,7 @@ public final class CoordinatorBolt extends AbstractBolt {
 
     @VisibleForTesting
     void registerCallback(String key, Object context, int timeout, int taskId) {
-        log.debug("Adding callback for {} with timeout {}", key, timeout);
+        log.trace("Adding callback for {} with timeout {}", key, timeout);
         long triggerTime = System.currentTimeMillis() + timeout;
         timeouts.computeIfAbsent(triggerTime, mappingFunction -> new HashSet<>())
                 .add(key);
