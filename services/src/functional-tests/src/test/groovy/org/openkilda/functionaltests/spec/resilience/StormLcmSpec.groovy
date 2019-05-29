@@ -2,15 +2,18 @@ package org.openkilda.functionaltests.spec.resilience
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.WfmManipulator
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowPayload
 
-import com.spotify.docker.client.DefaultDockerClient
-import com.spotify.docker.client.DockerClient
-import com.spotify.docker.client.DockerClient.ListContainersParam
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -27,22 +30,14 @@ verify their consistency after restart.
  */
 @Tags(VIRTUAL)
 class StormLcmSpec extends BaseSpecification {
-    private static final String WFM_CONTAINER_NAME = "/wfm"
-
-    /* Storm topologies require some time to fully roll after booting.
-     * TODO(rtretiak): find a more reliable way to wait for the H-hour
-     * Not respecting this wait may lead to subsequent tests instability
-     */
-    private static final int WFM_WARMUP_SECONDS = 120
-
     @Shared
-    DockerClient dockerClient
+    WfmManipulator wfmManipulator
 
     def setupOnce() {
         //since we simulate storm restart by restarting the docker container, for now this is only possible on virtual
         //TODO(rtretiak): this can possibly be achieved for 'hardware' via lock-keeper instance
         requireProfiles("virtual")
-        dockerClient = DefaultDockerClient.fromEnv().build()
+        wfmManipulator = new WfmManipulator()
     }
 
     def "System survives Storm topologies restart"() {
@@ -61,13 +56,7 @@ class StormLcmSpec extends BaseSpecification {
         def relationsDump = database.dumpAllRelations()
 
         when: "Storm topologies are restarted"
-        def wfmContainer = dockerClient.listContainers(ListContainersParam.allContainers()).find {
-            it.names().contains(WFM_CONTAINER_NAME)
-        }
-        assert wfmContainer
-        dockerClient.restartContainer(wfmContainer.id())
-        dockerClient.waitContainer(wfmContainer.id())
-        TimeUnit.SECONDS.sleep(WFM_WARMUP_SECONDS)
+        wfmManipulator.restartWfm()
 
         then: "Database nodes and relations are unchanged"
         def newNodes = database.dumpAllNodes()
@@ -89,5 +78,46 @@ class StormLcmSpec extends BaseSpecification {
 
         and: "Cleanup: remove flows"
         flows.each { flowHelper.deleteFlow(it.id) }
+    }
+
+    @Ignore("issue https://github.com/telstra/open-kilda/issues/2363")
+    def "System's able to fail an ISL if switches on both ends go offline during restart of network topology"() {
+        when: "Kill network topology"
+        wfmManipulator.killTopology("network")
+
+        and: "Disconnect switches on both ends of ISL"
+        def islUnderTest = topology.islsForActiveSwitches.first()
+        lockKeeper.knockoutSwitch(islUnderTest.srcSwitch.dpId)
+        lockKeeper.knockoutSwitch(islUnderTest.dstSwitch.dpId)
+
+        and: "Deploy network topology back"
+        wfmManipulator.deployTopology("network")
+        def networkDeployed = true
+        TimeUnit.SECONDS.sleep(45) //after deploy topology needs more time to actually begin working
+
+        then: "Switches are recognized as being deactivated"
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getSwitch(islUnderTest.srcSwitch.dpId).state == SwitchChangeType.DEACTIVATED
+            assert northbound.getSwitch(islUnderTest.dstSwitch.dpId).state == SwitchChangeType.DEACTIVATED
+        }
+
+        and: "ISL between the switches gets failed after discovery timeout"
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            def allIsls = northbound.getAllLinks()
+            assert islUtils.getIslInfo(allIsls, islUnderTest).get().state == IslChangeType.FAILED
+            assert islUtils.getIslInfo(allIsls, islUnderTest.reversed).get().state == IslChangeType.FAILED
+        }
+
+        and: "Cleanup: restore switch and failed ISLs"
+        lockKeeper.reviveSwitch(islUnderTest.srcSwitch.dpId)
+        lockKeeper.reviveSwitch(islUnderTest.dstSwitch.dpId)
+        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+            def allIsls = northbound.getAllLinks()
+            assert islUtils.getIslInfo(allIsls, islUnderTest).get().state == IslChangeType.DISCOVERED
+            assert islUtils.getIslInfo(allIsls, islUnderTest.reversed).get().state == IslChangeType.DISCOVERED
+        }
+
+        cleanup:
+        !networkDeployed && wfmManipulator.deployTopology("network")
     }
 }
