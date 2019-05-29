@@ -33,6 +33,7 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -97,7 +98,8 @@ public class SwitchSyncServiceImplTest {
         flowEntry = new FlowEntry(-1L, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
 
         InstallIngressFlow installingRule = new InstallIngressFlow(UUID.randomUUID(), "flow", flowEntry.getCookie(),
-                SWITCH_ID, 1, 2, 50, 60, OutputVlanType.POP, 10L, 100L);
+                SWITCH_ID, 1, 2, 50, 60,
+                FlowEncapsulationType.TRANSIT_VLAN, OutputVlanType.POP, 10L, 100L);
         when(commandBuilder.buildCommandsToSyncRules(eq(SWITCH_ID), any()))
                 .thenReturn(singletonList(installingRule));
 

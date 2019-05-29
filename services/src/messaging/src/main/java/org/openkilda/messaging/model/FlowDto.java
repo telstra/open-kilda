@@ -128,10 +128,10 @@ public class FlowDto implements Serializable {
     private Integer meterId;
 
     /**
-     * Flow transit vlan id.
+     * Flow transit encapsulation id.
      */
-    @JsonProperty("transit_vlan")
-    private int transitVlan;
+    @JsonProperty("transit_encapsulation_id")
+    private int transitEncapsulationId;
 
     /**
      * Flow switch path.
@@ -180,7 +180,7 @@ public class FlowDto implements Serializable {
      * @param sourceVlan        source vlan id
      * @param destinationVlan   destination vlan id
      * @param meterId           meter id
-     * @param transitVlan       transit vlan id
+     * @param transitEncapsulationId       transit vlan id
      * @param flowPath          flow switch path
      * @param state             flow state
      * @param maxLatency        max latency
@@ -206,7 +206,7 @@ public class FlowDto implements Serializable {
                    @JsonProperty("src_vlan") final int sourceVlan,
                    @JsonProperty("dst_vlan") final int destinationVlan,
                    @JsonProperty("meter_id") final Integer meterId,
-                   @JsonProperty("transit_vlan") final int transitVlan,
+                   @JsonProperty("transit_encapsulation_id") final int transitEncapsulationId,
                    @JsonProperty(Utils.FLOW_PATH) final PathInfoData flowPath,
                    @JsonProperty("state") FlowState state,
                    @JsonProperty("max_latency") Integer maxLatency,
@@ -228,7 +228,7 @@ public class FlowDto implements Serializable {
         this.destinationPort = destinationPort;
         this.sourceVlan = sourceVlan;
         this.destinationVlan = destinationVlan;
-        this.transitVlan = transitVlan;
+        this.transitEncapsulationId = transitEncapsulationId;
         this.meterId = meterId;
         this.flowPath = flowPath;
         this.state = state;
@@ -381,7 +381,7 @@ public class FlowDto implements Serializable {
      * - cookie
      * - lastUpdated
      * - meterId
-     * - transitVlan
+     * - transitEncapsulationId
      * - flowPath
      * FIXME(surabujin): drop/replace with lombok version (no usage found)
      */

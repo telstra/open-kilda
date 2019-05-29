@@ -50,6 +50,7 @@ import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
@@ -78,7 +79,8 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final int OUTPUT_PORT = 2;
     private static final int INPUT_VLAN_ID = 101;
     private static final int OUTPUT_VLAN_ID = 102;
-    private static final int TRANSIT_VLAN_ID = 103;
+    private static final int TRANSIT_ENCAPSULATION_ID = 103;
+    private static final FlowEncapsulationType TRANSIT_ENCAPSULATION_TYPE = FlowEncapsulationType.TRANSIT_VLAN;
     private static final long BANDWIDTH = 10000L;
     private static final long COOKIE = 0x1L;
     private static final Long METER_ID = null;
@@ -119,7 +121,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
             .sourceSwitch(new SwitchId("ff:01")).sourcePort(10).sourcePort(100)
             .destinationSwitch(new SwitchId("ff:02")).destinationPort(20).destinationVlan(200)
             .meterId(1)
-            .transitVlan(1024)
+            .transitEncapsulationId(1024)
             .state(FLOW_STATUS)
             .flowPath(path)
             .build();
@@ -127,7 +129,8 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void serializeInstallEgressFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallEgressFlow data = new InstallEgressFlow(TRANSACTION_ID, FLOW_NAME, COOKIE,
-                SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE);
+                SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_ENCAPSULATION_ID, TRANSIT_ENCAPSULATION_TYPE,
+                OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -148,7 +151,8 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void serializeInstallIngressFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallIngressFlow data = new InstallIngressFlow(TRANSACTION_ID, FLOW_NAME, COOKIE, SWITCH_ID,
-                INPUT_PORT, OUTPUT_PORT, INPUT_VLAN_ID, TRANSIT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID);
+                INPUT_PORT, OUTPUT_PORT, INPUT_VLAN_ID, TRANSIT_ENCAPSULATION_ID, TRANSIT_ENCAPSULATION_TYPE,
+                OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -169,7 +173,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void serializeInstallTransitFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallTransitFlow data = new InstallTransitFlow(TRANSACTION_ID, FLOW_NAME, COOKIE,
-                SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_VLAN_ID);
+                SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_ENCAPSULATION_ID, TRANSIT_ENCAPSULATION_TYPE);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

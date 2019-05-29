@@ -13,15 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.flow.resources;
+package org.openkilda.persistence.repositories;
 
-import org.openkilda.model.EncapsulationId;
-import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.SwitchFeatures;
 
-public interface EncapsulationResources {
-    FlowEncapsulationType getEncapsulationType();
-
-    Integer getTransitEncapsulationId();
-
-    EncapsulationId getEncapsulation();
+public interface SwitchFeaturesRepository extends Repository<SwitchFeatures> {
 }

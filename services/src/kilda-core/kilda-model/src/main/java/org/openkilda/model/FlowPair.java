@@ -32,9 +32,9 @@ public class FlowPair implements Serializable {
     public final UnidirectionalFlow forward;
     public final UnidirectionalFlow reverse;
 
-    public FlowPair(Flow flow, TransitVlan forwardTransitVlan, TransitVlan reverseTransitVlan) {
-        forward = new UnidirectionalFlow(flow.getForwardPath(), forwardTransitVlan, true);
-        reverse = new UnidirectionalFlow(flow.getReversePath(), reverseTransitVlan, false);
+    public FlowPair(Flow flow, EncapsulationId forwardEncapsulationId, EncapsulationId reverseEncapsulationId) {
+        forward = new UnidirectionalFlow(flow.getForwardPath(), forwardEncapsulationId, true);
+        reverse = new UnidirectionalFlow(flow.getReversePath(), reverseEncapsulationId, false);
     }
 
     public UnidirectionalFlow getForward() {

@@ -13,15 +13,16 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.flow.resources;
+package org.openkilda.model;
 
-import org.openkilda.model.EncapsulationId;
-import org.openkilda.model.FlowEncapsulationType;
+/**
+ * Interface for different encapsulation types in model.
+ */
+public interface EncapsulationId {
 
-public interface EncapsulationResources {
-    FlowEncapsulationType getEncapsulationType();
-
-    Integer getTransitEncapsulationId();
-
-    EncapsulationId getEncapsulation();
+    /**
+     * Get encapsulation resource id.
+     * @return encapsulation id
+     */
+    public int getEncapsulationId();
 }

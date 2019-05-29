@@ -102,4 +102,9 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
     protected Class<Switch> getEntityType() {
         return Switch.class;
     }
+
+    @Override
+    protected int getDepthCreateUpdateEntity() {
+        return 1;
+    }
 }

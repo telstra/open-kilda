@@ -15,14 +15,15 @@
 
 package org.openkilda.messaging.command.flow;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.openkilda.messaging.command.Constants.flowName;
 import static org.openkilda.messaging.command.Constants.inputPort;
 import static org.openkilda.messaging.command.Constants.outputPort;
 import static org.openkilda.messaging.command.Constants.switchId;
-import static org.openkilda.messaging.command.Constants.transitVlanId;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
+import static org.openkilda.messaging.command.Constants.transitEncapsulationId;
+import static org.openkilda.messaging.command.Constants.transitEncapsulationType;
 
 import org.junit.Test;
 
@@ -30,7 +31,7 @@ import java.util.UUID;
 
 public class InstallTransitFlowTest {
     private InstallTransitFlow flow = new InstallTransitFlow(UUID.randomUUID(),
-            flowName, 0L, switchId, inputPort, outputPort, transitVlanId);
+            flowName, 0L, switchId, inputPort, outputPort, transitEncapsulationId, transitEncapsulationType);
 
     @Test
     public void toStringTest() throws Exception {
@@ -40,28 +41,28 @@ public class InstallTransitFlowTest {
     }
 
     @Test
-    public void getTransitVlanId() throws Exception {
-        assertEquals(transitVlanId, flow.getTransitVlanId().intValue());
+    public void getTransitEncapsulationId() throws Exception {
+        assertEquals(transitEncapsulationId, flow.getTransitEncapsulationId().intValue());
     }
 
     @Test
-    public void setTransitVlanId() throws Exception {
-        flow.setTransitVlanId(transitVlanId);
-        assertEquals(transitVlanId, flow.getTransitVlanId().intValue());
+    public void setTransitEncapsulationId() throws Exception {
+        flow.setTransitEncapsulationId(transitEncapsulationId);
+        assertEquals(transitEncapsulationId, flow.getTransitEncapsulationId().intValue());
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setNullTransitVlanId() throws Exception {
-        flow.setTransitVlanId(null);
+    public void setNullTransitEncapsulationId() throws Exception {
+        flow.setTransitEncapsulationId(null);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setZeroTransitVlanId() throws Exception {
-        flow.setTransitVlanId(0);
+    public void setZeroTransitEncapsulationId() throws Exception {
+        flow.setTransitEncapsulationId(0);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void setTooBigTransitVlanId() throws Exception {
-        flow.setTransitVlanId(4096);
+    public void setTooBigTransitEncapsulationId() throws Exception {
+        flow.setTransitEncapsulationId(4096);
     }
 }

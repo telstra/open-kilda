@@ -466,7 +466,7 @@ class ProtectedPathSpec extends BaseSpecification {
         //TODO(andriidovhan) rewrite when new implementation of the getFlow method is merged
         //and compare transitVlan for protected path
         def flowInfo = database.getFlow(flow.id)
-        flowInfo.left.transitVlan == flowInfo.right.transitVlan
+        flowInfo.left.transitEncapsulationId == flowInfo.right.transitEncapsulationId
 
         and: "Cleanup: delete the flow and restore available bandwidth"
         flowHelper.deleteFlow(flow.id)

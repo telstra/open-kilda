@@ -170,7 +170,7 @@ public class SwitchController extends BaseController {
             DeleteRulesCriteriaBuilder builder = DeleteRulesCriteria.builder();
             cookie.ifPresent(builder::cookie);
             inPort.ifPresent(builder::inPort);
-            inVlan.ifPresent(builder::inVlan);
+            inVlan.ifPresent(builder::encapsulationId);
             priority.ifPresent(builder::priority);
             outPort.ifPresent(builder::outPort);
 

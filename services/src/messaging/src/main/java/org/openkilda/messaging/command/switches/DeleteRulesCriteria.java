@@ -15,6 +15,8 @@
 
 package org.openkilda.messaging.command.switches;
 
+import org.openkilda.model.FlowEncapsulationType;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
@@ -36,8 +38,8 @@ public class DeleteRulesCriteria implements Serializable {
 
     @JsonProperty("in_port")
     Integer inPort;
-    @JsonProperty("in_vlan")
-    Integer inVlan;
+    @JsonProperty("encapsulation_id")
+    Integer encapsulationId;
 
     @JsonProperty("priority")
     Integer priority;
@@ -45,26 +47,32 @@ public class DeleteRulesCriteria implements Serializable {
     @JsonProperty("out_port")
     Integer outPort;
 
+    @JsonProperty("encapsulation_type")
+    FlowEncapsulationType encapsulationType;
+
     @JsonCreator
     public DeleteRulesCriteria(
             @JsonProperty("cookie") Long cookie,
             @JsonProperty("in_port") Integer inPort,
-            @JsonProperty("in_vlan") Integer inVlan,
+            @JsonProperty("encapsulation_id") Integer encapsulationId,
             @JsonProperty("priority") Integer priority,
-            @JsonProperty("out_port") Integer outPort) {
+            @JsonProperty("out_port") Integer outPort,
+            @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType) {
         if ((cookie == null || cookie == 0)
                 && (inPort == null || inPort == 0)
-                && (inVlan == null || inVlan == 0)
+                && (encapsulationId == null || encapsulationId == 0)
                 && (priority == null || priority == 0)
-                && (outPort == null || outPort == 0)) {
+                && (outPort == null || outPort == 0)
+                && (encapsulationType == null)) {
             throw new IllegalArgumentException("DeleteRulesCriteria can't be constructed empty.");
         }
 
         this.cookie = cookie;
         this.inPort = inPort;
-        this.inVlan = inVlan;
+        this.encapsulationId = encapsulationId;
         this.priority = priority;
         this.outPort = outPort;
+        this.encapsulationType = encapsulationType;
     }
 }
 
