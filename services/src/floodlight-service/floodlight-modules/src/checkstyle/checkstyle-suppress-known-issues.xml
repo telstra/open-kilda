@@ -24,7 +24,6 @@
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/MeterPoolTest.java" lines="80" checks="WhitespaceAround"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerOF12Test.java" lines="44" checks="JavadocMethod"/>
-    <suppress files="src/test/java/org/openkilda/floodlight/switchmanager/SwitchManagerTest.java" lines="97" checks="JavadocMethod"/>
     <suppress files="src/test/java/org/openkilda/floodlight/utils/CorrelationContextTest.java" lines="0" checks="NewlineAtEndOfFile"/>
     <suppress files="src/test/java/org/openkilda/floodlight/utils/CorrelationContextTest.java" lines="1" checks="RegexpHeader"/>
     <suppress files="src/test/java/org/openkilda/floodlight/utils/CorrelationContextTest.java" lines="9" checks="CustomImportOrder"/>

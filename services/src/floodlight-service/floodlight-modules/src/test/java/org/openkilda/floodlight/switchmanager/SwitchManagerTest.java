@@ -135,7 +135,6 @@ public class SwitchManagerTest {
     private static final FloodlightModuleContext context = new FloodlightModuleContext();
     private static final long cookie = 123L;
     private static final long bandwidth = 20000L;
-    private static final long smallBandwidth = 100L;
     private static final String cookieHex = "7B";
     private static final SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
     private static final DatapathId defaultDpid = DatapathId.of(1);
@@ -404,7 +403,7 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> capture = prepareForInstallTest();
 
         switchManager.installOneSwitchFlow(dpid, cookieHex, cookie,
-                inputPort, outputPort, inputVlanId, 0, OutputVlanType.POP, meterId);
+                inputPort, outputPort, inputVlanId, inputVlanId, OutputVlanType.POP, meterId);
 
         assertEquals(
                 scheme.oneSwitchPopFlowMod(inputPort, outputPort, inputVlanId, meterId, cookie),
