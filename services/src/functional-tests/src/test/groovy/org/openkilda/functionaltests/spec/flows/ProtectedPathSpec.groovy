@@ -234,7 +234,8 @@ class ProtectedPathSpec extends BaseSpecification {
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2377")
     @Unroll
-    def "System reroutes #flowDescription flow to more preferable path and ignore protected path when reroute is intentional"() {
+    def "System reroutes #flowDescription flow to more preferable path and ignores protected path when reroute\
+ is intentional"() {
         given: "Two active neighboring switches with two possible paths at least"
         def (Switch srcSwitch, Switch dstSwitch) = getNeighboringSwitchPair(2)
         def allPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
@@ -285,7 +286,8 @@ class ProtectedPathSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "System is able to switch #flowDescription flow to protected path and ignore more preferable path when reroute is automatical"() {
+    def "System is able to switch #flowDescription flow to protected path and ignores more preferable path when reroute\
+ is automatical"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def (Switch srcSwitch, Switch dstSwitch) = getNotNeighboringSwitchPair(2)
         def allPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
@@ -902,6 +904,76 @@ class ProtectedPathSpec extends BaseSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
+        database.resetCosts()
+    }
+
+    def "System doesn't reroute main flow path when protected path is broken and new alt path is available\
+(altPath is more preferable than mainPath)"() {
+        given: "Two active neighboring switches with three paths at least"
+        def (Switch srcSwitch, Switch dstSwitch) = getNeighboringSwitchPair(3)
+
+        and: "A flow with protected path"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.allocateProtectedPath = true
+        flowHelper.addFlow(flow)
+
+        and: "All alternative paths are unavailable (bring ports down on the source switch)"
+        def flowPathInfo = northbound.getFlowPath(flow.id)
+        def currentPath = pathHelper.convert(flowPathInfo)
+        def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
+        List<PathNode> broughtDownPorts = []
+        def altPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.findAll {
+            it != currentPath && it != currentProtectedPath
+        }.unique { it.first() }
+
+        altPaths.each { path ->
+            def src = path.first()
+            broughtDownPorts.add(src)
+            northbound.portDown(src.switchId, src.portNo)
+        }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == IslChangeType.FAILED
+            }.size() == broughtDownPorts.size() * 2
+        }
+
+        and: "ISL on a protected path is broken(bring port down) for changing the flow state to DOWN"
+        def protectedIslToBreak = pathHelper.getInvolvedIsls(currentProtectedPath)[0]
+        northbound.portDown(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
+
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
+
+        when: "Make the current path less preferable than alternative path"
+        def alternativePath = altPaths.first()
+        def currentIsl = pathHelper.getInvolvedIsls(currentPath)[0]
+        def alternativeIsl = pathHelper.getInvolvedIsls(alternativePath)[0]
+
+        pathHelper.makePathMorePreferable(alternativePath, currentPath)
+
+        assert northbound.getLink(currentIsl).cost > northbound.getLink(alternativeIsl).cost
+
+        and: "Make alternative path available(bring port up on the source switch)"
+        northbound.portUp(alternativeIsl.srcSwitch.dpId, alternativeIsl.srcPort)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            assert islUtils.getIslInfo(alternativeIsl).get().state == IslChangeType.DISCOVERED
+        }
+
+        then: "Flow state is changed to UP"
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+
+        and: "Protected path is recalculated only"
+        def newFlowPathInfo = northbound.getFlowPath(flow.id)
+        pathHelper.convert(newFlowPathInfo) == currentPath
+        pathHelper.convert(newFlowPathInfo.protectedPath) == alternativePath
+
+        and: "Cleanup: Restore topology, delete flow and reset costs"
+        northbound.portUp(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
+        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        flowHelper.deleteFlow(flow.id)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            assert islUtils.getIslInfo(protectedIslToBreak).get().state != IslChangeType.FAILED
+        }
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
     }
 
