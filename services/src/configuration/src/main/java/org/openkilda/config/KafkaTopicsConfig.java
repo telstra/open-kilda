@@ -40,13 +40,13 @@ public interface KafkaTopicsConfig {
     String getFlowTopic();
 
     @Key("flow.region")
-    @FallbackKey("kafka.flow.worker.topic.region")
+    @FallbackKey("kafka.flow.topic.region")
     @Default("kilda.flow")
     String getFlowRegionTopic();
 
     @Key("flowhs")
     @FallbackKey("kafka.flowhs.topic")
-    @Default("kilda.flowhs")
+    @Default("kilda.flowhs.storm")
     String getFlowHsTopic();
 
     @Key("flow.status")

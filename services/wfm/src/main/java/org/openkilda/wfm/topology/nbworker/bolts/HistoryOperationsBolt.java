@@ -23,8 +23,8 @@ import org.openkilda.messaging.payload.history.FlowDumpPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryPayload;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.history.service.HistoryService;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
-import org.openkilda.wfm.share.services.HistoryService;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;

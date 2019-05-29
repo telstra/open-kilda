@@ -17,9 +17,9 @@ package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
 import static org.openkilda.messaging.Utils.MAPPER;
 
+import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 import org.openkilda.model.SwitchId;
-
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.service.RouterUtils;
@@ -27,6 +27,7 @@ import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMapping;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchTracker;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
+import com.fasterxml.jackson.databind.JsonMappingException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.state.InMemoryKeyValueState;
@@ -38,6 +39,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 
@@ -65,25 +67,50 @@ public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, 
                         AbstractTopology.MESSAGE_FIELD));
             } else {
                 String json = pullRequest(input);
-                Message message = MAPPER.readValue(json, Message.class);
-
-                SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
-                if (switchId != null) {
-                    String region = switchTracker.lookupRegion(switchId);
-                    if (region != null) {
-                        proxyRequestToSpeaker(input, region);
-                    } else {
-                        log.error("Unable to lookup region for message: {}", json);
-                    }
-
-                } else {
-                    log.error("Unable to lookup switch for message: {}", json);
+                try {
+                    handleAbstractMessage(json, input);
+                    return;
+                } catch (JsonMappingException e) {
+                    log.debug("Failed to deserialize json to abstract message", e);
                 }
+
+                handleMessage(json, input);
             }
         } catch (Exception e) {
             log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
             outputCollector.ack(input);
+        }
+    }
+
+    private void handleMessage(String json, Tuple input) throws IOException {
+        Message message = MAPPER.readValue(json, Message.class);
+
+        SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
+        if (switchId != null) {
+            String region = switchTracker.lookupRegion(switchId);
+            if (region != null) {
+                proxyRequestToSpeaker(input, region);
+            } else {
+                log.error("Unable to lookup region for message: {}", json);
+            }
+        } else {
+            log.error("Unable to lookup switch for message: {}", json);
+        }
+    }
+
+    void handleAbstractMessage(String json, Tuple input) throws IOException {
+        AbstractMessage message = MAPPER.readValue(json, AbstractMessage.class);
+        SwitchId switchId = RouterUtils.lookupSwitchIdInMessage(message);
+        if (switchId != null) {
+            String region = switchTracker.lookupRegion(switchId);
+            if (region != null) {
+                proxyRequestToSpeaker(input, region);
+            } else {
+                log.error("Unable to lookup region for abstract message: {}", json);
+            }
+        } else {
+            log.error("Unable to lookup switch for abstract message: {}", json);
         }
     }
 
