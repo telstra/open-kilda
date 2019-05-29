@@ -95,11 +95,18 @@ public abstract class FlowPathMapper {
      * Convert {@link FlowPath} to {@link PathNodePayload}.
      */
     public List<PathNodePayload> mapToPathNodes(Flow flow, FlowPath flowPath) {
-        List<PathNodePayload> resultList = new ArrayList<>();
-
         boolean forward = flow.isForward(flowPath);
         int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
         int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
+
+        return mapToPathNodes(flowPath, inPort, outPort);
+    }
+
+    /**
+     * Convert {@link FlowPath} to {@link PathNodePayload}.
+     */
+    public List<PathNodePayload> mapToPathNodes(FlowPath flowPath, int inPort, int outPort) {
+        List<PathNodePayload> resultList = new ArrayList<>();
 
         if (flowPath.getSegments().isEmpty()) {
             resultList.add(

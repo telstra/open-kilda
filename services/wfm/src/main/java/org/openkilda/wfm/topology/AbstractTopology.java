@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.config.KafkaConfig;
 import org.openkilda.config.naming.KafkaNamingStrategy;
+import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 import org.openkilda.wfm.CtrlBoltRef;
 import org.openkilda.wfm.LaunchEnvironment;
@@ -28,9 +29,12 @@ import org.openkilda.wfm.ctrl.RouteBolt;
 import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.error.StreamNameCollisionException;
+import org.openkilda.wfm.kafka.AbstractMessageDeserializer;
+import org.openkilda.wfm.kafka.AbstractMessageSerializer;
 import org.openkilda.wfm.kafka.CustomNamedSubscription;
 import org.openkilda.wfm.kafka.MessageDeserializer;
 import org.openkilda.wfm.kafka.MessageSerializer;
+import org.openkilda.wfm.topology.utils.AbstractMessageTranslator;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 import org.openkilda.wfm.topology.utils.KeyValueKafkaRecordTranslator;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
@@ -74,6 +78,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     public static final String KEY_FIELD = "key";
     public static final String MESSAGE_FIELD = "message";
     public static final Fields fieldMessage = new Fields(MESSAGE_FIELD);
+    public static final Fields FIELDS_KEY = new Fields(KEY_FIELD);
 
     protected final String topologyName;
 
@@ -241,6 +246,16 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     /**
+     * Creates Kafka spout. Transforms received value to {@link Message}.
+     *
+     * @param topic Kafka topic
+     * @return {@link KafkaSpout}
+     */
+    protected KafkaSpout<String, AbstractMessage> buildKafkaSpoutForAbstractMessage(String topic, String spoutId) {
+        return new KafkaSpout<>(getKafkaSpoutAbstractMessageSupport(topic, spoutId).build());
+    }
+
+    /**
      * Creates Kafka bolt.
      *
      * @param topic Kafka topic
@@ -266,6 +281,22 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MessageSerializer.class.getName());
 
         return new KafkaBolt<String, Message>()
+                .withProducerProperties(properties)
+                .withTopicSelector(new DefaultTopicSelector(topic))
+                .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
+    }
+
+    /**
+     * Creates Kafka bolt, that uses {@link MessageSerializer} in order to serialize an object.
+     *
+     * @param topic Kafka topic
+     * @return {@link KafkaBolt}
+     */
+    protected KafkaBolt<String, T> buildKafkaBoltWithAbstractMessageSupport(final String topic) {
+        Properties properties = getKafkaProducerProperties();
+        properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, AbstractMessageSerializer.class.getName());
+
+        return new KafkaBolt<String, T>()
                 .withProducerProperties(properties)
                 .withTopicSelector(new DefaultTopicSelector(topic))
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper<>());
@@ -332,6 +363,19 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
 
         config.setGroupId(makeKafkaGroupName(spoutId))
                 .setRecordTranslator(new MessageTranslator())
+                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST);
+
+        return config;
+    }
+
+    protected KafkaSpoutConfig.Builder<String, AbstractMessage> getKafkaSpoutAbstractMessageSupport(String topic,
+                                                                                                    String spoutId) {
+        KafkaSpoutConfig.Builder<String, AbstractMessage> config = new KafkaSpoutConfig.Builder<>(
+                kafkaConfig.getHosts(), StringDeserializer.class, AbstractMessageDeserializer.class,
+                new CustomNamedSubscription(topic));
+
+        config.setGroupId(makeKafkaGroupName(spoutId))
+                .setRecordTranslator(new AbstractMessageTranslator())
                 .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST);
 
         return config;

@@ -23,13 +23,19 @@ import org.projectfloodlight.openflow.protocol.OFVersion;
 import java.util.Optional;
 
 public class MeterFeature extends AbstractFeature {
+    private final boolean isOvsMetersEnabled;
+
+    public MeterFeature(boolean isOvsMetersEnabled) {
+        this.isOvsMetersEnabled  = isOvsMetersEnabled;
+    }
+
     @Override
     public Optional<SpeakerSwitchView.Feature> discover(IOFSwitch sw) {
         Optional<SpeakerSwitchView.Feature> empty = Optional.empty();
         if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_13) < 0) {
             return empty;
         }
-        if (MANUFACTURER_NICIRA.equals(sw.getSwitchDescription().getManufacturerDescription())) {
+        if (MANUFACTURER_NICIRA.equals(sw.getSwitchDescription().getManufacturerDescription()) && !isOvsMetersEnabled) {
             return empty;
         }
 

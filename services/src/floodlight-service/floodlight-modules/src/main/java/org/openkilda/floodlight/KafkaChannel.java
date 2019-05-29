@@ -138,8 +138,4 @@ public class KafkaChannel implements IFloodlightModule {
     public String getSpeakerFlowHsTopic() {
         return formatTopicWithRegion(topics.getFlowHsSpeakerRegionTopic());
     }
-
-    public String getFlowHsTopic() {
-        return formatTopicWithRegion(topics.getFlowHsTopic());
-    }
 }
