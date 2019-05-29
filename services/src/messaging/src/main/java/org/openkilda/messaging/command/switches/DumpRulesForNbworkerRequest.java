@@ -13,24 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.messaging.command.switches;
 
-import org.openkilda.model.Switch;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.model.SwitchId;
 
-import java.util.Collection;
-import java.util.Optional;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
+import lombok.Value;
 
-public interface SwitchRepository extends Repository<Switch> {
-    boolean exists(SwitchId switchId);
+@Value
+@Builder
+public class DumpRulesForNbworkerRequest extends CommandData {
 
-    Optional<Switch> findById(SwitchId switchId);
+    @JsonProperty("switch_id")
+    private SwitchId switchId;
 
-    Collection<Switch> findSwitchesInFlowPathByFlowId(String flowId);
-
-    Switch reload(Switch entity);
-
-    void lockSwitches(Switch... switches);
-
-    void forceDelete(SwitchId switchId);
+    @JsonCreator
+    public DumpRulesForNbworkerRequest(@JsonProperty("switch_id") SwitchId switchId) {
+        this.switchId = switchId;
+    }
 }
