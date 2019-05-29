@@ -62,24 +62,29 @@ public abstract class WorkerBolt extends CoordinatedBolt {
     @Override
     protected void handleInput(Tuple input) throws Exception {
         String key = input.getStringByField(MessageTranslator.KEY_FIELD);
-        String sender = input.getSourceComponent();
+        String sourceComponent = input.getSourceComponent();
 
-        if (workerConfig.getHubComponent().equals(sender)) {
+        if (sourceComponent.equals(workerConfig.getHubComponent())) {
             pendingTasks.put(key, input);
             registerCallback(key, input);
 
             onHubRequest(input);
-        } else if (pendingTasks.containsKey(key) && workerConfig.getWorkerSpoutComponent().equals(sender)) {
-            // TODO(surabujin): it whould be great to get initial request together with response i.e.
-            // onAsyncResponse(input, pendingTasks.get(key)
-            onAsyncResponse(input);
+        } else if (pendingTasks.containsKey(key)) {
+            if (workerConfig.getWorkerSpoutComponent().equals(sourceComponent)) {
+                // TODO(surabujin): it whould be great to get initial request together with response i.e.
+                // onAsyncResponse(input, pendingTasks.get(key)onAsyncResponse(input);
+                onAsyncResponse(input);
+            } else if (sourceComponent.equals(CoordinatorBolt.ID)) {
+                log.warn("Timeout occurred while waiting for a response for {}", key);
+                onTimeout(key, input);
+            }
         } else {
             unhandledInput(input);
         }
     }
 
     /**
-     * Send response to hub bolt once all required responses are received.
+     * Send response to the hub bolt. Note: the operation's key is required.
      * @param input received tuple.
      * @param values response to be sent to the hub.
      */

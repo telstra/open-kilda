@@ -48,5 +48,4 @@ public interface FlowRepository extends Repository<Flow> {
     Collection<Flow> findDownFlows();
 
     Optional<String> getOrCreateFlowGroupId(String flowId);
-
 }
