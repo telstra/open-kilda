@@ -62,7 +62,7 @@ public class SpeakerWorkerBolt extends WorkerBolt {
     }
 
     @Override
-    public void onTimeout(String key) {
+    public void onTimeout(String key, Tuple tuple) {
         Tuple request = pendingTasks.get(key);
         service.handleTimeout(key, new SpeakerWorkerCarrierImpl(request));
     }

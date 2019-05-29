@@ -3,6 +3,7 @@ CREATE CONSTRAINT ON (`flow_cookie`:`flow_cookie`) ASSERT `flow_cookie`.`entityI
 CREATE CONSTRAINT ON (`flow_cookie`:`flow_cookie`) ASSERT `flow_cookie`.`unmasked_cookie` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_dump`:`flow_dump`) ASSERT `flow_dump`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_event`:`flow_event`) ASSERT `flow_event`.`entityId` IS UNIQUE;
+CREATE CONSTRAINT ON (`flow_event`:`flow_event`) ASSERT `flow_event`.`task_id` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow`:`flow`) ASSERT `flow`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow`:`flow`) ASSERT `flow`.`flow_id` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_history`:`flow_history`) ASSERT `flow_history`.`entityId` IS UNIQUE;

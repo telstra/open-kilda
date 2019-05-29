@@ -100,7 +100,7 @@ public class SwitchValidateManager extends HubBolt implements SwitchValidationCa
     }
 
     @Override
-    public void onTimeout(String key) {
+    public void onTimeout(String key, Tuple tuple) {
         service.handleTaskTimeout(key);
     }
 
