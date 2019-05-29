@@ -66,7 +66,9 @@ class Lab:
         else:
             name = make_container_name(lab_id)
             env = {'LAB_ID': lab_id}
-            volumes = {'/var/run/docker.sock': {'bind': '/var/run/docker.sock', 'mode': 'rw'}}
+            volumes = {
+                '/var/run/docker.sock': {'bind': '/var/run/docker.sock', 'mode': 'rw'},
+                '/lib/modules': {'bind': '/lib/modules', 'mode': 'ro'}}
             docker.containers.run(LAB_SERVICE_IMAGE, command='service', environment=env, volumes=volumes, name=name,
                                   privileged=True, detach=True)
             docker.networks.get(NETWORK_NAME).connect(name, aliases=[name])
