@@ -37,7 +37,7 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
     List<String> managementControllers
 
     @Value("#{'\${floodlight.controllers.stat}'.split(',')}")
-    String statControllers
+    List<String> statControllers
     
     CustomTopology createRandomTopology(int switchesAmount, int islsAmount) {
         def topo = new CustomTopology()
@@ -50,6 +50,15 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
             def dst = topo.pickRandomSwitch([src])
             topo.addIsl(src, dst)
         }
+
+        def allSwitches = topo.getSwitches()
+        def allLinks = topo.getIsls()
+        for (def i = 0; i < allSwitches.size() - 1; i++) {
+            if (!allLinks.find { it.srcSwitch == allSwitches[i] && it.dstSwitch == allSwitches[i+1] }) {
+                topo.addIsl(allSwitches[i], allSwitches[i+1])
+            }
+        }
+
         topo.setControllers(managementControllers)
         labService.createLab(topo)
         Wrappers.wait(30 + switchesAmount * 3, 5) {
