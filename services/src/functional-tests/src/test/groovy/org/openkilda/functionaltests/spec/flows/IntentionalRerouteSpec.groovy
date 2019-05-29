@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 

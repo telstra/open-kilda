@@ -1,9 +1,11 @@
 package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -22,6 +24,7 @@ class LinkMaintenanceSpec extends BaseSpecification {
         database.resetCosts()  // set default cost on all links before tests
     }
 
+    @Tags(SMOKE)
     def "Maintenance mode can be set/unset for a particular link"() {
         given: "An active link"
         def isl = topology.islsForActiveSwitches.first()
