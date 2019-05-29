@@ -128,7 +128,7 @@ public class GrpcServiceImpl implements GrpcService {
 
     private HttpHeaders buildHeadersWithCorrelationId() {
         HttpHeaders headers = new HttpHeaders();
-        headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
+        headers.set(Utils.CORRELATION_ID, "grpc-tests-" + System.currentTimeMillis());
         return headers;
     }
 }

@@ -574,7 +574,7 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     private HttpHeaders buildHeadersWithCorrelationId() {
         HttpHeaders headers = new HttpHeaders();
-        headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
+        headers.set(Utils.CORRELATION_ID, "fn-tests-" + System.currentTimeMillis());
         return headers;
     }
 
