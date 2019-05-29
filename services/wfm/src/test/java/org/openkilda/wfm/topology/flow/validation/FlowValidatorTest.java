@@ -155,8 +155,8 @@ public class FlowValidatorTest {
         target.checkFlowForIslConflicts(flow.getFlow());
     }
 
-    @Test(expected = FlowValidationException.class)
-    public void shouldFailIfSourceVlanIsZeroAndPortIsOccupied() throws FlowValidationException {
+    @Test
+    public void shouldNotFailIfSourceVlanIsZeroAndPortVlanIsOccupied() throws FlowValidationException {
         defaultSetUp(SRC_SWITCH_ID, SRC_PORT, 0, DST_SWITCH_ID, DST_PORT, DST_VLAN, FLOW_ID);
 
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
@@ -167,6 +167,23 @@ public class FlowValidatorTest {
                 .srcSwitch(srcSwitch)
                 .srcPort(SRC_PORT)
                 .srcVlan(SRC_VLAN)
+                .destSwitch(dstSwitch)
+                .buildUnidirectionalFlow();
+        target.checkFlowForEndpointConflicts(flow.getFlow());
+    }
+
+    @Test(expected = FlowValidationException.class)
+    public void shouldFailIfSourcePortIsOccupied() throws FlowValidationException {
+        defaultSetUp(SRC_SWITCH_ID, SRC_PORT, 0, DST_SWITCH_ID, DST_PORT, DST_VLAN, FLOW_ID);
+
+        Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
+        Switch dstSwitch = Switch.builder().switchId(new SwitchId("de:ad:be:af:de:ad:be:af")).build();
+
+        UnidirectionalFlow flow = new TestFlowBuilder()
+                .flowId(ANOTHER_FLOW_ID)
+                .srcSwitch(srcSwitch)
+                .srcPort(SRC_PORT)
+                .srcVlan(0)
                 .destSwitch(dstSwitch)
                 .buildUnidirectionalFlow();
         target.checkFlowForEndpointConflicts(flow.getFlow());
@@ -189,8 +206,8 @@ public class FlowValidatorTest {
         target.checkFlowForEndpointConflicts(flow.getFlow());
     }
 
-    @Test(expected = FlowValidationException.class)
-    public void shouldFailIfSourceVlanIsAlreadyOccupiedAndRequestedSrcVlanIsZero() throws FlowValidationException {
+    @Test
+    public void shouldNotFailIfSourceVlanIsOccupiedAndRequestedSrcVlanIsZero() throws FlowValidationException {
         defaultSetUp(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, DST_SWITCH_ID, DST_PORT, 10, FLOW_ID);
 
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
@@ -224,8 +241,27 @@ public class FlowValidatorTest {
         target.checkFlowForEndpointConflicts(flow.getFlow());
     }
 
-    @Test(expected = FlowValidationException.class)
-    public void shouldFailIfDestinationVlanIsZeroAndPortIsOccupied() throws FlowValidationException {
+    @Test
+    public void shouldNotFailIfDestinationVlanNotZeroAndPortIsOccupied() throws FlowValidationException {
+        defaultSetUp(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, DST_SWITCH_ID, DST_PORT, DST_PORT, FLOW_ID);
+
+        Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
+        Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
+
+        UnidirectionalFlow flow = new TestFlowBuilder()
+                .flowId(ANOTHER_FLOW_ID)
+                .srcSwitch(srcSwitch)
+                .srcPort(SRC_PORT)
+                .srcVlan(SRC_VLAN + 1)
+                .destSwitch(dstSwitch)
+                .destPort(0)
+                .destVlan(DST_VLAN)
+                .buildUnidirectionalFlow();
+        target.checkFlowForEndpointConflicts(flow.getFlow());
+    }
+
+    @Test
+    public void shouldNotFailIfPortIsOccupiedAndDestinationVlanNotZero() throws FlowValidationException {
         defaultSetUp(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, DST_SWITCH_ID, DST_PORT, 0, FLOW_ID);
 
         Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
@@ -239,6 +275,25 @@ public class FlowValidatorTest {
                 .destSwitch(dstSwitch)
                 .destPort(DST_PORT)
                 .destVlan(DST_VLAN)
+                .buildUnidirectionalFlow();
+        target.checkFlowForEndpointConflicts(flow.getFlow());
+    }
+
+    @Test(expected = FlowValidationException.class)
+    public void shouldFailIfDestinationPortIsOccupied() throws FlowValidationException {
+        defaultSetUp(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, DST_SWITCH_ID, DST_PORT, 0, FLOW_ID);
+
+        Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
+        Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
+
+        UnidirectionalFlow flow = new TestFlowBuilder()
+                .flowId(ANOTHER_FLOW_ID)
+                .srcSwitch(srcSwitch)
+                .srcPort(SRC_PORT)
+                .srcVlan(SRC_VLAN + 1)
+                .destSwitch(dstSwitch)
+                .destPort(DST_PORT)
+                .destVlan(0)
                 .buildUnidirectionalFlow();
         target.checkFlowForEndpointConflicts(flow.getFlow());
     }

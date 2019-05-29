@@ -17,6 +17,7 @@ package org.openkilda.floodlight.test.standard;
 
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_FULL_PORT_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_PRIORITY;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 
@@ -82,7 +83,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
-                .setPriority(FLOW_PRIORITY)
+                .setPriority(FLOW_FULL_PORT_PRIORITY)
                 .setMatch(ofFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .build())

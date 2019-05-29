@@ -135,7 +135,6 @@ public class SwitchManagerTest {
     private static final FloodlightModuleContext context = new FloodlightModuleContext();
     private static final long cookie = 123L;
     private static final long bandwidth = 20000L;
-    private static final long smallBandwidth = 100L;
     private static final String cookieHex = "7B";
     private static final SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
     private static final DatapathId defaultDpid = DatapathId.of(1);

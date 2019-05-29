@@ -19,6 +19,7 @@ import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.BDF_DEFAULT_PORT;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.CATCH_BFD_RULE_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_FULL_PORT_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
@@ -180,7 +181,7 @@ public interface OutputCommands {
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
-                .setPriority(FLOW_PRIORITY)
+                .setPriority(FLOW_FULL_PORT_PRIORITY)
                 .setMatch(ofFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .build())
@@ -249,7 +250,7 @@ public interface OutputCommands {
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
-                .setPriority(FLOW_PRIORITY)
+                .setPriority(FLOW_FULL_PORT_PRIORITY)
                 .setMatch(ofFactory.buildMatch()
                         .setExact(MatchField.IN_PORT, OFPort.of(inputPort))
                         .build())
