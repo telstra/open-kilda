@@ -167,6 +167,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int CATCH_BFD_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int ROUND_TRIP_LATENCY_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
+    public static final int DEFAULT_FLOW_PRIORITY = FlowModUtils.PRIORITY_MED;
     public static final int BDF_DEFAULT_PORT = 3784;
     public static final int MIN_RATE_IN_KBPS = 64;
     public static final int ROUND_TRIP_LATENCY_GROUP_ID = 1;
@@ -389,8 +390,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         // build match by input port and input vlan id
         Match match = matchFlow(ofFactory, inputPort, inputVlanId);
 
+        int flowPriority = getFlowPriority(inputVlanId);
+
         // build FLOW_MOD command with meter
-        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY)
+        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority)
                 .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
                 .setMatch(match);
 
@@ -496,8 +499,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         // build match by input port and transit vlan id
         Match match = matchFlow(ofFactory, inputPort, inputVlanId);
 
+        int flowPriority = getFlowPriority(inputVlanId);
+
         // build FLOW_MOD command with meter
-        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY)
+        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority)
                 .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
                 .setMatch(match);
 
@@ -1938,5 +1943,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .filter(meterConfig -> meterConfig.getMeterId() == meter)
                 .findFirst()
                 .orElse(null);
+    }
+
+    private int getFlowPriority(int inputVlanId) {
+        return inputVlanId == 0 ? DEFAULT_FLOW_PRIORITY : FLOW_PRIORITY;
     }
 }
