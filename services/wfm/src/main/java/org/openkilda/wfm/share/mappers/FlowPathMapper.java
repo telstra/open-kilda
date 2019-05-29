@@ -95,19 +95,22 @@ public abstract class FlowPathMapper {
      * Convert {@link FlowPath} to {@link PathNodePayload}.
      */
     public List<PathNodePayload> mapToPathNodes(Flow flow, FlowPath flowPath) {
-        List<PathNodePayload> resultList = new ArrayList<>();
+        return mapToPathNodes(flowPath, flow.getSrcPort(), flow.getDestPort());
+    }
 
-        boolean forward = flow.isForward(flowPath);
-        int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
-        int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
+    /**
+     * Convert {@link FlowPath} to {@link PathNodePayload}.
+     */
+    public List<PathNodePayload> mapToPathNodes(FlowPath flowPath, int srcPort, int destPort) {
+        List<PathNodePayload> resultList = new ArrayList<>();
 
         if (flowPath.getSegments().isEmpty()) {
             resultList.add(
-                    new PathNodePayload(flowPath.getSrcSwitch().getSwitchId(), inPort, outPort));
+                    new PathNodePayload(flowPath.getSrcSwitch().getSwitchId(), srcPort, destPort));
         } else {
             List<PathSegment> pathSegments = flowPath.getSegments();
 
-            resultList.add(new PathNodePayload(flowPath.getSrcSwitch().getSwitchId(), inPort,
+            resultList.add(new PathNodePayload(flowPath.getSrcSwitch().getSwitchId(), srcPort,
                     pathSegments.get(0).getSrcPort()));
 
             for (int i = 1; i < pathSegments.size(); i++) {
@@ -119,7 +122,7 @@ public abstract class FlowPathMapper {
             }
 
             resultList.add(new PathNodePayload(flowPath.getDestSwitch().getSwitchId(),
-                    pathSegments.get(pathSegments.size() - 1).getDestPort(), outPort));
+                    pathSegments.get(pathSegments.size() - 1).getDestPort(), destPort));
         }
 
         return resultList;

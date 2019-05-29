@@ -82,7 +82,7 @@ public class FlowValidationHubBolt extends HubBolt {
     }
 
     @Override
-    public void onTimeout(String key) {
+    public void onTimeout(String key, Tuple tuple) {
         service.handleTaskTimeout(key);
     }
 

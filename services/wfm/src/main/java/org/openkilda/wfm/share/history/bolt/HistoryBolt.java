@@ -13,25 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.bolt;
+package org.openkilda.wfm.share.history.bolt;
 
-import org.openkilda.messaging.Utils;
-import org.openkilda.model.history.FlowDump;
-import org.openkilda.model.history.FlowEvent;
-import org.openkilda.model.history.FlowHistory;
+import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
+
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.share.services.HistoryService;
+import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.wfm.share.history.service.HistoryService;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 public class HistoryBolt extends AbstractBolt {
     private final PersistenceManager persistenceManager;
     private transient HistoryService historyService;
-
-    public static final Fields FIELDS_HISTORY = new Fields(Utils.PAYLOAD);
 
     public HistoryBolt(PersistenceManager persistenceManager) {
         this.persistenceManager = persistenceManager;
@@ -44,13 +40,9 @@ public class HistoryBolt extends AbstractBolt {
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        Object payload = input.getValueByField(Utils.PAYLOAD);
-        if (payload instanceof FlowEvent) {
-            historyService.store((FlowEvent) payload);
-        } else if (payload instanceof FlowHistory) {
-            historyService.store((FlowHistory) payload);
-        } else if (payload instanceof FlowDump) {
-            historyService.store((FlowDump) payload);
+        Object payload = input.getValueByField(FIELD_ID_PAYLOAD);
+        if (payload instanceof FlowHistoryHolder) {
+            historyService.store((FlowHistoryHolder) payload);
         } else {
             log.error("Skip undefined payload: {}", payload);
         }

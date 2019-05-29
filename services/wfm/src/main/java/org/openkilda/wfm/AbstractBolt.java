@@ -53,11 +53,10 @@ public abstract class AbstractBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple input) {
         if (log.isDebugEnabled()) {
-            log.debug("{} input tuple from {}:{} [{}]",
+            log.trace("{} input tuple from {}:{} [{}]",
                       getClass().getName(), input.getSourceComponent(), input.getSourceStreamId(),
                       formatTuplePayload(input));
         }
-
         try {
             currentTuple = input;
             commandContext = setupCommandContext();
@@ -98,7 +97,7 @@ public abstract class AbstractBolt extends BaseRichBolt {
     }
 
     protected void ack(Tuple input) {
-        log.debug("ACK tuple id {}", input.getMessageId());
+        log.trace("Ack tuple id {}", input.getMessageId());
         output.ack(input);
     }
 
