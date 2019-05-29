@@ -32,6 +32,9 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @RunWith(MockitoJUnitRunner.class)
 public class CoordinatorBoltTest {
 
@@ -77,7 +80,14 @@ public class CoordinatorBoltTest {
         target.registerCallback("request2", "some context", timeout, secondTask);
 
         assertThat(target.getCallbacks().size(), is(2));
-        assertThat(target.getTimeouts().size(), is(2));
+
+        // check that we have stored timeouts for out tasks
+        Set<String> tasks = target.getTimeouts()
+                .values()
+                .stream()
+                .flatMap(Set::stream)
+                .collect(Collectors.toSet());
+        assertThat(tasks.size(), is(2));
 
         long afterTimeout = System.currentTimeMillis() + timeout + 1L;
         target.tick(afterTimeout);

@@ -18,6 +18,12 @@ package org.openkilda.wfm.topology.stats.bolts;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
 
+import org.openkilda.floodlight.flow.request.FlowRequest;
+import org.openkilda.floodlight.flow.request.InstallEgressRule;
+import org.openkilda.floodlight.flow.request.InstallMultiSwitchIngressRule;
+import org.openkilda.floodlight.flow.request.InstallSingleSwitchIngressRule;
+import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -26,8 +32,11 @@ import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.model.Cookie;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.stats.MeasurePoint;
 
+import com.fasterxml.jackson.databind.JsonMappingException;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -91,35 +100,74 @@ public class CacheFilterBolt extends BaseRichBolt {
         String json = tuple.getString(0);
 
         try {
-            BaseMessage bm = MAPPER.readValue(json, BaseMessage.class);
-            if (bm instanceof CommandMessage) {
-                CommandMessage message = (CommandMessage) bm;
-                CommandData data = message.getData();
-                if (data instanceof InstallIngressFlow) {
-                    InstallIngressFlow command = (InstallIngressFlow) data;
-                    logMatchedRecord(command);
-                    emit(tuple, Commands.UPDATE, command, command.getMeterId(), MeasurePoint.INGRESS);
-                } else if (data instanceof InstallEgressFlow) {
-                    InstallEgressFlow command = (InstallEgressFlow) data;
-                    logMatchedRecord(command);
-                    emit(tuple, Commands.UPDATE, command, MeasurePoint.EGRESS);
-                } else if (data instanceof InstallOneSwitchFlow) {
-                    InstallOneSwitchFlow command = (InstallOneSwitchFlow) data;
-                    logMatchedRecord(command);
-                    emit(tuple, Commands.UPDATE, command, command.getMeterId(), MeasurePoint.INGRESS);
-                    emit(tuple, Commands.UPDATE, command, MeasurePoint.EGRESS);
-                } else if (data instanceof RemoveFlow) {
-                    RemoveFlow command = (RemoveFlow) data;
-                    logMatchedRecord(command);
-                    emit(tuple, Commands.REMOVE, command);
-                }
+            try {
+                BaseMessage bm = MAPPER.readValue(json, BaseMessage.class);
+                handleCommandMessage(tuple, bm);
+                return;
+            } catch (JsonMappingException e) {
+                logger.debug("Received non BaseMessage message {}", json);
             }
+
+            AbstractMessage abstractMessage = MAPPER.readValue(json, AbstractMessage.class);
+            handleAbstractMessage(tuple, abstractMessage);
         } catch (IOException exception) {
             logger.error("Could not deserialize message {}", tuple, exception);
         } catch (Exception e) {
             logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
             outputCollector.ack(tuple);
+        }
+    }
+
+    private void handleCommandMessage(Tuple tuple, BaseMessage baseMessage) {
+        if (baseMessage instanceof CommandMessage) {
+            CommandMessage message = (CommandMessage) baseMessage;
+            CommandData data = message.getData();
+            if (data instanceof InstallIngressFlow) {
+                InstallIngressFlow command = (InstallIngressFlow) data;
+                logMatchedRecord(command);
+                emit(tuple, Commands.UPDATE, command, command.getMeterId(), MeasurePoint.INGRESS);
+            } else if (data instanceof InstallEgressFlow) {
+                InstallEgressFlow command = (InstallEgressFlow) data;
+                logMatchedRecord(command);
+                emit(tuple, Commands.UPDATE, command, MeasurePoint.EGRESS);
+            } else if (data instanceof InstallOneSwitchFlow) {
+                InstallOneSwitchFlow command = (InstallOneSwitchFlow) data;
+                logMatchedRecord(command);
+                emit(tuple, Commands.UPDATE, command, command.getMeterId(), MeasurePoint.INGRESS);
+                emit(tuple, Commands.UPDATE, command, MeasurePoint.EGRESS);
+            } else if (data instanceof RemoveFlow) {
+                RemoveFlow command = (RemoveFlow) data;
+                logMatchedRecord(command);
+                emit(tuple, Commands.REMOVE, command);
+            }
+        }
+    }
+
+    private void handleAbstractMessage(Tuple tuple, AbstractMessage message) {
+        if (message instanceof InstallMultiSwitchIngressRule) {
+            InstallMultiSwitchIngressRule command = (InstallMultiSwitchIngressRule) message;
+            logMatchedRecord(command, command.getCookie());
+            emit(tuple, Commands.UPDATE, command.getFlowId(), command.getSwitchId(),
+                    command.getCookie().getValue(), command.getMeterId().getValue(), MeasurePoint.INGRESS);
+        } else if (message instanceof InstallSingleSwitchIngressRule) {
+            InstallSingleSwitchIngressRule command = (InstallSingleSwitchIngressRule) message;
+            logMatchedRecord(command, command.getCookie());
+
+            emit(tuple, Commands.UPDATE, command.getFlowId(), command.getSwitchId(),
+                    command.getCookie().getValue(), command.getMeterId().getValue(), MeasurePoint.INGRESS);
+            emit(tuple, Commands.UPDATE, command.getFlowId(), command.getSwitchId(),
+                    command.getCookie().getValue(), null, MeasurePoint.EGRESS);
+        } else if (message instanceof InstallEgressRule) {
+            InstallEgressRule command = (InstallEgressRule) message;
+            logMatchedRecord(command, command.getCookie());
+            emit(tuple, Commands.UPDATE, command.getFlowId(), command.getSwitchId(),
+                    command.getCookie().getValue(), null, MeasurePoint.EGRESS);
+        } else if (message instanceof RemoveRule) {
+            RemoveRule command = (RemoveRule) message;
+            logMatchedRecord(command, command.getCookie());
+            emit(tuple, Commands.REMOVE, command.getFlowId(), command.getSwitchId(), command.getCookie().getValue(),
+                    null, null);
         }
     }
 
@@ -132,13 +180,12 @@ public class CacheFilterBolt extends BaseRichBolt {
     }
 
     private void emit(Tuple tuple, Commands action, BaseFlow command, Long meterId, MeasurePoint point) {
-        Values values = new Values(
-                action,
-                command.getId(),
-                command.getSwitchId(),
-                command.getCookie(),
-                meterId,
-                point);
+        emit(tuple, action, command.getId(), command.getSwitchId(), command.getCookie(), meterId, point);
+    }
+
+    private void emit(Tuple tuple, Commands action, String flowId, SwitchId switchId, Long cookie, Long meterId,
+                      MeasurePoint point) {
+        Values values = new Values(action, flowId, switchId, cookie, meterId, point);
         outputCollector.emit(CACHE_UPDATE.name(), tuple, values);
     }
 
@@ -151,8 +198,16 @@ public class CacheFilterBolt extends BaseRichBolt {
     }
 
     private void logMatchedRecord(BaseFlow flowCommand) {
-        logger.debug("Catch {} command flow_id={} sw={} cookie={}",
-                flowCommand.getClass().getCanonicalName(),
-                flowCommand.getId(), flowCommand.getSwitchId(), flowCommand.getCookie());
+        logFlowDetails(flowCommand.getClass().getCanonicalName(), flowCommand.getId(), flowCommand.getSwitchId(),
+                flowCommand.getCookie());
+    }
+
+    private void logMatchedRecord(FlowRequest flowRule, Cookie cookie) {
+        logFlowDetails(flowRule.getClass().getCanonicalName(), flowRule.getFlowId(), flowRule.getSwitchId(),
+                cookie.getValue());
+    }
+
+    private void logFlowDetails(String flowCommand, String flowId, SwitchId switchId, Long cookie) {
+        logger.debug("Catch {} command flow_id={} sw={} cookie={}", flowCommand, flowId, switchId, cookie);
     }
 }

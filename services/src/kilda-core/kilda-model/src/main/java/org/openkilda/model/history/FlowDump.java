@@ -15,7 +15,9 @@
 
 package org.openkilda.model.history;
 
-import org.openkilda.model.FlowStatus;
+import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 
 import lombok.AccessLevel;
@@ -64,10 +66,12 @@ public class FlowDump {
     private boolean ignoreBandwidth;
 
     @Property(name = "forward_cookie")
-    private long forwardCookie;
+    @Convert(graphPropertyType = Long.class)
+    private Cookie forwardCookie;
 
     @Property(name = "reverse_cookie")
-    private long reverseCookie;
+    @Convert(graphPropertyType = Long.class)
+    private Cookie reverseCookie;
 
     @Property(name = "src_switch")
     @Convert(graphPropertyType = String.class)
@@ -90,10 +94,12 @@ public class FlowDump {
     private int destinationVlan;
 
     @Property(name = "forward_meter_id")
-    private Long forwardMeterId;
+    @Convert(graphPropertyType = Long.class)
+    private MeterId forwardMeterId;
 
     @Property(name = "reverse_meter_id")
-    private Long reverseMeterId;
+    @Convert(graphPropertyType = Long.class)
+    private MeterId reverseMeterId;
 
     @Property(name = "forward_path")
     private String forwardPath;
@@ -103,9 +109,9 @@ public class FlowDump {
 
     @Property(name = "forward_status")
     @Convert(graphPropertyType = String.class)
-    private FlowStatus forwardStatus;
+    private FlowPathStatus forwardStatus;
 
     @Property(name = "reverse_status")
     @Convert(graphPropertyType = String.class)
-    private FlowStatus reverseStatus;
+    private FlowPathStatus reverseStatus;
 }
