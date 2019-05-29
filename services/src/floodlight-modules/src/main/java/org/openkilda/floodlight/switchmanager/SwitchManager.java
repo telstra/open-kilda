@@ -19,7 +19,6 @@ import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
-import static org.openkilda.floodlight.pathverification.PathVerificationService.VERIFICATION_BCAST_PACKET_DST;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
@@ -39,6 +38,7 @@ import org.openkilda.floodlight.error.OfInstallException;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
+import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
@@ -178,6 +178,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     private ConnectModeRequest.Mode connectMode;
     private SwitchManagerConfig config;
 
+    private String verificationBcastPacketDst;
+
     /**
      * Create an OFInstructionApplyActions which applies actions.
      *
@@ -222,7 +224,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 IRestApiService.class,
                 KafkaUtilityService.class,
                 IKafkaProducerService.class,
-                FeatureDetectorService.class);
+                FeatureDetectorService.class,
+                IPathVerificationService.class);
     }
 
     /**
@@ -237,6 +240,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         FloodlightModuleConfigurationProvider provider = FloodlightModuleConfigurationProvider.of(context, this);
         config = provider.getConfiguration(SwitchManagerConfig.class);
         String connectModeProperty = config.getConnectMode();
+
+        verificationBcastPacketDst =
+                context.getServiceImpl(IPathVerificationService.class).getConfig().getVerificationBcastPacketDst();
 
         try {
             connectMode = ConnectModeRequest.Mode.valueOf(connectModeProperty);
@@ -1005,7 +1011,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             logger.debug("Skip installation of drop loop rule for switch {}", dpid);
         } else {
             Builder builder = ofFactory.buildMatch();
-            builder.setExact(MatchField.ETH_DST, MacAddress.of(VERIFICATION_BCAST_PACKET_DST));
+            builder.setExact(MatchField.ETH_DST, MacAddress.of(verificationBcastPacketDst));
             builder.setExact(MatchField.ETH_SRC, dpIdToMac(sw.getId()));
             Match match = builder.build();
 
@@ -1384,7 +1390,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @return {@link Match}
      */
     private Match matchVerification(final IOFSwitch sw, final boolean isBroadcast) {
-        MacAddress dstMac = isBroadcast ? MacAddress.of(VERIFICATION_BCAST_PACKET_DST) : dpIdToMac(sw.getId());
+        MacAddress dstMac = isBroadcast ? MacAddress.of(verificationBcastPacketDst) : dpIdToMac(sw.getId());
         Builder builder = sw.getOFFactory().buildMatch();
         builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.NO_MASK);
         return builder.build();

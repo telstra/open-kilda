@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -102,12 +102,13 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
     public static final U64 OF_CATCH_RULE_COOKIE = U64.of(Cookie.VERIFICATION_BROADCAST_RULE_COOKIE);
 
-    public static final String VERIFICATION_BCAST_PACKET_DST = "08:ED:02:E3:FF:FF";
     public static final int VERIFICATION_PACKET_UDP_PORT = 61231;
     public static final String VERIFICATION_PACKET_IP_DST = "192.168.0.255";
 
     private IKafkaProducerService producerService;
     private IOFSwitchService switchService;
+
+    private PathVerificationServiceConfig config;
 
     private String topoDiscoTopic;
     private String region;
@@ -144,6 +145,16 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     }
 
     @Override
+    public PathVerificationServiceConfig getConfig() {
+        return config;
+    }
+
+    @VisibleForTesting
+    void setConfig(PathVerificationServiceConfig config) {
+        this.config = config;
+    }
+
+    @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         logger.debug("main pathverification service: " + this);
 
@@ -156,7 +167,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     @VisibleForTesting
     void initConfiguration(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
         FloodlightModuleConfigurationProvider provider = FloodlightModuleConfigurationProvider.of(moduleContext, this);
-        PathVerificationServiceConfig config = provider.getConfiguration(PathVerificationServiceConfig.class);
+        config = provider.getConfiguration(PathVerificationServiceConfig.class);
 
         islBandwidthQuotient = config.getIslBandwidthQuotient();
 
@@ -331,7 +342,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                 vp.getOptionalTlvList().add(tokenTlv);
             }
 
-            MacAddress dstMac = MacAddress.of(VERIFICATION_BCAST_PACKET_DST);
+            MacAddress dstMac = MacAddress.of(config.getVerificationBcastPacketDst());
             IPv4Address dstIp = IPv4Address.of(VERIFICATION_PACKET_IP_DST);
             IPv4 l3 = new IPv4()
                     .setSourceAddress(

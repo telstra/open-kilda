@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -22,4 +22,6 @@ import org.projectfloodlight.openflow.types.OFPort;
 public interface IPathVerificationService extends IFloodlightService {
 
     boolean sendDiscoveryMessage(DatapathId srcSwId, OFPort port, Long packetId);
+
+    PathVerificationServiceConfig getConfig();
 }
