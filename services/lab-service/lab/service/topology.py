@@ -118,11 +118,6 @@ class Switch:
             ]
             self.vscmd.extend(cmd) if batch else vsctl(cmd)
 
-    def set_controller(self, controller):
-        cnt = " ".join([resolve_host(controller) for controller in controller.split(" ")])
-        cmd = ['set-controller {} {}'.format(self.name, cnt)]
-        vsctl(cmd)
-
 
 class ASwitch(Switch):
     def add_route_flows(self, mappings):

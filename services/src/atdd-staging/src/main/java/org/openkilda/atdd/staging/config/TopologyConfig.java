@@ -26,7 +26,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -36,11 +35,8 @@ public class TopologyConfig {
     @Value("file:${topology.definition.file:topology.yaml}")
     private Resource topologyDefinitionFile;
 
-    @Value("${floodlight.controller.management}")
-    private String managementController;
-
-    @Value("${floodlight.controller.stat}")
-    private String statController;
+    @Value("#{'${floodlight.controller.uri}'.split(',')}")
+    private List<String> controllerHosts;
 
     @Value("${bfd.offset}")
     private Integer bfdOffset;
@@ -53,15 +49,13 @@ public class TopologyConfig {
         TopologyDefinition topologyDefinition =
                 mapper.readValue(topologyDefinitionFile.getInputStream(), TopologyDefinition.class);
 
-        List<String> controllerHosts = Arrays.asList(managementController, statController);
-
         topologyDefinition.setBfdOffset(bfdOffset);
         topologyDefinition.setControllers(controllerHosts);
         // TODO(tdurakov): it should be possible to reproduce env by dumping existing topology or changing this random
         // pick
         for (TopologyDefinition.Switch sw : topologyDefinition.getSwitches()) {
             int pick = new Random().nextInt(controllerHosts.size());
-            sw.setController(managementController + " " + statController);
+            sw.setController(controllerHosts.get(pick));
         }
         return topologyDefinition;
     }

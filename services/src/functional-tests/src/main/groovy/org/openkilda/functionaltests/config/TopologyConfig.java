@@ -26,7 +26,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -35,11 +34,8 @@ public class TopologyConfig {
     @Value("file:${topology.definition.file:topology.yaml}")
     private Resource topologyDefinitionFile;
 
-    @Value("${floodlight.controller.management}")
-    private String managementController;
-
-    @Value("${floodlight.controller.stat}")
-    private String statController;
+    @Value("#{'${floodlight.controller.uri}'.split(',')}")
+    private List<String> controllerHosts;
 
     @Value("${bfd.offset}")
     private Integer bfdOffset;
@@ -51,14 +47,10 @@ public class TopologyConfig {
 
         TopologyDefinition topologyDefinition =
                 mapper.readValue(topologyDefinitionFile.getInputStream(), TopologyDefinition.class);
-
-        List<String> controllerHosts = Arrays.asList(managementController, statController);
-
         topologyDefinition.setControllers(controllerHosts);
         topologyDefinition.setBfdOffset(bfdOffset);
-
         for (TopologyDefinition.Switch sw : topologyDefinition.getSwitches()) {
-            sw.setController(managementController + " " + statController);
+            sw.setController(controllerHosts.get(0));
         }
         return topologyDefinition;
     }

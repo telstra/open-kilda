@@ -27,6 +27,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -37,11 +38,8 @@ import java.util.Objects;
 @Profile("virtual")
 public class LockKeeperVirtualImpl extends LockKeeperServiceImpl {
 
-    private static String DUMMY_CONTROLLER = "tcp:192.0.2.0:6666";
-    @Value("${floodlight.controller.management}")
-    private String managementController;
-    @Value("${floodlight.controller.stat}")
-    private String statController;
+    @Value("#{'${floodlight.controller.uri}'.split(',')}")
+    private List<String> controllerHost;
 
     @Autowired
     private TopologyDefinition topology;
@@ -57,22 +55,17 @@ public class LockKeeperVirtualImpl extends LockKeeperServiceImpl {
     @Override
     public void knockoutSwitch(SwitchId switchId) {
         String swName = getSwitchBySwitchId(switchId).getName();
-        setController(switchId, DUMMY_CONTROLLER);
-        log.debug("Knock out switch: {}", swName);
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/knockoutswitch", HttpMethod.POST,
+                new HttpEntity<>(new SwitchModify(swName, null), buildJsonHeaders()), String.class);
+        log.debug("Knocking out switch: {}", swName);
     }
 
     @Override
     public void reviveSwitch(SwitchId switchId) {
         String swName = getSwitchBySwitchId(switchId).getName();
-        setController(switchId, managementController + " " + statController);
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/reviveswitch", HttpMethod.POST,
+                new HttpEntity<>(new SwitchModify(swName, null),
+                        buildJsonHeaders()), String.class);
         log.debug("Revive switch: {}", swName);
-    }
-
-    @Override
-    public void setController(SwitchId switchId, String controller) {
-        String swName = getSwitchBySwitchId(switchId).getName();
-        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/set-controller", HttpMethod.POST,
-                new HttpEntity<>(new SwitchModify(swName, controller), buildJsonHeaders()), String.class);
-        log.debug("Set '{}' controller on the '{}' switch", controller, swName);
     }
 }
