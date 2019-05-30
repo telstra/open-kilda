@@ -933,9 +933,11 @@ class ProtectedPathSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Protected path is recalculated only"
-        def newFlowPathInfo = northbound.getFlowPath(flow.id)
-        pathHelper.convert(newFlowPathInfo) == currentPath
-        pathHelper.convert(newFlowPathInfo.protectedPath) == alternativePath
+        Wrappers.wait(WAIT_OFFSET) {
+            def newFlowPathInfo = northbound.getFlowPath(flow.id)
+            pathHelper.convert(newFlowPathInfo) == currentPath
+            pathHelper.convert(newFlowPathInfo.protectedPath) == alternativePath
+        }
 
         and: "Cleanup: Restore topology, delete flow and reset costs"
         northbound.portUp(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
