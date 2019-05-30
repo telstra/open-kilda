@@ -878,7 +878,6 @@ class ProtectedPathSpec extends BaseSpecification {
         database.resetCosts()
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2420")
     def "System doesn't reroute main flow path when protected path is broken and new alt path is available\
 (altPath is more preferable than mainPath)"() {
         given: "Two active neighboring switches with three paths at least"
@@ -894,11 +893,10 @@ class ProtectedPathSpec extends BaseSpecification {
         def currentPath = pathHelper.convert(flowPathInfo)
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
         List<PathNode> broughtDownPorts = []
-        def altPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path.findAll {
+        def allPaths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
+        allPaths.findAll {
             it != currentPath && it != currentProtectedPath
-        }.unique { it.first() }
-
-        altPaths.each { path ->
+        }.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
             northbound.portDown(src.switchId, src.portNo)
@@ -916,12 +914,11 @@ class ProtectedPathSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
 
         when: "Make the current path less preferable than alternative path"
-        def alternativePath = altPaths.first()
+        def alternativePath = allPaths.find { it != currentPath && it != currentProtectedPath }
         def currentIsl = pathHelper.getInvolvedIsls(currentPath)[0]
         def alternativeIsl = pathHelper.getInvolvedIsls(alternativePath)[0]
 
-        pathHelper.makePathMorePreferable(alternativePath, currentPath)
-
+        allPaths.findAll { it != alternativePath }.each { pathHelper.makePathMorePreferable(alternativePath, it) }
         assert northbound.getLink(currentIsl).cost > northbound.getLink(alternativeIsl).cost
 
         and: "Make alternative path available(bring port up on the source switch)"
