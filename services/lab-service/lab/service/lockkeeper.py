@@ -110,15 +110,6 @@ def fl_restart():
     return jsonify({'status': 'ok'})
 
 
-@app.route("/set-controller", methods=['POST'])
-def set_controller():
-    body = request.get_json()
-    sw = body['name']
-    controller = body['controller']
-    switches[sw].set_controller(controller)
-    return jsonify({'status': 'ok'})
-
-
 def init_app(_switches):
     global switches, A_sw
     switches = _switches

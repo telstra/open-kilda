@@ -35,15 +35,13 @@ public interface LockKeeperService {
 
     void portsDown(List<Integer> ports);
 
+    void knockoutSwitch(SwitchId switchId);
+
+    void reviveSwitch(SwitchId switchId);
+
     void stopFloodlight();
 
     void startFloodlight();
 
     void restartFloodlight();
-
-    void knockoutSwitch(SwitchId switchId);
-
-    void reviveSwitch(SwitchId switchId);
-
-    void setController(SwitchId switchId, String controller);
 }
