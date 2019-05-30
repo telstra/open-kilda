@@ -87,10 +87,10 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
     @Test
     public void testBcastPacket() {
         // This is Broadcast so set dstIpTarget to the broadcast IP
-        InetSocketAddress dstIpTarget = new InetSocketAddress(pvs.VERIFICATION_PACKET_IP_DST, 200);
+        InetSocketAddress dstIpTarget = new InetSocketAddress(pvs.DISCOVERY_PACKET_IP_DST, 200);
 
-        // Generate the VerificationPacket
-        OFPacketOut packet = pvs.generateVerificationPacket(sw1, OFPort.of(1), true, null);
+        // Generate the DiscoveryPacket
+        OFPacketOut packet = pvs.generateDiscoveryPacket(sw1, OFPort.of(1), true, null);
         System.out.println("packet: " + Hex.encodeHexString(packet.getData()));
 
         // Source MAC will always be that of sw1 for both Unicast and Broadcast

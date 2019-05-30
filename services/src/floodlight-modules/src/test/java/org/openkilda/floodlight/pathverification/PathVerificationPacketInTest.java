@@ -19,14 +19,14 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.openkilda.floodlight.pathverification.DiscoveryPacket.CHASSIS_ID_LLDPTV_PACKET_TYPE;
+import static org.openkilda.floodlight.pathverification.DiscoveryPacket.OPTIONAL_LLDPTV_PACKET_TYPE;
+import static org.openkilda.floodlight.pathverification.DiscoveryPacket.PORT_ID_LLDPTV_PACKET_TYPE;
+import static org.openkilda.floodlight.pathverification.DiscoveryPacket.TTL_LLDPTV_PACKET_TYPE;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.ORGANIZATIONALLY_UNIQUE_IDENTIFIER;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.PATH_ORDINAL_OPTIONAL_TYPE;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.REMOTE_SWITCH_OPTIONAL_TYPE;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.TIMESTAMP_OPTIONAL_TYPE;
-import static org.openkilda.floodlight.pathverification.VerificationPacket.CHASSIS_ID_LLDPTV_PACKET_TYPE;
-import static org.openkilda.floodlight.pathverification.VerificationPacket.OPTIONAL_LLDPTV_PACKET_TYPE;
-import static org.openkilda.floodlight.pathverification.VerificationPacket.PORT_ID_LLDPTV_PACKET_TYPE;
-import static org.openkilda.floodlight.pathverification.VerificationPacket.TTL_LLDPTV_PACKET_TYPE;
 
 import org.openkilda.floodlight.FloodlightTestCase;
 import org.openkilda.floodlight.KildaCore;
@@ -140,9 +140,9 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
     private Ethernet getPacket() {
         UDP udp = new UDP()
                 .setDestinationPort(
-                        TransportPort.of(PathVerificationService.VERIFICATION_PACKET_UDP_PORT))
+                        TransportPort.of(PathVerificationService.DISCOVERY_PACKET_UDP_PORT))
                 .setSourcePort(
-                        TransportPort.of(PathVerificationService.VERIFICATION_PACKET_UDP_PORT));
+                        TransportPort.of(PathVerificationService.DISCOVERY_PACKET_UDP_PORT));
 
         List<LLDPTLV> optional = Lists.newArrayList(
                 new LLDPTLV() // dpid
@@ -168,7 +168,7 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
                                 PATH_ORDINAL))
         );
 
-        VerificationPacket verificationPacket = VerificationPacket.builder()
+        DiscoveryPacket discoveryPacket = DiscoveryPacket.builder()
                 .chassisId(new LLDPTLV().setType(CHASSIS_ID_LLDPTV_PACKET_TYPE).setLength((short) 7)
                         .setValue(new byte[] {0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}))
                 .portId(new LLDPTLV().setType(PORT_ID_LLDPTV_PACKET_TYPE).setLength((short) 3)
@@ -178,11 +178,11 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
                 .optionalTlvList(optional)
                 .build();
 
-        udp.setPayload(new Data(verificationPacket.serialize()));
+        udp.setPayload(new Data(discoveryPacket.serialize()));
 
         IPv4 ip = new IPv4()
                 .setSourceAddress("192.168.0.1")
-                .setDestinationAddress(PathVerificationService.VERIFICATION_PACKET_IP_DST)
+                .setDestinationAddress(PathVerificationService.DISCOVERY_PACKET_IP_DST)
                 .setProtocol(IpProtocol.UDP);
 
         Ethernet eth = new Ethernet()
@@ -270,11 +270,11 @@ public class PathVerificationPacketInTest extends FloodlightTestCase {
     }
 
     @Test
-    public void testParseVerificationPacket() {
+    public void testParseDiscoveryPacket() {
         long switchLatency = 5;
         Ethernet ethernet = getPacket();
-        VerificationPacket verificationPacket = pvs.deserialize(ethernet);
-        VerificationPacketData data = pvs.parseVerificationPacket(verificationPacket, switchLatency);
+        DiscoveryPacket discoveryPacket = pvs.deserialize(ethernet);
+        DiscoveryPacketData data = pvs.parseDiscoveryPacket(discoveryPacket, switchLatency);
 
         assertEquals(DatapathId.of(REMOTE_SWITCH_ID).toString(), data.getRemoteSwitchId().toString());
         assertEquals(ByteBuffer.wrap(TIMESTAMP).getLong() + switchLatency, data.getTimestamp());
