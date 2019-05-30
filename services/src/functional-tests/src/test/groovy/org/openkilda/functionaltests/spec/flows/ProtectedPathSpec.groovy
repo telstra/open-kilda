@@ -878,6 +878,7 @@ class ProtectedPathSpec extends BaseSpecification {
         database.resetCosts()
     }
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/2420")
     def "System doesn't reroute main flow path when protected path is broken and new alt path is available\
 (altPath is more preferable than mainPath)"() {
         given: "Two active neighboring switches with three paths at least"
