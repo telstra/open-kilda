@@ -1285,7 +1285,8 @@ public class FlowService extends BaseFlowService {
      * @return the flows with swapped endpoints.
      */
     public List<FlowPair> swapFlowEnpoints(Flow firstFlow, Flow secondFlow, FlowCommandSender sender)
-            throws FlowNotFoundException, FlowValidationException {
+            throws FlowNotFoundException, FlowValidationException, ResourceAllocationException,
+            UnroutableFlowException {
         String firstFlowId = firstFlow.getFlowId();
         String secondFlowId = secondFlow.getFlowId();
 
@@ -1381,15 +1382,22 @@ public class FlowService extends BaseFlowService {
     private List<FlowPair> swapFlows(FlowPathsWithEncapsulation currentFirstFlow,
                                                               Flow updatingFirstFlow,
                                                               FlowPathsWithEncapsulation currentSecondFlow,
-                                                              Flow updatingSecondFlow, FlowCommandSender sender) {
-        List<UpdatedFlowPathsWithEncapsulation> flows = (List<UpdatedFlowPathsWithEncapsulation>) getFailsafe().get(
-                () -> transactionManager.doInTransaction(() -> {
-                    UpdatedFlowPathsWithEncapsulation firstUpdatedFlow =
-                            processUpdateFlow(currentFirstFlow, updatingFirstFlow, sender);
-                    UpdatedFlowPathsWithEncapsulation secondUpdatedFlow =
-                            processUpdateFlow(currentSecondFlow, updatingSecondFlow, sender);
-                    return Arrays.asList(firstUpdatedFlow, secondUpdatedFlow);
-                }));
+                                                              Flow updatingSecondFlow, FlowCommandSender sender)
+            throws ResourceAllocationException, FlowValidationException, UnroutableFlowException,
+            FlowNotFoundException {
+        List<UpdatedFlowPathsWithEncapsulation> flows = null;
+        try {
+            flows = (List<UpdatedFlowPathsWithEncapsulation>) getFailsafe().get(
+                    () -> transactionManager.doInTransaction(() -> {
+                        UpdatedFlowPathsWithEncapsulation firstUpdatedFlow =
+                                processUpdateFlow(currentFirstFlow, updatingFirstFlow, sender);
+                        UpdatedFlowPathsWithEncapsulation secondUpdatedFlow =
+                                processUpdateFlow(currentSecondFlow, updatingSecondFlow, sender);
+                        return Arrays.asList(firstUpdatedFlow, secondUpdatedFlow);
+                    }));
+        } catch (FailsafeException e) {
+            unwrapCrudFaisafeException(e);
+        }
 
 
         List<CommandGroup> firstCommandGroup = new ArrayList<>();

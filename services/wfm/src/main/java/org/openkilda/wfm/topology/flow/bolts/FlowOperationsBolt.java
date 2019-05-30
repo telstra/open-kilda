@@ -44,6 +44,7 @@ import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
+import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.ctrl.CtrlAction;
@@ -228,6 +229,9 @@ public class FlowOperationsBolt extends BaseRichBolt implements ICtrlBolt {
         } catch (FlowValidationException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     e.getType(), errorType, e.getMessage());
+        } catch (UnroutableFlowException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.REQUEST_INVALID, errorType, e.getMessage());
         } catch (Exception e) {
             logger.error("Unhandled exception on SWAP operation");
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
