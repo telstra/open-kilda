@@ -42,7 +42,7 @@ import java.util.Map;
 public class PingService implements IService {
     public static final U64 OF_CATCH_RULE_COOKIE = U64.of(Cookie.VERIFICATION_UNICAST_RULE_COOKIE);
     private static final String NET_L3_ADDRESS = "127.0.0.2";
-    private static final int NET_L3_PORT = PathVerificationService.VERIFICATION_PACKET_UDP_PORT + 1;
+    private static final int NET_L3_PORT = PathVerificationService.DISCOVERY_PACKET_UDP_PORT + 1;
     private static final byte NET_L3_TTL = 96;
 
     private DataSignature signature = null;
@@ -100,7 +100,7 @@ public class PingService implements IService {
 
     /**
      * Unpack network package.
-     * Verify all particular qualities used during verification package creation time. Return packet payload.
+     * Verify all particular qualities used during discovery package creation time. Return packet payload.
      */
     public byte[] unwrapData(DatapathId dpId, Ethernet packet) {
         MacAddress targetL2Address = switchManager.dpIdToMac(dpId);

@@ -32,7 +32,7 @@ import java.util.List;
 @lombok.Data
 @EqualsAndHashCode(callSuper = true)
 @AllArgsConstructor
-public class VerificationPacket extends BasePacket {
+public class DiscoveryPacket extends BasePacket {
     public static final byte CHASSIS_ID_LLDPTV_PACKET_TYPE = (byte) 1;
     public static final byte PORT_ID_LLDPTV_PACKET_TYPE = (byte) 2;
     public static final byte TTL_LLDPTV_PACKET_TYPE = (byte) 3;
@@ -44,7 +44,7 @@ public class VerificationPacket extends BasePacket {
     @Default
     private List<LLDPTLV> optionalTlvList = new ArrayList<>();
 
-    VerificationPacket(Data data) {
+    DiscoveryPacket(Data data) {
         deserialize(data.getData(), 0, data.getData().length);
     }
 
