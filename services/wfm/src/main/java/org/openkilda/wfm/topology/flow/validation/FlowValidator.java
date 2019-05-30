@@ -243,7 +243,8 @@ public class FlowValidator {
                 .findAny();
 
         if (conflictSrcSrc.isPresent()) {
-            String errorMessage = format("Requested flows '%s' conflicts with existing flow '%s'.",
+            String errorMessage = format("Requested source endpoint for flow '%s' conflicts with "
+                            + "existing source endpoint for flow '%s'.",
                     firstFlow.getFlowId(), conflictSrcSrc.get().getFlowId());
             throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
@@ -258,7 +259,8 @@ public class FlowValidator {
                 .findAny();
 
         if (conflictDstSrc.isPresent()) {
-            String errorMessage = format("Requested flows '%s' conflicts with existing flow '%s'.",
+            String errorMessage = format("Requested source endpoint for flow '%s' conflicts with "
+                            + "existing destination endpoint for flow '%s'.",
                     firstFlow.getFlowId(), conflictDstSrc.get().getFlowId());
             throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
@@ -279,7 +281,8 @@ public class FlowValidator {
                 .findAny();
 
         if (conflictSrcDst.isPresent()) {
-            String errorMessage = format("Requested flows '%s' conflicts with existing flow '%s'.",
+            String errorMessage = format("Requested destination endpoint for flow '%s' conflicts with "
+                            + "existing source endpoint for flow '%s'.",
                     firstFlow.getFlowId(), conflictSrcDst.get().getFlowId());
             throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
@@ -294,7 +297,8 @@ public class FlowValidator {
                 .findAny();
 
         if (conflictDstDst.isPresent()) {
-            String errorMessage = format("Requested flows '%s' conflicts with existing flow '%s'.",
+            String errorMessage = format("Requested destination endpoint for flow '%s' conflicts "
+                            + "with existing destination endpoint for flow '%s'.",
                     firstFlow.getFlowId(), conflictDstDst.get().getFlowId());
             throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
@@ -314,7 +318,8 @@ public class FlowValidator {
                 .findAny();
 
         if (secondConflictSrcSrc.isPresent()) {
-            String errorMessage = format("Requested flows '%s' conflicts with existing flow '%s'.",
+            String errorMessage = format("Requested source endpoint for flow '%s' conflicts with "
+                            + "existing source endpoint for flow '%s'.",
                     secondFlow.getFlowId(), secondConflictSrcSrc.get().getFlowId());
             throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
@@ -329,7 +334,8 @@ public class FlowValidator {
                 .findAny();
 
         if (secondConflictDstSrc.isPresent()) {
-            String errorMessage = format("Requested flows '%s' conflicts with existing flow '%s'.",
+            String errorMessage = format("Requested source endpoint for flow '%s' conflicts with "
+                            + "existing destination endpoint for flow '%s'.",
                     secondFlow.getFlowId(), secondConflictDstSrc.get().getFlowId());
             throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
@@ -350,7 +356,8 @@ public class FlowValidator {
                 .findAny();
 
         if (secondConflictSrcDst.isPresent()) {
-            String errorMessage = format("Requested flows '%s' conflicts with existing flow '%s'.",
+            String errorMessage = format("Requested destination endpoint for flow '%s' conflicts with "
+                            + "existing source endpoint for flow '%s'.",
                     secondFlow.getFlowId(), secondConflictSrcDst.get().getFlowId());
             throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
@@ -365,7 +372,8 @@ public class FlowValidator {
                 .findAny();
 
         if (secondConflictDstDst.isPresent()) {
-            String errorMessage = format("Requested flows '%s' conflicts with existing flow '%s'.",
+            String errorMessage = format("Requested destination endpoint for flow '%s' conflicts "
+                            + "with existing destination endpoint for flow '%s'.",
                     secondFlow.getFlowId(), secondConflictDstDst.get().getFlowId());
             throw new FlowValidationException(errorMessage, ErrorType.ALREADY_EXISTS);
         }
@@ -377,7 +385,7 @@ public class FlowValidator {
      * @param firstFlow a first flow.
      * @param secondFlow a second flow.
      */
-    public void checkForEqualsEndpoints(Flow firstFlow, Flow secondFlow) throws FlowValidationException {
+    void checkForEqualsEndpoints(Flow firstFlow, Flow secondFlow) throws FlowValidationException {
         List<FlowEndpointPayload> endpoints = new ArrayList<>();
         endpoints.add(new FlowEndpointPayload(firstFlow.getSrcSwitch().getSwitchId(),
                 firstFlow.getSrcPort(), firstFlow.getSrcVlan()));
@@ -393,10 +401,17 @@ public class FlowValidator {
             if (!checkSet.contains(endpoint)) {
                 checkSet.add(endpoint);
             } else {
-                throw new FlowValidationException(
-                        String.format("Another swap flow have endpoint: SwitchId='%s', port=%d, vlan=%d",
-                                endpoint.getDatapath(), endpoint.getPortNumber(), endpoint.getVlanId()),
-                        ErrorType.REQUEST_INVALID);
+                String message = "new requested endpoint for '%s' conflicts with existing endpoint for '%s'";
+                if (checkSet.size() <= 1) {
+                    message = String.format(message, firstFlow.getFlowId(), firstFlow.getFlowId());
+                } else {
+                    if (endpoints.indexOf(endpoint) <= 1) {
+                        message = String.format(message, secondFlow.getFlowId(), firstFlow.getFlowId());
+                    } else {
+                        message = String.format(message, secondFlow.getFlowId(), secondFlow.getFlowId());
+                    }
+                }
+                throw new FlowValidationException(message, ErrorType.REQUEST_INVALID);
             }
         }
     }
