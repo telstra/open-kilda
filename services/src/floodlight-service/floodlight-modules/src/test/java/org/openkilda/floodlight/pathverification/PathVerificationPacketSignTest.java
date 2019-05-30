@@ -57,7 +57,7 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
     public void setUp() throws Exception {
         super.setUp();
 
-        final OFPacketOut packetOut = pvs.generateVerificationPacket(sw1, OFPort.of(1), true, null);
+        final OFPacketOut packetOut = pvs.generateDiscoveryPacket(sw1, OFPort.of(1), true, null);
 
         ofPacketIn = EasyMock.createMock(OFPacketIn.class);
 
@@ -114,7 +114,7 @@ public class PathVerificationPacketSignTest extends PathVerificationPacketInTest
     public void testSignPacketMissedSign() {
         replay(producerService);
 
-        OFPacketOut noSignPacket = pvs.generateVerificationPacket(sw1, OFPort.of(1), false, null);
+        OFPacketOut noSignPacket = pvs.generateDiscoveryPacket(sw1, OFPort.of(1), false, null);
         IPacket noSignPacketData = new Ethernet().deserialize(noSignPacket.getData(), 0,
                 noSignPacket.getData().length);
         context.getStorage().put(IFloodlightProviderService.CONTEXT_PI_PAYLOAD, noSignPacketData);

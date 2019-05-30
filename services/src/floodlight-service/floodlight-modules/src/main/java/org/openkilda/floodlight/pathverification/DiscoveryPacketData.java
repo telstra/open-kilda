@@ -22,7 +22,7 @@ import org.projectfloodlight.openflow.types.OFPort;
 
 @Builder
 @Data
-class VerificationPacketData {
+class DiscoveryPacketData {
     private long timestamp;
     private int pathOrdinal;
     private DatapathId remoteSwitchId;
