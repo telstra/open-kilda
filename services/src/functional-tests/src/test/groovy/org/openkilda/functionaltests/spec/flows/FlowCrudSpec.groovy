@@ -642,6 +642,68 @@ class FlowCrudSpec extends BaseSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
     }
 
+    def "Systems allows to pass traffic via full and vlan port when they are on the same port"() {
+        when: "Create a flow with vlan port"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected
+        def bandwidth = 100
+        def flowVlanPort = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flowVlanPort.maximumBandwidth = bandwidth
+        flowVlanPort.allocateProtectedPath = true
+        flowHelper.addFlow(flowVlanPort)
+
+        and: "Create the same flow with full port"
+        def flowFullPort = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flowFullPort.maximumBandwidth = bandwidth
+        flowFullPort.source.vlanId = 0
+        flowFullPort.destination.vlanId = 0
+        flowFullPort.allocateProtectedPath = true
+        flowHelper.addFlow(flowFullPort)
+
+        then: "The flow with full port has less priority than flow with vlan port"
+        def flowVlanPortInfo = database.getFlow(flowVlanPort.id)
+        def flowFullPortInfo = database.getFlow(flowFullPort.id)
+
+        def rules = [srcSwitch.dpId, dstSwitch.dpId].collectEntries {
+            [(it): northbound.getSwitchRules(it).flowEntries]
+        }
+
+        // can't be imported safely org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_FULL_PORT_PRIORITY
+        // [ERROR] General error during semantic analysis: java.lang.NoClassDefFoundError:
+        // net.floodlightcontroller.core.module.IFloodlightService
+        def FLOW_FULL_PORT_PRIORITY = 16384
+        def FLOW_PRIORITY = 24576
+
+        [srcSwitch.dpId, dstSwitch.dpId].each { sw ->
+            [flowVlanPortInfo.left.cookie, flowVlanPortInfo.right.cookie].each { cookie ->
+                assert rules[sw].find { it.cookie == cookie }.priority == FLOW_PRIORITY
+            }
+
+            [flowFullPortInfo.left.cookie, flowFullPortInfo.right.cookie].each { cookie ->
+                assert rules[sw].find { it.cookie == cookie }.priority == FLOW_FULL_PORT_PRIORITY
+            }
+        }
+
+        and: "System allows traffic(on the flow with vlan port)"
+        def traffExam = traffExamProvider.get()
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flowVlanPort, bandwidth)
+        [exam.forward, exam.reverse].each { direction ->
+            def resources = traffExam.startExam(direction)
+            direction.setResources(resources)
+            assert traffExam.waitExam(direction).hasTraffic()
+        }
+
+        and: "System allows traffic(on the flow with full port)"
+        def exam2 = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flowFullPort, 0)
+        [exam2.forward, exam2.reverse].each { direction ->
+            def resources = traffExam.startExam(direction)
+            direction.setResources(resources)
+            assert traffExam.waitExam(direction).hasTraffic()
+        }
+
+        and: "Cleanup: Delete the flows"
+        [flowVlanPort, flowFullPort].each { flow -> flowHelper.deleteFlow(flow.id) }
+    }
+
     @Shared
     def errorMessage = { String operation, FlowPayload flow, String endpoint, FlowPayload conflictingFlow,
                          String conflictingEndpoint ->
