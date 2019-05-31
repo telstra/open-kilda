@@ -13,12 +13,8 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.stats.bolts;
+package org.openkilda.wfm.topology.ping.bolt;
 
-import org.openkilda.wfm.share.bolt.MonotonicClock;
-
-public class TickBolt extends MonotonicClock {
-    public TickBolt(Integer interval) {
-        super(interval);
-    }
+public enum TickId {
+    PERIODIC_PING
 }

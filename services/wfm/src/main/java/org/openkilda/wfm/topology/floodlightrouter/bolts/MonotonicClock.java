@@ -13,12 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.stats.bolts;
+package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
-import org.openkilda.wfm.share.bolt.MonotonicClock;
+import org.openkilda.wfm.topology.floodlightrouter.ComponentType;
 
-public class TickBolt extends MonotonicClock {
-    public TickBolt(Integer interval) {
+public class MonotonicClock extends org.openkilda.wfm.share.bolt.MonotonicClock<TickId> {
+    public static final String BOLT_ID = ComponentType.MONOTONIC_TICK;
+
+    public MonotonicClock(Integer interval) {
         super(interval);
     }
 }
