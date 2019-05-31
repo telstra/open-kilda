@@ -1326,11 +1326,11 @@ public class FlowService extends BaseFlowService {
     }
 
     private UpdatedFlowPathsWithEncapsulation processUpdateFlow(FlowPathsWithEncapsulation currentFlow,
-                                                                Flow updatingFlow, FlowCommandSender sender)
+                                                                Flow updatingFlow)
             throws ResourceAllocationException, RecoverableException, FlowValidationException, UnroutableFlowException,
             FlowNotFoundException {
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair newPathPair = pathComputer.getPath(updatingFlow, updatingFlow.getFlowPathIds());
+        PathPair newPathPair = pathComputer.getPath(updatingFlow, currentFlow.getFlow().getFlowPathIds());
 
         log.info("Updating the flow with {} and path: {}", updatingFlow, newPathPair);
 
@@ -1390,9 +1390,9 @@ public class FlowService extends BaseFlowService {
             flows = (List<UpdatedFlowPathsWithEncapsulation>) getFailsafe().get(
                     () -> transactionManager.doInTransaction(() -> {
                         UpdatedFlowPathsWithEncapsulation firstUpdatedFlow =
-                                processUpdateFlow(currentFirstFlow, updatingFirstFlow, sender);
+                                processUpdateFlow(currentFirstFlow, updatingFirstFlow);
                         UpdatedFlowPathsWithEncapsulation secondUpdatedFlow =
-                                processUpdateFlow(currentSecondFlow, updatingSecondFlow, sender);
+                                processUpdateFlow(currentSecondFlow, updatingSecondFlow);
                         return Arrays.asList(firstUpdatedFlow, secondUpdatedFlow);
                     }));
         } catch (FailsafeException e) {
