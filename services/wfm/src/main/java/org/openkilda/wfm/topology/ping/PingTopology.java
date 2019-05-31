@@ -39,6 +39,7 @@ import org.openkilda.wfm.topology.ping.bolt.ResultDispatcher;
 import org.openkilda.wfm.topology.ping.bolt.SpeakerEncoder;
 import org.openkilda.wfm.topology.ping.bolt.StatsProducer;
 import org.openkilda.wfm.topology.ping.bolt.TickDeduplicator;
+import org.openkilda.wfm.topology.ping.bolt.TickId;
 import org.openkilda.wfm.topology.ping.bolt.TimeoutManager;
 
 import org.apache.storm.generated.StormTopology;
@@ -95,13 +96,16 @@ public class PingTopology extends AbstractTopology<PingTopologyConfig> {
     }
 
     private void monotonicTick(TopologyBuilder topology) {
-        topology.setBolt(MonotonicTick.BOLT_ID, new MonotonicTick(topologyConfig.getPingInterval()), scaleFactor);
+        MonotonicTick bolt = new MonotonicTick(
+                new MonotonicTick.ClockConfig()
+                        .addTickInterval(TickId.PERIODIC_PING, topologyConfig.getPingInterval()));
+
+        topology.setBolt(MonotonicTick.BOLT_ID, bolt, scaleFactor);
     }
 
     private void tickDeduplicator(TopologyBuilder topology) {
         topology.setBolt(TickDeduplicator.BOLT_ID, new TickDeduplicator(1, TimeUnit.SECONDS), scaleFactor)
-                .globalGrouping(MonotonicTick.BOLT_ID)
-                .globalGrouping(MonotonicTick.BOLT_ID, MonotonicTick.STREAM_PING_ID);
+                .globalGrouping(MonotonicTick.BOLT_ID);
     }
 
     private void input(TopologyBuilder topology) {

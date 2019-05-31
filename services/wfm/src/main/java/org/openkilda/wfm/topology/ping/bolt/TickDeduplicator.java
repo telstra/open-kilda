@@ -17,11 +17,11 @@ package org.openkilda.wfm.topology.ping.bolt;
 
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.bolt.MonotonicClock;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.apache.storm.utils.Utils;
 
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
@@ -31,12 +31,14 @@ public class TickDeduplicator extends AbstractBolt {
 
     public static final Fields STREAM_FIELDS = MonotonicTick.STREAM_FIELDS;
 
-    public static final String STREAM_PING_ID = MonotonicTick.STREAM_PING_ID;
-    public static final Fields STREAM_PING_FIELDS = MonotonicTick.STREAM_PING_FIELDS;
+    public static final String STREAM_PING_ID = "ping.tick";
 
     private final HashMap<Integer, Long> lastTick = new HashMap<>();
     private Integer activeSourceTask = null;
     private final long tickPeriod;
+
+    private final MonotonicTick.Match<TickId> periodicTickMatcher = new MonotonicClock.Match<>(
+            MonotonicTick.BOLT_ID, TickId.PERIODIC_PING);
 
     public TickDeduplicator(long tickPeriod, TimeUnit unit) {
         this.tickPeriod = unit.toMillis(tickPeriod);
@@ -47,7 +49,7 @@ public class TickDeduplicator extends AbstractBolt {
         int taskId = input.getSourceTask();
         String stream = input.getSourceStreamId();
 
-        if (Utils.DEFAULT_STREAM_ID.equals(stream)) {
+        if (periodicTickMatcher.isTick(input)) {
             updateLastTick(taskId, pullTick(input));
         }
 
@@ -85,6 +87,6 @@ public class TickDeduplicator extends AbstractBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputManager) {
         outputManager.declare(STREAM_FIELDS);
-        outputManager.declareStream(STREAM_PING_ID, STREAM_PING_FIELDS);
+        outputManager.declareStream(STREAM_PING_ID, STREAM_FIELDS);
     }
 }
