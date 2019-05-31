@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2017 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.FeatureTogglesBaseRequest;
-import org.openkilda.messaging.nbtopology.request.FlowValidationRequest;
 import org.openkilda.messaging.nbtopology.request.FlowsBaseRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.GetPathsRequest;
@@ -35,48 +34,19 @@ import org.openkilda.messaging.nbtopology.request.LinksBaseRequest;
 import org.openkilda.messaging.nbtopology.request.SwitchesBaseRequest;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
-import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.nbworker.StreamType;
-import org.openkilda.wfm.topology.nbworker.commands.RemoveKeyRouterBolt;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.HashSet;
-import java.util.Set;
-
 public class RouterBolt extends AbstractBolt {
-    public static final String INCOME_STREAM = "router.bolt.stream";
-    private Set<String> keys = new HashSet<>();
 
     @Override
     protected void handleInput(Tuple input) throws PipelineException {
-        String key = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
         Message message = pullValue(input, FIELD_ID_PAYLOAD, Message.class);
 
-        if (keys.contains(KeyProvider.getParentKey(key))) {
-            processFlowValidationRequest(input, key, message);
-        } else {
-            processRequest(input, key, message);
-        }
-
-    }
-
-    private void processFlowValidationRequest(Tuple input, String key, Message message) {
-        if (message instanceof CommandMessage) {
-            CommandData data = ((CommandMessage) message).getData();
-            if (data instanceof RemoveKeyRouterBolt) {
-                keys.remove(((RemoveKeyRouterBolt) data).getKey());
-            }
-        } else {
-            emitWithContext(SpeakerWorkerBolt.INCOME_STREAM, input, new Values(key, message));
-        }
-    }
-
-    private void processRequest(Tuple input, String key, Message message) {
         if (message instanceof CommandMessage) {
             log.debug("Received command message {}", message);
             CommandMessage command = (CommandMessage) message;
@@ -84,7 +54,7 @@ public class RouterBolt extends AbstractBolt {
 
             if (data instanceof BaseRequest) {
                 BaseRequest baseRequest = (BaseRequest) data;
-                processRequest(input, key, baseRequest, message.getCorrelationId());
+                processRequest(input, baseRequest, message.getCorrelationId());
             }
         } else if (message instanceof InfoMessage) {
             log.debug("Received info message {}", message);
@@ -101,7 +71,7 @@ public class RouterBolt extends AbstractBolt {
         }
     }
 
-    private void processRequest(Tuple input, String key, BaseRequest request, String correlationId) {
+    private void processRequest(Tuple input, BaseRequest request, String correlationId) {
         if (request instanceof SwitchesBaseRequest) {
             getOutput().emit(StreamType.SWITCH.toString(), input, new Values(request, correlationId));
         } else if (request instanceof LinksBaseRequest) {
@@ -114,9 +84,6 @@ public class RouterBolt extends AbstractBolt {
             getOutput().emit(StreamType.PATHS.toString(), input, new Values(request, correlationId));
         } else if (request instanceof GetFlowHistoryRequest) {
             getOutput().emit(StreamType.HISTORY.toString(), input, new Values(request, correlationId));
-        } else if (request instanceof FlowValidationRequest) {
-            keys.add(key);
-            emitWithContext(FlowValidationHubBolt.INCOME_STREAM, input, new Values(correlationId, request));
         } else {
             unhandledInput(input);
         }
@@ -151,8 +118,5 @@ public class RouterBolt extends AbstractBolt {
 
         declarer.declareStream(StreamType.ERROR.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
-
-        declarer.declareStream(FlowValidationHubBolt.INCOME_STREAM, MessageTranslator.STREAM_FIELDS);
-        declarer.declareStream(SpeakerWorkerBolt.INCOME_STREAM, MessageTranslator.STREAM_FIELDS);
     }
 }

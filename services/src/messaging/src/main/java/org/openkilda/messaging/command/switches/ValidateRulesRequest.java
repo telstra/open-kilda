@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,21 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.nbworker.bolts;
+package org.openkilda.messaging.command.switches;
 
-import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.model.SwitchId;
 
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
+import lombok.Value;
 
-public interface FlowValidationHubCarrier {
+@Value
+@Builder
+public class ValidateRulesRequest extends CommandData {
 
-    void sendCommandToSpeakerWorker(String key, SwitchId switchId);
+    @JsonProperty("switch_id")
+    private SwitchId switchId;
 
-    void sendToResponseSplitterBolt(String key, List<? extends InfoData> message);
-
-    void sendToMessageEncoder(String key, ErrorData errorData);
-
-    void endProcessing(String key);
+    public ValidateRulesRequest(@JsonProperty("switch_id") SwitchId switchId) {
+        this.switchId = switchId;
+    }
 }

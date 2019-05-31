@@ -23,7 +23,6 @@ import org.openkilda.messaging.command.switches.DeleteRulesAction;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
 import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
-import org.openkilda.messaging.command.switches.DumpRulesForNbworkerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
@@ -32,6 +31,7 @@ import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
+import org.openkilda.messaging.command.switches.ValidateRulesRequest;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowEntry;
@@ -214,7 +214,7 @@ public class SwitchServiceImpl implements SwitchService {
         final String correlationId = RequestCorrelationId.getId();
 
         CommandMessage validateCommandMessage = new CommandMessage(
-                new DumpRulesForNbworkerRequest(switchId), System.currentTimeMillis(), correlationId);
+                new ValidateRulesRequest(switchId), System.currentTimeMillis(), correlationId);
 
         return messagingChannel.sendAndGet(floodlightTopic, validateCommandMessage)
                 .thenApply(SyncRulesResponse.class::cast)
