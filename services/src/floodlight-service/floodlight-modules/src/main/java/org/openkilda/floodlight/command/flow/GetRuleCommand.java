@@ -133,11 +133,11 @@ public class GetRuleCommand extends FlowCommand {
                 .orElse(null);
     }
 
-    private Integer getInVlan(Match match) {
+    private int getInVlan(Match match) {
         return Optional.ofNullable(match.get(MatchField.VLAN_VID))
                 .map(OFVlanVidMatch::getVlan)
                 .map(Integer::valueOf)
-                .orElse(null);
+                .orElse(0);
     }
 
     private MeterId getMeter(Map<OFInstructionType, OFInstruction> instructionMap) {
@@ -158,7 +158,7 @@ public class GetRuleCommand extends FlowCommand {
                 .orElse(null);
     }
 
-    private Integer getOutVlan(OFInstructionApplyActions applyActions) {
+    private int getOutVlan(OFInstructionApplyActions applyActions) {
         return applyActions.getActions().stream()
                 .filter(OFActionSetField.class::isInstance)
                 .map(OFActionSetField.class::cast)
@@ -169,7 +169,7 @@ public class GetRuleCommand extends FlowCommand {
                 .map(OFVlanVidMatch::getVlan)
                 .map(Integer::valueOf)
                 .findAny()
-                .orElse(null);
+                .orElse(0);
     }
 
 }
