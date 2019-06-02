@@ -79,11 +79,11 @@ public class KafkaProducerService implements IKafkaProducerService {
     }
 
     public void sendMessageAndTrack(String topic, Message message) {
-        produce(encode(topic, message), new SendStatusCallback(this, topic, message.getCorrelationId()));
+        produce(encode(topic, message), new SendStatusCallback(this, topic, message));
     }
 
     public void sendMessageAndTrack(String topic, String key, Message message) {
-        produce(encode(topic, key, message), new SendStatusCallback(this, topic, message.getCorrelationId()));
+        produce(encode(topic, key, message), new SendStatusCallback(this, topic, message));
     }
 
     @Override
@@ -149,11 +149,20 @@ public class KafkaProducerService implements IKafkaProducerService {
         private final KafkaProducerService service;
         private final String topic;
         private final String correlationId;
+        private final Message message;
 
         SendStatusCallback(KafkaProducerService service, String topic, String correlationId) {
             this.service = service;
             this.topic = topic;
             this.correlationId = correlationId;
+            this.message = null;
+        }
+
+        SendStatusCallback(KafkaProducerService service, String topic, Message message) {
+            this.service = service;
+            this.topic = topic;
+            this.correlationId = message.getCorrelationId();
+            this.message = message;
         }
 
         @Override
