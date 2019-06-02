@@ -13,26 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.bolts;
+package org.openkilda.wfm.topology.flowhs.service;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
-import org.openkilda.messaging.Message;
+import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 
-public interface FlowCreateHubCarrier extends FlowHistorySupportingCarrier {
+public interface FlowHistorySupportingCarrier {
     /**
-     * Sends commands to speaker.
-     * @param command command to be executed.
+     * Sends main events to history bolt.
      */
-    void sendSpeakerRequest(FlowRequest command);
-
-    /**
-     * Sends response to northbound component.
-     */
-    void sendNorthboundResponse(Message message);
-
-    /**
-     * Cancels timeout callback.
-     * @param key operation identifier.
-     */
-    void cancelTimeoutCallback(String key);
+    void sendHistoryUpdate(FlowHistoryHolder historyHolder);
 }

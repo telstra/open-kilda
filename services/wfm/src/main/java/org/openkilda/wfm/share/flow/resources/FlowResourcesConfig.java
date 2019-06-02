@@ -19,8 +19,10 @@ import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
+import java.io.Serializable;
+
 @Configuration
-public interface FlowResourcesConfig {
+public interface FlowResourcesConfig extends Serializable {
     /**
      * Minimum meter id value for flows.
      */

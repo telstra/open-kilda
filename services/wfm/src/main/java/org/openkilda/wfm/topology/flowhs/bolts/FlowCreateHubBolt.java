@@ -36,6 +36,7 @@ import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
+import org.openkilda.wfm.topology.flowhs.service.FlowCreateHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateService;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
@@ -52,10 +53,15 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     private transient FlowCreateService service;
     private String currentKey;
 
-    public FlowCreateHubBolt(String requestSenderComponent, int timeoutMs, boolean autoAck,
+    public FlowCreateHubBolt(String routerBoltId, String workerBoltId, int timeoutMs, boolean autoAck,
                              PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig,
                              FlowResourcesConfig flowResourcesConfig) {
-        super(requestSenderComponent, timeoutMs, autoAck);
+        super(HubBolt.Config.builder()
+                .requestSenderComponent(routerBoltId)
+                .workerComponent(workerBoltId)
+                .timeoutMs(timeoutMs)
+                .autoAck(autoAck)
+                .build());
 
         this.persistenceManager = persistenceManager;
         this.pathComputerConfig = pathComputerConfig;
@@ -70,7 +76,7 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
         PathComputer pathComputer =
                 new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
 
-        service = new FlowCreateService(persistenceManager, pathComputer, resourcesManager);
+        service = new FlowCreateService(this, persistenceManager, pathComputer, resourcesManager);
     }
 
     @Override
@@ -115,7 +121,6 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     public void cancelTimeoutCallback(String key) {
         cancelCallback(key, getCurrentTuple());
     }
-
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {

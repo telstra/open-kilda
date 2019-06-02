@@ -31,10 +31,12 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class SpeakerWorkerBolt extends WorkerBolt {
+public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarrier {
 
     public static final String ID = "speaker.worker.bolt";
     private transient SpeakerWorkerService service;
+
+    private Tuple currentTuple;
 
     public SpeakerWorkerBolt(Config config) {
         super(config);
@@ -42,27 +44,34 @@ public class SpeakerWorkerBolt extends WorkerBolt {
 
     @Override
     protected void init() {
-        service = new SpeakerWorkerService();
+        service = new SpeakerWorkerService(this);
     }
 
     @Override
     protected void onHubRequest(Tuple input) throws PipelineException {
+        this.currentTuple = input;
+
         String key = input.getStringByField(KEY_FIELD);
         FlowRequest command = (FlowRequest) input.getValueByField(FIELD_ID_PAYLOAD);
-        service.sendCommand(key, command, new WorkerCommandCarrier(input));
+
+        service.sendCommand(key, command);
     }
 
     @Override
     protected void onAsyncResponse(Tuple input) throws PipelineException {
+        this.currentTuple = input;
+
         String key = input.getStringByField(KEY_FIELD);
         FlowResponse message = (FlowResponse) input.getValueByField(FIELD_ID_PAYLOAD);
 
-        service.handleResponse(key, message, new WorkerCommandCarrier(input));
+        service.handleResponse(key, message);
     }
 
     @Override
     public void onTimeout(String key, Tuple tuple) throws PipelineException {
-        service.handleTimeout(key, new WorkerCommandCarrier(tuple));
+        this.currentTuple = tuple;
+
+        service.handleTimeout(key);
     }
 
     @Override
@@ -72,22 +81,14 @@ public class SpeakerWorkerBolt extends WorkerBolt {
         declarer.declareStream(SPEAKER_WORKER_REQUEST_SENDER.name(), MessageTranslator.STREAM_FIELDS);
     }
 
-    private class WorkerCommandCarrier implements SpeakerCommandCarrier {
-        private final Tuple tuple;
+    @Override
+    public void sendCommand(String key, FlowRequest command) {
+        emitWithContext(SPEAKER_WORKER_REQUEST_SENDER.name(), currentTuple, new Values(key, command));
+    }
 
-        WorkerCommandCarrier(Tuple tuple) {
-            this.tuple = tuple;
-        }
-
-        @Override
-        public void sendCommand(String key, FlowRequest command) {
-            emitWithContext(SPEAKER_WORKER_REQUEST_SENDER.name(), tuple, new Values(key, command));
-        }
-
-        @Override
-        public void sendResponse(String key, FlowResponse response) {
-            Values values = new Values(key, response, getCommandContext());
-            emitResponseToHub(tuple, values);
-        }
+    @Override
+    public void sendResponse(String key, FlowResponse response) {
+        Values values = new Values(key, response, getCommandContext());
+        emitResponseToHub(currentTuple, values);
     }
 }

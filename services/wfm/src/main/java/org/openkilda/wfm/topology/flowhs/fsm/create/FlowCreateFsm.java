@@ -27,7 +27,6 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.bolts.FlowCreateHubCarrier;
 import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableStateMachine;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
@@ -46,6 +45,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesDeallocateAc
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.RollbackInstalledRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.ValidateIngressRuleAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.ValidateNonIngressRuleAction;
+import org.openkilda.wfm.topology.flowhs.service.FlowCreateHubCarrier;
 
 import lombok.Getter;
 import lombok.Setter;

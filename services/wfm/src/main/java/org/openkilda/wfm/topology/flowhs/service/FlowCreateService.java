@@ -23,7 +23,6 @@ import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.bolts.FlowCreateHubCarrier;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -40,16 +39,17 @@ public class FlowCreateService {
 
     private final Map<String, FlowCreateFsm> fsms = new HashMap<>();
 
+    private final FlowCreateHubCarrier carrier;
     private final PersistenceManager persistenceManager;
-    private final FlowResourcesManager flowResourcesManager;
     private final PathComputer pathComputer;
+    private final FlowResourcesManager flowResourcesManager;
 
-    public FlowCreateService(PersistenceManager persistenceManager, PathComputer pathComputer,
-                             FlowResourcesManager flowResourcesManager) {
+    public FlowCreateService(FlowCreateHubCarrier carrier, PersistenceManager persistenceManager,
+                             PathComputer pathComputer, FlowResourcesManager flowResourcesManager) {
+        this.carrier = carrier;
         this.persistenceManager = persistenceManager;
-        this.flowResourcesManager = flowResourcesManager;
-
         this.pathComputer = pathComputer;
+        this.flowResourcesManager = flowResourcesManager;
     }
 
     /**
@@ -59,8 +59,8 @@ public class FlowCreateService {
      */
     public void handleRequest(String key, CommandContext commandContext, FlowDto dto, FlowCreateHubCarrier carrier) {
         log.debug("Handling flow create request with key {}", key);
-        FlowCreateFsm fsm = FlowCreateFsm.newInstance(commandContext, carrier,
-                persistenceManager, flowResourcesManager, pathComputer);
+        FlowCreateFsm fsm = FlowCreateFsm.newInstance(commandContext, carrier, persistenceManager,
+                flowResourcesManager, pathComputer);
         fsms.put(key, fsm);
 
         FlowCreateContext context = FlowCreateContext.builder()
@@ -129,7 +129,7 @@ public class FlowCreateService {
             log.debug("FSM with key {} is finished with state {}", key, fsm.getCurrentState());
             fsms.remove(key);
 
-            fsm.getCarrier().cancelTimeoutCallback(key);
+            carrier.cancelTimeoutCallback(key);
         }
     }
 }

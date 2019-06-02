@@ -64,7 +64,6 @@ import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
-import org.openkilda.wfm.topology.flowhs.bolts.FlowCreateHubCarrier;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.After;
@@ -174,7 +173,7 @@ public class FlowCreateServiceTest {
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
 
-        target = new FlowCreateService(persistenceManager, pathComputer, flowResourcesManager);
+        target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager);
     }
 
     @After

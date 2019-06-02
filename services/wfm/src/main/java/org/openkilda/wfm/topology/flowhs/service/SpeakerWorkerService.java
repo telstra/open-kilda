@@ -28,14 +28,20 @@ import java.util.Map;
 
 @Slf4j
 public class SpeakerWorkerService {
+    private final SpeakerCommandCarrier carrier;
+
     private final Map<String, FlowRequest> keyToRequest = new HashMap<>();
+
+    public SpeakerWorkerService(SpeakerCommandCarrier carrier) {
+        this.carrier = carrier;
+    }
 
     /**
      * Sends command to speaker.
      * @param key unique operation's key.
      * @param command command to be executed.
      */
-    public void sendCommand(String key, FlowRequest command, SpeakerCommandCarrier carrier) throws PipelineException {
+    public void sendCommand(String key, FlowRequest command) throws PipelineException {
         log.debug("Got a request from hub bolt {}", command);
         keyToRequest.put(key, command);
         carrier.sendCommand(key, command);
@@ -46,7 +52,7 @@ public class SpeakerWorkerService {
      * @param key operation's key.
      * @param response response payload.
      */
-    public void handleResponse(String key, FlowResponse response, SpeakerCommandCarrier carrier)
+    public void handleResponse(String key, FlowResponse response)
             throws PipelineException {
         log.debug("Got a response from speaker {}", response);
         FlowRequest pendingRequest = keyToRequest.remove(key);
@@ -63,7 +69,7 @@ public class SpeakerWorkerService {
      * Handles operation timeout.
      * @param key operation identifier.
      */
-    public void handleTimeout(String key, SpeakerCommandCarrier carrier) throws PipelineException {
+    public void handleTimeout(String key) throws PipelineException {
         FlowRequest failedRequest = keyToRequest.remove(key);
 
         FlowResponse response = FlowErrorResponse.errorBuilder()
