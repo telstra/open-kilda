@@ -31,7 +31,9 @@ For the complete list of changes, check out [the commit log](https://github.com/
 If you have an older version of Kilda installed, then you must migrate the data stored in Neo4j 
 before you deploy and start this version.  You should execute [migration script](https://github.com/telstra/open-kilda/blob/v1.21.0/services/neo4j/migrations/1.2-history-event/1-update-constraints-changelog.xml) before starting of deployment.
 
-In case of any issues you are able to rollback these changes using [rollback script](https://github.com/telstra/open-kilda/blob/v1.21.0/services/neo4j/migrations/1.2-history-event/rollback.cql)
+In case of any issues you are able to rollback these changes using [rollback script](https://github.com/telstra/open-kilda/blob/v1.21.0/services/neo4j/migrations/1.2-history-event/rollback.cql).
+
+---
 
 ## v1.20.0 (27/05/2019)
 ### Features:
@@ -53,6 +55,8 @@ In case of any issues you are able to rollback these changes using [rollback scr
 -  [#2399](https://github.com/telstra/open-kilda/pull/2399) Added role and region as custom fields to FL logback config [**configuration**][**floodlight**]
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.19.0...v1.20.0).
+
+---
 
 ## v1.19.0 (22/05/2019)
 ### Features:
@@ -92,9 +96,11 @@ For the complete list of changes, check out [the commit log](https://github.com/
 
 ### Upgrade notes
 If you have an older version of Kilda installed, then you must migrate the data stored in Neo4j 
-before you deploy and start this version.  You should execute migration script before starting of deployment from [migration-script.xml](https://github.com/telstra/open-kilda/blob/v1.19.0/services/neo4j/migrations/1.1-bfd-session/1-update-constraints-changelog.xml)
+before you deploy and start this version.  You should execute [migration script](https://github.com/telstra/open-kilda/blob/v1.19.0/services/neo4j/migrations/1.1-bfd-session/1-update-constraints-changelog.xml) before starting of deployment.
 
-In case of any issues you are able to rollback these changes using [rollback-script.cql](https://github.com/telstra/open-kilda/blob/v1.19.0/services/neo4j/migrations/1.1-bfd-session/rollback.cql)
+In case of any issues you are able to rollback these changes using [rollback script](https://github.com/telstra/open-kilda/blob/v1.19.0/services/neo4j/migrations/1.1-bfd-session/rollback.cql).
+
+---
 
 ## v1.18.2
 ### Features:
@@ -139,8 +145,7 @@ For the complete list of changes, check out [the commit log](https://github.com/
 
 ---
 
-## v1.18.1
-
+## v1.18.1 (03/05/2019)
 ### Bug Fixes:
 -  [#2318](https://github.com/telstra/open-kilda/pull/2318) Fix resource allocation below the low boundaries. (Resource pools may provide a value below the low boundaries if there's a gap in already allocated ones and this gap is below the low boundary)
 
@@ -148,8 +153,7 @@ For the complete list of changes, check out [the commit log](https://github.com/
 
 ---
 
-## v1.18.0
-
+## v1.18.0 (02/05/2019)
 ### Features:
 -  [#2230](https://github.com/telstra/open-kilda/pull/2230) ISL and switch details can be open from a flow path on GUI (Issue:  [#1740](https://github.com/telstra/open-kilda/issues/1740))
 
@@ -192,8 +196,7 @@ to revert changes made by ```1-update-constraints-changelog.xml```.
 
 ---
 
-## v1.17.1
-
+## v1.17.1 (15/04/2019)
 ### Bug Fixes:
 -  [#2259](https://github.com/telstra/open-kilda/pull/2259) Propagate ISL's cost updates to the link-props objects. (Issue:  [#2257](https://github.com/telstra/open-kilda/issues/2257))
 
@@ -201,8 +204,7 @@ For the complete list of changes, check out [the commit log](https://github.com/
 
 ---
 
-## v1.17.0
-
+## v1.17.0 (10/04/2019)
 ### Features:
 -  [#2161](https://github.com/telstra/open-kilda/pull/2161) Combine `api` and `northbound` modules, prepare Northbound for API v2 support
 
