@@ -132,12 +132,11 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
          * Transaction bolt.
          */
         TransactionBolt transactionBolt = new TransactionBolt(topologyConfig.getCommandTransactionExpirationTime());
-        boltSetup = builder.setBolt(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, parallelism)
+        builder.setBolt(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, parallelism)
                 .fieldsGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.CREATE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.UPDATE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.CRUD_BOLT.toString(), StreamType.DELETE.toString(), fieldFlowId)
                 .fieldsGrouping(ComponentType.SPEAKER_BOLT.toString(), fieldFlowId);
-        ctrlTargets.add(new CtrlBoltRef(ComponentType.TRANSACTION_BOLT.toString(), transactionBolt, boltSetup));
 
         /*
          * Bolt sends Speaker requests
