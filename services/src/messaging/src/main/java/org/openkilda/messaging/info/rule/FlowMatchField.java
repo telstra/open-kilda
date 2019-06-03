@@ -44,13 +44,16 @@ public class FlowMatchField implements Serializable {
     private String inPort;
     @JsonProperty("vlan_vid")
     private String vlanVid;
+    @JsonProperty("tunnel_id")
+    private String tunnelId;
 
     @JsonCreator
     public FlowMatchField(
             @JsonProperty("eth_src") String ethSrc, @JsonProperty("eth_dst") String ethDst,
             @JsonProperty("eth_type") String ethType, @JsonProperty("ip_proto") String ipProto,
             @JsonProperty("udp_src") String udpSrc, @JsonProperty("udp_dst") String udpDst,
-            @JsonProperty("in_port") String inPort, @JsonProperty("vlan_vid") String vlanVid) {
+            @JsonProperty("in_port") String inPort, @JsonProperty("vlan_vid") String vlanVid,
+            @JsonProperty("tunnel_id") String tunnelId) {
         this.ethSrc = ethSrc;
         this.ethDst = ethDst;
         this.ethType = ethType;
@@ -59,5 +62,6 @@ public class FlowMatchField implements Serializable {
         this.udpDst = udpDst;
         this.inPort = inPort;
         this.vlanVid = vlanVid;
+        this.tunnelId = tunnelId;
     }
 }

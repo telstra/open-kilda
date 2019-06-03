@@ -36,6 +36,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFInstructionType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionMeter;
+import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowPushVxlanTunnel;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.action.OFActionPushVlan;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
@@ -116,6 +117,8 @@ public abstract class OfFlowStatsMapper {
                         .map(Objects::toString).orElse(null))
                 .udpSrc(Optional.ofNullable(match.get(MatchField.UDP_SRC))
                         .map(Objects::toString).orElse(null))
+                .tunnelId(Optional.ofNullable(match.get(MatchField.TUNNEL_ID))
+                        .map(Objects::toString).orElse(null))
                 .build();
     }
 
@@ -173,6 +176,12 @@ public abstract class OfFlowStatsMapper {
                 .fieldAction(Optional.ofNullable(actions.get(OFActionType.SET_FIELD))
                         .map(this::toFlowSetFieldAction)
                         .orElse(null))
+                .pushVxlan(experimenterActions.stream()
+                        .filter(ofAction -> ofAction instanceof OFActionNoviflowPushVxlanTunnel)
+                        .map(action -> String.valueOf(((OFActionNoviflowPushVxlanTunnel) action).getVni()))
+                        .findFirst().orElse(null)
+
+                )
                 .build();
     }
 
