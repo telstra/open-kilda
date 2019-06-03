@@ -77,6 +77,8 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 
 import lombok.SneakyThrows;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -145,10 +147,22 @@ public class FlowRerouteServiceTest {
                 return action.doInTransaction();
             }
 
+            @Override
+            public <T, E extends Throwable> T doInTransaction(RetryPolicy retryPolicy, TransactionCallback<T, E> action)
+                    throws E {
+                return Failsafe.with(retryPolicy).get(action::doInTransaction);
+            }
+
             @SneakyThrows
             @Override
             public <E extends Throwable> void doInTransaction(TransactionCallbackWithoutResult<E> action) throws E {
                 action.doInTransaction();
+            }
+
+            @Override
+            public <E extends Throwable> void doInTransaction(RetryPolicy retryPolicy,
+                                                              TransactionCallbackWithoutResult<E> action) throws E {
+                Failsafe.with(retryPolicy).run(action::doInTransaction);
             }
         });
 
