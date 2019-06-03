@@ -21,7 +21,6 @@ import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
 
-@Ignore("Unstable. Under investigation.")
 @Narrative("""
 This test verifies that we do not perform a reroute as soon as we receive a reroute request (we talk only about
 automatic reroutes here; manual reroutes are still performed instantly). Instead, system waits for 'reroute.delay'
@@ -31,7 +30,7 @@ System should stop refreshing the timer if 'reroute.hardtimeout' is reached and 
 for each flowId).
 """)
 @Slf4j
-@Tags(VIRTUAL)
+@Tags(VIRTUAL) //may be unstable on hardware. not tested
 class ThrottlingRerouteSpec extends BaseSpecification {
 
     @Value('${reroute.hardtimeout}')
@@ -90,6 +89,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         }
     }
 
+    @Ignore("Unstable")
     def "Reroute is performed after hard timeout even though new reroutes are still being issued"() {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
         /* Here we will pick only short flows that consist of 2 switches, so that we can maximize amount of unique
@@ -101,7 +101,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         We can re-trigger a reroute on the same flow after antiflapCooldown + antiflapMin seconds*/
         int minFlowsRequired = (int) Math.min(rerouteHardTimeout / antiflapMin, antiflapCooldown / antiflapMin + 1) + 1
         assumeTrue("Topology is too small to run this test", switchPairs.size() >= minFlowsRequired)
-        def flows = switchPairs.take(minFlowsRequired).collect { switchPair ->
+        def flows = switchPairs.collect { switchPair ->
             def flow = flowHelper.randomFlow(switchPair)
             flowHelper.addFlow(flow)
             flow
@@ -116,7 +116,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
                     def brokenIsl = breakFlow(flowPath)
                     northbound.portUp(brokenIsl.srcSwitch.dpId, brokenIsl.srcPort)
                     Wrappers.wait(antiflapCooldown + WAIT_OFFSET) {
-                        assert islUtils.getIslInfo(brokenIsl).get().state == IslChangeType.DISCOVERED
+                        assert northbound.getLink(brokenIsl).state == IslChangeType.DISCOVERED
                     }
                 }
             })
@@ -125,7 +125,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         def starter = new Thread({
             rerouteTriggers.each {
                 it.start()
-                TimeUnit.SECONDS.sleep(rerouteDelay - 1)
+                TimeUnit.SECONDS.sleep(rerouteDelay)
             }
         })
         starter.start()
@@ -144,7 +144,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         }
 
         and: "Flows should start to reroute after hard timeout, eventhough reroutes are still being triggered"
-        rerouteTriggers.every { it.alive }
+        rerouteTriggers.any { it.alive }
         def flowPathsClone = flowPaths.collect()
         Wrappers.wait(untilHardTimeoutEnds() + WAIT_OFFSET) {
             flowPathsClone.removeAll { flowPath ->
@@ -189,7 +189,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
 
         and: "cleanup: restore broken path"
         northbound.portUp(brokenIsl.srcSwitch.dpId, brokenIsl.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(brokenIsl).get().state == IslChangeType.DISCOVERED }
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(brokenIsl).state == IslChangeType.DISCOVERED }
     }
 
     def cleanup() {
@@ -211,7 +211,7 @@ class ThrottlingRerouteSpec extends BaseSpecification {
         assert brokenIsl, "This should not be possible. Trying to switch port on ISL which is not present in config?"
         northbound.portDown(sw, port)
         Wrappers.wait(WAIT_OFFSET, 0) {
-            assert islUtils.getIslInfo(brokenIsl).get().state == IslChangeType.FAILED
+            assert northbound.getLink(brokenIsl).state == IslChangeType.FAILED
         }
         return brokenIsl
 

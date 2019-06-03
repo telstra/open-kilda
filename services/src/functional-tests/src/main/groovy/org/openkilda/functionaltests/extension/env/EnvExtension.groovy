@@ -36,6 +36,9 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
 
     @Value('${spring.profiles.active}')
     String profile
+    
+    @Value('${use.hs}')
+    boolean useHs    
 
     @Override
     void start() {
@@ -58,13 +61,14 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     }
 
     void buildVirtualEnvironment() {
-        //turn on CRUD features
         def features = FeatureTogglesDto.builder()
                 .createFlowEnabled(true)
                 .updateFlowEnabled(true)
                 .deleteFlowEnabled(true)
                 .flowsRerouteOnIslDiscoveryEnabled(true)
-                .build();
+                .useBfdForIslIntegrityCheck(true)
+                .flowsRerouteViaFlowHs(useHs)
+                .build()
         northbound.toggleFeature(features)
 
         labService.flushLabs()

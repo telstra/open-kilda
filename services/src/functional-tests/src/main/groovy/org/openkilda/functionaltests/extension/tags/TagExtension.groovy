@@ -2,8 +2,6 @@ package org.openkilda.functionaltests.extension.tags
 
 import static org.openkilda.functionaltests.extension.ExtensionHelper.isFeatureSpecial
 
-import org.openkilda.functionaltests.extension.spring.ContextAwareGlobalExtension
-
 import groovy.util.logging.Slf4j
 import org.junit.AssumptionViolatedException
 import org.spockframework.runtime.extension.AbstractGlobalExtension
@@ -105,6 +103,9 @@ class TagExtension extends AbstractGlobalExtension {
                 })
             }
         }
+        if(spec.getFeatures().every { it.excluded || it.skipped }) {
+            spec.skipped = true
+        }
     }
 
     static Set<Tag> collectAllTags(IterationInfo iteration) {
@@ -169,7 +170,7 @@ class TagExtension extends AbstractGlobalExtension {
                     "false"
                 }
             } else {
-                throw new UnknownTagLiteralException("Unknown literal: $literal")
+                throw new UnknownTagLiteralException("Unknown tag: $literal")
             }
         }.join(" "))
     }
