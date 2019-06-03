@@ -62,6 +62,12 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
         pvs.setConfig(config);
         pvs.initAlgorithm("secret");
 
+        fmc.addConfigParam(pvs, "isl_bandwidth_quotient", "0.0");
+        fmc.addConfigParam(pvs, "hmac256-secret", "secret");
+        fmc.addConfigParam(pvs, "bootstrap-servers", "");
+
+        pvs.init(fmc);
+
         srcIpTarget = new InetSocketAddress("192.168.10.1", 200);
         dstIpTarget = new InetSocketAddress("192.168.10.101", 100);
         long sw1HwAddrTarget = 0x112233445566L;
@@ -78,14 +84,13 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
         replay(sw2);
     }
 
-    @SuppressWarnings("static-access")
     @Test
     public void testBcastPacket() {
         // This is Broadcast so set dstIpTarget to the broadcast IP
-        InetSocketAddress dstIpTarget = new InetSocketAddress(pvs.VERIFICATION_PACKET_IP_DST, 200);
+        InetSocketAddress dstIpTarget = new InetSocketAddress(pvs.DISCOVERY_PACKET_IP_DST, 200);
 
-        // Generate the VerificationPacket
-        OFPacketOut packet = pvs.generateVerificationPacket(sw1, OFPort.of(1), true, null);
+        // Generate the DiscoveryPacket
+        OFPacketOut packet = pvs.generateDiscoveryPacket(sw1, OFPort.of(1), true, null);
         System.out.println("packet: " + Hex.encodeHexString(packet.getData()));
 
         // Source MAC will always be that of sw1 for both Unicast and Broadcast
