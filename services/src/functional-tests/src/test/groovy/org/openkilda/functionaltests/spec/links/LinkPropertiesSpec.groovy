@@ -149,11 +149,12 @@ class LinkPropertiesSpec extends BaseSpecification {
         def isl = topology.islsForActiveSwitches.first()
         def initialMaxBandwidth = islUtils.getIslInfo(isl).get().maxBandwidth
 
-        when: "Update cost and max bandwidth on ISL via link props"
+        when: "Create link props of ISL to update cost and max bandwidth on the forward and reverse directions"
         def costValue = "12345"
         def maxBandwidthValue = "54321"
         def linkProps = [islUtils.toLinkProps(isl, ["cost": costValue, "max_bandwidth": maxBandwidthValue])]
         northbound.updateLinkProps(linkProps)
+        assert northbound.getAllLinkProps().size() == 2
 
         then: "Cost on forward and reverse ISLs is really updated"
         database.getIslCost(isl) == costValue.toInteger()
@@ -163,6 +164,19 @@ class LinkPropertiesSpec extends BaseSpecification {
         def updatedLinks = northbound.getAllLinks()
         islUtils.getIslInfo(updatedLinks, isl).get().maxBandwidth == maxBandwidthValue.toInteger()
         islUtils.getIslInfo(updatedLinks, isl.reversed).get().maxBandwidth == maxBandwidthValue.toInteger()
+
+        when: "Update link props on the forward direction of ISL to update cost one more time"
+        def newCostValue = "345"
+        northbound.updateLinkProps([islUtils.toLinkProps(isl, ["cost": newCostValue])])
+
+        then: "Forward and reverse directions of the link props are really updated"
+        northbound.getAllLinkProps().each {
+            assert it.props.cost == newCostValue
+        }
+
+        and: "Cost on forward and reverse ISLs is really updated"
+        database.getIslCost(isl) == newCostValue.toInteger()
+        database.getIslCost(isl.reversed) == newCostValue.toInteger()
 
         when: "Delete link props"
         northbound.deleteLinkProps(linkProps)
@@ -212,7 +226,9 @@ class LinkPropertiesSpec extends BaseSpecification {
         islUtils.getIslInfo(links, isl.reversed).get().maxBandwidth == maxBandwidthValue.toInteger()
 
         and: "Delete link props"
+        //DELETE /link/props deletes props for both directions, even if only one direction specified
         northbound.deleteLinkProps(linkProps)
+        northbound.getAllLinkProps().empty
     }
 
     def prepareLinkPropsForSearch() {
