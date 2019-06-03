@@ -4,17 +4,17 @@
 ### Features:
 -  [#2403](https://github.com/telstra/open-kilda/pull/2403) Adding  feature to toggle the menu sidebar (Issue:  [#2387](https://github.com/telstra/open-kilda/issues/2387)) [**gui**]
 -  [#2394](https://github.com/telstra/open-kilda/pull/2394) Adding feature to delete ISL and improvement for list screen cache reset , latency calculation on flow detail screen,changed speed with max_bandwidth on isl detail (Issues:  [#2348](https://github.com/telstra/open-kilda/issues/2348), [#2339](https://github.com/telstra/open-kilda/issues/2339), [#2337](https://github.com/telstra/open-kilda/issues/2337), [#2338](https://github.com/telstra/open-kilda/issues/2338)) [**gui**]
--  [#2395](https://github.com/telstra/open-kilda/pull/2395) Re-implement flow create feature using H&S approach 
--  [#2360](https://github.com/telstra/open-kilda/pull/2360) Re-implement flow reroute feature using H&S approach (Issue:  [#2017](https://github.com/telstra/open-kilda/issues/2017))
--  [#2315](https://github.com/telstra/open-kilda/pull/2315) Add flow create API V2 [**area/api**]
+-  [#2395](https://github.com/telstra/open-kilda/pull/2395) Re-implement flow create feature using H&S approach (Issue:  [#1866](https://github.com/telstra/open-kilda/issues/1866)) [**northbound**]
+-  [#2360](https://github.com/telstra/open-kilda/pull/2360) Re-implement flow reroute feature using H&S approach (Issue:  [#2017](https://github.com/telstra/open-kilda/issues/2017)) [**northbound**]
+-  [#2315](https://github.com/telstra/open-kilda/pull/2315) Add flow create API V2  (Issue:  [#1866](https://github.com/telstra/open-kilda/issues/1866)) [**northbound**][**area/api**] [**northbound**]
 
 ### Bug Fixes:
--  [#2364](https://github.com/telstra/open-kilda/pull/2364) Add test for issue #2363 (Issue:  [#2363](https://github.com/telstra/open-kilda/issues/2363)) [**bug**]
+-  [#2364](https://github.com/telstra/open-kilda/pull/2364) Add test for issue #2363 (Issue:  [#2363](https://github.com/telstra/open-kilda/issues/2363)) [**tests**]
 
 ### Improvements:
 -  [#2425](https://github.com/telstra/open-kilda/pull/2425) Log the root cause of OGM mapping exception in repositories 
 -  [#2421](https://github.com/telstra/open-kilda/pull/2421) ignore broken test due to incorrect logic in test [**tests**]
--  [#2414](https://github.com/telstra/open-kilda/pull/2414) Implement "self-executable" fl commands, refactor fl structure
+-  [#2414](https://github.com/telstra/open-kilda/pull/2414) Implement "self-executable" fl commands, refactor fl structure (Issue:  [#1866](https://github.com/telstra/open-kilda/issues/1866))
 -  [#2409](https://github.com/telstra/open-kilda/pull/2409) rename correlation id for functional and grpc tests [**tests**]
 -  [#2408](https://github.com/telstra/open-kilda/pull/2408) add tests for pinned+protected flow [**tests**]
 -  [#2405](https://github.com/telstra/open-kilda/pull/2405) Persist python lib versions for traffexam [**tests**]
