@@ -15,7 +15,6 @@
 
 package org.openkilda.messaging.model;
 
-import org.openkilda.messaging.payload.flow.SwapFlowPayload;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -80,15 +79,5 @@ public class SwapFlowDto implements Serializable {
         this.destinationSwitch = destinationSwitch;
         this.destinationPort = destinationPort;
         this.destinationVlan = destinationVlan;
-    }
-
-    public SwapFlowDto(SwapFlowPayload input) {
-        this(input.getFlowId(),
-                input.getSource().getDatapath(),
-                input.getSource().getPortNumber(),
-                input.getSource().getVlanId(),
-                input.getDestination().getDatapath(),
-                input.getDestination().getPortNumber(),
-                input.getDestination().getVlanId());
     }
 }

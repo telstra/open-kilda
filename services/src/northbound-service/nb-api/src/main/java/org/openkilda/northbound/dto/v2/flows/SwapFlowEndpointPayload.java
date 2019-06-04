@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.payload.flow;
+package org.openkilda.northbound.dto.v2.flows;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
