@@ -73,7 +73,7 @@ public final class RouterUtils {
      * @param message - target
      * @return - SwitchId or null
      */
-    public static SwitchId lookupSwitchIdInCommandMessage(Message message) {
+    public static SwitchId lookupSwitchId(Message message) {
         if (message instanceof CommandMessage) {
             CommandData commandData = ((CommandMessage) message).getData();
             if (commandData instanceof BaseInstallFlow) {
@@ -114,8 +114,6 @@ public final class RouterUtils {
                 return ((BatchInstallForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpMetersForSwitchManagerRequest) {
                 return ((DumpMetersForSwitchManagerRequest) commandData).getSwitchId();
-            } else if (commandData instanceof MeterModifyCommandRequest) {
-                return ((MeterModifyCommandRequest) commandData).getFwdSwitchId();
             } else if (commandData instanceof SetupBfdSession) {
                 return ((SetupBfdSession) commandData).getBfdSession().getTarget().getDatapath();
             } else if (commandData instanceof RemoveBfdSession) {
@@ -130,7 +128,7 @@ public final class RouterUtils {
      * @param message - target
      * @return - SwitchId or null
      */
-    public static SwitchId lookupSwitchIdInMessage(AbstractMessage message) {
+    public static SwitchId lookupSwitchId(AbstractMessage message) {
         if (message instanceof FlowRequest) {
             return ((FlowRequest) message).getSwitchId();
         }

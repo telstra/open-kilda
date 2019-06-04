@@ -28,11 +28,10 @@ import org.openkilda.wfm.topology.floodlightrouter.service.FloodlightTracker;
 import org.openkilda.wfm.topology.floodlightrouter.service.MessageSender;
 import org.openkilda.wfm.topology.floodlightrouter.service.RouterService;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMapping;
-import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
+import org.openkilda.wfm.topology.utils.AbstractTickRichBolt;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
-import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -46,10 +45,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<String, RouterService>>
-        implements MessageSender {
+public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender {
     private static final Logger logger = LoggerFactory.getLogger(DiscoveryBolt.class);
-    private static final String ROUTER_SERVICE = "ROUTER_SERVICE";
 
     private final PersistenceManager persistenceManager;
 
@@ -61,8 +58,6 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
 
     private transient FeatureTogglesRepository featureTogglesRepository;
     private transient RouterService routerService;
-
-    protected OutputCollector outputCollector;
 
     private Tuple currentTuple;
 
@@ -114,17 +109,6 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
     }
 
     @Override
-    public void initState(InMemoryKeyValueState<String, RouterService> entries) {
-        routerService = entries.get(ROUTER_SERVICE);
-        if (routerService == null) {
-            FloodlightTracker floodlightTracker = new FloodlightTracker(floodlights, floodlightAliveTimeout,
-                    floodlightAliveInterval);
-            routerService = new RouterService(floodlightTracker);
-            entries.put(ROUTER_SERVICE, routerService);
-        }
-    }
-
-    @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         Fields kafkaFields = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_KEY,
                                         FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
@@ -137,8 +121,10 @@ public class DiscoveryBolt extends AbstractTickStatefulBolt<InMemoryKeyValueStat
 
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
-        this.featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
-        this.outputCollector = outputCollector;
+        featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
+        FloodlightTracker floodlightTracker = new FloodlightTracker(floodlights, floodlightAliveTimeout,
+                floodlightAliveInterval);
+        routerService = new RouterService(floodlightTracker);
         super.prepare(map, topologyContext, outputCollector);
     }
 

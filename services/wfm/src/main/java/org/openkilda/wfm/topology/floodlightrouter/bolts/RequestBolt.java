@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.MAPPER;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.service.RouterUtils;
@@ -30,63 +31,42 @@ import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
-import org.apache.storm.state.InMemoryKeyValueState;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseStatefulBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.io.IOException;
-import java.util.Map;
 import java.util.Set;
 
 @Slf4j
-public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, SwitchTracker>> {
-    private static final String SWITCH_TRACKER_KEY = "SWITCH_TRACKER_KEY";
-    protected String outputStream;
+public class RequestBolt extends AbstractBolt {
+    protected final String outputStream;
     protected final Set<String> regions;
 
     protected transient SwitchTracker switchTracker;
 
-    protected OutputCollector outputCollector;
-
     public RequestBolt(String outputStream, Set<String> regions) {
         this.outputStream = outputStream;
         this.regions = regions;
-
     }
 
     @Override
-    public void execute(Tuple input) {
-        try {
-            if (Stream.REGION_NOTIFICATION.equals(input.getSourceStreamId())) {
-                updateSwitchMapping((SwitchMapping) input.getValueByField(
-                        AbstractTopology.MESSAGE_FIELD));
-            } else {
-                String json = pullRequest(input);
-                try {
-                    handleAbstractMessage(json, input);
-                    return;
-                } catch (JsonMappingException e) {
-                    log.debug("Failed to deserialize json to abstract message", e);
-                }
-
-                handleMessage(json, input);
-            }
-        } catch (Exception e) {
-            log.error(String.format("Unhandled exception in %s", getClass().getName()), e);
-        } finally {
-            outputCollector.ack(input);
+    public void handleInput(Tuple input) throws Exception {
+        if (Stream.REGION_NOTIFICATION.equals(input.getSourceStreamId())) {
+            handleSwitchMappingUpdate(pullValue(input, AbstractTopology.MESSAGE_FIELD, SwitchMapping.class));
+        } else {
+            handleControllerRequest(input);
         }
     }
 
-    private void handleMessage(String json, Tuple input) throws IOException {
-        Message message = MAPPER.readValue(json, Message.class);
+    private void handleSwitchMappingUpdate(SwitchMapping mapping) {
+        updateSwitchMapping(mapping);
+    }
 
-        SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
+    private void handleControllerRequest(Tuple input) throws IOException {
+        String json = pullRequest(input);
+        SwitchId switchId = lookupSwitchId(json);
         if (switchId != null) {
             String region = switchTracker.lookupRegion(switchId);
             if (region != null) {
@@ -99,26 +79,33 @@ public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, 
         }
     }
 
-    void handleAbstractMessage(String json, Tuple input) throws IOException {
-        AbstractMessage message = MAPPER.readValue(json, AbstractMessage.class);
-        SwitchId switchId = RouterUtils.lookupSwitchIdInMessage(message);
-        if (switchId != null) {
-            String region = switchTracker.lookupRegion(switchId);
-            if (region != null) {
-                proxyRequestToSpeaker(input, region);
-            } else {
-                log.error("Unable to lookup region for abstract message: {}", json);
-            }
-        } else {
-            log.error("Unable to lookup switch for abstract message: {}", json);
+    private SwitchId lookupSwitchId(String json) throws IOException {
+        SwitchId switchId;
+        try {
+            AbstractMessage message = decodeMessage(json);
+            switchId = RouterUtils.lookupSwitchId(message);
+        } catch (JsonMappingException e) {
+            log.debug("Failed to deserialize json to abstract message", e);
+            Message message = decodeClassicMessage(json);
+            switchId = RouterUtils.lookupSwitchId(message);
         }
+
+        return switchId;
+    }
+
+    private Message decodeClassicMessage(String json) throws IOException {
+        return MAPPER.readValue(json, Message.class);
+    }
+
+    private AbstractMessage decodeMessage(String json) throws IOException {
+        return MAPPER.readValue(json, AbstractMessage.class);
     }
 
     protected void proxyRequestToSpeaker(Tuple input, String region) {
         String targetStream = Stream.formatWithRegion(outputStream, region);
         String key = pullRequestKey(input);
         String value = pullRequest(input);
-        outputCollector.emit(targetStream, input, makeSpeakerTuple(key, value));
+        getOutput().emit(targetStream, input, makeSpeakerTuple(key, value));
     }
 
     protected String pullRequest(Tuple input) {
@@ -133,22 +120,8 @@ public class RequestBolt extends BaseStatefulBolt<InMemoryKeyValueState<String, 
         return new Values(key, json);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
-        this.outputCollector = outputCollector;
-    }
-
-    @Override
-    public void initState(InMemoryKeyValueState<String, SwitchTracker> state) {
-        SwitchTracker tracker = state.get(SWITCH_TRACKER_KEY);
-        if (tracker == null) {
-            tracker = new SwitchTracker();
-            state.put(SWITCH_TRACKER_KEY, tracker);
-        }
-        switchTracker = tracker;
+    protected void init() {
+        switchTracker = new SwitchTracker();
     }
 
     protected void updateSwitchMapping(SwitchMapping mapping) {
