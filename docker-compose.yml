@@ -12,6 +12,7 @@ services:
     command: api
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
+    - /lib/modules:/lib/modules
     networks:
       default:
         aliases:
