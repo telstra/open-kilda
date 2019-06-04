@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,20 +13,26 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.ctrl.state;
+package org.openkilda.northbound.dto.v2.flows;
 
-import org.openkilda.messaging.ctrl.AbstractDumpState;
-import org.openkilda.messaging.ctrl.state.visitor.DumpStateVisitor;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
-@JsonSerialize
+@Data
+@EqualsAndHashCode
+@AllArgsConstructor
+@NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonIgnoreProperties(ignoreUnknown = true)
-public class OperationsBoltState extends AbstractDumpState {
-    public void accept(DumpStateVisitor visitor) {
-        visitor.visit(this);
-    }
+@JsonNaming(SnakeCaseStrategy.class)
+public class SwapFlowEndpointPayload {
+
+    private SwapFlowPayload firstFlow;
+
+    private SwapFlowPayload secondFlow;
+
 }

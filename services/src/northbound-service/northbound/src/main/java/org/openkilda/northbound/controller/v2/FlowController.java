@@ -15,8 +15,8 @@
 
 package org.openkilda.northbound.controller.v2;
 
-import org.openkilda.messaging.payload.flow.SwapFlowEndpointPayload;
 import org.openkilda.northbound.controller.BaseController;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.service.FlowService;
 
 import io.swagger.annotations.ApiOperation;
@@ -38,14 +38,8 @@ import java.util.concurrent.CompletableFuture;
 @PropertySource("classpath:northbound.properties")
 public class FlowController extends BaseController {
 
-    /**
-     * The logger.
-     */
     private static final Logger logger = LoggerFactory.getLogger(FlowController.class);
 
-    /**
-     * The flow service instance.
-     */
     @Autowired
     private FlowService flowService;
 

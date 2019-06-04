@@ -51,9 +51,10 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
-import org.openkilda.messaging.payload.flow.SwapFlowEndpointPayload;
-import org.openkilda.messaging.payload.flow.SwapFlowPayload;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.openkilda.northbound.messaging.MessagingChannel;
 
 import org.springframework.stereotype.Component;
@@ -79,6 +80,8 @@ public class TestMessageMock implements MessagingChannel {
     static final long TEST_SWITCH_RULE_COOKIE = 1L;
     static final FlowEndpointPayload flowEndpoint = new FlowEndpointPayload(SWITCH_ID, 1, 1);
     static final FlowEndpointPayload secondFlowEndpoint = new FlowEndpointPayload(SECOND_SWITCH_ID, 2, 2);
+    static final FlowEndpointV2 flowPayloadEndpoint = new FlowEndpointV2(SWITCH_ID, 1, 1);
+    static final FlowEndpointV2 secondFlowPayloadEndpoint = new FlowEndpointV2(SECOND_SWITCH_ID, 2, 2);
     public static final FlowPayload flow = FlowPayload.builder()
             .id(FLOW_ID)
             .source(flowEndpoint)
@@ -90,14 +93,14 @@ public class TestMessageMock implements MessagingChannel {
 
     public static final SwapFlowPayload firstSwapFlow = SwapFlowPayload.builder()
             .flowId(FLOW_ID)
-            .source(flowEndpoint)
-            .destination(flowEndpoint)
+            .source(flowPayloadEndpoint)
+            .destination(flowPayloadEndpoint)
             .build();
 
     public static final SwapFlowPayload secondSwapFlow = SwapFlowPayload.builder()
             .flowId(SECOND_FLOW_ID)
-            .source(secondFlowEndpoint)
-            .destination(secondFlowEndpoint)
+            .source(secondFlowPayloadEndpoint)
+            .destination(secondFlowPayloadEndpoint)
             .build();
 
     public static final SwapFlowEndpointPayload bulkFlow = new SwapFlowEndpointPayload(firstSwapFlow, secondSwapFlow);

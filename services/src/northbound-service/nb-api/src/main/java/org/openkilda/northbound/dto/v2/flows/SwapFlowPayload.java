@@ -13,26 +13,34 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.payload.flow;
+package org.openkilda.northbound.dto.v2.flows;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
 
 @Data
-@EqualsAndHashCode
-@AllArgsConstructor
-@NoArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(SnakeCaseStrategy.class)
-public class SwapFlowEndpointPayload {
+@Builder
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class SwapFlowPayload {
+    private static final long serialVersionUID = 1L;
 
-    private SwapFlowPayload firstFlow;
+    @JsonProperty("flowid")
+    private String flowId;
 
-    private SwapFlowPayload secondFlow;
+    @JsonProperty("source")
+    private FlowEndpointV2 source;
 
+    @JsonProperty("destination")
+    private FlowEndpointV2 destination;
+
+    public SwapFlowPayload(@JsonProperty("flowid") String flowId,
+                           @JsonProperty("source") FlowEndpointV2 source,
+                           @JsonProperty("destination") FlowEndpointV2 destination) {
+        this.flowId = flowId;
+        this.source = source;
+        this.destination = destination;
+    }
 }

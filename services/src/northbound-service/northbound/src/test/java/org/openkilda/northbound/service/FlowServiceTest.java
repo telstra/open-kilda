@@ -21,13 +21,13 @@ import static org.mockito.Mockito.mock;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.messaging.payload.flow.SwapFlowEndpointPayload;
-import org.openkilda.messaging.payload.flow.SwapFlowPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.MessageExchanger;
 import org.openkilda.northbound.config.KafkaConfig;
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.impl.FlowServiceImpl;
 import org.openkilda.northbound.service.impl.SwitchServiceImpl;
@@ -63,10 +63,6 @@ public class FlowServiceTest {
     @Before
     public void reset() {
         messageExchanger.resetMockedResponses();
-
-        String lastRequestId = idFactory.produceChained("dummy");
-        lastRequestId = lastRequestId.substring(0, lastRequestId.indexOf(':')).trim();
-        requestIdIndex = Integer.valueOf(lastRequestId) + 1;
     }
 
     @Test
@@ -77,8 +73,8 @@ public class FlowServiceTest {
         String firstFlowId = "bulk-flow-1";
         String secondFlowId = "bulk-flow-2";
 
-        FlowEndpointPayload firstEndpoint = new FlowEndpointPayload(new SwitchId("ff:00"), 1, 1);
-        FlowEndpointPayload secondEndpoint = new FlowEndpointPayload(new SwitchId("ff:01"), 2, 2);
+        FlowEndpointV2 firstEndpoint = new FlowEndpointV2(new SwitchId("ff:00"), 1, 1);
+        FlowEndpointV2 secondEndpoint = new FlowEndpointV2(new SwitchId("ff:01"), 2, 2);
 
         SwapFlowPayload firstFlowPayload = SwapFlowPayload.builder()
                 .flowId(firstFlowId)

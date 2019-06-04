@@ -25,8 +25,6 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandGroup;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
-import org.openkilda.messaging.ctrl.AbstractDumpState;
-import org.openkilda.messaging.ctrl.state.OperationsBoltState;
 import org.openkilda.messaging.error.CacheException;
 import org.openkilda.messaging.error.ClientErrorMessage;
 import org.openkilda.messaging.error.ErrorData;
@@ -39,7 +37,6 @@ import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPair;
-import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputerConfig;
@@ -47,8 +44,6 @@ import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.ctrl.CtrlAction;
-import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.error.ClientException;
 import org.openkilda.wfm.error.FeatureTogglesNotEnabledException;
 import org.openkilda.wfm.error.FlowNotFoundException;
@@ -80,7 +75,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 
-public class FlowOperationsBolt extends BaseRichBolt implements ICtrlBolt {
+public class FlowOperationsBolt extends BaseRichBolt {
 
     private static final String STREAM_ID_CTRL = "ctrl";
 
@@ -95,8 +90,6 @@ public class FlowOperationsBolt extends BaseRichBolt implements ICtrlBolt {
     private final PathComputerConfig pathComputerConfig;
 
     private final FlowResourcesConfig flowResourcesConfig;
-
-
 
     private transient RepositoryFactory repositoryFactory;
     private transient PathComputerFactory pathComputerFactory;
@@ -135,10 +128,6 @@ public class FlowOperationsBolt extends BaseRichBolt implements ICtrlBolt {
 
     @Override
     public void execute(Tuple tuple) {
-
-        if (CtrlAction.boltHandlerEntrance(this, tuple)) {
-            return;
-        }
         StreamType streamId = StreamType.valueOf(tuple.getSourceStreamId());
         String flowId = tuple.getStringByField(Utils.FLOW_ID);
         String correlationId = Utils.DEFAULT_CORRELATION_ID;
@@ -256,31 +245,6 @@ public class FlowOperationsBolt extends BaseRichBolt implements ICtrlBolt {
         declarer.declareStream(StreamType.UPDATE.toString(), FlowTopology.fieldsMessageFlowId);
         declarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
         declarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
-    }
-
-    @Override
-    public AbstractDumpState dumpState() {
-        return new OperationsBoltState();
-    }
-
-    @Override
-    public String getCtrlStreamId() {
-        return STREAM_ID_CTRL;
-    }
-
-    @Override
-    public AbstractDumpState dumpStateBySwitchId(SwitchId switchId) {
-        return null;
-    }
-
-    @Override
-    public TopologyContext getContext() {
-        return context;
-    }
-
-    @Override
-    public OutputCollector getOutput() {
-        return outputCollector;
     }
 
     @VisibleForTesting
