@@ -29,15 +29,10 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.BaseFlow;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
-import org.openkilda.messaging.ctrl.AbstractDumpState;
-import org.openkilda.messaging.ctrl.state.TransactionBoltState;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.rule.FlowCommandErrorData;
-import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.ctrl.CtrlAction;
-import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
@@ -45,10 +40,9 @@ import org.openkilda.wfm.topology.flow.StreamType;
 import org.openkilda.wfm.topology.flow.transactions.FlowCommandRegistry;
 import org.openkilda.wfm.topology.flow.transactions.UnknownBatchException;
 import org.openkilda.wfm.topology.flow.transactions.UnknownTransactionException;
-import org.openkilda.wfm.topology.utils.AbstractTickStatefulBolt;
+import org.openkilda.wfm.topology.utils.AbstractTickRichBolt;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.apache.storm.state.InMemoryKeyValueState;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -58,7 +52,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -68,21 +61,13 @@ import java.util.UUID;
 /**
  * Transaction Bolt. Tracks OpenFlow Speaker commands transactions.
  */
-public class TransactionBolt extends AbstractTickStatefulBolt<InMemoryKeyValueState<String, FlowCommandRegistry>>
-        implements ICtrlBolt {
+public class TransactionBolt extends AbstractTickRichBolt {
     private static final Logger logger = LoggerFactory.getLogger(TransactionBolt.class);
 
     private static final String STREAM_ID_CTRL = "ctrl";
-    private static final String FLOW_COMMAND_REGISTRY_STATE_KEY = "transactions";
 
     private final Duration transactionExpirationTime;
-
-    /**
-     * FIXME(surabujin) in memory status lead to disaster when system restarts during any transition.
-     */
     private transient FlowCommandRegistry flowCommandRegistry;
-
-    private transient TopologyContext context;
 
     public TransactionBolt(Duration transactionExpirationTime) {
         this.transactionExpirationTime = requireNonNull(transactionExpirationTime);
@@ -90,10 +75,6 @@ public class TransactionBolt extends AbstractTickStatefulBolt<InMemoryKeyValueSt
 
     @Override
     public void doWork(Tuple tuple) {
-        if (CtrlAction.boltHandlerEntrance(this, tuple)) {
-            return;
-        }
-
         logger.debug("Request tuple: {}", tuple);
 
         ComponentType componentId = ComponentType.valueOf(tuple.getSourceComponent());
@@ -288,18 +269,6 @@ public class TransactionBolt extends AbstractTickStatefulBolt<InMemoryKeyValueSt
      * {@inheritDoc}
      */
     @Override
-    public void initState(InMemoryKeyValueState<String, FlowCommandRegistry> state) {
-        flowCommandRegistry = state.get(FLOW_COMMAND_REGISTRY_STATE_KEY);
-        if (flowCommandRegistry == null) {
-            flowCommandRegistry = new FlowCommandRegistry();
-            state.put(FLOW_COMMAND_REGISTRY_STATE_KEY, flowCommandRegistry);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declareStream(StreamType.CREATE.toString(), FlowTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.DELETE.toString(), FlowTopology.fieldMessage);
@@ -313,37 +282,8 @@ public class TransactionBolt extends AbstractTickStatefulBolt<InMemoryKeyValueSt
      */
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
-        this.context = topologyContext;
         super.prepare(map, topologyContext, outputCollector);
-    }
 
-    @Override
-    public AbstractDumpState dumpState() {
-        Map<String, Set<UUID>> dump = new HashMap<>();
-        for (Map.Entry<String, Set<UUID>> item : flowCommandRegistry.getTransactions().entrySet()) {
-            dump.put(item.getKey(), item.getValue());
-        }
-        return new TransactionBoltState(dump);
-    }
-
-    @Override
-    public String getCtrlStreamId() {
-        return STREAM_ID_CTRL;
-    }
-
-    @Override
-    public AbstractDumpState dumpStateBySwitchId(SwitchId switchId) {
-        // Not implemented
-        return new TransactionBoltState(new HashMap<>());
-    }
-
-    @Override
-    public TopologyContext getContext() {
-        return context;
-    }
-
-    @Override
-    public OutputCollector getOutput() {
-        return outputCollector;
+        this.flowCommandRegistry = new FlowCommandRegistry();
     }
 }
