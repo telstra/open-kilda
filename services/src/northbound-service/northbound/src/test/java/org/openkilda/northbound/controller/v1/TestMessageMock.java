@@ -51,9 +51,9 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
-import org.openkilda.messaging.payload.flow.SwapFlowEndpointPayload;
-import org.openkilda.messaging.payload.flow.SwapFlowPayload;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.openkilda.northbound.messaging.MessagingChannel;
 
 import org.springframework.stereotype.Component;

@@ -13,9 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.payload.flow;
+package org.openkilda.northbound.dto.v2.flows;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;

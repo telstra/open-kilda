@@ -193,7 +193,7 @@ public class FlowValidatorTest {
                 .srcSwitch(otherSwitch)
                 .destSwitch(otherSwitch)
                 .build();
-        target.checkFlowForEndpointConflicts(firstFlow, secondFlow);
+        target.checkFlowForEndpointConflicts(firstFlow, firstFlow.getFlowId(), secondFlow.getFlowId());
     }
 
     @Test(expected = FlowValidationException.class)
@@ -215,7 +215,7 @@ public class FlowValidatorTest {
                 .srcSwitch(otherSwitch)
                 .destSwitch(otherSwitch)
                 .build();
-        target.checkFlowForEndpointConflicts(firstFlow, secondFlow);
+        target.checkFlowForEndpointConflicts(firstFlow, firstFlow.getFlowId(), secondFlow.getFlowId());
     }
 
     @Test(expected = FlowValidationException.class)
@@ -237,7 +237,7 @@ public class FlowValidatorTest {
                 .srcSwitch(otherSwitch)
                 .destSwitch(otherSwitch)
                 .build();
-        target.checkFlowForEndpointConflicts(firstFlow, secondFlow);
+        target.checkFlowForEndpointConflicts(firstFlow, firstFlow.getFlowId(), secondFlow.getFlowId());
     }
 
     @Test(expected = FlowValidationException.class)
@@ -259,101 +259,7 @@ public class FlowValidatorTest {
                 .srcSwitch(otherSwitch)
                 .destSwitch(otherSwitch)
                 .build();
-        target.checkFlowForEndpointConflicts(firstFlow, secondFlow);
-    }
-
-    @Test(expected = FlowValidationException.class)
-    public void shouldFailIfSecondFlowSrcSrcConflict() throws FlowValidationException {
-        defaultSetUp(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, DST_SWITCH_ID, DST_PORT, DST_VLAN, FLOW_ID);
-
-        Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
-        Switch otherSwitch = Switch.builder().switchId(new SwitchId("ff:fe")).build();
-
-        Flow firstFlow = new TestFlowBuilder()
-                .flowId(ANOTHER_FLOW_ID)
-                .srcSwitch(otherSwitch)
-                .destSwitch(otherSwitch)
-                .destPort(DST_PORT)
-                .build();
-        Flow secondFlow = new TestFlowBuilder()
-                .flowId("secondFlow")
-                .srcSwitch(srcSwitch)
-                .srcPort(SRC_PORT)
-                .srcVlan(0)
-                .destSwitch(otherSwitch)
-                .build();
-        target.checkFlowForEndpointConflicts(firstFlow, secondFlow);
-    }
-
-    @Test(expected = FlowValidationException.class)
-    public void shouldFailIfSecondFlowDstSrcConflict() throws FlowValidationException {
-        defaultSetUp(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, DST_SWITCH_ID, DST_PORT, DST_VLAN, FLOW_ID);
-
-        Switch srcSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
-        Switch otherSwitch = Switch.builder().switchId(new SwitchId("ff:fe")).build();
-
-        Flow firstFlow = new TestFlowBuilder()
-                .flowId(ANOTHER_FLOW_ID)
-                .srcSwitch(otherSwitch)
-                .destSwitch(otherSwitch)
-                .destPort(DST_PORT)
-                .build();
-        Flow secondFlow = new TestFlowBuilder()
-                .flowId("secondFlow")
-                .srcSwitch(srcSwitch)
-                .srcPort(DST_PORT)
-                .srcVlan(0)
-                .destSwitch(otherSwitch)
-                .build();
-        target.checkFlowForEndpointConflicts(firstFlow, secondFlow);
-    }
-
-    @Test(expected = FlowValidationException.class)
-    public void shouldFailIfSecondFlowSrcDstConflict() throws FlowValidationException {
-        defaultSetUp(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, DST_SWITCH_ID, DST_PORT, DST_VLAN, FLOW_ID);
-
-        Switch srcSwitch = Switch.builder().switchId(SRC_SWITCH_ID).build();
-        Switch otherSwitch = Switch.builder().switchId(new SwitchId("ff:fe")).build();
-
-        Flow firstFlow = new TestFlowBuilder()
-                .flowId(ANOTHER_FLOW_ID)
-                .srcSwitch(otherSwitch)
-                .srcPort(SRC_PORT)
-                .destSwitch(otherSwitch)
-                .destPort(DST_PORT)
-                .build();
-        Flow secondFlow = new TestFlowBuilder()
-                .flowId("secondFlow")
-                .srcSwitch(otherSwitch)
-                .destSwitch(srcSwitch)
-                .destPort(SRC_PORT)
-                .destVlan(0)
-                .build();
-        target.checkFlowForEndpointConflicts(firstFlow, secondFlow);
-    }
-
-    @Test(expected = FlowValidationException.class)
-    public void shouldFailIfSecondFlowDstDstConflict() throws FlowValidationException {
-        defaultSetUp(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, DST_SWITCH_ID, DST_PORT, DST_VLAN, FLOW_ID);
-
-        Switch dstSwitch = Switch.builder().switchId(DST_SWITCH_ID).build();
-        Switch otherSwitch = Switch.builder().switchId(new SwitchId("ff:fe")).build();
-
-        Flow firstFlow = new TestFlowBuilder()
-                .flowId(ANOTHER_FLOW_ID)
-                .srcSwitch(otherSwitch)
-                .srcPort(SRC_PORT)
-                .destSwitch(otherSwitch)
-                .destPort(DST_PORT)
-                .build();
-        Flow secondFlow = new TestFlowBuilder()
-                .flowId("secondFlow")
-                .srcSwitch(otherSwitch)
-                .destSwitch(dstSwitch)
-                .destPort(DST_PORT)
-                .destVlan(0)
-                .build();
-        target.checkFlowForEndpointConflicts(firstFlow, secondFlow);
+        target.checkFlowForEndpointConflicts(firstFlow, firstFlow.getFlowId(), secondFlow.getFlowId());
     }
 
     @Test(expected = FlowValidationException.class)

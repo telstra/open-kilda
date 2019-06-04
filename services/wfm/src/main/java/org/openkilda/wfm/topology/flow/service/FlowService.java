@@ -1290,10 +1290,15 @@ public class FlowService extends BaseFlowService {
         String firstFlowId = firstFlow.getFlowId();
         String secondFlowId = secondFlow.getFlowId();
 
-        Flow existingFirstFlow = flowRepository.findById(firstFlowId).orElseThrow(
-                () -> new FlowNotFoundException(firstFlowId));
-        Flow existingSecondFlow = flowRepository.findById(secondFlowId).orElseThrow(
-                () -> new FlowNotFoundException(secondFlowId));
+        FlowPathsWithEncapsulation currentFirstFlow =
+                getFlowPathPairWithEncapsulation(firstFlowId).orElseThrow(() ->
+                        new FlowNotFoundException(firstFlowId));
+        FlowPathsWithEncapsulation currentSecondFlow =
+                getFlowPathPairWithEncapsulation(secondFlowId).orElseThrow(() ->
+                        new FlowNotFoundException(secondFlowId));
+
+        Flow existingFirstFlow = currentFirstFlow.getFlow();
+        Flow existingSecondFlow = currentSecondFlow.getFlow();
 
         flowValidator.validateFowSwap(firstFlow, secondFlow);
 
@@ -1315,13 +1320,6 @@ public class FlowService extends BaseFlowService {
                 .destVlan(secondFlow.getDestVlan())
                 .build();
 
-
-        FlowPathsWithEncapsulation currentFirstFlow =
-                getFlowPathPairWithEncapsulation(firstFlowId).orElseThrow(() ->
-                        new FlowNotFoundException(firstFlowId));
-        FlowPathsWithEncapsulation currentSecondFlow =
-                getFlowPathPairWithEncapsulation(secondFlowId).orElseThrow(() ->
-                        new FlowNotFoundException(firstFlowId));
         return swapFlows(currentFirstFlow, existingFirstFlow, currentSecondFlow, existingSecondFlow, sender);
     }
 

@@ -20,14 +20,11 @@ import org.openkilda.messaging.info.InfoData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-@JsonSerialize
+@Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(SnakeCaseStrategy.class)
 @EqualsAndHashCode(callSuper = false)
 public class SwapFlowResponse extends InfoData {
 
@@ -49,42 +46,6 @@ public class SwapFlowResponse extends InfoData {
     public SwapFlowResponse(@JsonProperty("first_flow") FlowResponse firstFlow,
                             @JsonProperty("second_flow") FlowResponse secondFlow) {
         this.firstFlow = firstFlow;
-        this.secondFlow = secondFlow;
-    }
-
-    /**
-     * Gets a first flow response.
-     *
-     * @return the first flow response.
-     */
-    public FlowResponse getFirstFlow() {
-        return firstFlow;
-    }
-
-    /**
-     * Sets a first flow response.
-     *
-     * @param firstFlow a flow response instance.
-     */
-    public void setFirstFlow(FlowResponse firstFlow) {
-        this.firstFlow = firstFlow;
-    }
-
-    /**
-     * Gets a second flow response.
-     *
-     * @return the second flow response.
-     */
-    public FlowResponse getSecondFlow() {
-        return secondFlow;
-    }
-
-    /**
-     * Sets a second flow response.
-     *
-     * @param secondFlow a flow response instance.
-     */
-    public void setSecondFlow(FlowResponse secondFlow) {
         this.secondFlow = secondFlow;
     }
 }

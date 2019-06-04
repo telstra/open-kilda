@@ -21,18 +21,19 @@ import org.openkilda.messaging.info.flow.UniFlowPingResponse;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.Ping;
+import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
-import org.openkilda.messaging.payload.flow.SwapFlowPayload;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -93,6 +94,14 @@ public interface FlowMapper {
             expression = "java(new FlowEndpointPayload(f.getDestinationSwitch(), f.getDestinationPort(), "
                     + "f.getDestinationVlan()))")
     SwapFlowPayload toSwapOutput(FlowDto f);
+
+    @Mapping(source = "source.switchDpId", target = "sourceSwitch")
+    @Mapping(source = "source.portId", target = "sourcePort")
+    @Mapping(source = "source.vlanId", target = "sourceVlan")
+    @Mapping(source = "destination.switchDpId", target = "destinationSwitch")
+    @Mapping(source = "destination.portId", target = "destinationPort")
+    @Mapping(source = "destination.vlanId", target = "destinationVlan")
+    SwapFlowDto toSwapFlowDto(SwapFlowPayload f);
 
     /**
      * Convert {@link FlowState} to {@link String}.

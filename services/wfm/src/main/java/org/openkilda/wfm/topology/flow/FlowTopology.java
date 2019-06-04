@@ -117,9 +117,8 @@ public class FlowTopology extends AbstractTopology<FlowTopologyConfig> {
 
         FlowOperationsBolt flowOperationsBolt = new FlowOperationsBolt(persistenceManager, pathComputerConfig,
                 flowResourcesConfig);
-        boltSetup = builder.setBolt(ComponentType.FLOW_OPERATION_BOLT.toString(), flowOperationsBolt, parallelism)
+        builder.setBolt(ComponentType.FLOW_OPERATION_BOLT.toString(), flowOperationsBolt, parallelism)
                 .shuffleGrouping(ComponentType.SPLITTER_BOLT.toString(), StreamType.SWAP_ENDPOINT.toString());
-        ctrlTargets.add(new CtrlBoltRef(ComponentType.FLOW_OPERATION_BOLT.toString(), flowOperationsBolt, boltSetup));
 
         /*
          * Spout receives Speaker responses
