@@ -537,7 +537,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             link.setSpeed(aggData.getSpeed());
             link.setLatency(aggData.getLatency());
             link.setMaxBandwidth(aggData.getMaximumBandwidth());
-            link.setDefaultMaxBandwidth(aggData.getMaximumBandwidth());
+            link.setDefaultMaxBandwidth(aggData.getEffectiveMaximumBandwidth());
         }
     }
 
