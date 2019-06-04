@@ -76,6 +76,8 @@ public interface SwitchMapper {
     @Mapping(source = "rules.proper", target = "properRules")
     RulesValidationResult toRulesValidationResult(SwitchValidationResponse response);
 
+    RulesValidationResult toRulesValidationResult(SyncRulesResponse response);
+
     RulesValidationDto toRulesValidationResult(RulesValidationEntry data);
 
     MetersValidationDto toMetersValidationResult(MetersValidationEntry data);

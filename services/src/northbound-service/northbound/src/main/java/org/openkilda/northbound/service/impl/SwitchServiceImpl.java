@@ -30,6 +30,7 @@ import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
+import org.openkilda.messaging.command.switches.ValidateRulesRequest;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowEntry;
@@ -212,10 +213,10 @@ public class SwitchServiceImpl implements SwitchService {
         final String correlationId = RequestCorrelationId.getId();
 
         CommandMessage validateCommandMessage = new CommandMessage(
-                new SwitchValidateRequest(switchId, false), System.currentTimeMillis(), correlationId);
+                new ValidateRulesRequest(switchId), System.currentTimeMillis(), correlationId);
 
-        return messagingChannel.sendAndGet(switchManagerTopic, validateCommandMessage)
-                .thenApply(SwitchValidationResponse.class::cast)
+        return messagingChannel.sendAndGet(floodlightTopic, validateCommandMessage)
+                .thenApply(SyncRulesResponse.class::cast)
                 .thenApply(switchMapper::toRulesValidationResult);
     }
 
