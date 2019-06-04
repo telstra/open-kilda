@@ -505,12 +505,12 @@ class SwitchValidationSpec extends BaseSpecification {
         producer.flush()
 
         then: "System detects excess rules and store them in the 'excess' section"
-        def newCookiesSize = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            !Cookie.isDefaultRule(it.cookie)
-        }.size()
-        newCookiesSize == createdCookies.size() + 1
-
         Wrappers.wait(WAIT_OFFSET) {
+            def newCookiesSize = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
+                !Cookie.isDefaultRule(it.cookie)
+            }.size()
+            newCookiesSize == createdCookies.size() + 1
+
             involvedSwitches.findAll { !it.description.contains("OF_12") }.each { switchId ->
                 def involvedSwitchValidateInfo = northbound.validateSwitch(switchId)
                 assert involvedSwitchValidateInfo.rules.proper.containsAll(createdCookies)
