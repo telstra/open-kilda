@@ -19,6 +19,7 @@ import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.service.FlowService;
 
 import io.swagger.annotations.ApiOperation;
@@ -58,5 +59,16 @@ public class FlowControllerV2 extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowRerouteResponseV2> rerouteFlow(@PathVariable("flow_id") String flowId) {
         return flowService.rerouteFlowV2(flowId);
+    }
+
+
+    /**
+     * Bulk update for flow.
+     */
+    @ApiOperation(value = "Swap flow endpoints", response = SwapFlowEndpointPayload.class)
+    @PostMapping("/swap-endpoint")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwapFlowEndpointPayload> swapFlowEndpoint(@RequestBody SwapFlowEndpointPayload payload) {
+        return flowService.swapFlowEndpoint(payload);
     }
 }

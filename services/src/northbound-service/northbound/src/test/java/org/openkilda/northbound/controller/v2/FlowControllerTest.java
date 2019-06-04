@@ -27,9 +27,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import org.openkilda.messaging.payload.flow.SwapFlowEndpointPayload;
 import org.openkilda.northbound.controller.TestConfig;
 import org.openkilda.northbound.controller.v1.TestMessageMock;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import org.junit.Before;

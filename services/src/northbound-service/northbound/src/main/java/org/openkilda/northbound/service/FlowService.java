@@ -23,7 +23,6 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
-import org.openkilda.messaging.payload.flow.SwapFlowEndpointPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
@@ -33,6 +32,7 @@ import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;

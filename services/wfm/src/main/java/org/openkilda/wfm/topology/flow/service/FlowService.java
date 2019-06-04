@@ -1304,10 +1304,15 @@ public class FlowService extends BaseFlowService {
         String firstFlowId = firstFlow.getFlowId();
         String secondFlowId = secondFlow.getFlowId();
 
-        Flow existingFirstFlow = flowRepository.findById(firstFlowId).orElseThrow(
-                () -> new FlowNotFoundException(firstFlowId));
-        Flow existingSecondFlow = flowRepository.findById(secondFlowId).orElseThrow(
-                () -> new FlowNotFoundException(secondFlowId));
+        FlowPathsWithEncapsulation currentFirstFlow =
+                getFlowPathPairWithEncapsulation(firstFlowId).orElseThrow(() ->
+                        new FlowNotFoundException(firstFlowId));
+        FlowPathsWithEncapsulation currentSecondFlow =
+                getFlowPathPairWithEncapsulation(secondFlowId).orElseThrow(() ->
+                        new FlowNotFoundException(secondFlowId));
+
+        Flow existingFirstFlow = currentFirstFlow.getFlow();
+        Flow existingSecondFlow = currentSecondFlow.getFlow();
 
         flowValidator.validateFowSwap(firstFlow, secondFlow);
 
@@ -1329,22 +1334,15 @@ public class FlowService extends BaseFlowService {
                 .destVlan(secondFlow.getDestVlan())
                 .build();
 
-
-        FlowPathsWithEncapsulation currentFirstFlow =
-                getFlowPathPairWithEncapsulation(firstFlowId).orElseThrow(() ->
-                        new FlowNotFoundException(firstFlowId));
-        FlowPathsWithEncapsulation currentSecondFlow =
-                getFlowPathPairWithEncapsulation(secondFlowId).orElseThrow(() ->
-                        new FlowNotFoundException(firstFlowId));
         return swapFlows(currentFirstFlow, existingFirstFlow, currentSecondFlow, existingSecondFlow, sender);
     }
 
     private UpdatedFlowPathsWithEncapsulation processUpdateFlow(FlowPathsWithEncapsulation currentFlow,
-                                                                Flow updatingFlow)
+                                                                Flow updatingFlow, List<PathId> pathIds)
             throws ResourceAllocationException, RecoverableException, FlowValidationException, UnroutableFlowException,
             FlowNotFoundException {
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair newPathPair = pathComputer.getPath(updatingFlow, currentFlow.getFlow().getFlowPathIds());
+        PathPair newPathPair = pathComputer.getPath(updatingFlow, pathIds);
 
         log.info("Updating the flow with {} and path: {}", updatingFlow, newPathPair);
 
@@ -1392,21 +1390,22 @@ public class FlowService extends BaseFlowService {
                 buildFlowPathsWithEncapsulation(newFlowWithPaths, flowResources, protectedResources));
     }
 
-    // todo: replace VOID to type
     private List<FlowPair> swapFlows(FlowPathsWithEncapsulation currentFirstFlow,
                                                               Flow updatingFirstFlow,
                                                               FlowPathsWithEncapsulation currentSecondFlow,
                                                               Flow updatingSecondFlow, FlowCommandSender sender)
             throws ResourceAllocationException, FlowValidationException, UnroutableFlowException,
             FlowNotFoundException {
+        List<PathId> flowsPath = new ArrayList<>(currentFirstFlow.getFlow().getFlowPathIds());
+        flowsPath.addAll(currentSecondFlow.getFlow().getFlowPathIds());
         List<UpdatedFlowPathsWithEncapsulation> flows = null;
         try {
             flows = (List<UpdatedFlowPathsWithEncapsulation>) getFailsafe().get(
                     () -> transactionManager.doInTransaction(() -> {
                         UpdatedFlowPathsWithEncapsulation firstUpdatedFlow =
-                                processUpdateFlow(currentFirstFlow, updatingFirstFlow);
+                                processUpdateFlow(currentFirstFlow, updatingFirstFlow, flowsPath);
                         UpdatedFlowPathsWithEncapsulation secondUpdatedFlow =
-                                processUpdateFlow(currentSecondFlow, updatingSecondFlow);
+                                processUpdateFlow(currentSecondFlow, updatingSecondFlow, flowsPath);
                         return Arrays.asList(firstUpdatedFlow, secondUpdatedFlow);
                     }));
         } catch (FailsafeException e) {
