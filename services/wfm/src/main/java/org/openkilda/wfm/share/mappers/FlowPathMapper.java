@@ -90,4 +90,45 @@ public abstract class FlowPathMapper {
 
         return resultList;
     }
+
+    /**
+     * Convert {@link FlowPath} to {@link PathNodePayload}.
+     */
+    public List<PathNodePayload> mapToPathNodes(Flow flow, FlowPath flowPath) {
+        boolean forward = flow.isForward(flowPath);
+        int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
+        int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
+
+        return mapToPathNodes(flowPath, inPort, outPort);
+    }
+
+    /**
+     * Convert {@link FlowPath} to {@link PathNodePayload}.
+     */
+    public List<PathNodePayload> mapToPathNodes(FlowPath flowPath, int inPort, int outPort) {
+        List<PathNodePayload> resultList = new ArrayList<>();
+
+        if (flowPath.getSegments().isEmpty()) {
+            resultList.add(
+                    new PathNodePayload(flowPath.getSrcSwitch().getSwitchId(), inPort, outPort));
+        } else {
+            List<PathSegment> pathSegments = flowPath.getSegments();
+
+            resultList.add(new PathNodePayload(flowPath.getSrcSwitch().getSwitchId(), inPort,
+                    pathSegments.get(0).getSrcPort()));
+
+            for (int i = 1; i < pathSegments.size(); i++) {
+                PathSegment inputNode = pathSegments.get(i - 1);
+                PathSegment outputNode = pathSegments.get(i);
+
+                resultList.add(new PathNodePayload(inputNode.getDestSwitch().getSwitchId(), inputNode.getDestPort(),
+                        outputNode.getSrcPort()));
+            }
+
+            resultList.add(new PathNodePayload(flowPath.getDestSwitch().getSwitchId(),
+                    pathSegments.get(pathSegments.size() - 1).getDestPort(), outPort));
+        }
+
+        return resultList;
+    }
 }

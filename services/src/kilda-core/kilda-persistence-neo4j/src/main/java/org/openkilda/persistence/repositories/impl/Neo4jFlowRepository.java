@@ -35,7 +35,7 @@ import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Session;
 
-import java.util.Arrays;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
@@ -178,12 +178,18 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
     public void createOrUpdate(Flow flow) {
         validateFlow(flow);
 
+        if (flow.getTimeCreate() == null) {
+            flow.setTimeCreate(Instant.now());
+        } else {
+            flow.setTimeModify(Instant.now());
+        }
+
         transactionManager.doInTransaction(() -> {
             Collection<FlowPath> currentPaths = flowPathRepository.findByFlowId(flow.getFlowId());
             flowPathRepository.lockInvolvedSwitches(Stream.concat(currentPaths.stream(), flow.getPaths().stream())
                     .toArray(FlowPath[]::new));
 
-            updatePaths(currentPaths, Arrays.asList(flow.getForwardPath(), flow.getReversePath()));
+            updatePaths(currentPaths, flow.getPaths());
 
             super.createOrUpdate(flow);
         });
@@ -198,6 +204,10 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                 .collect(Collectors.toSet());
 
         currentPaths.forEach(path -> {
+            if (path.getTimeCreate() == null) {
+                path.setTimeCreate(Instant.now());
+            }
+
             if (!updatedEntities.contains(session.resolveGraphIdFor(path))) {
                 flowPathRepository.delete(path);
             }
@@ -228,50 +238,6 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                     }
                     return diverseFlow.getGroupId();
                 }));
-    }
-
-    @Override
-    public Collection<Flow> findWithPathSegment(SwitchId srcSwitchId, int srcPort,
-                                                SwitchId dstSwitchId, int dstPort) {
-        Map<String, Object> parameters = ImmutableMap.of(
-                "src_switch", switchIdConverter.toGraphProperty(srcSwitchId),
-                "src_port", srcPort,
-                "dst_switch", switchIdConverter.toGraphProperty(dstSwitchId),
-                "dst_port", dstPort);
-
-        Set<String> flowIds = new HashSet<>();
-        getSession().query(String.class,
-                "MATCH (src:switch)-[:source]-(ps:path_segment)-[:destination]-(dst:switch) "
-                        + "WHERE src.name=$src_switch AND ps.src_port=$src_port  "
-                        + "AND dst.name=$dst_switch AND ps.dst_port=$dst_port  "
-                        + "MATCH (f:flow)-[:owns]-(:flow_path)-[:owns]-(ps) "
-                        + "RETURN f.flow_id", parameters).forEach(flowIds::add);
-
-        if (flowIds.isEmpty()) {
-            return emptyList();
-        }
-
-        Filter flowIdsFilter = new Filter(FLOW_ID_PROPERTY_NAME, ComparisonOperator.IN, flowIds);
-
-        return loadAll(flowIdsFilter);
-    }
-
-    @Override
-    public Set<String> findFlowIdsWithSwitchInPath(SwitchId switchId) {
-        Map<String, Object> parameters = ImmutableMap.of(
-                "switch_id", switchIdConverter.toGraphProperty(switchId));
-
-        Set<String> flowIds = new HashSet<>();
-        getSession().query(String.class,
-                "MATCH (src:switch)-[:source]-(f:flow)-[:destination]-(dst:switch) "
-                        + "WHERE src.name=$switch_id OR dst.name=$switch_id "
-                        + "RETURN f.flow_id "
-                        + "UNION ALL "
-                        + "MATCH (src:switch)-[:source]-(ps:path_segment)-[:destination]-(dst:switch) "
-                        + "WHERE src.name=$switch_id OR dst.name=$switch_id "
-                        + "MATCH (f:flow)-[:owns]-(:flow_path)-[:owns]-(ps) "
-                        + "RETURN f.flow_id", parameters).forEach(flowIds::add);
-        return flowIds;
     }
 
     @Override

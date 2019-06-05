@@ -20,7 +20,6 @@ import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
 import java.util.Optional;
-import java.util.Set;
 
 public interface FlowRepository extends Repository<Flow> {
     long countFlows();
@@ -48,11 +47,5 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<Flow> findDownFlows();
 
-    Collection<Flow> findWithPathSegment(SwitchId srcSwitchId, int srcPort,
-                                         SwitchId dstSwitchId, int dstPort);
-
-    Set<String> findFlowIdsWithSwitchInPath(SwitchId switchId);
-
     Optional<String> getOrCreateFlowGroupId(String flowId);
-
 }

@@ -36,6 +36,7 @@ import org.mapstruct.factory.Mappers;
 
 import java.time.Instant;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -47,7 +48,7 @@ public abstract class FlowMapper {
     public static final FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
 
     /**
-     * Convert {@link Flow} to {@link FlowDto}.
+     * Convert {@link UnidirectionalFlow} to {@link FlowDto}.
      */
     @Mapping(source = "srcPort", target = "sourcePort")
     @Mapping(source = "srcVlan", target = "sourceVlan")
@@ -59,6 +60,17 @@ public abstract class FlowMapper {
     @Mapping(source = "timeModify", target = "lastUpdated")
     @Mapping(source = "timeCreate", target = "createdTime")
     public abstract FlowDto map(UnidirectionalFlow flow);
+
+    @Mapping(source = "srcPort", target = "sourcePort")
+    @Mapping(source = "srcVlan", target = "sourceVlan")
+    @Mapping(source = "destPort", target = "destinationPort")
+    @Mapping(source = "destVlan", target = "destinationVlan")
+    @Mapping(target = "sourceSwitch", expression = "java(flow.getSrcSwitch().getSwitchId())")
+    @Mapping(target = "destinationSwitch", expression = "java(flow.getDestSwitch().getSwitchId())")
+    @Mapping(source = "status", target = "state")
+    @Mapping(source = "timeModify", target = "lastUpdated")
+    @Mapping(source = "timeCreate", target = "createdTime")
+    public abstract FlowDto map(Flow flow);
 
     /**
      * Convert {@link FlowPair} to {@link FlowPairDto}.
@@ -187,6 +199,14 @@ public abstract class FlowMapper {
         }
     }
 
+    public long map(Cookie cookie) {
+        return cookie.getValue();
+    }
+
+    public Long map(MeterId meterId) {
+        return Optional.ofNullable(meterId).map(MeterId::getValue).orElse(null);
+    }
+
     private FlowPath buildPath(Flow flow, FlowDto flowDto) {
         Switch srcSwitch = Switch.builder().switchId(flowDto.getSourceSwitch()).build();
         Switch destSwitch = Switch.builder().switchId(flowDto.getDestinationSwitch()).build();
@@ -223,6 +243,7 @@ public abstract class FlowMapper {
                 .bandwidth(flow.getBandwidth())
                 .ignoreBandwidth(flow.isIgnoreBandwidth())
                 .periodicPings(flow.isPeriodicPings())
+                .allocateProtectedPath(flow.isAllocateProtectedPath())
                 //TODO: hard-coded encapsulation will be removed in Flow H&S
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .maxLatency(flow.getMaxLatency())

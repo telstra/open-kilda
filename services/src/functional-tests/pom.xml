@@ -41,6 +41,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
             <groupId>org.codehaus.groovy</groupId>
             <artifactId>groovy-all</artifactId>
             <version>${groovy.version}</version>
@@ -50,25 +55,21 @@
             <groupId>com.athaydes</groupId>
             <artifactId>spock-reports</artifactId>
             <version>${spock.reports.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.spockframework</groupId>
             <artifactId>spock-spring</artifactId>
             <version>${spock.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.spockframework</groupId>
             <artifactId>spock-core</artifactId>
             <version>${spock.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.openkilda</groupId>
             <artifactId>test-library</artifactId>
             <version>${project.version}</version>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
@@ -79,20 +80,16 @@
             <groupId>com.shazam</groupId>
             <artifactId>shazamcrest</artifactId>
             <version>${shazamcrest.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.codehaus.gpars</groupId>
             <artifactId>gpars</artifactId>
             <version>${gpars.version}</version>
         </dependency>
-        <dependency>
-            <groupId>com.sabre.oss.conf4j</groupId>
-            <artifactId>conf4j-spring-boot</artifactId>
-        </dependency>
     </dependencies>
 
     <build>
+        <sourceDirectory>src/main/groovy</sourceDirectory>
         <testSourceDirectory>src/test/groovy</testSourceDirectory>
         <plugins>
             <plugin>
@@ -151,6 +148,7 @@
                             <printSummary>true</printSummary>
                             <useFile>false</useFile>
                             <disableXmlReport>true</disableXmlReport>
+                            <runOrder>failedfirst</runOrder>
                         </configuration>
                         <executions>
                             <execution>

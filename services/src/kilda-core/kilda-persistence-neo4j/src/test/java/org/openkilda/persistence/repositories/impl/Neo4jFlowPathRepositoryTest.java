@@ -16,6 +16,7 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static java.util.Arrays.asList;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -54,12 +55,13 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
     static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
     static final SwitchId TEST_SWITCH_C_ID = new SwitchId(3);
 
-    static FlowRepository flowRepository;
     static FlowPathRepository flowPathRepository;
+    static FlowRepository flowRepository;
     static SwitchRepository switchRepository;
 
     private Switch switchA;
     private Switch switchB;
+    private Switch switchC;
     private Flow flow;
 
     @BeforeClass
@@ -77,7 +79,10 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
         switchB = buildTestSwitch(TEST_SWITCH_B_ID.getId());
         switchRepository.createOrUpdate(switchB);
 
-        assertEquals(2, switchRepository.findAll().size());
+        switchC = buildTestSwitch(TEST_SWITCH_C_ID.getId());
+        switchRepository.createOrUpdate(switchC);
+
+        assertEquals(3, switchRepository.findAll().size());
 
         flow = Flow.builder()
                 .flowId(TEST_FLOW_ID)
@@ -206,6 +211,80 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void shouldFindByEndpointSwitch() {
+        Flow flow = buildTestFlowPathPair();
+
+        flowRepository.createOrUpdate(flow);
+
+        Collection<FlowPath> paths = flowPathRepository.findByEndpointSwitch(switchA.getSwitchId());
+        assertThat(paths, containsInAnyOrder(flow.getForwardPath(), flow.getReversePath()));
+    }
+
+    @Test
+    public void shouldNotFindProtectedIngressByEndpointSwitch() {
+        Flow flow = buildTestFlowPathPair();
+        FlowPath protect = FlowPath.builder()
+                .pathId(new PathId(flow.getFlowId() + "_protectedpath"))
+                .flow(flow)
+                .cookie(new Cookie(10))
+                .meterId(new MeterId(10))
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .status(FlowPathStatus.ACTIVE)
+                .segments(Collections.emptyList())
+                .timeCreate(Instant.now())
+                .timeModify(Instant.now())
+                .build();
+        flow.setProtectedForwardPath(protect);
+
+        flowRepository.createOrUpdate(flow);
+
+        Collection<FlowPath> paths = flowPathRepository.findByEndpointSwitch(switchA.getSwitchId());
+        assertThat(paths, containsInAnyOrder(flow.getForwardPath(), flow.getReversePath()));
+    }
+
+    @Test
+    public void shouldFindBySrcSwitch() {
+        Flow flow = buildTestFlowPathPair();
+        flowRepository.createOrUpdate(flow);
+
+        Collection<FlowPath> paths = flowPathRepository.findBySrcSwitch(switchA.getSwitchId());
+        assertThat(paths, containsInAnyOrder(flow.getForwardPath()));
+    }
+
+    @Test
+    public void shouldFindFlowPathsForIsl() {
+        FlowPath path = buildTestFlowPathWithIntermediate(switchC, 100);
+        flowPathRepository.createOrUpdate(path);
+
+        Collection<FlowPath> paths = flowPathRepository.findWithPathSegment(switchA.getSwitchId(), 1,
+                switchC.getSwitchId(), 100);
+        assertThat(paths, Matchers.hasSize(1));
+        assertThat(paths, containsInAnyOrder(flow.getForwardPath()));
+    }
+
+    @Test
+    public void shouldFindActiveAffectedPaths() {
+        FlowPath flowPath = buildTestFlowPathWithIntermediate(switchC, 100);
+        flowPathRepository.createOrUpdate(flowPath);
+
+        Collection<FlowPath> paths = flowPathRepository.findActiveAffectedPaths(
+                switchC.getSwitchId(), 100);
+        assertThat(paths, containsInAnyOrder(flowPath));
+    }
+
+    @Test
+    public void shouldNotFindActiveAffectedPaths() {
+        FlowPath flowPath = buildTestFlowPathWithIntermediate(switchC, 100);
+        flowPath.setStatus(FlowPathStatus.IN_PROGRESS);
+        flowPathRepository.createOrUpdate(flowPath);
+
+        Collection<FlowPath> paths = flowPathRepository.findActiveAffectedPaths(
+                switchC.getSwitchId(), 100);
+        assertThat(paths, Matchers.empty());
+    }
+
+    @Test
     public void shouldFindPathByFlowId() {
         FlowPath flowPath = buildTestFlowPath();
         flowPathRepository.createOrUpdate(flowPath);
@@ -243,9 +322,6 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
 
     @Test
     public void shouldFindPathBySegmentSwitch() {
-        Switch switchC = buildTestSwitch(TEST_SWITCH_C_ID.getId());
-        switchRepository.createOrUpdate(switchC);
-
         FlowPath flowPath = buildTestFlowPathWithIntermediate(switchC, 100);
         flowPathRepository.createOrUpdate(flowPath);
 
@@ -255,9 +331,6 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
 
     @Test
     public void shouldFindPathBySegmentDestSwitch() {
-        Switch switchC = buildTestSwitch(TEST_SWITCH_C_ID.getId());
-        switchRepository.createOrUpdate(switchC);
-
         FlowPath flowPath = buildTestFlowPathWithIntermediate(switchC, 100);
         flowPathRepository.createOrUpdate(flowPath);
 
@@ -267,9 +340,6 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
 
     @Test
     public void shouldNotFindPathByWrongSegmentDestSwitch() {
-        Switch switchC = buildTestSwitch(TEST_SWITCH_C_ID.getId());
-        switchRepository.createOrUpdate(switchC);
-
         FlowPath flowPath = buildTestFlowPathWithIntermediate(switchC, 100);
         flowPathRepository.createOrUpdate(flowPath);
 
@@ -279,9 +349,6 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
 
     @Test
     public void shouldKeepSegmentsOrdered() {
-        Switch switchC = buildTestSwitch(TEST_SWITCH_C_ID.getId());
-        switchRepository.createOrUpdate(switchC);
-
         FlowPath flowPath = buildTestFlowPath();
 
         List<PathSegment> segments = asList(PathSegment.builder()

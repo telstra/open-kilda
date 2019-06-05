@@ -2,11 +2,16 @@ package org.openkilda.functionaltests.spec.switches
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.meter.MeterEntry
 import org.openkilda.messaging.info.rule.FlowEntry
@@ -16,6 +21,7 @@ import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.transform.Memoized
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -23,26 +29,24 @@ import spock.lang.Unroll
 
 import java.math.RoundingMode
 
-@Narrative("The test suite checks if traffic meters, including default, are set and deleted in a correct way.")
+@Narrative("""The test suite checks if traffic meters, including default, are set and deleted in a correct way.
+Note that many tests are bind to meter implementations of certain hardware manufacturers.""")
 class MetersSpec extends BaseSpecification {
+    @Autowired
+    SwitchHelper switchHelper
 
     static DISCO_PKT_RATE = 200 // Number of packets per second for the default flows
     static DISCO_PKT_SIZE = 250 // Default size of the discovery packet
-    static NOVIFLOW_BURST_COEFFICIENT = 1.005 // Driven by the Noviflow specification
     static DISCO_PKT_BURST = 4096 // Default desired packet burst rate for the default flows (ignored by Noviflow)
+    static MIN_RATE_KBPS = 64
     static CENTEC_MIN_BURST = 1024 // Driven by the Centec specification
     static CENTEC_MAX_BURST = 32000 // Driven by the Centec specification
 
     @Value('${burst.coefficient}')
     double burstCoefficient
 
-    def setupOnce() {
-        //TODO: remove as soon as OVS 2.10 + kernel 4.18+ get wired in and meters support will be available
-        // on virtual environments
-        requireProfiles("hardware")
-    }
-
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Able to delete a meter from a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
@@ -74,6 +78,7 @@ class MetersSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Unable to delete a meter with invalid ID=#meterId on a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
@@ -96,18 +101,19 @@ class MetersSpec extends BaseSpecification {
      * Default meters should be set in PKTPS by default in Kilda, but Centec switches only allow KBPS flag.
      * System should recalculate the PKTPS value to KBPS on Centec switches.
      */
+    @Tags(HARDWARE)
     def "Default meters should express bandwidth in kbps re-calculated from pktps on Centec switches"() {
-        requireProfiles("hardware")
-
         setup: "Collect all Centec switches"
         def switches = getCentecSwitches()
-        assumeTrue("Unable to find required switches in topology", switches as boolean)
+        assumeTrue("Unable to find Centec switches in topology", switches as boolean)
 
         expect: "Only the default meters should be present on each switch"
         switches.each { sw ->
             def meters = northbound.getAllMeters(sw.dpId)
             assert meters.meterEntries.size() == 2
-            assert meters.meterEntries.every { Math.abs(it.rate - (DISCO_PKT_RATE * DISCO_PKT_SIZE) / 1024L) <= 1 }
+            assert meters.meterEntries.each {
+                assert it.rate == Math.max((long)(DISCO_PKT_RATE * DISCO_PKT_SIZE / 1024L), MIN_RATE_KBPS)
+            }
             //unable to use #getExpectedBurst. For Centects there's special burst due to KBPS
             assert meters.meterEntries.every { it.burstSize == (long) ((DISCO_PKT_BURST * DISCO_PKT_SIZE) / 1024) }
             assert meters.meterEntries.every(defaultMeters)
@@ -117,8 +123,10 @@ class MetersSpec extends BaseSpecification {
         }
     }
 
+    @Tags(HARDWARE)
     def "Default meters should express bandwidth in pktps on non-Centec switches"() {
-        requireProfiles("hardware") //TODO: Research how this behaves on OpenVSwitch
+        //TODO: Research how to calculate burstSize on OpenVSwitch in this case
+        // now burstSize is equal to 4096, rate == 200
 
         given: "All Openflow 1.3 compatible non-Centec switches"
         def switches = getNonCentecSwitches()
@@ -128,15 +136,16 @@ class MetersSpec extends BaseSpecification {
         switches.each { sw ->
             def meters = northbound.getAllMeters(sw.dpId)
             assert meters.meterEntries.size() == 2
-            assert meters.meterEntries.every { it.rate == DISCO_PKT_RATE }
-            assert meters.meterEntries.every { it.burstSize == getExpectedBurst(sw.dpId, DISCO_PKT_RATE) }
             assert meters.meterEntries.every(defaultMeters)
-            assert meters.meterEntries.every { ["PKTPS", "BURST", "STATS"].containsAll(it.flags) }
-            assert meters.meterEntries.every { it.flags.size() == 3 }
+            meters.meterEntries.each { assert it.rate == DISCO_PKT_RATE }
+            meters.meterEntries.each { assert it.burstSize == switchHelper.getExpectedBurst(sw.dpId, DISCO_PKT_RATE) }
+            meters.meterEntries.each { assert ["PKTPS", "BURST", "STATS"].containsAll(it.flags) }
+            meters.meterEntries.each { assert it.flags.size() == 3 }
         }
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Meters are created/deleted when creating/deleting a single-switch flow with ignore_bandwidth=#ignoreBandwidth \
 on a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
@@ -165,7 +174,7 @@ on a #switchType switch"() {
         newMeterEntries*.rate.every { it == flow.maximumBandwidth }
 
         and: "Switch validation shows no discrepancies in meters"
-        def metersValidation = northbound.switchValidate(sw.dpId).meters
+        def metersValidation = northbound.validateSwitch(sw.dpId).meters
         metersValidation.proper.size() == 2
         metersValidation.excess.empty
         metersValidation.missing.empty
@@ -188,6 +197,7 @@ on a #switchType switch"() {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Meters are not created when creating a single-switch flow with maximum_bandwidth=0 on a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
@@ -219,6 +229,7 @@ on a #switchType switch"() {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Source/destination switches have meters only in flow ingress rule and intermediate switches don't have \
 meters in flow rules at all (#data.flowType flow)"() {
         assumeTrue("Unable to find required switch pair in topology", data.switchPair != null)
@@ -251,9 +262,8 @@ meters in flow rules at all (#data.flowType flow)"() {
         !dstSwFlowEgressRule.instructions.goToMeter
 
         and: "Intermediate switches don't have meters in flow rules at all"
-        pathHelper.getInvolvedSwitches(flow.id)[1..-2].each { sw ->
+        pathHelper.getInvolvedSwitches(flow.id)[1..-2].findAll { it.ofVersion != "OF_12" }.each { sw ->
             assert northbound.getAllMeters(sw.dpId).meterEntries.findAll(flowMeters).empty
-
             def flowRules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll { !(it.cookie in sw.defaultCookies) }
             flowRules.each { assert !it.instructions.goToMeter }
         }
@@ -266,30 +276,31 @@ meters in flow rules at all (#data.flowType flow)"() {
                 [
                         flowType  : "Centec-Centec",
                         switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            it.src.centec && it.dst.centec
+                            it.src.centec && it.dst.centec && hasOf13Path(it)
                         }
                 ],
                 [
                         flowType  : "nonCentec-nonCentec",
                         switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
                             !it.src.centec && it.src.ofVersion == "OF_13" &&
-                                    !it.dst.centec && it.dst.ofVersion == "OF_13"
+                                    !it.dst.centec && it.dst.ofVersion == "OF_13" && hasOf13Path(it)
                         }
                 ],
+                //TODO(rtretiak): unlock above iterations by introducing a more clever cost manipulation
                 [
                         flowType  : "Centec-nonCentec",
                         switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            (it.src.centec && !it.dst.centec && it.dst.ofVersion == "OF_13") ||
-                                    (!it.src.centec && it.src.ofVersion == "OF_13" && it.dst.centec)
+                            ((it.src.centec && !it.dst.centec && it.dst.ofVersion == "OF_13") ||
+                                    (!it.src.centec && it.src.ofVersion == "OF_13" && it.dst.centec)) &&
+                                    hasOf13Path(it)
                         }
                 ]
         ]
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Meter burst size is correctly set on non-Centec switches for #flowRate flow rate"() {
-        requireProfiles("hardware") //TODO: Research how this behaves on OpenVSwitch
-
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible switch"
         def switches = getNonCentecSwitches()
         assumeTrue("Unable to find required switches in topology", switches as boolean)
@@ -303,26 +314,22 @@ meters in flow rules at all (#data.flowType flow)"() {
         when: "Update flow bandwidth to #flowRate kbps"
         flow = northbound.getFlow(flow.id)
         flow.setMaximumBandwidth(flowRate)
-        northbound.updateFlow(flow.id, flow)
+        flowHelper.updateFlow(flow.id, flow)
 
         then: "New meters should be installed on the switch"
-        def newMeters = null
-
-        Wrappers.wait(Constants.RULES_DELETION_TIME + Constants.RULES_INSTALLATION_TIME) {
-            newMeters = northbound.getAllMeters(sw.dpId).meterEntries.findAll {
-                !defaultMeters.meterEntries.contains(it)
-            }
-            assert newMeters.size() == 2
+        def newMeters = northbound.getAllMeters(sw.dpId).meterEntries.findAll {
+            !defaultMeters.meterEntries.contains(it)
         }
+        assert newMeters.size() == 2
 
         and: "New meters rate should be equal to flow bandwidth"
-        newMeters*.rate.every { it == flowRate }
+        newMeters*.rate.each { assert it == flowRate }
 
         and: "New meters burst size matches the expected value for given switch model"
-        newMeters*.burstSize.each { assert it == getExpectedBurst(sw.dpId, flowRate) }
+        newMeters*.burstSize.each { assert it == switchHelper.getExpectedBurst(sw.dpId, flowRate) }
 
         and: "Switch validation shows no discrepancies in meters"
-        def metersValidation = northbound.switchValidate(sw.dpId).meters
+        def metersValidation = northbound.validateSwitch(sw.dpId).meters
         metersValidation.proper.size() == 2
         metersValidation.excess.empty
         metersValidation.missing.empty
@@ -335,16 +342,15 @@ meters in flow rules at all (#data.flowType flow)"() {
         flowRate << [150, 1000, 1024, 5120, 10240, 2480, 960000]
     }
 
+    @Tags([HARDWARE, TOPOLOGY_DEPENDENT])
     @Unroll("Flow burst should be correctly set on Centec switches in case of #flowRate kbps flow bandwidth")
     def "Flow burst is correctly set on Centec switches"() {
-        requireProfiles("hardware")
-
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible Centec switch"
         def switches = getCentecSwitches()
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
         def sw = switches.first()
-        def expectedBurstSize = getExpectedBurst(sw.dpId, flowRate)
+        def expectedBurstSize = switchHelper.getExpectedBurst(sw.dpId, flowRate)
         def defaultMeters = northbound.getAllMeters(sw.dpId)
         def flowPayload = flowHelper.singleSwitchFlow(sw)
         flowPayload.setMaximumBandwidth(100)
@@ -370,7 +376,7 @@ meters in flow rules at all (#data.flowType flow)"() {
         newMeters*.burstSize.every { it == expectedBurstSize }
 
         and: "Switch validation shows no discrepancies in meters"
-        def metersValidation = northbound.switchValidate(sw.dpId).meters
+        def metersValidation = northbound.validateSwitch(sw.dpId).meters
         metersValidation.proper.size() == 2
         metersValidation.excess.empty
         metersValidation.missing.empty
@@ -392,9 +398,8 @@ meters in flow rules at all (#data.flowType flow)"() {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "System allows to reset meter values to defaults without reinstalling rules for #data.description flow"() {
-        requireProfiles("hardware")
-
         given: "Switches combination (#data.description)"
         assumeTrue("Desired switch combination is not available in current topology", data.switches.size() > 1)
         def (Switch src, Switch dst) = data.switches[0..1]
@@ -424,7 +429,7 @@ meters in flow rules at all (#data.flowType flow)"() {
             def originalFlowMeters = originalMeters[switchMeterEntries.switchId].findAll(flowMeters)
             switchMeterEntries.meterEntries.each { meterEntry ->
                 assert meterEntry.rate == newBandwidth
-                assert meterEntry.burstSize == getExpectedBurst(switchMeterEntries.switchId, newBandwidth)
+                assert meterEntry.burstSize == switchHelper.getExpectedBurst(switchMeterEntries.switchId, newBandwidth)
             }
             assert switchMeterEntries.meterEntries*.meterId.sort() == originalFlowMeters*.meterId.sort()
             assert switchMeterEntries.meterEntries*.flags.sort() == originalFlowMeters*.flags.sort()
@@ -497,38 +502,6 @@ meters in flow rules at all (#data.flowType flow)"() {
         flowHelper.deleteFlow(flow.id)
     }
 
-    /**
-     * This method calculates expected burst for different types of switches. The common burst equals to
-     * `rate * burstCoefficient`. There are couple exceptions though:<br>
-     * <b>Noviflow</b>: Does not use our common burst coefficient and overrides it with its own coefficient (see static
-     * variables at the top of the class).<br>
-     * <b>Centec</b>: Follows our burst coefficient policy, except for restrictions for the minimum and maximum burst.
-     * In cases when calculated burst is higher or lower of the Centec max/min - the max/min burst value will be used
-     * instead.
-     *
-     * @param sw switchId where burst is being calculated. Needed to get the switch manufacturer and apply special
-     * calculations if required
-     * @param rate meter rate which is used to calculate burst
-     * @return the expected burst value for given switch and rate
-     */
-    def getExpectedBurst(SwitchId sw, long rate) {
-        def descr = getSwitchDescription(sw).toLowerCase()
-        if (descr.contains("noviflow")) {
-            return (rate * NOVIFLOW_BURST_COEFFICIENT - 1).setScale(0, RoundingMode.CEILING)
-        } else if (descr.contains("centec")) {
-            def burst = (rate * burstCoefficient).toBigDecimal().setScale(0, RoundingMode.FLOOR)
-            if (burst <= CENTEC_MIN_BURST) {
-                return CENTEC_MIN_BURST
-            } else if (burst > CENTEC_MIN_BURST && burst <= CENTEC_MAX_BURST) {
-                return burst
-            } else {
-                return CENTEC_MAX_BURST
-            }
-        } else {
-            return (rate * burstCoefficient).round(0)
-        }
-    }
-
     @Memoized
     String getSwitchDescription(SwitchId sw) {
         northbound.activeSwitches.find { it.switchId == sw }.description
@@ -561,4 +534,13 @@ meters in flow rules at all (#data.flowType flow)"() {
     def defaultMeters = { it.meterId <= MAX_SYSTEM_RULE_METER_ID }
 
     def flowMeters = { it.meterId > MAX_SYSTEM_RULE_METER_ID }
+    
+    boolean hasOf13Path(SwitchPair pair) {
+        def possibleDefaultPaths = pair.paths.findAll {
+            it.size() == pair.paths.min { it.size() }.size()
+        }
+        !possibleDefaultPaths.find { path ->
+            path[1..-2].every { it.switchId.description.contains("OF_12") }
+        }
+    }
 }

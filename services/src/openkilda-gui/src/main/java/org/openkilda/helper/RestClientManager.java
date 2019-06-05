@@ -61,6 +61,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -96,7 +97,7 @@ public class RestClientManager {
      * @return the http response
      */
     public HttpResponse invoke(final String apiUrl, final HttpMethod httpMethod, final String payload,
-            final String contentType, final String basicAuth) {
+            final String contentType, final String basicAuth) { 
         HttpResponse httpResponse = null;
 
         try {
@@ -105,21 +106,26 @@ public class RestClientManager {
             HttpClient client = HttpClients.createDefault();
             HttpUriRequest httpUriRequest = null;
             HttpEntityEnclosingRequestBase httpEntityEnclosingRequest = null;
-
             // Initializing Request
             if (HttpMethod.POST.equals(httpMethod)) {
                 httpEntityEnclosingRequest = new HttpPost(apiUrl);
             } else if (HttpMethod.PUT.equals(httpMethod)) {
                 httpEntityEnclosingRequest = new HttpPut(apiUrl);
             } else if (HttpMethod.DELETE.equals(httpMethod)) {
-                httpUriRequest = new HttpDelete(apiUrl);
+                httpEntityEnclosingRequest = new HttpEntityEnclosingRequestBase() {
+                    @Override
+                    public String getMethod() {
+                        return "DELETE";
+                    }
+                };
             } else if (HttpMethod.PATCH.equals(httpMethod)) {
-                httpUriRequest = new HttpPatch(apiUrl);
+                httpEntityEnclosingRequest = new HttpPatch(apiUrl);
             } else {
                 httpUriRequest = new HttpGet(apiUrl);
             }
 
-            if (!HttpMethod.POST.equals(httpMethod) && !HttpMethod.PUT.equals(httpMethod)) {
+            if (!HttpMethod.POST.equals(httpMethod) && !HttpMethod.PUT.equals(httpMethod) 
+                    &&  !HttpMethod.PATCH.equals(httpMethod)  && !HttpMethod.DELETE.equals(httpMethod)) {
                 // Setting Required Headers
                 if (!StringUtil.isNullOrEmpty(basicAuth)) {
                     LOGGER.debug("[invoke] Setting authorization in header as " + IAuthConstants.Header.AUTHORIZATION);
@@ -127,16 +133,30 @@ public class RestClientManager {
                     httpUriRequest.setHeader(IAuthConstants.Header.CORRELATION_ID, requestContext.getCorrelationId());
                 }
             }
-
-            if (HttpMethod.POST.equals(httpMethod) || HttpMethod.PUT.equals(httpMethod)) {
+            if (HttpMethod.POST.equals(httpMethod) || HttpMethod.PUT.equals(httpMethod) 
+                     || HttpMethod.PATCH.equals(httpMethod)) {
                 LOGGER.info("[invoke] Executing POST/ PUT request : httpEntityEnclosingRequest : "
-                        + httpEntityEnclosingRequest + " : payload : " + payload);
+                         + httpEntityEnclosingRequest + " : payload : " + payload);
                 // Setting POST/PUT related headers
                 httpEntityEnclosingRequest.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.CORRELATION_ID,
                         requestContext.getCorrelationId());
                 // Setting request payload
+                httpEntityEnclosingRequest.setEntity(new StringEntity(payload));
+                httpResponse = client.execute(httpEntityEnclosingRequest);
+                LOGGER.debug("[invoke] Call executed successfully");
+            } else if (HttpMethod.DELETE.equals(httpMethod)) {
+                httpEntityEnclosingRequest.setURI(URI.create(apiUrl));
+                LOGGER.info("[invoke] Executing DELETE request : httpDeleteRequest : "
+                        + httpEntityEnclosingRequest + " : payload : " + payload);
+                // Setting DELETE related headers
+                httpEntityEnclosingRequest.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
+                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
+                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.CORRELATION_ID,
+                        requestContext.getCorrelationId());
+                // Setting request payload
+                
                 httpEntityEnclosingRequest.setEntity(new StringEntity(payload));
                 httpResponse = client.execute(httpEntityEnclosingRequest);
                 LOGGER.debug("[invoke] Call executed successfully");

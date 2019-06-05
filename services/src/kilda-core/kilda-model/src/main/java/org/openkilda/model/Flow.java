@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Represents a bi-directional flow. This includes the source and destination, flow status,
@@ -102,6 +103,21 @@ public class Flow implements Serializable {
     @Setter(AccessLevel.NONE)
     private List<FlowPath> paths = new ArrayList<>();
 
+    @Property(name = "allocate_protected_path")
+    private boolean allocateProtectedPath;
+
+    // No setter as protectedForwardPath must be used for this.
+    @Property(name = "protected_forward_path_id")
+    @Convert(graphPropertyType = String.class)
+    @Setter(AccessLevel.NONE)
+    private PathId protectedForwardPathId;
+
+    // No setter as protectedReversePath must be used for this.
+    @Property(name = "protected_reverse_path_id")
+    @Convert(graphPropertyType = String.class)
+    @Setter(AccessLevel.NONE)
+    private PathId protectedReversePathId;
+
     @Property(name = "group_id")
     private String groupId;
 
@@ -143,7 +159,7 @@ public class Flow implements Serializable {
     public Flow(@NonNull String flowId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
                 int srcPort, int srcVlan, int destPort, int destVlan,
                 String groupId, long bandwidth, boolean ignoreBandwidth, String description, boolean periodicPings,
-                FlowEncapsulationType encapsulationType, FlowStatus status,
+                boolean allocateProtectedPath, FlowEncapsulationType encapsulationType, FlowStatus status,
                 Integer maxLatency, Integer priority,
                 Instant timeCreate, Instant timeModify) {
         this.flowId = flowId;
@@ -158,6 +174,7 @@ public class Flow implements Serializable {
         this.ignoreBandwidth = ignoreBandwidth;
         this.description = description;
         this.periodicPings = periodicPings;
+        this.allocateProtectedPath = allocateProtectedPath;
         this.encapsulationType = encapsulationType;
         this.status = status;
         this.maxLatency = maxLatency;
@@ -185,13 +202,21 @@ public class Flow implements Serializable {
     }
 
     /**
+     * Add and associate flow path(s) with the flow.
+     */
+    public void addPaths(FlowPath... paths) {
+        for (FlowPath pathToAdd : paths) {
+            this.paths.removeIf(path -> path.getPathId().equals(pathToAdd.getPathId()));
+            this.paths.add(pathToAdd);
+        }
+    }
+
+    /**
      * Set the forward path.
      */
     public final void setForwardPath(FlowPath forwardPath) {
-        paths.removeIf(path -> path.getPathId().equals(getForwardPathId()));
-
         if (forwardPath != null) {
-            paths.add(validateForwardPath(forwardPath));
+            addPaths(validateForwardPath(forwardPath));
             this.forwardPathId = forwardPath.getPathId();
         } else {
             this.forwardPathId = null;
@@ -208,6 +233,34 @@ public class Flow implements Serializable {
 
         return paths.stream()
                 .filter(path -> path.getPathId().equals(getForwardPathId()))
+                .findAny()
+                .orElse(null);
+    }
+
+    /**
+     * Set the protected forward path.
+     */
+    public final void setProtectedForwardPath(FlowPath forwardPath) {
+        paths.removeIf(path -> path.getPathId().equals(getProtectedForwardPathId()));
+
+        if (forwardPath != null) {
+            paths.add(validateForwardPath(forwardPath));
+            this.protectedForwardPathId = forwardPath.getPathId();
+        } else {
+            this.protectedForwardPathId = null;
+        }
+    }
+
+    /**
+     * Get the protected forward path.
+     */
+    public FlowPath getProtectedForwardPath() {
+        if (getProtectedForwardPathId() == null) {
+            return null;
+        }
+
+        return paths.stream()
+                .filter(path -> path.getPathId().equals(getProtectedForwardPathId()))
                 .findAny()
                 .orElse(null);
     }
@@ -244,10 +297,8 @@ public class Flow implements Serializable {
      * Set the reverse path.
      */
     public final void setReversePath(FlowPath reversePath) {
-        paths.removeIf(path -> path.getPathId().equals(getReversePathId()));
-
         if (reversePath != null) {
-            paths.add(validateReversePath(reversePath));
+            addPaths(validateReversePath(reversePath));
             this.reversePathId = reversePath.getPathId();
         } else {
             this.reversePathId = null;
@@ -268,11 +319,43 @@ public class Flow implements Serializable {
                 .orElse(null);
     }
 
+    /**
+     * Set the protected reverse path.
+     */
+    public final void setProtectedReversePath(FlowPath reversePath) {
+        paths.removeIf(path -> path.getPathId().equals(getProtectedReversePathId()));
+
+        if (reversePath != null) {
+            paths.add(validateReversePath(reversePath));
+            this.protectedReversePathId = reversePath.getPathId();
+        } else {
+            this.protectedReversePathId = null;
+        }
+    }
+
+    /**
+     * Get the protected reverse path.
+     */
+    public FlowPath getProtectedReversePath() {
+        if (getProtectedReversePathId() == null) {
+            return null;
+        }
+
+        return paths.stream()
+                .filter(path -> path.getPathId().equals(getProtectedReversePathId()))
+                .findAny()
+                .orElse(null);
+    }
+
     private FlowPath validateReversePath(FlowPath path) {
         checkArgument(isReverse(path),
                 "Reverse path %s and the flow have different endpoints, but expected the same.",
                 path.getPathId());
 
         return path;
+    }
+
+    public List<PathId> getFlowPathIds() {
+        return paths.stream().map(FlowPath::getPathId).collect(Collectors.toList());
     }
 }

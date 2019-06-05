@@ -31,6 +31,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -50,9 +51,11 @@ public class ReroutesThrottlingTest {
 
     private static final String FLOW_ID_3 = "flow3";
 
-    private static final FlowThrottlingData THROTTLING_DATA_1 = new FlowThrottlingData("corrId1", 1, null);
+    private static final FlowThrottlingData THROTTLING_DATA_1 =
+            new FlowThrottlingData("corrId1", 1, null, Collections.emptySet());
 
-    private static final FlowThrottlingData THROTTLING_DATA_2 = new FlowThrottlingData("corrId2", 1, null);
+    private static final FlowThrottlingData THROTTLING_DATA_2 =
+            new FlowThrottlingData("corrId2", 1, null, Collections.emptySet());
 
     @Before
     public void init() {
@@ -102,7 +105,7 @@ public class ReroutesThrottlingTest {
     public void hardTimeout() {
         Instant lastEvent = Instant.now();
         when(clock.instant()).thenReturn(lastEvent);
-        FlowThrottlingData throttlingData = new FlowThrottlingData("corrId0", 1, null);
+        FlowThrottlingData throttlingData = new FlowThrottlingData("corrId0", 1);
         reroutesThrottling.putRequest(FLOW_ID_1, throttlingData);
 
         long overallDelay = 0;
@@ -133,9 +136,9 @@ public class ReroutesThrottlingTest {
         when(clock.instant()).thenReturn(event, event, event, afterTimeout);
 
         //three flows with different priorities
-        FlowThrottlingData throttlingData1 = new FlowThrottlingData("corrId1", 1, null);
-        FlowThrottlingData throttlingData2 = new FlowThrottlingData("corrId1", 2, null);
-        FlowThrottlingData throttlingData3 = new FlowThrottlingData("corrId1", 3, null);
+        FlowThrottlingData throttlingData1 = new FlowThrottlingData("corrId1", 1);
+        FlowThrottlingData throttlingData2 = new FlowThrottlingData("corrId1", 2);
+        FlowThrottlingData throttlingData3 = new FlowThrottlingData("corrId1", 3);
 
         //add them in a non-priority order
         reroutesThrottling.putRequest(FLOW_ID_3, throttlingData3);

@@ -18,7 +18,10 @@ import { LoaderService } from "../../../common/services/loader.service";
 import { Title } from '@angular/platform-browser';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ModalconfirmationComponent } from '../../../common/components/modalconfirmation/modalconfirmation.component';
+import { IslmaintenancemodalComponent } from '../../../common/components/islmaintenancemodal/islmaintenancemodal.component';
 import { CommonService } from '../../../common/services/common.service';
+import { ModalComponent } from 'src/app/common/components/modal/modal.component';
+import { OtpComponent } from 'src/app/common/components/otp/otp.component';
 
   declare var moment: any;
   @Component({
@@ -37,9 +40,13 @@ import { CommonService } from '../../../common/services/common.service';
     speed:string = '';
     latency:string = '';
     state:string = '';
+    evacuate:boolean=false;
+    under_maintenance:boolean=false;
     loadingData = true;
     dataSet:any;
     available_bandwidth:string = '';
+    default_max_bandwidth='';
+    max_bandwidth = '';
     detailDataObservable : any;
     src_switch_name: string;
     dst_switch_name: string;	
@@ -130,6 +137,7 @@ import { CommonService } from '../../../common/services/common.service';
       auto_reload_time: ["", Validators.compose([Validators.pattern("[0-9]*")])]
     });
     this.graphMetrics = this.dygraphService.getPortMetricData();
+   
 
     }
 
@@ -146,11 +154,14 @@ import { CommonService } from '../../../common/services/common.service';
           this.dst_switch_name =retrievedObject.target_switch_name;
           this.dst_port =retrievedObject.dst_port;
           this.speed = retrievedObject.speed;
+          this.max_bandwidth = retrievedObject.max_bandwidth;
+          this.default_max_bandwidth = retrievedObject.default_max_bandwidth;
           this.latency = retrievedObject.latency;
           this.state = retrievedObject.state;
           this.available_bandwidth = retrievedObject.available_bandwidth;
+          this.under_maintenance = retrievedObject.under_maintenance;
+          this.evacuate = retrievedObject.evacuate;
           this.clipBoardItems = Object.assign(this.clipBoardItems,{
-              
               sourceSwitchName: retrievedObject.source_switch_name,
               sourceSwitch: retrievedObject.source_switch,
               targetSwitchName: retrievedObject.target_switch_name,
@@ -185,8 +196,8 @@ import { CommonService } from '../../../common/services/common.service';
           this.router.navigate([
             "/isl"
           ]);  
-        }
-        this.loadGraphData();       
+        }     
+        this.setForwardLatency();  
       },error =>{
         this.loaderService.hide();
           this.toastr.error("No ISL Found",'Error');
@@ -261,7 +272,63 @@ import { CommonService } from '../../../common/services/common.service';
      }).toggle();
      
   }
+  islMaintenance(e){
+    const modalRef = this.modalService.open(IslmaintenancemodalComponent);
+    modalRef.componentInstance.title = "Confirmation";
+    modalRef.componentInstance.isMaintenance = !this.under_maintenance;
+    modalRef.componentInstance.content = 'Are you sure ?';
+    this.under_maintenance = e.target.checked;
+    modalRef.result.then((response) =>{
+      if(!response){
+        this.under_maintenance = false;
+      }
+    },error => {
+      this.under_maintenance = false;
+    })
+    modalRef.componentInstance.emitService.subscribe(
+      evacuate => {
+        var data = {src_switch:this.src_switch,src_port:this.src_port,dst_switch:this.dst_switch,dst_port:this.dst_port,under_maintenance:e.target.checked,evacuate:evacuate};
+        this.islListService.islUnderMaintenance(data).subscribe(response=>{
+          this.toastr.success('Maintenance mode changed successful','Success');
+          this.under_maintenance = e.target.checked;
+          if(evacuate){
+            location.reload();
+          }
+        },error => {
+          this.toastr.error('Error in changing maintenance mode! ','Error');
+        })
+      },
+      error => {
+      }
+    );
+    
+  }
 
+  evacuateIsl(e){
+    const modalRef = this.modalService.open(ModalconfirmationComponent);
+    modalRef.componentInstance.title = "Confirmation";
+    this.evacuate = e.target.checked;
+    if(this.evacuate){      
+     modalRef.componentInstance.content = 'Are you sure you want to evacuate all flows?';
+    }else{
+      modalRef.componentInstance.content = 'Are you sure ?';
+    }
+     modalRef.result.then((response)=>{
+      if(response && response == true){
+        var data = {src_switch:this.src_switch,src_port:this.src_port,dst_switch:this.dst_switch,dst_port:this.dst_port,under_maintenance:this.under_maintenance,evacuate:e.target.checked};
+        this.islListService.islUnderMaintenance(data).subscribe(response=>{
+          this.toastr.success('All flows are evacuated successfully!','Success');
+          location.reload();
+        },error => {
+          this.toastr.error('Error in evacuating flows! ','Error');
+        })
+      }else{
+        this.evacuate = false;
+      }
+    },error => {
+      this.evacuate = false;
+    })
+  }
 
    copyToClip(event, copyItem) {
     this.clipboardService.copyFromContent(this.clipBoardItems[copyItem]);
@@ -444,10 +511,11 @@ get f() {
                                               metric,
                                               convertedStartDate,
                                               convertedEndDate).subscribe((dataForward : any) =>{
-          this.responseGraph = [];
-          if(dataForward[0] !== undefined){
-            dataForward[0].tags.direction = "F";
-          this.responseGraph.push(dataForward[0]) ;
+                                                
+              this.responseGraph = [];
+              if(dataForward[0] !== undefined){
+              dataForward[0].tags.direction = "F";
+              this.responseGraph.push(dataForward[0]) ;
           }
         
           this.dygraphService.getBackwardGraphData( this.src_switch_kilda,
@@ -472,17 +540,61 @@ get f() {
           this.loaderService.hide();
        },error=>{
          this.loaderService.hide();
-         this.toastr.error("Forward Graph API did not return data.",'Error');
+         this.toastr.error("Backward Graph API did not return data.",'Error');
        });
        },error=>{
           this.loaderService.hide();
-          this.toastr.error("Backward Graph API did not return data.",'Error');
+          this.toastr.error("Forward Graph API did not return data.",'Error');
          
       });
                               
   }
 
+  setForwardLatency(){
+    let formdata = this.filterForm.value;
+    let downsampling = formdata.download_sample;
+    let metric = 'latency';
+    let graph = formdata.graph;
+    let convertedStartDate = moment(new Date()).add(-300, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
+    let convertedEndDate = moment(new Date()).add(60, 'seconds').utc().format("YYYY-MM-DD-HH:mm:ss");
+    let startDate = moment(new Date()).add(-300,'seconds');
+    let endDate = moment(new Date());
+    if (formdata.timezone == "UTC") {
+        convertedStartDate = moment(new Date()).add(-300, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
+        convertedEndDate = moment(new Date()).add(60, 'seconds').format("YYYY-MM-DD-HH:mm:ss");
+    }
+    this.islDetailService.getIslLatencyfromGraph(this.src_switch_kilda,
+      this.src_port,
+      this.dst_switch_kilda,
+      this.dst_port,
+      convertedStartDate,
+      convertedEndDate,downsampling).subscribe((dataLatency : any) =>{        
+      this.responseGraph = [];
+      if(dataLatency[0] !== undefined){
+         var data =dataLatency[0].dps;
+          var latencyTotal = 0;
+          var dpslength = 1;
+          var startDateTime = new Date(startDate).getTime()   ;
+          var endDateTime = new Date(endDate).getTime();
+          if(dpslength)
+          Object.keys(data).map(function(d,i){
+            var dpsTime = new Date(Number(parseInt(d) * 1000)).getTime();
+            if( dpsTime > startDateTime  && dpsTime < endDateTime){
+              dpslength = dpslength + 1;
+              latencyTotal = latencyTotal + parseInt(data[d]);
+            }
+            
+          });
+          var avgLatency = latencyTotal / dpslength;
+          this.latency = avgLatency.toFixed(0).toString();
+        } 
+      },error=>{
+       console.log('Error in getting latency');
+      });
+    
 
+
+  }
 
 
   callSourceGraphAPI(){
@@ -613,6 +725,59 @@ get f() {
             this.toastr.error("Error in updating ISL cost!",'Error');
           }
         })
+      }
+    });
+  }
+
+  deleteISL(){
+    let is2FaEnabled  = localStorage.getItem('is2FaEnabled')
+    var self = this;
+    const modalReff = this.modalService.open(ModalconfirmationComponent);
+    modalReff.componentInstance.title = "Delete ISL";
+    modalReff.componentInstance.content = 'Are you sure you want to perform delete action ?';
+    
+    modalReff.result.then((response) => {
+      if(response && response == true){
+        if(is2FaEnabled == 'true'){
+          const modalRef = this.modalService.open(OtpComponent);
+          modalRef.componentInstance.emitService.subscribe(
+            otp => {
+              
+              if (otp) {
+                this.loaderService.show("Deleting ISL");
+                var data = {
+                  src_switch:this.src_switch,
+                  src_port:this.src_port,
+                  dst_switch:this.dst_switch,
+                  dst_port:this.dst_port,
+                  code:otp
+                }
+                this.modalService.dismissAll();
+                this.islListService.deleteIsl(data,response => {
+                  this.toastr.success("ISL deleted successfully!", "Success!");
+                  this.loaderService.hide();                
+                  localStorage.removeItem('ISL_LIST');
+                  setTimeout(function(){
+                    self.router.navigate(["/isl"]);  
+                  },100);
+                }, error => {
+                  this.loaderService.hide();
+                  var message = (error && error['error-auxiliary-message']) ? error['error-auxiliary-message'] :'Error in Isl Deletion!';
+                  this.toastr.error(message, "Error!");
+                })
+              } else {
+                this.toastr.error("Unable to detect OTP", "Error!");
+              }
+            },
+            error => {
+            }
+          );
+        }else{
+          const modalRef2 = this.modalService.open(ModalComponent);
+          modalRef2.componentInstance.title = "Warning";
+          modalRef2.componentInstance.content = 'You are not authorised to delete the ISL.';
+        }
+        
       }
     });
   }

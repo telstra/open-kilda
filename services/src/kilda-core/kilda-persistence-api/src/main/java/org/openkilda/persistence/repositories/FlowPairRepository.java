@@ -16,7 +16,6 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.FlowPair;
-import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -31,7 +30,4 @@ public interface FlowPairRepository {
     Optional<FlowPair> findById(String flowId);
 
     Collection<FlowPair> findWithPeriodicPingsEnabled();
-
-    Collection<FlowPair> findWithSegmentInPath(SwitchId srcSwitchId, int srcPort,
-                                               SwitchId dstSwitchId, int dstPort);
 }

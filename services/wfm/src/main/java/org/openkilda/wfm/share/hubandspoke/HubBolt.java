@@ -19,10 +19,13 @@ import static java.util.Objects.requireNonNull;
 
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
-import org.apache.commons.lang3.StringUtils;
+import lombok.Builder;
+import lombok.Getter;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
+
+import java.io.Serializable;
 
 /**
  * Base class for bolts acting as a hub that interacts with multiple workers (spokes). Defines three main
@@ -41,22 +44,24 @@ import org.apache.storm.tuple.Tuple;
  * </ul>
  */
 public abstract class HubBolt extends CoordinatedBolt {
-    private final String requestSenderComponent;
+    private final Config hubConfig;
 
     protected transient OutputCollector collector;
 
-    public HubBolt(String requestSenderComponent, int timeoutMs, boolean autoAck) {
-        super(autoAck, timeoutMs);
-        this.requestSenderComponent = requireNonNull(requestSenderComponent,
+    public HubBolt(Config config) {
+        super(config.isAutoAck(), config.getTimeoutMs());
+
+        requireNonNull(config.getRequestSenderComponent(),
                 "A component that sends income requests should be not null");
+        this.hubConfig = config;
     }
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        if (requestSenderComponent.equals(input.getSourceComponent())) {
+        if (hubConfig.getRequestSenderComponent().equals(input.getSourceComponent())) {
             registerCallback(input.getStringByField(MessageTranslator.KEY_FIELD), input);
             onRequest(input);
-        } else if (StringUtils.contains(input.getSourceComponent(), WorkerBolt.ID)) {
+        } else if (hubConfig.getWorkerComponent().equals(input.getSourceComponent())) {
             onWorkerResponse(input);
         }
     }
@@ -79,4 +84,18 @@ public abstract class HubBolt extends CoordinatedBolt {
         super.declareOutputFields(declarer);
     }
 
+    @Builder
+    @Getter
+    public static class Config implements Serializable {
+        private String requestSenderComponent;
+
+        @Builder.Default
+        private String workerComponent = WorkerBolt.ID;
+
+        @Builder.Default
+        private int timeoutMs = 100;
+
+        @Builder.Default
+        private boolean autoAck = true;
+    }
 }

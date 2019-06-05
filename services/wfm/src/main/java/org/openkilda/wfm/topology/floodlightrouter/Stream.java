@@ -34,6 +34,7 @@ public final class Stream {
     public static final String SPEAKER = "SPEAKER";
     public static final String SPEAKER_FLOW = "SPEAKER_FLOW";
     public static final String KILDA_FLOW = "KILDA_FLOW";
+    public static final String KILDA_HS_FLOW = "KILDA_HS_FLOW";
     public static final String SPEAKER_PING = "SPEAKER_PING";
     public static final String KILDA_PING = "KILDA_PING";
     public static final String KILDA_STATS = "KILDA_STATS";
@@ -42,6 +43,8 @@ public final class Stream {
     public static final String NORTHBOUND_REPLY = "NORTHBOUND_REPLY";
     public static final String REGION_NOTIFICATION = "REGION_NOTIFICATION";
     public static final String NB_WORKER = "NB_WORKER";
+    public static final String STATS_STATS_REQUEST_PRIV = "STATS_STATS-REQUEST_PRIV";
+    public static final String FL_STATS_SWITCHES = "FL_STATS_SWITCHES";
 
     private Stream() {}
 }

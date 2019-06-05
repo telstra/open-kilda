@@ -1,11 +1,14 @@
 package org.openkilda.functionaltests.spec.stats
 
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.testing.Constants.DefaultRule
 
 import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Issue
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -20,6 +23,7 @@ class OpenTsdbSpec extends BaseSpecification {
     String metricPrefix
 
     @Unroll("Stats are being logged for metric:#metric, tags:#tags")
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Basic stats are being logged"(metric, tags) {
         expect: "At least 1 result in the past 2 minutes"
         otsdb.query(2.minutes.ago, metric, tags).dps.size() > 0
@@ -39,10 +43,9 @@ class OpenTsdbSpec extends BaseSpecification {
                    [[cookieHex: DefaultRule.VERIFICATION_BROADCAST_RULE.toHexString()]]].combinations())
     }
 
+    @Tags(HARDWARE)
     @Unroll("Stats are being logged for metric:#metric, tags:#tags")
     def "Basic stats are being logged (10min interval)"() {
-        requireProfiles("hardware")
-
         expect: "At least 1 result in the past 10 minutes"
         otsdb.query(10.minutes.ago, metric, [:]).dps.size() > 0
         where:

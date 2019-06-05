@@ -20,18 +20,20 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import lombok.Data;
 
 import java.io.Serializable;
-
 /**
  * The Class Switchrelation.
  *
  * @author Gaurav Chugh
  */
+
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({"src_port", "latency", "source_switch", "available_bandwidth", "dst_port",
         "target_switch", "speed", "state"})
+@Data
 public class IslLinkInfo implements Serializable {
 
     private static final long serialVersionUID = 8274573430947748236L;
@@ -50,6 +52,12 @@ public class IslLinkInfo implements Serializable {
 
     @JsonProperty("available_bandwidth")
     private int availableBandwidth;
+    
+    @JsonProperty("max_bandwidth")
+    private int maxBandwidth;
+
+    @JsonProperty("default_max_bandwidth")
+    private int defaultMaxBandwidth;
 
     @JsonProperty("dst_port")
     private int dstPort;
@@ -69,13 +77,22 @@ public class IslLinkInfo implements Serializable {
     @JsonProperty("state1")
     private String state1;
 
+    @JsonProperty("actual_state")
+    private String actualState;
+    
     private boolean isUnidirectional;
 
     private String cost;
 
     @JsonProperty("affected")
     private boolean affected;
+    
+    @JsonProperty("under_maintenance")
+    private boolean underMaintenance;
 
+    @JsonProperty("evacuate")
+    private boolean evacuate;
+    
     public String getCost() {
         return cost;
     }

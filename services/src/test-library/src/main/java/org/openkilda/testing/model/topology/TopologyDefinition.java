@@ -59,18 +59,18 @@ import java.util.stream.IntStream;
 public class TopologyDefinition {
 
     @NonNull
-    private List<Switch> switches;
+    protected List<Switch> switches;
     @NonNull
-    private List<Isl> isls;
+    protected List<Isl> isls;
     @NonNull
-    private List<TraffGen> traffGens;
+    protected List<TraffGen> traffGens;
     @NonNull
-    private TraffGenConfig traffGenConfig;
+    protected TraffGenConfig traffGenConfig;
     @SuppressWarnings("squid:S1450")
 
-    private Integer bfdOffset;
+    protected Integer bfdOffset;
 
-    private List<String> controllers;
+    protected List<String> controllers;
 
     /**
      * Creates TopologyDefinition instance.
@@ -109,6 +109,7 @@ public class TopologyDefinition {
     /**
      * Get all switches that are marked as active in config.
      */
+    @JsonIgnore
     public List<Switch> getActiveSwitches() {
         return switches.stream()
                 .filter(Switch::isActive)
@@ -118,6 +119,7 @@ public class TopologyDefinition {
     /**
      * Get all switches that are marked as skipped in config.
      */
+    @JsonIgnore
     public Set<SwitchId> getSkippedSwitchIds() {
         return switches.stream()
                 .filter(sw -> sw.getStatus() == Status.Skip)
@@ -128,6 +130,7 @@ public class TopologyDefinition {
     /**
      * Get all ISLs for switches that are marked as active in config.
      */
+    @JsonIgnore
     public List<Isl> getIslsForActiveSwitches() {
         return isls.stream()
                 .filter(isl -> isl.getDstSwitch() != null
@@ -139,6 +142,7 @@ public class TopologyDefinition {
      * Get list of ISLs that are connected only at one side (no destination switch).
      * The other side is usually an a-switch.
      */
+    @JsonIgnore
     public List<Isl> getNotConnectedIsls() {
         return isls.stream()
                 .filter(isl -> isl.getSrcSwitch() != null && isl.getSrcSwitch().isActive()
@@ -149,6 +153,7 @@ public class TopologyDefinition {
     /**
      * Get list of switch ports excluding the ports which are busy with ISLs.
      */
+    @JsonIgnore
     public List<Integer> getAllowedPortsForSwitch(Switch sw) {
         List<Integer> allPorts = new ArrayList<>(sw.getAllPorts());
         allPorts.removeAll(getIslsForActiveSwitches().stream().filter(isl ->
@@ -161,6 +166,7 @@ public class TopologyDefinition {
     /**
      * Get list of switch ports that have ISLs.
      */
+    @JsonIgnore
     public List<Integer> getBusyPortsForSwitch(Switch sw) {
         return getRelatedIsls(sw).stream().map(Isl::getSrcPort).collect(toList());
     }
@@ -170,6 +176,7 @@ public class TopologyDefinition {
      * Returns only outgoing from the switch ISLs. The caller will have to mirror them in order to get full list of
      * actual ISLs.
      */
+    @JsonIgnore
     public List<Isl> getRelatedIsls(Switch sw) {
         List<Isl> isls = getIslsForActiveSwitches().stream().filter(isl ->
                 isl.getSrcSwitch().getDpId().equals(sw.getDpId()) || isl.getDstSwitch().getDpId().equals(sw.getDpId()))
@@ -301,7 +308,6 @@ public class TopologyDefinition {
         private int dstPort;
         private long maxBandwidth;
         private ASwitchFlow aswitch;
-        private boolean isBfd;
 
         @JsonCreator
         public static Isl factory(
@@ -310,10 +316,8 @@ public class TopologyDefinition {
                 @JsonProperty("dst_switch") Switch dstSwitch,
                 @JsonProperty("dst_port") int dstPort,
                 @JsonProperty("max_bandwidth") long maxBandwidth,
-                @JsonProperty("a_switch") ASwitchFlow aswitch,
-                //we only assume bi-directional bfd sessions for ISLs
-                @JsonProperty("bfd") boolean isBfd) {
-            return new Isl(srcSwitch, srcPort, dstSwitch, dstPort, maxBandwidth, aswitch, isBfd);
+                @JsonProperty("a_switch") ASwitchFlow aswitch) {
+            return new Isl(srcSwitch, srcPort, dstSwitch, dstPort, maxBandwidth, aswitch);
         }
 
         @Override
@@ -335,7 +339,7 @@ public class TopologyDefinition {
                 reversedAsw = this.getAswitch().getReversed();
             }
             return Isl.factory(this.getDstSwitch(), this.getDstPort(), this.getSrcSwitch(),
-                    this.getSrcPort(), this.getMaxBandwidth(), reversedAsw, this.isBfd());
+                    this.getSrcPort(), this.getMaxBandwidth(), reversedAsw);
         }
     }
 

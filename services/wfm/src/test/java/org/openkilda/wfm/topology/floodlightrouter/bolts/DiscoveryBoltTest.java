@@ -141,7 +141,6 @@ public class DiscoveryBoltTest {
         subject = new DiscoveryBolt(persistenceManager, regions,
                                     ALIVE_TIMEOUT, ALIVE_INTERVAL, DUMP_INTERVAL);
         subject.prepare(topologyConfig, topologyContext, outputCollector);
-        subject.initState(subjectStateStorage);
     }
 
     @Test
@@ -164,7 +163,7 @@ public class DiscoveryBoltTest {
         CommandMessage discoveryRequest = new CommandMessage(
                 new DiscoverIslCommandData(switchAlpha, 1, 1L), 2, "discovery-request");
         Tuple discoveryRequestTuple = makeTuple(
-                makeConsumerTuple(null, discoveryRequest),
+                makeConsumerTuple("key", discoveryRequest),
                 ComponentType.SPEAKER_DISCO_KAFKA_SPOUT, Utils.DEFAULT_STREAM_ID);
 
         subject.doWork(discoveryRequestTuple);
@@ -186,7 +185,7 @@ public class DiscoveryBoltTest {
                 new DiscoPacketSendingConfirmation(new NetworkEndpoint(switchAlpha, 1), 1L),
                 3L, "discovery-confirmation", REGION_ONE);
         Tuple discoveryConfirmationTuple = makeTuple(
-                makeSpeakerTuple(null, discoveryConfirmation),
+                makeSpeakerTuple("key", discoveryConfirmation),
                 ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT, Utils.DEFAULT_STREAM_ID);
 
         subject.doWork(discoveryConfirmationTuple);

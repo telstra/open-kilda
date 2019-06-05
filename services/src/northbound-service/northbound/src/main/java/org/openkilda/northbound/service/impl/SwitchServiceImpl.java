@@ -29,7 +29,6 @@ import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
-import org.openkilda.messaging.command.switches.SwitchRulesSyncRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.command.switches.ValidateRulesRequest;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -226,7 +225,7 @@ public class SwitchServiceImpl implements SwitchService {
         logger.info("Sync rules request for switch {}", switchId);
 
         CommandMessage syncCommandMessage = new CommandMessage(
-                new SwitchValidateRequest(switchId), System.currentTimeMillis(), RequestCorrelationId.getId());
+                new SwitchValidateRequest(switchId, false), System.currentTimeMillis(), RequestCorrelationId.getId());
 
         return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
                 .thenApply(SwitchValidationResponse.class::cast)
@@ -238,7 +237,8 @@ public class SwitchServiceImpl implements SwitchService {
         logger.info("Sync rules request for switch {}", switchId);
 
         CommandMessage syncCommandMessage = new CommandMessage(
-                new SwitchRulesSyncRequest(switchId), System.currentTimeMillis(), RequestCorrelationId.getId());
+                new SwitchValidateRequest(switchId, true), System.currentTimeMillis(),
+                RequestCorrelationId.getId());
 
         return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
                 .thenApply(SyncRulesResponse.class::cast)

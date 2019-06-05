@@ -27,6 +27,7 @@ import org.openkilda.messaging.command.CommandGroup;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.DeallocateFlowResourcesRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
+import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
@@ -55,32 +56,37 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
-import org.openkilda.model.history.FlowDump;
-import org.openkilda.model.history.FlowEvent;
-import org.openkilda.model.history.FlowHistory;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.ctrl.CtrlAction;
 import org.openkilda.wfm.ctrl.ICtrlBolt;
 import org.openkilda.wfm.error.ClientException;
 import org.openkilda.wfm.error.FeatureTogglesNotEnabledException;
 import org.openkilda.wfm.error.FlowNotFoundException;
-import org.openkilda.wfm.share.bolt.HistoryBolt;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.history.model.FlowDumpData;
+import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
+import org.openkilda.wfm.share.history.model.FlowEventData;
+import org.openkilda.wfm.share.history.model.FlowEventData.Event;
+import org.openkilda.wfm.share.history.model.FlowEventData.Initiator;
+import org.openkilda.wfm.share.history.model.FlowHistoryData;
+import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
-import org.openkilda.wfm.topology.flow.model.ReroutedFlow;
+import org.openkilda.wfm.topology.flow.model.ReroutedFlowPaths;
 import org.openkilda.wfm.topology.flow.service.FeatureToggle;
 import org.openkilda.wfm.topology.flow.service.FeatureTogglesService;
 import org.openkilda.wfm.topology.flow.service.FlowAlreadyExistException;
@@ -90,6 +96,7 @@ import org.openkilda.wfm.topology.flow.service.FlowService;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -157,7 +164,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         outputFieldsDeclarer.declareStream(StreamType.METER_MODE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
-        outputFieldsDeclarer.declareStream(StreamType.HISTORY.toString(), HistoryBolt.FIELDS_HISTORY);
+        outputFieldsDeclarer.declareStream(StreamType.HISTORY.toString(), MessageTranslator.STREAM_FIELDS);
         // FIXME(dbogun): use proper tuple format
         outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
@@ -231,6 +238,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                             break;
                         case REROUTE:
                             handleRerouteRequest(cmsg, tuple);
+                            break;
+                        case PATH_SWAP:
+                            handlePathSwapRequest(cmsg, tuple);
                             break;
                         case READ:
                             handleReadRequest(flowId, cmsg, tuple);
@@ -415,7 +425,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
             FlowCreateRequest request = (FlowCreateRequest) message.getData();
             UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
-            saveHistory("Flow creating", flow.getFlowId(), "", message.getCorrelationId(), tuple);
+            saveEvent(Event.CREATE, flow.getFlowId(), "", message.getCorrelationId(), tuple);
 
             FlowPair createdFlow = flowService.createFlow(flow.getFlow(),
                     request.getDiverseFlowId(),
@@ -423,7 +433,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
             logger.info("Created the flow: {}", createdFlow);
             saveHistory("Created the flow", "", message.getCorrelationId(), tuple);
-            saveHistory(createdFlow, "stateAfter", message.getCorrelationId(), tuple);
+            saveDump(createdFlow, DumpType.STATE_AFTER, message.getCorrelationId(), tuple);
 
             Values values = new Values(new InfoMessage(buildFlowResponse(createdFlow.getForward()),
                     message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
@@ -439,7 +449,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                     ErrorType.ALREADY_EXISTS, errorType, e.getMessage());
         } catch (UnroutableFlowException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found : " + e.getMessage());
+                    ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found. " + e.getMessage());
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, "The flow not found :  " + e.getMessage());
@@ -453,68 +463,76 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         }
     }
 
-    private void saveHistory(String action, String flowId, String details, String correlationId, Tuple tuple) {
-        FlowEvent flowEvent = FlowEvent.builder()
-                .action(action)
-                .actor("NB")
+    private void saveEvent(Event event, String flowId, String details, String correlationId, Tuple tuple) {
+        FlowEventData flowEvent = FlowEventData.builder()
+                .event(event)
+                .initiator(Initiator.NB)
                 .flowId(flowId)
                 .details(details)
-                .taskId(correlationId)
-                .timestamp(Instant.now())
+                .time(Instant.now())
                 .build();
-        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowEvent));
+
+        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
+                .flowEventData(flowEvent)
+                .taskId(correlationId)
+                .build();
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(null, historyHolder,
+                new CommandContext(correlationId)));
     }
 
     private void saveHistory(String action, String details, String correlationId, Tuple tuple) {
-        FlowHistory flowHistory = FlowHistory.builder()
+        FlowHistoryData flowHistory = FlowHistoryData.builder()
                 .action(action)
-                .details(details)
-                .taskId(correlationId)
-                .timestamp(Instant.now())
+                .description(details)
+                .time(Instant.now())
                 .build();
-        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowHistory));
+
+        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
+                .flowHistoryData(flowHistory)
+                .taskId(correlationId)
+                .build();
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(null, historyHolder,
+                new CommandContext(correlationId)));
     }
 
-    private void saveHistory(Optional<FlowPair> optionalFlowPair, String type, String correlationId, Tuple tuple)
-            throws JsonProcessingException {
-        if (optionalFlowPair.isPresent()) {
-            saveHistory(optionalFlowPair.get(), type, correlationId, tuple);
-        }
-    }
-
-    private void saveHistory(FlowPair flowPair, String type, String correlationId, Tuple tuple)
+    private void saveDump(FlowPair flowPair, DumpType type, String correlationId, Tuple tuple)
             throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
 
         UnidirectionalFlow forward = flowPair.forward;
         UnidirectionalFlow reverse = flowPair.reverse;
 
-        FlowDump flowDump = FlowDump.builder()
-                .taskId(correlationId)
-                .flowId(forward.getFlowId())
-                .type(type)
+        FlowDumpData flowDump = FlowDumpData.builder()
+                .flowId(flowPair.forward.getFlowId())
+                .dumpType(type)
                 .bandwidth(forward.getBandwidth())
                 .ignoreBandwidth(forward.isIgnoreBandwidth())
-                .forwardCookie(forward.getCookie())
-                .reverseCookie(reverse.getCookie())
+                .forwardCookie(new Cookie(forward.getCookie()))
+                .reverseCookie(new Cookie(reverse.getCookie()))
                 .sourceSwitch(forward.getSrcSwitch().getSwitchId())
                 .destinationSwitch(forward.getDestSwitch().getSwitchId())
                 .sourcePort(forward.getSrcPort())
                 .destinationPort(forward.getDestPort())
                 .sourceVlan(forward.getSrcVlan())
                 .destinationVlan(forward.getDestVlan())
-                .forwardMeterId(forward.getMeterId())
-                .reverseMeterId(reverse.getMeterId())
+                .forwardMeterId(Optional.ofNullable(forward.getMeterId()).map(MeterId::new).orElse(null))
+                .reverseMeterId(Optional.ofNullable(reverse.getMeterId()).map(MeterId::new).orElse(null))
                 .forwardPath(
                         objectMapper.writeValueAsString(
                                 FlowPathMapper.INSTANCE.mapToPathNodes(forward.getFlowPath())))
                 .reversePath(
                         objectMapper.writeValueAsString(
                                 FlowPathMapper.INSTANCE.mapToPathNodes(reverse.getFlowPath())))
-                .forwardStatus(forward.getStatus())
-                .reverseStatus(reverse.getStatus())
+                .forwardStatus(forward.getFlowPath().getStatus())
+                .reverseStatus(reverse.getFlowPath().getStatus())
                 .build();
-        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(flowDump));
+
+        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
+                .flowDumpData(flowDump)
+                .taskId(correlationId)
+                .build();
+        outputCollector.emit(StreamType.HISTORY.toString(), tuple, new Values(null, historyHolder,
+                new CommandContext(correlationId)));
     }
 
     private void handleRerouteRequest(CommandMessage message, Tuple tuple) {
@@ -523,35 +541,57 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         final String errorType = "Could not reroute flow";
 
         try {
-            ReroutedFlow reroutedFlow = flowService.rerouteFlow(flowId, request.isForce(),
+            ReroutedFlowPaths reroutedFlowPaths = flowService.rerouteFlow(
+                    flowId, request.isForce(), request.getPathIds(),
                     new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.UPDATE));
 
-            if (reroutedFlow.getNewFlow() != null) {
-                logger.warn("Rerouted flow: {}", reroutedFlow);
-            } else {
-                // There's no new path found, but the current flow may still be active.
-                logger.warn("Reroute {} is unsuccessful: can't find new path.", flowId);
-            }
-
-            PathInfoData currentPath = FlowPathMapper.INSTANCE.map(reroutedFlow.getOldFlow().getFlowPath());
-            PathInfoData resultPath = Optional.ofNullable(reroutedFlow.getNewFlow())
-                    .map(flow -> FlowPathMapper.INSTANCE.map(flow.getFlowPath()))
-                    .orElse(currentPath);
-
-            FlowRerouteResponse response = new FlowRerouteResponse(resultPath, !resultPath.equals(currentPath));
-            Values values = new Values(new InfoMessage(response, message.getTimestamp(),
-                    message.getCorrelationId(), Destination.NORTHBOUND, null));
-            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+            logger.warn("Rerouted flow with new path: {}", reroutedFlowPaths.getNewFlowPaths());
+            handleReroute(message, tuple, reroutedFlowPaths);
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
         } catch (UnroutableFlowException e) {
-            logger.warn("There is no path available for the flow {}", flowId);
-            flowService.updateFlowStatus(flowId, FlowStatus.DOWN);
+            flowService.updateFlowStatus(flowId, FlowStatus.DOWN, request.getPathIds());
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.NOT_FOUND, errorType, "Path was not found");
+                    ErrorType.NOT_FOUND, errorType, "Path was not found. " + e.getMessage());
         } catch (Exception e) {
             logger.error("Unexpected error", e);
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
+        }
+    }
+
+    private void handleReroute(CommandMessage message, Tuple tuple, ReroutedFlowPaths reroutedFlowPaths) {
+        PathInfoData updatedPath = FlowPathMapper.INSTANCE.map(reroutedFlowPaths.getNewFlowPaths()
+                .getForwardPath());
+
+        FlowRerouteResponse response = new FlowRerouteResponse(updatedPath, reroutedFlowPaths.isRerouted());
+        Values values = new Values(new InfoMessage(response, message.getTimestamp(),
+                message.getCorrelationId(), Destination.NORTHBOUND, null));
+        outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+    }
+
+    private void handlePathSwapRequest(CommandMessage message, Tuple tuple) {
+        final String errorType = "Could not swap paths";
+
+        FlowPathSwapRequest request = (FlowPathSwapRequest) message.getData();
+        final String flowId = request.getFlowId();
+
+        try {
+            UnidirectionalFlow flow = flowService.pathSwap(flowId, request.getPathId(),
+                    new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.UPDATE));
+
+            Values values = new Values(new InfoMessage(buildFlowResponse(flow),
+                    message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
+            outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
+        } catch (FlowNotFoundException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    ErrorType.NOT_FOUND, errorType, e.getMessage());
+        } catch (FlowValidationException e) {
+            logger.warn("Flow path swap failure with reason: {}", e.getMessage());
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    e.getType(), errorType, e.getMessage());
+        } catch (Exception e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.UPDATE_FAILURE, errorType, e.getMessage());
         }
@@ -565,8 +605,12 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
             FlowUpdateRequest request = (FlowUpdateRequest) message.getData();
             UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
-            saveHistory("Flow updating", flow.getFlowId(), "", message.getCorrelationId(), tuple);
-            saveHistory(flowService.getFlowPair(flow.getFlowId()), "stateBefore", message.getCorrelationId(), tuple);
+            saveEvent(Event.UPDATE, flow.getFlowId(), "Flow updating", message.getCorrelationId(), tuple);
+
+            Optional<FlowPair> flowPair = flowService.getFlowPair(flow.getFlowId());
+            if (flowPair.isPresent()) {
+                saveDump(flowPair.get(), DumpType.STATE_BEFORE, message.getCorrelationId(), tuple);
+            }
 
             FlowPair updatedFlow = flowService.updateFlow(flow.getFlow(),
                     request.getDiverseFlowId(),
@@ -574,7 +618,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
             logger.info("Updated the flow: {}", updatedFlow);
             saveHistory("Updated the flow", "", message.getCorrelationId(), tuple);
-            saveHistory(updatedFlow, "stateAfter", message.getCorrelationId(), tuple);
+            saveDump(updatedFlow, DumpType.STATE_AFTER, message.getCorrelationId(), tuple);
 
             Values values = new Values(new InfoMessage(buildFlowResponse(updatedFlow.getForward()),
                     message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
@@ -590,7 +634,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
         } catch (UnroutableFlowException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
-                    ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found");
+                    ErrorType.NOT_FOUND, errorType, "Not enough bandwidth found or path not found. " + e.getMessage());
         } catch (FeatureTogglesNotEnabledException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_PERMITTED, errorType, "Feature toggles not enabled for UPDATE_FLOW operation.");

@@ -18,6 +18,7 @@ package org.openkilda.messaging.command.switches;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
 
@@ -27,8 +28,14 @@ public class SwitchValidateRequest extends CommandData {
     @JsonProperty("switch_id")
     private SwitchId switchId;
 
-    public SwitchValidateRequest(@JsonProperty("switch_id") SwitchId switchId) {
+    @JsonProperty("perform_sync")
+    private boolean performSync;
+
+    @JsonCreator
+    public SwitchValidateRequest(@JsonProperty("switch_id") SwitchId switchId,
+                                 @JsonProperty("perform_sync") boolean performSync) {
         this.switchId = switchId;
+        this.performSync = performSync;
     }
 }
 

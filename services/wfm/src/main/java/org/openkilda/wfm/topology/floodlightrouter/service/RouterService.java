@@ -24,6 +24,7 @@ import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
+import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.SwitchId;
@@ -75,6 +76,9 @@ public class RouterService {
                     sendNetworkRequest(routerMessageSender, region);
                 }
                 return;
+            } else if (infoData instanceof IslInfoData) {
+                IslInfoData isl = (IslInfoData) infoData;
+                log.debug("Processing disco response {}", isl.getPacketId());
             } else if (infoData instanceof NetworkDumpSwitchData) {
                 switchId = ((NetworkDumpSwitchData) infoData).getSwitchView().getDatapath();
             } else if (infoData instanceof SwitchInfoData) {
@@ -97,7 +101,7 @@ public class RouterService {
      * @param message message to be handled and resend
      */
     public void processDiscoSpeakerRequest(MessageSender routerMessageSender, Message message) {
-        SwitchId switchId = RouterUtils.lookupSwitchIdInCommandMessage(message);
+        SwitchId switchId = RouterUtils.lookupSwitchId(message);
         if (switchId != null) {
             String region = floodlightTracker.lookupRegion(switchId);
             if (region == null) {

@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.model.FlowDto
 import org.openkilda.model.SwitchId
@@ -47,21 +48,22 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         northbound.deleteSwitchRules(damagedSwitch, damagedFlow.cookie)
 
         then: "Intact flow should be validated successfully"
-        northbound.validateFlow(intactFlow.id).every { isFlowValid(it) }
+        def intactFlowValidation = northbound.validateFlow(intactFlow.id)
+        intactFlowValidation.each { direction ->
+            assert direction.discrepancies.empty
+            assert direction.asExpected
+        }
 
         and: "Damaged #flowType flow validation should fail, while other direction should be validated successfully"
-        def validationResult = northbound.validateFlow(flowToBreak.id)
-        validationResult.findAll { isFlowValid(it) }.size() == 1
-        def invalidFlow = validationResult.findAll { !isFlowValid(it) }
-        invalidFlow.size() == 1
+        def brokenFlowValidation = northbound.validateFlow(flowToBreak.id)
+        brokenFlowValidation.findAll { it.discrepancies.empty && it.asExpected }.size() == 1
+        def damagedDirection = brokenFlowValidation.findAll { !it.discrepancies.empty && !it.asExpected }
+        damagedDirection.size() == 1
 
         and: "Flow rule discrepancy should contain dpID of the affected switch and cookie of the damaged flow"
-        def rules = findRulesDiscrepancies(invalidFlow[0])
+        def rules = findRulesDiscrepancies(damagedDirection[0])
         rules.size() == 1
         rules[damagedSwitch.toString()] == damagedFlow.cookie.toString()
-
-        and: "Validation of non-affected flow should succeed"
-        northbound.validateFlow(intactFlow.id).every { isFlowValid(it) }
 
         and: "Affected switch should have one missing rule with the same cookie as the damaged flow"
         def switchValidationResult = northbound.validateSwitchRules(damagedSwitch)
@@ -115,17 +117,54 @@ class FlowValidationNegativeSpec extends BaseSpecification {
         "synchronize" | "Could not reroute flow: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 
-    /**
-     * Checks if there is no discrepancies in the flow validation results
-     * //TODO: Don't skip MeterId discrepancies when OVS 2.10 support is added for virtual envs
-     * @param flow Flow validation results
-     * @return boolean
-     */
-    boolean isFlowValid(FlowValidationDto flow) {
-        if (this.profile.equalsIgnoreCase("virtual")) {
-            return flow.discrepancies.findAll { it.field != "meterId" }.empty
+    def "Able to detect discrepancies for a flow with protected path"() {
+        when: "Create a flow with protected path"
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def flow = flowHelper.randomFlow(switchPair)
+        flow.allocateProtectedPath = true
+        flowHelper.addFlow(flow)
+
+        then: "Flow with protected path is created"
+        northbound.getFlowPath(flow.id).protectedPath
+
+        and: "Validation of flow with protected path must be successful"
+        northbound.validateFlow(flow.id).each { direction ->
+            assert direction.discrepancies.empty
         }
-        return flow.discrepancies.empty
+
+        when: "Delete rule of protected path on the srcSwitch"
+        def flowPathInfo = northbound.getFlowPath(flow.id)
+        def protectedPath = flowPathInfo.protectedPath.forwardPath
+        def rules = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
+            !org.openkilda.model.Cookie.isDefaultRule(it.cookie)
+        }
+
+        def ruleToDelete = rules.find {
+            it.instructions?.applyActions?.flowOutput == protectedPath[0].inputPort.toString() &&
+                    it.match.inPort == protectedPath[0].outputPort.toString()
+        }.cookie
+
+        northbound.deleteSwitchRules(switchPair.src.dpId, ruleToDelete)
+
+        then: "Flow validate detects discrepancies"
+        //TODO(andriidovhan) try to extend this test when the issues/2302 is fixed
+        def responseValidateFlow = northbound.validateFlow(flow.id).findAll { !it.discrepancies.empty }*.discrepancies
+        assert responseValidateFlow.size() == 1
+        responseValidateFlow[0].expectedValue[0] == ruleToDelete.toString()
+
+        when: "Delete all rules except default on the all involved switches"
+        def mainPath = flowPathInfo.forwardPath
+        def involvedSwitchIds = (mainPath*.switchId + protectedPath*.switchId).unique()
+        involvedSwitchIds.each { switchId ->
+            northbound.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
+        }
+
+        then: "Flow validate detects discrepancies for all deleted rules"
+        def responseValidateFlow2 = northbound.validateFlow(flow.id).findAll { !it.discrepancies.empty }*.discrepancies
+        assert responseValidateFlow2.size() == 4
+
+        and: "Cleanup: delete the flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     /**

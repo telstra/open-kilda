@@ -25,6 +25,11 @@ public enum StreamType {
     CREATE,
 
     /**
+     * Get flow path swap stream.
+     */
+    PATH_SWAP,
+
+    /**
      * Get flow stream.
      */
     READ,

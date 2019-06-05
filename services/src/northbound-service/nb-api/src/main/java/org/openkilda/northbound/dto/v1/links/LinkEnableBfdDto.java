@@ -42,8 +42,7 @@ public class LinkEnableBfdDto {
                             @JsonProperty(value = "src_port", required = true) Integer srcPort,
                             @JsonProperty(value = "dst_switch", required = true) String dstSwitch,
                             @JsonProperty(value = "dst_port", required = true) Integer dstPort,
-                            @JsonProperty("enable_bfd") boolean enableBfd,
-                            @JsonProperty("evacuate") boolean evacuate) {
+                            @JsonProperty("enable_bfd") boolean enableBfd) {
         this.srcSwitch = srcSwitch;
         this.srcPort = srcPort;
         this.dstSwitch = dstSwitch;

@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.service;
 
+import org.openkilda.floodlight.flow.request.FlowRequest;
+import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
@@ -27,6 +29,7 @@ import org.openkilda.messaging.command.flow.BatchInstallRequest;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.command.stats.StatsRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
@@ -39,6 +42,8 @@ import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.ValidateRulesRequest;
 import org.openkilda.messaging.floodlight.request.PingRequest;
+import org.openkilda.messaging.floodlight.request.RemoveBfdSession;
+import org.openkilda.messaging.floodlight.request.SetupBfdSession;
 import org.openkilda.model.SwitchId;
 
 public final class RouterUtils {
@@ -55,7 +60,8 @@ public final class RouterUtils {
         if (message instanceof CommandMessage) {
             CommandData commandData = ((CommandMessage) message).getData();
             if (commandData instanceof PortsCommandData
-                     || commandData instanceof ConnectModeRequest) {
+                     || commandData instanceof ConnectModeRequest
+                     || commandData instanceof StatsRequest) {
                 return true;
             }
         }
@@ -67,7 +73,7 @@ public final class RouterUtils {
      * @param message - target
      * @return - SwitchId or null
      */
-    public static SwitchId lookupSwitchIdInCommandMessage(Message message) {
+    public static SwitchId lookupSwitchId(Message message) {
         if (message instanceof CommandMessage) {
             CommandData commandData = ((CommandMessage) message).getData();
             if (commandData instanceof BaseInstallFlow) {
@@ -108,9 +114,23 @@ public final class RouterUtils {
                 return ((BatchInstallForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpMetersForSwitchManagerRequest) {
                 return ((DumpMetersForSwitchManagerRequest) commandData).getSwitchId();
-            } else if (commandData instanceof MeterModifyCommandRequest) {
-                return ((MeterModifyCommandRequest) commandData).getFwdSwitchId();
+            } else if (commandData instanceof SetupBfdSession) {
+                return ((SetupBfdSession) commandData).getBfdSession().getTarget().getDatapath();
+            } else if (commandData instanceof RemoveBfdSession) {
+                return ((RemoveBfdSession) commandData).getBfdSession().getTarget().getDatapath();
             }
+        }
+        return null;
+    }
+
+    /**
+     * Lookup SwitchId in message object.
+     * @param message - target
+     * @return - SwitchId or null
+     */
+    public static SwitchId lookupSwitchId(AbstractMessage message) {
+        if (message instanceof FlowRequest) {
+            return ((FlowRequest) message).getSwitchId();
         }
         return null;
     }

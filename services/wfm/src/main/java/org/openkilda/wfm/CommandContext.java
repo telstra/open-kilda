@@ -22,7 +22,12 @@ import lombok.Data;
 import java.io.Serializable;
 import java.util.UUID;
 
+/**
+ * Class that contains command context information.
+ * @deprecated {@link org.openkilda.messaging.CommandContext} should be used instead.
+ */
 @Data
+@Deprecated
 public class CommandContext implements Serializable {
     private final String correlationId;
     private final long createTime;

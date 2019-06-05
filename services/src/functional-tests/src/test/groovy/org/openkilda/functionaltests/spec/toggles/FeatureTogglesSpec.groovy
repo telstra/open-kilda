@@ -12,7 +12,8 @@ Feature Toggles is a special lever that allows to turn on/off certain Kilda feat
 creation of new flows via Northbound API. This spec verifies that Feature Toggle restrictions are applied correctly.
 """)
 /*Note that the 'flowReroute' toggle is tested under AutoRerouteSpec#"Flow goes to 'Down' status when an intermediate
-switch is disconnected and there is no ability to reroute"*/
+switch is disconnected and there is no ability to reroute".
+BFD toggle is tested in BfdSpec*/
 class FeatureTogglesSpec extends BaseSpecification {
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"
@@ -27,7 +28,6 @@ class FeatureTogglesSpec extends BaseSpecification {
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
-        //TODO(rtretiak): inappropriate status code. Issue #1920
         e.statusCode == HttpStatus.FORBIDDEN
         e.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not create flow: Feature toggles not enabled for CREATE_FLOW operation."
@@ -55,7 +55,6 @@ class FeatureTogglesSpec extends BaseSpecification {
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
-        //TODO(rtretiak): inappropriate status code. Issue #1920
         e.statusCode == HttpStatus.FORBIDDEN
         e.responseBodyAsString.to(MessageError).errorMessage ==
                 "Could not update flow: Feature toggles not enabled for UPDATE_FLOW operation."
@@ -84,7 +83,6 @@ class FeatureTogglesSpec extends BaseSpecification {
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
-        //TODO(rtretiak): inappropriate status code. Issue #1920
         e.statusCode == HttpStatus.FORBIDDEN
         e.responseBodyAsString.to(MessageError).errorMessage ==
                 "Can not delete flow: Feature toggles not enabled for DELETE_FLOW operation."

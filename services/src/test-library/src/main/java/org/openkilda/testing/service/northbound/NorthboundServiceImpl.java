@@ -45,6 +45,9 @@ import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.links.LinkDto;
+import org.openkilda.northbound.dto.v1.links.LinkEnableBfdDto;
+import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthDto;
+import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthRequest;
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto;
 import org.openkilda.northbound.dto.v1.links.LinkPropsDto;
 import org.openkilda.northbound.dto.v1.links.LinkUnderMaintenanceDto;
@@ -56,6 +59,7 @@ import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
@@ -290,6 +294,12 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public FlowPayload swapFlowPath(String flowId) {
+        return restTemplate.exchange("/api/v1/flows/{flowId}/swap", HttpMethod.PATCH,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
+    }
+
+    @Override
     public SwitchFlowEntries getSwitchRules(SwitchId switchId) {
         return restTemplate.exchange("/api/v1/switches/{switch_id}/rules", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchFlowEntries.class, switchId).getBody();
@@ -304,6 +314,12 @@ public class NorthboundServiceImpl implements NorthboundService {
     @Override
     public List<IslInfoData> getAllLinks() {
         return getLinks(null, null, null, null);
+    }
+
+    @Override
+    public IslInfoData getLink(Isl isl) {
+        return getLinks(isl.getSrcSwitch().getDpId(), isl.getSrcPort(), isl.getDstSwitch().getDpId(),
+                isl.getDstPort()).get(0);
     }
 
     @Override
@@ -425,6 +441,36 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public LinkMaxBandwidthDto updateLinkMaxBandwidth(SwitchId srcSwitch, Integer srcPort, SwitchId dstSwitch,
+                                                      Integer dstPort, Long linkMaxBandwidth) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/links/bandwidth");
+        if (srcSwitch != null) {
+            uriBuilder.queryParam("src_switch", srcSwitch);
+        }
+        if (srcPort != null) {
+            uriBuilder.queryParam("src_port", srcPort);
+        }
+        if (dstSwitch != null) {
+            uriBuilder.queryParam("dst_switch", dstSwitch);
+        }
+        if (dstPort != null) {
+            uriBuilder.queryParam("dst_port", dstPort);
+        }
+        return restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.PATCH,
+                new HttpEntity<>(new LinkMaxBandwidthRequest(linkMaxBandwidth), buildHeadersWithCorrelationId()),
+                LinkMaxBandwidthDto.class).getBody();
+    }
+
+    @Override
+    public List<LinkDto> setLinkBfd(LinkEnableBfdDto link) {
+        log.debug("Changing bfd status to '%s' for link %s:%s-%s:%s", link.isEnableBfd(), link.getSrcSwitch(),
+                link.getSrcPort(), link.getDstSwitch(), link.getDstPort());
+        LinkDto[] updatedLinks = restTemplate.exchange("api/v1/links/enable-bfd", HttpMethod.PATCH,
+                new HttpEntity<>(link, buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
+        return Arrays.asList(updatedLinks);
+    }
+
+    @Override
     public FeatureTogglesDto getFeatureToggles() {
         return restTemplate.exchange("/api/v1/features", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), FeatureTogglesDto.class).getBody();
@@ -472,7 +518,7 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public SwitchValidationResult switchValidate(SwitchId switchId) {
+    public SwitchValidationResult validateSwitch(SwitchId switchId) {
         log.debug("Switch validating '{}'", switchId);
         return restTemplate.exchange("/api/v1/switches/{switch_id}/validate", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), SwitchValidationResult.class, switchId).getBody();
@@ -528,7 +574,7 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     private HttpHeaders buildHeadersWithCorrelationId() {
         HttpHeaders headers = new HttpHeaders();
-        headers.set(Utils.CORRELATION_ID, String.valueOf(System.currentTimeMillis()));
+        headers.set(Utils.CORRELATION_ID, "fn-tests-" + System.currentTimeMillis());
         return headers;
     }
 

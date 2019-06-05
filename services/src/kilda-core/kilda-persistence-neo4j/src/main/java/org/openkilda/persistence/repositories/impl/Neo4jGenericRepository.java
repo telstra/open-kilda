@@ -26,10 +26,12 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.Repository;
 
 import com.google.common.collect.ImmutableMap;
+import lombok.extern.slf4j.Slf4j;
 import org.neo4j.driver.v1.exceptions.ClientException;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.cypher.Filters;
+import org.neo4j.ogm.exception.core.MappingException;
 import org.neo4j.ogm.session.Session;
 
 import java.util.Arrays;
@@ -41,6 +43,7 @@ import java.util.TreeMap;
  * Base Neo4j OGM implementation of {@link Repository}.
  * Provides basic implementation of findAll, createOrUpdate and delete methods.
  */
+@Slf4j
 abstract class Neo4jGenericRepository<T> implements Repository<T> {
     private static final String SRC_SWITCH_FIELD = "srcSwitch";
     private static final String DEST_SWITCH_FIELD = "destSwitch";
@@ -68,6 +71,9 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
             } else {
                 throw ex;
             }
+        } catch (MappingException ex) {
+            log.error("OGM mapping exception", ex.getCause());
+            throw ex;
         }
     }
 
@@ -93,11 +99,21 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
     }
 
     protected Collection<T> loadAll(Filter filter) {
-        return getSession().loadAll(getEntityType(), filter, getDepthLoadEntity());
+        try {
+            return getSession().loadAll(getEntityType(), filter, getDepthLoadEntity());
+        } catch (MappingException ex) {
+            log.error("OGM mapping exception", ex.getCause());
+            throw ex;
+        }
     }
 
     protected Collection<T> loadAll(Filters filters) {
-        return getSession().loadAll(getEntityType(), filters, getDepthLoadEntity());
+        try {
+            return getSession().loadAll(getEntityType(), filters, getDepthLoadEntity());
+        } catch (MappingException ex) {
+            log.error("OGM mapping exception", ex.getCause());
+            throw ex;
+        }
     }
 
     protected Filter createSrcSwitchFilter(SwitchId switchId) {

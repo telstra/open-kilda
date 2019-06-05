@@ -3,6 +3,8 @@ package org.openkilda.functionaltests.spec.switches
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeFalse
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
@@ -11,6 +13,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
@@ -23,6 +26,7 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
+import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
@@ -51,6 +55,7 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll("Default rules are installed on an #sw.ofVersion switch(#sw.dpId)")
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Default rules are installed on switches"() {
         expect: "Default rules are installed on the switch"
         def cookies = northbound.getSwitchRules(sw.dpId).flowEntries*.cookie
@@ -60,9 +65,8 @@ class SwitchRulesSpec extends BaseSpecification {
         sw << uniqueSwitches
     }
 
+    @Tags(VIRTUAL)
     def "Default rules are installed when a new switch is connected"() {
-        requireProfiles("virtual")
-
         given: "A switch with no rules installed and not connected to the controller"
         northbound.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.DROP_ALL)
         Wrappers.wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(srcSwitch.dpId).flowEntries.isEmpty() }
@@ -79,9 +83,8 @@ class SwitchRulesSpec extends BaseSpecification {
         cookies.sort() == srcSwitch.defaultCookies.sort()
     }
 
+    @Tags(VIRTUAL)
     def "Pre-installed rules are not deleted from a new switch connected to the controller"() {
-        requireProfiles("virtual")
-
         given: "A switch with some rules installed (including default) and not connected to the controller"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
@@ -114,6 +117,7 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Able to install default rule on an #sw.ofVersion switch(#sw.dpId, install-action=#data.installRulesAction)"() {
         assumeFalse("Unable to run the test because an OF_12 switch has one broadcast rule as the default",
                 sw.ofVersion == "OF_12" && data.installRulesAction != InstallRulesAction.INSTALL_BROADCAST)
@@ -168,6 +172,7 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Able to install default rules on an #sw.ofVersion switch(#sw.dpId, install-action=INSTALL_DEFAULTS)"() {
         given: "A switch without any rules"
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
@@ -252,7 +257,84 @@ class SwitchRulesSpec extends BaseSpecification {
         ]
     }
 
+    def "Able to validate switch rules in case flow is created with protected path"() {
+        given: "A switch and a flow with protected path"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.allocateProtectedPath = true
+        flowHelper.addFlow(flow)
+        // protected path creates the 'egress' rule only on src and dst switches
+        // and creates 2 rules(input/output) on transit switches
+        // so, if (switchId == src/dst): 2 rules for main flow path + 1 egress for protected path = 3
+        // in case (switchId != src/dst): 2 rules for main flow path + 2 rules for protected path = 4
+        def amountOfRules = { SwitchId switchId ->
+            (switchId == srcSwitch.dpId || switchId == dstSwitch.dpId) ? 3 : 4
+        }
+        def flowInfo = northbound.getFlowPath(flow.id)
+        assert flowInfo.protectedPath
+
+        when: "Validate rules on the switches"
+        def mainFlowPath = flowInfo.forwardPath
+        def protectedFlowPath = flowInfo.protectedPath.forwardPath
+        def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
+
+        then: "Rules are stored in the 'proper' section"
+        commonNodeIds.each { switchId ->
+            def rules = northbound.validateSwitchRules(switchId)
+            assert rules.properRules.size() == amountOfRules(switchId)
+            assert rules.missingRules.empty
+            assert rules.excessRules.empty
+        }
+
+        def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
+            !commonNodeIds.contains(it.switchId)
+        }
+        uniqueNodes.each { sw ->
+            def rules = northbound.validateSwitchRules(sw.switchId)
+            assert rules.properRules.size() == 2
+            assert rules.missingRules.empty
+            assert rules.excessRules.empty
+        } || true
+
+        when: "Delete rule of protected path on the srcSwitch"
+        def protectedPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
+        def srcSwitchRules = northbound.getSwitchRules(commonNodeIds[0]).flowEntries.findAll {
+            !Cookie.isDefaultRule(it.cookie)
+        }
+
+        def ruleToDelete = srcSwitchRules.find {
+            it.instructions?.applyActions?.flowOutput == protectedPath[0].inputPort.toString() &&
+                    it.match.inPort == protectedPath[0].outputPort.toString()
+        }.cookie
+
+        northbound.deleteSwitchRules(commonNodeIds[0], ruleToDelete)
+
+        then: "Deleted rule is moved to the 'missing' section on the srcSwitch"
+        def srcSwitchValidateRules = northbound.validateSwitchRules(commonNodeIds[0])
+        srcSwitchValidateRules.properRules.size() == 2
+        srcSwitchValidateRules.missingRules.size() == 1
+        srcSwitchValidateRules.missingRules == [ruleToDelete]
+        srcSwitchValidateRules.excessRules.empty
+
+        and: "Rest switches are not affected by deleting the rule on the srcSwitch"
+        commonNodeIds[1..-1].each { switchId ->
+            def rules = northbound.validateSwitchRules(switchId)
+            assert rules.properRules.size() == amountOfRules(switchId)
+            assert rules.missingRules.empty
+            assert rules.excessRules.empty
+        }
+        uniqueNodes.each { sw ->
+            def rules = northbound.validateSwitchRules(sw.switchId)
+            assert rules.properRules.size() == 2
+            assert rules.missingRules.empty
+            assert rules.excessRules.empty
+        } || true
+
+        and: "Cleanup: delete the flow"
+        flowHelper.deleteFlow(flow.id)
+    }
+
     @Unroll
+    @Tags([TOPOLOGY_DEPENDENT])
     def "Able to delete default rule from an #sw.ofVersion switch (#sw.dpId, delete-action=#data.deleteRulesAction)"() {
         assumeFalse("Unable to run the test because an OF_12 switch has one broadcast rule as the default",
                 sw.ofVersion == "OF_12" && data.cookie != Cookie.VERIFICATION_BROADCAST_RULE_COOKIE)
@@ -539,6 +621,79 @@ class SwitchRulesSpec extends BaseSpecification {
         action        | method
         "synchronize" | "synchronizeSwitchRules"
         "validate"    | "validateSwitchRules"
+    }
+
+    def "Able to synchronize rules for a flow with protected path"() {
+        given: "Two active not neighboring switches"
+        def switches = topology.getActiveSwitches()
+        def allLinks = northbound.getAllLinks()
+        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
+                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
+            allLinks.every { link -> !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId) }
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "Create a flow with protected path"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.allocateProtectedPath = true
+        flowHelper.addFlow(flow)
+
+        flowHelper.verifyRulesOnProtectedFlow(flow.id)
+        def flowPathInfo = northbound.getFlowPath(flow.id)
+        def mainFlowPath = flowPathInfo.forwardPath
+        def protectedFlowPath = flowPathInfo.protectedPath.forwardPath
+        def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
+        def uniqueNodes = protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
+            !commonNodeIds.contains(it.switchId)
+        }
+
+        and: "Delete flow rules(for main and protected paths) on involved switches for creating missing rules"
+        def amountOfRules = { SwitchId switchId ->
+            (switchId == srcSwitch.dpId || switchId == dstSwitch.dpId) ? 3 : 4
+        }
+        commonNodeIds.each { northbound.deleteSwitchRules(it, DeleteRulesAction.IGNORE_DEFAULTS) }
+        uniqueNodes.each { northbound.deleteSwitchRules(it.switchId, DeleteRulesAction.IGNORE_DEFAULTS) }
+
+        commonNodeIds.each { switchId ->
+            assert northbound.validateSwitchRules(switchId).missingRules.size() == amountOfRules(switchId)
+        }
+
+        uniqueNodes.each { assert northbound.validateSwitchRules(it.switchId).missingRules.size() == 2 }
+
+        when: "Synchronize rules on switches"
+        commonNodeIds.each {
+            def response = northbound.synchronizeSwitchRules(it)
+            assert response.missingRules.size() == amountOfRules(it)
+            assert response.installedRules.sort() == response.missingRules.sort()
+            assert response.properRules.empty
+            assert response.excessRules.empty
+        }
+        uniqueNodes.each {
+            def response = northbound.synchronizeSwitchRules(it.switchId)
+            assert response.missingRules.size() == 2
+            assert response.installedRules.sort() == response.missingRules.sort()
+            assert response.properRules.empty
+            assert response.excessRules.empty
+        }
+
+        then: "No missing rules were found after rules synchronization"
+        commonNodeIds.each { switchId ->
+            verifyAll(northbound.validateSwitchRules(switchId)) {
+                properRules.size() == amountOfRules(switchId)
+                missingRules.empty
+                excessRules.empty
+            }
+        }
+
+        uniqueNodes.each {
+            verifyAll(northbound.validateSwitchRules(it.switchId)) {
+                properRules.size() == 2
+                missingRules.empty
+                excessRules.empty
+            }
+        }
+
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     def "Traffic counters in ingress rule are reset on flow rerouting"() {

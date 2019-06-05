@@ -16,15 +16,18 @@
 package org.openkilda.wfm.topology.network.service;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslDownReason;
+import org.openkilda.model.IslStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.mappers.IslMapper;
@@ -38,8 +41,12 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkUniIslServiceTest {
+    private final Map<SwitchId, Switch> switchCache = new HashMap<>();
 
     private final SwitchId alphaDatapath = new SwitchId(1);
     private final SwitchId betaDatapath = new SwitchId(2);
@@ -86,7 +93,6 @@ public class NetworkUniIslServiceTest {
         verify(carrier).setupIslFromHistory(endpoint2, IslReference.of(islAtoB2), islAtoB2);
     }
 
-
     @Test
     public void newIslFromUnknownToDownNoRemote() {
         NetworkUniIslService service = new NetworkUniIslService(carrier);
@@ -100,7 +106,7 @@ public class NetworkUniIslServiceTest {
         service.uniIslPhysicalDown(endpoint2);
 
         System.out.println(mockingDetails(carrier).printInvocations());
-        verify(carrier, never()).notifyIslDown(any(Endpoint.class), any(IslReference.class), anyBoolean());
+        verify(carrier, never()).notifyIslDown(any(Endpoint.class), any(IslReference.class), isA(IslDownReason.class));
     }
 
 
@@ -136,8 +142,8 @@ public class NetworkUniIslServiceTest {
 
         System.out.println(mockingDetails(carrier).printInvocations());
 
-        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islAtoB), false);
-        verify(carrier).notifyIslDown(endpoint2, IslReference.of(islAtoB2), true);
+        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islAtoB), IslDownReason.POLL_TIMEOUT);
+        verify(carrier).notifyIslDown(endpoint2, IslReference.of(islAtoB2), IslDownReason.PORT_DOWN);
     }
 
     @Test
@@ -265,8 +271,8 @@ public class NetworkUniIslServiceTest {
 
         //System.out.println(mockingDetails(carrier).printInvocations());
 
-        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islA1toB1), false);
-        verify(carrier).notifyIslDown(endpoint2, IslReference.of(islA2toB2), true);
+        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islA1toB1), IslDownReason.POLL_TIMEOUT);
+        verify(carrier).notifyIslDown(endpoint2, IslReference.of(islA2toB2), IslDownReason.PORT_DOWN);
     }
 
     @Test
@@ -329,8 +335,182 @@ public class NetworkUniIslServiceTest {
 
         //System.out.println(mockingDetails(carrier).printInvocations());
 
-        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islA1toB1), true);
+        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islA1toB1), IslDownReason.PORT_DOWN);
         verify(carrier, times(2)).notifyIslUp(endpoint1, IslReference.of(islA1toB1), new IslDataHolder(islA1toB1));
-        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islA1toB1), false);
+        verify(carrier).notifyIslDown(endpoint1, IslReference.of(islA1toB1), IslDownReason.BFD_DOWN);
+    }
+
+    @Test
+    public void fromDownToBfd() {
+        NetworkUniIslService service = new NetworkUniIslService(carrier);
+        Endpoint endpoint = Endpoint.of(alphaDatapath, 1);
+        Endpoint remote = Endpoint.of(betaDatapath, 2);
+
+        Isl link = Isl.builder()
+                .srcSwitch(Switch.builder().switchId(endpoint.getDatapath()).build())
+                .srcPort(endpoint.getPortNumber())
+                .destPort(remote.getPortNumber())
+                .destSwitch(Switch.builder().switchId(remote.getDatapath()).build())
+                .build();
+
+        service.uniIslSetup(endpoint, link);
+        service.uniIslPhysicalDown(endpoint);
+
+        resetMocks();
+
+        service.uniIslBfdUpDown(endpoint, true);
+
+        // System.out.println(mockingDetails(carrier).printInvocations());
+        verify(carrier).notifyIslUp(endpoint, IslReference.of(link), new IslDataHolder(link));
+    }
+
+    @Test
+    public void selfLoopWhenUnknown() {
+        NetworkUniIslService service = new NetworkUniIslService(carrier);
+
+        Endpoint endpointA = Endpoint.of(alphaDatapath, 1);
+        Endpoint endpointZ = Endpoint.of(alphaDatapath, 2);
+
+        service.uniIslSetup(endpointA, null);
+
+        verifyNoMoreInteractions(carrier);
+
+        Isl selfLoopIsl = makeIslBuilder(endpointA, endpointZ).build();
+        service.uniIslDiscovery(endpointA, IslMapper.INSTANCE.map(selfLoopIsl));
+
+        verifyNoMoreInteractions(carrier);
+
+        // ensure following discovery will be processed
+        Endpoint endpointBeta3 = Endpoint.of(betaDatapath, 3);
+        verifyIslCanBeDiscovered(service, makeIslBuilder(endpointA, endpointBeta3).build());
+    }
+
+    @Test
+    public void selfLoopWhenUp() {
+        NetworkUniIslService service = new NetworkUniIslService(carrier);
+
+        final Endpoint endpointAlpha1 = Endpoint.of(alphaDatapath, 1);
+        final Endpoint endpointAlpha2 = Endpoint.of(alphaDatapath, 2);
+        final Endpoint endpointBeta3 = Endpoint.of(betaDatapath, 3);
+
+        // setup
+        service.uniIslSetup(endpointAlpha1, null);
+        verifyNoMoreInteractions(carrier);
+
+        // initial (normal) discovery
+        Isl normalIsl = makeIslBuilder(endpointAlpha1, endpointBeta3).build();
+        service.uniIslDiscovery(endpointAlpha1, IslMapper.INSTANCE.map(normalIsl));
+
+        verify(carrier).notifyIslUp(endpointAlpha1, new IslReference(endpointAlpha1, endpointBeta3),
+                                    new IslDataHolder(normalIsl));
+        verifyNoMoreInteractions(carrier);
+
+        reset(carrier);
+
+        // self loop must trigger ISL move
+        Isl selfLoopIsl = makeIslBuilder(endpointAlpha1, endpointAlpha2).build();
+        service.uniIslDiscovery(endpointAlpha1, IslMapper.INSTANCE.map(selfLoopIsl));
+
+        verify(carrier).notifyIslMove(endpointAlpha1, new IslReference(endpointAlpha1, endpointBeta3));
+        verifyNoMoreInteractions(carrier);
+
+        reset(carrier);
+
+        // ensure following discovery will be processed
+        verifyIslCanBeDiscovered(service, normalIsl);
+    }
+
+    @Test
+    public void selfLoopWhenDownAndRemoteIsSet() {
+        NetworkUniIslService service = new NetworkUniIslService(carrier);
+
+        final Endpoint endpointAlpha1 = Endpoint.of(alphaDatapath, 1);
+        final Endpoint endpointAlpha2 = Endpoint.of(alphaDatapath, 2);
+        final Endpoint endpointBeta3 = Endpoint.of(betaDatapath, 3);
+
+        // setup
+        service.uniIslSetup(endpointAlpha1, null);
+        verifyNoMoreInteractions(carrier);
+
+        // initial (normal) discovery
+        Isl normalIsl = makeIslBuilder(endpointAlpha1, endpointBeta3).build();
+        service.uniIslDiscovery(endpointAlpha1, IslMapper.INSTANCE.map(normalIsl));
+
+        final IslReference reference = new IslReference(endpointAlpha1, endpointBeta3);
+        verify(carrier).notifyIslUp(endpointAlpha1, reference,
+                                    new IslDataHolder(normalIsl));
+        verifyNoMoreInteractions(carrier);
+        reset(carrier);
+
+        // fail
+        service.uniIslFail(endpointAlpha1);
+        verify(carrier).notifyIslDown(endpointAlpha1, reference, IslDownReason.POLL_TIMEOUT);
+        reset(carrier);
+
+        // discovery (self-loop)
+        Isl selfLoopIsl = makeIslBuilder(endpointAlpha1, endpointAlpha2).build();
+        service.uniIslDiscovery(endpointAlpha1, IslMapper.INSTANCE.map(selfLoopIsl));
+        verify(carrier).notifyIslMove(endpointAlpha1, reference);
+        verifyNoMoreInteractions(carrier);
+        reset(carrier);
+
+        // ensure following discovery will be processed
+        verifyIslCanBeDiscovered(service, normalIsl);
+    }
+
+    @Test
+    public void selfLoopWhenDownAndRemoteIsNotSet() {
+        NetworkUniIslService service = new NetworkUniIslService(carrier);
+
+        final Endpoint endpointAlpha1 = Endpoint.of(alphaDatapath, 1);
+        final Endpoint endpointAlpha2 = Endpoint.of(alphaDatapath, 2);
+        final Endpoint endpointBeta3 = Endpoint.of(betaDatapath, 3);
+
+        // setup
+        service.uniIslSetup(endpointAlpha1, null);
+        verifyNoMoreInteractions(carrier);
+
+        // fail
+        service.uniIslPhysicalDown(endpointAlpha1);
+        verifyNoMoreInteractions(carrier);
+
+        // discovery (self-loop)
+        Isl selfLoopIsl = makeIslBuilder(endpointAlpha1, endpointAlpha2).build();
+        service.uniIslDiscovery(endpointAlpha1, IslMapper.INSTANCE.map(selfLoopIsl));
+        verifyNoMoreInteractions(carrier);
+
+        // ensure following discovery will be processed
+        verifyIslCanBeDiscovered(service, makeIslBuilder(endpointAlpha1, endpointBeta3).build());
+    }
+
+    private void verifyIslCanBeDiscovered(NetworkUniIslService service, Isl link) {
+        Endpoint endpointA = Endpoint.of(link.getSrcSwitch().getSwitchId(), link.getSrcPort());
+        Endpoint endpointZ = Endpoint.of(link.getDestSwitch().getSwitchId(), link.getDestPort());
+        service.uniIslDiscovery(endpointA, IslMapper.INSTANCE.map(link));
+
+        verify(carrier).notifyIslUp(endpointA, new IslReference(endpointA, endpointZ),
+                                    new IslDataHolder(link));
+        verifyNoMoreInteractions(carrier);
+        reset(carrier);
+    }
+
+    private Isl.IslBuilder makeIslBuilder(Endpoint endpointA, Endpoint endpointZ) {
+        Switch swA = lookupSwitchCreateIfMissing(endpointA.getDatapath());
+        Switch swZ = lookupSwitchCreateIfMissing(endpointZ.getDatapath());
+
+        return Isl.builder()
+                .srcSwitch(swA).srcPort(endpointA.getPortNumber())
+                .destSwitch(swZ).destPort(endpointZ.getPortNumber())
+                .status(IslStatus.ACTIVE)
+                .actualStatus(IslStatus.ACTIVE)
+                .speed(1000)
+                .maxBandwidth(1000)
+                .defaultMaxBandwidth(1000)
+                .availableBandwidth(1000)
+                .latency(20);
+    }
+
+    private Switch lookupSwitchCreateIfMissing(SwitchId datapath) {
+        return switchCache.computeIfAbsent(datapath, key -> Switch.builder().switchId(key).build());
     }
 }

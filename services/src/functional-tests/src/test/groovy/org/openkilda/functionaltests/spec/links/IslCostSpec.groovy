@@ -24,7 +24,7 @@ class IslCostSpec extends BaseSpecification {
 (ISL cost < isl.cost.when.port.down)"() {
         given: "An active ISL with created link props"
         int islCost = islUtils.getIslInfo(isl).get().cost
-        northbound.updateLinkProps([isl, isl.reversed].collect{ islUtils.toLinkProps(it, [cost: islCost.toString()]) })
+        northbound.updateLinkProps([isl, isl.reversed].collect { islUtils.toLinkProps(it, [cost: islCost.toString()]) })
 
         when: "Bring port down on the source switch"
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
@@ -58,9 +58,7 @@ class IslCostSpec extends BaseSpecification {
     def "Cost of #data.description ISL is NOT increased due to bringing port down on a switch \
 (ISL cost #data.condition isl.cost.when.port.down)"() {
         given: "An active ISL with created link props"
-        //TODO(rtretiak): After #1954 is merged use only one-direction prop
-        def linkProps = [data.isl, data.isl.reversed]
-                .collect{ islUtils.toLinkProps(it, ["cost": data.cost.toString()]) }
+        def linkProps = [islUtils.toLinkProps(data.isl, ["cost": data.cost.toString()])]
         northbound.updateLinkProps(linkProps)
         int islCost = islUtils.getIslInfo(data.isl).get().cost
 
@@ -118,15 +116,16 @@ class IslCostSpec extends BaseSpecification {
         ]
     }
 
+    //'ISL with BFD session' case is covered in BfdSpec. Spoiler: it should act the same and don't change cost at all.
     def "ISL cost is NOT increased due to failing connection between switches (not port down)"() {
         given: "ISL going through a-switch with link props created"
         def isl = topology.islsForActiveSwitches.find {
-            it.aswitch?.inPort && it.aswitch?.outPort && !it.bfd
+            it.aswitch?.inPort && it.aswitch?.outPort
         } ?: assumeTrue("Wasn't able to find suitable ISL", false)
         def isls = northbound.getAllLinks()
         int islCost = islUtils.getIslInfo(isls, isl).get().cost
         assert islUtils.getIslInfo(isls, isl.reversed).get().cost == islCost
-        northbound.updateLinkProps([isl, isl.reversed].collect{ islUtils.toLinkProps(it, [cost: islCost.toString()]) })
+        northbound.updateLinkProps([isl, isl.reversed].collect { islUtils.toLinkProps(it, [cost: islCost.toString()]) })
 
         when: "Remove a-switch rules to break link between switches"
         def rulesToRemove = [isl.aswitch, isl.aswitch.reversed]

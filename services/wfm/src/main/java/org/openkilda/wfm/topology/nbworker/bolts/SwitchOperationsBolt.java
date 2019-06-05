@@ -27,9 +27,11 @@ import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
+import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
@@ -49,6 +51,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
     private transient SwitchOperationsService switchOperationsService;
     private transient FlowOperationsService flowOperationsService;
 
+    private transient FeatureTogglesRepository featureTogglesRepository;
+
     private int islCostWhenUnderMaintenance;
 
     public SwitchOperationsBolt(PersistenceManager persistenceManager, int islCostWhenUnderMaintenance) {
@@ -64,6 +68,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         this.switchOperationsService =
                 new SwitchOperationsService(repositoryFactory, transactionManager, islCostWhenUnderMaintenance);
         this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
+
+        featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }
 
     @Override
@@ -115,9 +121,17 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         }
 
         if (underMaintenance && evacuate) {
-            flowOperationsService.getFlowIdsForSwitch(switchId).forEach(flowId -> {
-                FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId);
-                getOutput().emit(StreamType.REROUTE.toString(), tuple, new Values(rerouteRequest, correlationId));
+            boolean flowsRerouteViaFlowHs = featureTogglesRepository.find()
+                    .map(FeatureToggles::getFlowsRerouteViaFlowHs)
+                    .orElse(FeatureToggles.DEFAULTS.getFlowsRerouteViaFlowHs());
+
+            flowOperationsService.groupFlowIdWithPathIdsForRerouting(
+                    flowOperationsService.getFlowPathsForSwitch(switchId)
+            ).forEach((flowId, pathIds) -> {
+                FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds);
+                getOutput().emit(
+                        flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString(),
+                        tuple, new Values(rerouteRequest, correlationId));
             });
         }
 
@@ -161,6 +175,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         super.declareOutputFields(declarer);
         declarer.declare(new Fields("response", "correlationId"));
         declarer.declareStream(StreamType.REROUTE.toString(),
+                new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
+        declarer.declareStream(StreamType.FLOWHS.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.DISCO.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));

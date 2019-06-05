@@ -22,12 +22,14 @@ import static org.openkilda.persistence.repositories.impl.Neo4jFlowRepository.FL
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.converters.FlowPathStatusConverter;
 import org.openkilda.persistence.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 
@@ -37,6 +39,7 @@ import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.cypher.function.FilterFunction;
 import org.neo4j.ogm.session.Session;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -58,6 +61,7 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     static final String COOKIE_PROPERTY_NAME = "cookie";
 
     private final SwitchIdConverter switchIdConverter = new SwitchIdConverter();
+    private final FlowPathStatusConverter statusConverter = new FlowPathStatusConverter();
 
     public Neo4jFlowPathRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
@@ -122,7 +126,8 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     public Collection<FlowPath> findBySrcSwitch(SwitchId switchId) {
         Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
 
-        return loadAll(srcSwitchFilter);
+        return filterSrcProtectedPathEndpoint(loadAll(srcSwitchFilter).stream(), switchId)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -130,8 +135,14 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
         Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
         Filter dstSwitchFilter = createDstSwitchFilter(switchId);
 
-        return Stream.concat(loadAll(srcSwitchFilter).stream(), loadAll(dstSwitchFilter).stream())
+        return filterSrcProtectedPathEndpoint(
+                Stream.concat(loadAll(srcSwitchFilter).stream(), loadAll(dstSwitchFilter).stream()), switchId)
                 .collect(Collectors.toList());
+    }
+
+    private Stream<FlowPath> filterSrcProtectedPathEndpoint(Stream<FlowPath> pathStream, SwitchId switchId) {
+        return pathStream.filter(
+                path -> !(path.isProtected() && switchId.equals(path.getSrcSwitch().getSwitchId())));
     }
 
     @Override
@@ -151,6 +162,33 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
         }
 
         Filter pathIdsFilter = new Filter(PATH_ID_PROPERTY_NAME, new InOperatorWithNoConverterComparison(pathIds));
+
+        return loadAll(pathIdsFilter);
+    }
+
+    @Override
+    public Collection<FlowPath> findWithPathSegment(SwitchId srcSwitchId, int srcPort,
+                                                    SwitchId dstSwitchId, int dstPort) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "src_switch", switchIdConverter.toGraphProperty(srcSwitchId),
+                "src_port", srcPort,
+                "dst_switch", switchIdConverter.toGraphProperty(dstSwitchId),
+                "dst_port", dstPort);
+
+        Set<String> pathsId = new HashSet<>();
+        getSession().query(String.class,
+                "MATCH (src:switch)-[:source]-(ps:path_segment)-[:destination]-(dst:switch) "
+                        + "WHERE src.name = $src_switch AND ps.src_port = $src_port  "
+                        + "AND dst.name = $dst_switch AND ps.dst_port = $dst_port  "
+                        + "MATCH (fp:flow_path)-[:owns]-(ps) "
+                        + "RETURN fp.path_id", parameters).forEach(pathsId::add);
+
+        if (pathsId.isEmpty()) {
+            return emptyList();
+        }
+
+        Filter pathIdsFilter = new Filter(PATH_ID_PROPERTY_NAME, new InOperatorWithNoConverterComparison(pathsId));
+        pathIdsFilter.setPropertyConverter(null);
 
         return loadAll(pathIdsFilter);
     }
@@ -177,11 +215,43 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     }
 
     @Override
+    public Collection<FlowPath> findActiveAffectedPaths(SwitchId switchId, int port) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_id", switchIdConverter.toGraphProperty(switchId),
+                "port", port,
+                "path_status", statusConverter.toGraphProperty(FlowPathStatus.ACTIVE));
+
+        Set<String> pathsId = new HashSet<>();
+        getSession().query(String.class,
+                "MATCH (src:switch)-[:source]-(ps:path_segment)-[:destination]-(dst:switch) "
+                        + "WHERE ((src.name = $switch_id AND ps.src_port = $port) "
+                        + "OR (dst.name = $switch_id AND ps.dst_port = $port)) "
+                        + "MATCH (fp:flow_path)-[:owns]-(ps) "
+                        + "WHERE fp.status = $path_status OR fp.status IS NULL "
+                        + "RETURN fp.path_id", parameters).forEach(pathsId::add);
+
+        if (pathsId.isEmpty()) {
+            return emptyList();
+        }
+
+        Filter pathIdsFilter = new Filter(PATH_ID_PROPERTY_NAME, new InOperatorWithNoConverterComparison(pathsId));
+        pathIdsFilter.setPropertyConverter(null);
+
+        return loadAll(pathIdsFilter);
+    }
+
+    @Override
     public void createOrUpdate(FlowPath flowPath) {
         // The flow path must reference a managed flow to avoid creation of duplicated flow.
         requireManagedEntity(flowPath.getFlow());
 
         validateFlowPath(flowPath);
+
+        if (flowPath.getTimeCreate() == null) {
+            flowPath.setTimeCreate(Instant.now());
+        } else {
+            flowPath.setTimeModify(Instant.now());
+        }
 
         transactionManager.doInTransaction(() -> {
             Collection<PathSegment> currentSegments = findPathSegmentsByPathId(flowPath.getPathId());
