@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.21.1 (04/06/2019)
+### Bug Fixes:
+-  [#2439](https://github.com/telstra/open-kilda/pull/2439) Fix failsafe transaction interface 
+-  [#2283](https://github.com/telstra/open-kilda/pull/2283) Do not reset defaultMaxBanwidth ISL's field on network topology start (Issue: [#2248](https://github.com/telstra/open-kilda/issues/2248)) [**storm-topologies**]
+-  [#2412](https://github.com/telstra/open-kilda/pull/2412) Do not fail lab-service if openvswitch service is not running [**tests**]
+
+### Improvements:
+-  [#2436](https://github.com/telstra/open-kilda/pull/2436) Make transaction bolt "non-stateful" in terms of storm [**storm-topologies**]
+-  [#2423](https://github.com/telstra/open-kilda/pull/2423) Router remove stateful (Issue: [#2234](https://github.com/telstra/open-kilda/issues/2234)) [**storm-topologies**]
+-  [#2296](https://github.com/telstra/open-kilda/pull/2296) Extend transation manager with repeat mecahnism (Issue: [#2291](https://github.com/telstra/open-kilda/issues/2291)) 
+-  [#2316](https://github.com/telstra/open-kilda/pull/2316) Refactor of PathVerificationService (Issue: [#580](https://github.com/telstra/open-kilda/issues/580)) [**floodlight**]
+-  [#2289](https://github.com/telstra/open-kilda/pull/2289) SwitchManager topology refactoring (Issue: [#2215](https://github.com/telstra/open-kilda/issues/2215)) [**northbound**][**storm-topologies**]
+-  [#2354](https://github.com/telstra/open-kilda/pull/2354) Detect and handle self looped ISL (Issue: [#2314](https://github.com/telstra/open-kilda/issues/2314)) [**storm-topologies**]
+-  [#2424](https://github.com/telstra/open-kilda/pull/2424) fix test: System doesn't reroute main flow path when protected path is broken and new alt path is available (Issue: [#2420](https://github.com/telstra/open-kilda/issues/2420)) [**tests**]
+-  [#2396](https://github.com/telstra/open-kilda/pull/2396) add verification that system deletes props for both directions, even … (Issue: [#2388](https://github.com/telstra/open-kilda/issues/2388)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.21.0...v1.21.1).
+
+### Affected Components:
+swmanager, fl, nb, neo4j, flow, network, router
+
+---
+
 ## v1.21.0 (03/06/2019)
 ### Features:
 -  [#2403](https://github.com/telstra/open-kilda/pull/2403) Adding  feature to toggle the menu sidebar (Issue:  [#2387](https://github.com/telstra/open-kilda/issues/2387)) [**gui**]
