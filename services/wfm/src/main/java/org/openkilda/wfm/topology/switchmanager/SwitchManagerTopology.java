@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.switchmanager;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
@@ -61,7 +62,8 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
                 .fieldsGrouping(SwitchValidateManager.ID, RouterBolt.INCOME_STREAM, FIELDS_KEY);
 
         builder.setBolt(SwitchValidateManager.ID, new SwitchValidateManager(RouterBolt.ID, persistenceManager,
-                topologyConfig.getFlowMeterMinBurstSizeInKbits(), topologyConfig.getFlowMeterBurstCoefficient()),
+                topologyConfig.getFlowMeterMinBurstSizeInKbits(), topologyConfig.getFlowMeterBurstCoefficient(),
+                configurationProvider.getConfiguration(FlowResourcesConfig.class)),
                 topologyConfig.getNewParallelism())
                 .fieldsGrouping(RouterBolt.ID, SwitchValidateManager.INCOME_STREAM, FIELDS_KEY)
                 .directGrouping(CoordinatorBolt.ID);

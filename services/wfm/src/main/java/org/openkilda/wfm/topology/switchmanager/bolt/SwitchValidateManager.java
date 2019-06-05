@@ -29,6 +29,7 @@ import org.openkilda.messaging.info.rule.BatchInstallResponse;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt.CoordinatorCommand;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
@@ -58,6 +59,7 @@ public class SwitchValidateManager extends HubBolt implements SwitchManagerCarri
     private static final boolean AUTO_ACK = true;
 
     private final PersistenceManager persistenceManager;
+    private final FlowResourcesConfig flowResourcesConfig;
     private transient SwitchValidateService validateService;
     private transient SwitchSyncService syncService;
 
@@ -65,7 +67,8 @@ public class SwitchValidateManager extends HubBolt implements SwitchManagerCarri
     private double flowMeterBurstCoefficient;
 
     public SwitchValidateManager(String requestSenderComponent, PersistenceManager persistenceManager,
-                                 long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
+                                 long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient,
+                                 FlowResourcesConfig flowResourcesConfig) {
         super(HubBolt.Config.builder()
                 .requestSenderComponent(requestSenderComponent)
                 .timeoutMs(TIMEOUT_MS)
@@ -75,13 +78,14 @@ public class SwitchValidateManager extends HubBolt implements SwitchManagerCarri
         this.persistenceManager = persistenceManager;
         this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
         this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
+        this.flowResourcesConfig = flowResourcesConfig;
     }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         super.prepare(stormConf, context, collector);
         validateService = new SwitchValidateServiceImpl(this, persistenceManager);
-        syncService = new SwitchSyncServiceImpl(this, persistenceManager);
+        syncService = new SwitchSyncServiceImpl(this, persistenceManager, flowResourcesConfig);
     }
 
     @Override

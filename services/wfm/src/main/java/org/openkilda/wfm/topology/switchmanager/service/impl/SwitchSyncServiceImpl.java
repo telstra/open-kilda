@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.switchmanager.service.impl;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent;
@@ -45,9 +46,10 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
     private SwitchManagerCarrier carrier;
     private StateMachineBuilder<SwitchSyncFsm, SwitchSyncState, SwitchSyncEvent, Object> builder;
 
-    public SwitchSyncServiceImpl(SwitchManagerCarrier carrier, PersistenceManager persistenceManager) {
+    public SwitchSyncServiceImpl(SwitchManagerCarrier carrier, PersistenceManager persistenceManager,
+                                 FlowResourcesConfig flowResourcesConfig) {
         this.carrier = carrier;
-        this.commandBuilder = new CommandBuilderImpl(persistenceManager);
+        this.commandBuilder = new CommandBuilderImpl(persistenceManager, flowResourcesConfig);
         this.builder = SwitchSyncFsm.builder();
     }
 

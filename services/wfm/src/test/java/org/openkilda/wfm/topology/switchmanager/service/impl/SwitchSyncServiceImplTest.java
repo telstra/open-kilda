@@ -25,6 +25,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
@@ -41,6 +42,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
@@ -56,6 +58,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.List;
+import java.util.Properties;
 import java.util.UUID;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -92,7 +95,15 @@ public class SwitchSyncServiceImplTest {
         when(repositoryFactory.createTransitVlanRepository()).thenReturn(transitVlanRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
-        service = new SwitchSyncServiceImpl(carrier, persistenceManager);
+        Properties configProps = new Properties();
+        configProps.setProperty("flow.meter-id.max", "40");
+        configProps.setProperty("flow.vlan.max", "50");
+
+        PropertiesBasedConfigurationProvider configurationProvider =
+                new PropertiesBasedConfigurationProvider(configProps);
+        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+
+        service = new SwitchSyncServiceImpl(carrier, persistenceManager, flowResourcesConfig);
         service.commandBuilder = commandBuilder;
 
         request = new SwitchValidateRequest(SWITCH_ID, true);
