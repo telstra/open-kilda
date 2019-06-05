@@ -1,0 +1,90 @@
+@startuml
+title floodlightrouter - generic IO
+
+participant Controller
+
+box "Controller IO" #LightGreen
+control "C-OUT.channel" as COUT
+control "C-IN.channel" as CIN
+end box
+
+participant "C Spout" as CSpout
+participant "C->S TopicMap" as CTopicMap
+participant "Region Mapper" as RegionMapper
+participant "Controller message\nprocessor" as CMProcessor
+participant "Speaker message\nprocessor" as SMProcessor
+participant "Speaker monitor" as SMonitor
+participant "S->C TopicMap" as STopicMap
+participant "S Spout" as SSpout
+
+box "Speaker IO" #LightBlue
+control "S-OUT.channel" as SOUT
+control "S-IN.channel" as SIN
+end box
+
+participant Speaker
+
+== Controller to Speaker ==
+Controller --> COUT : Message
+COUT --> CSpout : Message
+activate CSpout
+CSpout --> CTopicMap : Message
+deactivate CSpout
+
+activate CTopicMap
+note right of CTopicMap: define speaker\ntopic by controller topic
+CTopicMap --> RegionMapper : Message\nS-Topic\n(swId key grouping)
+deactivate CTopicMap
+
+activate RegionMapper
+note right of RegionMapper : determine target\nregion
+RegionMapper --> CMProcessor : Message\nS-Topic\nregion
+deactivate RegionMapper
+
+activate CMProcessor
+alt broadcast message
+    loop for all region
+        CMProcessor --> SIN : Message\nS-Topic\nregion
+        note left of SIN: use "S-Topic" and region\nto select output topic
+
+        SIN --> Speaker : Message
+    end
+else switch specific message
+    CMProcessor --> SIN : Message\nS-Topic\nregion
+    note left of SIN: use "S-Topic" and region\nto select output topic
+
+    SIN --> Speaker : Message
+end
+deactivate CMProcessor
+
+== Speaker to Controller ==
+
+Speaker --> SOUT : Message
+SOUT --> SSpout : Message
+
+activate SSpout
+SSpout --> STopicMap : Message
+note right of STopicMap: define controller\ntopic by speaker topic
+deactivate SSpout
+
+activate STopicMap
+STopicMap --> SMonitor : Message\nC-Topic
+deactivate STopicMap
+
+activate SMonitor
+note right of SMonitor : update speaker availability
+SMonitor --> RegionMapper : Message\n(swId key grouping)
+SMonitor --> SMProcessor : Message\nC-Topic
+deactivate SMonitor
+
+activate SMProcessor
+alt is floodlightrouter the message destination?
+    note right of SMProcessor: handle message
+else message for controller
+    note right of CIN: use "C-Topic" and region\nto select output topic
+    SMProcessor --> CIN : Message
+    CIN --> Controller : Message
+end
+deactivate SMProcessor
+
+@enduml

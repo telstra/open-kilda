@@ -1,0 +1,82 @@
+@startuml
+title floodlightrouter periodic actions
+
+box "Controller IO" #LightGreen
+control "C-IN.channel" as CIN
+end box
+
+box "Timers" #LightYellow
+control "System clock" as clock
+control "Dump clock" as dclock
+end box
+
+participant "Region Mapper" as RegionMapper
+participant "Speaker monitor" as SMonitor
+participant "Message Processor" as processor
+participant "S->C TopicMap" as STopicMap
+
+box "Speaker IO" #LightBlue
+control "S-OUT.channel" as SOUT
+control "S-IN.channel" as SIN
+end box
+
+== Region monitor ==
+clock --> SMonitor : (shuffle grouping)
+
+activate SMonitor
+note right of SMonitor : check regions alive timeout
+loop all offline regions
+    SMonitor --> RegionMapper : RegionOfflineNotification(region)\n(all grouping)
+    activate RegionMapper
+    opt region marked ONLINE now
+        loop for all sw in `region`
+            RegionMapper --> CIN : Message(UnmanagedSwitchNotification)\nC-Topic
+        end loop
+        note right of RegionMapper : mark `region` as OFFLINE
+    end opt
+    deactivate RegionMapper
+end loop
+
+note right of SMonitor : report offline regions
+loop all regions
+    note right of SMonitor : produce alive request
+    SMonitor --> SIN : Message(AliveRequest)\nS-Topic
+end loop
+deactivate SMonitor
+
+...
+
+SOUT --> STopicMap : Message(AliveResponse)
+
+activate STopicMap
+STopicMap --> processor : Message(AliveResponse)\nC-Topic\n(shuffle grouping)
+deactivate STopicMap
+
+activate processor
+processor --> SMonitor : RegionAliveNotification\n(all grouping)
+activate SMonitor
+note right of SMonitor : update region alive timeout
+
+opt speaker report write errors
+    processor -> SMonitor : RegionIOFailureNotification\n(shuffle grouping)
+    note right of SMonitor : produce network dump request
+    SMonitor --> SIN : NetworkCommandData\nS-Topic
+end opt
+deactivate processor
+
+SMonitor --> RegionMapper : RegionOnlineNotification(region)\n(all grouping)
+note right of RegionMapper : mark region online
+deactivate SMonitor
+
+== Periodic network dump ==
+
+dclock --> SMonitor : tick\n(shuffle grouping)
+
+activate SMonitor
+loop all regions
+    note right of SMonitor : produce network dump request
+    SMonitor --> SIN : NetworkCommandData\nS-Topic
+end loop
+deactivate SMonitor
+
+@enduml
