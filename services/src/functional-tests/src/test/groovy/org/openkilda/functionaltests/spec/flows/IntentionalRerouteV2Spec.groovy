@@ -1,6 +1,11 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.testing.Constants.DEFAULT_COST
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -11,14 +16,11 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
+
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 
 import javax.inject.Provider
-
-import static org.junit.Assume.assumeTrue
-import static org.openkilda.testing.Constants.DEFAULT_COST
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Narrative("Verify that on-demand reroute operations are performed accurately.")
 class IntentionalRerouteV2Spec extends BaseSpecification {
@@ -173,7 +175,8 @@ class IntentionalRerouteV2Spec extends BaseSpecification {
 
         then: "Flow is rerouted"
         reroute.rerouted
-        reroute.path.nodes == PathHelper.convertToNodesV2(potentialNewPath)
+        expect reroute.path.nodes, sameBeanAs(PathHelper.convertToNodesV2(potentialNewPath))
+                .ignoring("segmentLatency")
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Traffic examination result shows acceptable packet loss percentage"

@@ -1,6 +1,12 @@
 package org.openkilda.functionaltests.spec.flows
 
-import groovy.util.logging.Slf4j
+import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.FlowHelperV2
@@ -21,6 +27,8 @@ import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
+
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -30,11 +38,6 @@ import spock.lang.Shared
 import spock.lang.Unroll
 
 import javax.inject.Provider
-
-import static org.junit.Assume.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.messaging.info.event.IslChangeType.*
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Slf4j
 @Narrative("Verify CRUD operations and health of most typical types of flows on different types of switches.")

@@ -58,3 +58,5 @@ grpc.password=kilda
 #please use the correct ip address and port for the remote log server
 grpc.remote.log.server.ip=1.1.1.1
 grpc.remote.log.server.port=321
+
+use.hs=false
