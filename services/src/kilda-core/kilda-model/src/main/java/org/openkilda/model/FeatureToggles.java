@@ -46,7 +46,8 @@ public class FeatureToggles {
             false, // unpush_flow
             true, // use_bfd_for_isl_integrity_check
             true, // floodlight_router_periodic_sync
-            false // flows_reroute_via_flowhs
+            false, // flows_reroute_via_flowhs
+            false // flows_reroute_using_default_encap_type
     );
 
     // Hidden as needed for OGM only.
@@ -83,6 +84,9 @@ public class FeatureToggles {
     @Property(name = "flows_reroute_via_flowhs")
     private Boolean flowsRerouteViaFlowHs;
 
+    @Property(name = "flows_reroute_using_default_encap_type")
+    private Boolean flowsRerouteUsingDefaultEncapType;
+
     /**
      * Constructor prevents initialization of entityId field.
      */
@@ -90,7 +94,7 @@ public class FeatureToggles {
     FeatureToggles(Boolean flowsRerouteOnIslDiscoveryEnabled, Boolean createFlowEnabled, Boolean updateFlowEnabled,
                    Boolean deleteFlowEnabled, Boolean pushFlowEnabled, Boolean unpushFlowEnabled,
                    Boolean useBfdForIslIntegrityCheck, Boolean floodlightRoutePeriodicSync,
-                   Boolean flowsRerouteViaFlowHs) {
+                   Boolean flowsRerouteViaFlowHs, Boolean flowsRerouteUsingDefaultEncapType) {
         this.flowsRerouteOnIslDiscoveryEnabled = flowsRerouteOnIslDiscoveryEnabled;
         this.createFlowEnabled = createFlowEnabled;
         this.updateFlowEnabled = updateFlowEnabled;
@@ -100,5 +104,6 @@ public class FeatureToggles {
         this.useBfdForIslIntegrityCheck = useBfdForIslIntegrityCheck;
         this.floodlightRoutePeriodicSync = floodlightRoutePeriodicSync;
         this.flowsRerouteViaFlowHs = flowsRerouteViaFlowHs;
+        this.flowsRerouteUsingDefaultEncapType = flowsRerouteUsingDefaultEncapType;
     }
 }

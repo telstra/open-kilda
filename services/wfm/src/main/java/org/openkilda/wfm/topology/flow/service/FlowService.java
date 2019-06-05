@@ -48,8 +48,10 @@ import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.FlowNotFoundException;
@@ -103,6 +105,8 @@ public class FlowService extends BaseFlowService {
     private final SwitchRepository switchRepository;
     private final FlowPathRepository flowPathRepository;
     private final IslRepository islRepository;
+    private final KildaConfigurationRepository kildaConfigurationRepository;
+    private final FeatureTogglesRepository featureTogglesRepository;
     private final PathComputerFactory pathComputerFactory;
     private final FlowResourcesManager flowResourcesManager;
     private final FlowValidator flowValidator;
@@ -116,6 +120,8 @@ public class FlowService extends BaseFlowService {
         switchRepository = repositoryFactory.createSwitchRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
         islRepository = repositoryFactory.createIslRepository();
+        kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
+        featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
         this.pathComputerFactory = pathComputerFactory;
         this.flowResourcesManager = flowResourcesManager;
         this.flowValidator = flowValidator;
@@ -492,6 +498,14 @@ public class FlowService extends BaseFlowService {
 
         Flow flow = currentFlow.getFlow();
         Flow initialFlow = flow.toBuilder().build();
+
+        featureTogglesRepository.find().ifPresent(featureToggles ->
+                Optional.ofNullable(featureToggles.getFlowsRerouteUsingDefaultEncapType()).ifPresent(toggle -> {
+                    if (toggle) {
+                        flow.setEncapsulationType(kildaConfigurationRepository.get().getFlowEncapsulationType());
+                    }
+                }));
+
         FlowPathsWithEncapsulationBuilder toCreateBuilder = FlowPathsWithEncapsulation.builder();
         FlowPathsWithEncapsulationBuilder toRemoveBuilder = currentFlow.toBuilder().flow(initialFlow);
         Instant timestamp = Instant.now();
