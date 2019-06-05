@@ -23,17 +23,31 @@ class AssumeProfileExtension extends ContextAwareGlobalExtension {
 
     @Override
     void visitSpec(SpecInfo spec) {
+        //check before every feature, in case if 'where' block may return no data
+        spec.allFeatures*.addInterceptor(new IMethodInterceptor() {
+            @Override
+            void intercept(IMethodInvocation invocation) throws Throwable {
+                def tags = TagExtension.collectAllTagsAnnotations(invocation.feature)
+                        .collectMany { it.value().toList() } as Set
+                checkTags(tags)
+                invocation.proceed()
+            }
+        })
         //check before every iteration
         spec.allFeatures*.getFeatureMethod()*.addInterceptor(new IMethodInterceptor() {
             @Override
             void intercept(IMethodInvocation invocation) throws Throwable {
                 def tags = TagExtension.collectAllTags(invocation.iteration)
-                if(tags.contains(Tag.VIRTUAL) || tags.contains(Tag.HARDWARE)) { //if test is profile-dependent
-                    Assume.assumeTrue("This test cannot be executed for current active profile: $profile",
-                            tags*.toString().contains(profile.toUpperCase()))
-                }
+                checkTags(tags)
                 invocation.proceed()
             }
         })
+    }
+
+    private void checkTags(Set<Tag> tags) {
+        if (tags.contains(Tag.VIRTUAL) || tags.contains(Tag.HARDWARE)) { //if test is profile-dependent
+            Assume.assumeTrue("This test cannot be executed for current active profile: $profile",
+                    tags*.toString().contains(profile.toUpperCase()))
+        }
     }
 }
