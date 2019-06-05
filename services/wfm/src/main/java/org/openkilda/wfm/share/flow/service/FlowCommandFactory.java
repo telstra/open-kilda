@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flow.service;
+package org.openkilda.wfm.share.flow.service;
 
 import static java.lang.String.format;
 
@@ -185,8 +185,16 @@ public class FlowCommandFactory {
         }
     }
 
-    private InstallEgressFlow buildInstallEgressFlow(FlowPath flowPath, int inputPortNo,
-                                                     EncapsulationResources encapsulationResources) {
+    /**
+     * Generate install egress flow command.
+     *
+     * @param flowPath flow path with segments to be used for building of install rules.
+     * @param inputPortNo the number of input port.
+     * @param encapsulationResources the encapsulation resources.
+     * @return install egress flow command
+     */
+    public InstallEgressFlow buildInstallEgressFlow(FlowPath flowPath, int inputPortNo,
+                                                    EncapsulationResources encapsulationResources) {
         Flow flow = flowPath.getFlow();
 
         boolean isForward = flow.isForward(flowPath);
@@ -216,9 +224,19 @@ public class FlowCommandFactory {
                 switchId, null, criteria);
     }
 
-    private InstallTransitFlow buildInstallTransitFlow(FlowPath flowPath, SwitchId switchId,
-                                                       int inputPortNo, int outputPortNo,
-                                                       EncapsulationResources encapsulationResources) {
+    /**
+     * Generate install transit flow command.
+     *
+     * @param flowPath flow path with segments to be used for building of install rules.
+     * @param switchId the switch id.
+     * @param inputPortNo the number of input port.
+     * @param outputPortNo the number of output port.
+     * @param encapsulationResources the encapsulation resources.
+     * @return install transit flow command
+     */
+    public InstallTransitFlow buildInstallTransitFlow(FlowPath flowPath, SwitchId switchId,
+                                                      int inputPortNo, int outputPortNo,
+                                                      EncapsulationResources encapsulationResources) {
         return new InstallTransitFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(),
                 flowPath.getCookie().getValue(), switchId, inputPortNo, outputPortNo,
                 encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
@@ -236,8 +254,17 @@ public class FlowCommandFactory {
                 switchId, null, criteria);
     }
 
-    private BaseInstallFlow buildInstallIngressFlow(Flow flow, FlowPath flowPath, int outputPortNo,
-                                                    EncapsulationResources encapsulationResources) {
+    /**
+     * Generate install ingress flow command.
+     *
+     * @param flow the flow.
+     * @param flowPath flow path with segments to be used for building of install rules.
+     * @param outputPortNo the number of output port.
+     * @param encapsulationResources the encapsulation resources.
+     * @return install ingress flow command
+     */
+    public InstallIngressFlow buildInstallIngressFlow(Flow flow, FlowPath flowPath, int outputPortNo,
+                                                      EncapsulationResources encapsulationResources) {
         boolean isForward = flow.isForward(flowPath);
         SwitchId switchId = isForward ? flow.getSrcSwitch().getSwitchId() : flow.getDestSwitch().getSwitchId();
         int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
@@ -266,7 +293,14 @@ public class FlowCommandFactory {
                 cookie, switchId, meterId, ingressCriteria);
     }
 
-    private BaseInstallFlow makeOneSwitchRule(Flow flow, FlowPath flowPath) {
+    /**
+     * Generate install one swithc flow command.
+     *
+     * @param flow the flow.
+     * @param flowPath flow path with segments to be used for building of install rules.
+     * @return install one switch flow command
+     */
+    public InstallOneSwitchFlow makeOneSwitchRule(Flow flow, FlowPath flowPath) {
         boolean isForward = flow.isForward(flowPath);
         SwitchId switchId = isForward ? flow.getSrcSwitch().getSwitchId() : flow.getDestSwitch().getSwitchId();
         int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();

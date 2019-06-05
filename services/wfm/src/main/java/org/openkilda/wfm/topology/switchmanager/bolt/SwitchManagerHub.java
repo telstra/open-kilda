@@ -31,6 +31,7 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.DeleteMeterResponse;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.switchmanager.StreamType;
@@ -56,6 +57,7 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     public static final String INCOME_STREAM = "switch.manage.command";
 
     private final PersistenceManager persistenceManager;
+    private final FlowResourcesConfig flowResourcesConfig;
     private transient SwitchValidateService validateService;
     private transient SwitchSyncService syncService;
 
@@ -63,19 +65,20 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     private double flowMeterBurstCoefficient;
 
     public SwitchManagerHub(HubBolt.Config hubConfig, PersistenceManager persistenceManager,
-                            long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
+                            long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient,
+                            FlowResourcesConfig flowResourcesConfig) {
         super(hubConfig);
-
         this.persistenceManager = persistenceManager;
         this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
         this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
+        this.flowResourcesConfig = flowResourcesConfig;
     }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         super.prepare(stormConf, context, collector);
         validateService = new SwitchValidateServiceImpl(this, persistenceManager);
-        syncService = new SwitchSyncServiceImpl(this, persistenceManager);
+        syncService = new SwitchSyncServiceImpl(this, persistenceManager, flowResourcesConfig);
     }
 
     @Override

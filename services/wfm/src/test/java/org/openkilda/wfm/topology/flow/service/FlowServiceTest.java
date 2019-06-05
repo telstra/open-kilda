@@ -52,6 +52,7 @@ import org.openkilda.wfm.share.flow.TestFlowBuilder;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
+import org.openkilda.wfm.share.flow.service.FlowCommandFactory;
 import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
 import org.openkilda.wfm.topology.flow.model.ReroutedFlowPaths;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
