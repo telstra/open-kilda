@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.21.2 (05/06/2019)
+### Improvements:
+-  [#2397](https://github.com/telstra/open-kilda/pull/2397) Use same transit VLAN for paths in both directions (Issue: [#2386](https://github.com/telstra/open-kilda/issues/2386)) [**storm-topologies**]
+-  [#2384](https://github.com/telstra/open-kilda/pull/2384) extend GRPC tests to iterate over all available firmware versions (6.4+) (Issue: [#2251](https://github.com/telstra/open-kilda/issues/2251)) [**tests**]
+-  [#2442](https://github.com/telstra/open-kilda/pull/2442) add verification that one transit vlan is created for a flow [**tests**]
+-  [#2437](https://github.com/telstra/open-kilda/pull/2437) Add global flag to switch H&S reroutes [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.21.1...v1.21.2).
+
+### Affected Components:
+flow
+
+---
+
 ## v1.21.0 (03/06/2019)
 ### Features:
 -  [#2403](https://github.com/telstra/open-kilda/pull/2403) Adding  feature to toggle the menu sidebar (Issue:  [#2387](https://github.com/telstra/open-kilda/issues/2387)) [**gui**]
