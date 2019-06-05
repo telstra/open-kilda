@@ -727,15 +727,19 @@ public class FlowRerouteServiceTest {
 
         when(flowResourcesManager.allocateFlowResources(any())).thenReturn(flowResources);
 
-        when(transitVlanRepository.findByPathId(eq(NEW_FORWARD_FLOW_PATH))).thenReturn(Collections.singletonList(
-                TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(101).build()));
-        when(transitVlanRepository.findByPathId(eq(NEW_REVERSE_FLOW_PATH))).thenReturn(Collections.singletonList(
-                TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(102).build()));
+        when(transitVlanRepository.findByPathId(eq(NEW_FORWARD_FLOW_PATH), eq(NEW_REVERSE_FLOW_PATH)))
+                .thenReturn(Collections.singletonList(
+                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(101).build()));
+        when(transitVlanRepository.findByPathId(eq(NEW_REVERSE_FLOW_PATH), eq(NEW_FORWARD_FLOW_PATH)))
+                .thenReturn(Collections.singletonList(
+                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(102).build()));
 
-        when(transitVlanRepository.findByPathId(eq(OLD_FORWARD_FLOW_PATH))).thenReturn(Collections.singletonList(
-                TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(201).build()));
-        when(transitVlanRepository.findByPathId(eq(OLD_REVERSE_FLOW_PATH))).thenReturn(Collections.singletonList(
-                TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(202).build()));
+        when(transitVlanRepository.findByPathId(eq(OLD_FORWARD_FLOW_PATH), eq(OLD_REVERSE_FLOW_PATH)))
+                .thenReturn(Collections.singletonList(
+                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(201).build()));
+        when(transitVlanRepository.findByPathId(eq(OLD_REVERSE_FLOW_PATH), eq(OLD_FORWARD_FLOW_PATH)))
+                .thenReturn(Collections.singletonList(
+                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(202).build()));
 
         return flowResources;
     }

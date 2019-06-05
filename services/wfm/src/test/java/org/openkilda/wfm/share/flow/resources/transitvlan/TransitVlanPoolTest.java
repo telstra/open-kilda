@@ -23,10 +23,12 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
 import org.openkilda.wfm.share.flow.resources.ResourceNotAvailableException;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -49,36 +51,57 @@ public class TransitVlanPoolTest extends Neo4jBasedTest {
     @Test
     public void vlanIdPool() {
         Flow flow = Flow.builder().flowId("flow_1").srcSwitch(switch1).destSwitch(switch2).build();
-        int first = transitVlanPool.allocate(flow, new PathId("path_1")).getTransitVlan().getVlan();
+        int first = transitVlanPool.allocate(flow, new PathId("path_1"), new PathId("opposit_1"))
+                .getTransitVlan().getVlan();
         assertEquals(100, first);
 
         PathId path2 = new PathId("path_2");
 
         flow.setFlowId("flow_2");
-        int second = transitVlanPool.allocate(flow, path2).getTransitVlan().getVlan();
+        int second = transitVlanPool.allocate(flow, path2, new PathId("opposit_2")).getTransitVlan().getVlan();
         assertEquals(101, second);
 
         flow.setFlowId("flow_3");
-        int third = transitVlanPool.allocate(flow, new PathId("path_3")).getTransitVlan().getVlan();
+        int third = transitVlanPool.allocate(flow, new PathId("path_3"), new PathId("opposit_3"))
+                .getTransitVlan().getVlan();
         assertEquals(102, third);
 
         transitVlanPool.deallocate(path2);
 
         flow.setFlowId("flow_4");
-        int fourth = transitVlanPool.allocate(flow, new PathId("path_4")).getTransitVlan().getVlan();
+        int fourth = transitVlanPool.allocate(flow, new PathId("path_4"), new PathId("opposit_4"))
+                .getTransitVlan().getVlan();
         assertEquals(101, fourth);
 
         flow.setFlowId("flow_5");
-        int fifth = transitVlanPool.allocate(flow, new PathId("path_5")).getTransitVlan().getVlan();
+        int fifth = transitVlanPool.allocate(flow, new PathId("path_5"), new PathId("opposit_5"))
+                .getTransitVlan().getVlan();
         assertEquals(103, fifth);
     }
-
 
     @Test(expected = ResourceNotAvailableException.class)
     public void vlanPoolFullTest() {
         for (int i = 100; i <= 111; i++) {
             Flow flow = Flow.builder().flowId(format("flow_%d", i)).srcSwitch(switch1).destSwitch(switch2).build();
-            assertTrue(transitVlanPool.allocate(flow, new PathId(format("path_%d", i))).getTransitVlan().getVlan() > 0);
+            assertTrue(transitVlanPool.allocate(
+                    flow,
+                    new PathId(format("path_%d", i)),
+                    new PathId(format("opposite_dummy_%d", i))).getTransitVlan().getVlan() > 0);
         }
+    }
+
+    @Test
+    public void gotSameVlanForOppositePath() {
+        Flow flow = Flow.builder().flowId("flow_1").srcSwitch(switch1).destSwitch(switch2).build();
+
+        final PathId forwardPathId = new PathId("forward");
+        final PathId reversePathId = new PathId("reverse");
+        TransitVlan forward = transitVlanPool.allocate(flow, forwardPathId, reversePathId)
+                .getTransitVlan();
+
+        TransitVlan reverse = transitVlanPool.allocate(flow, reversePathId, forwardPathId)
+                .getTransitVlan();
+
+        Assert.assertEquals(forward, reverse);
     }
 }

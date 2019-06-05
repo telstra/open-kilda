@@ -26,7 +26,7 @@ public interface EncapsulationResourcesProvider<T extends EncapsulationResources
      *
      * @return allocated resources.
      */
-    T allocate(Flow flow, PathId pathId) throws ResourceNotAvailableException;
+    T allocate(Flow flow, PathId pathId, PathId oppositePathId) throws ResourceNotAvailableException;
 
     /**
      * Deallocates flow encapsulation resources of the path.
@@ -36,5 +36,5 @@ public interface EncapsulationResourcesProvider<T extends EncapsulationResources
     /**
      * Get allocated encapsulation resources of the flow path.
      */
-    Optional<T> get(PathId pathId);
+    Optional<T> get(PathId pathId, PathId oppositePathId);
 }
