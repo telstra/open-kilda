@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.openkilda.wfm.topology.nbworker.bolts.DiscoveryEncoderBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FeatureTogglesBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.HistoryOperationsBolt;
+import org.openkilda.wfm.topology.nbworker.bolts.KildaConfigurationBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.LinkOperationsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.MessageEncoder;
 import org.openkilda.wfm.topology.nbworker.bolts.PathsBolt;
@@ -60,6 +61,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String LINKS_BOLT_NAME = "links-operations-bolt";
     private static final String FLOWS_BOLT_NAME = "flows-operations-bolt";
     private static final String FEATURE_TOGGLES_BOLT_NAME = "feature-toggles-bolt";
+    private static final String KILDA_CONFIG_BOLT_NAME = "kilda-config-bolt";
     private static final String PATHS_BOLT_NAME = "paths-bolt";
     private static final String SWITCH_VALIDATIONS_BOLT_NAME = "switch-validations-bolt";
     private static final String MESSAGE_ENCODER_BOLT_NAME = "message-encoder-bolt";
@@ -113,6 +115,10 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         tb.setBolt(FEATURE_TOGGLES_BOLT_NAME, featureTogglesBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.FEATURE_TOGGLES.toString());
 
+        KildaConfigurationBolt kildaConfigurationBolt = new KildaConfigurationBolt(persistenceManager);
+        tb.setBolt(KILDA_CONFIG_BOLT_NAME, kildaConfigurationBolt, parallelism)
+                .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.KILDA_CONFIG.toString());
+
         PathsBolt pathsBolt = new PathsBolt(persistenceManager, pathComputerConfig);
         tb.setBolt(PATHS_BOLT_NAME, pathsBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.PATHS.toString());
@@ -131,6 +137,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(LINKS_BOLT_NAME)
                 .shuffleGrouping(FLOWS_BOLT_NAME)
                 .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME)
+                .shuffleGrouping(KILDA_CONFIG_BOLT_NAME)
                 .shuffleGrouping(PATHS_BOLT_NAME)
                 .shuffleGrouping(SWITCH_VALIDATIONS_BOLT_NAME)
                 .shuffleGrouping(HISTORY_BOLT_NAME);
@@ -148,6 +155,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(SWITCHES_BOLT_NAME, StreamType.FLOWHS.toString())
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME, StreamType.ERROR.toString())
+                .shuffleGrouping(KILDA_CONFIG_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(PATHS_BOLT_NAME, StreamType.ERROR.toString())
                 .shuffleGrouping(HISTORY_BOLT_NAME, StreamType.ERROR.toString());
 

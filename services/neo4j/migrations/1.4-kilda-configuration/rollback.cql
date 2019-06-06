@@ -1,0 +1,1 @@
+DROP CONSTRAINT ON (kilda_configuration:kilda_configuration) ASSERT kilda_configuration.entityId IS UNIQUE
