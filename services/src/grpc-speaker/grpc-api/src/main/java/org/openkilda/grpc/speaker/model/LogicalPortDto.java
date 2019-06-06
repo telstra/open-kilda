@@ -15,6 +15,8 @@
 
 package org.openkilda.grpc.speaker.model;
 
+import org.openkilda.messaging.model.grpc.LogicalPortType;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -30,6 +32,8 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
 public class LogicalPortDto {
+
+    private LogicalPortType type;
 
     private List<Integer> portNumbers;
 

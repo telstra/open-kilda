@@ -15,22 +15,38 @@
 
 package org.openkilda.messaging.model.grpc;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
+public enum LogicalPortType {
 
-import java.util.List;
+    LAG(1),
+    BFD(2),
+    RESERVED(0);
 
-@Data
-public class LogicalPort {
-    @JsonProperty("port_number")
-    private List<Integer> portNumbers;
+    private final int value;
 
-    @JsonProperty("logical_port_number")
-    private Integer logicalPortNumber;
+    LogicalPortType(int value) {
+        this.value = value;
+    }
 
-    @JsonProperty("name")
-    private String name;
+    public final int getNumber() {
+        return value;
+    }
 
-    @JsonProperty("type")
-    private LogicalPortType type;
+    /**
+     * Create enum by number.
+     *
+     * @param value an int value.
+     * @return the enum value
+     */
+    public static LogicalPortType forNumber(int value) {
+        switch (value) {
+            case 1:
+                return LAG;
+            case 2:
+                return BFD;
+            case 0:
+                return RESERVED;
+            default:
+                return LAG;
+        }
+    }
 }

@@ -15,6 +15,7 @@
 
 package org.openkilda.grpc.speaker.mapper;
 
+import org.openkilda.messaging.model.grpc.LogicalPortType;
 import org.openkilda.messaging.model.grpc.SwitchInfoStatus;
 import org.openkilda.messaging.model.grpc.SwitchInfoStatus.SwitchBuildInfoStatus;
 import org.openkilda.messaging.model.grpc.SwitchInfoStatus.SwitchEthLinkInfoStatus;
@@ -27,11 +28,12 @@ import io.grpc.noviflow.StatusSwitchEthLink;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", imports = {LogicalPortType.class})
 public interface NoviflowResponseMapper {
 
     @Mapping(source = "logicalportno", target = "logicalPortNumber")
     @Mapping(source = "portnoList", target = "portNumbers")
+    @Mapping(target = "type", expression = "java(LogicalPortType.forNumber(port.getLogicalporttypeValue()))")
     org.openkilda.messaging.model.grpc.LogicalPort toLogicalPort(LogicalPort port);
 
     @Mapping(source = "ethLinksList", target = "ethLinks")

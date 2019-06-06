@@ -33,6 +33,7 @@ import io.grpc.noviflow.License;
 import io.grpc.noviflow.LogMessages;
 import io.grpc.noviflow.LogOferrors;
 import io.grpc.noviflow.LogicalPort;
+import io.grpc.noviflow.LogicalPortType;
 import io.grpc.noviflow.NoviFlowGrpcGrpc;
 import io.grpc.noviflow.OnOff;
 import io.grpc.noviflow.PortConfig;
@@ -127,9 +128,13 @@ public class GrpcSession {
         Objects.requireNonNull(port.getLogicalPortNumber(), "Logical port number must not be null");
         Objects.requireNonNull(port.getPortNumbers(), "Port number must not be null");
 
+        if (port.getType() == null || port.getType().getNumber() == 0) {
+            port.setType(org.openkilda.messaging.model.grpc.LogicalPortType.LAG);
+        }
         LogicalPort request = LogicalPort.newBuilder()
                 .addAllPortno(port.getPortNumbers())
                 .setLogicalportno(port.getLogicalPortNumber())
+                .setLogicalporttype(LogicalPortType.forNumber(port.getType().getNumber()))
                 .build();
 
         log.info("About to create logical port: {}", request);
