@@ -79,6 +79,9 @@ public class FlowPayload implements Serializable {
     @JsonProperty("priority")
     private Integer priority;
 
+    @JsonProperty("pinned")
+    private boolean pinned = false;
+
     /**
      * Instance constructor.
      *
@@ -95,6 +98,7 @@ public class FlowPayload implements Serializable {
      * @param status                flow status
      * @param maxLatency            max latency
      * @param priority              flow priority
+     * @param pinned           pinned flag
      */
     @Builder
     @JsonCreator
@@ -110,7 +114,8 @@ public class FlowPayload implements Serializable {
                        @JsonProperty("last-updated") String lastUpdated,
                        @JsonProperty("status") String status,
                        @JsonProperty("max-latency") Integer maxLatency,
-                       @JsonProperty("priority") Integer priority) {
+                       @JsonProperty("priority") Integer priority,
+                       @JsonProperty("pinned") Boolean pinned) {
         setId(id);
         setSource(source);
         setDestination(destination);
@@ -125,7 +130,9 @@ public class FlowPayload implements Serializable {
         if (allocateProtectedPath != null) {
             this.allocateProtectedPath = allocateProtectedPath;
         }
-
+        if (pinned != null) {
+            this.pinned = pinned;
+        }
         this.description = description;
         this.created = created;
         this.lastUpdated = lastUpdated;

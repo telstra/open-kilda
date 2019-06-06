@@ -53,6 +53,9 @@ public class BidirectionalFlowDto implements Serializable {
     @JsonProperty("state")
     private FlowState state;
 
+    @JsonProperty("pinned")
+    private boolean pinned;
+
     @JsonProperty("forward")
     private FlowDto forward;
 
@@ -71,6 +74,7 @@ public class BidirectionalFlowDto implements Serializable {
                 forward.getFlagglessCookie(),
                 forward.getDescription(),
                 forward.getState(),
+                forward.isPinned(),
                 forward, reverse);
     }
 
@@ -84,6 +88,7 @@ public class BidirectionalFlowDto implements Serializable {
             @JsonProperty("cookie") long cookie,
             @JsonProperty("description") String description,
             @JsonProperty("state") FlowState state,
+            @JsonProperty("pinned") boolean pinned,
             @JsonProperty("forward") FlowDto forward,
             @JsonProperty("reverse") FlowDto reverse) {
         this.flowId = flowId;
@@ -95,5 +100,6 @@ public class BidirectionalFlowDto implements Serializable {
         this.state = state;
         this.forward = forward;
         this.reverse = reverse;
+        this.pinned = pinned;
     }
 }

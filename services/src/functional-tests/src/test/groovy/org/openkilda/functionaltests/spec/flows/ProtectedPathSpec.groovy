@@ -1006,6 +1006,27 @@ class ProtectedPathSpec extends BaseSpecification {
         "An unmetered"  | 0
     }
 
+    def "System doesn't allow to enable the pinned flag on a protected flow"() {
+        given: "A protected flow"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+                assumeTrue("No suiting switches found", false)
+        def flow = flowHelper.randomFlow(switchPair)
+        flow.allocateProtectedPath = true
+        flowHelper.addFlow(flow)
+
+        when: "Update flow: enable the pinned flag(pinned=true)"
+        northbound.updateFlow(flow.id, flow.tap { it.pinned = true })
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage ==
+                "Could not update flow: Flow flags are not valid, unable to update pinned protected flow"
+
+        and: "Cleanup: Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+    }
+
     List<Switch> getNotNeighboringSwitchPair(minPossiblePath) {
         def switches = topology.getActiveSwitches()
         def allLinks = northbound.getAllLinks()

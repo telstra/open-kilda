@@ -42,16 +42,16 @@ public class FlowResourcesManagerTest extends Neo4jBasedTest {
 
     private final FlowDto firstFlow = new FlowDto("first-flow", 1, false, "first-flow",
             new SwitchId("ff:01"), 11, 100,
-            new SwitchId("ff:03"), 11, 200);
+            new SwitchId("ff:03"), 11, 200, false);
     private final FlowDto secondFlow = new FlowDto("second-flow", 1, false, "second-flow",
             new SwitchId("ff:05"), 12, 100,
-            new SwitchId("ff:03"), 12, 200);
+            new SwitchId("ff:03"), 12, 200, false);
     private final FlowDto thirdFlow = new FlowDto("third-flow", 0, true, "third-flow",
             new SwitchId("ff:03"), 21, 100,
-            new SwitchId("ff:03"), 22, 200);
+            new SwitchId("ff:03"), 22, 200, false);
     private final FlowDto fourthFlow = new FlowDto("fourth-flow", 0, true, "fourth-flow",
             new SwitchId("ff:04"), 21, 100,
-            new SwitchId("ff:05"), 22, 200);
+            new SwitchId("ff:05"), 22, 200, false);
 
     private FlowResourcesManager resourcesManager;
     private FlowResourcesConfig flowResourcesConfig;
