@@ -65,60 +65,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private final Set<SpeakerSwitchView.Feature> features = new HashSet<>();
     private final Map<Integer, AbstractPort> portByNumber = new HashMap<>();
 
-    private static final StateMachineBuilder<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> builder;
-
-    static {
-        builder = StateMachineBuilderFactory.create(
-                SwitchFsm.class, SwitchFsmState.class, SwitchFsmEvent.class, SwitchFsmContext.class,
-                // extra parameters
-                PersistenceManager.class, SwitchId.class, Integer.class);
-
-        // INIT
-        builder.transition()
-                .from(SwitchFsmState.INIT).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.HISTORY)
-                .callMethod("applyHistory");
-        builder.transition()
-                .from(SwitchFsmState.INIT).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.ONLINE);
-
-        // SETUP
-        builder.transition()
-                .from(SwitchFsmState.SETUP).to(SwitchFsmState.ONLINE).on(SwitchFsmEvent.NEXT);
-        builder.onEntry(SwitchFsmState.SETUP)
-                .callMethod("setupEnter");
-
-        // ONLINE
-        builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.ONLINE)
-                .callMethod("syncState");
-        builder.transition().from(SwitchFsmState.ONLINE).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
-        builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_ADD)
-                .callMethod("handlePortAdd");
-        builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_DEL)
-                .callMethod("handlePortDel");
-        builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_UP)
-                .callMethod("handlePortLinkStateChange");
-        builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_DOWN)
-                .callMethod("handlePortLinkStateChange");
-        builder.onEntry(SwitchFsmState.ONLINE)
-                .callMethod("onlineEnter");
-
-        // OFFLINE
-        builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.ONLINE);
-        builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.DELETED).on(SwitchFsmEvent.SWITCH_REMOVE)
-                .callMethod("removePortsFsm");
-        builder.onEntry(SwitchFsmState.OFFLINE)
-                .callMethod("offlineEnter");
-
-        // DELETED
-        builder.defineFinalState(SwitchFsmState.DELETED);
-    }
-
-    public static FsmExecutor<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> makeExecutor() {
-        return new FsmExecutor<>(SwitchFsmEvent.NEXT);
-    }
-
-    public static SwitchFsm create(PersistenceManager persistenceManager, SwitchId switchId,
-                                   Integer bfdLocalPortOffset) {
-        return builder.newStateMachine(SwitchFsmState.INIT, persistenceManager, switchId, bfdLocalPortOffset);
+    public static SwitchFsmFactory factory() {
+        return new SwitchFsmFactory();
     }
 
     public SwitchFsm(PersistenceManager persistenceManager, SwitchId switchId, Integer bfdLocalPortOffset) {
@@ -371,6 +319,65 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     // -- service data types --
+
+    public static class SwitchFsmFactory {
+        private final StateMachineBuilder<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> builder;
+
+        SwitchFsmFactory() {
+            builder = StateMachineBuilderFactory.create(
+                    SwitchFsm.class, SwitchFsmState.class, SwitchFsmEvent.class, SwitchFsmContext.class,
+                    // extra parameters
+                    PersistenceManager.class, SwitchId.class, Integer.class);
+
+            // INIT
+            builder.transition()
+                    .from(SwitchFsmState.INIT).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.HISTORY)
+                    .callMethod("applyHistory");
+            builder.transition()
+                    .from(SwitchFsmState.INIT).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.ONLINE);
+
+            // SETUP
+            builder.transition()
+                    .from(SwitchFsmState.SETUP).to(SwitchFsmState.ONLINE).on(SwitchFsmEvent.NEXT);
+            builder.onEntry(SwitchFsmState.SETUP)
+                    .callMethod("setupEnter");
+
+            // ONLINE
+            builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.ONLINE)
+                    .callMethod("syncState");
+            builder.transition().from(SwitchFsmState.ONLINE).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
+            builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_ADD)
+                    .callMethod("handlePortAdd");
+            builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_DEL)
+                    .callMethod("handlePortDel");
+            builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_UP)
+                    .callMethod("handlePortLinkStateChange");
+            builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_DOWN)
+                    .callMethod("handlePortLinkStateChange");
+            builder.onEntry(SwitchFsmState.ONLINE)
+                    .callMethod("onlineEnter");
+
+            // OFFLINE
+            builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.ONLINE);
+            builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.DELETED)
+                    .on(SwitchFsmEvent.SWITCH_REMOVE)
+                    .callMethod("removePortsFsm");
+            builder.onEntry(SwitchFsmState.OFFLINE)
+                    .callMethod("offlineEnter");
+
+            // DELETED
+            builder.defineFinalState(SwitchFsmState.DELETED);
+        }
+
+        public FsmExecutor<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> produceExecutor() {
+            return new FsmExecutor<>(SwitchFsmEvent.NEXT);
+        }
+
+        public SwitchFsm produce(PersistenceManager persistenceManager, SwitchId switchId,
+                                 Integer bfdLocalPortOffset) {
+            return builder.newStateMachine(SwitchFsmState.INIT, persistenceManager, switchId, bfdLocalPortOffset);
+        }
+    }
 
     @Value
     @Builder(toBuilder = true)

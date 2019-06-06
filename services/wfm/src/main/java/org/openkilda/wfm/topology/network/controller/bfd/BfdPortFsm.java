@@ -52,8 +52,7 @@ import java.util.Random;
 
 @Slf4j
 public final class BfdPortFsm extends
-        AbstractBaseFsm<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent,
-                BfdPortFsmContext> {
+        AbstractBaseFsm<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> {
     static final int BFD_UDP_PORT = 3784;
     static int bfdPollInterval = 350;  // TODO: use config option
     static short bfdFailCycleLimit = 3;  // TODO: use config option
@@ -73,320 +72,8 @@ public final class BfdPortFsm extends
     private LinkStatus linkStatus = LinkStatus.DOWN;
     private BfdAction action = null;
 
-    private static final StateMachineBuilder<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> builder;
-
-    static {
-        final String doReleaseResourcesMethod = "doReleaseResources";
-        final String saveIslReferenceMethod = "saveIslReference";
-        final String reportConflictMethod = "reportConflict";
-        final String reportMalfunctionMethod = "reportMalfunction";
-        final String makeBfdSetupActionMethod = "makeBfdSetupAction";
-        final String makeBfdRemoveActionMethod = "makeBfdRemoveAction";
-        final String proxySpeakerResponseIntoActionMethod = "proxySpeakerResponseIntoAction";
-        final String proxyLinkStatusUpdateIntoActionMethod = "proxyLinkStatusUpdateIntoAction";
-        final String updateLinkStatusMethod = "updateLinkStatus";
-
-        builder = StateMachineBuilderFactory.create(
-                BfdPortFsm.class, BfdPortFsmState.class, BfdPortFsmEvent.class, BfdPortFsmContext.class,
-                // extra parameters
-                PersistenceManager.class, Endpoint.class, Integer.class);
-
-        // INIT
-        builder.transition()
-                .from(BfdPortFsmState.INIT).to(BfdPortFsmState.INIT_CHOICE).on(BfdPortFsmEvent.HISTORY)
-                .callMethod("consumeHistory");
-
-        // INIT_CHOICE
-        builder.transition()
-                .from(BfdPortFsmState.INIT_CHOICE).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent._INIT_CHOICE_CLEAN);
-        builder.transition()
-                .from(BfdPortFsmState.INIT_CHOICE).to(BfdPortFsmState.INIT_REMOVE)
-                .on(BfdPortFsmEvent._INIT_CHOICE_DIRTY);
-        builder.onEntry(BfdPortFsmState.INIT_CHOICE)
-                .callMethod("handleInitChoice");
-
-        // IDLE
-        builder.transition()
-                .from(BfdPortFsmState.IDLE).to(BfdPortFsmState.INIT_SETUP).on(BfdPortFsmEvent.ENABLE)
-                .callMethod(saveIslReferenceMethod);
-        builder.transition()
-                .from(BfdPortFsmState.IDLE).to(BfdPortFsmState.CONFLICT).on(BfdPortFsmEvent.PORT_UP);
-        builder.transition()
-                .from(BfdPortFsmState.IDLE).to(BfdPortFsmState.UNOPERATIONAL).on(BfdPortFsmEvent.OFFLINE);
-        builder.onEntry(BfdPortFsmState.IDLE)
-                .callMethod("idleEnter");
-
-        // UNOPERATIONAL
-        builder.transition()
-                .from(BfdPortFsmState.UNOPERATIONAL).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.ONLINE);
-        builder.transition()
-                .from(BfdPortFsmState.UNOPERATIONAL).to(BfdPortFsmState.PENDING).on(BfdPortFsmEvent.ENABLE);
-
-        // CONFLICT
-        builder.transition()
-                .from(BfdPortFsmState.CONFLICT).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.PORT_DOWN);
-        builder.transition()
-                .from(BfdPortFsmState.CONFLICT).to(BfdPortFsmState.UNOPERATIONAL).on(BfdPortFsmEvent.OFFLINE);
-        builder.internalTransition().within(BfdPortFsmState.CONFLICT).on(BfdPortFsmEvent.ENABLE)
-                .callMethod(reportConflictMethod);
-        builder.internalTransition().within(BfdPortFsmState.CONFLICT).on(BfdPortFsmEvent.DISABLE)
-                .callMethod(reportConflictMethod);
-        builder.onEntry(BfdPortFsmState.CONFLICT)
-                .callMethod(reportConflictMethod);
-
-        // PENDING
-        builder.transition()
-                .from(BfdPortFsmState.PENDING).to(BfdPortFsmState.UNOPERATIONAL).on(BfdPortFsmEvent.DISABLE);
-        builder.transition()
-                .from(BfdPortFsmState.PENDING).to(BfdPortFsmState.INIT_SETUP).on(BfdPortFsmEvent.PORT_DOWN);
-        builder.transition()
-                .from(BfdPortFsmState.PENDING).to(BfdPortFsmState.CONFLICT).on(BfdPortFsmEvent.PORT_UP);
-        builder.onEntry(BfdPortFsmState.PENDING)
-                .callMethod(saveIslReferenceMethod);
-
-        // INIT_SETUP
-        builder.transition()
-                .from(BfdPortFsmState.INIT_SETUP).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.FAIL);
-        builder.transition()
-                .from(BfdPortFsmState.INIT_SETUP).to(BfdPortFsmState.DO_SETUP).on(BfdPortFsmEvent.NEXT);
-        builder.onEntry(BfdPortFsmState.INIT_SETUP)
-                .callMethod("doAllocateResources");
-
-        // DO_SETUP
-        builder.transition()
-                .from(BfdPortFsmState.DO_SETUP).to(BfdPortFsmState.ACTIVE).on(BfdPortFsmEvent.ACTION_SUCCESS)
-                .callMethod("reportSetupSuccess");
-        builder.transition()
-                .from(BfdPortFsmState.DO_SETUP).to(BfdPortFsmState.INIT_REMOVE).on(BfdPortFsmEvent.DISABLE);
-        builder.transition()
-                .from(BfdPortFsmState.DO_SETUP).to(BfdPortFsmState.SETUP_FAIL).on(BfdPortFsmEvent.ACTION_FAIL);
-        builder.transition()
-                .from(BfdPortFsmState.DO_SETUP).to(BfdPortFsmState.SETUP_INTERRUPT).on(BfdPortFsmEvent.OFFLINE);
-        builder.transition()
-                .from(BfdPortFsmState.DO_SETUP).to(BfdPortFsmState.INIT_CLEANUP).on(BfdPortFsmEvent.KILL);
-        builder.internalTransition().within(BfdPortFsmState.DO_SETUP).on(BfdPortFsmEvent.SPEAKER_RESPONSE)
-                .callMethod(proxySpeakerResponseIntoActionMethod);
-        builder.internalTransition().within(BfdPortFsmState.DO_SETUP).on(BfdPortFsmEvent.PORT_UP)
-                .callMethod(proxyLinkStatusUpdateIntoActionMethod);
-        builder.internalTransition().within(BfdPortFsmState.DO_SETUP).on(BfdPortFsmEvent.PORT_DOWN)
-                .callMethod(proxyLinkStatusUpdateIntoActionMethod);
-        builder.onEntry(BfdPortFsmState.DO_SETUP)
-                .callMethod(makeBfdSetupActionMethod);
-
-        // SETUP_FAIL
-        builder.transition()
-                .from(BfdPortFsmState.SETUP_FAIL).to(BfdPortFsmState.INIT_REMOVE).on(BfdPortFsmEvent.DISABLE);
-        builder.transition()
-                .from(BfdPortFsmState.SETUP_FAIL).to(BfdPortFsmState.SETUP_INTERRUPT).on(BfdPortFsmEvent.OFFLINE);
-        builder.transition()
-                .from(BfdPortFsmState.SETUP_FAIL).to(BfdPortFsmState.INIT_CLEANUP).on(BfdPortFsmEvent.KILL);
-        builder.internalTransition()
-                .within(BfdPortFsmState.SETUP_FAIL).on(BfdPortFsmEvent.ENABLE)
-                .callMethod(reportMalfunctionMethod);
-        builder.onEntry(BfdPortFsmState.SETUP_FAIL)
-                .callMethod("setupFailEnter");
-
-        // SETUP_INTERRUPT
-        builder.transition()
-                .from(BfdPortFsmState.SETUP_INTERRUPT).to(BfdPortFsmState.SETUP_RECOVERY).on(BfdPortFsmEvent.PORT_UP)
-                .callMethod(updateLinkStatusMethod);
-        builder.transition()
-                .from(BfdPortFsmState.SETUP_INTERRUPT).to(BfdPortFsmState.SETUP_RECOVERY).on(BfdPortFsmEvent.PORT_DOWN)
-                .callMethod(updateLinkStatusMethod);
-        builder.transition()
-                .from(BfdPortFsmState.SETUP_INTERRUPT).to(BfdPortFsmState.REMOVE_INTERRUPT).on(BfdPortFsmEvent.DISABLE);
-
-        // SETUP_RECOVERY
-        builder.transition()
-                .from(BfdPortFsmState.SETUP_RECOVERY).to(BfdPortFsmState.DO_SETUP).on(BfdPortFsmEvent.ACTION_SUCCESS);
-        builder.transition()
-                .from(BfdPortFsmState.SETUP_RECOVERY).to(BfdPortFsmState.SETUP_INTERRUPT).on(BfdPortFsmEvent.OFFLINE);
-        builder.transition()
-                .from(BfdPortFsmState.SETUP_RECOVERY).to(BfdPortFsmState.SETUP_FAIL).on(BfdPortFsmEvent.ACTION_FAIL);
-        builder.transition()
-                .from(BfdPortFsmState.SETUP_RECOVERY).to(BfdPortFsmState.DO_REMOVE).on(BfdPortFsmEvent.DISABLE);
-        builder.transition()
-                .from(BfdPortFsmState.SETUP_RECOVERY).to(BfdPortFsmState.DO_CLEANUP).on(BfdPortFsmEvent.KILL);
-        builder.internalTransition()
-                .within(BfdPortFsmState.SETUP_RECOVERY).on(BfdPortFsmEvent.SPEAKER_RESPONSE)
-                .callMethod(proxySpeakerResponseIntoActionMethod);
-        builder.internalTransition()
-                .within(BfdPortFsmState.SETUP_RECOVERY).on(BfdPortFsmEvent.PORT_UP)
-                .callMethod(proxyLinkStatusUpdateIntoActionMethod);
-        builder.internalTransition()
-                .within(BfdPortFsmState.SETUP_RECOVERY).on(BfdPortFsmEvent.PORT_DOWN)
-                .callMethod(proxyLinkStatusUpdateIntoActionMethod);
-        builder.onEntry(BfdPortFsmState.SETUP_RECOVERY)
-                .callMethod(makeBfdRemoveActionMethod);
-
-        // ACTIVE
-        builder.transition()
-                .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.OFFLINE).on(BfdPortFsmEvent.OFFLINE);
-        builder.transition()
-                .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.INIT_REMOVE).on(BfdPortFsmEvent.DISABLE);
-        builder.transition()
-                .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.INIT_CLEANUP).on(BfdPortFsmEvent.KILL);
-        builder.onExit(BfdPortFsmState.ACTIVE)
-                .callMethod("activeExit");
-        builder.defineSequentialStatesOn(
-                BfdPortFsmState.ACTIVE,
-                BfdPortFsmState.UP, BfdPortFsmState.DOWN);
-
-        // ACTIVE_RECOVERY
-        builder.transition()
-                .from(BfdPortFsmState.ACTIVE_RECOVERY).to(BfdPortFsmState.OFFLINE).on(BfdPortFsmEvent.OFFLINE);
-        builder.transition()
-                .from(BfdPortFsmState.ACTIVE_RECOVERY).to(BfdPortFsmState.ACTIVE).on(BfdPortFsmEvent.PORT_UP);
-        builder.transition()
-                .from(BfdPortFsmState.ACTIVE_RECOVERY).to(BfdPortFsmState.INIT_REMOVE).on(BfdPortFsmEvent.DISABLE);
-        builder.transition()
-                .from(BfdPortFsmState.ACTIVE_RECOVERY).to(BfdPortFsmState.INIT_CLEANUP).on(BfdPortFsmEvent.KILL);
-
-        // UP
-        builder.transition()
-                .from(BfdPortFsmState.UP).to(BfdPortFsmState.DOWN).on(BfdPortFsmEvent.PORT_DOWN);
-        builder.onEntry(BfdPortFsmState.UP)
-                .callMethod("upEnter");
-
-        // DOWN
-        builder.transition()
-                .from(BfdPortFsmState.DOWN).to(BfdPortFsmState.UP).on(BfdPortFsmEvent.PORT_UP);
-        builder.onEntry(BfdPortFsmState.DOWN)
-                .callMethod("downEnter");
-
-        // OFFLINE
-        builder.transition()
-                .from(BfdPortFsmState.OFFLINE).to(BfdPortFsmState.ACTIVE_RECOVERY).on(BfdPortFsmEvent.ONLINE);
-        builder.transition()
-                .from(BfdPortFsmState.OFFLINE).to(BfdPortFsmState.REMOVE_INTERRUPT).on(BfdPortFsmEvent.DISABLE);
-
-        // INIT_REMOVE
-        builder.transition()
-                .from(BfdPortFsmState.INIT_REMOVE).to(BfdPortFsmState.DO_REMOVE).on(BfdPortFsmEvent.NEXT);
-        builder.onEntry(BfdPortFsmState.INIT_REMOVE)
-                .callMethod(makeBfdRemoveActionMethod);
-
-        // DO_REMOVE
-        builder.transition()
-                .from(BfdPortFsmState.DO_REMOVE).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.ACTION_SUCCESS)
-                .callMethod(doReleaseResourcesMethod);
-        builder.transition()
-                .from(BfdPortFsmState.DO_REMOVE).to(BfdPortFsmState.REMOVE_FAIL).on(BfdPortFsmEvent.ACTION_FAIL);
-        builder.transition()
-                .from(BfdPortFsmState.DO_REMOVE).to(BfdPortFsmState.REMOVE_INTERRUPT).on(BfdPortFsmEvent.OFFLINE);
-        builder.transition()
-                .from(BfdPortFsmState.DO_REMOVE).to(BfdPortFsmState.DO_CLEANUP).on(BfdPortFsmEvent.KILL);
-        builder.transition()
-                .from(BfdPortFsmState.DO_REMOVE).to(BfdPortFsmState.CHARGED).on(BfdPortFsmEvent.ENABLE)
-                .callMethod(saveIslReferenceMethod);
-        builder.internalTransition().within(BfdPortFsmState.DO_REMOVE).on(BfdPortFsmEvent.SPEAKER_RESPONSE)
-                .callMethod(proxySpeakerResponseIntoActionMethod);
-        builder.internalTransition().within(BfdPortFsmState.DO_REMOVE).on(BfdPortFsmEvent.PORT_UP)
-                .callMethod(proxyLinkStatusUpdateIntoActionMethod);
-        builder.internalTransition().within(BfdPortFsmState.DO_REMOVE).on(BfdPortFsmEvent.PORT_DOWN)
-                .callMethod(proxyLinkStatusUpdateIntoActionMethod);
-
-        // REMOVE_FAIL
-        builder.transition()
-                .from(BfdPortFsmState.REMOVE_FAIL).to(BfdPortFsmState.CHARGED_FAIL).on(BfdPortFsmEvent.ENABLE)
-                .callMethod(saveIslReferenceMethod);
-        builder.transition()
-                .from(BfdPortFsmState.REMOVE_FAIL).to(BfdPortFsmState.REMOVE_INTERRUPT).on(BfdPortFsmEvent.OFFLINE);
-        builder.internalTransition()
-                .within(BfdPortFsmState.REMOVE_FAIL).on(BfdPortFsmEvent.DISABLE)
-                .callMethod(reportMalfunctionMethod);
-        builder.onEntry(BfdPortFsmState.REMOVE_FAIL)
-                .callMethod("removeFailEnter");
-
-        // REMOVE_INTERRUPT
-        builder.transition()
-                .from(BfdPortFsmState.REMOVE_INTERRUPT).to(BfdPortFsmState.INIT_REMOVE).on(BfdPortFsmEvent.PORT_UP)
-                .callMethod(updateLinkStatusMethod);
-        builder.transition()
-                .from(BfdPortFsmState.REMOVE_INTERRUPT).to(BfdPortFsmState.INIT_REMOVE).on(BfdPortFsmEvent.PORT_DOWN)
-                .callMethod(updateLinkStatusMethod);
-        builder.transition()
-                .from(BfdPortFsmState.REMOVE_INTERRUPT).to(BfdPortFsmState.CHARGED_INTERRUPT).on(BfdPortFsmEvent.ENABLE)
-                .callMethod(saveIslReferenceMethod);
-
-        // CHARGED
-        builder.transition()
-                .from(BfdPortFsmState.CHARGED).to(BfdPortFsmState.INIT_SETUP).on(BfdPortFsmEvent.ACTION_SUCCESS)
-                .callMethod(doReleaseResourcesMethod);
-        builder.transition()
-                .from(BfdPortFsmState.CHARGED).to(BfdPortFsmState.CHARGED_FAIL).on(BfdPortFsmEvent.ACTION_FAIL);
-        builder.transition()
-                .from(BfdPortFsmState.CHARGED).to(BfdPortFsmState.DO_REMOVE).on(BfdPortFsmEvent.DISABLE);
-        builder.transition()
-                .from(BfdPortFsmState.CHARGED).to(BfdPortFsmState.CHARGED_INTERRUPT).on(BfdPortFsmEvent.OFFLINE);
-        builder.transition()
-                .from(BfdPortFsmState.CHARGED).to(BfdPortFsmState.DO_CLEANUP).on(BfdPortFsmEvent.KILL);
-        builder.internalTransition()
-                .within(BfdPortFsmState.CHARGED).on(BfdPortFsmEvent.SPEAKER_RESPONSE)
-                .callMethod(proxySpeakerResponseIntoActionMethod);
-        builder.internalTransition()
-                .within(BfdPortFsmState.CHARGED).on(BfdPortFsmEvent.PORT_UP)
-                .callMethod(proxyLinkStatusUpdateIntoActionMethod);
-        builder.internalTransition()
-                .within(BfdPortFsmState.CHARGED).on(BfdPortFsmEvent.PORT_DOWN)
-                .callMethod(proxyLinkStatusUpdateIntoActionMethod);
-
-        // CHARGED_FAIL
-        builder.transition()
-                .from(BfdPortFsmState.CHARGED_FAIL).to(BfdPortFsmState.CHARGED_INTERRUPT).on(BfdPortFsmEvent.OFFLINE);
-        builder.transition()
-                .from(BfdPortFsmState.CHARGED_FAIL).to(BfdPortFsmState.REMOVE_FAIL).on(BfdPortFsmEvent.DISABLE);
-        builder.onEntry(BfdPortFsmState.CHARGED_FAIL)
-                .callMethod("chargedFailEnter");
-
-        // CHARGED_INTERRUPT
-        builder.transition()
-                .from(BfdPortFsmState.CHARGED_INTERRUPT).to(BfdPortFsmState.CHARGED_RECOVERY)
-                .on(BfdPortFsmEvent.PORT_UP)
-                .callMethod(updateLinkStatusMethod);
-        builder.transition()
-                .from(BfdPortFsmState.CHARGED_INTERRUPT).to(BfdPortFsmState.CHARGED_RECOVERY)
-                .on(BfdPortFsmEvent.PORT_DOWN)
-                .callMethod(updateLinkStatusMethod);
-        builder.transition()
-                .from(BfdPortFsmState.CHARGED_INTERRUPT).to(BfdPortFsmState.REMOVE_INTERRUPT)
-                .on(BfdPortFsmEvent.DISABLE);
-
-        // CHARGED_RECOVERY
-        builder.transition()
-                .from(BfdPortFsmState.CHARGED_RECOVERY).to(BfdPortFsmState.CHARGED).on(BfdPortFsmEvent.NEXT);
-        builder.onEntry(BfdPortFsmState.CHARGED_RECOVERY)
-                .callMethod(makeBfdRemoveActionMethod);
-
-        // INIT_CLEANUP
-        builder.transition()
-                .from(BfdPortFsmState.INIT_CLEANUP).to(BfdPortFsmState.DO_CLEANUP).on(BfdPortFsmEvent.NEXT);
-        builder.onEntry(BfdPortFsmState.INIT_CLEANUP)
-                .callMethod(makeBfdRemoveActionMethod);
-
-        // DO_CLEANUP
-        builder.transition()
-                .from(BfdPortFsmState.DO_CLEANUP).to(BfdPortFsmState.STOP).on(BfdPortFsmEvent.ACTION_SUCCESS)
-                .callMethod(doReleaseResourcesMethod);
-        builder.transition()
-                .from(BfdPortFsmState.DO_CLEANUP).to(BfdPortFsmState.STOP).on(BfdPortFsmEvent.ACTION_FAIL);
-        builder.internalTransition()
-                .within(BfdPortFsmState.DO_CLEANUP).on(BfdPortFsmEvent.SPEAKER_RESPONSE)
-                .callMethod(proxySpeakerResponseIntoActionMethod);
-        builder.onEntry(BfdPortFsmState.DO_CLEANUP)
-                .callMethod("doCleanupEnter");
-
-        // STOP
-        builder.defineFinalState(BfdPortFsmState.STOP);
-    }
-
-    public static FsmExecutor<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> makeExecutor() {
-        return new FsmExecutor<>(BfdPortFsmEvent.NEXT);
-    }
-
-    public static BfdPortFsm create(PersistenceManager persistenceManager, Endpoint endpoint,
-                                    Integer physicalPortNumber) {
-        return builder.newStateMachine(BfdPortFsmState.INIT, persistenceManager, endpoint, physicalPortNumber);
+    public static BfdPortFsmFactory factory() {
+        return new BfdPortFsmFactory();
     }
 
     public BfdPortFsm(PersistenceManager persistenceManager, Endpoint endpoint, Integer physicalPortNumber) {
@@ -680,6 +367,333 @@ public final class BfdPortFsm extends
 
     private String makeLogPrefix() {
         return String.format("BFD port %s(physical-port:%s)", logicalEndpoint, physicalEndpoint.getPortNumber());
+    }
+
+    public static class BfdPortFsmFactory {
+        private final StateMachineBuilder<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> builder;
+
+        BfdPortFsmFactory() {
+            final String doReleaseResourcesMethod = "doReleaseResources";
+            final String saveIslReferenceMethod = "saveIslReference";
+            final String reportConflictMethod = "reportConflict";
+            final String reportMalfunctionMethod = "reportMalfunction";
+            final String makeBfdSetupActionMethod = "makeBfdSetupAction";
+            final String makeBfdRemoveActionMethod = "makeBfdRemoveAction";
+            final String proxySpeakerResponseIntoActionMethod = "proxySpeakerResponseIntoAction";
+            final String proxyLinkStatusUpdateIntoActionMethod = "proxyLinkStatusUpdateIntoAction";
+            final String updateLinkStatusMethod = "updateLinkStatus";
+
+            builder = StateMachineBuilderFactory.create(
+                    BfdPortFsm.class, BfdPortFsmState.class, BfdPortFsmEvent.class, BfdPortFsmContext.class,
+                    // extra parameters
+                    PersistenceManager.class, Endpoint.class, Integer.class);
+
+            // INIT
+            builder.transition()
+                    .from(BfdPortFsmState.INIT).to(BfdPortFsmState.INIT_CHOICE).on(BfdPortFsmEvent.HISTORY)
+                    .callMethod("consumeHistory");
+
+            // INIT_CHOICE
+            builder.transition()
+                    .from(BfdPortFsmState.INIT_CHOICE).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent._INIT_CHOICE_CLEAN);
+            builder.transition()
+                    .from(BfdPortFsmState.INIT_CHOICE).to(BfdPortFsmState.INIT_REMOVE)
+                    .on(BfdPortFsmEvent._INIT_CHOICE_DIRTY);
+            builder.onEntry(BfdPortFsmState.INIT_CHOICE)
+                    .callMethod("handleInitChoice");
+
+            // IDLE
+            builder.transition()
+                    .from(BfdPortFsmState.IDLE).to(BfdPortFsmState.INIT_SETUP).on(BfdPortFsmEvent.ENABLE)
+                    .callMethod(saveIslReferenceMethod);
+            builder.transition()
+                    .from(BfdPortFsmState.IDLE).to(BfdPortFsmState.CONFLICT).on(BfdPortFsmEvent.PORT_UP);
+            builder.transition()
+                    .from(BfdPortFsmState.IDLE).to(BfdPortFsmState.UNOPERATIONAL).on(BfdPortFsmEvent.OFFLINE);
+            builder.onEntry(BfdPortFsmState.IDLE)
+                    .callMethod("idleEnter");
+
+            // UNOPERATIONAL
+            builder.transition()
+                    .from(BfdPortFsmState.UNOPERATIONAL).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.ONLINE);
+            builder.transition()
+                    .from(BfdPortFsmState.UNOPERATIONAL).to(BfdPortFsmState.PENDING).on(BfdPortFsmEvent.ENABLE);
+
+            // CONFLICT
+            builder.transition()
+                    .from(BfdPortFsmState.CONFLICT).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.PORT_DOWN);
+            builder.transition()
+                    .from(BfdPortFsmState.CONFLICT).to(BfdPortFsmState.UNOPERATIONAL).on(BfdPortFsmEvent.OFFLINE);
+            builder.internalTransition().within(BfdPortFsmState.CONFLICT).on(BfdPortFsmEvent.ENABLE)
+                    .callMethod(reportConflictMethod);
+            builder.internalTransition().within(BfdPortFsmState.CONFLICT).on(BfdPortFsmEvent.DISABLE)
+                    .callMethod(reportConflictMethod);
+            builder.onEntry(BfdPortFsmState.CONFLICT)
+                    .callMethod(reportConflictMethod);
+
+            // PENDING
+            builder.transition()
+                    .from(BfdPortFsmState.PENDING).to(BfdPortFsmState.UNOPERATIONAL).on(BfdPortFsmEvent.DISABLE);
+            builder.transition()
+                    .from(BfdPortFsmState.PENDING).to(BfdPortFsmState.INIT_SETUP).on(BfdPortFsmEvent.PORT_DOWN);
+            builder.transition()
+                    .from(BfdPortFsmState.PENDING).to(BfdPortFsmState.CONFLICT).on(BfdPortFsmEvent.PORT_UP);
+            builder.onEntry(BfdPortFsmState.PENDING)
+                    .callMethod(saveIslReferenceMethod);
+
+            // INIT_SETUP
+            builder.transition()
+                    .from(BfdPortFsmState.INIT_SETUP).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.FAIL);
+            builder.transition()
+                    .from(BfdPortFsmState.INIT_SETUP).to(BfdPortFsmState.DO_SETUP).on(BfdPortFsmEvent.NEXT);
+            builder.onEntry(BfdPortFsmState.INIT_SETUP)
+                    .callMethod("doAllocateResources");
+
+            // DO_SETUP
+            builder.transition()
+                    .from(BfdPortFsmState.DO_SETUP).to(BfdPortFsmState.ACTIVE).on(BfdPortFsmEvent.ACTION_SUCCESS)
+                    .callMethod("reportSetupSuccess");
+            builder.transition()
+                    .from(BfdPortFsmState.DO_SETUP).to(BfdPortFsmState.INIT_REMOVE).on(BfdPortFsmEvent.DISABLE);
+            builder.transition()
+                    .from(BfdPortFsmState.DO_SETUP).to(BfdPortFsmState.SETUP_FAIL).on(BfdPortFsmEvent.ACTION_FAIL);
+            builder.transition()
+                    .from(BfdPortFsmState.DO_SETUP).to(BfdPortFsmState.SETUP_INTERRUPT).on(BfdPortFsmEvent.OFFLINE);
+            builder.transition()
+                    .from(BfdPortFsmState.DO_SETUP).to(BfdPortFsmState.INIT_CLEANUP).on(BfdPortFsmEvent.KILL);
+            builder.internalTransition().within(BfdPortFsmState.DO_SETUP).on(BfdPortFsmEvent.SPEAKER_RESPONSE)
+                    .callMethod(proxySpeakerResponseIntoActionMethod);
+            builder.internalTransition().within(BfdPortFsmState.DO_SETUP).on(BfdPortFsmEvent.PORT_UP)
+                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
+            builder.internalTransition().within(BfdPortFsmState.DO_SETUP).on(BfdPortFsmEvent.PORT_DOWN)
+                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
+            builder.onEntry(BfdPortFsmState.DO_SETUP)
+                    .callMethod(makeBfdSetupActionMethod);
+
+            // SETUP_FAIL
+            builder.transition()
+                    .from(BfdPortFsmState.SETUP_FAIL).to(BfdPortFsmState.INIT_REMOVE).on(BfdPortFsmEvent.DISABLE);
+            builder.transition()
+                    .from(BfdPortFsmState.SETUP_FAIL).to(BfdPortFsmState.SETUP_INTERRUPT).on(BfdPortFsmEvent.OFFLINE);
+            builder.transition()
+                    .from(BfdPortFsmState.SETUP_FAIL).to(BfdPortFsmState.INIT_CLEANUP).on(BfdPortFsmEvent.KILL);
+            builder.internalTransition()
+                    .within(BfdPortFsmState.SETUP_FAIL).on(BfdPortFsmEvent.ENABLE)
+                    .callMethod(reportMalfunctionMethod);
+            builder.onEntry(BfdPortFsmState.SETUP_FAIL)
+                    .callMethod("setupFailEnter");
+
+            // SETUP_INTERRUPT
+            builder.transition()
+                    .from(BfdPortFsmState.SETUP_INTERRUPT).to(BfdPortFsmState.SETUP_RECOVERY)
+                    .on(BfdPortFsmEvent.PORT_UP)
+                    .callMethod(updateLinkStatusMethod);
+            builder.transition()
+                    .from(BfdPortFsmState.SETUP_INTERRUPT).to(BfdPortFsmState.SETUP_RECOVERY)
+                    .on(BfdPortFsmEvent.PORT_DOWN)
+                    .callMethod(updateLinkStatusMethod);
+            builder.transition()
+                    .from(BfdPortFsmState.SETUP_INTERRUPT).to(BfdPortFsmState.REMOVE_INTERRUPT)
+                    .on(BfdPortFsmEvent.DISABLE);
+
+            // SETUP_RECOVERY
+            builder.transition()
+                    .from(BfdPortFsmState.SETUP_RECOVERY).to(BfdPortFsmState.DO_SETUP)
+                    .on(BfdPortFsmEvent.ACTION_SUCCESS);
+            builder.transition()
+                    .from(BfdPortFsmState.SETUP_RECOVERY).to(BfdPortFsmState.SETUP_INTERRUPT)
+                    .on(BfdPortFsmEvent.OFFLINE);
+            builder.transition()
+                    .from(BfdPortFsmState.SETUP_RECOVERY).to(BfdPortFsmState.SETUP_FAIL)
+                    .on(BfdPortFsmEvent.ACTION_FAIL);
+            builder.transition()
+                    .from(BfdPortFsmState.SETUP_RECOVERY).to(BfdPortFsmState.DO_REMOVE).on(BfdPortFsmEvent.DISABLE);
+            builder.transition()
+                    .from(BfdPortFsmState.SETUP_RECOVERY).to(BfdPortFsmState.DO_CLEANUP).on(BfdPortFsmEvent.KILL);
+            builder.internalTransition()
+                    .within(BfdPortFsmState.SETUP_RECOVERY).on(BfdPortFsmEvent.SPEAKER_RESPONSE)
+                    .callMethod(proxySpeakerResponseIntoActionMethod);
+            builder.internalTransition()
+                    .within(BfdPortFsmState.SETUP_RECOVERY).on(BfdPortFsmEvent.PORT_UP)
+                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
+            builder.internalTransition()
+                    .within(BfdPortFsmState.SETUP_RECOVERY).on(BfdPortFsmEvent.PORT_DOWN)
+                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
+            builder.onEntry(BfdPortFsmState.SETUP_RECOVERY)
+                    .callMethod(makeBfdRemoveActionMethod);
+
+            // ACTIVE
+            builder.transition()
+                    .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.OFFLINE).on(BfdPortFsmEvent.OFFLINE);
+            builder.transition()
+                    .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.INIT_REMOVE).on(BfdPortFsmEvent.DISABLE);
+            builder.transition()
+                    .from(BfdPortFsmState.ACTIVE).to(BfdPortFsmState.INIT_CLEANUP).on(BfdPortFsmEvent.KILL);
+            builder.onExit(BfdPortFsmState.ACTIVE)
+                    .callMethod("activeExit");
+            builder.defineSequentialStatesOn(
+                    BfdPortFsmState.ACTIVE,
+                    BfdPortFsmState.UP, BfdPortFsmState.DOWN);
+
+            // ACTIVE_RECOVERY
+            builder.transition()
+                    .from(BfdPortFsmState.ACTIVE_RECOVERY).to(BfdPortFsmState.OFFLINE).on(BfdPortFsmEvent.OFFLINE);
+            builder.transition()
+                    .from(BfdPortFsmState.ACTIVE_RECOVERY).to(BfdPortFsmState.ACTIVE).on(BfdPortFsmEvent.PORT_UP);
+            builder.transition()
+                    .from(BfdPortFsmState.ACTIVE_RECOVERY).to(BfdPortFsmState.INIT_REMOVE).on(BfdPortFsmEvent.DISABLE);
+            builder.transition()
+                    .from(BfdPortFsmState.ACTIVE_RECOVERY).to(BfdPortFsmState.INIT_CLEANUP).on(BfdPortFsmEvent.KILL);
+
+            // UP
+            builder.transition()
+                    .from(BfdPortFsmState.UP).to(BfdPortFsmState.DOWN).on(BfdPortFsmEvent.PORT_DOWN);
+            builder.onEntry(BfdPortFsmState.UP)
+                    .callMethod("upEnter");
+
+            // DOWN
+            builder.transition()
+                    .from(BfdPortFsmState.DOWN).to(BfdPortFsmState.UP).on(BfdPortFsmEvent.PORT_UP);
+            builder.onEntry(BfdPortFsmState.DOWN)
+                    .callMethod("downEnter");
+
+            // OFFLINE
+            builder.transition()
+                    .from(BfdPortFsmState.OFFLINE).to(BfdPortFsmState.ACTIVE_RECOVERY).on(BfdPortFsmEvent.ONLINE);
+            builder.transition()
+                    .from(BfdPortFsmState.OFFLINE).to(BfdPortFsmState.REMOVE_INTERRUPT).on(BfdPortFsmEvent.DISABLE);
+
+            // INIT_REMOVE
+            builder.transition()
+                    .from(BfdPortFsmState.INIT_REMOVE).to(BfdPortFsmState.DO_REMOVE).on(BfdPortFsmEvent.NEXT);
+            builder.onEntry(BfdPortFsmState.INIT_REMOVE)
+                    .callMethod(makeBfdRemoveActionMethod);
+
+            // DO_REMOVE
+            builder.transition()
+                    .from(BfdPortFsmState.DO_REMOVE).to(BfdPortFsmState.IDLE).on(BfdPortFsmEvent.ACTION_SUCCESS)
+                    .callMethod(doReleaseResourcesMethod);
+            builder.transition()
+                    .from(BfdPortFsmState.DO_REMOVE).to(BfdPortFsmState.REMOVE_FAIL).on(BfdPortFsmEvent.ACTION_FAIL);
+            builder.transition()
+                    .from(BfdPortFsmState.DO_REMOVE).to(BfdPortFsmState.REMOVE_INTERRUPT).on(BfdPortFsmEvent.OFFLINE);
+            builder.transition()
+                    .from(BfdPortFsmState.DO_REMOVE).to(BfdPortFsmState.DO_CLEANUP).on(BfdPortFsmEvent.KILL);
+            builder.transition()
+                    .from(BfdPortFsmState.DO_REMOVE).to(BfdPortFsmState.CHARGED).on(BfdPortFsmEvent.ENABLE)
+                    .callMethod(saveIslReferenceMethod);
+            builder.internalTransition().within(BfdPortFsmState.DO_REMOVE).on(BfdPortFsmEvent.SPEAKER_RESPONSE)
+                    .callMethod(proxySpeakerResponseIntoActionMethod);
+            builder.internalTransition().within(BfdPortFsmState.DO_REMOVE).on(BfdPortFsmEvent.PORT_UP)
+                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
+            builder.internalTransition().within(BfdPortFsmState.DO_REMOVE).on(BfdPortFsmEvent.PORT_DOWN)
+                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
+
+            // REMOVE_FAIL
+            builder.transition()
+                    .from(BfdPortFsmState.REMOVE_FAIL).to(BfdPortFsmState.CHARGED_FAIL).on(BfdPortFsmEvent.ENABLE)
+                    .callMethod(saveIslReferenceMethod);
+            builder.transition()
+                    .from(BfdPortFsmState.REMOVE_FAIL).to(BfdPortFsmState.REMOVE_INTERRUPT).on(BfdPortFsmEvent.OFFLINE);
+            builder.internalTransition()
+                    .within(BfdPortFsmState.REMOVE_FAIL).on(BfdPortFsmEvent.DISABLE)
+                    .callMethod(reportMalfunctionMethod);
+            builder.onEntry(BfdPortFsmState.REMOVE_FAIL)
+                    .callMethod("removeFailEnter");
+
+            // REMOVE_INTERRUPT
+            builder.transition()
+                    .from(BfdPortFsmState.REMOVE_INTERRUPT).to(BfdPortFsmState.INIT_REMOVE).on(BfdPortFsmEvent.PORT_UP)
+                    .callMethod(updateLinkStatusMethod);
+            builder.transition()
+                    .from(BfdPortFsmState.REMOVE_INTERRUPT).to(BfdPortFsmState.INIT_REMOVE)
+                    .on(BfdPortFsmEvent.PORT_DOWN)
+                    .callMethod(updateLinkStatusMethod);
+            builder.transition()
+                    .from(BfdPortFsmState.REMOVE_INTERRUPT).to(BfdPortFsmState.CHARGED_INTERRUPT)
+                    .on(BfdPortFsmEvent.ENABLE)
+                    .callMethod(saveIslReferenceMethod);
+
+            // CHARGED
+            builder.transition()
+                    .from(BfdPortFsmState.CHARGED).to(BfdPortFsmState.INIT_SETUP).on(BfdPortFsmEvent.ACTION_SUCCESS)
+                    .callMethod(doReleaseResourcesMethod);
+            builder.transition()
+                    .from(BfdPortFsmState.CHARGED).to(BfdPortFsmState.CHARGED_FAIL).on(BfdPortFsmEvent.ACTION_FAIL);
+            builder.transition()
+                    .from(BfdPortFsmState.CHARGED).to(BfdPortFsmState.DO_REMOVE).on(BfdPortFsmEvent.DISABLE);
+            builder.transition()
+                    .from(BfdPortFsmState.CHARGED).to(BfdPortFsmState.CHARGED_INTERRUPT).on(BfdPortFsmEvent.OFFLINE);
+            builder.transition()
+                    .from(BfdPortFsmState.CHARGED).to(BfdPortFsmState.DO_CLEANUP).on(BfdPortFsmEvent.KILL);
+            builder.internalTransition()
+                    .within(BfdPortFsmState.CHARGED).on(BfdPortFsmEvent.SPEAKER_RESPONSE)
+                    .callMethod(proxySpeakerResponseIntoActionMethod);
+            builder.internalTransition()
+                    .within(BfdPortFsmState.CHARGED).on(BfdPortFsmEvent.PORT_UP)
+                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
+            builder.internalTransition()
+                    .within(BfdPortFsmState.CHARGED).on(BfdPortFsmEvent.PORT_DOWN)
+                    .callMethod(proxyLinkStatusUpdateIntoActionMethod);
+
+            // CHARGED_FAIL
+            builder.transition()
+                    .from(BfdPortFsmState.CHARGED_FAIL).to(BfdPortFsmState.CHARGED_INTERRUPT)
+                    .on(BfdPortFsmEvent.OFFLINE);
+            builder.transition()
+                    .from(BfdPortFsmState.CHARGED_FAIL).to(BfdPortFsmState.REMOVE_FAIL).on(BfdPortFsmEvent.DISABLE);
+            builder.onEntry(BfdPortFsmState.CHARGED_FAIL)
+                    .callMethod("chargedFailEnter");
+
+            // CHARGED_INTERRUPT
+            builder.transition()
+                    .from(BfdPortFsmState.CHARGED_INTERRUPT).to(BfdPortFsmState.CHARGED_RECOVERY)
+                    .on(BfdPortFsmEvent.PORT_UP)
+                    .callMethod(updateLinkStatusMethod);
+            builder.transition()
+                    .from(BfdPortFsmState.CHARGED_INTERRUPT).to(BfdPortFsmState.CHARGED_RECOVERY)
+                    .on(BfdPortFsmEvent.PORT_DOWN)
+                    .callMethod(updateLinkStatusMethod);
+            builder.transition()
+                    .from(BfdPortFsmState.CHARGED_INTERRUPT).to(BfdPortFsmState.REMOVE_INTERRUPT)
+                    .on(BfdPortFsmEvent.DISABLE);
+
+            // CHARGED_RECOVERY
+            builder.transition()
+                    .from(BfdPortFsmState.CHARGED_RECOVERY).to(BfdPortFsmState.CHARGED).on(BfdPortFsmEvent.NEXT);
+            builder.onEntry(BfdPortFsmState.CHARGED_RECOVERY)
+                    .callMethod(makeBfdRemoveActionMethod);
+
+            // INIT_CLEANUP
+            builder.transition()
+                    .from(BfdPortFsmState.INIT_CLEANUP).to(BfdPortFsmState.DO_CLEANUP).on(BfdPortFsmEvent.NEXT);
+            builder.onEntry(BfdPortFsmState.INIT_CLEANUP)
+                    .callMethod(makeBfdRemoveActionMethod);
+
+            // DO_CLEANUP
+            builder.transition()
+                    .from(BfdPortFsmState.DO_CLEANUP).to(BfdPortFsmState.STOP).on(BfdPortFsmEvent.ACTION_SUCCESS)
+                    .callMethod(doReleaseResourcesMethod);
+            builder.transition()
+                    .from(BfdPortFsmState.DO_CLEANUP).to(BfdPortFsmState.STOP).on(BfdPortFsmEvent.ACTION_FAIL);
+            builder.internalTransition()
+                    .within(BfdPortFsmState.DO_CLEANUP).on(BfdPortFsmEvent.SPEAKER_RESPONSE)
+                    .callMethod(proxySpeakerResponseIntoActionMethod);
+            builder.onEntry(BfdPortFsmState.DO_CLEANUP)
+                    .callMethod("doCleanupEnter");
+
+            // STOP
+            builder.defineFinalState(BfdPortFsmState.STOP);
+        }
+
+        public FsmExecutor<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> produceExecutor() {
+            return new FsmExecutor<>(BfdPortFsmEvent.NEXT);
+        }
+
+        public BfdPortFsm produce(PersistenceManager persistenceManager, Endpoint endpoint,
+                                  Integer physicalPortNumber) {
+            return builder.newStateMachine(BfdPortFsmState.INIT, persistenceManager, endpoint, physicalPortNumber);
+        }
     }
 
     @Value

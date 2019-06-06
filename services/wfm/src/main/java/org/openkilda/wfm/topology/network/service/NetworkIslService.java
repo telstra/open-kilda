@@ -37,19 +37,19 @@ import java.util.Map;
 
 @Slf4j
 public class NetworkIslService {
+    private final IslFsm.IslFsmFactory controllerFactory;
     private final Map<IslReference, IslController> controller = new HashMap<>();
-
-    private final FsmExecutor<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> controllerExecutor
-            = IslFsm.makeExecutor();
+    private final FsmExecutor<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> controllerExecutor;
 
     private final IIslCarrier carrier;
-    private final PersistenceManager persistenceManager;
     private final NetworkOptions options;
 
     public NetworkIslService(IIslCarrier carrier, PersistenceManager persistenceManager, NetworkOptions options) {
         this.carrier = carrier;
-        this.persistenceManager = persistenceManager;
         this.options = options;
+
+        controllerFactory = IslFsm.factory(persistenceManager);
+        controllerExecutor = controllerFactory.produceExecutor();
     }
 
     /**
@@ -60,7 +60,7 @@ public class NetworkIslService {
         if (!controller.containsKey(reference)) {
             ensureControllerIsMissing(reference);
 
-            IslController islController = new IslController(persistenceManager, options, reference);
+            IslController islController = new IslController(controllerFactory, options, reference);
             controller.put(reference, islController);
             IslFsmContext context = IslFsmContext.builder(carrier, endpoint)
                     .history(history)
@@ -164,16 +164,16 @@ public class NetworkIslService {
     }
 
     private IslController locateControllerCreateIfAbsent(IslReference reference) {
-        return controller.computeIfAbsent(reference, key -> new IslController(persistenceManager, options, reference));
+        return controller.computeIfAbsent(reference, key -> new IslController(controllerFactory, options, reference));
     }
 
     private static final class IslController {
         private final IslFsm fsm;
         private final BfdManager bfdManager;
 
-        private IslController(PersistenceManager persistenceManager, NetworkOptions options, IslReference reference) {
+        private IslController(IslFsm.IslFsmFactory controllerFactory, NetworkOptions options, IslReference reference) {
             bfdManager = new BfdManager(reference);
-            fsm = IslFsm.create(persistenceManager, bfdManager, options, reference);
+            fsm = controllerFactory.produce(bfdManager, options, reference);
         }
     }
 }
