@@ -22,7 +22,9 @@ import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.meter.SwitchMeterData;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
+import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.BatchInstallResponse;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.persistence.PersistenceManager;
@@ -97,16 +99,27 @@ public class SwitchValidateManager extends HubBolt implements SwitchManagerCarri
             InfoData data = ((InfoMessage) message).getData();
             if (data instanceof SwitchFlowEntries) {
                 validateService.handleFlowEntriesResponse(key, (SwitchFlowEntries) data);
-            } else if (data instanceof SwitchMeterEntries) {
-                validateService.handleMeterEntriesResponse(key, (SwitchMeterEntries) data);
+            } else if (data instanceof SwitchMeterData) {
+                handleMetersResponse(key, (SwitchMeterData) data);
             } else if (data instanceof BatchInstallResponse) {
                 syncService.handleInstallRulesResponse(key);
+            } else {
+                log.warn("Receive unexpected InfoData for key {}: {}", key, data);
             }
-
         } else if (message instanceof ErrorMessage) {
             log.warn("Receive ErrorMessage for key {}", key);
             validateService.handleTaskError(key, (ErrorMessage) message);
             syncService.handleTaskError(key, (ErrorMessage) message);
+        }
+    }
+
+    private void handleMetersResponse(String key, SwitchMeterData data) {
+        if (data instanceof SwitchMeterEntries) {
+            validateService.handleMeterEntriesResponse(key, (SwitchMeterEntries) data);
+        } else if (data instanceof SwitchMeterUnsupported) {
+            validateService.handleMetersUnsupportedResponse(key);
+        } else {
+            log.warn("Receive unexpected SwitchMeterData for key {}: {}", key, data);
         }
     }
 

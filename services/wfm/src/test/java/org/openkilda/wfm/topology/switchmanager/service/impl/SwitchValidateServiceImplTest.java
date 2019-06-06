@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.switchmanager.service.impl;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -154,6 +155,26 @@ public class SwitchValidateServiceImplTest {
         verify(carrier).response(eq(KEY), responseCaptor.capture());
         SwitchValidationResponse response = (SwitchValidationResponse) responseCaptor.getValue().getData();
         assertEquals(singletonList(flowEntry.getCookie()), response.getRules().getMissing());
+
+        verifyNoMoreInteractions(carrier);
+        verifyNoMoreInteractions(validationService);
+    }
+
+    @Test
+    public void validationSuccessWithUnsupportedMeters() {
+        handleRequestAndInitDataReceive();
+        service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
+        service.handleMetersUnsupportedResponse(KEY);
+
+        verify(validationService).validateRules(eq(SWITCH_ID), any());
+        verify(carrier).endProcessing(eq(KEY));
+
+        ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
+        verify(carrier).response(eq(KEY), responseCaptor.capture());
+
+        SwitchValidationResponse response = (SwitchValidationResponse) responseCaptor.getValue().getData();
+        assertEquals(singletonList(flowEntry.getCookie()), response.getRules().getMissing());
+        assertNull(response.getMeters());
 
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
