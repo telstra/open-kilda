@@ -448,6 +448,12 @@ class ProtectedPathSpec extends BaseSpecification {
         then: "Flow is created with protected path"
         northbound.getFlowPath(flow.id).protectedPath
 
+        and: "One transit vlan is created for main and protected paths"
+        //TODO(andriidovhan) rewrite when new implementation of the getFlow method is merged
+        //and compare transitVlan for protected path
+        def flowInfo = database.getFlow(flow.id)
+        flowInfo.left.transitVlan == flowInfo.right.transitVlan
+
         and: "Cleanup: delete the flow and restore available bandwidth"
         flowHelper.deleteFlow(flow.id)
         isls.each { database.resetIslBandwidth(it) }

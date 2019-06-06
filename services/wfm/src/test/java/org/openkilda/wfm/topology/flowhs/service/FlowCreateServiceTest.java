@@ -418,9 +418,9 @@ public class FlowCreateServiceTest {
                 .build();
 
         when(flowResourcesManager.allocateFlowResources(any(Flow.class))).thenReturn(flowResources);
-        when(transitVlanRepository.findByPathId(flowResources.getForward().getPathId()))
+        when(transitVlanRepository.findByPathId(forwardResources.getPathId(), reverseResources.getPathId()))
                 .thenReturn(getTransitVlans(flowResources, true));
-        when(transitVlanRepository.findByPathId(flowResources.getReverse().getPathId()))
+        when(transitVlanRepository.findByPathId(reverseResources.getPathId(), forwardResources.getPathId()))
                 .thenReturn(getTransitVlans(flowResources, false));
     }
 

@@ -22,7 +22,7 @@ import java.util.Collection;
 import java.util.Optional;
 
 public interface TransitVlanRepository extends Repository<TransitVlan> {
-    Collection<TransitVlan> findByPathId(PathId pathId);
+    Collection<TransitVlan> findByPathId(PathId pathId, PathId oppositePathId);
 
     /**
      * Find a transit vlan which is not assigned to any flow.

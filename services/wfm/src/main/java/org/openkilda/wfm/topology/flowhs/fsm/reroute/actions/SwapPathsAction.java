@@ -109,13 +109,15 @@ public class SwapPathsAction extends
                 .forward(PathResources.builder()
                         .pathId(forwardPath.getPathId())
                         .meterId(forwardPath.getMeterId())
-                        .encapsulationResources(resourcesManager.getEncapsulationResources(forwardPath.getPathId(),
+                        .encapsulationResources(resourcesManager.getEncapsulationResources(
+                                forwardPath.getPathId(), reversePath.getPathId(),
                                 flow.getEncapsulationType()).orElse(null))
                         .build())
                 .reverse(PathResources.builder()
                         .pathId(reversePath.getPathId())
                         .meterId(reversePath.getMeterId())
-                        .encapsulationResources(resourcesManager.getEncapsulationResources(reversePath.getPathId(),
+                        .encapsulationResources(resourcesManager.getEncapsulationResources(
+                                reversePath.getPathId(), forwardPath.getPathId(),
                                 flow.getEncapsulationType()).orElse(null))
                         .build())
                 .build();

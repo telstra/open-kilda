@@ -839,58 +839,24 @@ public class FlowServiceImpl implements FlowService {
         /*
          * Since we are getting switch rules, we can use a set.
          */
-        List<List<SimpleSwitchRule>> simpleFlowRules = new ArrayList<>();
-        Set<SwitchId> switches = new HashSet<>();
-
-        if (flow.getForwardPath() != null) {
-            FlowPath path = flow.getForwardPath();
-            TransitVlan transitVlan = transitVlanRepository.findByPathId(path.getPathId()).stream()
-                    .findAny().orElse(null);
-
-            simpleFlowRules.add(SimpleSwitchRule.convertFlowPath(flow, path, transitVlan));
-            switches.add(path.getSrcSwitch().getSwitchId());
-            switches.add(path.getDestSwitch().getSwitchId());
-            path.getSegments()
-                    .forEach(pathSegment -> switches.add(pathSegment.getDestSwitch().getSwitchId()));
-        } else {
+        if (flow.getForwardPath() == null) {
             throw new InvalidPathException(flowId, "Forward path was not returned.");
         }
-
-        if (flow.getReversePath() != null) {
-            FlowPath path = flow.getReversePath();
-            TransitVlan transitVlan = transitVlanRepository.findByPathId(path.getPathId()).stream()
-                    .findAny().orElse(null);
-
-            simpleFlowRules.add(SimpleSwitchRule.convertFlowPath(flow, path, transitVlan));
-            switches.add(path.getSrcSwitch().getSwitchId());
-            switches.add(path.getDestSwitch().getSwitchId());
-            path.getSegments()
-                    .forEach(pathSegment -> switches.add(pathSegment.getDestSwitch().getSwitchId()));
-        } else {
-            throw new InvalidPathException(flowId, "Forward path was not returned.");
+        if (flow.getReversePath() == null) {
+            throw new InvalidPathException(flowId, "Reverse path was not returned.");
         }
+
+        FlowValidationResources resources = collectFlowPathValidataionResources(
+                flow, flow.getForwardPath(), flow.getReversePath());
+        resources.merge(collectFlowPathValidataionResources(flow, flow.getReversePath(), flow.getForwardPath()));
 
         if (flow.getProtectedForwardPath() != null) {
-            FlowPath path = flow.getProtectedForwardPath();
-            TransitVlan transitVlan = transitVlanRepository.findByPathId(path.getPathId()).stream()
-                    .findAny().orElse(null);
-
-            simpleFlowRules.add(SimpleSwitchRule.convertFlowPath(flow, path, transitVlan));
-            switches.add(path.getSrcSwitch().getSwitchId());
-            switches.add(path.getDestSwitch().getSwitchId());
-            path.getSegments()
-                    .forEach(pathSegment -> switches.add(pathSegment.getDestSwitch().getSwitchId()));
+            resources.merge(collectFlowPathValidataionResources(
+                    flow, flow.getProtectedForwardPath(), flow.getProtectedReversePath()));
         }
         if (flow.getProtectedReversePath() != null) {
-            FlowPath path = flow.getProtectedReversePath();
-            TransitVlan transitVlan = transitVlanRepository.findByPathId(path.getPathId()).stream()
-                    .findAny().orElse(null);
-
-            simpleFlowRules.add(SimpleSwitchRule.convertFlowPath(flow, path, transitVlan));
-            switches.add(path.getSrcSwitch().getSwitchId());
-            switches.add(path.getDestSwitch().getSwitchId());
-            path.getSegments()
-                    .forEach(pathSegment -> switches.add(pathSegment.getDestSwitch().getSwitchId()));
+            resources.merge(collectFlowPathValidataionResources(
+                    flow, flow.getProtectedReversePath(), flow.getProtectedForwardPath()));
         }
 
         /*
@@ -912,7 +878,7 @@ public class FlowServiceImpl implements FlowService {
 
         int index = 1;
         List<CompletableFuture<?>> rulesRequests = new ArrayList<>();
-        for (SwitchId switchId : switches) {
+        for (SwitchId switchId : resources.getSwitches()) {
             String requestId = idFactory.produceChained(String.valueOf(index++));
             rulesRequests.add(switchService.getRules(switchId, IGNORE_COOKIE_FILTER, requestId));
         }
@@ -930,7 +896,7 @@ public class FlowServiceImpl implements FlowService {
                     }
                     return rulesAmount;
                 })
-                .thenApply(totalRules -> compareRules(switchRules, simpleFlowRules, flowId, totalRules));
+                .thenApply(totalRules -> compareRules(switchRules, resources.getRules(), flowId, totalRules));
     }
 
     private List<FlowValidationDto> compareRules(
@@ -1034,4 +1000,36 @@ public class FlowServiceImpl implements FlowService {
                 .thenApply(FlowHistoryData::getPayload);
     }
 
+    private FlowValidationResources collectFlowPathValidataionResources(
+            Flow flow, FlowPath path, FlowPath oppositePath) {
+        TransitVlan transitVlan = transitVlanRepository.findByPathId(path.getPathId(), oppositePath.getPathId())
+                .stream().findAny().orElse(null);
+        return new FlowValidationResources(flow, path, transitVlan);
+    }
+
+    private static class FlowValidationResources {
+        private final Set<SwitchId> switches = new HashSet<>();
+        private final List<List<SimpleSwitchRule>> rules = new ArrayList<>();
+
+        FlowValidationResources(Flow flow, FlowPath path, TransitVlan transitVlan) {
+            rules.add(SimpleSwitchRule.convertFlowPath(flow, path, transitVlan));
+            switches.add(path.getSrcSwitch().getSwitchId());
+            switches.add(path.getDestSwitch().getSwitchId());
+            path.getSegments()
+                    .forEach(pathSegment -> switches.add(pathSegment.getDestSwitch().getSwitchId()));
+        }
+
+        void merge(FlowValidationResources other) {
+            switches.addAll(other.getSwitches());
+            rules.addAll(other.getRules());
+        }
+
+        Set<SwitchId> getSwitches() {
+            return switches;
+        }
+
+        List<List<SimpleSwitchRule>> getRules() {
+            return rules;
+        }
+    }
 }

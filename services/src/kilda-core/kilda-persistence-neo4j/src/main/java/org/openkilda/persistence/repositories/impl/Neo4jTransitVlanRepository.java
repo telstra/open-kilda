@@ -15,6 +15,7 @@
 
 package org.openkilda.persistence.repositories.impl;
 
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.TransactionManager;
@@ -39,11 +40,22 @@ public class Neo4jTransitVlanRepository extends Neo4jGenericRepository<TransitVl
         super(sessionFactory, transactionManager);
     }
 
+    /**
+     * Lookup for {@link FlowPath} object by pathId (or opposite pathId) value.
+     *
+     * <p>It make lookup by pathId first and if there is no result it make lookup by {@code oppositePathId}. Such
+     * weird logic allow to support both kind of flows(first kind - each path have it's own transit vlan, second
+     * kind - only one path have transit vlan, but both of them use it).
+     */
     @Override
-    public Collection<TransitVlan> findByPathId(PathId pathId) {
+    public Collection<TransitVlan> findByPathId(PathId pathId, PathId oppositePathId) {
         Filter pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, pathId);
-
-        return loadAll(pathIdFilter);
+        Collection<TransitVlan> result = loadAll(pathIdFilter);
+        if (result.isEmpty() && oppositePathId != null) {
+            pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, oppositePathId);
+            result = loadAll(pathIdFilter);
+        }
+        return result;
     }
 
     @Override

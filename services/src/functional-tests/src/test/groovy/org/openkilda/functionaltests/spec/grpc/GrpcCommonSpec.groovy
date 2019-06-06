@@ -1,12 +1,12 @@
 package org.openkilda.functionaltests.spec.grpc
 
-import groovy.util.logging.Slf4j
+import spock.lang.Unroll
 
-@Slf4j
 class GrpcCommonSpec extends GrpcBaseSpecification {
-    def "Able to get switch status"() {
+    @Unroll
+    def "Able to get switch status on the #switches.switchId switch"() {
         when: "Get switch status"
-        def response = grpc.getSwitchStatus(switchIp)
+        def response = grpc.getSwitchStatus(switches.address)
 
         then: "Response is not null and needed fields are returned"
         response.serialNumber
@@ -17,5 +17,8 @@ class GrpcCommonSpec extends GrpcBaseSpecification {
         response.ethLinks
         response.builds
         response.cpuPercentage != null
+
+        where:
+        switches << getNoviflowSwitches()
     }
 }

@@ -56,7 +56,9 @@ public abstract class Neo4jBasedTest {
 
     @AfterClass
     public static void stopEmbeddedNeo4j() {
-        embeddedNeo4jDb.stop();
+        if (embeddedNeo4jDb != null) {
+            embeddedNeo4jDb.stop();
+        }
     }
 
     @After
