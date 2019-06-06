@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.grpc;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.model.grpc.LogicalPortType;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -35,14 +36,19 @@ public class CreateLogicalPortRequest extends CommandData {
     private List<Integer> portNumbers;
 
     @JsonProperty("logical_port_number")
-    private Integer logicalPortNumber;
+    private int logicalPortNumber;
+
+    @JsonProperty("type")
+    private LogicalPortType type;
 
     @JsonCreator
     public CreateLogicalPortRequest(@JsonProperty("address") String address,
                                     @JsonProperty("port_numbers") List<Integer> portNumbers,
-                                    @JsonProperty("logical_port_number") int logicalPortNumber) {
+                                    @JsonProperty("logical_port_number") int logicalPortNumber,
+                                    @JsonProperty("type") LogicalPortType type) {
         this.address = address;
         this.portNumbers = portNumbers;
         this.logicalPortNumber = logicalPortNumber;
+        this.type = type;
     }
 }

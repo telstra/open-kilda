@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2020 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,22 +15,25 @@
 
 package org.openkilda.messaging.model.grpc;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
+public enum LogicalPortType {
+    LAG,
+    BFD,
+    RESERVED;
 
-import java.util.List;
-
-@Data
-public class LogicalPort {
-    @JsonProperty("port_number")
-    private List<Integer> portNumbers;
-
-    @JsonProperty("logical_port_number")
-    private Integer logicalPortNumber;
-
-    @JsonProperty("name")
-    private String name;
-
-    @JsonProperty("type")
-    private LogicalPortType type;
+    /**
+     * Create enum by number.
+     *
+     * @param value an int value.
+     * @return the enum value
+     */
+    public static LogicalPortType forNumber(int value) {
+        switch (value) {
+            case 1:
+                return LAG;
+            case 2:
+                return BFD;
+            default:
+                throw new IllegalArgumentException("Invalid logical port type");
+        }
+    }
 }

@@ -163,6 +163,10 @@ public class TopologyDefinition {
         return allPorts;
     }
 
+    public Switch find(SwitchId id) {
+        return switches.stream().filter(sw -> sw.getDpId().equals(id)).findFirst().get();
+    }
+
     /**
      * Get list of switch ports that have ISLs.
      */

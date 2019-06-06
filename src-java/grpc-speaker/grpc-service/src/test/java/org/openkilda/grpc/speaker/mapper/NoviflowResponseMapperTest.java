@@ -66,7 +66,7 @@ public class NoviflowResponseMapperTest {
                 .setPacketOutEth0InterfaceUp(YesNo.YES)
                 .setReplyStatus(REPLY_STATUS)
                 .build();
-        PacketInOutStatsResponse response = mapper.toPacketInOutStatsResponse(stats);
+        PacketInOutStatsResponse response = mapper.map(stats);
         assertEquals(PACKET_IN_TOTAL_PACKETS, response.getPacketInTotalPackets());
         assertEquals(PACKET_IN_TOTAL_PACKETS_DATAPLANE, response.getPacketInTotalPacketsDataplane());
         assertEquals(PACKET_IN_NO_MATCH_PACKETS, response.getPacketInNoMatchPackets());

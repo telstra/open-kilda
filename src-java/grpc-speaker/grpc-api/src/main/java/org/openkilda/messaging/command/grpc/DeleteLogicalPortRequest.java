@@ -13,24 +13,29 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.model.grpc;
+package org.openkilda.messaging.command.grpc;
 
+import org.openkilda.messaging.command.CommandData;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-
-import java.util.List;
+import lombok.EqualsAndHashCode;
 
 @Data
-public class LogicalPort {
-    @JsonProperty("port_number")
-    private List<Integer> portNumbers;
+@EqualsAndHashCode(callSuper = true)
+public class DeleteLogicalPortRequest extends CommandData {
+
+    @JsonProperty("address")
+    private String address;
 
     @JsonProperty("logical_port_number")
-    private Integer logicalPortNumber;
+    private int logicalPortNumber;
 
-    @JsonProperty("name")
-    private String name;
-
-    @JsonProperty("type")
-    private LogicalPortType type;
+    @JsonCreator
+    public DeleteLogicalPortRequest(@JsonProperty("address") String address,
+                                    @JsonProperty("logical_port_number") int logicalPortNumber) {
+        this.address = address;
+        this.logicalPortNumber = logicalPortNumber;
+    }
 }

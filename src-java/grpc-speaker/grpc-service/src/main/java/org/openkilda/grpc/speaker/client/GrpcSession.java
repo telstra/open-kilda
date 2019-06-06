@@ -31,6 +31,7 @@ import static org.openkilda.grpc.speaker.client.GrpcOperation.SHOW_CONFIG_REMOTE
 import static org.openkilda.grpc.speaker.client.GrpcOperation.SHOW_SWITCH_STATUS;
 
 import org.openkilda.grpc.speaker.exception.GrpcRequestFailureException;
+import org.openkilda.grpc.speaker.mapper.NoviflowResponseMapper;
 import org.openkilda.grpc.speaker.model.ErrorCode;
 import org.openkilda.grpc.speaker.model.LicenseDto;
 import org.openkilda.grpc.speaker.model.LogMessagesDto;
@@ -38,6 +39,7 @@ import org.openkilda.grpc.speaker.model.LogOferrorsDto;
 import org.openkilda.grpc.speaker.model.LogicalPortDto;
 import org.openkilda.grpc.speaker.model.PortConfigDto;
 import org.openkilda.grpc.speaker.model.RemoteLogServerDto;
+import org.openkilda.messaging.error.ErrorType;
 
 import com.google.common.net.InetAddresses;
 import io.grpc.ManagedChannel;
@@ -78,13 +80,19 @@ public class GrpcSession {
     @Value("${grpc.speaker.session.termination.timeout}")
     private int sessionTerminationTimeout;
 
+    private final NoviflowResponseMapper mapper;
+
     private ManagedChannel channel;
     private NoviFlowGrpcGrpc.NoviFlowGrpcStub stub;
     private String address;
 
-    public GrpcSession(String address) {
+    public GrpcSession(NoviflowResponseMapper mapper, String address) {
+        this.mapper = mapper;
+
         if (!InetAddresses.isInetAddress(address) && !InetAddresses.isUriInetAddress(address)) {
-            throw new GrpcRequestFailureException(ErrorCode.ERRNO_23.getCode(), ErrorCode.ERRNO_23.getMessage());
+            log.warn("IP address '{}' of switch is not valid", address);
+            throw new GrpcRequestFailureException(ErrorCode.ERRNO_23.getCode(), ErrorCode.ERRNO_23.getMessage(),
+                    ErrorType.REQUEST_INVALID);
         }
         this.address = address;
         this.channel = ManagedChannelBuilder.forAddress(address, PORT)
@@ -153,10 +161,12 @@ public class GrpcSession {
     public CompletableFuture<List<CliReply>> setLogicalPort(LogicalPortDto port) {
         Objects.requireNonNull(port.getLogicalPortNumber(), "Logical port number must not be null");
         Objects.requireNonNull(port.getPortNumbers(), "Port number must not be null");
+        Objects.requireNonNull(port.getType(), "Logical port type must not be null");
 
         LogicalPort request = LogicalPort.newBuilder()
                 .addAllPortno(port.getPortNumbers())
                 .setLogicalportno(port.getLogicalPortNumber())
+                .setLogicalporttype(mapper.map(port.getType()))
                 .build();
 
         log.info("About to create logical port: {}", request);
