@@ -15,44 +15,44 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.service;
 
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class FloodlightTracker {
+    private final AliveSetup aliveSetup;
+
     @VisibleForTesting
     protected Map<SwitchId, String> switchRegionMap = new HashMap<>();
+
     @VisibleForTesting
-    protected Map<String, FloodlightInstance> floodlightStatus = new HashMap<>();
-    private long aliveTimeout;
-    private long aliveInterval;
+    protected Map<String, SpeakerStatus> floodlightStatus = new HashMap<>();
 
     public FloodlightTracker(Set<String> floodlights, long aliveTimeout, long aliveInterval) {
-        this.aliveTimeout = TimeUnit.SECONDS.toMillis(aliveTimeout);
-        this.aliveInterval = TimeUnit.SECONDS.toMillis(aliveInterval);
+        this(floodlights, new AliveSetup(aliveTimeout, aliveInterval), Duration.ofSeconds(aliveTimeout));
+    }
+
+    FloodlightTracker(Set<String> floodlights, AliveSetup aliveSetup, Duration aliveTimeout) {
+        this.aliveSetup = aliveSetup;
+
         for (String region : floodlights) {
-            FloodlightInstance fl = new FloodlightInstance(region);
+            SpeakerStatus fl = new SpeakerStatus(region, aliveTimeout, aliveSetup.makeZeroMarker());
             floodlightStatus.put(region, fl);
         }
     }
 
     /**
      * Update switch region mapping.
+     *
      * @param switchId target switch
      * @param region target region
      */
@@ -63,6 +63,7 @@ public class FloodlightTracker {
 
     /**
      * Return region for switch.
+     *
      * @param switchId target switch
      * @return region of the switch
      */
@@ -70,103 +71,73 @@ public class FloodlightTracker {
         return switchRegionMap.get(switchId);
     }
 
-
-    /**
-     * Return inactive available regions.
-     * @return set of active regions
-     */
-    public Set<String> getNewInActiveRegions() {
-        Set<String> inactiveRegions = new HashSet<>();
-        for (Map.Entry<String, FloodlightInstance> entry: floodlightStatus.entrySet()) {
-            FloodlightInstance instance = entry.getValue();
-            if (!instance.isAlive() && entry.getValue().isRequireUnmanagedNotification()) {
-                inactiveRegions.add(entry.getKey());
-                instance.setRequireUnmanagedNotification(false);
-            }
-        }
-        return inactiveRegions;
-    }
-
     /**
      * Updates floodlight availability status according to last received alive response.
      */
-    public void checkTimeouts() {
-        long now = System.currentTimeMillis();
-        for (Map.Entry<String, FloodlightInstance> flEntry : floodlightStatus.entrySet()) {
-            FloodlightInstance instance =  flEntry.getValue();
-            if (instance.getLastAliveResponse() + aliveTimeout < now) {
-                log.warn("Floodlight region {} is marked as inactive no alive responses for {}", instance.getRegion(),
-                        TimeUnit.MILLISECONDS.toSeconds(now - instance.getLastAliveResponse()));
-                instance.setAlive(false);
-                instance.setRequireUnmanagedNotification(true);
+    public void handleAliveExpiration(MessageSender messageSender) {
+        Set<String> becomeInactive = new HashSet<>();
+        for (SpeakerStatus status : floodlightStatus.values()) {
+            if (aliveSetup.isAlive(status.getAliveMarker())) {
+                continue;
+            }
+
+            log.warn("Floodlight region {} is marked as inactive no alive responses for {}", status.getRegion(),
+                     aliveSetup.timeFromLastSeen(status.getAliveMarker()));
+            if (status.markInactive()) {
+                becomeInactive.add(status.getRegion());
             }
         }
-    }
 
-    /**
-     * Get switches under offline speaker.
-     * @return list of switches
-     */
-    public List<SwitchId> getUnmanageableSwitches() {
-        Set<String> inactiveRegions = getNewInActiveRegions();
-        return switchRegionMap.entrySet().stream()
-                .filter(switchIdStringEntry -> inactiveRegions.contains(
-                        switchIdStringEntry.getValue()))
-                .map(Entry::getKey)
-                .collect(Collectors.toList());
+        emmitUnmanagedNotifications(messageSender, becomeInactive);
     }
 
     /**
      * Handles alive response.
+     *
      * @return flag whether discovery needed or not
      */
     public boolean handleAliveResponse(String region, long timestamp) {
         log.debug("Handling alive response for region {}", region);
-        FloodlightInstance instance = floodlightStatus.get(region);
-        if (timestamp < instance.getLastAliveResponse()) {
-            return false;
+        SpeakerStatus status = floodlightStatus.get(region);
+
+        boolean isActiveNow = status.isActive();
+        status.markActive(aliveSetup.makeMarker(timestamp));
+
+        if (!isActiveNow) {
+            log.info("Region {} is went online", region);
+            return true;
         }
-        instance.setLastAliveResponse(timestamp);
-        boolean needDiscovery = false;
-        if (timestamp + aliveTimeout > System.currentTimeMillis()) {
-            if (!instance.isAlive()) {
-                log.info("Region {} is went online", region);
-                needDiscovery = true;
-            }
-            instance.setAlive(true);
-        } else {
-            log.debug("Outdated alive response for region {}", region);
-        }
-        return needDiscovery;
+        return false;
     }
 
     /**
      * Notify consumers about unmanaged switches.
+     *
      * @param messageSender storm topology callback to handle transport.
      */
-    public void handleUnmanagedSwitches(MessageSender messageSender) {
-        List<SwitchId> unmanagedSwitches = getUnmanageableSwitches();
-        for (SwitchId sw : unmanagedSwitches) {
+    private void emmitUnmanagedNotifications(MessageSender messageSender, Set<String> inactiveRegions) {
+        for (Map.Entry<SwitchId, String> entry : switchRegionMap.entrySet()) {
+            String region = entry.getValue();
+            if (!inactiveRegions.contains(region)) {
+                continue;
+            }
+
+            SwitchId sw = entry.getKey();
             log.debug("Sending unmanaged switch notification for {}", sw.getId());
-            UnmanagedSwitchNotification notification = new UnmanagedSwitchNotification(sw);
-            InfoMessage message = new InfoMessage(notification, System.currentTimeMillis(), UUID.randomUUID()
-                    .toString());
-            messageSender.emitControllerMessage(sw.toString(), message);
+            messageSender.emitSwitchUnmanagedNotification(sw);
         }
     }
 
     /**
      * Get regions that requires alive request.
+     *
      * @return set of regions
      */
     public Set<String> getRegionsForAliveRequest() {
         Set<String> regions = new HashSet<>();
-        long now = System.currentTimeMillis();
-        for (Map.Entry<String, FloodlightInstance> entry :floodlightStatus.entrySet()) {
-            String region = entry.getKey();
-            FloodlightInstance instance = entry.getValue();
-            if (instance.getLastAliveResponse() + aliveInterval <= now) {
-                regions.add(region);
+        for (SpeakerStatus status : floodlightStatus.values()) {
+            if (aliveSetup.isAliveRequestRequired(status.getAliveMarker())) {
+                regions.add(status.getRegion());
             }
         }
         return regions;
