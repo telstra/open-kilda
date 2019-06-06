@@ -15,12 +15,8 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.service;
 
-import org.openkilda.messaging.AliveRequest;
 import org.openkilda.messaging.AliveResponse;
-import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.discovery.NetworkCommandData;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
@@ -31,8 +27,6 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
 
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.UUID;
 
 @Slf4j
 public class RouterService {
@@ -48,14 +42,8 @@ public class RouterService {
      * @param routerMessageSender callback to be used for message sending
      */
     public void doPeriodicProcessing(MessageSender routerMessageSender) {
-        for (String region : floodlightTracker.getRegionsForAliveRequest()) {
-            AliveRequest request = new AliveRequest();
-            CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), UUID.randomUUID()
-                    .toString());
-            routerMessageSender.emitSpeakerMessage(message.getCorrelationId(), message, region);
-        }
-        floodlightTracker.checkTimeouts();
-        floodlightTracker.handleUnmanagedSwitches(routerMessageSender);
+        emitAliveRequests(routerMessageSender);
+        floodlightTracker.handleAliveExpiration(routerMessageSender);
     }
 
     /**
@@ -63,8 +51,7 @@ public class RouterService {
      * @param routerMessageSender callback to be used for message sending
      * @param message message to be handled and resend
      */
-    public void processSpeakerDiscoResponse(MessageSender routerMessageSender,
-                                            Message message, CommandContext context) {
+    public void processSpeakerDiscoResponse(MessageSender routerMessageSender, Message message) {
         if (message instanceof InfoMessage) {
             InfoMessage infoMessage = (InfoMessage) message;
             InfoData infoData = infoMessage.getData();
@@ -74,7 +61,7 @@ public class RouterService {
             if (infoData instanceof AliveResponse) {
                 AliveResponse aliveResponse = (AliveResponse) infoData;
                 if (aliveResponse.getFailedMessages() > 0) {
-                    sendNetworkRequest(routerMessageSender, region);
+                    routerMessageSender.emitNetworkDumpRequest(region);
                 }
                 return;
             } else if (infoData instanceof IslInfoData) {
@@ -90,7 +77,7 @@ public class RouterService {
 
             // NOTE(tdurakov): need to notify of a mapping update
             if (switchId != null && region != null && floodlightTracker.updateSwitchRegion(switchId, region)) {
-                routerMessageSender.emitRegionNotification(new SwitchMapping(switchId, region), context);
+                routerMessageSender.emitRegionNotification(new SwitchMapping(switchId, region));
             }
         }
         routerMessageSender.emitControllerMessage(message);
@@ -115,27 +102,17 @@ public class RouterService {
         }
     }
 
-    private void handleResponseFromSpeaker(MessageSender routerMessageSender, String region,
-                                           long timestamp) {
+    private void handleResponseFromSpeaker(MessageSender routerMessageSender, String region, long timestamp) {
         boolean requireSync = floodlightTracker.handleAliveResponse(region, timestamp);
         if (requireSync) {
             log.info("Region {} requires sync", region);
-            sendNetworkRequest(routerMessageSender, region);
+            routerMessageSender.emitNetworkDumpRequest(region);
         }
     }
 
-    /**
-     * Send network dump requests for target region.
-     * @param routerMessageSender sender
-     * @param region target
-     */
-    public void sendNetworkRequest(MessageSender routerMessageSender, String region) {
-        String correlationId = UUID.randomUUID().toString();
-        CommandMessage command = new CommandMessage(new NetworkCommandData(),
-                System.currentTimeMillis(), correlationId,
-                Destination.CONTROLLER);
-
-        log.info("Send network dump request (correlation-id: {})", correlationId);
-        routerMessageSender.emitSpeakerMessage(correlationId, command, region);
+    private void emitAliveRequests(MessageSender messageSender) {
+        for (String region : floodlightTracker.getRegionsForAliveRequest()) {
+            messageSender.emitSpeakerAliveRequest(region);
+        }
     }
 }
