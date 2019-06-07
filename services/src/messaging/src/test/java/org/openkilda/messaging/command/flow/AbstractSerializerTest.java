@@ -302,7 +302,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     public void flowGetBidirectionalResponseTest() throws IOException, ClassNotFoundException {
         FlowDto flow = FlowDto.builder().flowPath(path).build();
         BidirectionalFlowDto bidirectionalFlow = BidirectionalFlowDto.builder().forward(flow).reverse(flow).build();
-        FlowReadResponse data = new FlowReadResponse(bidirectionalFlow);
+        FlowReadResponse data = new FlowReadResponse(bidirectionalFlow, Collections.singletonList(FLOW_NAME));
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION,

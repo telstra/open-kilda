@@ -810,6 +810,23 @@ public class FlowService extends BaseFlowService {
         });
     }
 
+    /**
+     * Returns list of flows id in diverse group.
+     * @param flow the flow to get diverse group.
+     * @return list of flows id.
+     */
+    public List<String> getDiverseFlowsId(Flow flow) {
+        String groupId = flow.getGroupId();
+
+        if (groupId == null) {
+            return null;
+        }
+
+        return flowRepository.findFlowsIdByGroupId(groupId).stream()
+                .filter(id -> !id.equals(flow.getFlowId()))
+                .collect(Collectors.toList());
+    }
+
     private FlowPathPair buildFlowPathPair(FlowPair flowPair, FlowResources flowResources, Instant timeCreate) {
         FlowPathStatus pathStatus = flowPair.getForward().getStatus() == FlowStatus.IN_PROGRESS
                 ? FlowPathStatus.IN_PROGRESS : FlowPathStatus.ACTIVE;

@@ -65,6 +65,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
@@ -280,12 +281,11 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowPayload> getFlow(final String id) {
+    public CompletableFuture<FlowResponsePayload> getFlow(final String id) {
         logger.debug("Get flow request for flow {}", id);
 
-        return getBidirectionalFlow(id, RequestCorrelationId.getId())
-                .thenApply(BidirectionalFlowDto::getForward)
-                .thenApply(flowMapper::toFlowOutput);
+        return getFlowReadResponse(id, RequestCorrelationId.getId())
+                .thenApply(flowMapper::toFlowResponseOutput);
     }
 
     /**
@@ -409,7 +409,8 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<FlowIdStatusPayload> statusFlow(final String id) {
         logger.debug("Flow status request for flow: {}", id);
-        return getBidirectionalFlow(id, RequestCorrelationId.getId())
+        return getFlowReadResponse(id, RequestCorrelationId.getId())
+                .thenApply(FlowReadResponse::getPayload)
                 .thenApply(flowMapper::toFlowIdStatusPayload);
     }
 
@@ -502,13 +503,12 @@ public class FlowServiceImpl implements FlowService {
      *
      * @return the bidirectional flow.
      */
-    private CompletableFuture<BidirectionalFlowDto> getBidirectionalFlow(String flowId, String correlationId) {
+    private CompletableFuture<FlowReadResponse> getFlowReadResponse(String flowId, String correlationId) {
         FlowReadRequest data = new FlowReadRequest(flowId);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
 
         return messagingChannel.sendAndGet(topic, request)
-                .thenApply(FlowReadResponse.class::cast)
-                .thenApply(FlowReadResponse::getPayload);
+                .thenApply(FlowReadResponse.class::cast);
     }
 
     /**

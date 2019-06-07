@@ -30,6 +30,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.SwitchId;
@@ -63,7 +64,7 @@ public interface NorthboundService {
 
     //flows
 
-    FlowPayload getFlow(String flowId);
+    FlowResponsePayload getFlow(String flowId);
 
     List<FlowEventPayload> getFlowHistory(String flowId);
 

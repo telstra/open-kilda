@@ -58,6 +58,23 @@ class FlowDiversitySpec extends BaseSpecification {
         [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
     }
 
+    def "Able to get diverse flows id in flow get response"() {
+        given: "Two active neighboring switches with two not overlapping paths at least"
+        def switchPair = getSwitchPair(2)
+
+        when: "Create three flows with diversity enabled"
+        def flow1 = flowHelper.randomFlow(switchPair, false)
+        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.id }
+        [flow1, flow2].each { flowHelper.addFlow(it) }
+
+        then: "Flow has diverse flows id in response"
+        assert northbound.getFlow(flow1.getId()).getDiverseWith() == [flow2.getId()]
+        assert northbound.getFlow(flow2.getId()).getDiverseWith() == [flow1.getId()]
+
+        and: "Delete flows"
+        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+    }
+
     def "Able to update flows to become diverse"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
         def switchPair = getSwitchPair(3)
