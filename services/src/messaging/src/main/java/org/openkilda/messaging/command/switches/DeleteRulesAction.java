@@ -46,6 +46,9 @@ public enum DeleteRulesAction {
     // Remove BFD catch rule
     REMOVE_BFD_CATCH,
 
+    // Remove Round Trip Latency rule
+    REMOVE_ROUND_TRIP_LATENCY,
+
     // Drop all default rules (ie a combination of the above)
     REMOVE_DEFAULTS,
 
