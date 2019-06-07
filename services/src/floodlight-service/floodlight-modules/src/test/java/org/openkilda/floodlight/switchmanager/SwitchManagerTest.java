@@ -103,9 +103,11 @@ import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFGroupAdd;
+import org.projectfloodlight.openflow.protocol.OFGroupDelete;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFGroupModCommand;
 import org.projectfloodlight.openflow.protocol.OFGroupType;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
@@ -572,10 +574,12 @@ public class SwitchManagerTest {
         expect(switchDescription.getManufacturerDescription()).andStubReturn(OVS_MANUFACTURER);
 
         mockFlowStatsRequest(cookie, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
-                VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE);
+                VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
+                ROUND_TRIP_LATENCY_RULE_COOKIE);
 
         Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(5);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(6);
+        expect(iofSwitch.write(isA(OFGroupDelete.class))).andReturn(true).once();
 
         mockBarrierRequest();
         mockFlowStatsRequest(cookie);
@@ -588,15 +592,17 @@ public class SwitchManagerTest {
 
         // then
         final List<OFFlowMod> actual = capture.getValues();
-        assertEquals(5, actual.size());
+        assertEquals(6, actual.size());
         assertThat(actual, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_BROADCAST_RULE_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_UNICAST_RULE_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_VERIFICATION_LOOP_RULE_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(CATCH_BFD_RULE_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(ROUND_TRIP_LATENCY_RULE_COOKIE)))));
         assertThat(deletedRules, containsInAnyOrder(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
-                VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE));
+                VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
+                ROUND_TRIP_LATENCY_RULE_COOKIE));
     }
 
     @Test
@@ -612,7 +618,8 @@ public class SwitchManagerTest {
                 VERIFICATION_UNICAST_RULE_COOKIE, CATCH_BFD_RULE_COOKIE);
 
         Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(7);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(9);
+        expect(iofSwitch.write(isA(OFGroupDelete.class))).andReturn(true).once();
 
         mockBarrierRequest();
         mockFlowStatsRequest(cookie);
@@ -628,23 +635,29 @@ public class SwitchManagerTest {
                 VERIFICATION_UNICAST_RULE_COOKIE, CATCH_BFD_RULE_COOKIE));
 
         final List<OFFlowMod> actual = capture.getValues();
-        assertEquals(7, actual.size());
+        assertEquals(9, actual.size());
 
         // check rules deletion
-        List<OFFlowMod> rulesMod = actual.subList(0, 5);
+        List<OFFlowMod> rulesMod = actual.subList(0, 6);
         assertThat(rulesMod, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_BROADCAST_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_UNICAST_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_VERIFICATION_LOOP_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(CATCH_BFD_RULE_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(ROUND_TRIP_LATENCY_RULE_COOKIE)))));
 
 
         // verify meters deletion
-        List<OFFlowMod> metersMod = actual.subList(rulesMod.size(), actual.size());
+        List<OFFlowMod> metersMod = actual.subList(rulesMod.size(), rulesMod.size() + 2);
         assertThat(metersMod, everyItem(hasProperty("command", equalTo(OFMeterModCommand.DELETE))));
         assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(broadcastMeterId))));
         assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(unicastMeterId))));
+
+        // verify group deletion
+        List<OFFlowMod> groupMod = actual.subList(rulesMod.size() + metersMod.size(), actual.size());
+        assertThat(groupMod, everyItem(hasProperty("command", equalTo(OFGroupModCommand.DELETE))));
+        assertThat(groupMod, hasItem(hasProperty("group", equalTo(OFGroup.of(ROUND_TRIP_LATENCY_GROUP_ID)))));
     }
 
     @Test
