@@ -26,8 +26,6 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.history.service.HistoryService;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 
-import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 
 import java.time.Instant;
@@ -48,7 +46,7 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
     }
 
     @Override
-    List<InfoData> processRequest(Tuple tuple, BaseRequest request, String correlationId) {
+    List<InfoData> processRequest(Tuple tuple, BaseRequest request) {
         if (request instanceof GetFlowHistoryRequest) {
             return getFlowHistory((GetFlowHistoryRequest) request);
         } else {
@@ -86,11 +84,5 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
                 .stream()
                 .map(HistoryMapper.INSTANCE::map)
                 .collect(Collectors.toList());
-    }
-
-    @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        super.declareOutputFields(declarer);
-        declarer.declare(new Fields("response", "correlationId"));
     }
 }

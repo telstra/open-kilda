@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
-import static org.openkilda.messaging.Utils.MAPPER;
-
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
@@ -30,7 +28,6 @@ import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.service.RouterUtils;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMapping;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -53,8 +50,7 @@ public class SpeakerRequestBolt extends RequestBolt {
             updateSwitchMapping((SwitchMapping) input.getValueByField(
                     AbstractTopology.MESSAGE_FIELD));
         } else {
-            String json = pullRequest(input);
-            Message message = MAPPER.readValue(json, Message.class);
+            Message message = (Message) pullRequest(input);
             if (RouterUtils.isBroadcast(message)) {
                 for (String region : regions) {
                     proxyRequestToSpeaker(input, region);
@@ -67,32 +63,30 @@ public class SpeakerRequestBolt extends RequestBolt {
                         proxyRequestToSpeaker(input, region);
                     } else {
                         if (message instanceof CommandMessage) {
-                            processNotFoundError((CommandMessage) message, switchId, input, json);
+                            processNotFoundError((CommandMessage) message, switchId, input);
                         }
 
                     }
 
                 } else {
-                    log.error("Unable to lookup region for message: {}", json);
+                    log.error("Unable to lookup region for message: {}", message);
                 }
             }
         }
     }
 
-    private void processNotFoundError(CommandMessage commandMessage, SwitchId switchId, Tuple input,
-                                      String json) throws JsonProcessingException {
+    private void processNotFoundError(CommandMessage commandMessage, SwitchId switchId, Tuple input) {
         String errorDetails = String.format("Switch %s was not found", switchId.toString());
         ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, errorDetails, errorDetails);
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(),
                 commandMessage.getCorrelationId(), null);
-        String errorJson = MAPPER.writeValueAsString(errorMessage);
-        Values values = new Values(errorJson);
+        Values values = new Values(errorMessage);
         if (commandMessage.getData() instanceof ValidateRulesRequest) {
             getOutput().emit(Stream.NORTHBOUND_REPLY, input, values);
         } else if (commandMessage.getData() instanceof DumpRulesForSwitchManagerRequest) {
             getOutput().emit(Stream.NB_WORKER, input, values);
         } else {
-            log.error("Unable to lookup region for message: {}. switch is not tracked.", json);
+            log.error("Unable to lookup region for message: {}. switch is not tracked.", commandMessage);
         }
     }
 

@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.stats.bolts;
 
-import static org.openkilda.messaging.Utils.MAPPER;
+import static org.openkilda.wfm.AbstractBolt.FIELD_ID_CONTEXT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
 
 import org.openkilda.floodlight.flow.request.FlowRequest;
@@ -34,9 +34,10 @@ import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.stats.MeasurePoint;
+import org.openkilda.wfm.topology.utils.MessageTranslator;
 
-import com.fasterxml.jackson.databind.JsonMappingException;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -47,7 +48,6 @@ import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Map;
 
 public class CacheFilterBolt extends BaseRichBolt {
@@ -73,7 +73,8 @@ public class CacheFilterBolt extends BaseRichBolt {
                     FieldsNames.SWITCH.name(),
                     FieldsNames.COOKIE.name(),
                     FieldsNames.METER.name(),
-                    FieldsNames.MEASURE_POINT.name());
+                    FieldsNames.MEASURE_POINT.name(),
+                    FIELD_ID_CONTEXT);
 
 
     private static final Logger logger = LoggerFactory.getLogger(CacheFilterBolt.class);
@@ -96,22 +97,16 @@ public class CacheFilterBolt extends BaseRichBolt {
      */
     @Override
     public void execute(Tuple tuple) {
-
-        String json = tuple.getString(0);
-
         try {
-            try {
-                BaseMessage bm = MAPPER.readValue(json, BaseMessage.class);
-                handleCommandMessage(tuple, bm);
-                return;
-            } catch (JsonMappingException e) {
-                logger.debug("Received non BaseMessage message {}", json);
-            }
+            Object message = tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
+            if (message instanceof BaseMessage) {
+                handleCommandMessage(tuple, (BaseMessage) message);
 
-            AbstractMessage abstractMessage = MAPPER.readValue(json, AbstractMessage.class);
-            handleAbstractMessage(tuple, abstractMessage);
-        } catch (IOException exception) {
-            logger.error("Could not deserialize message {}", tuple, exception);
+            } else if (message instanceof AbstractMessage) {
+                handleAbstractMessage(tuple, (AbstractMessage) message);
+            } else {
+                logger.error("Unable to handle input tuple {}", tuple);
+            }
         } catch (Exception e) {
             logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
@@ -185,7 +180,8 @@ public class CacheFilterBolt extends BaseRichBolt {
 
     private void emit(Tuple tuple, Commands action, String flowId, SwitchId switchId, Long cookie, Long meterId,
                       MeasurePoint point) {
-        Values values = new Values(action, flowId, switchId, cookie, meterId, point);
+        CommandContext commandContext = (CommandContext) tuple.getValueByField(FIELD_ID_CONTEXT);
+        Values values = new Values(action, flowId, switchId, cookie, meterId, point, commandContext);
         outputCollector.emit(CACHE_UPDATE.name(), tuple, values);
     }
 

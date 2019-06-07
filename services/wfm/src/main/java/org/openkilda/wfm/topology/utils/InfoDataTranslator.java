@@ -13,25 +13,26 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.floodlightrouter.bolts;
+package org.openkilda.wfm.topology.utils;
 
-import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.messaging.info.InfoData;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.storm.tuple.Tuple;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.storm.tuple.Fields;
+import org.apache.storm.tuple.Values;
 
-import java.util.Set;
+import java.util.List;
 
-@Slf4j
-public class BroadcastRequestBolt extends RequestBolt {
-    public BroadcastRequestBolt(String outputStream, Set<String> regions) {
-        super(outputStream, regions);
+public class InfoDataTranslator extends KafkaRecordTranslator<String, InfoData> {
+
+    @Override
+    public List<Object> apply(ConsumerRecord<String, InfoData> record) {
+        InfoData data = record.value();
+        return new Values(record.key(), data);
     }
 
     @Override
-    public void handleInput(Tuple input) throws PipelineException {
-        for (String region : regions) {
-            proxyRequestToSpeaker(input, region);
-        }
+    public Fields getFieldsFor(String stream) {
+        return new Fields(MessageTranslator.KEY_FIELD, MessageTranslator.FIELD_ID_PAYLOAD);
     }
 }

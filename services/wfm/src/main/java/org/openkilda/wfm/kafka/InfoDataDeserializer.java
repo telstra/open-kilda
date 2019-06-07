@@ -15,18 +15,18 @@
 
 package org.openkilda.wfm.kafka;
 
-import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.info.InfoData;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 
 @Slf4j
-public class MessageDeserializer extends Deserializer<Message> {
+public class InfoDataDeserializer extends Deserializer<InfoData> {
 
     @Override
-    protected Message jsonDecode(byte[] data) throws IOException {
-        return Utils.MAPPER.readValue(data, Message.class);
+    protected InfoData jsonDecode(byte[] data) throws IOException {
+        return Utils.MAPPER.readValue(data, InfoData.class);
     }
 }

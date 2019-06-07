@@ -28,6 +28,7 @@ import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.CommandContext;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -63,7 +64,7 @@ public class RouterService {
      * @param message message to be handled and resend
      */
     public void processSpeakerDiscoResponse(MessageSender routerMessageSender,
-                                            Message message) {
+                                            Message message, CommandContext context) {
         if (message instanceof InfoMessage) {
             InfoMessage infoMessage = (InfoMessage) message;
             InfoData infoData = infoMessage.getData();
@@ -89,7 +90,7 @@ public class RouterService {
 
             // NOTE(tdurakov): need to notify of a mapping update
             if (switchId != null && region != null && floodlightTracker.updateSwitchRegion(switchId, region)) {
-                routerMessageSender.emitRegionNotification(new SwitchMapping(switchId, region));
+                routerMessageSender.emitRegionNotification(new SwitchMapping(switchId, region), context);
             }
         }
         routerMessageSender.emitControllerMessage(message);
