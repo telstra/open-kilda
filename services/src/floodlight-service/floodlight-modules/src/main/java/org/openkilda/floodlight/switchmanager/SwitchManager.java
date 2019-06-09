@@ -886,7 +886,17 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setActions(Lists.newArrayList(
                         actionSetDstMac(sw, dpIdToMac(sw.getId())),
                         actionSendToController(sw)))
-                .setWatchPort(OFPort.ANY)
+                .setWatchGroup(OFGroup.ANY)
+                .build());
+
+        TransportPort udpPort = TransportPort.of(LATENCY_PACKET_UDP_PORT);
+        List<OFAction> latencyActions = ImmutableList.of(
+                ofFactory.actions().setField(ofFactory.oxms().udpDst(udpPort)),
+                actionSetOutputPort(ofFactory, OFPort.IN_PORT));
+
+        bucketList.add(ofFactory
+                .buildBucket()
+                .setActions(latencyActions)
                 .setWatchGroup(OFGroup.ANY)
                 .build());
 
@@ -899,8 +909,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @VisibleForTesting
     boolean validateRoundTripLatencyGroup(DatapathId dpId, OFGroupDescStatsEntry groupDesc) {
-        return groupDesc.getBuckets().size() == 1
-                && validateRoundTripSendToControllerBucket(dpId, groupDesc.getBuckets().get(0));
+        return groupDesc.getBuckets().size() == 2
+                && validateRoundTripSendToControllerBucket(dpId, groupDesc.getBuckets().get(0))
+                && validateRoundTripSendBackBucket(groupDesc.getBuckets().get(1));
     }
 
     private boolean validateRoundTripSendToControllerBucket(DatapathId dpId, OFBucket bucket) {
@@ -910,6 +921,17 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 && dpIdToMac(dpId).equals(((OFActionSetField) actions.get(0)).getField().getValue())
                 && actions.get(1).getType() == OFActionType.OUTPUT          // second action is send to controller
                 && OFPort.CONTROLLER.equals(((OFActionOutput) actions.get(1)).getPort());
+    }
+
+    private boolean validateRoundTripSendBackBucket(OFBucket bucket) {
+        List<OFAction> actions = bucket.getActions();
+        TransportPort udpPort = TransportPort.of(LATENCY_PACKET_UDP_PORT);
+
+        return actions.size() == 2
+                && actions.get(0).getType() == OFActionType.SET_FIELD
+                && udpPort.equals(((OFActionSetField) actions.get(0)).getField().getValue())
+                && actions.get(1).getType() == OFActionType.OUTPUT
+                && OFPort.IN_PORT.equals(((OFActionOutput) actions.get(1)).getPort());
     }
 
     private List<OFGroupDescStatsEntry> dumpGroups(IOFSwitch sw) {

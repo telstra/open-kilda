@@ -62,7 +62,7 @@ public class PingResponseCommand extends PingCommand {
     }
 
     private byte[] unwrap() {
-        if (input.packetInCookieMismatch(PingService.OF_CATCH_RULE_COOKIE, log)) {
+        if (input.packetInCookieMismatchAll(log, PingService.OF_CATCH_RULE_COOKIE)) {
             return null;
         }
 

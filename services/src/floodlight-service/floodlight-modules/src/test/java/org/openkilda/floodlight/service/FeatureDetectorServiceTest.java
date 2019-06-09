@@ -101,6 +101,13 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
                        ImmutableSet.of(METERS, LIMITED_BURST_SIZE));
     }
 
+    @Test
+    public void roundTripActon() {
+        discoveryCheck(makeSwitchMock("Sonus Networks Inc, 4 Technology Park Dr, Westford, MA 01886, USA",
+                "8.1.0.14", OFVersion.OF_12),
+                ImmutableSet.of(RESET_COUNTS_FLAG));
+    }
+
     private void discoveryCheck(IOFSwitch sw, Set<Feature> expectedFeatures) {
         replayAll();
 
