@@ -19,6 +19,8 @@ import static org.openkilda.floodlight.pathverification.DiscoveryPacket.CHASSIS_
 import static org.openkilda.floodlight.pathverification.DiscoveryPacket.OPTIONAL_LLDPTV_PACKET_TYPE;
 import static org.openkilda.floodlight.pathverification.DiscoveryPacket.PORT_ID_LLDPTV_PACKET_TYPE;
 import static org.openkilda.floodlight.pathverification.DiscoveryPacket.TTL_LLDPTV_PACKET_TYPE;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.GROUP_PACKET_OUT_CONTROLLER;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.NOVIFLOW_COPY_FIELD;
 
 import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.command.Command;
@@ -28,6 +30,7 @@ import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.pathverification.type.PathType;
 import org.openkilda.floodlight.pathverification.web.PathVerificationServiceWebRoutable;
 import org.openkilda.floodlight.service.CommandProcessorService;
+import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.service.of.IInputTranslator;
@@ -35,9 +38,12 @@ import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.floodlight.utils.CorrelationContext;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.IslOneWayLatency;
+import org.openkilda.messaging.info.event.IslRoundTripLatency;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
@@ -75,6 +81,8 @@ import org.projectfloodlight.openflow.protocol.OFPortDescPropEthernet;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActions;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
@@ -95,6 +103,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class PathVerificationService implements IFloodlightModule, IPathVerificationService, IInputTranslator {
     private static final Logger logger = LoggerFactory.getLogger(PathVerificationService.class);
@@ -102,6 +111,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             String.format("%s.ISL", PathVerificationService.class.getName()));
 
     public static final U64 OF_CATCH_RULE_COOKIE = U64.of(Cookie.VERIFICATION_BROADCAST_RULE_COOKIE);
+    public static final U64 OF_ROUND_TRIP_RULE_COOKIE = U64.of(Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE);
 
     public static final int DISCOVERY_PACKET_UDP_PORT = 61231;
     public static final int LATENCY_PACKET_UDP_PORT = 61232;
@@ -145,10 +155,12 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
     private IKafkaProducerService producerService;
     private IOFSwitchService switchService;
+    private FeatureDetectorService featureDetectorService;
 
     private PathVerificationServiceConfig config;
 
     private String topoDiscoTopic;
+    private String islLatencyTopic;
     private String region;
     private double islBandwidthQuotient = 1.0;
     private Algorithm algorithm;
@@ -200,6 +212,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
         switchService = context.getServiceImpl(IOFSwitchService.class);
         producerService = context.getServiceImpl(IKafkaProducerService.class);
+        featureDetectorService = context.getServiceImpl(FeatureDetectorService.class);
     }
 
     @VisibleForTesting
@@ -229,6 +242,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         KafkaChannel kafkaChannel = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel();
         logger.info("region: {}", kafkaChannel.getRegion());
         topoDiscoTopic = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getTopoDiscoTopic();
+        islLatencyTopic = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getIslLatencyTopic();
         region = context.getServiceImpl(KafkaUtilityService.class).getKafkaChannel().getRegion();
         InputService inputService = context.getServiceImpl(InputService.class);
         inputService.addTranslator(OFType.PACKET_IN, this);
@@ -256,8 +270,33 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     protected List<OFAction> getDiscoveryActions(IOFSwitch sw, OFPort port) {
         // set actions
         List<OFAction> actions = new ArrayList<>();
+        if (isSupportsCopyField(sw)) {
+            actions.add(actionAddTxTimestamp(sw, ROUND_TRIP_LATENCY_T0_OFFSET));
+        } else {
+            logger.debug("Switch {} does not support round trip latency", sw.getId());
+        }
         actions.add(sw.getOFFactory().actions().buildOutput().setPort(port).build());
         return actions;
+    }
+
+    private boolean isSupportsCopyField(IOFSwitch sw) {
+        return featureDetectorService.detectSwitch(sw).contains(NOVIFLOW_COPY_FIELD);
+    }
+
+    private boolean isSupportsRoundTripGroup(IOFSwitch sw) {
+        return featureDetectorService.detectSwitch(sw).contains(GROUP_PACKET_OUT_CONTROLLER);
+    }
+
+    private OFAction actionAddTxTimestamp(final IOFSwitch sw, int offset) {
+        OFOxms oxms = sw.getOFFactory().oxms();
+        OFActions actions = sw.getOFFactory().actions();
+        return actions.buildNoviflowCopyField()
+                .setNBits(ROUND_TRIP_LATENCY_TIMESTAMP_SIZE)
+                .setSrcOffset(0)
+                .setDstOffset(offset)
+                .setOxmSrcHeader(oxms.buildNoviflowTxtimestamp().getTypeLen())
+                .setOxmDstHeader(oxms.buildNoviflowPacketOffset().getTypeLen())
+                .build();
     }
 
     @Override
@@ -442,7 +481,9 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                 UDP udp = (UDP) ip.getPayload();
 
                 if (isUdpHasSpecifiedSrdDstPort(udp, DISCOVERY_PACKET_UDP_PORT)) {
-                    return new DiscoveryPacket((Data) udp.getPayload());
+                    return new DiscoveryPacket((Data) udp.getPayload(), false);
+                } else if (isUdpHasSpecifiedSrdDstPort(udp, LATENCY_PACKET_UDP_PORT)) {
+                    return new DiscoveryPacket((Data) udp.getPayload(), true);
                 }
             }
         }
@@ -469,10 +510,28 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         return seconds * TEN_TO_NINE + nanoseconds;
     }
 
+    /**
+     * Calculate latency of the ISL.
+     * @param switchId Switch ID of endpoint which received packet
+     * @param port port of endpoint which received packet
+     * @param switchT0 sent packet timestamp in nanoseconds
+     * @param switchT1 receive packet timestamp in nanoseconds
+     * @return long
+     */
+    @VisibleForTesting
+    static long calculateRoundTripLatency(SwitchId switchId, int port, long switchT0, long switchT1) {
+        if (switchT0 <= 0 || switchT1 <= 0) {
+            logger.warn("Invalid round trip latency timestamps on endpoint {}_{}. t0 = '{}', t1 = '{}'.",
+                    switchId, port, switchT0, switchT1);
+            return -1;
+        }
+        return switchT1 - switchT0;
+    }
+
     void handlePacketIn(OfInput input) {
         logger.debug("{} - {}", getClass().getCanonicalName(), input);
 
-        if (input.packetInCookieMismatch(OF_CATCH_RULE_COOKIE, logger)) {
+        if (input.packetInCookieMismatchAll(logger, OF_CATCH_RULE_COOKIE, OF_ROUND_TRIP_RULE_COOKIE)) {
             return;
         }
 
@@ -502,7 +561,12 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                 return;
             }
 
-            handleDiscoveryPacket(input, destSwitch, data);
+            if (discoveryPacket.isRoundTripLatency()) {
+                handleRoundTripLatency(data, input);
+            } else {
+                handleDiscoveryPacket(input, destSwitch, data);
+            }
+
         } catch (UnsupportedOperationException exception) {
             logger.error("could not parse packet_in message: {}", exception.getMessage(), exception);
         } catch (Exception exception) {
@@ -539,6 +603,55 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
         producerService.sendMessageAndTrack(topoDiscoTopic, source.getSwitchId().toString(), message);
         logger.debug("packet_in processed for {}-{}", input.getDpId(), inPort);
+
+        long oneWayLatency = measureLatency(input, data.getTimestamp());
+        IslOneWayLatency islOneWayLatency = new IslOneWayLatency(
+                source.getSwitchId(),
+                source.getPortNo(),
+                destination.getSwitchId(),
+                destination.getPortNo(),
+                oneWayLatency,
+                data.getPacketId(),
+                data.hasRoundTripLatencyInfo(),
+                isSupportsCopyField(destSwitch),
+                isSupportsRoundTripGroup(destSwitch));
+
+        sendLatency(islOneWayLatency, source.getSwitchId());
+    }
+
+    private void handleRoundTripLatency(DiscoveryPacketData packetData, OfInput input) {
+        SwitchId switchId = new SwitchId(input.getDpId().getLong());
+        int port = OFMessageUtils.getInPort((OFPacketIn) input.getMessage()).getPortNumber();
+        logIsl.info("got round trip packet: {}_{}, T0: {}, T1: {}, id:{}",
+                switchId, port, packetData.getSwitchT0(), packetData.getSwitchT1(), packetData.getPacketId());
+
+        SwitchId switchIdFromPacket = new SwitchId(packetData.getRemoteSwitchId().getLong());
+        int portFromPacket = packetData.getRemotePort().getPortNumber();
+
+        if (!Objects.equals(switchId, switchIdFromPacket) || port != portFromPacket) {
+            logger.warn("Endpoint from round trip latency package and endpoint from which the package was received "
+                            + "are different. Endpoint from package: {}-{}. "
+                            + "Endpoint from which package was received: {}-{}",
+                    switchIdFromPacket, portFromPacket, switchId, port);
+            return;
+        }
+
+        long roundTripLatency = calculateRoundTripLatency(
+                switchId, port, packetData.getSwitchT0(), packetData.getSwitchT1());
+
+        IslRoundTripLatency islRoundTripLatency = new IslRoundTripLatency(switchId, port, roundTripLatency,
+                packetData.getPacketId());
+        sendLatency(islRoundTripLatency, switchId);
+        logger.debug("Round trip latency packet processed for endpoint {}_{}. "
+                        + "t0 timestamp {}, t1 timestamp {}, latency {}.", switchId, port,
+                packetData.getSwitchT0(), packetData.getSwitchT1(), roundTripLatency);
+    }
+
+    private void sendLatency(InfoData latencyData, SwitchId switchId) {
+        // will be uncommented in next commit
+        // InfoMessage infoMessage = new InfoMessage(
+        //        latencyData, System.currentTimeMillis(), CorrelationContext.getId(), null, region);
+        // producerService.sendMessageAndTrack(islLatencyTopic, switchId.toString(), infoMessage);
     }
 
     @VisibleForTesting
