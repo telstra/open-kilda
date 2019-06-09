@@ -21,20 +21,24 @@ import static org.junit.Assert.assertThat;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
-import org.openkilda.messaging.info.event.IslChangeType;
-import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.IslOneWayLatency;
 import org.openkilda.messaging.info.event.PathNode;
+import org.openkilda.model.Isl;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.error.JsonEncodeException;
 
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
 public class IslStatsBoltTest {
     private static final SwitchId SWITCH1_ID = new SwitchId("00:00:b0:d2:f5:b0:09:34");
+    private static final Switch SWITCH1 = Switch.builder().switchId(SWITCH1_ID).build();
     private static final String SWITCH1_ID_OTSD_FORMAT = SWITCH1_ID.toOtsdFormat();
     private static final int SWITCH1_PORT = 1;
     private static final int PATH1_SEQID = 1;
@@ -42,6 +46,7 @@ public class IslStatsBoltTest {
     private static final PathNode NODE1 = new PathNode(SWITCH1_ID, SWITCH1_PORT, PATH1_SEQID, PATH1_LATENCY);
 
     private static final SwitchId SWITCH2_ID = new SwitchId("00:00:b0:d2:f5:00:5e:18");
+    private static final Switch SWITCH2 = Switch.builder().switchId(SWITCH2_ID).build();
     private static final String SWITCH2_ID_OTSD_FORMAT = SWITCH2_ID.toOtsdFormat();
     private static final int SWITCH2_PORT = 5;
     private static final int PATH2_SEQID = 2;
@@ -49,30 +54,46 @@ public class IslStatsBoltTest {
     private static final PathNode NODE2 = new PathNode(SWITCH2_ID, SWITCH2_PORT, PATH2_SEQID, PATH2_LATENCY);
 
     private static final int LATENCY = 1000;
-    private static final long SPEED = 400L;
-    private static final IslChangeType STATE = IslChangeType.DISCOVERED;
-    private static final long AVAILABLE_BANDWIDTH = 500L;
-    private static final boolean UNDER_MAINTENANCE = false;
-    private static final IslInfoData ISL_INFO_DATA = IslInfoData.builder()
-            .latency(LATENCY)
-            .source(NODE1)
-            .destination(NODE2)
-            .speed(SPEED)
-            .state(STATE)
-            .availableBandwidth(AVAILABLE_BANDWIDTH)
-            .underMaintenance(UNDER_MAINTENANCE)
-            .build();
     private static final long TIMESTAMP = 1507433872L;
 
     private static final String METRIC_PREFIX = "kilda.";
-    private IslStatsBolt statsBolt = new IslStatsBolt(METRIC_PREFIX);
+    private IslStatsBolt statsBolt = new IslStatsBolt(METRIC_PREFIX, null);
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
     @Test
-    public void buildTsdbTuple() throws Exception {
-        List<Object> tsdbTuple = statsBolt.buildTsdbTuple(ISL_INFO_DATA, TIMESTAMP);
+    public void buildTsdbTupleFromIsl() throws JsonEncodeException, IOException {
+        Isl isl = Isl.builder()
+                .srcSwitch(SWITCH1)
+                .srcPort(NODE1.getPortNo())
+                .destSwitch(SWITCH2)
+                .destPort(NODE2.getPortNo())
+                .latency(LATENCY)
+                .build();
+
+        List<Object> tsdbTuple = statsBolt.buildTsdbTuple(isl, LATENCY, TIMESTAMP);
+        assertTsdbTuple(tsdbTuple);
+    }
+
+    @Test
+    public void buildTsdbTupleFromIslOneWayLatency() throws JsonEncodeException, IOException {
+        IslOneWayLatency islOneWayLatency = new IslOneWayLatency(
+                SWITCH1_ID,
+                NODE1.getPortNo(),
+                SWITCH2_ID,
+                NODE2.getPortNo(),
+                123,
+                0L,
+                false,
+                false,
+                false);
+
+        List<Object> tsdbTuple = statsBolt.buildTsdbTuple(islOneWayLatency, LATENCY, TIMESTAMP);
+        assertTsdbTuple(tsdbTuple);
+    }
+
+    private void assertTsdbTuple(List<Object> tsdbTuple) throws java.io.IOException {
         assertThat(tsdbTuple.size(), is(1));
 
         Datapoint datapoint = Utils.MAPPER.readValue(tsdbTuple.get(0).toString(), Datapoint.class);

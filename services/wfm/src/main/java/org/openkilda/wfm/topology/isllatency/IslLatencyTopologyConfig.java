@@ -24,8 +24,8 @@ import com.sabre.oss.conf4j.annotation.Key;
 @Configuration
 public interface IslLatencyTopologyConfig extends AbstractTopologyConfig {
 
-    default String getKafkaTopoDiscoTopic() {
-        return getKafkaTopics().getTopoDiscoTopic();
+    default String getKafkaTopoIslLatencyTopic() {
+        return getKafkaTopics().getTopoIslLatencyTopic();
     }
 
     default String getKafkaOtsdbTopic() {

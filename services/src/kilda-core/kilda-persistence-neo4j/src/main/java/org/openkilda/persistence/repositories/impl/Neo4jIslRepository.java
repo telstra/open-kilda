@@ -33,6 +33,7 @@ import com.google.common.collect.Lists;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.cypher.Filters;
+import org.neo4j.ogm.model.Result;
 
 import java.util.Collection;
 import java.util.List;
@@ -188,6 +189,25 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                 + "RETURN source, link, dest";
 
         return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
+    }
+
+    @Override
+    public boolean updateLatency(
+            SwitchId srcSwitchId, Integer srcPort, SwitchId dstSwitchId, Integer dstPort, long latency) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "src_switch", srcSwitchId,
+                "src_port", srcPort,
+                "dst_switch", dstSwitchId,
+                "dst_port", dstPort,
+                "latency", latency);
+
+        String query = "MATCH "
+                + "(:switch {name: $src_switch})-[link:isl {src_port: $src_port, dst_port: $dst_port}]->"
+                + "(:switch {name: $dst_switch}) "
+                + "SET link.latency = $latency";
+
+        Result result = getSession().query(query, parameters);
+        return result.queryStatistics().containsUpdates();
     }
 
     @Override
