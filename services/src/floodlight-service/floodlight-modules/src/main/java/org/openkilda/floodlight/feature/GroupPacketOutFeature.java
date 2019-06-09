@@ -15,23 +15,28 @@
 
 package org.openkilda.floodlight.feature;
 
+import static org.apache.commons.lang3.StringUtils.containsIgnoreCase;
+
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 
 import net.floodlightcontroller.core.IOFSwitch;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.Optional;
 
-public class GroupPacketOutController extends AbstractFeature {
+public class GroupPacketOutFeature extends AbstractFeature {
 
     public static final String CENTEC_MANUFACTURED = "Centec";
+    public static final String ACTON_MANUFACTURED = "Sonus";
 
     @Override
     public Optional<SpeakerSwitchView.Feature> discover(IOFSwitch sw) {
         Optional<SpeakerSwitchView.Feature> empty = Optional.empty();
-        if (StringUtils.containsIgnoreCase(
-                sw.getSwitchDescription().getManufacturerDescription(), CENTEC_MANUFACTURED)) {
+        if (containsIgnoreCase(sw.getSwitchDescription().getManufacturerDescription(), CENTEC_MANUFACTURED)) {
+            return empty;
+        }
+
+        if (containsIgnoreCase(sw.getSwitchDescription().getManufacturerDescription(), ACTON_MANUFACTURED)) {
             return empty;
         }
 

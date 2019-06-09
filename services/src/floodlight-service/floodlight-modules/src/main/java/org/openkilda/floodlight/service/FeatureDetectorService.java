@@ -19,7 +19,7 @@ import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationPro
 import org.openkilda.floodlight.feature.AbstractFeature;
 import org.openkilda.floodlight.feature.BfdFeature;
 import org.openkilda.floodlight.feature.BfdReviewFeature;
-import org.openkilda.floodlight.feature.GroupPacketOutController;
+import org.openkilda.floodlight.feature.GroupPacketOutFeature;
 import org.openkilda.floodlight.feature.LimitedBurstSizeFeature;
 import org.openkilda.floodlight.feature.MeterFeature;
 import org.openkilda.floodlight.feature.NoviFlowCopyFieldFeature;
@@ -64,7 +64,7 @@ public class FeatureDetectorService implements IService {
                 new MeterFeature(config.isOvsMetersEnabled()),
                 new BfdFeature(),
                 new BfdReviewFeature(),
-                new GroupPacketOutController(),
+                new GroupPacketOutFeature(),
                 new ResetCountsFlagFeature(),
                 new LimitedBurstSizeFeature(),
                 new NoviFlowCopyFieldFeature());

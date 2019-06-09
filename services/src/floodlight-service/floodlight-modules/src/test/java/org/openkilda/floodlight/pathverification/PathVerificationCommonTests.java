@@ -30,8 +30,11 @@ import static org.openkilda.floodlight.pathverification.PathVerificationService.
 import static org.openkilda.floodlight.pathverification.PathVerificationService.SWITCH_T0_OPTIONAL_TYPE;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.SWITCH_T1_OPTIONAL_TYPE;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.UDP_HEADER_SIZE;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.calculateRoundTripLatency;
 
 import org.openkilda.floodlight.FloodlightTestCase;
+import org.openkilda.floodlight.service.FeatureDetectorService;
+import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -53,17 +56,23 @@ import org.projectfloodlight.openflow.types.OFPort;
 import java.net.InetSocketAddress;
 
 public class PathVerificationCommonTests  extends FloodlightTestCase {
-    private PathVerificationService pvs;
-    private IOFSwitch sw;
-    private byte[] timestampT0 = new byte[] {
+    private static final SwitchId switchId = new SwitchId(1);
+    private static final int port = 1;
+    private static final byte[] timestampT0InBytes = new byte[] {
             0x07, 0x5b, (byte) 0xcd, 0x15,         // 123456789 seconds
             0x3a, (byte) 0xde, 0x68, (byte) 0xb1}; // 987654321 nanoseconds
+    private static final long timestampT0 = PathVerificationService.noviflowTimestamp(timestampT0InBytes);
+    private static final long timestampT1 = 999999999_999999999L;
+
+    private PathVerificationService pvs;
+    private IOFSwitch sw;
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
         FloodlightModuleContext fmc = new FloodlightModuleContext();
         fmc.addService(IFloodlightProviderService.class, mockFloodlightProvider);
+        fmc.addService(FeatureDetectorService.class, featureDetectorService);
         fmc.addService(IOFSwitchService.class, getMockSwitchService());
 
         pvs = new PathVerificationService();
@@ -87,7 +96,20 @@ public class PathVerificationCommonTests  extends FloodlightTestCase {
 
     @Test
     public void testNoviflowTimstampToLong() {
-        assertEquals(123456789_987654321L, PathVerificationService.noviflowTimestamp(timestampT0));
+        assertEquals(123456789_987654321L, PathVerificationService.noviflowTimestamp(timestampT0InBytes));
+    }
+
+    @Test
+    public void testCalcLatencyWithTransmitAndReceiveTimestamps() {
+        long calculatedLatency = calculateRoundTripLatency(switchId, port, timestampT0, timestampT1);
+        assertEquals(876543210_012345678L, calculatedLatency);
+    }
+
+    @Test
+    public void testCalcLatencyWithIncompleteTimestamps() {
+        assertEquals(-1, calculateRoundTripLatency(switchId, port, timestampT0, -1));
+        assertEquals(-1, calculateRoundTripLatency(switchId, port, -1, timestampT1));
+        assertEquals(-1, calculateRoundTripLatency(switchId, port, -1, -1));
     }
 
     @Test
@@ -155,6 +177,6 @@ public class PathVerificationCommonTests  extends FloodlightTestCase {
         IPv4 ipv4 = (IPv4) ethernet.getPayload();
         UDP udp = (UDP) ipv4.getPayload();
 
-        return new DiscoveryPacket((Data) udp.getPayload());
+        return new DiscoveryPacket((Data) udp.getPayload(), true);
     }
 }
