@@ -152,6 +152,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                                                          + (LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES * 8);
 
     public static final byte[] ORGANIZATIONALLY_UNIQUE_IDENTIFIER = new byte[] {0x00, 0x26, (byte) 0xe1};
+    public static final int MILLION = 1_000_000;
 
     private IKafkaProducerService producerService;
     private IOFSwitchService switchService;
@@ -569,19 +570,17 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
 
     private void handleDiscoveryPacket(OfInput input, IOFSwitch destSwitch, DiscoveryPacketData data) {
         OFPort inPort = OFMessageUtils.getInPort((OFPacketIn) input.getMessage());
-        long latency = measureLatency(input, data.getTimestamp());
-        logIsl.info("link discovered: {}-{} ===( {} ms )===> {}-{} id:{}",
-                data.getRemoteSwitchId(), data.getRemotePort(), latency, input.getDpId(), inPort, data.getPacketId());
+        logIsl.info("link discovered: {}-{} ===> {}-{} id:{}",
+                data.getRemoteSwitchId(), data.getRemotePort(), input.getDpId(), inPort, data.getPacketId());
 
         // this discovery packet was sent from remote switch/port to received switch/port
         // so the link direction is from remote switch/port to received switch/port
         PathNode source = new PathNode(new SwitchId(data.getRemoteSwitchId().getLong()),
-                data.getRemotePort().getPortNumber(), 0, latency);
+                data.getRemotePort().getPortNumber(), 0);
         PathNode destination = new PathNode(new SwitchId(input.getDpId().getLong()), inPort.getPortNumber(), 1);
         long speed = getSwitchPortSpeed(destSwitch, inPort);
 
         IslInfoData path = IslInfoData.builder()
-                .latency(latency)
                 .source(source)
                 .destination(destination)
                 .speed(speed)
@@ -640,10 +639,9 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     }
 
     private void sendLatency(InfoData latencyData, SwitchId switchId) {
-        // will be uncommented in next commit
-        // InfoMessage infoMessage = new InfoMessage(
-        //        latencyData, System.currentTimeMillis(), CorrelationContext.getId(), null, region);
-        // producerService.sendMessageAndTrack(islLatencyTopic, switchId.toString(), infoMessage);
+        InfoMessage infoMessage = new InfoMessage(
+                latencyData, System.currentTimeMillis(), CorrelationContext.getId(), null, region);
+        producerService.sendMessageAndTrack(islLatencyTopic, switchId.toString(), infoMessage);
     }
 
     @VisibleForTesting
@@ -714,7 +712,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     private long measureLatency(OfInput input, long sendTime) {
         long latency = -1;
         if (sendTime != 0) {
-            latency = input.getReceiveTime() - sendTime;
+            latency = (input.getReceiveTime() - sendTime) * MILLION; // convert from milliseconds to nanoseconds
             if (latency < 0L) {
                 latency = -1;
             }
