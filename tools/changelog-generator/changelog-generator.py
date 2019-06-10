@@ -27,6 +27,8 @@ def generate_topic_list(labels):
             r.add('docs')
         elif l == 'area/testing':
             r.add('tests')
+        elif l == 'C/NEO4J':
+            r.add('neoj4')
         elif l in ['area/storm',
                    'C/STATS',
                    'C/EVENT',
