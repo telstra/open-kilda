@@ -213,13 +213,17 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public List<Long> deleteSwitchRules(SwitchId switchId, Integer inPort, Integer inVlan, Integer outPort) {
+    public List<Long> deleteSwitchRules(SwitchId switchId, Integer inPort, Integer inVlan, String encapsulationType,
+                                        Integer outPort) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/switches/{switch_id}/rules");
         if (inPort != null) {
             uriBuilder.queryParam("in-port", inPort);
         }
         if (inVlan != null) {
             uriBuilder.queryParam("in-vlan", inVlan);
+        }
+        if (encapsulationType != null) {
+            uriBuilder.queryParam("encapsulation-type", encapsulationType);
         }
         if (outPort != null) {
             uriBuilder.queryParam("out-port", outPort);
