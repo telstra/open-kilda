@@ -768,13 +768,20 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public List<Long> deleteDefaultRules(final DatapathId dpid) throws SwitchOperationException {
         List<Long> deletedRules = deleteRulesWithCookie(dpid, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
-                VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE);
+                VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
+                ROUND_TRIP_LATENCY_RULE_COOKIE);
 
         try {
             deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue());
             deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).getValue());
         } catch (UnsupportedSwitchOperationException e) {
             logger.info("Skip meters deletion from switch {} due to lack of meters support", dpid);
+        }
+
+        try {
+            deleteGroup(lookupSwitch(dpid), ROUND_TRIP_LATENCY_GROUP_ID);
+        } catch (OfInstallException e) {
+            logger.info("Couldn't delete round trip latency group from switch {}. {}", dpid, e.getOfMessage());
         }
 
         return deletedRules;
