@@ -7,6 +7,8 @@
 -  [#2402](https://github.com/telstra/open-kilda/pull/2402) Add a VxLAN resource pool. (Issue: [#647](https://github.com/telstra/open-kilda/issues/647)) [**neo4j**]
 -  [#2406](https://github.com/telstra/open-kilda/pull/2406) Added new Encapslation model class and Extended Encapsulation Enum [**storm-topologies**]
 
+### Bug Fixes:
+-  [#2475](https://github.com/telstra/open-kilda/pull/2475) Exclude switch object from switch features equals and hashCode
 
 ### Improvements:
 -  [#2470](https://github.com/telstra/open-kilda/pull/2470) Add round trip rule into test [**tests**]
