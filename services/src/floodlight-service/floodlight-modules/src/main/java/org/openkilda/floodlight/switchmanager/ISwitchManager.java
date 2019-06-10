@@ -89,6 +89,14 @@ public interface ISwitchManager extends IFloodlightService {
     void installBfdCatchFlow(final DatapathId dpid) throws SwitchOperationException;
 
     /**
+     * Installs the default round trip latency rule. Only applicable for NoviFlow switches.
+     *
+     * @param dpid datapathId of switch
+     * @throws SwitchOperationException in case of errors
+     */
+    void installRoundTripLatencyFlow(final DatapathId dpid) throws SwitchOperationException;
+
+    /**
      * Installs custom drop rule .. ie cookie, priority, match
      *
      * @param dpid datapathId of switch

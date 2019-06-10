@@ -20,7 +20,6 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
-import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
@@ -42,14 +41,11 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 
 @Slf4j
-public class RerouteBolt extends AbstractBolt {
+public class RerouteBolt extends AbstractBolt implements MessageSender {
 
     public static final String FLOW_ID_FIELD = "flow-id";
     public static final String THROTTLING_DATA_FIELD = "throttling-data";
@@ -79,43 +75,26 @@ public class RerouteBolt extends AbstractBolt {
     protected void handleInput(Tuple tuple) throws PipelineException {
         CommandMessage message = pullValue(tuple, MessageTranslator.FIELD_ID_PAYLOAD, CommandMessage.class);
         CommandData commandData = message.getData();
-
+        String correlationId = message.getCorrelationId();
         if (commandData instanceof RerouteAffectedFlows) {
-            RerouteAffectedFlows rerouteAffectedFlows = (RerouteAffectedFlows) commandData;
-            PathNode pathNode = rerouteAffectedFlows.getPathNode();
-            Collection<FlowPath> affectedFlowPaths
-                    = rerouteService.getAffectedFlowPaths(pathNode.getSwitchId(), pathNode.getPortNo());
-
-            // swapping affected primary paths with available protected
-            List<FlowPath> pathsForSwapping = rerouteService.getPathsForSwapping(affectedFlowPaths);
-            emitPathSwapCommands(tuple, pathsForSwapping, message.getCorrelationId(),
-                    rerouteAffectedFlows.getReason());
-
-            Map<Flow, Set<PathId>> flowsForRerouting = rerouteService.groupFlowsForRerouting(affectedFlowPaths);
-            for (Entry<Flow, Set<PathId>> entry : flowsForRerouting.entrySet()) {
-
-                emitRerouteCommand(tuple, message.getCorrelationId(), entry.getKey(), entry.getValue(),
-                        rerouteAffectedFlows.getReason());
-            }
-
+            rerouteService.rerouteAffectedFlows(this, correlationId, (RerouteAffectedFlows) commandData);
         } else if (commandData instanceof RerouteInactiveFlows) {
-            RerouteInactiveFlows rerouteInactiveFlows = (RerouteInactiveFlows) commandData;
-            Map<Flow, Set<PathId>> flowsForRerouting = rerouteService.getInactiveFlowsForRerouting();
-
-            for (Entry<Flow, Set<PathId>> entry : flowsForRerouting.entrySet()) {
-
-                emitRerouteCommand(tuple, message.getCorrelationId(), entry.getKey(), entry.getValue(),
-                        rerouteInactiveFlows.getReason());
-            }
-
+            rerouteService.rerouteInactiveFlows(this, correlationId, (RerouteInactiveFlows) commandData);
         } else {
             log.warn("Skip undefined message type {}", message);
         }
 
     }
 
-    private void emitRerouteCommand(Tuple tuple, String correlationId, Flow flow, Set<PathId> paths, String reason) {
-        getOutput().emit(tuple, new Values(flow.getFlowId(),
+    /**
+     * Emit reroute command for consumer.
+     * @param correlationId correlation id to pass through
+     * @param flow affected flow
+     * @param paths affected paths
+     * @param reason inital reason of reroute
+     */
+    public void emitRerouteCommand(String correlationId, Flow flow, Set<PathId> paths, String reason) {
+        getOutput().emit(getCurrentTuple(), new Values(flow.getFlowId(),
                 new FlowThrottlingData(correlationId, flow.getPriority(), flow.getTimeCreate(), paths)));
 
         log.warn("Flow {} reroute command message sent with correlationId {}, reason \"{}\"",
@@ -123,16 +102,20 @@ public class RerouteBolt extends AbstractBolt {
 
     }
 
-    private void emitPathSwapCommands(Tuple tuple, Collection<FlowPath> paths,
-                                     String correlationId, String reason) {
-        for (FlowPath path : paths) {
-            FlowPathSwapRequest request = new FlowPathSwapRequest(path.getFlow().getFlowId(), path.getPathId());
-            getOutput().emit(StreamType.SWAP.toString(), tuple, new Values(correlationId,
-                    new CommandMessage(request, System.currentTimeMillis(), correlationId)));
+    /**
+     * Emit swap command for consumer.
+     *
+     * @param correlationId correlation id to pass through
+     * @param path affected paths
+     * @param reason inital reason of reroute
+     */
+    public void emitPathSwapCommand(String correlationId, FlowPath path, String reason) {
+        FlowPathSwapRequest request = new FlowPathSwapRequest(path.getFlow().getFlowId(), path.getPathId());
+        getOutput().emit(StreamType.SWAP.toString(), getCurrentTuple(), new Values(correlationId,
+                new CommandMessage(request, System.currentTimeMillis(), correlationId)));
 
-            log.warn("Flow {} swap path command message sent with correlationId {}, reason \"{}\"",
-                    path.getFlow().getFlowId(), correlationId, reason);
-        }
+        log.warn("Flow {} swap path command message sent with correlationId {}, reason \"{}\"",
+                path.getFlow().getFlowId(), correlationId, reason);
     }
 
     @Override

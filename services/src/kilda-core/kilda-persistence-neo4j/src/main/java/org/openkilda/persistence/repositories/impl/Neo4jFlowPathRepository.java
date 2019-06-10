@@ -22,7 +22,6 @@ import static org.openkilda.persistence.repositories.impl.Neo4jFlowRepository.FL
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
@@ -215,11 +214,10 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     }
 
     @Override
-    public Collection<FlowPath> findActiveAffectedPaths(SwitchId switchId, int port) {
+    public Collection<FlowPath> findAffectedPaths(SwitchId switchId, int port) {
         Map<String, Object> parameters = ImmutableMap.of(
                 "switch_id", switchIdConverter.toGraphProperty(switchId),
-                "port", port,
-                "path_status", statusConverter.toGraphProperty(FlowPathStatus.ACTIVE));
+                "port", port);
 
         Set<String> pathsId = new HashSet<>();
         getSession().query(String.class,
@@ -227,7 +225,6 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
                         + "WHERE ((src.name = $switch_id AND ps.src_port = $port) "
                         + "OR (dst.name = $switch_id AND ps.dst_port = $port)) "
                         + "MATCH (fp:flow_path)-[:owns]-(ps) "
-                        + "WHERE fp.status = $path_status OR fp.status IS NULL "
                         + "RETURN fp.path_id", parameters).forEach(pathsId::add);
 
         if (pathsId.isEmpty()) {

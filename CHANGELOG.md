@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.22.0 (06/06/2019)
+
+### Features:
+-  [#2322](https://github.com/telstra/open-kilda/pull/2322) Create a config with default encapsulation type in Neo4j. (Issues: [#2427](https://github.com/telstra/open-kilda/issues/2427) [#647](https://github.com/telstra/open-kilda/issues/647)) [**api**][**northbound**][**storm-topologies**]
+-  [#2327](https://github.com/telstra/open-kilda/pull/2327) RTL: Part 2. Added round trip latency default rule (Issue: [#580](https://github.com/telstra/open-kilda/issues/580)) [**floodlight**]
+-  [#2467](https://github.com/telstra/open-kilda/pull/2467) Add round trip latency rule to install/delete rules API (Issue: [#580](https://github.com/telstra/open-kilda/issues/580)) [**floodlight**]
+-  [#2328](https://github.com/telstra/open-kilda/pull/2328) Pinned flow (Issue: [#2334](https://github.com/telstra/open-kilda/issues/2334)) [**api**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#2390](https://github.com/telstra/open-kilda/pull/2390) Fix orphan meter resources [**storm-topologies**]
+
+### Improvements:
+-  [#2451](https://github.com/telstra/open-kilda/pull/2451) add tests for a pinned flow [**tests**]
+-  [#2427](https://github.com/telstra/open-kilda/pull/2427) Add flow allocate protected path field migration 
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.21.2...v1.22.0).
+
+### Affected Components:
+reroute, nbworker, flow, nb, neo4j, fl
+
+### Upgrade notes:
+
+If you have an older version of Kilda installed, then you must migrate the data stored in Neo4j
+before you deploy and start this version. You should execute migration scripts before starting of deployment:
+ - [1.3 migration-script.xml](https://github.com/telstra/open-kilda/blob/v1.22.0/services/neo4j/migrations/1.3-add-allocate-protected-path-field/1-add-allocate-protected-path-field-changelog.xml)
+ - [1.4 migration-script.xml](https://github.com/telstra/open-kilda/blob/v1.22.0/services/neo4j/migrations/1.4-kilda-configuration/1-update-constraints-changelog.xml)
+
+In case of any issues you are able to rollback 1.4 changes using [1.4 rollback-script.cql](https://github.com/telstra/open-kilda/blob/v1.22.0/services/neo4j/migrations/1.4-kilda-configuration/rollback.cql).
+For migration 1.3 you must make a database backup to rollback changes.
+
+---
+
 ## v1.21.2 (05/06/2019)
 ### Improvements:
 -  [#2397](https://github.com/telstra/open-kilda/pull/2397) Use same transit VLAN for paths in both directions (Issue: [#2386](https://github.com/telstra/open-kilda/issues/2386)) [**storm-topologies**]

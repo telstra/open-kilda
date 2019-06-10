@@ -25,6 +25,8 @@ import org.projectfloodlight.openflow.types.OFPort;
 class DiscoveryPacketData {
     private long timestamp;
     private int pathOrdinal;
+    private long switchT0;
+    private long switchT1;
     private DatapathId remoteSwitchId;
     private OFPort remotePort;
     private Long packetId;

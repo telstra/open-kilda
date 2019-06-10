@@ -78,6 +78,8 @@ public class PathSegment implements Serializable {
 
     private Long latency;
 
+    private boolean failed = false;
+
     @Builder(toBuilder = true)
     public PathSegment(@NonNull FlowPath path, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
                        int srcPort, int destPort, Long latency) {
@@ -87,5 +89,19 @@ public class PathSegment implements Serializable {
         this.srcPort = srcPort;
         this.destPort = destPort;
         this.latency = latency;
+    }
+
+    /**
+     * Checks whether endpoint belongs to segment or not.
+     * @param switchId target switch
+     * @param port target port
+     * @return result of check
+     */
+    public boolean containsNode(SwitchId switchId, int port) {
+        if (switchId == null) {
+            throw new IllegalArgumentException("Switch id must be not null");
+        }
+        return  (switchId.equals(srcSwitch.getSwitchId()) && port == srcPort)
+               || (switchId.equals(destSwitch.getSwitchId()) && port == destPort);
     }
 }

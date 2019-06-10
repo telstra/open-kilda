@@ -59,6 +59,7 @@ public abstract class FlowMapper {
     @Mapping(source = "status", target = "state")
     @Mapping(source = "timeModify", target = "lastUpdated")
     @Mapping(source = "timeCreate", target = "createdTime")
+    @Mapping(source = "pinned", target = "pinned")
     public abstract FlowDto map(UnidirectionalFlow flow);
 
     @Mapping(source = "srcPort", target = "sourcePort")
@@ -250,6 +251,7 @@ public abstract class FlowMapper {
                 .priority(flow.getPriority())
                 .timeCreate(map(flow.getCreatedTime()))
                 .timeModify(map(flow.getLastUpdated()))
+                .pinned(flow.isPinned())
                 .build();
     }
 }

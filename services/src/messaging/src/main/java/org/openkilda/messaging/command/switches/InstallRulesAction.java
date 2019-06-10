@@ -31,6 +31,9 @@ public enum InstallRulesAction {
     // Install BFD catch rule
     INSTALL_BFD_CATCH,
 
+    // Install Round Trip Latency rule
+    INSTALL_ROUND_TRIP_LATENCY,
+
     // Install all default rules (ie a combination of the above)
     INSTALL_DEFAULTS;
 }

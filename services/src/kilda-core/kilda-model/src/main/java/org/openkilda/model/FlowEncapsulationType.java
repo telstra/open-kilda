@@ -19,6 +19,7 @@ package org.openkilda.model;
  * Represents flow encapsulation types.
  */
 public enum FlowEncapsulationType {
-    TRANSIT_VLAN
+    TRANSIT_VLAN,
+    VXLAN
 }
 

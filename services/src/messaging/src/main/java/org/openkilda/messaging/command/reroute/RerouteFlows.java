@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.reroute;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.info.event.PathNode;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -32,12 +33,13 @@ public class RerouteFlows extends CommandData {
     @JsonProperty("reason")
     private String reason;
 
-    @JsonCreator
-    public RerouteFlows(@NonNull @JsonProperty("reason") String reason) {
-        this.reason = reason;
-    }
+    @JsonProperty("path_node")
+    private PathNode pathNode;
 
-    public String getReason() {
-        return reason;
+    @JsonCreator
+    public RerouteFlows(@NonNull @JsonProperty("path_node") PathNode pathNode,
+                        @NonNull @JsonProperty("reason") String reason) {
+        this.reason = reason;
+        this.pathNode = pathNode;
     }
 }
