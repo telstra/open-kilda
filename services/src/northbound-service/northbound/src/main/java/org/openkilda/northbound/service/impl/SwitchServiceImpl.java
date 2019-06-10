@@ -33,6 +33,7 @@ import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.command.switches.ValidateRulesRequest;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
+import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.ConnectModeResponse;
@@ -250,8 +251,17 @@ public class SwitchServiceImpl implements SwitchService {
         String requestId = RequestCorrelationId.getId();
         CommandMessage dumpCommand = new CommandMessage(
                 new DumpMetersRequest(switchId), System.currentTimeMillis(), requestId);
+
         return messagingChannel.sendAndGet(floodlightTopic, dumpCommand)
-                .thenApply(SwitchMeterEntries.class::cast);
+                .thenApply(infoData -> {
+                    if (infoData instanceof SwitchMeterEntries) {
+                        return (SwitchMeterEntries) infoData;
+                    } else if (infoData instanceof SwitchMeterUnsupported) {
+                        return SwitchMeterEntries.builder().switchId(switchId).build();
+                    } else {
+                        throw new IllegalArgumentException("Unhandled meters response for switch " + switchId);
+                    }
+                });
     }
 
     @Override

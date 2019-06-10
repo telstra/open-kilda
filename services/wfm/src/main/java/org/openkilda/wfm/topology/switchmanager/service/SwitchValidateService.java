@@ -28,6 +28,8 @@ public interface SwitchValidateService {
 
     void handleMeterEntriesResponse(String key, SwitchMeterEntries data);
 
+    void handleMetersUnsupportedResponse(String key);
+
     void handleTaskTimeout(String key);
 
     void handleTaskError(String key, ErrorMessage message);

@@ -13,24 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.dto.v1.switches;
+package org.openkilda.messaging.info.meter;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-@JsonInclude(Include.NON_NULL)
-public class SwitchValidationResult {
-
-    @JsonProperty("rules")
-    private RulesValidationDto rules;
-
-    @JsonProperty("meters")
-    private MetersValidationDto meters;
+public class SwitchMeterUnsupported extends SwitchMeterData {
 }
