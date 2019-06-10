@@ -29,6 +29,7 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.v1.switches.DeleteMeterResult;
@@ -152,6 +153,7 @@ public class SwitchController extends BaseController {
             @RequestParam(value = "cookie", required = false) Optional<Long> cookie,
             @RequestParam(value = "in-port", required = false) Optional<Integer> inPort,
             @RequestParam(value = "in-vlan", required = false) Optional<Integer> inVlan,
+            @RequestParam(value = "encapsulation-type", required = false) Optional<String> encapsulationType,
             @RequestParam(value = "priority", required = false) Optional<Integer> priority,
             @RequestParam(value = "out-port", required = false) Optional<Integer> outPort) {
 
@@ -159,12 +161,18 @@ public class SwitchController extends BaseController {
 
         //TODO: "priority" can't be used as a standalone criterion - because currently it's ignored in OFFlowDelete.
         if (cookie.isPresent() || inPort.isPresent() || inVlan.isPresent() /*|| priority.isPresent()*/
-                || outPort.isPresent()) {
+                || outPort.isPresent() || encapsulationType.isPresent()) {
             if (deleteAction.isPresent()) {
                 throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
                         PARAMETERS_INVALID, "Criteria parameters and delete-action are both provided.",
                         "Either criteria parameters or delete-action should be provided.");
 
+            }
+
+            if (inVlan.isPresent() != encapsulationType.isPresent()) {
+                throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
+                        PARAMETERS_INVALID, "Encapsulation criteria is not full.",
+                        "In VLAN and encapsulation type should be provided.");
             }
 
             DeleteRulesCriteriaBuilder builder = DeleteRulesCriteria.builder();
@@ -173,6 +181,16 @@ public class SwitchController extends BaseController {
             inVlan.ifPresent(builder::encapsulationId);
             priority.ifPresent(builder::priority);
             outPort.ifPresent(builder::outPort);
+
+            if (encapsulationType.isPresent()) {
+                try {
+                    builder.encapsulationType(FlowEncapsulationType.valueOf(encapsulationType.get().toUpperCase()));
+                } catch (IllegalArgumentException e) {
+                    throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
+                            PARAMETERS_INVALID, "Encapsulation type is not right.",
+                            "The correct encapsulation type should be provided.");
+                }
+            }
 
             result = switchService.deleteRules(switchId, builder.build());
         } else {
