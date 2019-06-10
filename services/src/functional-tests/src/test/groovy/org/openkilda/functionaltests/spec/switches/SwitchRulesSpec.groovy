@@ -466,7 +466,8 @@ class SwitchRulesSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         when: "Delete switch rules by #data.description"
-        def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan, data.outPort)
+        def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan,
+                data.encapsulationType, data.outPort)
 
         then: "The requested rules are really deleted"
         deletedRules.size() == 1
@@ -482,33 +483,37 @@ class SwitchRulesSpec extends BaseSpecification {
 
         where:
         flow << [buildFlow()] * 4
-        data << [[description : "inPort",
-                  switch      : srcSwitch,
-                  defaultRules: srcSwDefaultRules,
-                  inPort      : flow.source.portNumber,
-                  inVlan      : null,
-                  outPort     : null
+        data << [[description      : "inPort",
+                  switch           : srcSwitch,
+                  defaultRules     : srcSwDefaultRules,
+                  inPort           : flow.source.portNumber,
+                  inVlan           : null,
+                  encapsulationType: null,
+                  outPort          : null
                  ],
-                 [description : "inVlan",
-                  switch      : srcSwitch,
-                  defaultRules: srcSwDefaultRules,
-                  inPort      : null,
-                  inVlan      : flow.source.vlanId,
-                  outPort     : null
+                 [description      : "inVlan",
+                  switch           : srcSwitch,
+                  defaultRules     : srcSwDefaultRules,
+                  inPort           : null,
+                  inVlan           : flow.source.vlanId,
+                  encapsulationType: "TRANSIT_VLAN",
+                  outPort          : null
                  ],
-                 [description : "inPort and inVlan",
-                  switch      : srcSwitch,
-                  defaultRules: srcSwDefaultRules,
-                  inPort      : flow.source.portNumber,
-                  inVlan      : flow.source.vlanId,
-                  outPort     : null
+                 [description      : "inPort and inVlan",
+                  switch           : srcSwitch,
+                  defaultRules     : srcSwDefaultRules,
+                  inPort           : flow.source.portNumber,
+                  inVlan           : flow.source.vlanId,
+                  encapsulationType: "TRANSIT_VLAN",
+                  outPort          : null
                  ],
-                 [description : "outPort",
-                  switch      : dstSwitch,
-                  defaultRules: dstSwDefaultRules,
-                  inPort      : null,
-                  inVlan      : null,
-                  outPort     : flow.destination.portNumber
+                 [description      : "outPort",
+                  switch           : dstSwitch,
+                  defaultRules     : dstSwDefaultRules,
+                  inPort           : null,
+                  inVlan           : null,
+                  encapsulationType: null,
+                  outPort          : flow.destination.portNumber
                  ]
         ]
     }
@@ -521,7 +526,8 @@ class SwitchRulesSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         when: "Delete switch rules by non-existing #data.description"
-        def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan, data.outPort)
+        def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan,
+                data.encapsulationType, data.outPort)
 
         then: "All rules are kept intact"
         deletedRules.size() == 0
@@ -531,33 +537,37 @@ class SwitchRulesSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
 
         where:
-        data << [[description : "inPort",
-                  switch      : srcSwitch,
-                  defaultRules: srcSwDefaultRules,
-                  inPort      : Integer.MAX_VALUE - 1,
-                  inVlan      : null,
-                  outPort     : null
+        data << [[description      : "inPort",
+                  switch           : srcSwitch,
+                  defaultRules     : srcSwDefaultRules,
+                  inPort           : Integer.MAX_VALUE - 1,
+                  inVlan           : null,
+                  encapsulationType: null,
+                  outPort          : null
                  ],
-                 [description : "inVlan",
-                  switch      : srcSwitch,
-                  defaultRules: srcSwDefaultRules,
-                  inPort      : null,
-                  inVlan      : 4095,
-                  outPort     : null
+                 [description      : "inVlan",
+                  switch           : srcSwitch,
+                  defaultRules     : srcSwDefaultRules,
+                  inPort           : null,
+                  inVlan           : 4095,
+                  encapsulationType: "TRANSIT_VLAN",
+                  outPort          : null
                  ],
-                 [description : "inPort and inVlan",
-                  switch      : srcSwitch,
-                  defaultRules: srcSwDefaultRules,
-                  inPort      : Integer.MAX_VALUE - 1,
-                  inVlan      : 4095,
-                  outPort     : null
+                 [description      : "inPort and inVlan",
+                  switch           : srcSwitch,
+                  defaultRules     : srcSwDefaultRules,
+                  inPort           : Integer.MAX_VALUE - 1,
+                  inVlan           : 4095,
+                  encapsulationType: "TRANSIT_VLAN",
+                  outPort          : null
                  ],
-                 [description : "outPort",
-                  switch      : dstSwitch,
-                  defaultRules: dstSwDefaultRules,
-                  inPort      : null,
-                  inVlan      : null,
-                  outPort     : Integer.MAX_VALUE - 1
+                 [description      : "outPort",
+                  switch           : dstSwitch,
+                  defaultRules     : dstSwDefaultRules,
+                  inPort           : null,
+                  inVlan           : null,
+                  encapsulationType: null,
+                  outPort          : Integer.MAX_VALUE - 1
                  ]
         ]
     }

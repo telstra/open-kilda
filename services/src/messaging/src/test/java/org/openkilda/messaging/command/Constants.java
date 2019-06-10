@@ -32,6 +32,7 @@ public final class Constants {
     public static final long meterId = 1;
     public static final long burstSize = 1024;
     public static final OutputVlanType outputVlanType = OutputVlanType.REPLACE;
+    public static final FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
 
     private Constants() {
         throw new UnsupportedOperationException();
