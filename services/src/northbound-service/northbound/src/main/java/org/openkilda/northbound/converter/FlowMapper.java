@@ -22,6 +22,7 @@ import org.openkilda.messaging.info.flow.UniFlowPingResponse;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.Ping;
+import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -35,6 +36,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowPathV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -97,6 +99,22 @@ public interface FlowMapper {
 
     @Mapping(target = "latency", source = "meters.networkLatency")
     UniFlowPingOutput toUniFlowPing(UniFlowPingResponse response);
+
+    @Mapping(target = "flowId", source = "flowId")
+    @Mapping(target = "source",
+            expression = "java(new FlowEndpointV2(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
+    @Mapping(target = "destination",
+            expression = "java(new FlowEndpointV2(f.getDestinationSwitch(), f.getDestinationPort(), "
+                    + "f.getDestinationVlan()))")
+    SwapFlowPayload toSwapOutput(FlowDto f);
+
+    @Mapping(target = "sourceSwitch", expression = "java(request.getSource().getSwitchId())")
+    @Mapping(target = "destinationSwitch", expression = "java(request.getDestination().getSwitchId())")
+    @Mapping(target = "sourcePort", expression = "java(request.getSource().getPortNumber())")
+    @Mapping(target = "destinationPort", expression = "java(request.getDestination().getPortNumber())")
+    @Mapping(target = "sourceVlan", expression = "java(request.getSource().getVlanId())")
+    @Mapping(target = "destinationVlan", expression = "java(request.getDestination().getVlanId())")
+    SwapFlowDto toSwapFlowDto(SwapFlowPayload request);
 
     /**
      * Convert {@link FlowState} to {@link String}.

@@ -41,6 +41,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 @ComponentScan(
         basePackages = {
                 "org.openkilda.northbound.controller.v1",
+                "org.openkilda.northbound.controller.v2",
                 "org.openkilda.northbound.converter",
                 "org.openkilda.northbound.service",
                 "org.openkilda.northbound.utils"

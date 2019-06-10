@@ -17,6 +17,7 @@ package org.openkilda.wfm.share.mappers;
 
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
@@ -252,6 +253,27 @@ public abstract class FlowMapper {
                 .timeCreate(map(flow.getCreatedTime()))
                 .timeModify(map(flow.getLastUpdated()))
                 .pinned(flow.isPinned())
+                .build();
+    }
+
+    /**
+     * Builds a flow from swap flow dto.
+     *
+     * @param flow a swap flow dto.
+     * @return a flow.
+     */
+    public Flow buildFlow(SwapFlowDto flow) {
+        Switch srcSwitch = Switch.builder().switchId(flow.getSourceSwitch()).build();
+        Switch dstSwitch = Switch.builder().switchId(flow.getDestinationSwitch()).build();
+
+        return Flow.builder()
+                .flowId(flow.getFlowId())
+                .srcSwitch(srcSwitch)
+                .srcPort(flow.getSourcePort())
+                .srcVlan(flow.getSourceVlan())
+                .destSwitch(dstSwitch)
+                .destPort(flow.getDestinationPort())
+                .destVlan(flow.getDestinationVlan())
                 .build();
     }
 }

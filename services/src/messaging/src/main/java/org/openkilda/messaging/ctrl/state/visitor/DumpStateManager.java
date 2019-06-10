@@ -26,6 +26,7 @@ import org.openkilda.messaging.ctrl.state.ResorceCacheBoltState;
 import org.openkilda.messaging.ctrl.state.TransactionBoltState;
 
 import java.util.List;
+
 /**
  * DumpStateManager is manager from visitor pattern. Main goal is avoid using instanceof on list
  * of AbstractDumpState to check type.
@@ -40,6 +41,11 @@ public class DumpStateManager {
 
     private DumpStateVisitor addVisitor = new DumpStateVisitor(this);
 
+    /**
+     * Gets a dump state manager from responses list.
+     * @param responses a responses.
+     * @return the dump state manager.
+     */
     public static DumpStateManager fromResponsesList(List<CtrlResponse> responses) {
         DumpStateManager dumpStateManager = new DumpStateManager();
         responses.forEach(

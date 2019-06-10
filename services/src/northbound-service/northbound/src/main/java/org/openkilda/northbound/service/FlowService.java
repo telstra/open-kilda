@@ -32,6 +32,7 @@ import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -196,4 +197,12 @@ public interface FlowService {
     CompletableFuture<List<FlowEventPayload>> listFlowEvents(String flowId,
                                                              long timestampFrom,
                                                              long timestampTo);
+
+    /**
+     * Swaps a flow endpoint.
+     *
+     * @param input a payload.
+     * @return the list of updated flows.
+     */
+    CompletableFuture<SwapFlowEndpointPayload> swapFlowEndpoint(SwapFlowEndpointPayload input);
 }

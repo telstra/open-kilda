@@ -67,6 +67,7 @@ public class NorthboundReplyBolt extends BaseRichBolt {
 
                 case CRUD_BOLT:
                 case ERROR_BOLT:
+                case FLOW_OPERATION_BOLT:
                     logger.debug("Flow response: {}={}, component={}, stream={}, message={}",
                             Utils.CORRELATION_ID, message.getCorrelationId(), componentId, streamId, message);
 

@@ -28,6 +28,7 @@ import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowReadRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
+import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -37,6 +38,7 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
+import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
@@ -50,6 +52,9 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.openkilda.northbound.messaging.MessagingChannel;
 
 import org.springframework.stereotype.Component;
@@ -67,12 +72,17 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class TestMessageMock implements MessagingChannel {
     static final String FLOW_ID = "ff:00";
+    static final String SECOND_FLOW_ID = "second_flow";
     static final SwitchId SWITCH_ID = new SwitchId(FLOW_ID);
+    static final SwitchId SECOND_SWITCH_ID = new SwitchId("ff:01");
     static final String ERROR_FLOW_ID = "error-flow";
     static final String TEST_SWITCH_ID = "ff:01";
     static final long TEST_SWITCH_RULE_COOKIE = 1L;
     static final FlowEndpointPayload flowEndpoint = new FlowEndpointPayload(SWITCH_ID, 1, 1);
-    static final FlowPayload flow = FlowPayload.builder()
+    static final FlowEndpointPayload secondFlowEndpoint = new FlowEndpointPayload(SECOND_SWITCH_ID, 2, 2);
+    static final FlowEndpointV2 flowPayloadEndpoint = new FlowEndpointV2(SWITCH_ID, 1, 1);
+    static final FlowEndpointV2 secondFlowPayloadEndpoint = new FlowEndpointV2(SECOND_SWITCH_ID, 2, 2);
+    public static final FlowPayload flow = FlowPayload.builder()
             .id(FLOW_ID)
             .source(flowEndpoint)
             .destination(flowEndpoint)
@@ -80,6 +90,20 @@ public class TestMessageMock implements MessagingChannel {
             .description(FLOW_ID)
             .status(FlowState.UP.getState())
             .build();
+
+    public static final SwapFlowPayload firstSwapFlow = SwapFlowPayload.builder()
+            .flowId(FLOW_ID)
+            .source(flowPayloadEndpoint)
+            .destination(flowPayloadEndpoint)
+            .build();
+
+    public static final SwapFlowPayload secondSwapFlow = SwapFlowPayload.builder()
+            .flowId(SECOND_FLOW_ID)
+            .source(secondFlowPayloadEndpoint)
+            .destination(secondFlowPayloadEndpoint)
+            .build();
+
+    public static final SwapFlowEndpointPayload bulkFlow = new SwapFlowEndpointPayload(firstSwapFlow, secondSwapFlow);
     static final FlowIdStatusPayload flowStatus = new FlowIdStatusPayload(FLOW_ID, FlowState.UP);
     static final PathInfoData path = new PathInfoData(0L, Collections.emptyList());
     static final List<PathNodePayload> pathPayloadsList = singletonList(new PathNodePayload(SWITCH_ID, 1, 1));
@@ -94,8 +118,16 @@ public class TestMessageMock implements MessagingChannel {
             .sourcePort(1).destinationPort(1).sourceVlan(1).destinationVlan(1).meterId(1)
             .flowPath(path).state(FlowState.UP)
             .build();
+    static final FlowDto secondFlowModel = FlowDto.builder()
+            .flowId(SECOND_FLOW_ID).bandwidth(20000).description(SECOND_FLOW_ID)
+            .sourceSwitch(SECOND_SWITCH_ID).sourcePort(2).sourceVlan(2)
+            .destinationSwitch(SECOND_SWITCH_ID).destinationPort(2).destinationVlan(2)
+            .flowPath(path).state(FlowState.UP)
+            .build();
 
     private static final FlowResponse flowResponse = new FlowResponse(flowModel);
+    private static final FlowResponse secondFlowResponse = new FlowResponse(secondFlowModel);
+    static final SwapFlowResponse bulkFlowResponse = new SwapFlowResponse(flowResponse, secondFlowResponse);
     static final FlowReadResponse FLOW_RESPONSE =
             new FlowReadResponse(new BidirectionalFlowDto(flowModel, flowModel));
     static final GetFlowPathResponse FLOW_PATH_RESPONSE =
@@ -126,6 +158,8 @@ public class TestMessageMock implements MessagingChannel {
             result = getReadFlowResponse(((FlowReadRequest) data).getFlowId(), correlationId);
         } else if (data instanceof SwitchRulesDeleteRequest) {
             result = completedFuture(switchRulesResponse);
+        } else if (data instanceof SwapFlowEndpointRequest) {
+            result = completedFuture(bulkFlowResponse);
         } else {
             return null;
         }
