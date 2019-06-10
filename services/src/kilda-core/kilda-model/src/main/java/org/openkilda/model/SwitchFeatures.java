@@ -50,7 +50,7 @@ import java.io.Serializable;
 
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId"})
+@EqualsAndHashCode(exclude = {"entityId", "switchObj"})
 @NodeEntity(label = "switch_features")
 @ToString(exclude = {"switchObj"})
 public class SwitchFeatures implements Serializable {
