@@ -5,7 +5,9 @@ northbound.password=kilda
 floodlight.endpoint=http://localhost:8081
 floodlight.username=kilda
 floodlight.password=kilda
-floodlight.controller.uri=tcp:kilda:6653
+floodlight.controllers.management=tcp:floodlight_one.pendev:6653
+floodlight.controllers.stat=tcp:floodlight_second.pendev:6653
+floodlight.regions=1
 
 neo.uri=bolt://localhost:7687
 neo.user=

@@ -80,6 +80,15 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
     @Value('${antiflap.min}')
     int antiflapMin
 
+    @Value("#{'\${floodlight.regions}'.split(',')}")
+    List<String> regions
+
+    @Value("#{'\${floodlight.controllers.management}'.split(',')}")
+    List<String> managementControllers
+
+    @Value("#{'\${floodlight.controllers.stat}'.split(',')}")
+    List<String> statControllers
+
     /**
      * Use this instead of setupSpec in order to have access to Spring Context and do actions BeforeClass.
      * Can be overridden by inheritor specs.
