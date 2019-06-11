@@ -84,4 +84,11 @@ public interface IslRepository extends Repository<Isl> {
      */
     Collection<Isl> findSymmetricActiveWithAvailableBandwidth(long requiredBandwidth,
                                                               FlowEncapsulationType flowEncapsulationType);
+
+    /**
+     * Update ISL available bandwidth according to the provided used bandwidth.
+     * @return the result available bandwidth of the updated ISL.
+     */
+    long updateAvailableBandwidth(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort,
+                                  long usedBandwidth);
 }

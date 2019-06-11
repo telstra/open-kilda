@@ -15,10 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
-import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.TransactionManager;
 import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -31,27 +29,19 @@ import lombok.extern.slf4j.Slf4j;
 public class MarkFlowDownAction extends
         FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
-    private final TransactionManager transactionManager;
-
     public MarkFlowDownAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-
-        this.transactionManager = persistenceManager.getTransactionManager();
     }
 
     @Override
-    protected void perform(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
-                           FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        transactionManager.doInTransaction(() -> {
-            Flow flow = getFlow(stateMachine.getFlowId());
-            flow.setStatus(FlowStatus.DOWN);
+    protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+        String flowId = stateMachine.getFlowId();
+        log.debug("Set the flow status of {} to down.", flowId);
 
-            log.debug("Set the flow status to down: {}", flow);
+        flowRepository.updateStatus(flowId, FlowStatus.DOWN);
+        stateMachine.setOriginalFlowStatus(null);
 
-            flowRepository.createOrUpdate(flow);
-
-            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
-                    "Set the flow status to down.");
-        });
+        saveHistory(stateMachine, stateMachine.getCarrier(), flowId,
+                "Set the flow status to down.");
     }
 }

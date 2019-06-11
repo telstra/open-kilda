@@ -17,17 +17,12 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
-import org.openkilda.model.FlowStatus;
+import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.wfm.share.history.model.FlowDumpData;
-import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
-import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -47,57 +42,47 @@ public class CompleteFlowPathInstallationAction extends
     public CompleteFlowPathInstallationAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
 
-        this.transactionManager = persistenceManager.getTransactionManager();
+        transactionManager = persistenceManager.getTransactionManager();
     }
 
     @Override
-    protected void perform(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
-                           FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    protected void perform(State from, State to,
+                           Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         transactionManager.doInTransaction(() -> {
-            Flow flow = getFlow(stateMachine.getFlowId());
-
             if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
-                FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
-                newForward.setStatus(FlowPathStatus.ACTIVE);
-
-                FlowPath newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
-                newReverse.setStatus(FlowPathStatus.ACTIVE);
+                PathId newForward = stateMachine.getNewPrimaryForwardPath();
+                PathId newReverse = stateMachine.getNewPrimaryReversePath();
 
                 log.debug("Completing installation of the flow path {} / {}", newForward, newReverse);
+                flowPathRepository.updateStatus(newForward, FlowPathStatus.ACTIVE);
+                flowPathRepository.updateStatus(newReverse, FlowPathStatus.ACTIVE);
 
-                saveHistory(flow, newForward, newReverse, stateMachine);
+                saveHistory(stateMachine, stateMachine.getFlowId(), newForward, newReverse);
             }
 
             if (stateMachine.getNewProtectedForwardPath() != null
                     && stateMachine.getNewProtectedReversePath() != null) {
-                FlowPath newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
-                newForward.setStatus(FlowPathStatus.ACTIVE);
-
-                FlowPath newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
-                newReverse.setStatus(FlowPathStatus.ACTIVE);
+                PathId newForward = stateMachine.getNewProtectedForwardPath();
+                PathId newReverse = stateMachine.getNewProtectedReversePath();
 
                 log.debug("Completing installation of the flow path {} / {}", newForward, newReverse);
+                flowPathRepository.updateStatus(newForward, FlowPathStatus.ACTIVE);
+                flowPathRepository.updateStatus(newReverse, FlowPathStatus.ACTIVE);
 
-                saveHistory(flow, newForward, newReverse, stateMachine);
+                saveHistory(stateMachine, stateMachine.getFlowId(), newForward, newReverse);
             }
-
-            flow.setStatus(FlowStatus.UP);
-            flowRepository.createOrUpdate(flow);
         });
     }
 
-    private void saveHistory(Flow flow, FlowPath forwardPath, FlowPath reversePath, FlowRerouteFsm stateMachine) {
-        FlowDumpData flowDumpData = HistoryMapper.INSTANCE.map(flow, forwardPath, reversePath);
-        flowDumpData.setDumpType(DumpType.STATE_AFTER);
+    private void saveHistory(FlowRerouteFsm stateMachine, String flowId, PathId forwardPath, PathId reversePath) {
         FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
                 .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowDumpData(flowDumpData)
                 .flowHistoryData(FlowHistoryData.builder()
                         .action("Flow paths were installed")
                         .time(Instant.now())
                         .description(format("Flow paths %s/%s were installed",
-                                forwardPath.getPathId(), reversePath.getPathId()))
-                        .flowId(flow.getFlowId())
+                                forwardPath, reversePath))
+                        .flowId(flowId)
                         .build())
                 .build();
         stateMachine.getCarrier().sendHistoryUpdate(historyHolder);

@@ -62,7 +62,7 @@ public abstract class RuleProcessingAction
             RemoveRule removeRule = stateMachine.getRemoveCommands().get(commandId);
             cookie = removeRule.getCookie().getValue();
         } else {
-            throw new IllegalStateException(format("Failed to find install rule command with id %s", commandId));
+            throw new IllegalStateException(format("Failed to find install/remove rule command with id %s", commandId));
         }
         return cookie;
     }

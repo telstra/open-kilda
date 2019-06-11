@@ -30,7 +30,6 @@ import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 
@@ -66,15 +65,15 @@ public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> 
         // otherwise locates a gap between / after the values used in flow_meter entities.
 
         String query = "UNWIND [$default_meter] AS meter "
-                + "OPTIONAL MATCH (:switch {name: $switch_id})-[]-(n:flow_meter) "
+                + "OPTIONAL MATCH (n:flow_meter {switch_id: $switch_id}) "
                 + "WHERE meter = n.meter_id "
                 + "WITH meter, n "
                 + "WHERE n IS NULL "
                 + "RETURN meter "
                 + "UNION ALL "
-                + "MATCH (:switch {name: $switch_id})-[]-(n1:flow_meter) "
+                + "MATCH (n1:flow_meter {switch_id: $switch_id}) "
                 + "WHERE n1.meter_id >= $default_meter "
-                + "OPTIONAL MATCH (:switch {name: $switch_id})-[]-(n2:flow_meter) "
+                + "OPTIONAL MATCH (n2:flow_meter {switch_id: $switch_id}) "
                 + "WHERE (n1.meter_id + 1) = n2.meter_id "
                 + "WITH n1, n2 "
                 + "WHERE n2 IS NULL "
@@ -82,25 +81,11 @@ public class Neo4jFlowMeterRepository extends Neo4jGenericRepository<FlowMeter> 
                 + "ORDER BY meter "
                 + "LIMIT 1";
 
-        Iterator<Long> results = getSession().query(Long.class, query, parameters).iterator();
-        return results.hasNext() ? Optional.of(results.next()).map(MeterId::new) : Optional.empty();
-    }
-
-    @Override
-    public void createOrUpdate(FlowMeter entity) {
-        requireManagedEntity(entity.getTheSwitch());
-
-        super.createOrUpdate(entity);
+        return queryForLong(query, parameters, "meter").map(MeterId::new);
     }
 
     @Override
     protected Class<FlowMeter> getEntityType() {
         return FlowMeter.class;
-    }
-
-    @Override
-    protected int getDepthCreateUpdateEntity() {
-        // This is the minimum depth that allows to link the meter entity to a switch.
-        return 1;
     }
 }

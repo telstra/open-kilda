@@ -46,7 +46,9 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         TimeUnit.SECONDS.sleep(rerouteDelay - 1)
 
         then: "Both flows change their paths (or go Down if no path)"
-        Wrappers.wait(WAIT_OFFSET) {
+        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
+        // Revise and fix the test appropriately.
+        Wrappers.wait(WAIT_OFFSET * 2) {
             flows.each {
                 def status = northbound.getFlowStatus(it.id).status
                 assert status != FlowState.IN_PROGRESS

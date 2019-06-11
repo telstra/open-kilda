@@ -171,7 +171,9 @@ class LinkSpec extends HealthCheckSpecification {
         broughtDownPorts.each { northbound.portUp(it.switchId, it.portNo) }
 
         then: "All flows go to 'Up' status"
-        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
+        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
+        // Revise and fix the test appropriately.
+        Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET * 2) {
             [flow1, flow2, flow3, flow4].each { assert northbound.getFlowStatus(it.id).status == FlowState.UP }
         }
 

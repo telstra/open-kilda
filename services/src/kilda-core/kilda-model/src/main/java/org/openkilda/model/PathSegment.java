@@ -15,7 +15,6 @@
 
 package org.openkilda.model;
 
-import static org.neo4j.ogm.annotation.Relationship.INCOMING;
 import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
 
 import lombok.AccessLevel;
@@ -32,6 +31,7 @@ import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
+import org.neo4j.ogm.annotation.Transient;
 
 import java.io.Serializable;
 
@@ -40,7 +40,7 @@ import java.io.Serializable;
  */
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId"})
+@EqualsAndHashCode(exclude = {"entityId", "path"})
 @ToString(exclude = {"path"})
 @NodeEntity(label = "path_segment")
 public class PathSegment implements Serializable {
@@ -53,8 +53,9 @@ public class PathSegment implements Serializable {
     @Getter(AccessLevel.NONE)
     private Long entityId;
 
-    @NonNull
-    @Relationship(type = "owns", direction = INCOMING)
+    // No setter as initialized by FlowPath.
+    @Transient
+    @Setter(AccessLevel.PACKAGE)
     private FlowPath path;
 
     @NonNull
@@ -81,9 +82,8 @@ public class PathSegment implements Serializable {
     private boolean failed = false;
 
     @Builder(toBuilder = true)
-    public PathSegment(@NonNull FlowPath path, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
+    public PathSegment(@NonNull Switch srcSwitch, @NonNull Switch destSwitch,
                        int srcPort, int destPort, Long latency) {
-        this.path = path;
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
         this.srcPort = srcPort;
@@ -101,7 +101,7 @@ public class PathSegment implements Serializable {
         if (switchId == null) {
             throw new IllegalArgumentException("Switch id must be not null");
         }
-        return  (switchId.equals(srcSwitch.getSwitchId()) && port == srcPort)
-               || (switchId.equals(destSwitch.getSwitchId()) && port == destPort);
+        return (switchId.equals(srcSwitch.getSwitchId()) && port == srcPort)
+                || (switchId.equals(destSwitch.getSwitchId()) && port == destPort);
     }
 }

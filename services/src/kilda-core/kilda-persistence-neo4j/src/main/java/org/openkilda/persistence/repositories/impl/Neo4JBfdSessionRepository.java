@@ -45,8 +45,7 @@ public class Neo4JBfdSessionRepository extends Neo4jGenericRepository<BfdSession
 
     @Override
     public Optional<BfdSession> findBySwitchIdAndPort(SwitchId switchId, Integer port) {
-        Collection<BfdSession> ports = getSession().loadAll(getEntityType(), getFilters(switchId, port),
-                                                            getDepthLoadEntity());
+        Collection<BfdSession> ports = loadAll(getFilters(switchId, port));
         if (ports.size() > 1) {
             throw new PersistenceException(format("Found more that 1 BfdSession entity by switch: %s port: %d",
                     switchId, port));

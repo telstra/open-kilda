@@ -36,8 +36,7 @@ public class Neo4jFlowHistoryRepository extends Neo4jGenericRepository<FlowHisto
     @Override
     public Collection<FlowHistory> findByTaskId(String taskId) {
         Filter taskIdFilter = new Filter(TASK_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, taskId);
-        return getSession()
-                .loadAll(getEntityType(), taskIdFilter, new SortOrder(TIMESTAMP_PROPERTY_NAME), getDepthLoadEntity());
+        return loadAll(taskIdFilter, new SortOrder(TIMESTAMP_PROPERTY_NAME), getDefaultFetchStrategy());
     }
 
     @Override

@@ -19,6 +19,7 @@ import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
@@ -39,7 +40,7 @@ public class InstallNonIngressRulesAction extends FlowProcessingAction<FlowCreat
 
     private TransitVlanCommandFactory commandFactory;
 
-    public InstallNonIngressRulesAction(PersistenceManager persistenceManager) {
+    public InstallNonIngressRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
         this.commandFactory =
                 new TransitVlanCommandFactory(persistenceManager.getRepositoryFactory().createTransitVlanRepository());

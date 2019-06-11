@@ -26,6 +26,7 @@ import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.validation.rules.IngressRulesValidator;
 import org.openkilda.wfm.topology.flowhs.validation.rules.RulesValidator;
 
@@ -43,8 +44,8 @@ public class ValidateIngressRulesAction extends RuleProcessingAction {
     }
 
     @Override
-    protected void perform(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
-                           FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    protected void perform(State from, State to,
+                           Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         FlowResponse response = context.getFlowResponse();
         UUID commandId = response.getCommandId();
         stateMachine.getPendingCommands().remove(commandId);
