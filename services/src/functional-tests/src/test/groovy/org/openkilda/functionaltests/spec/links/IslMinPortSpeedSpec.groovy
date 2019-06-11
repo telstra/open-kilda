@@ -7,7 +7,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import spock.lang.Narrative
 
@@ -16,6 +15,7 @@ Sometimes an ISL have different port speed on its edges.
 In that case, we need to set ISL capacity and all bandwidth parameters according to minimal speed value.
 Eg. 10G on one side, and 1G on another side, the ISL should have a 1G capacity.""")
 class IslMinPortSpeedSpec extends BaseSpecification {
+
     def "System sets min port speed for isl capacity"() {
         given: "Two ports with different port speed"
         def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
@@ -24,7 +24,8 @@ class IslMinPortSpeedSpec extends BaseSpecification {
 
         def notConnectedIsls = topology.notConnectedIsls
         def newDst = notConnectedIsls.find {
-            northbound.getPort(it.srcSwitch.dpId, it.srcPort).maxSpeed != port.maxSpeed
+            it.srcSwitch.dpId != isl.srcSwitch.dpId &&
+                    northbound.getPort(it.srcSwitch.dpId, it.srcPort).maxSpeed != port.maxSpeed
         }
         assumeTrue("Wasn't able to find a port with other port speed", newDst as boolean)
         def newDstPort = northbound.getPort(newDst.srcSwitch.dpId, newDst.srcPort)
