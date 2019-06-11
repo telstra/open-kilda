@@ -43,7 +43,7 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
         String topoDiscoTopic = topologyConfig.getKafkaTopoDiscoTopic();
 
         logger.debug("connecting to {} topic", topoDiscoTopic);
-        builder.setSpout(ISL_LATENCY_SPOUT_ID, createKafkaSpout(topoDiscoTopic, ISL_LATENCY_SPOUT_ID));
+        builder.setSpout(ISL_LATENCY_SPOUT_ID, buildKafkaSpout(topoDiscoTopic, ISL_LATENCY_SPOUT_ID));
 
         IslStatsBolt verifyIslStatsBolt = new IslStatsBolt(topologyConfig.getMetricPrefix());
         logger.debug("starting {} bolt", ISL_STATS_BOLT_ID);

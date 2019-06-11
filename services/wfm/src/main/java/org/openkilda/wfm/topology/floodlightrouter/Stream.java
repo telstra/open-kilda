@@ -33,6 +33,7 @@ public final class Stream {
     public static final String KILDA_TOPO_DISCO = "KILDA_TOPO_DISCO";
     public static final String SPEAKER = "SPEAKER";
     public static final String SPEAKER_FLOW = "SPEAKER_FLOW";
+    public static final String SPEAKER_FLOW_HS = "SPEAKER_FLOW_HS";
     public static final String KILDA_FLOW = "KILDA_FLOW";
     public static final String KILDA_HS_FLOW = "KILDA_HS_FLOW";
     public static final String SPEAKER_PING = "SPEAKER_PING";

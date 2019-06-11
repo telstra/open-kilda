@@ -29,6 +29,7 @@ import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
+import org.openkilda.persistence.repositories.VxlanRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.persistence.repositories.history.FlowHistoryRepository;
 import org.openkilda.persistence.repositories.history.FlowStateRepository;
@@ -91,6 +92,11 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public TransitVlanRepository createTransitVlanRepository() {
         return new Neo4jTransitVlanRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public VxlanRepository createVxlanRepository() {
+        return new Neo4jVxlanRepository(sessionFactory, transactionManager);
     }
 
     @Override

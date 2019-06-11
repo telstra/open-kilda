@@ -15,12 +15,12 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
-import static org.openkilda.messaging.Utils.MAPPER;
-
 import org.openkilda.messaging.Message;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.floodlightrouter.ComponentType;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
@@ -30,7 +30,6 @@ import org.openkilda.wfm.topology.floodlightrouter.service.RouterService;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMapping;
 import org.openkilda.wfm.topology.utils.AbstractTickRichBolt;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -88,11 +87,11 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
         currentTuple = input;
         Message message = null;
         try {
-            String json = input.getStringByField(AbstractTopology.MESSAGE_FIELD);
-            message = MAPPER.readValue(json, Message.class);
+            message = (Message) input.getValueByField(AbstractTopology.MESSAGE_FIELD);
+            CommandContext context = (CommandContext) input.getValueByField(AbstractBolt.FIELD_ID_CONTEXT);
             switch (sourceComponent) {
                 case ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT:
-                    routerService.processSpeakerDiscoResponse(this, message);
+                    routerService.processSpeakerDiscoResponse(this, message, context);
                     break;
                 case ComponentType.SPEAKER_DISCO_KAFKA_SPOUT:
                     routerService.processDiscoSpeakerRequest(this, message);
@@ -116,7 +115,8 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
             outputFieldsDeclarer.declareStream(Stream.formatWithRegion(Stream.SPEAKER_DISCO, region), kafkaFields);
         }
         outputFieldsDeclarer.declareStream(Stream.KILDA_TOPO_DISCO, kafkaFields);
-        outputFieldsDeclarer.declareStream(Stream.REGION_NOTIFICATION, new Fields(AbstractTopology.MESSAGE_FIELD));
+        outputFieldsDeclarer.declareStream(Stream.REGION_NOTIFICATION, new Fields(AbstractTopology.MESSAGE_FIELD,
+                AbstractBolt.FIELD_ID_CONTEXT));
     }
 
     @Override
@@ -152,18 +152,13 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
     }
 
     @Override
-    public void emitRegionNotification(SwitchMapping mapping) {
-        outputCollector.emit(Stream.REGION_NOTIFICATION, currentTuple, new Values(mapping));
+    public void emitRegionNotification(SwitchMapping mapping, CommandContext context) {
+        outputCollector.emit(Stream.REGION_NOTIFICATION, currentTuple, new Values(mapping, context));
     }
 
     private void send(String key, Message message, String outputStream) {
-        try {
-            String json = MAPPER.writeValueAsString(message);
-            Values values = new Values(key, json);
-            outputCollector.emit(outputStream, currentTuple, values);
-        } catch (JsonProcessingException e) {
-            logger.error("failed to serialize message {}", message);
-        }
+        Values values = new Values(key, message);
+        outputCollector.emit(outputStream, currentTuple, values);
     }
 
     private String pullKeyFromCurrentTuple() {

@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
+import org.openkilda.wfm.error.PipelineException;
+
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.tuple.Tuple;
 
@@ -27,7 +29,7 @@ public class BroadcastRequestBolt extends RequestBolt {
     }
 
     @Override
-    public void handleInput(Tuple input) {
+    public void handleInput(Tuple input) throws PipelineException {
         for (String region : regions) {
             proxyRequestToSpeaker(input, region);
         }

@@ -52,6 +52,20 @@ public interface FlowResourcesConfig extends Serializable {
     int getMaxFlowTransitVlan();
 
     /**
+     * Minimum vxlan value for flows.
+     */
+    @Key("flow.vxlan.min")
+    @Default("2")
+    int getMinFlowVxlan();
+
+    /**
+     * Maximum vxlan value for flows.
+     */
+    @Key("flow.vxlan.max")
+    @Default("16777214")
+    int getMaxFlowVxlan();
+
+    /**
      * Minimum cookie value for flows.
      */
     @Key("flow.cookie.min")

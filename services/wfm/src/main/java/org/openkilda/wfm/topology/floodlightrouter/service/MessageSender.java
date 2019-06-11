@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.floodlightrouter.service;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.wfm.CommandContext;
 
 
 public interface MessageSender {
@@ -27,5 +28,5 @@ public interface MessageSender {
 
     void emitControllerMessage(String key, Message message);
 
-    void emitRegionNotification(SwitchMapping mapping);
+    void emitRegionNotification(SwitchMapping mapping, CommandContext context);
 }

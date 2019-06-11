@@ -27,6 +27,7 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanPool;
+import org.openkilda.wfm.share.flow.resources.vxlan.VxlanPool;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
@@ -61,6 +62,8 @@ public class FlowResourcesManager {
         encapsulationResourcesProviders = ImmutableMap.<FlowEncapsulationType, EncapsulationResourcesProvider>builder()
                 .put(FlowEncapsulationType.TRANSIT_VLAN, new TransitVlanPool(persistenceManager,
                         config.getMinFlowTransitVlan(), config.getMaxFlowTransitVlan()))
+                .put(FlowEncapsulationType.VXLAN, new VxlanPool(persistenceManager,
+                        config.getMinFlowVxlan(), config.getMaxFlowVxlan()))
                 .build();
     }
 

@@ -15,12 +15,11 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
-import static org.openkilda.messaging.Utils.MAPPER;
-
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.service.RouterUtils;
@@ -28,7 +27,6 @@ import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMapping;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchTracker;
 import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 
-import com.fasterxml.jackson.databind.JsonMappingException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -36,18 +34,25 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.io.IOException;
 import java.util.Set;
 
 @Slf4j
 public class RequestBolt extends AbstractBolt {
-    protected final String outputStream;
+    protected final String outputMessageStream;
+    protected final String outputAbstractMessageStream;
     protected final Set<String> regions;
 
     protected transient SwitchTracker switchTracker;
 
-    public RequestBolt(String outputStream, Set<String> regions) {
-        this.outputStream = outputStream;
+    public RequestBolt(String outputMessageStream, Set<String> regions) {
+        this.outputMessageStream = outputMessageStream;
+        this.outputAbstractMessageStream = null;
+        this.regions = regions;
+    }
+
+    public RequestBolt(String outputMessageStream, String outputAbstractMessageStream, Set<String> regions) {
+        this.outputMessageStream = outputMessageStream;
+        this.outputAbstractMessageStream = outputAbstractMessageStream;
         this.regions = regions;
     }
 
@@ -64,60 +69,53 @@ public class RequestBolt extends AbstractBolt {
         updateSwitchMapping(mapping);
     }
 
-    private void handleControllerRequest(Tuple input) throws IOException {
-        String json = pullRequest(input);
-        SwitchId switchId = lookupSwitchId(json);
+    private void handleControllerRequest(Tuple input) throws PipelineException {
+        Object message = pullRequest(input);
+        SwitchId switchId = lookupSwitchId(message);
         if (switchId != null) {
             String region = switchTracker.lookupRegion(switchId);
             if (region != null) {
                 proxyRequestToSpeaker(input, region);
             } else {
-                log.error("Unable to lookup region for message: {}", json);
+                log.error("Unable to lookup region for message: {}", message);
             }
         } else {
-            log.error("Unable to lookup switch for message: {}", json);
+            log.error("Unable to lookup switch for message: {}", message);
         }
     }
 
-    private SwitchId lookupSwitchId(String json) throws IOException {
+    private SwitchId lookupSwitchId(Object message) {
         SwitchId switchId;
-        try {
-            AbstractMessage message = decodeMessage(json);
-            switchId = RouterUtils.lookupSwitchId(message);
-        } catch (JsonMappingException e) {
-            log.debug("Failed to deserialize json to abstract message", e);
-            Message message = decodeClassicMessage(json);
-            switchId = RouterUtils.lookupSwitchId(message);
+
+        if (message instanceof AbstractMessage) {
+            switchId = RouterUtils.lookupSwitchId((AbstractMessage) message);
+        } else {
+            switchId = RouterUtils.lookupSwitchId((Message) message);
         }
 
         return switchId;
     }
 
-    private Message decodeClassicMessage(String json) throws IOException {
-        return MAPPER.readValue(json, Message.class);
-    }
-
-    private AbstractMessage decodeMessage(String json) throws IOException {
-        return MAPPER.readValue(json, AbstractMessage.class);
-    }
-
-    protected void proxyRequestToSpeaker(Tuple input, String region) {
-        String targetStream = Stream.formatWithRegion(outputStream, region);
+    protected void proxyRequestToSpeaker(Tuple input, String region) throws PipelineException {
+        String targetStream = Stream.formatWithRegion(outputMessageStream, region);
         String key = pullRequestKey(input);
-        String value = pullRequest(input);
+        Object value = pullRequest(input);
+        if (value instanceof AbstractMessage) {
+            targetStream = Stream.formatWithRegion(outputAbstractMessageStream, region);
+        }
         getOutput().emit(targetStream, input, makeSpeakerTuple(key, value));
     }
 
-    protected String pullRequest(Tuple input) {
-        return input.getStringByField(KafkaRecordTranslator.FIELD_ID_PAYLOAD);
+    protected Object pullRequest(Tuple input) throws PipelineException {
+        return pullValue(input, KafkaRecordTranslator.FIELD_ID_PAYLOAD, Object.class);
     }
 
     protected String pullRequestKey(Tuple input) {
         return input.getStringByField(KafkaRecordTranslator.FIELD_ID_KEY);
     }
 
-    protected Values makeSpeakerTuple(String key, String json) {
-        return new Values(key, json);
+    protected Values makeSpeakerTuple(String key, Object message) {
+        return new Values(key, message);
     }
 
     protected void init() {
@@ -133,10 +131,13 @@ public class RequestBolt extends AbstractBolt {
         Fields fields = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_KEY,
                                    FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
         if (regions == null || regions.isEmpty()) {
-            outputFieldsDeclarer.declareStream(outputStream, fields);
+            outputFieldsDeclarer.declareStream(outputMessageStream, fields);
+            outputFieldsDeclarer.declareStream(outputAbstractMessageStream, fields);
         } else {
             for (String region : regions) {
-                outputFieldsDeclarer.declareStream(Stream.formatWithRegion(outputStream, region), fields);
+                outputFieldsDeclarer.declareStream(Stream.formatWithRegion(outputMessageStream, region), fields);
+                outputFieldsDeclarer.declareStream(
+                        Stream.formatWithRegion(outputAbstractMessageStream, region), fields);
             }
         }
 

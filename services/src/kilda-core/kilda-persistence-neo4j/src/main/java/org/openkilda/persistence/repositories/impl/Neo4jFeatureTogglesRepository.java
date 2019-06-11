@@ -80,6 +80,10 @@ public class Neo4jFeatureTogglesRepository extends Neo4jGenericRepository<Featur
                     updatedFeatureToggles.setFlowsRerouteViaFlowHs(
                             featureToggles.getFlowsRerouteViaFlowHs());
                 }
+                if (featureToggles.getFlowsRerouteUsingDefaultEncapType() != null) {
+                    updatedFeatureToggles.setFlowsRerouteUsingDefaultEncapType(
+                            featureToggles.getFlowsRerouteUsingDefaultEncapType());
+                }
 
                 super.createOrUpdate(updatedFeatureToggles);
             }

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,41 +15,18 @@
 
 package org.openkilda.wfm.kafka;
 
-import static java.lang.String.format;
-
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.Utils;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.kafka.common.errors.SerializationException;
-import org.apache.storm.kafka.spout.SerializableDeserializer;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.Map;
 
 @Slf4j
-public class MessageDeserializer implements SerializableDeserializer<Message> {
+public class MessageDeserializer extends Deserializer<Message> {
 
     @Override
-    public void configure(Map configs, boolean isKey) {
-        // No-op
-    }
-
-    @Override
-    public Message deserialize(String topic, byte[] data) {
-        try {
-            return Utils.MAPPER.readValue(data, Message.class);
-        } catch (IOException e) {
-            log.error(format("Failed to deserialize message: %s from topic %s",
-                    StringUtils.toEncodedString(data, Charset.defaultCharset()), topic), e);
-            throw new SerializationException(e.getMessage());
-        }
-    }
-
-    @Override
-    public void close() {
-        // No-op
+    protected Message jsonDecode(byte[] data) throws IOException {
+        return Utils.MAPPER.readValue(data, Message.class);
     }
 }
