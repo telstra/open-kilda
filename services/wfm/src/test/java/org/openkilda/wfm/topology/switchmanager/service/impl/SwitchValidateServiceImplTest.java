@@ -89,7 +89,7 @@ public class SwitchValidateServiceImplTest {
         service = new SwitchValidateServiceImpl(carrier, persistenceManager);
         service.validationService = validationService;
 
-        request = new SwitchValidateRequest(SWITCH_ID, false, false);
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).processMeters(true).build();
         flowEntry = new FlowEntry(-1L, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
         meterEntry = new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
 
@@ -161,6 +161,29 @@ public class SwitchValidateServiceImplTest {
     }
 
     @Test
+    public void validationWithoutMetersSuccess() {
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).build();
+
+        service.handleSwitchValidateRequest(KEY, request);
+        verify(carrier).sendCommand(eq(KEY), any(CommandMessage.class));
+
+        service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
+        verify(validationService).validateRules(eq(SWITCH_ID), any());
+
+        verify(carrier).endProcessing(eq(KEY));
+
+        ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
+        verify(carrier).response(eq(KEY), responseCaptor.capture());
+
+        SwitchValidationResponse response = (SwitchValidationResponse) responseCaptor.getValue().getData();
+        assertEquals(singletonList(flowEntry.getCookie()), response.getRules().getMissing());
+        assertNull(response.getMeters());
+
+        verifyNoMoreInteractions(carrier);
+        verifyNoMoreInteractions(validationService);
+    }
+
+    @Test
     public void validationSuccessWithUnsupportedMeters() {
         handleRequestAndInitDataReceive();
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
@@ -208,7 +231,7 @@ public class SwitchValidateServiceImplTest {
 
     @Test
     public void validationPerformSync() {
-        request = new SwitchValidateRequest(SWITCH_ID, true, false);
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).processMeters(true).build();
 
         handleRequestAndInitDataReceive();
         handleDataReceiveAndValidate();

@@ -102,7 +102,7 @@ public class SwitchSyncServiceImplTest {
         service = new SwitchSyncServiceImpl(carrier, persistenceManager);
         service.commandBuilder = commandBuilder;
 
-        request = new SwitchValidateRequest(SWITCH_ID, true, false);
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).build();
         flowEntry = new FlowEntry(-1L, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
 
         InstallIngressFlow installingRule = new InstallIngressFlow(UUID.randomUUID(), FLOW_ID, flowEntry.getCookie(),
@@ -205,7 +205,7 @@ public class SwitchSyncServiceImplTest {
 
     @Test
     public void handleNothingToSyncWithExcess() {
-        request = new SwitchValidateRequest(SWITCH_ID, true, true);
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).removeExcess(true).build();
         missingRules = emptyList();
 
         service.handleSwitchSync(KEY, request, makeValidationResult());
@@ -219,7 +219,7 @@ public class SwitchSyncServiceImplTest {
 
     @Test
     public void handleSyncExcess() {
-        request = new SwitchValidateRequest(SWITCH_ID, true, true);
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).removeExcess(true).build();
 
         long excessCookie = 50L;
         excessRules = singletonList(excessCookie);
@@ -250,8 +250,8 @@ public class SwitchSyncServiceImplTest {
     }
 
     @Test
-    public void handleSyncWhenMetersUnsupported() {
-        request = new SwitchValidateRequest(SWITCH_ID, true, true);
+    public void handleSyncWhenNotProcessMeters() {
+        request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).removeExcess(true).build();
 
         ValidationResult tempResult = makeValidationResult();
         service.handleSwitchSync(KEY, request, new ValidationResult(

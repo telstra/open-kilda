@@ -180,7 +180,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
 
     protected void computeRemoveMeters(SwitchSyncState from, SwitchSyncState to,
                                        SwitchSyncEvent event, Object context) {
-        if (request.isRemoveExcess() && validationResult.isSwitchSupportMeters()) {
+        if (request.isRemoveExcess() && validationResult.isProcessMeters()) {
             ValidateMetersResult validateMetersResult = validationResult.getValidateMetersResult();
 
             if (!validateMetersResult.getExcessMeters().isEmpty()) {
@@ -278,7 +278,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                 request.isRemoveExcess() ? validateRulesResult.getExcessRules() : emptyList());
 
         MetersSyncEntry metersEntry = null;
-        if (validationResult.isSwitchSupportMeters()) {
+        if (validationResult.isProcessMeters()) {
             metersEntry = new MetersSyncEntry(validateMetersResult.getMissingMeters(),
                     validateMetersResult.getMisconfiguredMeters(),
                     validateMetersResult.getProperMeters(),

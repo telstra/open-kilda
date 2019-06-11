@@ -24,7 +24,7 @@ import java.util.List;
 @Value
 public class ValidationResult {
     List<FlowEntry> flowEntries;
-    boolean switchSupportMeters;
+    boolean processMeters;
 
     ValidateRulesResult validateRulesResult;
     ValidateMetersResult validateMetersResult;
