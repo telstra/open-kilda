@@ -1,11 +1,41 @@
 # Changelog
 
+## v1.23.0 (10/06/2019)
+
+### Features:
+-  [#2466](https://github.com/telstra/open-kilda/pull/2466) Add a feature toggle to reroute a flow with default encapsulation type. (Issue: [#647](https://github.com/telstra/open-kilda/issues/647)) [**api**][**storm-topologies**]
+-  [#2402](https://github.com/telstra/open-kilda/pull/2402) Add a VxLAN resource pool. (Issue: [#647](https://github.com/telstra/open-kilda/issues/647)) [**neo4j**]
+-  [#2406](https://github.com/telstra/open-kilda/pull/2406) Added new Encapslation model class and Extended Encapsulation Enum [**storm-topologies**]
+
+### Bug Fixes:
+-  [#2475](https://github.com/telstra/open-kilda/pull/2475) Exclude switch object from switch features equals and hashCode
+
+### Improvements:
+-  [#2470](https://github.com/telstra/open-kilda/pull/2470) Add round trip rule into test [**tests**]
+-  [#2440](https://github.com/telstra/open-kilda/pull/2440) add test: check that protected flow allows traffic on main/protected paths (Issues: [#2367](https://github.com/telstra/open-kilda/issues/2367) [#2415](https://github.com/telstra/open-kilda/issues/2415)) [**tests**]
+-  [#2444](https://github.com/telstra/open-kilda/pull/2444) add possibility to set specific controllet on an OVS [**tests**]
+-  [#2253](https://github.com/telstra/open-kilda/pull/2253) Add CommandContext into all tuples. (Issues: [#2199](https://github.com/telstra/open-kilda/issues/2199) [#2239](https://github.com/telstra/open-kilda/issues/2239)) [**storm-topologies**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.22.0...v1.23.0).
+
+### Affected Components:
+isllatency, stats, neo4j, flow, portstate, otsdb, swmanager, router, nbworker
+
+### Upgrade notes
+If you have an older version of Kilda installed, then you must migrate the data stored in Neo4j 
+before you deploy and start this version. You should execute [migration script](https://github.com/telstra/open-kilda/blob/v1.23.0/services/neo4j/migrations/1.5-switch-features/1-create-switch-features-changelog.xml) before starting of deployment.
+
+In case of any issues you are able to rollback these changes using [rollback script](https://github.com/telstra/open-kilda/blob/v1.23.0/services/neo4j/migrations/1.5-switch-features/rollback.cql).
+
+---
+
 ## v1.22.0 (06/06/2019)
 
 ### Features:
 -  [#2322](https://github.com/telstra/open-kilda/pull/2322) Create a config with default encapsulation type in Neo4j. (Issues: [#2427](https://github.com/telstra/open-kilda/issues/2427) [#647](https://github.com/telstra/open-kilda/issues/647)) [**api**][**northbound**][**storm-topologies**]
 -  [#2327](https://github.com/telstra/open-kilda/pull/2327) RTL: Part 2. Added round trip latency default rule (Issue: [#580](https://github.com/telstra/open-kilda/issues/580)) [**floodlight**]
-q-  [#2467](https://github.com/telstra/open-kilda/pull/2467) Add round trip latency rule to install/delete rules API (Issue: [#580](https://github.com/telstra/open-kilda/issues/580)) [**floodlight**]
+-  [#2467](https://github.com/telstra/open-kilda/pull/2467) Add round trip latency rule to install/delete rules API (Issue: [#580](https://github.com/telstra/open-kilda/issues/580)) [**api**][**floodlight**]
 -  [#2328](https://github.com/telstra/open-kilda/pull/2328) Pinned flow (Issue: [#2334](https://github.com/telstra/open-kilda/issues/2334)) [**api**][**storm-topologies**]
 
 ### Bug Fixes:
