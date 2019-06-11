@@ -32,7 +32,7 @@ opt Excess rules exists and removeExcess=true
     deactivate CommandBuilder
 end
 
-opt Meters Supported, removeExcess=true and Excess meters exists
+opt processMeters=true, removeExcess=true and Excess meters exists
     SwitchManager -> SwitchManager : process excess meters id
 end
 

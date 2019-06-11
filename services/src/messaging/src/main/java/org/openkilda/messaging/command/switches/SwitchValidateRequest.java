@@ -20,6 +20,8 @@ import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
+import lombok.NonNull;
 import lombok.Value;
 
 @Value
@@ -28,17 +30,23 @@ public class SwitchValidateRequest extends CommandData {
     @JsonProperty("switch_id")
     private SwitchId switchId;
 
+    @JsonProperty("process_meters")
+    private boolean processMeters;
+
     @JsonProperty("perform_sync")
     private boolean performSync;
 
     @JsonProperty("remove_excess")
     private boolean removeExcess;
 
+    @Builder
     @JsonCreator
-    public SwitchValidateRequest(@JsonProperty("switch_id") SwitchId switchId,
+    public SwitchValidateRequest(@NonNull @JsonProperty("switch_id") SwitchId switchId,
+                                 @JsonProperty("process_meters") boolean processMeters,
                                  @JsonProperty("perform_sync") boolean performSync,
                                  @JsonProperty("remove_excess") boolean removeExcess) {
         this.switchId = switchId;
+        this.processMeters = processMeters;
         this.performSync = performSync;
         this.removeExcess = removeExcess;
     }
