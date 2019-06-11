@@ -32,6 +32,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.model.UnidirectionalFlow;
+import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPairRepository;
@@ -328,7 +329,7 @@ public class DatabaseSupportImpl implements Database {
      */
     @Override
     public void updateFlowBandwidth(String flowId, long newBw) {
-        Flow flow = flowRepository.findById(flowId)
+        Flow flow = flowRepository.findById(flowId, FetchStrategy.DIRECT_RELATIONS)
                 .orElseThrow(() -> new RuntimeException(format("Unable to find Flow for %s", flowId)));
         flow.setBandwidth(newBw);
         flow.getForwardPath().setBandwidth(newBw);

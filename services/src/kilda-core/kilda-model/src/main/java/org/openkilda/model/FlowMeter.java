@@ -16,7 +16,6 @@
 package org.openkilda.model;
 
 import static java.lang.String.format;
-import static org.neo4j.ogm.annotation.Relationship.INCOMING;
 
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -31,7 +30,6 @@ import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.Index;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Property;
-import org.neo4j.ogm.annotation.Relationship;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 
 import java.io.Serializable;
@@ -54,8 +52,10 @@ public class FlowMeter implements Serializable {
     private Long entityId;
 
     @NonNull
-    @Relationship(type = "owns", direction = INCOMING)
-    private Switch theSwitch;
+    @Property(name = "switch_id")
+    @Index
+    @Convert(graphPropertyType = String.class)
+    private SwitchId switchId;
 
     @NonNull
     @Property(name = "meter_id")
@@ -80,9 +80,9 @@ public class FlowMeter implements Serializable {
     private String uniqueIndex;
 
     @Builder(toBuilder = true)
-    public FlowMeter(@NonNull Switch theSwitch, @NonNull MeterId meterId,
+    public FlowMeter(@NonNull SwitchId switchId, @NonNull MeterId meterId,
                      @NonNull String flowId, @NonNull PathId pathId) {
-        this.theSwitch = theSwitch;
+        this.switchId = switchId;
         this.meterId = meterId;
         this.flowId = flowId;
         this.pathId = pathId;
@@ -92,8 +92,8 @@ public class FlowMeter implements Serializable {
     /**
      * Set the switch and update related index(es).
      */
-    public final void setTheSwitch(@NonNull Switch theSwitch) {
-        this.theSwitch = theSwitch;
+    public final void setSwitchId(@NonNull SwitchId switchId) {
+        this.switchId = switchId;
         calculateUniqueIndex();
     }
 
@@ -106,6 +106,6 @@ public class FlowMeter implements Serializable {
     }
 
     private void calculateUniqueIndex() {
-        uniqueIndex = format("%s_%d", theSwitch.getSwitchId(), meterId != null ? meterId.getValue() : null);
+        uniqueIndex = format("%s_%d", switchId, meterId != null ? meterId.getValue() : null);
     }
 }

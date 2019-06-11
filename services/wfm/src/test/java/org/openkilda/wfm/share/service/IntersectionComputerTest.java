@@ -276,7 +276,6 @@ public class IntersectionComputerTest {
                 .destSwitch(makeSwitch(dstDpid))
                 .srcPort(srcPort)
                 .destPort(dstPort)
-                .path(path)
                 .build();
     }
 

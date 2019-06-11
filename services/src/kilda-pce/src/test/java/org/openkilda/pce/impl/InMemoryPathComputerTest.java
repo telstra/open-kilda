@@ -777,7 +777,6 @@ public class InMemoryPathComputerTest {
 
     private FlowPath addPathSegment(FlowPath flowPath, Switch src, Switch dst, int srcPort, int dstPort) {
         PathSegment ps = new PathSegment();
-        ps.setPath(flowPath);
         ps.setSrcSwitch(src);
         ps.setDestSwitch(dst);
         ps.setSrcPort(srcPort);

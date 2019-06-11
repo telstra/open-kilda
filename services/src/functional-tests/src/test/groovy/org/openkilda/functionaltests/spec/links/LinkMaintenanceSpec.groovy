@@ -78,15 +78,18 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, true, true))
 
         then: "Flows are evacuated (rerouted)"
-        Wrappers.wait(WAIT_OFFSET) {
+        def flow1PathUpdated, flow2PathUpdated
+        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
+        // Revise and fix the test appropriately.
+        Wrappers.wait(WAIT_OFFSET * 2) {
             [flow1, flow2].each { assert northbound.getFlowStatus(it.id).status == FlowState.UP }
+
+            flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.id))
+            flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.id))
+
+            assert flow1PathUpdated != flow1Path
+            assert flow2PathUpdated != flow2Path
         }
-
-        def flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.id))
-        def flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.id))
-
-        flow1PathUpdated != flow1Path
-        flow2PathUpdated != flow2Path
 
         and: "Link under maintenance is not involved in new flow paths"
         !(isl in pathHelper.getInvolvedIsls(flow1PathUpdated))

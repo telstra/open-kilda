@@ -20,6 +20,7 @@ import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.reroute.RerouteTopology;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 import org.openkilda.wfm.topology.reroute.service.ReroutesThrottling;
@@ -67,11 +68,12 @@ public class FlowThrottlingBolt extends AbstractTickStatefulBolt<InMemoryKeyValu
                     .orElse(FeatureToggles.DEFAULTS.getFlowsRerouteViaFlowHs());
 
             FlowThrottlingData throttlingData = entry.getValue();
+            CommandContext forkedContext = new CommandContext(throttlingData.getCorrelationId()).fork(flowId);
+
             FlowRerouteRequest request = new FlowRerouteRequest(flowId, false, throttlingData.getPathIdSet());
             outputCollector.emit(flowsRerouteViaFlowHs ? STREAM_FLOWHS_ID : STREAM_FLOW_ID,
-                    tuple, new Values(throttlingData.getCorrelationId(),
-                            new CommandMessage(request, System.currentTimeMillis(),
-                                    throttlingData.getCorrelationId())));
+                    tuple, new Values(forkedContext.getCorrelationId(),
+                            new CommandMessage(request, System.currentTimeMillis(), forkedContext.getCorrelationId())));
         }
         outputCollector.ack(tuple);
     }
