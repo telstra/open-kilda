@@ -25,6 +25,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
@@ -74,10 +75,11 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     public SwitchFsm(PersistenceManager persistenceManager, SwitchId switchId, Integer bfdLocalPortOffset) {
         this.transactionManager = persistenceManager.getTransactionManager();
-        this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        this.switchRepository = repositoryFactory.createSwitchRepository();
+        this.switchFeaturesRepository = repositoryFactory.createSwitchFeaturesRepository();
         this.switchId = switchId;
         this.bfdLogicalPortOffset = bfdLocalPortOffset;
-        this.switchFeaturesRepository = persistenceManager.getRepositoryFactory().createSwitchFeaturesRepository();
     }
 
     // -- FSM actions --
@@ -162,7 +164,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                 break;
             default:
                 throw new IllegalArgumentException(String.format("Unexpected event %s received in state %s (%s)",
-                                                                 event, to, getClass().getName()));
+                        event, to, getClass().getName()));
         }
 
         updatePortLinkMode(port, context);
@@ -252,8 +254,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     private void persistSwitchData(SwitchFsmContext context) {
-        Switch sw = switchRepository.findById(switchId)
-                .orElseGet(() -> Switch.builder().switchId(switchId).build());
+        Optional<Switch> optSwitch = switchRepository.findById(switchId);
+        Switch sw = optSwitch.orElseGet(() -> Switch.builder().switchId(switchId).build());
 
         SpeakerSwitchView speakerData = context.getSpeakerData();
         InetSocketAddress socketAddress = speakerData.getSwitchSocketAddress();

@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -372,7 +373,28 @@ public class Flow implements Serializable {
         } else if (pathId.equals(protectedReversePathId)) {
             return protectedForwardPathId;
         } else {
-            throw new IllegalArgumentException(String.format("Flow %s does not have path pathId=%s", flowId, pathId));
+            // Handling the case of non-active paths.
+            Optional<Long> requestedPathCookie = paths.stream()
+                    .filter(path -> path.getPathId().equals(pathId))
+                    .findAny()
+                    .map(FlowPath::getCookie)
+                    .map(Cookie::getUnmaskedValue);
+            if (requestedPathCookie.isPresent()) {
+                Optional<PathId> oppositePathId = paths.stream()
+                        .filter(path -> !path.getPathId().equals(pathId))
+                        .filter(path -> path.getCookie().getUnmaskedValue() == requestedPathCookie.get())
+                        .findAny()
+                        .map(FlowPath::getPathId);
+                if (oppositePathId.isPresent()) {
+                    return oppositePathId.get();
+                } else {
+                    throw new IllegalArgumentException(
+                            String.format("Flow %s does not have reverse path with cookie %s", flowId,
+                                    requestedPathCookie.get()));
+                }
+            } else {
+                throw new IllegalArgumentException(String.format("Flow %s does not have path %s", flowId, pathId));
+            }
         }
     }
 

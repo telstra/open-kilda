@@ -16,11 +16,13 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singleton;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
@@ -33,6 +35,7 @@ import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
+import org.neo4j.ogm.session.Neo4jSession;
 import org.neo4j.ogm.session.Session;
 
 import java.time.Instant;
@@ -161,14 +164,40 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
         }
 
         transactionManager.doInTransaction(() -> {
-            Collection<FlowPath> currentPaths = flowPathRepository.findByFlowId(flow.getFlowId());
-            flowPathRepository.lockInvolvedSwitches(Stream.concat(currentPaths.stream(), flow.getPaths().stream())
-                    .toArray(FlowPath[]::new));
+            // No need to fetch current paths for a new flow.
+            Collection<FlowPath> currentPaths = getSession().resolveGraphIdFor(flow) == null
+                    ? emptyList() : flowPathRepository.findByFlowId(flow.getFlowId());
+
+            // To avoid Neo4j deadlocks, we perform locking of switch nodes in the case of new flow, path or segments.
+            if (hasUnmanagedEntity(flow)) {
+                flowPathRepository.lockInvolvedSwitches(Stream.concat(currentPaths.stream(), flow.getPaths().stream())
+                        .toArray(FlowPath[]::new));
+            }
 
             updatePaths(currentPaths, flow.getPaths());
 
             super.createOrUpdate(flow);
         });
+    }
+
+    private boolean hasUnmanagedEntity(Flow flow) {
+        Session session = getSession();
+        if (session.resolveGraphIdFor(flow) == null) {
+            return true;
+        }
+
+        for (FlowPath path : flow.getPaths()) {
+            if (session.resolveGraphIdFor(path) == null) {
+                return true;
+            }
+            for (PathSegment segment : path.getSegments()) {
+                if (session.resolveGraphIdFor(segment) == null) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private void updatePaths(Collection<FlowPath> currentPaths, Collection<FlowPath> newPaths) {
@@ -214,6 +243,27 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
                     }
                     return diverseFlow.getGroupId();
                 }));
+    }
+
+    @Override
+    public void updateStatus(String flowId, FlowStatus flowStatus) {
+        Session session = getSession();
+
+        Map<String, Object> parameters = ImmutableMap.of(
+                "flow_id", flowId,
+                "status", flowStatusConverter.toGraphProperty(flowStatus));
+        Long updatedEntityId = session.queryForObject(Long.class,
+                "MATCH (f:flow {flow_id: $flow_id}) "
+                        + "SET f.status=$status "
+                        + "RETURN id(f)", parameters);
+        if (updatedEntityId == null) {
+            throw new PersistenceException(format("Flow not found to be updated: %s", flowId));
+        }
+
+        Object updatedEntity = ((Neo4jSession) session).context().getNodeEntity(updatedEntityId);
+        if (updatedEntity instanceof Flow) {
+            ((Flow) updatedEntity).setStatus(flowStatus);
+        }
     }
 
     @Override

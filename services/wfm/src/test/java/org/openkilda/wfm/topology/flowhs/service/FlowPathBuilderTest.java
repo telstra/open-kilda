@@ -43,6 +43,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.Optional;
 
 public class FlowPathBuilderTest {
     private FlowPathBuilder builder;
@@ -51,6 +52,8 @@ public class FlowPathBuilderTest {
     public void setUp() {
         SwitchRepository switchRepository = mock(SwitchRepository.class);
         when(switchRepository.reload(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(switchRepository.findById(any())).thenAnswer(invocation ->
+                Optional.of(Switch.builder().switchId(invocation.getArgument(0)).build()));
         builder = new FlowPathBuilder(switchRepository);
     }
 
@@ -239,6 +242,8 @@ public class FlowPathBuilderTest {
                 .build();
 
         Flow flow = mock(Flow.class);
+        when(flow.getSrcSwitch()).thenReturn(Switch.builder().switchId(switchId).build());
+        when(flow.getDestSwitch()).thenReturn(Switch.builder().switchId(switchId).build());
         PathId pathId = new PathId("test_path_id");
         MeterId meterId = new MeterId(MeterId.MIN_FLOW_METER_ID);
         PathResources pathResources = PathResources.builder()
@@ -272,6 +277,8 @@ public class FlowPathBuilderTest {
                 .build();
 
         Flow flow = mock(Flow.class);
+        when(flow.getSrcSwitch()).thenReturn(Switch.builder().switchId(switchId1).build());
+        when(flow.getDestSwitch()).thenReturn(Switch.builder().switchId(switchId2).build());
         PathId pathId = new PathId("test_path_id");
         MeterId meterId = new MeterId(MeterId.MIN_FLOW_METER_ID);
         PathResources pathResources = PathResources.builder()
@@ -313,6 +320,8 @@ public class FlowPathBuilderTest {
                 .build();
 
         Flow flow = mock(Flow.class);
+        when(flow.getSrcSwitch()).thenReturn(Switch.builder().switchId(switchId1).build());
+        when(flow.getDestSwitch()).thenReturn(Switch.builder().switchId(switchId2).build());
         PathId pathId = new PathId("test_path_id");
         MeterId meterId = new MeterId(MeterId.MIN_FLOW_METER_ID);
         PathResources pathResources = PathResources.builder()

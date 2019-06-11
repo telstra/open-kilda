@@ -24,6 +24,7 @@ import org.openkilda.persistence.repositories.TransitVlanRepository;
 import com.google.common.collect.ImmutableMap;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
+import org.neo4j.ogm.cypher.Filters;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -50,9 +51,12 @@ public class Neo4jTransitVlanRepository extends Neo4jGenericRepository<TransitVl
     @Override
     public Collection<TransitVlan> findByPathId(PathId pathId, PathId oppositePathId) {
         Filter pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, pathId);
-        Collection<TransitVlan> result = loadAll(pathIdFilter);
-        if (result.isEmpty() && oppositePathId != null) {
-            pathIdFilter = new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, oppositePathId);
+        Collection<TransitVlan> result;
+        if (oppositePathId != null) {
+            Filters pathIdsFilter = pathIdFilter.or(
+                    new Filter(PATH_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, oppositePathId));
+            result = loadAll(pathIdsFilter);
+        } else {
             result = loadAll(pathIdFilter);
         }
         return result;

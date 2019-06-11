@@ -61,13 +61,11 @@ public class RevertPathsSwapAction extends
                 if (oldForward.getStatus() != FlowPathStatus.ACTIVE) {
                     oldForward.setStatus(stateMachine.getOldPrimaryForwardPathStatus());
                 }
-                flowPathRepository.createOrUpdate(oldForward);
 
                 FlowPath oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
                 if (oldReverse.getStatus() != FlowPathStatus.ACTIVE) {
                     oldReverse.setStatus(stateMachine.getOldPrimaryReversePathStatus());
                 }
-                flowPathRepository.createOrUpdate(oldReverse);
 
                 log.debug("Swapping back the primary paths {} with {}",
                         FlowPathPair.builder().forward(flow.getForwardPath()).reverse(flow.getReversePath()).build(),
@@ -75,7 +73,6 @@ public class RevertPathsSwapAction extends
 
                 flow.setForwardPath(oldForward);
                 flow.setReversePath(oldReverse);
-                flowRepository.createOrUpdate(flow);
 
                 saveHistory(flow, oldForward, oldReverse, stateMachine);
             }
@@ -86,13 +83,11 @@ public class RevertPathsSwapAction extends
                 if (oldForward.getStatus() != FlowPathStatus.ACTIVE) {
                     oldForward.setStatus(stateMachine.getOldProtectedForwardPathStatus());
                 }
-                flowPathRepository.createOrUpdate(oldForward);
 
                 FlowPath oldReverse = getFlowPath(flow, stateMachine.getOldProtectedReversePath());
                 if (oldReverse.getStatus() != FlowPathStatus.ACTIVE) {
                     oldReverse.setStatus(stateMachine.getOldProtectedReversePathStatus());
                 }
-                flowPathRepository.createOrUpdate(oldReverse);
 
                 log.debug("Swapping back the protected paths {} with {}",
                         FlowPathPair.builder().forward(flow.getProtectedForwardPath())
@@ -101,10 +96,11 @@ public class RevertPathsSwapAction extends
 
                 flow.setProtectedForwardPath(oldForward);
                 flow.setProtectedReversePath(oldReverse);
-                flowRepository.createOrUpdate(flow);
 
                 saveHistory(flow, oldForward, oldReverse, stateMachine);
             }
+
+            flowRepository.createOrUpdate(flow);
         });
     }
 

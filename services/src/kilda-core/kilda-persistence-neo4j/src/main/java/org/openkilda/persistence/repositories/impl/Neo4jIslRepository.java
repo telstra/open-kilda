@@ -27,6 +27,7 @@ import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.converters.FlowEncapsulationTypeConverter;
 import org.openkilda.persistence.converters.IslStatusConverter;
+import org.openkilda.persistence.converters.SwitchIdConverter;
 import org.openkilda.persistence.converters.SwitchStatusConverter;
 import org.openkilda.persistence.repositories.IslRepository;
 
@@ -35,8 +36,12 @@ import com.google.common.collect.Lists;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.cypher.Filters;
+import org.neo4j.ogm.model.Result;
+import org.neo4j.ogm.session.Neo4jSession;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -49,6 +54,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     private static final String SRC_PORT_PROPERTY_NAME = "src_port";
     private static final String DST_PORT_PROPERTY_NAME = "dst_port";
 
+    private final SwitchIdConverter switchIdConverter = new SwitchIdConverter();
     private final SwitchStatusConverter switchStatusConverter = new SwitchStatusConverter();
     private final IslStatusConverter islStatusConverter = new IslStatusConverter();
     private final FlowEncapsulationTypeConverter flowEncapsulationTypeConverter = new FlowEncapsulationTypeConverter();
@@ -220,6 +226,41 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
 
             super.createOrUpdate(link);
         });
+    }
+
+    @Override
+    public long updateAvailableBandwidth(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort,
+                                         long usedBandwidth) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "src_switch", switchIdConverter.toGraphProperty(srcSwitchId),
+                "src_port", srcPort,
+                "dst_switch", switchIdConverter.toGraphProperty(dstSwitchId),
+                "dst_port", dstPort,
+                "used_bandwidth", usedBandwidth);
+
+        String query = "MATCH (src:switch {name: $src_switch}), (dst:switch {name: $dst_switch}) "
+                + "MATCH (src)-[link:isl {src_port: $src_port, dst_port: $dst_port}]->(dst) "
+                + "SET link.available_bandwidth = (link.max_bandwidth - $used_bandwidth) "
+                + "RETURN id(link) as id, link.available_bandwidth as available_bandwidth";
+
+        Result result = getSession().query(query, parameters);
+        Iterator<Map<String, Object>> it = result.queryResults().iterator();
+        if (!it.hasNext()) {
+            throw new PersistenceException(format("ISL %s_%d - %s_%d not found to be updated",
+                    srcSwitchId, srcPort, dstSwitchId, dstPort));
+        }
+
+        Map<String, Object> queryResult = it.next();
+        Long updatedEntityId = (Long) queryResult.get("id");
+        long updatedAvailableBandwidth = (Long) queryResult.get("available_bandwidth");
+
+        Object updatedEntity = ((Neo4jSession) getSession()).context().getNodeEntity(updatedEntityId);
+        if (updatedEntity instanceof Isl) {
+            ((Isl) updatedEntity).setAvailableBandwidth(updatedAvailableBandwidth);
+        }
+
+        LoggerFactory.getLogger(this.getClass()).warn("Updated available_bandwidth : {}", updatedAvailableBandwidth);
+        return updatedAvailableBandwidth;
     }
 
     @Override

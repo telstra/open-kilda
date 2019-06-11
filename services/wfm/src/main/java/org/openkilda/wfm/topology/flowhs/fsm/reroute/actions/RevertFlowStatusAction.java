@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
+import static java.lang.String.format;
+
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
@@ -26,21 +28,22 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class MarkFlowDownAction extends
+public class RevertFlowStatusAction extends
         FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
-    public MarkFlowDownAction(PersistenceManager persistenceManager) {
+    public RevertFlowStatusAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
-        log.debug("Set the flow status of {} to down.", flowId);
+        FlowStatus originalStatus = stateMachine.getOriginalFlowStatus();
+        log.debug("Reverting the flow status of {} to {}", flowId, originalStatus);
 
-        flowRepository.updateStatus(flowId, FlowStatus.DOWN);
+        flowRepository.updateStatus(flowId, originalStatus);
 
         saveHistory(stateMachine, stateMachine.getCarrier(), flowId,
-                "Set the flow status to down.");
+                format("Revert the flow status to %s.", originalStatus));
     }
 }

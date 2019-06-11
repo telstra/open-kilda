@@ -15,18 +15,9 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
-import static java.lang.String.format;
-
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.TransactionManager;
-import org.openkilda.wfm.share.history.model.FlowDumpData;
-import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
-import org.openkilda.wfm.share.history.model.FlowHistoryData;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
-import org.openkilda.wfm.share.mappers.HistoryMapper;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -34,67 +25,52 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Instant;
+import java.util.Objects;
+import java.util.stream.Stream;
 
 @Slf4j
-public class CompleteFlowPathRemovalAction extends
-        FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
-
-    private final TransactionManager transactionManager;
+public class CompleteFlowPathRemovalAction extends BaseFlowPathRemovalAction {
 
     public CompleteFlowPathRemovalAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-
-        this.transactionManager = persistenceManager.getTransactionManager();
     }
 
     @Override
-    protected void perform(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
-                           FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    protected void perform(State from, State to,
+                           Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         transactionManager.doInTransaction(() -> {
             Flow flow = getFlow(stateMachine.getFlowId());
 
+            FlowPath oldPrimaryForward = null;
+            FlowPath oldPrimaryReverse = null;
             if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
-                FlowPath oldForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
-                FlowPath oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
-
-                log.debug("Completing removal of the flow path {} / {}", oldForward, oldReverse);
-
-                flowPathRepository.delete(oldForward);
-                flowPathRepository.delete(oldReverse);
-
-                saveHistory(flow, oldForward, oldReverse, stateMachine);
+                oldPrimaryForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
+                oldPrimaryReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
             }
-
+            FlowPath oldProtectedForward = null;
+            FlowPath oldProtectedReverse = null;
             if (stateMachine.getOldProtectedForwardPath() != null
                     && stateMachine.getOldProtectedReversePath() != null) {
-                FlowPath oldForward = getFlowPath(flow, stateMachine.getOldProtectedForwardPath());
-                FlowPath oldReverse = getFlowPath(flow, stateMachine.getOldProtectedReversePath());
+                oldProtectedForward = getFlowPath(flow, stateMachine.getOldProtectedForwardPath());
+                oldProtectedReverse = getFlowPath(flow, stateMachine.getOldProtectedReversePath());
+            }
 
-                log.debug("Completing removal of the flow path {} / {}", oldForward, oldReverse);
+            flowPathRepository.lockInvolvedSwitches(Stream.of(oldPrimaryForward, oldPrimaryReverse,
+                    oldProtectedForward, oldProtectedReverse).filter(Objects::nonNull).toArray(FlowPath[]::new));
 
-                flowPathRepository.delete(oldForward);
-                flowPathRepository.delete(oldReverse);
+            if (oldPrimaryForward != null && oldPrimaryReverse != null) {
+                log.debug("Completing removal of the flow path {} / {}", oldPrimaryForward, oldPrimaryReverse);
+                deleteFlowPaths(oldPrimaryForward, oldPrimaryReverse);
 
-                saveHistory(flow, oldForward, oldReverse, stateMachine);
+                saveHistory(flow, oldPrimaryForward, oldPrimaryReverse, stateMachine);
+            }
+
+            if (oldProtectedForward != null && oldProtectedReverse != null) {
+                log.debug("Completing removal of the flow path {} / {}", oldProtectedForward, oldProtectedReverse);
+                deleteFlowPaths(oldProtectedForward, oldProtectedReverse);
+
+                saveHistory(flow, oldProtectedForward, oldProtectedReverse, stateMachine);
             }
         });
-    }
-
-    private void saveHistory(Flow flow, FlowPath forwardPath, FlowPath reversePath, FlowRerouteFsm stateMachine) {
-        FlowDumpData flowDumpData = HistoryMapper.INSTANCE.map(flow, forwardPath, reversePath);
-        flowDumpData.setDumpType(DumpType.STATE_BEFORE);
-        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .flowDumpData(flowDumpData)
-                .flowHistoryData(FlowHistoryData.builder()
-                        .action("Flow paths were removed")
-                        .time(Instant.now())
-                        .description(format("Flow paths %s/%s were removed",
-                                forwardPath.getPathId(), reversePath.getPathId()))
-                        .flowId(flow.getFlowId())
-                        .build())
-                .build();
-        stateMachine.getCarrier().sendHistoryUpdate(historyHolder);
     }
 }

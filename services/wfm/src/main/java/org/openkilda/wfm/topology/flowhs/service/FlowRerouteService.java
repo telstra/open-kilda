@@ -64,6 +64,12 @@ public class FlowRerouteService {
      */
     public void handleRequest(String key, CommandContext commandContext, String flowId, Set<PathId> pathsToReroute) {
         log.debug("Handling flow reroute request with key {}", key);
+
+        if (fsms.containsKey(key)) {
+            log.error("Attempt to create fsm with key {}, while there's another active fsm with the same key.", key);
+            return;
+        }
+
         FlowRerouteFsm fsm = FlowRerouteFsm.newInstance(commandContext, carrier, persistenceManager,
                 pathComputer, flowResourcesManager);
         fsms.put(key, fsm);

@@ -17,6 +17,7 @@ package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 
@@ -62,4 +63,6 @@ public interface FlowPathRepository extends Repository<FlowPath> {
     long getUsedBandwidthBetweenEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
 
     void lockInvolvedSwitches(FlowPath... flowPaths);
+
+    void updateStatus(PathId pathId, FlowPathStatus pathStatus);
 }

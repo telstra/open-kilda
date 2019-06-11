@@ -22,12 +22,14 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceException;
+import org.openkilda.persistence.RecoverablePersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.Repository;
 
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
 import org.neo4j.driver.v1.exceptions.ClientException;
+import org.neo4j.driver.v1.exceptions.TransientException;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.cypher.Filters;
@@ -45,6 +47,8 @@ import java.util.TreeMap;
  */
 @Slf4j
 abstract class Neo4jGenericRepository<T> implements Repository<T> {
+    private static final Filters EMPTY_FILTERS = new Filters();
+
     private static final String SRC_SWITCH_FIELD = "srcSwitch";
     private static final String DEST_SWITCH_FIELD = "destSwitch";
 
@@ -58,7 +62,7 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
 
     @Override
     public Collection<T> findAll() {
-        return getSession().loadAll(getEntityType(), getDepthLoadEntity());
+        return loadAll(EMPTY_FILTERS);
     }
 
     @Override
@@ -67,19 +71,25 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
             getSession().save(entity, getDepthCreateUpdateEntity());
         } catch (ClientException ex) {
             if (ex.code().endsWith("ConstraintValidationFailed")) {
-                throw new ConstraintViolationException(ex.getMessage(), ex);
+                throw new ConstraintViolationException("Unable to create/update " + getEntityType(), ex);
             } else {
                 throw ex;
             }
         } catch (MappingException ex) {
             log.error("OGM mapping exception", ex.getCause());
-            throw ex;
+            throw new PersistenceException("Unable to create/update " + getEntityType(), ex);
+        } catch (TransientException ex) {
+            throw new RecoverablePersistenceException("Unable to create/update " + getEntityType(), ex);
         }
     }
 
     @Override
     public void delete(T entity) {
-        getSession().delete(requireManagedEntity(entity));
+        try {
+            getSession().delete(requireManagedEntity(entity));
+        } catch (TransientException ex) {
+            throw new RecoverablePersistenceException("Unable to delete " + getEntityType(), ex);
+        }
     }
 
     protected abstract Class<T> getEntityType();
@@ -99,12 +109,7 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
     }
 
     protected Collection<T> loadAll(Filter filter) {
-        try {
-            return getSession().loadAll(getEntityType(), filter, getDepthLoadEntity());
-        } catch (MappingException ex) {
-            log.error("OGM mapping exception", ex.getCause());
-            throw ex;
-        }
+        return loadAll(new Filters(filter));
     }
 
     protected Collection<T> loadAll(Filters filters) {
@@ -112,7 +117,9 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
             return getSession().loadAll(getEntityType(), filters, getDepthLoadEntity());
         } catch (MappingException ex) {
             log.error("OGM mapping exception", ex.getCause());
-            throw ex;
+            throw new PersistenceException("Unable to load " + getEntityType(), ex);
+        } catch (TransientException ex) {
+            throw new RecoverablePersistenceException("Unable to load " + getEntityType(), ex);
         }
     }
 

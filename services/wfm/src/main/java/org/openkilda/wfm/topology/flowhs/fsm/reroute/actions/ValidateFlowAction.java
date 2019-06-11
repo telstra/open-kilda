@@ -26,6 +26,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -53,65 +54,58 @@ public class ValidateFlowAction extends
         String flowId = context.getFlowId();
         stateMachine.setFlowId(flowId);
 
-        Optional<Flow> foundFlow = flowRepository.findById(flowId);
-        if (!foundFlow.isPresent()) {
-            String errorDescription = format("Flow %s was not found", flowId);
-            log.debug(getGenericErrorMessage() + ": " + errorDescription);
-
-            saveHistory(stateMachine, stateMachine.getCarrier(), flowId, errorDescription);
-
-            stateMachine.fireError();
-
-            return Optional.of(buildErrorMessage(stateMachine, ErrorType.NOT_FOUND,
-                    getGenericErrorMessage(), errorDescription));
-        }
-
-        Flow flow = foundFlow.get();
-        if (flow.getStatus() == FlowStatus.IN_PROGRESS) {
-            String errorDescription = format("Flow %s is in progress now", flowId);
-            log.debug(getGenericErrorMessage() + ": " + errorDescription);
-
-            saveHistory(stateMachine, stateMachine.getCarrier(), flowId, errorDescription);
-
-            stateMachine.fireError();
-
-            return Optional.of(buildErrorMessage(stateMachine, ErrorType.REQUEST_INVALID,
-                    getGenericErrorMessage(), errorDescription));
-        }
-
-        stateMachine.setOriginalFlowStatus(flow.getStatus());
-        stateMachine.setRecreateIfSamePath(!flow.isActive() || context.isForceReroute());
-
-        Set<PathId> pathsToReroute = Optional.ofNullable(context.getPathsToReroute()).orElse(emptySet());
-        Set<PathId> existingPaths = flow.getPaths().stream()
-                .map(FlowPath::getPathId)
-                .collect(Collectors.toSet());
-        for (PathId pathId : pathsToReroute) {
-            if (!existingPaths.contains(pathId)) {
-                String errorDescription = format("Path %s was not found in flow %s", pathId, flowId);
-                log.debug(getGenericErrorMessage() + ": " + errorDescription);
-
-                saveHistory(stateMachine, stateMachine.getCarrier(), flowId, errorDescription);
-
-                stateMachine.fireError();
-
-                return Optional.of(buildErrorMessage(stateMachine, ErrorType.NOT_FOUND,
-                        getGenericErrorMessage(), errorDescription));
+        try {
+            Optional<Flow> foundFlow = flowRepository.findById(flowId);
+            if (!foundFlow.isPresent()) {
+                throw new FlowProcessingException(ErrorType.NOT_FOUND,
+                        getGenericErrorMessage(), format("Flow %s was not found", flowId));
             }
+
+            Flow flow = foundFlow.get();
+            if (flow.getStatus() == FlowStatus.IN_PROGRESS) {
+                throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
+                        getGenericErrorMessage(), format("Flow %s is in progress now", flowId));
+            }
+
+            stateMachine.setOriginalFlowStatus(flow.getStatus());
+            stateMachine.setRecreateIfSamePath(!flow.isActive() || context.isForceReroute());
+
+            Set<PathId> pathsToReroute = Optional.ofNullable(context.getPathsToReroute()).orElse(emptySet());
+            Set<PathId> existingPaths = flow.getPaths().stream()
+                    .map(FlowPath::getPathId)
+                    .collect(Collectors.toSet());
+            for (PathId pathId : pathsToReroute) {
+                if (!existingPaths.contains(pathId)) {
+                    throw new FlowProcessingException(ErrorType.NOT_FOUND,
+                            getGenericErrorMessage(), format("Path %s was not found in flow %s", pathId, flowId));
+                }
+            }
+
+            // check whether the primary paths should be rerouted
+            stateMachine.setReroutePrimary(pathsToReroute.isEmpty() || pathsToReroute.contains(flow.getForwardPathId())
+                    || pathsToReroute.contains(flow.getReversePathId()));
+
+            // check whether the protected paths should be rerouted
+            stateMachine.setRerouteProtected(flow.isAllocateProtectedPath() && (pathsToReroute.isEmpty()
+                    || pathsToReroute.contains(flow.getProtectedForwardPathId())
+                    || pathsToReroute.contains(flow.getProtectedReversePathId())));
+
+            saveHistory(stateMachine, stateMachine.getCarrier(), flowId, "Flow was validated successfully");
+
+            return Optional.empty();
+
+        } catch (FlowProcessingException e) {
+            // This is a validation error.
+            String errorMessage = format("%s: %s", e.getErrorMessage(), e.getErrorDescription());
+            log.debug(errorMessage);
+
+            saveHistory(stateMachine, stateMachine.getCarrier(), flowId, e.getErrorDescription());
+
+            stateMachine.fireError();
+
+            return Optional.of(buildErrorMessage(stateMachine, e.getErrorType(), e.getErrorMessage(),
+                    e.getErrorDescription()));
         }
-
-        // check whether the primary paths should be rerouted
-        stateMachine.setReroutePrimary(pathsToReroute.isEmpty() || pathsToReroute.contains(flow.getForwardPathId())
-                || pathsToReroute.contains(flow.getReversePathId()));
-
-        // check whether the protected paths should be rerouted
-        stateMachine.setRerouteProtected(flow.isAllocateProtectedPath() && (pathsToReroute.isEmpty()
-                || pathsToReroute.contains(flow.getProtectedForwardPathId())
-                || pathsToReroute.contains(flow.getProtectedReversePathId())));
-
-        saveHistory(stateMachine, stateMachine.getCarrier(), flowId, "Flow was validated successfully");
-
-        return Optional.empty();
     }
 
     @Override

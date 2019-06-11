@@ -19,9 +19,11 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
@@ -37,59 +39,62 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 
+/**
+ * A base for action classes that remove flow paths.
+ */
 @Slf4j
-public class CompleteFlowPathInstallationAction extends
+abstract class BaseFlowPathRemovalAction extends
         FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
-    private final TransactionManager transactionManager;
+    protected final TransactionManager transactionManager;
+    protected final FlowPathRepository flowPathRepository;
+    private final IslRepository islRepository;
 
-    public CompleteFlowPathInstallationAction(PersistenceManager persistenceManager) {
+    BaseFlowPathRemovalAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
 
         this.transactionManager = persistenceManager.getTransactionManager();
+        this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
     }
 
-    @Override
-    protected void perform(State from, State to,
-                           Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        transactionManager.doInTransaction(() -> {
-            Flow flow = getFlow(stateMachine.getFlowId());
+    protected void deleteFlowPaths(FlowPath forwardPath, FlowPath reversePath) {
+        flowPathRepository.delete(forwardPath);
+        flowPathRepository.delete(reversePath);
 
-            if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
-                FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
-                FlowPath newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
-
-                log.debug("Completing installation of the flow path {} / {}", newForward, newReverse);
-                flowPathRepository.updateStatus(newForward.getPathId(), FlowPathStatus.ACTIVE);
-                flowPathRepository.updateStatus(newReverse.getPathId(), FlowPathStatus.ACTIVE);
-
-                saveHistory(flow, newForward, newReverse, stateMachine);
-            }
-
-            if (stateMachine.getNewProtectedForwardPath() != null
-                    && stateMachine.getNewProtectedReversePath() != null) {
-                FlowPath newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
-                FlowPath newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
-
-                log.debug("Completing installation of the flow path {} / {}", newForward, newReverse);
-                flowPathRepository.updateStatus(newForward.getPathId(), FlowPathStatus.ACTIVE);
-                flowPathRepository.updateStatus(newReverse.getPathId(), FlowPathStatus.ACTIVE);
-
-                saveHistory(flow, newForward, newReverse, stateMachine);
-            }
-        });
+        updateIslsForFlowPath(forwardPath, reversePath);
     }
 
-    private void saveHistory(Flow flow, FlowPath forwardPath, FlowPath reversePath, FlowRerouteFsm stateMachine) {
+    private void updateIslsForFlowPath(FlowPath... paths) {
+        for (FlowPath path : paths) {
+            path.getSegments().forEach(pathSegment -> {
+                log.debug("Updating ISL for the path segment: {}", pathSegment);
+
+                updateAvailableBandwidth(pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort(),
+                        pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort());
+            });
+        }
+    }
+
+    private void updateAvailableBandwidth(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort) {
+        long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(srcSwitch, srcPort,
+                dstSwitch, dstPort);
+        log.debug("Updating ISL {}_{}-{}_{} with used bandwidth {}", srcSwitch, srcPort, dstSwitch, dstPort,
+                usedBandwidth);
+        islRepository.updateAvailableBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, usedBandwidth);
+    }
+
+    protected void saveHistory(Flow flow, FlowPath forwardPath, FlowPath reversePath,
+                               FlowRerouteFsm stateMachine) {
         FlowDumpData flowDumpData = HistoryMapper.INSTANCE.map(flow, forwardPath, reversePath);
-        flowDumpData.setDumpType(DumpType.STATE_AFTER);
+        flowDumpData.setDumpType(DumpType.STATE_BEFORE);
         FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
                 .taskId(stateMachine.getCommandContext().getCorrelationId())
                 .flowDumpData(flowDumpData)
                 .flowHistoryData(FlowHistoryData.builder()
-                        .action("Flow paths were installed")
+                        .action("Flow paths were removed")
                         .time(Instant.now())
-                        .description(format("Flow paths %s/%s were installed",
+                        .description(format("Flow paths %s/%s were removed",
                                 forwardPath.getPathId(), reversePath.getPathId()))
                         .flowId(flow.getFlowId())
                         .build())

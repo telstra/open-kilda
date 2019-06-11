@@ -16,6 +16,7 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
@@ -48,4 +49,6 @@ public interface FlowRepository extends Repository<Flow> {
     Collection<Flow> findDownFlows();
 
     Optional<String> getOrCreateFlowGroupId(String flowId);
+
+    void updateStatus(String flowId, FlowStatus flowStatus);
 }
