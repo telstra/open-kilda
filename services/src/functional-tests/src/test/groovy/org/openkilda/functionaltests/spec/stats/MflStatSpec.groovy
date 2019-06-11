@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.stats
 
-
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -15,13 +14,11 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
 import javax.inject.Provider
 
-@Ignore("unstable on jenkins") // TODO(andriidovhan)  find out what is wrong with it
 @Narrative("""Now we have two FL instances: Management and Statistics.
 - FL Stats: collect statistics only from the switches.
 - FL Management: do the other work and can collect statistics as well when a switch doesn't connect to FL Stats.""")
@@ -52,7 +49,7 @@ class MflStatSpec extends HealthCheckSpecification {
         def metric = metricPrefix + "flow.raw.bytes"
         def tags = [switchid: srcSwitch.dpId.toOtsdFormat(), flowid: flow.id]
         // statsrouter.request.interval = 60, this test often fails on jenkins with this value
-        // the statsrouter.request.interval is increased here to 100
+        // the statsrouter.request.interval is increased here up to 100
         def statsRouterInterval = 100
         def waitInterval = 10
         def initStat
