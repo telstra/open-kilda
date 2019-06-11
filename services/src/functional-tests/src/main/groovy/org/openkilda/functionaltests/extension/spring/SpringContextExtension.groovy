@@ -1,5 +1,10 @@
 package org.openkilda.functionaltests.extension.spring
 
+import static org.openkilda.functionaltests.extension.ExtensionHelper.isFeatureSpecial
+
+import org.openkilda.functionaltests.extension.tags.Tag
+import org.openkilda.functionaltests.extension.tags.TagExtension
+
 import groovy.util.logging.Slf4j
 import org.spockframework.runtime.extension.AbstractGlobalExtension
 import org.spockframework.runtime.extension.IMethodInterceptor
@@ -23,13 +28,16 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
     private static List<SpringContextListener> listeners = []
 
     void visitSpec(SpecInfo specInfo) {
-        //include dummy test only if there is a parametrized test in spec
-        //dummy test lets Spring context to be initialized before running actual features to allow accessing context
-        //from 'where' block
-        //it will always be first in the execution order
+        //include dummy test only if the first feature in spec is parameterized or if the first feature to run is 
+        // profile-dependent. Dummy test lets Spring context to be initialized before running actual features to allow 
+        // accessing context from 'where' block. 
+        //it will always be the first in execution order, guaranteed by FeatureOrderExtension
+        def nonSpecialFeatures = specInfo.allFeaturesInExecutionOrder.findAll { !isFeatureSpecial(it) }
+        def isProfileDependent = TagExtension.collectAllTags(nonSpecialFeatures[0]).contains(Tag.VIRTUAL) ||
+                TagExtension.collectAllTags(nonSpecialFeatures[0]).contains(Tag.HARDWARE)
         specInfo.getAllFeatures().find {
             it.featureMethod.getAnnotation(PrepareSpringContextDummy)
-        }?.excluded = !specInfo.getFeatures().find { it.parameterized } as boolean || 
+        }?.excluded = !(nonSpecialFeatures[0].parameterized || isProfileDependent) ||
                 specInfo.getFeatures().every { it.excluded || it.skipped } as boolean
 
         specInfo.allFixtureMethods*.addInterceptor(new IMethodInterceptor() {

@@ -34,7 +34,7 @@ class TagExtension extends AbstractGlobalExtension {
         //provide getNameTagged implementation for spec/feature/iteration names and inject Tags information
         [SpecInfo, FeatureInfo].each {
             it.metaClass.getNameTagged = { ->
-                def tags = collectAllTagsAnnotations(delegate).collectMany { it.value().toList() }
+                def tags = collectAllTags(delegate)
                 delegate.name + tagsCollectionToString(tags)
             }
         }
@@ -64,7 +64,7 @@ class TagExtension extends AbstractGlobalExtension {
             if(feature.excluded) { //do not compete if feature is already excluded somehow
                 return
             }
-            def tags = collectAllTagsAnnotations(feature).collectMany { it.value().toList() } as Set
+            def tags = collectAllTags(feature)
             def iterationTags = (feature.featureMethod.getAnnotation(IterationTags)?.value()?.toList() ?: [] +
                     feature.featureMethod.getAnnotation(IterationTag)).findAll()
             feature.excluded = !matches(tagsExpression, tags + iterationTags.collectMany {it.tags().toList() })
@@ -115,32 +115,32 @@ class TagExtension extends AbstractGlobalExtension {
         def applicableTags = iterationTags.findAll {
             iteration.name =~ it.iterationNameRegex()
         }.collectMany { it.tags().toList() }
-        def tagsAnnotations = collectAllTagsAnnotations(feature)
+        def tagsAnnotations = collectAllTags(feature)
         if(tagsAnnotations) {
-            applicableTags.addAll(tagsAnnotations.collectMany { it.value().toList() })
+            applicableTags.addAll(tagsAnnotations)
         }
         return applicableTags as Set
     }
 
-    static List<Tags> collectAllTagsAnnotations(FeatureInfo feature) {
-        def tags = []
+    static Set<Tag> collectAllTags(FeatureInfo feature) {
+        Set<Tag> tags = []
         def annotation = feature.featureMethod.getAnnotation(Tags)
         if (annotation) {
-            tags << annotation
+            tags.addAll(annotation.value())
         }
-        tags.addAll(collectAllTagsAnnotations(feature.featureMethod.getParent()))
+        tags.addAll(collectAllTags(feature.featureMethod.getParent()))
         return tags
     }
 
-    static List<Tags> collectAllTagsAnnotations(SpecInfo spec) {
-        def tags = []
+    static Set<Tag> collectAllTags(SpecInfo spec) {
+        Set<Tag> tags = []
         def annotation = spec.getAnnotation(Tags)
         if (annotation) {
-            tags << annotation
+            tags.addAll(annotation.value())
         }
         def superSpec = spec.getSuperSpec()
         if (superSpec) {
-            tags.addAll(collectAllTagsAnnotations(superSpec))
+            tags.addAll(collectAllTags(superSpec))
         }
         return tags
     }
@@ -175,7 +175,7 @@ class TagExtension extends AbstractGlobalExtension {
         }.join(" "))
     }
 
-    private static String tagsCollectionToString(List<Tag> input) {
+    private static String tagsCollectionToString(Collection<Tag> input) {
         if(input.empty) {
             return ""
         } else {
