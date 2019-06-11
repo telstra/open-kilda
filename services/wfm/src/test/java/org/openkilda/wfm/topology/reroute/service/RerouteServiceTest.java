@@ -75,13 +75,13 @@ public class RerouteServiceTest {
         FlowPath pinnedFlowForwardPath = FlowPath.builder().pathId(new PathId("1"))
                 .flow(pinnedFlow).srcSwitch(SWITCH_A).destSwitch(SWITCH_C).cookie(Cookie.buildForwardCookie(1)).build();
         List<PathSegment> pinnedFlowForwardSegments = new ArrayList<>();
-        pinnedFlowForwardSegments.add(PathSegment.builder().path(pinnedFlowForwardPath)
+        pinnedFlowForwardSegments.add(PathSegment.builder()
                 .srcSwitch(SWITCH_A)
                 .srcPort(1)
                 .destSwitch(SWITCH_B)
                 .destPort(1)
                 .build());
-        pinnedFlowForwardSegments.add(PathSegment.builder().path(pinnedFlowForwardPath)
+        pinnedFlowForwardSegments.add(PathSegment.builder()
                 .srcSwitch(SWITCH_B)
                 .srcPort(2)
                 .destSwitch(SWITCH_C)
@@ -92,13 +92,13 @@ public class RerouteServiceTest {
         FlowPath pinnedFlowReversePath = FlowPath.builder().pathId(new PathId("2"))
                 .flow(pinnedFlow).srcSwitch(SWITCH_C).destSwitch(SWITCH_A).cookie(Cookie.buildReverseCookie(2)).build();
         List<PathSegment> pinnedFlowReverseSegments = new ArrayList<>();
-        pinnedFlowReverseSegments.add(PathSegment.builder().path(pinnedFlowReversePath)
+        pinnedFlowReverseSegments.add(PathSegment.builder()
                 .srcSwitch(SWITCH_C)
                 .srcPort(1)
                 .destSwitch(SWITCH_B)
                 .destPort(2)
                 .build());
-        pinnedFlowReverseSegments.add(PathSegment.builder().path(pinnedFlowReversePath)
+        pinnedFlowReverseSegments.add(PathSegment.builder()
                 .srcSwitch(SWITCH_B)
                 .srcPort(1)
                 .destSwitch(SWITCH_A)
@@ -114,13 +114,13 @@ public class RerouteServiceTest {
                 .flow(unpinnedFlow).srcSwitch(SWITCH_A).destSwitch(SWITCH_C).cookie(Cookie.buildForwardCookie(3))
                 .build();
         List<PathSegment> unpinnedFlowForwardSegments = new ArrayList<>();
-        unpinnedFlowForwardSegments.add(PathSegment.builder().path(unpinnedFlowForwardPath)
+        unpinnedFlowForwardSegments.add(PathSegment.builder()
                 .srcSwitch(SWITCH_A)
                 .srcPort(1)
                 .destSwitch(SWITCH_B)
                 .destPort(1)
                 .build());
-        unpinnedFlowForwardSegments.add(PathSegment.builder().path(unpinnedFlowForwardPath)
+        unpinnedFlowForwardSegments.add(PathSegment.builder()
                 .srcSwitch(SWITCH_B)
                 .srcPort(2)
                 .destSwitch(SWITCH_C)
@@ -132,13 +132,13 @@ public class RerouteServiceTest {
                 .flow(unpinnedFlow).srcSwitch(SWITCH_C).destSwitch(SWITCH_A).cookie(Cookie.buildReverseCookie(3))
                 .build();
         List<PathSegment> unpinnedFlowReverseSegments = new ArrayList<>();
-        unpinnedFlowReverseSegments.add(PathSegment.builder().path(unpinnedFlowReversePath)
+        unpinnedFlowReverseSegments.add(PathSegment.builder()
                 .srcSwitch(SWITCH_C)
                 .srcPort(1)
                 .destSwitch(SWITCH_B)
                 .destPort(2)
                 .build());
-        unpinnedFlowReverseSegments.add(PathSegment.builder().path(unpinnedFlowReversePath)
+        unpinnedFlowReverseSegments.add(PathSegment.builder()
                 .srcSwitch(SWITCH_B)
                 .srcPort(1)
                 .destSwitch(SWITCH_A)

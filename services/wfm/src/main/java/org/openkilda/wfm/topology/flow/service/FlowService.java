@@ -905,7 +905,6 @@ public class FlowService extends BaseFlowService {
 
         List<PathSegment> segments = path.getSegments().stream()
                 .map(segment -> PathSegment.builder()
-                        .path(flowPath)
                         .srcSwitch(switchRepository.reload(Switch.builder()
                                 .switchId(segment.getSrcSwitchId()).build()))
                         .srcPort(segment.getSrcPort())

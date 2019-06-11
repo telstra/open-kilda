@@ -95,6 +95,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
 
     @Override
     public void onTimeout(String key, Tuple tuple) {
+        currentKey = key;
         service.handleTimeout(key);
     }
 

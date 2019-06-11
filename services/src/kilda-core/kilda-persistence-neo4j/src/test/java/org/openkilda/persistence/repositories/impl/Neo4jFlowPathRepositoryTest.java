@@ -343,12 +343,10 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
         List<PathSegment> segments = asList(PathSegment.builder()
                         .srcSwitch(switchA)
                         .destSwitch(switchC)
-                        .path(flowPath)
                         .build(),
                 PathSegment.builder()
                         .srcSwitch(switchC)
                         .destSwitch(switchB)
-                        .path(flowPath)
                         .build());
         flowPath.setSegments(segments);
 
@@ -429,14 +427,12 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
                 .srcPort(1)
                 .destSwitch(intSwitch)
                 .destPort(intPort)
-                .path(flowPath)
                 .build();
         PathSegment segment2 = PathSegment.builder()
                 .srcSwitch(intSwitch)
                 .srcPort(intPort + 100)
                 .destSwitch(switchB)
                 .destPort(2)
-                .path(flowPath)
                 .build();
         flowPath.setSegments(asList(segment1, segment2));
 

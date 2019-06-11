@@ -473,7 +473,6 @@ public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
 
     private void setSegmentsWithoutTransitSwitches(FlowPath forward, FlowPath reverse) {
         PathSegment switch1ToSwitch2 = PathSegment.builder()
-                .path(forward)
                 .srcSwitch(forward.getSrcSwitch())
                 .srcPort(12)
                 .destSwitch(forward.getDestSwitch())
@@ -481,7 +480,6 @@ public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
                 .build();
         forward.setSegments(ImmutableList.of(switch1ToSwitch2));
         PathSegment switch2ToSwitch1 = PathSegment.builder()
-                .path(reverse)
                 .srcSwitch(reverse.getSrcSwitch())
                 .srcPort(22)
                 .destSwitch(reverse.getDestSwitch())
@@ -492,14 +490,12 @@ public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
 
     private void setSegmentsWithTransitSwitches(FlowPath forward, FlowPath reverse) {
         PathSegment switch1ToSwitch2 = PathSegment.builder()
-                .path(forward)
                 .srcSwitch(forward.getSrcSwitch())
                 .srcPort(12)
                 .destSwitch(Switch.builder().switchId(SWITCH_2).build())
                 .destPort(21)
                 .build();
         PathSegment switch2ToSwitch3 = PathSegment.builder()
-                .path(forward)
                 .srcSwitch(Switch.builder().switchId(SWITCH_2).build())
                 .srcPort(23)
                 .destSwitch(forward.getDestSwitch())
@@ -508,14 +504,12 @@ public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
         forward.setSegments(ImmutableList.of(switch1ToSwitch2, switch2ToSwitch3));
 
         PathSegment switch3ToSwitch2 = PathSegment.builder()
-                .path(reverse)
                 .srcSwitch(reverse.getSrcSwitch())
                 .srcPort(32)
                 .destSwitch(Switch.builder().switchId(SWITCH_2).build())
                 .destPort(23)
                 .build();
         PathSegment switch2ToSwitch1 = PathSegment.builder()
-                .path(reverse)
                 .srcSwitch(Switch.builder().switchId(SWITCH_2).build())
                 .srcPort(21)
                 .destSwitch(reverse.getDestSwitch())

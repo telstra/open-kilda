@@ -52,15 +52,14 @@ public class RemoveOldRulesAction extends
     @Override
     protected void perform(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
                            FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        Flow flow = getFlow(stateMachine.getFlowId());
-        FlowCommandFactory flowCommandFactory = commandFactory.getFactory(flow.getEncapsulationType());
-
         Collection<RemoveRule> commands = new ArrayList<>();
 
         if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
-            FlowPath oldForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
-            FlowPath oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
+            FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
+            FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
 
+            Flow flow = oldForward.getFlow();
+            FlowCommandFactory flowCommandFactory = commandFactory.getFactory(flow.getEncapsulationType());
             commands.addAll(flowCommandFactory.createRemoveNonIngressRules(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
             commands.addAll(flowCommandFactory.createRemoveIngressRules(
@@ -68,9 +67,11 @@ public class RemoveOldRulesAction extends
         }
 
         if (stateMachine.getOldProtectedForwardPath() != null && stateMachine.getOldProtectedReversePath() != null) {
-            FlowPath oldForward = getFlowPath(flow, stateMachine.getOldProtectedForwardPath());
-            FlowPath oldReverse = getFlowPath(flow, stateMachine.getOldProtectedReversePath());
+            FlowPath oldForward = getFlowPath(stateMachine.getOldProtectedForwardPath());
+            FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
 
+            Flow flow = oldForward.getFlow();
+            FlowCommandFactory flowCommandFactory = commandFactory.getFactory(flow.getEncapsulationType());
             commands.addAll(flowCommandFactory.createRemoveNonIngressRules(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
             commands.addAll(flowCommandFactory.createRemoveIngressRules(

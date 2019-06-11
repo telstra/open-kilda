@@ -284,7 +284,6 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .srcPort(1)
                 .destSwitch(destSwitch)
                 .destPort(2)
-                .path(forwardFlowPath)
                 .build();
         forwardFlowPath.setSegments(Collections.singletonList(forwardSegment));
 
@@ -306,7 +305,6 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .srcPort(2)
                 .destSwitch(srcSwitch)
                 .destPort(1)
-                .path(reverseFlowPath)
                 .build();
         reverseFlowPath.setSegments(Collections.singletonList(reverseSegment));
 
@@ -345,7 +343,6 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .srcPort(1)
                 .destSwitch(intSwitch)
                 .destPort(intPort)
-                .path(forwardFlowPath)
                 .build();
         forwardFlowPath.setSegments(Collections.singletonList(forwardSegment));
 
@@ -367,7 +364,6 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
                 .srcPort(100)
                 .destSwitch(srcSwitch)
                 .destPort(1)
-                .path(reverseFlowPath)
                 .build();
         reverseFlowPath.setSegments(Collections.singletonList(reverseSegment));
 

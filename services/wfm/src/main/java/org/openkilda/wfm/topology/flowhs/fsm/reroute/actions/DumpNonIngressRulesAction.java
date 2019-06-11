@@ -21,6 +21,7 @@ import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
@@ -33,11 +34,11 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class DumpNonIngressRulesAction extends
-        AnonymousAction<FlowRerouteFsm, FlowRerouteFsm.State, FlowRerouteFsm.Event, FlowRerouteContext> {
+        AnonymousAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
     @Override
-    public void execute(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
-                        FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+    public void execute(State from, State to,
+                        Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         log.debug("Validating installed non ingress rules for the flow {}",
                 stateMachine.getFlowId());
 

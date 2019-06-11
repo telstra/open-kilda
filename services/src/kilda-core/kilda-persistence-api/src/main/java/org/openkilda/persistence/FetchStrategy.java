@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,20 +13,14 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flow.model;
+package org.openkilda.persistence;
 
-import org.openkilda.model.FlowPath;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.ToString;
-
-@AllArgsConstructor
-@Builder(toBuilder = true)
-@Getter
-@ToString
-public class FlowPathPair {
-    private final FlowPath forward;
-    private final FlowPath reverse;
+/**
+ * Define the strategy for fetching an entity relations.
+ */
+public enum FetchStrategy {
+    NO_RELATIONS,
+    // Fetching only first level (referenced directly from loaded entity) relations.
+    DIRECT_RELATIONS,
+    ALL_RELATIONS
 }

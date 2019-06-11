@@ -59,6 +59,7 @@ public class FlowMeter implements Serializable {
 
     @NonNull
     @Property(name = "meter_id")
+    @Index
     @Convert(graphPropertyType = Long.class)
     private MeterId meterId;
 

@@ -46,7 +46,7 @@ public class InstallNonIngressRulesAction extends
     public InstallNonIngressRulesAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
 
-        this.commandFactory = new AbstractFlowCommandFactory(persistenceManager);
+        commandFactory = new AbstractFlowCommandFactory(persistenceManager);
     }
 
     @Override

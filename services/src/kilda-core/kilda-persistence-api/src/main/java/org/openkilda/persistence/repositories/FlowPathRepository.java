@@ -17,8 +17,10 @@ package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.FetchStrategy;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -26,11 +28,15 @@ import java.util.Optional;
 public interface FlowPathRepository extends Repository<FlowPath> {
     Optional<FlowPath> findById(PathId pathId);
 
+    Optional<FlowPath> findById(PathId pathId, FetchStrategy fetchStrategy);
+
     Optional<FlowPath> findByFlowIdAndCookie(String flowId, Cookie flowCookie);
 
     Collection<FlowPath> findByFlowId(String flowId);
 
     Collection<FlowPath> findByFlowGroupId(String flowGroupId);
+
+    Collection<PathId> findPathIdsByFlowGroupId(String flowGroupId);
 
     /**
      * Finds paths that starts with passed {@param switchId} switch.
@@ -62,4 +68,6 @@ public interface FlowPathRepository extends Repository<FlowPath> {
     long getUsedBandwidthBetweenEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort);
 
     void lockInvolvedSwitches(FlowPath... flowPaths);
+
+    void updateStatus(PathId pathId, FlowPathStatus pathStatus);
 }

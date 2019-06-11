@@ -16,7 +16,6 @@
 package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.PathId;
 import org.openkilda.pce.exception.RecoverableException;
@@ -88,14 +87,17 @@ public class AvailableNetworkFactory {
         if (flow.getGroupId() != null) {
             log.info("Filling AvailableNetwork diverse weighs for group with id {}", flow.getGroupId());
 
-            Collection<FlowPath> flowPaths = flowPathRepository.findByFlowGroupId(flow.getGroupId());
+            Collection<PathId> flowPaths = flowPathRepository.findPathIdsByFlowGroupId(flow.getGroupId());
             if (!reusePathsResources.isEmpty()) {
                 flowPaths = flowPaths.stream()
-                        .filter(s -> !reusePathsResources.contains(s.getPathId()))
+                        .filter(s -> !reusePathsResources.contains(s))
                         .collect(Collectors.toList());
             }
 
-            flowPaths.forEach(flowPath -> network.processDiversitySegments(flowPath.getSegments(), config));
+            flowPaths.forEach(pathId ->
+                    flowPathRepository.findById(pathId)
+                            .ifPresent(flowPath ->
+                                    network.processDiversitySegments(flowPath.getSegments(), config)));
         }
 
         return network;

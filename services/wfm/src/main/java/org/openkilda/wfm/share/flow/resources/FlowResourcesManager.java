@@ -21,6 +21,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
+import org.openkilda.model.Switch;
 import org.openkilda.persistence.ConstraintViolationException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
@@ -119,14 +120,12 @@ public class FlowResourcesManager {
                 .pathId(reversePathId);
 
         if (flow.getBandwidth() > 0L) {
-            switchRepository.lockSwitches(switchRepository.reload(flow.getSrcSwitch()),
-                    switchRepository.reload(flow.getDestSwitch()));
+            Switch srcSwitch = switchRepository.reload(flow.getSrcSwitch());
+            Switch destSwitch = switchRepository.reload(flow.getDestSwitch());
+            switchRepository.lockSwitches(srcSwitch, destSwitch);
 
-            forward.meterId(meterPool.allocate(
-                    flow.getSrcSwitch().getSwitchId(), flow.getFlowId(), forwardPathId));
-
-            reverse.meterId(meterPool.allocate(
-                    flow.getDestSwitch().getSwitchId(), flow.getFlowId(), reversePathId));
+            forward.meterId(meterPool.allocate(srcSwitch, flow.getFlowId(), forwardPathId));
+            reverse.meterId(meterPool.allocate(destSwitch, flow.getFlowId(), reversePathId));
         }
 
         if (!flow.isOneSwitchFlow()) {
@@ -188,9 +187,10 @@ public class FlowResourcesManager {
         transactionManager.doInTransaction(() -> {
             cookiePool.deallocate(resources.getUnmaskedCookie());
 
+            meterPool.deallocate(resources.getForward().getPathId(), resources.getReverse().getPathId());
+
             Stream.of(resources.getForward(), resources.getReverse())
                     .forEach(path -> {
-                        meterPool.deallocate(path.getPathId());
                         EncapsulationResources encapsulationResources = path.getEncapsulationResources();
                         if (encapsulationResources != null) {
                             getEncapsulationResourcesProvider(encapsulationResources.getEncapsulationType())

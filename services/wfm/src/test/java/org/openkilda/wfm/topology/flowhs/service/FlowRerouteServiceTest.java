@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
-import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.junit.Assert.assertEquals;
@@ -128,6 +127,7 @@ public class FlowRerouteServiceTest {
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
 
         when(flowPathRepository.getUsedBandwidthBetweenEndpoints(any(), anyInt(), any(), anyInt())).thenReturn(0L);
+
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
 
         IslRepository islRepository = mock(IslRepository.class);
@@ -195,7 +195,7 @@ public class FlowRerouteServiceTest {
         assertEquals(FlowStatus.DOWN, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
         assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
-        verify(pathComputer, times(4)).getPath(any(), any());
+        verify(pathComputer, times(1)).getPath(any(), any());
         verify(flowResourcesManager, never()).allocateFlowResources(any());
         verify(carrier, never()).sendSpeakerRequest(any());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -460,14 +460,11 @@ public class FlowRerouteServiceTest {
 
         doAnswer(invocation -> {
             // imitate transaction rollback
-            Flow persistedFlow = invocation.getArgument(0);
-            persistedFlow.getForwardPath().setStatus(FlowPathStatus.IN_PROGRESS);
+            FlowPath persistedFlowPath = invocation.getArgument(0);
+            persistedFlowPath.setStatus(FlowPathStatus.IN_PROGRESS);
 
             throw new RuntimeException("A persistence error");
-        }).when(flowRepository).createOrUpdate(argThat(allOf(
-                hasProperty("forwardPathId", equalTo(NEW_FORWARD_FLOW_PATH)),
-                hasProperty("forwardPath",
-                        hasProperty("status", equalTo(FlowPathStatus.ACTIVE))))));
+        }).when(flowPathRepository).updateStatus(eq(NEW_FORWARD_FLOW_PATH), eq(FlowPathStatus.ACTIVE));
 
         FlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
@@ -650,12 +647,12 @@ public class FlowRerouteServiceTest {
                 .status(FlowPathStatus.ACTIVE)
                 .build();
         oldForwardPath.setSegments(Collections.singletonList(PathSegment.builder()
-                .path(oldForwardPath)
                 .srcSwitch(src)
                 .srcPort(1)
                 .destSwitch(dst)
                 .destPort(2)
                 .build()));
+        when(flowPathRepository.findById(eq(OLD_FORWARD_FLOW_PATH))).thenReturn(Optional.of(oldForwardPath));
 
         FlowPath oldReversePath = FlowPath.builder()
                 .pathId(OLD_REVERSE_FLOW_PATH)
@@ -665,12 +662,12 @@ public class FlowRerouteServiceTest {
                 .status(FlowPathStatus.ACTIVE)
                 .build();
         oldReversePath.setSegments(Collections.singletonList(PathSegment.builder()
-                .path(oldReversePath)
                 .srcSwitch(dst)
                 .srcPort(2)
                 .destSwitch(src)
                 .destPort(1)
                 .build()));
+        when(flowPathRepository.findById(eq(OLD_REVERSE_FLOW_PATH))).thenReturn(Optional.of(oldReversePath));
 
         FlowPath newForwardPath = FlowPath.builder()
                 .pathId(NEW_FORWARD_FLOW_PATH)
@@ -680,12 +677,17 @@ public class FlowRerouteServiceTest {
                 .status(FlowPathStatus.INACTIVE)
                 .build();
         newForwardPath.setSegments(Collections.singletonList(PathSegment.builder()
-                .path(newForwardPath)
                 .srcSwitch(src)
                 .srcPort(1)
                 .destSwitch(dst)
                 .destPort(2)
                 .build()));
+        doAnswer(invocation -> {
+            FlowPathStatus status = invocation.getArgument(1);
+            newForwardPath.setStatus(status);
+            return null;
+        }).when(flowPathRepository).updateStatus(eq(NEW_FORWARD_FLOW_PATH), any());
+        when(flowPathRepository.findById(eq(NEW_FORWARD_FLOW_PATH))).thenReturn(Optional.of(newForwardPath));
 
         FlowPath newReversePath = FlowPath.builder()
                 .pathId(NEW_REVERSE_FLOW_PATH)
@@ -695,12 +697,17 @@ public class FlowRerouteServiceTest {
                 .status(FlowPathStatus.INACTIVE)
                 .build();
         newReversePath.setSegments(Collections.singletonList(PathSegment.builder()
-                .path(newReversePath)
                 .srcSwitch(dst)
                 .srcPort(2)
                 .destSwitch(src)
                 .destPort(1)
                 .build()));
+        doAnswer(invocation -> {
+            FlowPathStatus status = invocation.getArgument(1);
+            newReversePath.setStatus(status);
+            return null;
+        }).when(flowPathRepository).updateStatus(eq(NEW_REVERSE_FLOW_PATH), any());
+        when(flowPathRepository.findById(eq(NEW_REVERSE_FLOW_PATH))).thenReturn(Optional.of(newReversePath));
 
         flow.setForwardPath(newForwardPath);
         flow.setReversePath(newReversePath);
@@ -708,6 +715,13 @@ public class FlowRerouteServiceTest {
         flow.setReversePath(oldReversePath);
 
         when(flowRepository.findById(any())).thenReturn(Optional.of(flow));
+        when(flowRepository.findById(any(), any())).thenReturn(Optional.of(flow));
+
+        doAnswer(invocation -> {
+            FlowStatus status = invocation.getArgument(1);
+            flow.setStatus(status);
+            return null;
+        }).when(flowRepository).updateStatus(any(), any());
 
         return flow;
     }

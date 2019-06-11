@@ -16,6 +16,7 @@
 package org.openkilda.model;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.lang.String.format;
 import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
 
 import lombok.AccessLevel;
@@ -37,16 +38,19 @@ import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
  * Represents a bi-directional flow. This includes the source and destination, flow status,
- * bandwidth and description, active paths, encapsulation type.
+ * bandwidth and description, associated paths, encapsulation type.
  */
 @Data
 @NoArgsConstructor
@@ -102,7 +106,7 @@ public class Flow implements Serializable {
     @Relationship(type = "owns", direction = OUTGOING)
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
-    private List<FlowPath> paths = new ArrayList<>();
+    private Set<FlowPath> paths = new HashSet<>();
 
     @Property(name = "allocate_protected_path")
     private boolean allocateProtectedPath;
@@ -202,22 +206,47 @@ public class Flow implements Serializable {
         return status == FlowStatus.UP;
     }
 
-    public List<FlowPath> getPaths() {
-        return Collections.unmodifiableList(paths);
+    public Set<FlowPath> getPaths() {
+        return Collections.unmodifiableSet(paths);
     }
 
     /**
      * Add and associate flow path(s) with the flow.
      */
-    public void addPaths(FlowPath... paths) {
+    public final void addPaths(FlowPath... paths) {
         for (FlowPath pathToAdd : paths) {
-            this.paths.removeIf(path -> path.getPathId().equals(pathToAdd.getPathId()));
-            this.paths.add(pathToAdd);
+            boolean toBeAdded = true;
+            Iterator<FlowPath> it = this.paths.iterator();
+            while (it.hasNext()) {
+                FlowPath each = it.next();
+                if (pathToAdd == each) {
+                    toBeAdded = false;
+                    break;
+                }
+                if (pathToAdd.getPathId().equals(each.getPathId())) {
+                    it.remove();
+                    // Quit as no duplicates expected.
+                    break;
+                }
+            }
+            if (toBeAdded) {
+                this.paths.add(pathToAdd);
+                pathToAdd.setFlow(this);
+            }
         }
     }
 
     /**
-     * Set the forward path.
+     * Get an associated path by id.
+     */
+    public final Optional<FlowPath> getPath(PathId pathId) {
+        return paths.stream()
+                .filter(path -> path.getPathId().equals(pathId))
+                .findAny();
+    }
+
+    /**
+     * Add a path and set it as the forward.
      */
     public final void setForwardPath(FlowPath forwardPath) {
         if (forwardPath != null) {
@@ -229,27 +258,33 @@ public class Flow implements Serializable {
     }
 
     /**
+     * Set already associated path as the forward.
+     */
+    public final void setForwardPath(PathId pathId) {
+        if (!getPath(pathId).isPresent()) {
+            throw new IllegalArgumentException(format("The path %s is not associated with flow %s", pathId, flowId));
+        }
+
+        this.forwardPathId = pathId;
+    }
+
+    /**
      * Get the forward path.
      */
-    public FlowPath getForwardPath() {
+    public final FlowPath getForwardPath() {
         if (getForwardPathId() == null) {
             return null;
         }
 
-        return paths.stream()
-                .filter(path -> path.getPathId().equals(getForwardPathId()))
-                .findAny()
-                .orElse(null);
+        return getPath(getForwardPathId()).orElse(null);
     }
 
     /**
-     * Set the protected forward path.
+     * Add a path and set it as the protected forward.
      */
     public final void setProtectedForwardPath(FlowPath forwardPath) {
-        paths.removeIf(path -> path.getPathId().equals(getProtectedForwardPathId()));
-
         if (forwardPath != null) {
-            paths.add(validateForwardPath(forwardPath));
+            addPaths(validateForwardPath(forwardPath));
             this.protectedForwardPathId = forwardPath.getPathId();
         } else {
             this.protectedForwardPathId = null;
@@ -257,17 +292,25 @@ public class Flow implements Serializable {
     }
 
     /**
+     * Set already associated path as protected forward.
+     */
+    public final void setProtectedForwardPath(PathId pathId) {
+        if (!getPath(pathId).isPresent()) {
+            throw new IllegalArgumentException(format("The path %s is not associated with flow %s", pathId, flowId));
+        }
+
+        this.protectedForwardPathId = pathId;
+    }
+
+    /**
      * Get the protected forward path.
      */
-    public FlowPath getProtectedForwardPath() {
+    public final FlowPath getProtectedForwardPath() {
         if (getProtectedForwardPathId() == null) {
             return null;
         }
 
-        return paths.stream()
-                .filter(path -> path.getPathId().equals(getProtectedForwardPathId()))
-                .findAny()
-                .orElse(null);
+        return getPath(getProtectedForwardPathId()).orElse(null);
     }
 
     /**
@@ -299,7 +342,7 @@ public class Flow implements Serializable {
     }
 
     /**
-     * Set the reverse path.
+     * Add a path and set it as the reverse path.
      */
     public final void setReversePath(FlowPath reversePath) {
         if (reversePath != null) {
@@ -311,27 +354,33 @@ public class Flow implements Serializable {
     }
 
     /**
+     * Set already associated path as the reverse.
+     */
+    public final void setReversePath(PathId pathId) {
+        if (!getPath(pathId).isPresent()) {
+            throw new IllegalArgumentException(format("The path %s is not associated with flow %s", pathId, flowId));
+        }
+
+        this.reversePathId = pathId;
+    }
+
+    /**
      * Get the reverse path.
      */
-    public FlowPath getReversePath() {
+    public final FlowPath getReversePath() {
         if (getReversePathId() == null) {
             return null;
         }
 
-        return paths.stream()
-                .filter(path -> path.getPathId().equals(getReversePathId()))
-                .findAny()
-                .orElse(null);
+        return getPath(getReversePathId()).orElse(null);
     }
 
     /**
-     * Set the protected reverse path.
+     * Add a path and set it as the protected reverse.
      */
     public final void setProtectedReversePath(FlowPath reversePath) {
-        paths.removeIf(path -> path.getPathId().equals(getProtectedReversePathId()));
-
         if (reversePath != null) {
-            paths.add(validateReversePath(reversePath));
+            addPaths(validateReversePath(reversePath));
             this.protectedReversePathId = reversePath.getPathId();
         } else {
             this.protectedReversePathId = null;
@@ -339,17 +388,25 @@ public class Flow implements Serializable {
     }
 
     /**
+     * Set already associated path as the protected reverse.
+     */
+    public final void setProtectedReversePath(PathId pathId) {
+        if (!getPath(pathId).isPresent()) {
+            throw new IllegalArgumentException(format("The path %s is not associated with flow %s", pathId, flowId));
+        }
+
+        this.protectedReversePathId = pathId;
+    }
+
+    /**
      * Get the protected reverse path.
      */
-    public FlowPath getProtectedReversePath() {
+    public final FlowPath getProtectedReversePath() {
         if (getProtectedReversePathId() == null) {
             return null;
         }
 
-        return paths.stream()
-                .filter(path -> path.getPathId().equals(getProtectedReversePathId()))
-                .findAny()
-                .orElse(null);
+        return getPath(getProtectedReversePathId()).orElse(null);
     }
 
     private FlowPath validateReversePath(FlowPath path) {
@@ -373,7 +430,28 @@ public class Flow implements Serializable {
         } else if (pathId.equals(protectedReversePathId)) {
             return protectedForwardPathId;
         } else {
-            throw new IllegalArgumentException(String.format("Flow %s does not have path pathId=%s", flowId, pathId));
+            // Handling the case of non-active paths.
+            Optional<Long> requestedPathCookie = paths.stream()
+                    .filter(path -> path.getPathId().equals(pathId))
+                    .findAny()
+                    .map(FlowPath::getCookie)
+                    .map(Cookie::getUnmaskedValue);
+            if (requestedPathCookie.isPresent()) {
+                Optional<PathId> oppositePathId = paths.stream()
+                        .filter(path -> !path.getPathId().equals(pathId))
+                        .filter(path -> path.getCookie().getUnmaskedValue() == requestedPathCookie.get())
+                        .findAny()
+                        .map(FlowPath::getPathId);
+                if (oppositePathId.isPresent()) {
+                    return oppositePathId.get();
+                } else {
+                    throw new IllegalArgumentException(
+                            format("Flow %s does not have reverse path with cookie %s", flowId,
+                                    requestedPathCookie.get()));
+                }
+            } else {
+                throw new IllegalArgumentException(format("Flow %s does not have path %s", flowId, pathId));
+            }
         }
     }
 

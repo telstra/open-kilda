@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<changelog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:noNamespaceSchemaLocation="http://www.liquigraph.org/schema/1.0/liquigraph.xsd">
+    <changeset id="1.7-create-index-on-flow-meter" author="Sergii Iakovenko">
+        <precondition if-not-met="CONTINUE">
+            <query><![CDATA[
+                CALL db.indexes()
+                YIELD label, properties
+                WHERE label="flow_meter" AND properties=["meter_id"]
+                RETURN count(*) = 0 as result
+            ]]></query>
+        </precondition>
+        <query><![CDATA[
+            CREATE INDEX ON :flow_meter (meter_id)
+        ]]></query>
+    </changeset>
+</changelog>

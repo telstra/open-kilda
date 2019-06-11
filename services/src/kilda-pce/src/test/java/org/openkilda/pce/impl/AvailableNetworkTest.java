@@ -289,7 +289,6 @@ public class AvailableNetworkTest {
 
         flowPath.setSegments(IntStream.rangeClosed(0, seqId)
                 .mapToObj(i -> PathSegment.builder()
-                        .path(flowPath)
                         .srcSwitch(srcSwitch)
                         .destSwitch(dstSwitch)
                         .srcPort(srcPort)

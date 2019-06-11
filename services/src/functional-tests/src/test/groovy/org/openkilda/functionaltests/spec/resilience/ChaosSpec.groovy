@@ -57,7 +57,9 @@ class ChaosSpec extends BaseSpecification {
             northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.empty
         }
         TimeUnit.SECONDS.sleep(rerouteDelay) //all throttled reroutes should start executing
-        Wrappers.wait(WAIT_OFFSET + flowsAmount) {
+        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
+        // Revise and fix the test appropriately.
+        Wrappers.wait(WAIT_OFFSET * 5 + flowsAmount) {
             flows.each { flow ->
                 assert northbound.getFlowStatus(flow.id).status == FlowState.UP
                 northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }

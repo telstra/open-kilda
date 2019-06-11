@@ -26,10 +26,10 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class MarkFlowDownAction extends
+public class MarkFlowUpAction extends
         FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
-    public MarkFlowDownAction(PersistenceManager persistenceManager) {
+    public MarkFlowUpAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
     }
 
@@ -38,9 +38,9 @@ public class MarkFlowDownAction extends
         String flowId = stateMachine.getFlowId();
         log.debug("Set the flow status of {} to down.", flowId);
 
-        flowRepository.updateStatus(flowId, FlowStatus.DOWN);
+        flowRepository.updateStatus(flowId, FlowStatus.UP);
 
         saveHistory(stateMachine, stateMachine.getCarrier(), flowId,
-                "Set the flow status to down.");
+                "Set the flow status to up.");
     }
 }

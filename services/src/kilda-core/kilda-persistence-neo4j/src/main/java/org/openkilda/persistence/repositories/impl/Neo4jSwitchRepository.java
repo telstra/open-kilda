@@ -20,6 +20,7 @@ import static java.util.Collections.singleton;
 
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -30,6 +31,7 @@ import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.session.Neo4jSession;
 import org.neo4j.ogm.session.Session;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Optional;
 
@@ -52,13 +54,13 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
 
     @Override
     public Optional<Switch> findById(SwitchId switchId) {
-        return findById(getSession(), switchId, getDepthLoadEntity());
+        return findById(getSession(), switchId, getDefaultFetchStrategy());
     }
 
-    private Optional<Switch> findById(Session session, SwitchId switchId, int entityLoadDepth) {
+    private Optional<Switch> findById(Session session, SwitchId switchId, FetchStrategy fetchStrategy) {
         Filter switchNameFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId);
 
-        Collection<Switch> switches = session.loadAll(getEntityType(), switchNameFilter, entityLoadDepth);
+        Collection<Switch> switches = loadAll(switchNameFilter, fetchStrategy);
         if (switches.size() > 1) {
             throw new PersistenceException(format("Found more that 1 Switch entity by %s as name", switchId));
         }
@@ -68,34 +70,36 @@ public class Neo4jSwitchRepository extends Neo4jGenericRepository<Switch> implem
     @Override
     public Switch reload(Switch entity) {
         Session session = getSession();
-
         Long graphId = session.resolveGraphIdFor(entity);
         if (graphId != null) {
             Object sessionEntity = ((Neo4jSession) session).context().getNodeEntity(graphId);
             if (sessionEntity instanceof Switch) {
                 // no need to reload if attached.
                 return (Switch) sessionEntity;
+            } else if (sessionEntity != null) {
+                throw new PersistenceException(format("Expected a Switch entity, but found %s.", sessionEntity));
             }
         }
 
-        return findById(session, entity.getSwitchId(), 0)
+        return findById(session, entity.getSwitchId(), FetchStrategy.NO_RELATIONS)
                 .orElseThrow(() -> new PersistenceException(format("Switch not found: %s", entity.getSwitchId())));
     }
 
     @Override
     public void forceDelete(SwitchId switchId) {
         transactionManager.doInTransaction(() -> {
-            getSession().query("MATCH (:switch {name: $name})-[]-(n:flow_meter) DETACH DELETE n",
+            Session session = getSession();
+            session.query("MATCH (:switch {name: $name})-[]-(n:flow_meter) DETACH DELETE n",
                     ImmutableMap.of("name", switchId.toString()));
 
-            getSession().query("MATCH (sw:switch {name: $name}) DETACH DELETE sw",
+            session.query("MATCH (sw:switch {name: $name}) DETACH DELETE sw",
                     ImmutableMap.of("name", switchId.toString()));
         });
     }
 
     @Override
     public void lockSwitches(Switch... switches) {
-        super.lockSwitches(switches);
+        super.lockSwitches(Arrays.stream(switches).map(Switch::getSwitchId));
     }
 
     @Override
