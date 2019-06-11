@@ -59,7 +59,7 @@ class FlowPriorityRerouteSpec extends BaseSpecification {
         // for a flow with protected path we use a little bit different logic for rerouting then for simple flow
         // that's why we use WAIT_OFFSET here
         Wrappers.wait(WAIT_OFFSET) {
-            flows.sort { it.priority }*.id == northbound.getAllFlows().sort { it.lastUpdated }*.id
+            assert flows.sort { it.priority }*.id == northbound.getAllFlows().sort { it.lastUpdated }*.id
         }
 
         and: "Cleanup: revert system to original state"

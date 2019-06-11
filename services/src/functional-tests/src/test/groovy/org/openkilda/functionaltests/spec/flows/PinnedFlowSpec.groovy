@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit
 - On Isl up event such flow shouldn't be re-routed as well.
   Instead kilda should verify that it's path is online and mark flow as UP.""")
 class PinnedFlowSpec extends BaseSpecification {
+
     def "System doesn't reroute(automatically) pinned flow when flow path is partially broken"() {
         given: "A pinned flow going through a long not preferable path"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -50,7 +51,7 @@ class PinnedFlowSpec extends BaseSpecification {
                 !Cookie.isDefaultRule(it.cookie)
             }*.cookie]
         }
-        def metersMap = involvedSwitches.collectEntries { sw ->
+        def metersMap = involvedSwitches.findAll { it.ofVersion != "OF_12" }.collectEntries { sw ->
             [sw.dpId, northbound.getAllMeters(sw.dpId).meterEntries.findAll {
                 it.meterId > MAX_SYSTEM_RULE_METER_ID
             }*.meterId]
@@ -73,7 +74,7 @@ class PinnedFlowSpec extends BaseSpecification {
                 !Cookie.isDefaultRule(it.cookie)
             }*.cookie]
         }
-        def metersMapAfterReroute = involvedSwitches.collectEntries { sw ->
+        def metersMapAfterReroute = involvedSwitches.findAll { it.ofVersion != "OF_12" }.collectEntries { sw ->
             [sw.dpId, northbound.getAllMeters(sw.dpId).meterEntries.findAll {
                 it.meterId > MAX_SYSTEM_RULE_METER_ID
             }*.meterId]
@@ -107,7 +108,7 @@ class PinnedFlowSpec extends BaseSpecification {
         database.resetCosts()
     }
 
-    def "System is able to reroute(intentional) pinned flow"() {
+    def "System is able to reroute(intentionally) pinned flow"() {
         given: "A pinned flow with alt path available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)
