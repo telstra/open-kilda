@@ -34,6 +34,7 @@ public interface GrpcService {
 
     List<LogicalPort> getSwitchLogicalPorts(String switchAddress);
 
+    //TODO(rtretiak): response type should be 'LogicalPort' according to #2491
     LogicalPortDto createLogicalPort(String switchAddress, LogicalPortDto payload);
 
     LogicalPort getSwitchLogicalPortConfig(String switchAddress, Integer logicalPortNumber);

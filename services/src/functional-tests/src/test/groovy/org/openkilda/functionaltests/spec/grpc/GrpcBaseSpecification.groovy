@@ -10,12 +10,17 @@ import groovy.transform.Memoized
 
 @Tags(HARDWARE)
 class GrpcBaseSpecification extends BaseSpecification {
+
+    /**
+     * Get all noviflow switches based on minimal firmware version required.
+     * 
+     * @param minVersion include only numeric part, e.g 6.4, 6.5, 6.6
+     */
     @Memoized
-    List<SwitchInfoData> getNoviflowSwitches() {
+    List<SwitchInfoData> getNoviflowSwitches(String minVersion) {
         northbound.activeSwitches.findAll {
-            // it is not working properly if version <= 6.4
             def matcher = it.description =~ /NW[0-9]+.([0-9].[0-9])/
-            return matcher && matcher[0][1] > "6.4"
+            return matcher && matcher[0][1] > minVersion
         }
     }
 }
