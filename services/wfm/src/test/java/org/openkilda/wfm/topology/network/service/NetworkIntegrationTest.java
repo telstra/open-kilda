@@ -57,6 +57,7 @@ public class NetworkIntegrationTest {
             .bfdEnabled(true)
             .bfdLogicalPortOffset(200)
             .islCostRaiseOnPhysicalDown(10000)
+            .dbRepeatMaxDurationSeconds(30)
             .build();
 
     private final SpeakerSwitchDescription switchDescription = SpeakerSwitchDescription.builder()
@@ -135,7 +136,7 @@ public class NetworkIntegrationTest {
 
     @Before
     public void setUp() throws Exception {
-        switchService = new NetworkSwitchService(null, persistenceManager, options.getBfdLogicalPortOffset());
+        switchService = new NetworkSwitchService(null, persistenceManager, options);
         portService = new NetworkPortService(null);
         bfdPortService = new NetworkBfdPortService(integrationCarrier, persistenceManager);
         uniIslService = new NetworkUniIslService(null);

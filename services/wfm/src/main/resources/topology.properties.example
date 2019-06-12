@@ -68,6 +68,7 @@ logger.level = INFO
 discovery.interval = 3
 discovery.packet.ttl = 5
 discovery.timeout = 15
+discovery.db.write.repeats.time.frame = 30
 
 # all following ping intervals are in seconds
 #flow.ping.scale-factor = 2

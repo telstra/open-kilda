@@ -90,6 +90,11 @@ public abstract class AbstractFlowTest {
                                                               TransactionCallbackWithoutResult<E> action) throws E {
                 Failsafe.with(retryPolicy).run(action::doInTransaction);
             }
+
+            @Override
+            public RetryPolicy makeRetryPolicyBlank() {
+                return new RetryPolicy().retryIf(result -> false);
+            }
         });
     }
 
@@ -136,5 +141,4 @@ public abstract class AbstractFlowTest {
 
         return builder.build();
     }
-
 }
