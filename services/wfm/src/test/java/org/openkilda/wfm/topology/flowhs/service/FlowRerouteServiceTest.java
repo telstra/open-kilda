@@ -164,6 +164,11 @@ public class FlowRerouteServiceTest {
                                                               TransactionCallbackWithoutResult<E> action) throws E {
                 Failsafe.with(retryPolicy).run(action::doInTransaction);
             }
+
+            @Override
+            public RetryPolicy makeRetryPolicyBlank() {
+                return new RetryPolicy().abortIf(result -> true);
+            }
         });
 
         doAnswer(invocation -> {

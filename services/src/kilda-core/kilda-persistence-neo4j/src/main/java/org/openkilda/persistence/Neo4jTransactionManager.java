@@ -22,6 +22,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.neo4j.driver.v1.exceptions.TransientException;
 import org.neo4j.ogm.session.Session;
 import org.neo4j.ogm.session.SessionFactory;
 import org.neo4j.ogm.transaction.Transaction;
@@ -29,6 +30,7 @@ import org.neo4j.ogm.transaction.Transaction.Status;
 
 import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Neo4j OGM implementation of {@link TransactionManager}. Manages transaction boundaries.
@@ -38,9 +40,14 @@ final class Neo4jTransactionManager implements TransactionManager, Neo4jSessionF
     private static final ThreadLocal<Session> SESSION_HOLDER = new ThreadLocal<>();
 
     private final SessionFactory sessionFactory;
+    private final RetryPolicy retryPolicyBlank;
 
     public Neo4jTransactionManager(SessionFactory sessionFactory) {
         this.sessionFactory = sessionFactory;
+        this.retryPolicyBlank = new RetryPolicy()
+                .retryOn(TransientException.class)
+                .withJitter(50, TimeUnit.MICROSECONDS)
+                .withBackoff(1, 10, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -79,8 +86,16 @@ final class Neo4jTransactionManager implements TransactionManager, Neo4jSessionF
         execute(retryPolicy, callableOf(action));
     }
 
+    @Override
+    public RetryPolicy makeRetryPolicyBlank() {
+        return new RetryPolicy(retryPolicyBlank);
+    }
+
     private <T> T execute(RetryPolicy retryPolicy, Callable<T> action) {
-        return Failsafe.with(retryPolicy).get(() -> execute(action));
+        return Failsafe.with(retryPolicy)
+                .onRetry(e -> log.warn("Retrying Neo4j transaction finished with exception", e))
+                .onRetriesExceeded(e -> log.warn("No more retry attempt for Neo4j transaction, final failure", e))
+                .get(() -> execute(action));
     }
 
     private <T> T execute(Callable<T> action) throws Exception {

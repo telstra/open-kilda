@@ -26,6 +26,7 @@ import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm;
 import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm.SwitchFsmContext;
 import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm.SwitchFsmEvent;
 import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm.SwitchFsmState;
+import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.facts.HistoryFacts;
 
 import lombok.extern.slf4j.Slf4j;
@@ -43,20 +44,21 @@ public class NetworkSwitchService {
 
     private final PersistenceManager persistenceManager;
 
-    private final int bfdLogicalPortOffset;
+    private final NetworkOptions options;
 
     ISwitchCarrier carrier;
 
     public NetworkSwitchService(ISwitchCarrier carrier, PersistenceManager persistenceManager,
-                                Integer bfdLogicalPortOffset) {
+                                NetworkOptions options) {
         this.carrier = carrier;
         this.persistenceManager = persistenceManager;
-        this.bfdLogicalPortOffset = bfdLogicalPortOffset;
+        this.options = options;
 
         controllerFactory = SwitchFsm.factory();
         controllerExecutor = controllerFactory.produceExecutor();
 
-        log.info("Discovery switch service configuration: bfd-logical-port-offset:{}", bfdLogicalPortOffset);
+        log.info("Discovery switch service configuration: bfd-logical-port-offset:{}",
+                 options.getBfdLogicalPortOffset());
     }
 
     /**
@@ -65,7 +67,7 @@ public class NetworkSwitchService {
     public void switchAddWithHistory(HistoryFacts history) {
         log.info("Switch service receive switch ADD from history request for {}", history.getSwitchId());
         SwitchFsm switchFsm = controllerFactory.produce(persistenceManager, history.getSwitchId(),
-                                                        bfdLogicalPortOffset);
+                                                        options);
 
         SwitchFsmContext fsmContext = SwitchFsmContext.builder(carrier)
                 .history(history)
@@ -201,7 +203,7 @@ public class NetworkSwitchService {
         return controller.computeIfAbsent(
                 datapath, key -> {
                     logWrapper.onSwitchAdd(key);
-                    return controllerFactory.produce(persistenceManager, datapath, bfdLogicalPortOffset);
+                    return controllerFactory.produce(persistenceManager, datapath, options);
                 });
     }
 }

@@ -44,17 +44,19 @@ import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
+import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.facts.HistoryFacts;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.mockito.stubbing.Answer;
 
 import java.net.Inet4Address;
 import java.net.InetSocketAddress;
@@ -67,6 +69,12 @@ import java.util.Set;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkSwitchServiceTest {
+    private static final int BFD_LOGICAL_PORT_OFFSET = 200;
+
+    private NetworkOptions options = NetworkOptions.builder()
+            .bfdLogicalPortOffset(BFD_LOGICAL_PORT_OFFSET)
+            .dbRepeatMaxDurationSeconds(30)
+            .build();
 
     @Mock
     private ISwitchCarrier carrier;
@@ -85,8 +93,6 @@ public class NetworkSwitchServiceTest {
 
     @Mock
     private SwitchFeaturesRepository switchFeaturesRepository;
-
-    private static final int BFD_LOGICAL_PORT_OFFSET = 200;
 
     private final SpeakerSwitchDescription switchDescription = SpeakerSwitchDescription.builder()
             .manufacturer("OF vendor A")
@@ -115,7 +121,6 @@ public class NetworkSwitchServiceTest {
     public NetworkSwitchServiceTest() throws UnknownHostException {
     }
 
-
     @Before
     public void setup() {
         resetMocks();
@@ -129,11 +134,17 @@ public class NetworkSwitchServiceTest {
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
         reset(transactionManager);
-        doAnswer((Answer) invocation -> {
-            TransactionCallbackWithoutResult tr = invocation.getArgument(0);
-            tr.doInTransaction();
+
+        when(transactionManager.makeRetryPolicyBlank())
+                .thenReturn(new RetryPolicy().withMaxRetries(2));
+        doAnswer(invocation -> {
+            RetryPolicy retryPolicy = invocation.getArgument(0);
+            TransactionCallbackWithoutResult tr = invocation.getArgument(1);
+            Failsafe.with(retryPolicy)
+                    .run(tr::doInTransaction);
             return null;
-        }).when(transactionManager).doInTransaction(Mockito.any(TransactionCallbackWithoutResult.class));
+        }).when(transactionManager)
+                .doInTransaction(Mockito.any(RetryPolicy.class), Mockito.any(TransactionCallbackWithoutResult.class));
 
         reset(switchRepository);
 
@@ -158,8 +169,7 @@ public class NetworkSwitchServiceTest {
                 false,
                 speakerSwitchView);
 
-        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
-                                                                BFD_LOGICAL_PORT_OFFSET);
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
         service.switchEvent(switchAddEvent);
 
         //System.out.println(mockingDetails(carrier).printInvocations());
@@ -206,8 +216,7 @@ public class NetworkSwitchServiceTest {
                 false,
                 speakerSwitchView);
 
-        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
-                                                                BFD_LOGICAL_PORT_OFFSET);
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
 
         service.switchEvent(switchAddEvent);
 
@@ -260,8 +269,7 @@ public class NetworkSwitchServiceTest {
         history.addLink(islAtoB);
         history.addLink(islAtoB2);
 
-        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
-                                                                BFD_LOGICAL_PORT_OFFSET);
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
         service.switchAddWithHistory(history);
 
         //System.out.println(mockingDetails(carrier).printInvocations());
@@ -308,8 +316,7 @@ public class NetworkSwitchServiceTest {
         history.addLink(islAtoB2);
         history.addLink(islAtoB3);
 
-        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
-                                                                BFD_LOGICAL_PORT_OFFSET);
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
         service.switchAddWithHistory(history);
 
         // Online
@@ -354,8 +361,7 @@ public class NetworkSwitchServiceTest {
                 false,
                 speakerSwitchView);
 
-        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
-                                                                BFD_LOGICAL_PORT_OFFSET);
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
 
         service.switchEvent(switchAddEvent);
 
@@ -423,8 +429,7 @@ public class NetworkSwitchServiceTest {
                 false,
                 speakerSwitchView);
 
-        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
-                BFD_LOGICAL_PORT_OFFSET);
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
 
         // initial switch ADD
         service.switchEvent(switchAddEvent);
@@ -450,8 +455,7 @@ public class NetworkSwitchServiceTest {
 
     @Test
     public void switchFromOnlineToOnlineWithLostBfdFeature() {
-        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
-                BFD_LOGICAL_PORT_OFFSET);
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
 
         List<SpeakerSwitchPortView> ports = doSpeakerOnline(service, Collections.singleton(Feature.BFD));
         List<SpeakerSwitchPortView> ports2 = swapBfdPortsState(ports);
@@ -478,8 +482,7 @@ public class NetworkSwitchServiceTest {
 
     @Test
     public void switchFromOnlineToOnlineWithAcquireBfdFeature() {
-        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
-                BFD_LOGICAL_PORT_OFFSET);
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
 
         List<SpeakerSwitchPortView> ports = doSpeakerOnline(service, Collections.emptySet());
         List<SpeakerSwitchPortView> ports2 = swapBfdPortsState(ports);
@@ -510,8 +513,7 @@ public class NetworkSwitchServiceTest {
                 speakerInetAddress.toString(),
                 false,
                 getSpeakerSwitchView());
-        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
-                                                                BFD_LOGICAL_PORT_OFFSET);
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
         service.switchEvent(switchAddEvent);
         resetMocks();
 
@@ -545,8 +547,7 @@ public class NetworkSwitchServiceTest {
                 false,
                 speakerSwitchView);
 
-        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
-                                                                BFD_LOGICAL_PORT_OFFSET);
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
         service.switchEvent(switchAddEvent);
         resetMocks();
         //System.out.println(mockingDetails(carrier).printInvocations());
@@ -575,8 +576,7 @@ public class NetworkSwitchServiceTest {
 
     @Test
     public void portAddOnOnlineSwitch() {
-        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
-                                                                BFD_LOGICAL_PORT_OFFSET);
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
 
         // prepare
         SpeakerSwitchView speakerSwitchView = getSpeakerSwitchView().toBuilder()
@@ -624,8 +624,7 @@ public class NetworkSwitchServiceTest {
                 false,
                 speakerSwitchView);
 
-        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
-                                                                BFD_LOGICAL_PORT_OFFSET);
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
         service.switchEvent(switchAddEvent);
         resetMocks();
 
@@ -654,8 +653,7 @@ public class NetworkSwitchServiceTest {
                 false,
                 speakerSwitchView);
 
-        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager,
-                                                                BFD_LOGICAL_PORT_OFFSET);
+        NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
         service.switchEvent(switchAddEvent);
 
         // System.out.println(mockingDetails(carrier).printInvocations());

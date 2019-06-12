@@ -35,12 +35,14 @@ import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm.SwitchFsmEvent
 import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm.SwitchFsmState;
 import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
+import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.facts.HistoryFacts;
 import org.openkilda.wfm.topology.network.service.ISwitchCarrier;
 
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.failsafe.RetryPolicy;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
@@ -52,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> {
@@ -59,6 +62,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private final NetworkTopologyDashboardLogger logWrapper = new NetworkTopologyDashboardLogger(log);
 
     private final TransactionManager transactionManager;
+    private final RetryPolicy transactionRetryPolicy;
     private final SwitchRepository switchRepository;
     private final SwitchFeaturesRepository switchFeaturesRepository;
 
@@ -72,11 +76,14 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         return new SwitchFsmFactory();
     }
 
-    public SwitchFsm(PersistenceManager persistenceManager, SwitchId switchId, Integer bfdLocalPortOffset) {
+    public SwitchFsm(PersistenceManager persistenceManager, SwitchId switchId, NetworkOptions options) {
         this.transactionManager = persistenceManager.getTransactionManager();
+        this.transactionRetryPolicy = transactionManager.makeRetryPolicyBlank()
+                .withMaxDuration(options.getDbRepeatMaxDurationSeconds(), TimeUnit.SECONDS);
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+
         this.switchId = switchId;
-        this.bfdLogicalPortOffset = bfdLocalPortOffset;
+        this.bfdLogicalPortOffset = options.getBfdLogicalPortOffset();
         this.switchFeaturesRepository = persistenceManager.getRepositoryFactory().createSwitchFeaturesRepository();
     }
 
@@ -95,7 +102,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     public void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
         logWrapper.onSwitchUpdateStatus(switchId, NetworkTopologyDashboardLogger.SwitchState.ONLINE);
 
-        transactionManager.doInTransaction(() -> persistSwitchData(context));
+        transactionManager.doInTransaction(transactionRetryPolicy, () -> persistSwitchData(context));
         updatePorts(context, true);
     }
 
@@ -106,7 +113,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     public void offlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                              SwitchFsmContext context) {
         logWrapper.onSwitchUpdateStatus(switchId, NetworkTopologyDashboardLogger.SwitchState.OFFLINE);
-        transactionManager.doInTransaction(() -> updatePersistentStatus(SwitchStatus.INACTIVE));
+        transactionManager.doInTransaction(transactionRetryPolicy, () -> updatePersistentStatus(SwitchStatus.INACTIVE));
 
         for (AbstractPort port : portByNumber.values()) {
             updateOnlineStatus(port, context, false);
@@ -334,7 +341,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
             builder = StateMachineBuilderFactory.create(
                     SwitchFsm.class, SwitchFsmState.class, SwitchFsmEvent.class, SwitchFsmContext.class,
                     // extra parameters
-                    PersistenceManager.class, SwitchId.class, Integer.class);
+                    PersistenceManager.class, SwitchId.class, NetworkOptions.class);
 
             // INIT
             builder.transition()
@@ -380,9 +387,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
             return new FsmExecutor<>(SwitchFsmEvent.NEXT);
         }
 
-        public SwitchFsm produce(PersistenceManager persistenceManager, SwitchId switchId,
-                                 Integer bfdLocalPortOffset) {
-            return builder.newStateMachine(SwitchFsmState.INIT, persistenceManager, switchId, bfdLocalPortOffset);
+        public SwitchFsm produce(PersistenceManager persistenceManager, SwitchId switchId, NetworkOptions options) {
+            return builder.newStateMachine(SwitchFsmState.INIT, persistenceManager, switchId, options);
         }
     }
 

@@ -17,8 +17,10 @@ package org.openkilda.wfm.topology.network.service;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -52,6 +54,8 @@ import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Ignore;
@@ -61,11 +65,13 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.neo4j.driver.v1.exceptions.TransientException;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -82,6 +88,7 @@ public class NetworkIslServiceTest {
     private final NetworkOptions options = NetworkOptions.builder()
             .islCostRaiseOnPhysicalDown(10000)
             .islCostWhenUnderMaintenance(15000)
+            .dbRepeatMaxDurationSeconds(30)
             .build();
 
     @Mock
@@ -122,11 +129,21 @@ public class NetworkIslServiceTest {
 
         when(featureTogglesRepository.find()).thenReturn(Optional.empty());
 
+        when(transactionManager.makeRetryPolicyBlank())
+                .thenReturn(new RetryPolicy().withMaxRetries(2));
         doAnswer(invocation -> {
             TransactionCallbackWithoutResult tr = invocation.getArgument(0);
             tr.doInTransaction();
             return null;
         }).when(transactionManager).doInTransaction(Mockito.any(TransactionCallbackWithoutResult.class));
+        doAnswer(invocation -> {
+            RetryPolicy retryPolicy = invocation.getArgument(0);
+            TransactionCallbackWithoutResult tr = invocation.getArgument(1);
+            Failsafe.with(retryPolicy)
+                    .run(tr::doInTransaction);
+            return null;
+        }).when(transactionManager)
+                .doInTransaction(Mockito.any(RetryPolicy.class), Mockito.any(TransactionCallbackWithoutResult.class));
 
         service = new NetworkIslService(carrier, persistenceManager, options);
     }
@@ -411,6 +428,32 @@ public class NetworkIslServiceTest {
     public void deleteWhenMoved() {
         prepareAndPerformDelete(IslStatus.MOVED);
         verifyDelete();
+    }
+
+    @Test
+    public void repeatOnTransientDbErrors() {
+        mockPersistenceIsl(endpointAlpha1, endpointBeta2, null);
+        mockPersistenceIsl(endpointBeta2, endpointAlpha1, null);
+
+        mockPersistenceLinkProps(endpointAlpha1, endpointBeta2, null);
+        mockPersistenceLinkProps(endpointBeta2, endpointAlpha1, null);
+
+        mockPersistenceBandwidthAllocation(endpointAlpha1, endpointBeta2, 0);
+        mockPersistenceBandwidthAllocation(endpointBeta2, endpointAlpha1, 0);
+
+        doThrow(new TransientException("unit-test", "force createOrUpdate to fail"))
+                .when(islRepository)
+                .createOrUpdate(argThat(
+                        link -> endpointAlpha1.getDatapath().equals(link.getSrcSwitch().getSwitchId())
+                                && Objects.equals(endpointAlpha1.getPortNumber(), link.getSrcPort())));
+
+        IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
+        service.islUp(endpointAlpha1, reference, new IslDataHolder(100, 1, 100, 100));
+
+        verify(islRepository, atLeast(2))
+                .createOrUpdate(argThat(
+                        link -> endpointAlpha1.getDatapath().equals(link.getSrcSwitch().getSwitchId())
+                                && Objects.equals(endpointAlpha1.getPortNumber(), link.getSrcPort())));
     }
 
     private void prepareAndPerformDelete(IslStatus initialStatus) {

@@ -67,9 +67,14 @@ logger.watermark =
 #   message from speaker it will be marked as unavailable
 # - discovery.keep.removed.isl - how long should we store/remember in minutes isl endpoints.
 #   it is mainly used for defining whether isl is moved or not
-discovery.interval = 2
-discovery.timeout = 9
+discovery.interval = 3
+discovery.packet.ttl = 5
+discovery.timeout = 15
 discovery.limit = -1
+discovery.keep.removed.isl = 60
+discovery.db.write.repeats.time.frame = 30
+
+# deprecated since multi-FL release (must be dropped with "event" topology)
 discovery.speaker-failure-timeout = 5
 discovery.dump-request-timeout-seconds=60
 discovery.keep.removed.isl = 60

@@ -99,5 +99,9 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
 
         @Key("use-bfd")
         boolean isBfdEnabled();
+
+        @Key("db.write.repeats.time.frame")
+        @Default("30")
+        long getDbRepeatsTimeFrameSeconds();
     }
 }
