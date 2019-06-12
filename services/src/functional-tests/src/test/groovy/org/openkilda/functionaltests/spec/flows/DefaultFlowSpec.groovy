@@ -57,16 +57,22 @@ class DefaultFlowSpec extends BaseSpecification {
         def DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1
 
         [srcSwitch.dpId, dstSwitch.dpId].each { sw ->
-            [flowVlanPortInfo.left.cookie, flowVlanPortInfo.right.cookie].each { cookie ->
+            [flowVlanPortInfo.forwardPath.cookie.value, flowVlanPortInfo.reversePath.cookie.value].each { cookie ->
                 assert rules[sw].find { it.cookie == cookie }.priority == FLOW_PRIORITY
             }
         }
         // DEFAULT_FLOW_PRIORITY sets on an ingress rule only
-        rules[srcSwitch.dpId].find { it.cookie == flowFullPortInfo.right.cookie }.priority == FLOW_PRIORITY
-        rules[newDstSwitch.dpId].find { it.cookie == flowFullPortInfo.left.cookie }.priority == FLOW_PRIORITY
+        rules[srcSwitch.dpId].find { it.cookie == flowFullPortInfo.reversePath.cookie.value }.priority == FLOW_PRIORITY
+        rules[newDstSwitch.dpId].find {
+            it.cookie == flowFullPortInfo.forwardPath.cookie.value
+        }.priority == FLOW_PRIORITY
 
-        rules[srcSwitch.dpId].find { it.cookie == flowFullPortInfo.left.cookie }.priority == DEFAULT_FLOW_PRIORITY
-        rules[newDstSwitch.dpId].find { it.cookie == flowFullPortInfo.right.cookie }.priority == DEFAULT_FLOW_PRIORITY
+        rules[srcSwitch.dpId].find {
+            it.cookie == flowFullPortInfo.forwardPath.cookie.value
+        }.priority == DEFAULT_FLOW_PRIORITY
+        rules[newDstSwitch.dpId].find {
+            it.cookie == flowFullPortInfo.reversePath.cookie.value
+        }.priority == DEFAULT_FLOW_PRIORITY
 
         and: "System allows traffic on the vlan flow"
         def traffExam = traffExamProvider.get()
