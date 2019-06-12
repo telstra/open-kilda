@@ -116,7 +116,9 @@ class SwitchSyncSpec extends BaseSpecification {
             involvedSwitches.each {
                 def validationResult = northbound.validateSwitch(it.dpId)
                 assert validationResult.rules.missing.size() == 0
-                assert validationResult.meters.missing.size() == 0
+                if(!it.dpId.description.contains("OF_12")) {
+                    assert validationResult.meters.missing.size() == 0
+                }
             }
         }
 
@@ -197,7 +199,9 @@ class SwitchSyncSpec extends BaseSpecification {
             involvedSwitches.each {
                 def validationResult = northbound.validateSwitch(it.dpId)
                 assert validationResult.rules.excess.size() == 0
-                assert validationResult.meters.excess.size() == 0
+                if(!it.dpId.description.contains("OF_12")) {
+                    assert validationResult.meters.missing.size() == 0
+                }
             }
         }
 
