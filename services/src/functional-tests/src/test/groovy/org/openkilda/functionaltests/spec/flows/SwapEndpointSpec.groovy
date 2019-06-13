@@ -648,10 +648,23 @@ switches"() {
         northbound.updateLinkMaxBandwidth(flow2Isl.srcSwitch.dpId, flow2Isl.srcPort, flow2Isl.dstSwitch.dpId,
                 flow2Isl.dstPort, flow1IslMaxBw)
 
+        and: "Break all alternative paths for the second flow"
+        altPaths = flow2SwitchPair.paths.findAll { it != flow2Path && it[1].switchId != flow1SwitchPair.src.dpId }
+        altPaths.unique { it.first() }.each { path ->
+            def src = path.first()
+            broughtDownPorts.add(src)
+            northbound.portDown(src.switchId, src.portNo)
+        }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == IslChangeType.FAILED
+            }.size() == broughtDownPorts.size() * 2
+        }
+
         when: "Try to swap endpoints for two flows"
-        def flow1Src = flow1.source
+        def flow1Src = flow2.source
         def flow1Dst = changePropertyValue(flow1.destination, "portNumber", flow2.destination.portNumber)
-        def flow2Src = changePropertyValue(flow2.source, "datapath", flow1.source.datapath)
+        def flow2Src = flow1.source
         def flow2Dst = changePropertyValue(flow2.destination, "portNumber", flow1.destination.portNumber)
         def response = northbound.swapFlowEndpoint(
                 new SwapFlowPayload(flow1.id, flowHelper.toFlowEndpointV2(flow1Src),
@@ -718,10 +731,23 @@ switches"() {
         northbound.updateLinkMaxBandwidth(flow2Isl.srcSwitch.dpId, flow2Isl.srcPort, flow2Isl.dstSwitch.dpId,
                 flow2Isl.dstPort, flow1IslMaxBw - 1)
 
+        and: "Break all alternative paths for the second flow"
+        altPaths = flow2SwitchPair.paths.findAll { it != flow2Path && it[1].switchId != flow1SwitchPair.src.dpId }
+        altPaths.unique { it.first() }.each { path ->
+            def src = path.first()
+            broughtDownPorts.add(src)
+            northbound.portDown(src.switchId, src.portNo)
+        }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == IslChangeType.FAILED
+            }.size() == broughtDownPorts.size() * 2
+        }
+
         when: "Try to swap endpoints for two flows"
-        def flow1Src = flow1.source
+        def flow1Src = flow2.source
         def flow1Dst = changePropertyValue(flow1.destination, "portNumber", flow2.destination.portNumber)
-        def flow2Src = changePropertyValue(flow2.source, "datapath", flow1.source.datapath)
+        def flow2Src = flow1.source
         def flow2Dst = changePropertyValue(flow2.destination, "portNumber", flow1.destination.portNumber)
         northbound.swapFlowEndpoint(
                 new SwapFlowPayload(flow1.id, flowHelper.toFlowEndpointV2(flow1Src),
@@ -733,8 +759,8 @@ switches"() {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorMessage == "Can not swap endpoints for flows: " +
-                "Failed to find path with requested bandwidth=${flow2.maximumBandwidth}: " +
-                "Switch ${flow1SwitchPair.src.dpId} doesn't have links with enough bandwidth"
+                "Failed to find path with requested bandwidth=${flow1.maximumBandwidth}: " +
+                "Switch ${flow2SwitchPair.src.dpId} doesn't have links with enough bandwidth"
 
         and: "Restore topology and delete flows"
         broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
@@ -784,10 +810,23 @@ switches"() {
         northbound.updateLinkMaxBandwidth(flow2Isl.srcSwitch.dpId, flow2Isl.srcPort, flow2Isl.dstSwitch.dpId,
                 flow2Isl.dstPort, flow1IslMaxBw - 1)
 
+        and: "Break all alternative paths for the second flow"
+        altPaths = flow2SwitchPair.paths.findAll { it != flow2Path && it[1].switchId != flow1SwitchPair.src.dpId }
+        altPaths.unique { it.first() }.each { path ->
+            def src = path.first()
+            broughtDownPorts.add(src)
+            northbound.portDown(src.switchId, src.portNo)
+        }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == IslChangeType.FAILED
+            }.size() == broughtDownPorts.size() * 2
+        }
+
         when: "Try to swap endpoints for two flows"
-        def flow1Src = flow1.source
+        def flow1Src = flow2.source
         def flow1Dst = changePropertyValue(flow1.destination, "portNumber", flow2.destination.portNumber)
-        def flow2Src = changePropertyValue(flow2.source, "datapath", flow1.source.datapath)
+        def flow2Src = flow1.source
         def flow2Dst = changePropertyValue(flow2.destination, "portNumber", flow1.destination.portNumber)
         def response = northbound.swapFlowEndpoint(
                 new SwapFlowPayload(flow1.id, flowHelper.toFlowEndpointV2(flow1Src),
