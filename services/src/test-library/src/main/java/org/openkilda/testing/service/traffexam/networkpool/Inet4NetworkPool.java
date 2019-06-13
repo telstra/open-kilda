@@ -37,7 +37,7 @@ public class Inet4NetworkPool {
     /**
      * Allocates a Inet4Network.
      */
-    public Inet4Network allocate() throws Inet4ValueException {
+    public synchronized Inet4Network allocate() throws Inet4ValueException {
         SupplyDescriptor item;
 
         try {
@@ -56,7 +56,7 @@ public class Inet4NetworkPool {
     /**
      * Free the network.
      */
-    public void free(Inet4Network network) throws Inet4ValueException {
+    public synchronized void free(Inet4Network network) throws Inet4ValueException {
         ListIterator<SupplyDescriptor> iter;
         SupplyDescriptor descriptor = null;
 
