@@ -73,7 +73,7 @@ public class OfInput {
     public boolean packetInCookieMismatchAll(Logger log, U64... expected) {
         boolean isMismatched = packetInCookieMismatchCheck(expected);
         if (isMismatched) {
-            log.warn("{} - cookie mismatch (expected one of:{}, actual:{})", this, expected, packetInCookie());
+            log.debug("{} - cookie mismatch (expected one of:{}, actual:{})", this, expected, packetInCookie());
         }
         return isMismatched;
     }
