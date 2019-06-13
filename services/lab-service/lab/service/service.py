@@ -26,7 +26,7 @@ init_logger()
 logger = logging.getLogger()
 
 LAB_ID = os.environ.get("LAB_ID", 1)
-API_HOST = os.environ.get("API_HOST", 'lab-api.pendev:8288')
+API_HOST = os.environ.get("API_HOST", 'lab-api:8288')
 
 
 def main():

@@ -23,6 +23,8 @@ from urllib.parse import urlparse
 import os
 from common import init_logger, run_thread, loop_forever
 
+API_PORT = 8288
+
 app = Flask(__name__)
 init_logger()
 logger = logging.getLogger()
@@ -66,6 +68,12 @@ class Lab:
         else:
             name = make_container_name(lab_id)
             env = {'LAB_ID': lab_id}
+            try:
+                env['API_HOST'] = os.environ['API_HOST']
+            except KeyError:
+                api_host = SELF_CONTAINER.attrs['Config']['Hostname']
+                env['API_HOST'] = '{}:{}'.format(api_host, API_PORT)
+
             volumes = {
                 '/var/run/docker.sock': {'bind': '/var/run/docker.sock', 'mode': 'rw'},
                 '/lib/modules': {'bind': '/lib/modules', 'mode': 'ro'}}
@@ -203,7 +211,7 @@ def flush_labs_api():
 
 
 def main():
-    server_th = run_thread(lambda: app.run(host='0.0.0.0', port=8288, threaded=True))
+    server_th = run_thread(lambda: app.run(host='0.0.0.0', port=API_PORT, threaded=True))
 
     def teardown():
         logger.info('Terminating...')
