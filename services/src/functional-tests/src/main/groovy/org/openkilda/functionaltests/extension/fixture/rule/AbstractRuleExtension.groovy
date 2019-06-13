@@ -23,12 +23,12 @@ import java.lang.annotation.Annotation
 abstract class AbstractRuleExtension<T extends Annotation> extends AbstractAnnotationDrivenExtension<T>
         implements SpringContextListener {
 
-    void beforeTest() {}
+    void beforeTest(IMethodInvocation invocation) {}
 
     /**
      * Will be executed only if test method succeeds. This was made intentional in order to fit our failfast style.
      */
-    void afterTest() {}
+    void afterTest(IMethodInvocation invocation) {}
 
     //can be later extended with beforeSpec() and afterSpec()
 

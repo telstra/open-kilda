@@ -5,8 +5,9 @@ northbound.password=kilda
 floodlight.endpoint=http://localhost:8081
 floodlight.username=kilda
 floodlight.password=kilda
-floodlight.controller.management=tcp:floodlight_one.pendev:6653
-floodlight.controller.stat=tcp:floodlight_second.pendev:6653
+floodlight.controllers.management=tcp:floodlight_one.pendev:6653
+floodlight.controllers.stat=tcp:floodlight_second.pendev:6653
+floodlight.regions=1
 floodlight.alive.timeout=5
 floodlight.alive.interval=2
 

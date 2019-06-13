@@ -15,7 +15,7 @@
 
 package org.openkilda.testing.service.lockkeeper;
 
-import org.openkilda.model.SwitchId;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 
 import java.util.List;
@@ -41,9 +41,9 @@ public interface LockKeeperService {
 
     void restartFloodlight();
 
-    void knockoutSwitch(SwitchId switchId);
+    void knockoutSwitch(Switch sw);
 
-    void reviveSwitch(SwitchId switchId);
+    void reviveSwitch(Switch sw);
 
-    void setController(SwitchId switchId, String controller);
+    void setController(Switch sw, String controller);
 }

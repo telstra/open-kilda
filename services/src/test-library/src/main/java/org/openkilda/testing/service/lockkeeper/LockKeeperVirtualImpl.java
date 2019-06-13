@@ -15,19 +15,17 @@
 
 package org.openkilda.testing.service.lockkeeper;
 
-import org.openkilda.model.SwitchId;
-import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.lockkeeper.model.SwitchModify;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
-import java.util.Objects;
+import java.util.List;
 
 /**
  * Provide functionality of {@link LockKeeperService} for virtual network.
@@ -37,42 +35,28 @@ import java.util.Objects;
 @Profile("virtual")
 public class LockKeeperVirtualImpl extends LockKeeperServiceImpl {
 
-    private static String DUMMY_CONTROLLER = "tcp:192.0.2.0:6666";
-    @Value("${floodlight.controller.management}")
-    private String managementController;
-    @Value("${floodlight.controller.stat}")
-    private String statController;
+    public static final String DUMMY_CONTROLLER = "tcp:192.0.2.0:6666";
+    @Value("#{'${floodlight.controllers.management}'.split(',')}")
+    private List<String> managementControllers;
+    @Value("#{'${floodlight.controllers.stat}'.split(',')}")
+    private List<String> statControllers;
 
-    @Autowired
-    private TopologyDefinition topology;
-
-    private TopologyDefinition.Switch getSwitchBySwitchId(SwitchId switchId) {
-        return topology.getSwitches().stream()
-                .filter(sw -> Objects.equals(switchId, sw.getDpId()))
-                .findAny()
-                .orElseThrow(() -> new IllegalArgumentException(
-                        String.format("Switch with dpid %s is not found", switchId.toString())));
+    @Override
+    public void knockoutSwitch(Switch sw) {
+        log.debug("Knock out switch: {}", sw.getName());
+        setController(sw, DUMMY_CONTROLLER);
     }
 
     @Override
-    public void knockoutSwitch(SwitchId switchId) {
-        String swName = getSwitchBySwitchId(switchId).getName();
-        setController(switchId, DUMMY_CONTROLLER);
-        log.debug("Knock out switch: {}", swName);
+    public void reviveSwitch(Switch sw) {
+        log.debug("Revive switch: {}", sw.getName());
+        setController(sw, managementControllers.get(0) + " " + statControllers.get(0));
     }
 
     @Override
-    public void reviveSwitch(SwitchId switchId) {
-        String swName = getSwitchBySwitchId(switchId).getName();
-        setController(switchId, managementController + " " + statController);
-        log.debug("Revive switch: {}", swName);
-    }
-
-    @Override
-    public void setController(SwitchId switchId, String controller) {
-        String swName = getSwitchBySwitchId(switchId).getName();
+    public void setController(Switch sw, String controller) {
+        log.debug("Set '{}' controller on the '{}' switch", controller, sw.getName());
         restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/set-controller", HttpMethod.POST,
-                new HttpEntity<>(new SwitchModify(swName, controller), buildJsonHeaders()), String.class);
-        log.debug("Set '{}' controller on the '{}' switch", controller, swName);
+                new HttpEntity<>(new SwitchModify(sw.getName(), controller), buildJsonHeaders()), String.class);
     }
 }

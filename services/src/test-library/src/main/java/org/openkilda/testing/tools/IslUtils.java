@@ -127,6 +127,16 @@ public class IslUtils {
     }
 
     /**
+     * Converts a given IslInfoData object to LinkParametersDto object.
+     *
+     * @param isl IslInfoData object to convert
+     */
+    public LinkParametersDto toLinkParameters(IslInfoData isl) {
+        return new LinkParametersDto(isl.getSource().getSwitchId().toString(), isl.getSource().getPortNo(),
+                isl.getDestination().getSwitchId().toString(), isl.getDestination().getPortNo());
+    }
+
+    /**
      * Converts a given Isl object to LinkUnderMaintenanceDto object.
      *
      * @param isl Isl object to convert

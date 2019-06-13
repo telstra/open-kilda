@@ -38,7 +38,6 @@ import spock.lang.Unroll
 @Narrative("""Verify how Kilda behaves with switch rules (either flow rules or default rules) under different 
 circumstances: e.g. persisting rules on newly connected switch, installing default rules on new switch etc.""")
 class SwitchRulesSpec extends BaseSpecification {
-
     @Shared
     Switch srcSwitch, dstSwitch
     @Shared
@@ -71,11 +70,11 @@ class SwitchRulesSpec extends BaseSpecification {
         northbound.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.DROP_ALL)
         Wrappers.wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(srcSwitch.dpId).flowEntries.isEmpty() }
 
-        lockKeeper.knockoutSwitch(srcSwitch.dpId)
+        lockKeeper.knockoutSwitch(srcSwitch)
         Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northbound.getActiveSwitches()*.switchId) }
 
         when: "Connect the switch to the controller"
-        lockKeeper.reviveSwitch(srcSwitch.dpId)
+        lockKeeper.reviveSwitch(srcSwitch)
         Wrappers.wait(WAIT_OFFSET) { assert srcSwitch.dpId in northbound.getActiveSwitches()*.switchId }
 
         then: "Default rules are installed on the switch"
@@ -95,12 +94,12 @@ class SwitchRulesSpec extends BaseSpecification {
             assert defaultPlusFlowRules.size() == srcSwDefaultRules.size() + flowRulesCount
         }
 
-        lockKeeper.knockoutSwitch(srcSwitch.dpId)
+        lockKeeper.knockoutSwitch(srcSwitch)
         Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northbound.getActiveSwitches()*.switchId) }
         flowHelper.deleteFlow(flow.id)
 
         when: "Connect the switch to the controller"
-        lockKeeper.reviveSwitch(srcSwitch.dpId)
+        lockKeeper.reviveSwitch(srcSwitch)
         Wrappers.wait(WAIT_OFFSET) { assert srcSwitch.dpId in northbound.getActiveSwitches()*.switchId }
 
         then: "Previously installed rules are not deleted from the switch"
