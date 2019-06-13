@@ -80,3 +80,8 @@ min.burst.size.in.kbits = 1024
 
 statsrouter.timeout = 100
 statsrouter.request.interval = 60
+
+# round trip latency
+latency.update.interval = {{ getv "/kilda_latency_update_interval" }}
+latency.update.time.range = {{ getv "/kilda_latency_update_time_range" }}
+latency.discovery.interval.multiplier = {{ getv "/kilda_latency_discovery_interval_multiplier" }}
