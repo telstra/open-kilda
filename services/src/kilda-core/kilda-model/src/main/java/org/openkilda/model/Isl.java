@@ -67,7 +67,7 @@ public class Isl implements Serializable {
     @Property(name = "dst_port")
     private int destPort;
 
-    private int latency;
+    private long latency;
 
     private long speed;
 
@@ -122,7 +122,7 @@ public class Isl implements Serializable {
      */
     @Builder(toBuilder = true)
     public Isl(@NonNull Switch srcSwitch, @NonNull Switch destSwitch, int srcPort, int destPort,
-               int latency, long speed, int cost, long maxBandwidth, long defaultMaxBandwidth, long availableBandwidth,
+               long latency, long speed, int cost, long maxBandwidth, long defaultMaxBandwidth, long availableBandwidth,
                IslStatus status, IslStatus actualStatus,
                Instant timeCreate, Instant timeModify, boolean underMaintenance, boolean enableBfd,
                String bfdSessionStatus) {

@@ -13,22 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.pathverification;
+package org.openkilda.wfm.topology.network.storm.bolt;
 
-import lombok.Builder;
-import lombok.Data;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
+import org.openkilda.wfm.share.bolt.KafkaEncoder;
+import org.openkilda.wfm.topology.network.storm.ComponentId;
 
-@Builder
-@Data
-class DiscoveryPacketData {
-    private long timestamp;
-    private int pathOrdinal;
-    private long switchT0;
-    private long switchT1;
-    private DatapathId remoteSwitchId;
-    private OFPort remotePort;
-    private Long packetId;
-    private boolean signed;
+public class StatusEncoder extends KafkaEncoder {
+    public static final String BOLT_ID = ComponentId.STATUS_ENCODER.toString();
 }

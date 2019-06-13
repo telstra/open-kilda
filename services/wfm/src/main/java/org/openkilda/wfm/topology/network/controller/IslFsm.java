@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.network.controller;
 
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
+import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Isl;
@@ -301,6 +302,13 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     public void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
         saveStatusTransaction();
+        IslStatusUpdateNotification trigger = new IslStatusUpdateNotification(
+                discoveryFacts.getReference().getSource().getDatapath(),
+                discoveryFacts.getReference().getSource().getPortNumber(),
+                discoveryFacts.getReference().getDest().getDatapath(),
+                discoveryFacts.getReference().getDest().getPortNumber(),
+                IslStatus.MOVED);
+        context.getOutput().islStatusUpdateNotification(trigger);
         bfdManager.disable(context.getOutput());
     }
 
@@ -537,7 +545,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         IslDataHolder aggData = discoveryFacts.makeAggregatedData();
         if (aggData != null) {
             link.setSpeed(aggData.getSpeed());
-            link.setLatency(aggData.getLatency());
             link.setMaxBandwidth(aggData.getMaximumBandwidth());
             link.setDefaultMaxBandwidth(aggData.getEffectiveMaximumBandwidth());
         }
