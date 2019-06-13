@@ -145,3 +145,7 @@ kilda_grpc_username: "kilda"
 kilda_grpc_password: "kilda"
 kilda_grpc_remote_log_server_ip: "1.1.1.1"
 kilda_grpc_remote_log_server_port: 321
+
+kilda_latency_update_interval: 600
+kilda_latency_update_time_range: 300
+kilda_discovery_interval_multiplier: 3

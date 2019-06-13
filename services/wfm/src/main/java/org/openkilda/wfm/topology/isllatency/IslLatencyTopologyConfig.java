@@ -21,11 +21,17 @@ import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 
+import javax.validation.constraints.Min;
+
 @Configuration
 public interface IslLatencyTopologyConfig extends AbstractTopologyConfig {
 
-    default String getKafkaTopoDiscoTopic() {
-        return getKafkaTopics().getTopoDiscoTopic();
+    default String getKafkaTopoIslLatencyTopic() {
+        return getKafkaTopics().getTopoIslLatencyTopic();
+    }
+
+    default String getKafkaTopoIslStatusTopic() {
+        return getKafkaTopics().getTopoIslStatusTopic();
     }
 
     default String getKafkaOtsdbTopic() {
@@ -35,4 +41,22 @@ public interface IslLatencyTopologyConfig extends AbstractTopologyConfig {
     @Key("opentsdb.metric.prefix")
     @Default("kilda.")
     String getMetricPrefix();
+
+    @Key("latency.update.interval") // how often we send average latency to neo4j
+    @Default("600")
+    @Min(1)
+    int getLatencyUpdateInterval();
+
+    @Key("latency.update.time.range") // average latency will be calculated for this time range
+    @Default("300")
+    @Min(1)
+    int getLatencyUpdateTimeRange();
+
+    @Key("discovery.interval.multiplier")
+    @Default("3")
+    @Min(1)
+    double getDiscoveryIntervalMultiplier();
+
+    @Key("discovery.interval")
+    int getDiscoveryInterval();
 }

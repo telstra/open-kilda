@@ -58,6 +58,10 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoRerouteTopic();
     }
 
+    default String getKafkaTopoIslStatusTopic() {
+        return getKafkaTopics().getTopoIslStatusTopic();
+    }
+
     @Key("bfd.port.offset")
     @Default("200")
     int getBfdPortOffset();
