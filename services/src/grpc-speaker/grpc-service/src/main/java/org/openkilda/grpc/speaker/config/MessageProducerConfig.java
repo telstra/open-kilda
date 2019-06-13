@@ -15,7 +15,7 @@
 
 package org.openkilda.grpc.speaker.config;
 
-import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.Message;
 
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -69,7 +69,7 @@ public class MessageProducerConfig {
      * @return kafka producer factory
      */
     @Bean
-    public ProducerFactory<String, InfoData> producerFactory() {
+    public ProducerFactory<String, Message> producerFactory() {
         return new DefaultKafkaProducerFactory<>(producerConfigs());
     }
 
@@ -80,7 +80,7 @@ public class MessageProducerConfig {
      * @return kafka template
      */
     @Bean
-    public KafkaTemplate<String, InfoData> kafkaTemplate() {
+    public KafkaTemplate<String, Message> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
     }
 }

@@ -74,7 +74,7 @@ public class GrpcSenderService {
                 .thenCompose(e -> sender.setLogicalPort(port))
                 .thenCompose(e -> sender.showConfigLogicalPort(port.getLogicalPortNumber()))
                 .thenApply(portOptional -> portOptional
-                        .map(mapper::toLogicalPort)
+                        .map(mapper::map)
                         .orElseThrow(() -> new GrpcException(format("Port %s was not created ", port))))
                 .whenComplete((e, ex) -> sender.shutdown());
     }
@@ -89,7 +89,7 @@ public class GrpcSenderService {
         GrpcSession sender = new GrpcSession(switchAddress);
         return sender.login(name, password)
                 .thenCompose(e -> sender.dumpLogicalPorts())
-                .thenApply(ports -> ports.stream().map(mapper::toLogicalPort).collect(Collectors.toList()))
+                .thenApply(ports -> ports.stream().map(mapper::map).collect(Collectors.toList()))
                 .whenComplete((e, ex) -> sender.shutdown());
     }
 
@@ -104,7 +104,7 @@ public class GrpcSenderService {
         return sender.login(name, password)
                 .thenCompose(e -> sender.showSwitchStatus())
                 .thenApply(statusOptional -> statusOptional
-                        .map(mapper::toSwitchInfo)
+                        .map(mapper::map)
                         .orElseThrow(() ->
                                 new GrpcException(format("Couldn't get status for switch %s", switchAddress))))
                 .whenComplete((e, ex) -> sender.shutdown());
@@ -122,7 +122,7 @@ public class GrpcSenderService {
         return sender.login(name, password)
                 .thenCompose(e -> sender.showConfigLogicalPort(port))
                 .thenApply(statusOptional -> statusOptional
-                        .map(mapper::toLogicalPort)
+                        .map(mapper::map)
                         .orElseThrow(() -> new GrpcException(format("Couldn't get logical port %d for switch %s",
                                 port, switchAddress))))
                 .whenComplete((e, ex) -> sender.shutdown());
@@ -196,7 +196,7 @@ public class GrpcSenderService {
         return sender.login(name, password)
                 .thenCompose(e -> sender.showConfigRemoteLogServer())
                 .thenApply(optional -> optional
-                        .map(mapper::toRemoteLogServer)
+                        .map(mapper::map)
                         .orElseThrow(() -> new GrpcException(format("Could not to get remote log server for switch: %s",
                                 switchAddress))))
                 .whenComplete((e, ex) -> sender.shutdown());
@@ -216,7 +216,7 @@ public class GrpcSenderService {
                 .thenCompose(e -> sender.setConfigRemoteLogServer(remoteLogServerDto))
                 .thenCompose(e -> sender.showConfigRemoteLogServer())
                 .thenApply(optional -> optional
-                        .map(mapper::toRemoteLogServer)
+                        .map(mapper::map)
                         .orElseThrow(() -> new GrpcException(format("Could not set remote log server for switch %s",
                                 switchAddress))))
                 .whenComplete((e, ex) -> sender.shutdown());

@@ -34,16 +34,16 @@ public interface NoviflowResponseMapper {
     @Mapping(source = "logicalportno", target = "logicalPortNumber")
     @Mapping(source = "portnoList", target = "portNumbers")
     @Mapping(target = "type", expression = "java(LogicalPortType.forNumber(port.getLogicalporttypeValue()))")
-    org.openkilda.messaging.model.grpc.LogicalPort toLogicalPort(LogicalPort port);
+    org.openkilda.messaging.model.grpc.LogicalPort map(LogicalPort port);
 
     @Mapping(source = "ethLinksList", target = "ethLinks")
     @Mapping(source = "buildsList", target = "builds")
-    SwitchInfoStatus toSwitchInfo(StatusSwitch statusSwitch);
+    SwitchInfoStatus map(StatusSwitch statusSwitch);
 
     @Mapping(source = "ipaddr", target = "ipAddress")
-    org.openkilda.messaging.model.grpc.RemoteLogServer toRemoteLogServer(RemoteLogServer remoteLogServer);
+    org.openkilda.messaging.model.grpc.RemoteLogServer map(RemoteLogServer remoteLogServer);
 
-    SwitchEthLinkInfoStatus toSwitchEthLink(StatusSwitchEthLink statusSwitchEthLink);
+    SwitchEthLinkInfoStatus map(StatusSwitchEthLink statusSwitchEthLink);
 
-    SwitchBuildInfoStatus toSwitchBuildInfo(StatusSwitchBuild statusSwitchBuild);
+    SwitchBuildInfoStatus map(StatusSwitchBuild statusSwitchBuild);
 }

@@ -127,10 +127,8 @@ public class GrpcSession {
     public CompletableFuture<List<CliReply>> setLogicalPort(LogicalPortDto port) {
         Objects.requireNonNull(port.getLogicalPortNumber(), "Logical port number must not be null");
         Objects.requireNonNull(port.getPortNumbers(), "Port number must not be null");
+        Objects.requireNonNull(port.getType(), "Logical port type must not be null");
 
-        if (port.getType() == null || port.getType().getNumber() == 0) {
-            port.setType(org.openkilda.messaging.model.grpc.LogicalPortType.LAG);
-        }
         LogicalPort request = LogicalPort.newBuilder()
                 .addAllPortno(port.getPortNumbers())
                 .setLogicalportno(port.getLogicalPortNumber())

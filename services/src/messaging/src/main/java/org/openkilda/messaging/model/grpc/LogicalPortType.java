@@ -44,7 +44,7 @@ public enum LogicalPortType {
             case 2:
                 return BFD;
             case 0:
-                return RESERVED;
+                throw new IllegalArgumentException("Invalid logical port type");
             default:
                 return LAG;
         }
