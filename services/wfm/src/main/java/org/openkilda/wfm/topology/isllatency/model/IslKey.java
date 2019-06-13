@@ -1,0 +1,55 @@
+/* Copyright 2019 Telstra Open Source
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+package org.openkilda.wfm.topology.isllatency.model;
+
+import org.openkilda.messaging.info.event.IslOneWayLatency;
+import org.openkilda.messaging.info.event.IslRoundTripLatency;
+import org.openkilda.model.SwitchId;
+
+import lombok.Value;
+
+@Value
+public class IslKey {
+    SwitchId srcSwitchId;
+    int srcPort;
+    SwitchId dstSwitchId;
+    int dstPort;
+
+    public IslKey(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort) {
+        this.srcSwitchId = srcSwitchId;
+        this.srcPort = srcPort;
+        this.dstSwitchId = dstSwitchId;
+        this.dstPort = dstPort;
+    }
+
+    public IslKey(IslRoundTripLatency data, CacheEndpoint destination) {
+        this.srcSwitchId = data.getSrcSwitchId();
+        this.srcPort = data.getSrcPortNo();
+        this.dstSwitchId = destination.getSwitchId();
+        this.dstPort = destination.getPort();
+    }
+
+    public IslKey(IslOneWayLatency data) {
+        this.srcSwitchId = data.getSrcSwitchId();
+        this.srcPort = data.getSrcPortNo();
+        this.dstSwitchId = data.getDstSwitchId();
+        this.dstPort = data.getDstPortNo();
+    }
+
+    public IslKey getReverse() {
+        return new IslKey(this.dstSwitchId, this.dstPort, this.srcSwitchId, this.srcPort);
+    }
+}

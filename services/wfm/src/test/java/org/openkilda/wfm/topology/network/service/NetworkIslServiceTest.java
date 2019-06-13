@@ -189,7 +189,7 @@ public class NetworkIslServiceTest {
         });
 
         IslReference ref = new IslReference(endpointAlpha1, endpointBeta2);
-        IslDataHolder islData = new IslDataHolder(1000, 50, 1000, 1000);
+        IslDataHolder islData = new IslDataHolder(1000, 1000, 1000);
         service = new NetworkIslService(carrier, persistenceManager, options);
         service.islUp(ref.getSource(), ref, islData);
 

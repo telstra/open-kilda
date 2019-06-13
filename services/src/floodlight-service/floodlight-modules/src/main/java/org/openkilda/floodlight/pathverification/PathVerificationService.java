@@ -19,7 +19,6 @@ import static org.openkilda.floodlight.pathverification.DiscoveryPacket.CHASSIS_
 import static org.openkilda.floodlight.pathverification.DiscoveryPacket.OPTIONAL_LLDPTV_PACKET_TYPE;
 import static org.openkilda.floodlight.pathverification.DiscoveryPacket.PORT_ID_LLDPTV_PACKET_TYPE;
 import static org.openkilda.floodlight.pathverification.DiscoveryPacket.TTL_LLDPTV_PACKET_TYPE;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.GROUP_PACKET_OUT_CONTROLLER;
 import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.NOVIFLOW_COPY_FIELD;
 
 import org.openkilda.floodlight.KafkaChannel;
@@ -152,6 +151,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                                                          + (LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES * 8);
 
     public static final byte[] ORGANIZATIONALLY_UNIQUE_IDENTIFIER = new byte[] {0x00, 0x26, (byte) 0xe1};
+    public static final int MILLION = 1_000_000;
 
     private IKafkaProducerService producerService;
     private IOFSwitchService switchService;
@@ -576,12 +576,11 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         // this discovery packet was sent from remote switch/port to received switch/port
         // so the link direction is from remote switch/port to received switch/port
         PathNode source = new PathNode(new SwitchId(data.getRemoteSwitchId().getLong()),
-                data.getRemotePort().getPortNumber(), 0, latency);
+                data.getRemotePort().getPortNumber(), 0);
         PathNode destination = new PathNode(new SwitchId(input.getDpId().getLong()), inPort.getPortNumber(), 1);
         long speed = getSwitchPortSpeed(destSwitch, inPort);
 
         IslInfoData path = IslInfoData.builder()
-                .latency(latency)
                 .source(source)
                 .destination(destination)
                 .speed(speed)
@@ -596,17 +595,13 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
         producerService.sendMessageAndTrack(topoDiscoTopic, source.getSwitchId().toString(), message);
         logger.debug("packet_in processed for {}-{}", input.getDpId(), inPort);
 
-        long oneWayLatency = measureLatency(input, data.getTimestamp());
         IslOneWayLatency islOneWayLatency = new IslOneWayLatency(
                 source.getSwitchId(),
                 source.getPortNo(),
                 destination.getSwitchId(),
                 destination.getPortNo(),
-                oneWayLatency,
-                data.getPacketId(),
-                data.hasRoundTripLatencyInfo(),
-                featureDetectorService.detectSwitch(destSwitch).contains(NOVIFLOW_COPY_FIELD),
-                featureDetectorService.detectSwitch(destSwitch).contains(GROUP_PACKET_OUT_CONTROLLER));
+                latency,
+                data.getPacketId());
 
         sendLatency(islOneWayLatency, source.getSwitchId());
     }
@@ -640,10 +635,9 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     }
 
     private void sendLatency(InfoData latencyData, SwitchId switchId) {
-        // will be uncommented in next commit
-        // InfoMessage infoMessage = new InfoMessage(
-        //        latencyData, System.currentTimeMillis(), CorrelationContext.getId(), null, region);
-        // producerService.sendMessageAndTrack(islLatencyTopic, switchId.toString(), infoMessage);
+        InfoMessage infoMessage = new InfoMessage(
+                latencyData, System.currentTimeMillis(), CorrelationContext.getId(), null, region);
+        producerService.sendMessageAndTrack(islLatencyTopic, switchId.toString(), infoMessage);
     }
 
     @VisibleForTesting
@@ -714,7 +708,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     private long measureLatency(OfInput input, long sendTime) {
         long latency = -1;
         if (sendTime != 0) {
-            latency = input.getReceiveTime() - sendTime;
+            latency = (input.getReceiveTime() - sendTime) * MILLION; // convert from milliseconds to nanoseconds
             if (latency < 0L) {
                 latency = -1;
             }

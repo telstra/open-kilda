@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.messaging.command.reroute.RerouteFlows;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.IslMoveNotification;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
@@ -191,6 +192,11 @@ public class NetworkIntegrationCarrier
     }
 
     public void triggerReroute(RerouteFlows trigger) {
+        // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
+    }
+
+    @Override
+    public void islStatusUpdateNotification(IslMoveNotification trigger) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
     }
 }

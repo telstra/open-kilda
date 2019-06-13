@@ -15,9 +15,11 @@
 
 package org.openkilda.messaging.info.event;
 
+import org.openkilda.messaging.info.InfoData;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -26,8 +28,15 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class IslOneWayLatency extends IslBaseLatency {
-    private static final long serialVersionUID = 5043236275282286971L;
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class IslMoveNotification extends InfoData {
+    private static final long serialVersionUID = 8432310738661915431L;
+
+    @JsonProperty("src_switch_id")
+    private SwitchId srcSwitchId;
+
+    @JsonProperty("src_port_no")
+    private int srcPortNo;
 
     @JsonProperty("dst_switch_id")
     private SwitchId dstSwitchId;
@@ -36,13 +45,12 @@ public class IslOneWayLatency extends IslBaseLatency {
     private int dstPortNo;
 
     @JsonCreator
-    public IslOneWayLatency(@JsonProperty("src_switch_id") SwitchId srcSwitchId,
-                            @JsonProperty("src_port_no") int srcPortNo,
-                            @JsonProperty("dst_switch_id") SwitchId dstSwitchId,
-                            @JsonProperty("dst_port_no") int dstPortNo,
-                            @JsonProperty("latency_ns") long latency,
-                            @JsonProperty("packet_id") Long packetId) {
-        super(srcSwitchId, srcPortNo, latency, packetId);
+    public IslMoveNotification(@JsonProperty("src_switch_id") SwitchId srcSwitchId,
+                               @JsonProperty("src_port_no") int srcPortNo,
+                               @JsonProperty("dst_switch_id") SwitchId dstSwitchId,
+                               @JsonProperty("dst_port_no") int dstPortNo) {
+        this.srcSwitchId = srcSwitchId;
+        this.dstPortNo = srcPortNo;
         this.dstSwitchId = dstSwitchId;
         this.dstPortNo = dstPortNo;
     }
