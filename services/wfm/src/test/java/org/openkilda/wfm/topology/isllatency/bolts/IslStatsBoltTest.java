@@ -18,18 +18,19 @@ package org.openkilda.wfm.topology.isllatency.bolts;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.openkilda.wfm.topology.isllatency.bolts.IslStatsBolt.LATENCY_METRIC_NAME;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
-import org.openkilda.messaging.info.event.IslChangeType;
-import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.error.JsonEncodeException;
 
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -49,34 +50,26 @@ public class IslStatsBoltTest {
     private static final PathNode NODE2 = new PathNode(SWITCH2_ID, SWITCH2_PORT, PATH2_SEQID, PATH2_LATENCY);
 
     private static final int LATENCY = 1000;
-    private static final long SPEED = 400L;
-    private static final IslChangeType STATE = IslChangeType.DISCOVERED;
-    private static final long AVAILABLE_BANDWIDTH = 500L;
-    private static final boolean UNDER_MAINTENANCE = false;
-    private static final IslInfoData ISL_INFO_DATA = IslInfoData.builder()
-            .latency(LATENCY)
-            .source(NODE1)
-            .destination(NODE2)
-            .speed(SPEED)
-            .state(STATE)
-            .availableBandwidth(AVAILABLE_BANDWIDTH)
-            .underMaintenance(UNDER_MAINTENANCE)
-            .build();
     private static final long TIMESTAMP = 1507433872L;
 
     private static final String METRIC_PREFIX = "kilda.";
-    private IslStatsBolt statsBolt = new IslStatsBolt(METRIC_PREFIX);
+    private IslStatsBolt statsBolt = new IslStatsBolt(METRIC_PREFIX, 100);
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
     @Test
-    public void buildTsdbTuple() throws Exception {
-        List<Object> tsdbTuple = statsBolt.buildTsdbTuple(ISL_INFO_DATA, TIMESTAMP);
+    public void buildTsdbTupleFromIslOneWayLatency() throws JsonEncodeException, IOException {
+        List<Object> tsdbTuple = statsBolt.buildTsdbTuple(
+                SWITCH1_ID, NODE1.getPortNo(), SWITCH2_ID, NODE2.getPortNo(), LATENCY, TIMESTAMP);
+        assertTsdbTuple(tsdbTuple);
+    }
+
+    private void assertTsdbTuple(List<Object> tsdbTuple) throws java.io.IOException {
         assertThat(tsdbTuple.size(), is(1));
 
         Datapoint datapoint = Utils.MAPPER.readValue(tsdbTuple.get(0).toString(), Datapoint.class);
-        assertEquals(METRIC_PREFIX + "isl.latency", datapoint.getMetric());
+        assertEquals(METRIC_PREFIX + LATENCY_METRIC_NAME, datapoint.getMetric());
         assertEquals((Long) TIMESTAMP, datapoint.getTime());
         assertEquals(LATENCY, datapoint.getValue());
 
