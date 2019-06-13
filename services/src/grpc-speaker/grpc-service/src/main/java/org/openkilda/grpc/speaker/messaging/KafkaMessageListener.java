@@ -15,9 +15,11 @@
 
 package org.openkilda.grpc.speaker.messaging;
 
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -41,7 +43,25 @@ public class KafkaMessageListener {
      */
     @KafkaHandler
     public void onMessage(CommandMessage message) {
+        if (!isValid(message)) {
+            log.warn("Skipping invalid message: {}", message);
+            return;
+        }
         log.debug("Message received: {} - {}", Thread.currentThread().getId(), message);
-        messageProcessor.processRequest(message.getData());
+        messageProcessor.processRequest(message);
+    }
+
+    private boolean isValid(Message message) {
+        if (StringUtils.isEmpty(message.getCorrelationId())) {
+            log.warn("Received message without correlation id: {}", message);
+            return false;
+        }
+
+        //if (!(message instanceof InfoMessage) && !(message instanceof ErrorMessage)) {
+        //    log.warn("Received message has unsupported format: {}", message);
+        //    return false;
+        //}
+
+        return true;
     }
 }

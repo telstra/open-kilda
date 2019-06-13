@@ -15,13 +15,19 @@
 
 package org.openkilda.grpc.speaker.messaging;
 
+import org.openkilda.grpc.speaker.exception.GrpcRequestFailureException;
 import org.openkilda.grpc.speaker.mapper.RequestMapper;
 import org.openkilda.grpc.speaker.service.GrpcSenderService;
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
 import org.openkilda.messaging.command.grpc.DumpLogicalPortsRequest;
 import org.openkilda.messaging.command.grpc.GetSwitchInfoRequest;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
 import org.openkilda.messaging.info.grpc.GetSwitchInfoResponse;
@@ -46,29 +52,56 @@ public class MessageProcessor {
     /**
      * Process request.
      *
-     * @param command a command data.
+     * @param message a command data.
      */
-    public void processRequest(CommandData command) {
+    public void processRequest(CommandMessage message) {
+        CommandData command = message.getData();
         if (command instanceof CreateLogicalPortRequest) {
             CreateLogicalPortRequest req = (CreateLogicalPortRequest) command;
             service.createLogicalPort(req.getAddress(), requestMapper.toLogicalPort(req))
-                    .thenAccept(e -> sendResponse(new CreateLogicalPortResponse(req.getAddress(), e, true)));
+                    .thenAccept(port -> sendResponse(
+                            new CreateLogicalPortResponse(req.getAddress(), port, true),
+                            message.getCorrelationId()))
+                    .whenComplete((e, ex) -> {
+                        if (ex != null) {
+                            sendErrorResponse((GrpcRequestFailureException) ex.getCause(), message.getCorrelationId());
+                        }
+                    });
 
         } else if (command instanceof DumpLogicalPortsRequest) {
             DumpLogicalPortsRequest req = (DumpLogicalPortsRequest) command;
             service.dumpLogicalPorts(req.getAddress())
-                    .thenAccept(e -> sendResponse(new DumpLogicalPortsResponse(req.getAddress(), e)));
+                    .thenAccept(e -> sendResponse(new DumpLogicalPortsResponse(req.getAddress(), e),
+                            message.getCorrelationId()))
+                    .whenComplete((e, ex) -> {
+                        if (ex != null) {
+                            sendErrorResponse((GrpcRequestFailureException) ex.getCause(), message.getCorrelationId());
+                        }
+                    });
 
         } else if (command instanceof GetSwitchInfoRequest) {
             GetSwitchInfoRequest req = (GetSwitchInfoRequest) command;
             service.getSwitchStatus(req.getAddress())
-                    .thenAccept(e -> sendResponse(new GetSwitchInfoResponse(req.getAddress(), e)));
+                    .thenAccept(e -> sendResponse(new GetSwitchInfoResponse(req.getAddress(), e),
+                            message.getCorrelationId()))
+                    .whenComplete((e, ex) -> {
+                        if (ex != null) {
+                            sendErrorResponse((GrpcRequestFailureException) ex.getCause(), message.getCorrelationId());
+                        }
+                    });
 
         }
     }
 
-    private void sendResponse(InfoData message) {
+    private void sendResponse(InfoData data, String correlationId) {
         // TODO topic hardcode
+        InfoMessage message = new InfoMessage(data, System.currentTimeMillis(), correlationId);
         messageProducer.send("grpc.response", message);
+    }
+
+    private void sendErrorResponse(GrpcRequestFailureException ex, String correlationId) {
+        ErrorData data = new ErrorData(ErrorType.REQUEST_INVALID, ex.getMessage(), "");
+        ErrorMessage error = new ErrorMessage(data, System.currentTimeMillis(), correlationId);
+        messageProducer.send("grpc.response", error);
     }
 }
