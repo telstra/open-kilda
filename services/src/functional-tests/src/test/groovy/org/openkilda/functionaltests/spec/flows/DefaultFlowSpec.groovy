@@ -115,6 +115,38 @@ class DefaultFlowSpec extends BaseSpecification {
         flowHelper.deleteFlow(defaultFlow.id)
     }
 
+    def "Unable to send traffic from simple flow into default flow and vice versa"() {
+        given: "A default flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected
+        def defaultFlow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        defaultFlow.source.vlanId = 0
+        defaultFlow.destination.vlanId = 0
+        flowHelper.addFlow(defaultFlow)
+
+        and: "A simple flow"
+        def simpleflow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        simpleflow.source.vlanId = 10
+        simpleflow.destination.vlanId = 10
+        flowHelper.addFlow(simpleflow)
+
+        when: "Try to send traffic from simple flow into default flow and vice versa"
+        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        flow.source.vlanId = 0
+        flow.destination.vlanId = 10
+
+        then: "System doesn't allow to send traffic in these directions"
+        def traffExam = traffExamProvider.get()
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 0)
+        [exam.forward, exam.reverse].each { direction ->
+            def resources = traffExam.startExam(direction)
+            direction.setResources(resources)
+            assert !traffExam.waitExam(direction).hasTraffic()
+        }
+
+        and: "Cleanup: Delete the flows"
+        [defaultFlow, simpleflow].each { flowHelper.deleteFlow(it.id) }
+    }
+
     def "Unable to create two default flow on the same port"() {
         when: "Create first default flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected
