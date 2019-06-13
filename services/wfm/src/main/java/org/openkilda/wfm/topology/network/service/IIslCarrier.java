@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.messaging.command.reroute.RerouteFlows;
+import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 
@@ -25,4 +26,6 @@ public interface IIslCarrier {
     void bfdDisableRequest(Endpoint physicalEndpoint);
 
     void triggerReroute(RerouteFlows trigger);
+
+    void islStatusUpdateNotification(IslStatusUpdateNotification trigger);
 }

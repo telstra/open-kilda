@@ -36,7 +36,10 @@ public enum ComponentId {
     SPEAKER_OUTPUT("speaker.output"),
 
     REROUTE_ENCODER("reroute.encoder"),
-    REROUTE_OUTPUT("reroute.output");
+    REROUTE_OUTPUT("reroute.output"),
+
+    STATUS_ENCODER("status.encoder"),
+    STATUS_OUTPUT("status.output");
 
     private final String value;
 
