@@ -23,8 +23,8 @@ import lombok.Value;
 
 import java.util.List;
 
-//TODO should be removed
 @Value
+@Deprecated
 public class SyncRulesResponse extends InfoData {
 
     @JsonProperty("missing")
