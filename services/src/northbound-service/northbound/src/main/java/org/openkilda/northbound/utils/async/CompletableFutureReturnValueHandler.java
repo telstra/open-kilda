@@ -50,8 +50,10 @@ public class CompletableFutureReturnValueHandler implements AsyncHandlerMethodRe
                                   NativeWebRequest webRequest) throws Exception {
         if (returnValue != null) {
             CompletableFuture<?> future = (CompletableFuture<?>) returnValue;
+
+            ControlledDeferredResult<?> result = new ControlledDeferredResult<>(future, RequestCorrelationId.getId());
             WebAsyncUtils.getAsyncManager(webRequest)
-                    .startDeferredResultProcessing(new ControlledDeferredResult<>(future), mavContainer);
+                    .startDeferredResultProcessing(result, mavContainer);
         } else {
             mavContainer.setRequestHandled(true);
         }
@@ -62,7 +64,11 @@ public class CompletableFutureReturnValueHandler implements AsyncHandlerMethodRe
      * @param <T> expected result type.
      */
     private final class ControlledDeferredResult<T> extends DeferredResult<T> {
-        private ControlledDeferredResult(CompletableFuture<T> future) {
+        private final String correlationId;
+
+        private ControlledDeferredResult(CompletableFuture<T> future, String correlationId) {
+            this.correlationId = correlationId;
+
             future.whenComplete((result, error) -> {
                 if (error != null) {
                     setErrorResult(error);
@@ -76,10 +82,8 @@ public class CompletableFutureReturnValueHandler implements AsyncHandlerMethodRe
 
         private void defineTimeoutHandler(CompletableFuture<T> future) {
             onTimeout(() -> {
-
-                MessageException errorMessage = new MessageException(RequestCorrelationId.getId(),
-                        System.currentTimeMillis(), ErrorType.OPERATION_TIMED_OUT, "No response received",
-                        "Timeout exceeded");
+                MessageException errorMessage = new MessageException(correlationId, System.currentTimeMillis(),
+                        ErrorType.OPERATION_TIMED_OUT, "No response received", "Timeout exceeded");
                 setErrorResult(errorMessage);
                 future.completeExceptionally(new TimeoutException());
             });
