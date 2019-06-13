@@ -2,6 +2,8 @@ package org.openkilda.functionaltests.spec.grpc
 
 import org.openkilda.grpc.speaker.model.LogicalPortDto
 import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.info.event.SwitchInfoData
+import org.openkilda.messaging.model.grpc.LogicalPortType
 
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
@@ -18,59 +20,61 @@ NOTE: The GRPC implementation supports the LAG type only and it is set by defaul
 class LogicalPortSpec extends GrpcBaseSpecification {
 
     @Unroll
-    def "Able to create/read/delete logicalport on the #switches.switchId switch"() {
+    def "Able to create/read/delete logicalport on the #sw.switchId switch"() {
         /**the update action is not working(issue on a Noviflow switch side)*/
         when: "Create logical port"
-        def switchPort = northbound.getPorts(switches.switchId).find { it.state[0] == "LINK_DOWN" }.portNumber
-        def switchLogicalPort = 1100 + switchPort
-        def responseAfterCreating = grpc.createLogicalPort(switches.address, new LogicalPortDto([switchPort], switchLogicalPort))
-        assert responseAfterCreating.logicalPortNumber.value == switchLogicalPort
+        def switchPort = topology.getAllowedPortsForSwitch(topology.find(sw.switchId))[0]
+        def switchLogicalPort = 2000 + switchPort
+        def request = new LogicalPortDto(LogicalPortType.BFD, [switchPort], switchLogicalPort)
+        def responseAfterCreating = grpc.createLogicalPort(sw.address, request)
+        def portExists = true
+        //TODO(rtretiak): should be refactored accodring to #2491 when fixed
+        assert responseAfterCreating.logicalPortNumber == switchLogicalPort
+        assert responseAfterCreating.type == LogicalPortType.BFD
 
         then: "Able to get the created logical port"
-        def responseAfterGetting = grpc.getSwitchLogicalPortConfig(switches.address, switchLogicalPort)
+        def responseAfterGetting = grpc.getSwitchLogicalPortConfig(sw.address, switchLogicalPort)
         responseAfterGetting.logicalPortNumber == switchLogicalPort
         responseAfterGetting.name == "novi_lport" + switchLogicalPort.toString()
         responseAfterGetting.portNumbers[0] == switchPort
 
         and: "The created port is exist in a list of all logical port"
-        grpc.getSwitchLogicalPorts(switches.address).contains(responseAfterGetting)
+        grpc.getSwitchLogicalPorts(sw.address).contains(responseAfterGetting)
 
         //        TODO(andriidovhan): add update action
         //        and: "able to edit the created logical port"
         when: "Try to delete the created logical port"
-        def responseAfterDeleting = grpc.deleteSwitchLogicalPort(switches.address, switchLogicalPort)
+        def responseAfterDeleting = grpc.deleteSwitchLogicalPort(sw.address, switchLogicalPort)
 
         then: "Logical port is deleted"
         responseAfterDeleting.deleted
 
         when: "Try to get the deleted logical port"
-        grpc.getSwitchLogicalPortConfig(switches.address, switchLogicalPort)
+        portExists = false
+        grpc.getSwitchLogicalPortConfig(sw.address, switchLogicalPort)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         exc.statusCode == HttpStatus.NOT_FOUND
         exc.responseBodyAsString.to(MessageError).errorMessage == "Provided logical port does not exist."
-        Boolean testIsCompleted = true
 
         cleanup: "Remove created port"
-        if (!testIsCompleted) {
-            grpc.deleteSwitchLogicalPort(switches.address, switchLogicalPort)
-        }
+        portExists && grpc.deleteSwitchLogicalPort(sw.address, switchLogicalPort)
 
         where:
-        switches << getNoviflowSwitches()
+        sw << getNoviflowSwitches("6.5")
     }
 
     @Unroll
     def "Not able to create logical port with incorrect port number(lPort/sPort): \
-#data.logicalPortNumber/#data.portNumber on the #sw.switchId switch"() {
+#data.logicalPortNumber/#data.portNumber on the #sw.switchId switch"(Map data, SwitchInfoData sw) {
         when:
         "Try to create logical port: #logicalPortNumber/#portNumber"
-        def switchPort = northbound.getPorts(sw.switchId).find { it.state[0] == "LINK_DOWN" }.portNumber
-        def switchLogicalPort = 1100 + switchPort
+        def switchPort = topology.getAllowedPortsForSwitch(topology.find(sw.switchId))[0]
+        def switchLogicalPort = 2000 + switchPort
         def pNumber = data.portNumber ? data.portNumber : switchPort
         def lPortNumber = data.logicalPortNumber ? data.logicalPortNumber : switchLogicalPort
-        grpc.createLogicalPort(sw.address, new LogicalPortDto([pNumber], lPortNumber))
+        grpc.createLogicalPort(sw.address, new LogicalPortDto(LogicalPortType.LAG, [pNumber], lPortNumber))
 
         then: "Human readable error is returned."
         def exc = thrown(HttpClientErrorException)
@@ -89,15 +93,14 @@ class LogicalPortSpec extends GrpcBaseSpecification {
                         [logicalPortNumber: false,
                          portNumber       : 44444,
                          errorMessage     : "Invalid portno value."],
-                ], noviflowSwitches].combinations()
+                ], getNoviflowSwitches("6.5")].combinations()
     }
 
     @Unroll
-    def "Not able to delete non-existent logical port number on the #switches.switchId switch"() {
+    def "Not able to delete non-existent logical port number on the #sw.switchId switch"() {
         when: "Try to delete incorrect logicalPortNumber"
-        //        TODO(andriidovhan) add check that fakeNumber is not exist on a switch
-        Integer fakeNumber = 11114
-        grpc.deleteSwitchLogicalPort(switches.address, fakeNumber)
+        Integer fakeNumber = 12345
+        grpc.deleteSwitchLogicalPort(sw.address, fakeNumber)
 
         then: "Human readable error is returned."
         def exc = thrown(HttpClientErrorException)
@@ -105,6 +108,6 @@ class LogicalPortSpec extends GrpcBaseSpecification {
         exc.responseBodyAsString.to(MessageError).errorMessage == "Provided logical port does not exist."
 
         where:
-        switches << getNoviflowSwitches()
+        sw << getNoviflowSwitches("6.4")
     }
 }
