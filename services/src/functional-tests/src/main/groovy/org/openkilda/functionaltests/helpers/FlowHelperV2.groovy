@@ -74,7 +74,7 @@ class FlowHelperV2 {
                     .maximumBandwidth(500)
                     .ignoreBandwidth(false)
                     .periodicPings(false)
-                    .description("autotest flow")
+                    .description(generateDescription())
                     .build()
 
             if (flowConflicts(newFlow, existingFlows)) {
@@ -103,7 +103,7 @@ class FlowHelperV2 {
                     .maximumBandwidth(500)
                     .ignoreBandwidth(false)
                     .periodicPings(false)
-                    .description("autotest flow")
+                    .description(generateDescription())
                     .build()
             if (flowConflicts(newFlow, existingFlows)) {
                 throw new Exception("Generated flow conflicts with existing flows. Flow: $newFlow")
@@ -128,7 +128,7 @@ class FlowHelperV2 {
                 .source(srcEndpoint)
                 .destination(dstEndpoint)
                 .maximumBandwidth(500)
-                .description("autotest flow")
+                .description(generateDescription())
                 .build()
     }
 
@@ -205,6 +205,11 @@ class FlowHelperV2 {
     private String generateFlowId() {
         return new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US).format(new Date()) + "_" +
                 faker.food().ingredient().toLowerCase().replaceAll(/\W/, "") + faker.number().digits(4)
+    }
+    
+    private String generateDescription() {
+        //The health of autotest flows is always questionable
+        "autotest flow with ${faker.medical().symptoms().uncapitalize()}"
     }
 
     /**

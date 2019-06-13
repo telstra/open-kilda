@@ -557,9 +557,14 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll
-    def "Able to synchronize rules for #description on a switch (install missing rules)"() {
-        given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+    @Tags([TOPOLOGY_DEPENDENT])
+    def "Able to synchronize rules for #description on different switches (install missing rules)"() {
+        given: "Two active not neighboring switches with the longest available path"
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().max { pair ->
+            pair.paths.max { it.size() }.size()
+        }
+        def longPath = switchPair.paths.max { it.size() }
+        switchPair.paths.findAll { it != longPath }.each { pathHelper.makePathMorePreferable(longPath, it) }
 
         and: "Create a transit-switch flow going through these switches"
         def flow = flowHelper.randomFlow(switchPair)
@@ -604,8 +609,9 @@ class SwitchRulesSpec extends BaseSpecification {
             }
         }
 
-        and: "Delete the flow"
+        and: "Cleanup: delete the flow and reset costs"
         flowHelper.deleteFlow(flow.id)
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
 
         where:
         description         | maximumBandwidth
