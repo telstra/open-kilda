@@ -29,6 +29,7 @@ INIT --> SETUP : online
 
 SETUP : enter / create or update DB record
 SETUP : enter / save features
+SETUP : enter / emit list-logical-port request
 SETUP : enter / setup port FSM for NEW ports
 SETUP : enter / emit online for ALL ports
 SETUP : enter / emit port-del for REMOVED ports
@@ -36,6 +37,7 @@ SETUP : enter / emit port-down for DOWN ports
 SETUP : enter / emit port-up for UP ports
 SETUP -r-> ONLINE : next
 
+ONLINE : enter / request logical ports list
 ONLINE : port-add / setup port FSM
 ONLINE : port-add / emit online for port
 ONLINE : port-add / emit port-up/down
@@ -43,6 +45,7 @@ ONLINE : port-del / kill port FSM
 ONLINE : port-up / proxy
 ONLINE : port-down / proxy
 ONLINE : online / update ports status
+ONLINE : logical-ports-list : [port type mismatch] port-del + port-add
 ONLINE --> OFFLINE : offline
 
 OFFLINE : enter / update status in DB

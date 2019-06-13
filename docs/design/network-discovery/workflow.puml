@@ -2,6 +2,7 @@
 (*) -d-> [event] SpeakerMonitor
 -d-> [event] SwitchFSM
 -r-> [event] PortFSM
+-r-> [event] IslRouter
 -r-> [event] IslFSM
 -d-> (*)
 @enduml
