@@ -10,7 +10,8 @@
 		"input_port": 3,
 		"output_port": 2,
 		"input_vlan_id": 200,
-		"transit_vlan_id": 100,
+		"transit_encapsulation_id": 100,
+		"transit_encapsulation_type": "TRANSIT_VLAN",
 		"output_vlan_type": "REPLACE",
 		"bandwidth": 100000,
 		"meter_id": 40

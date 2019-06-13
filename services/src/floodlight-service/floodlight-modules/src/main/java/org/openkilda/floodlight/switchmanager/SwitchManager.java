@@ -1217,13 +1217,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (criteria.getInPort() != null) {
             // Match either In Port or both Port & Vlan criteria.
             Match match = matchFlow(ofFactory, criteria.getInPort(),
-                    Optional.ofNullable(criteria.getInVlan()).orElse(0));
+                    Optional.ofNullable(criteria.getEncapsulationId()).orElse(0));
             builder.setMatch(match);
 
-        } else if (criteria.getInVlan() != null) {
+        } else if (criteria.getEncapsulationId() != null) {
             // Match In Vlan criterion if In Port is not specified
             Match.Builder matchBuilder = ofFactory.buildMatch();
-            matchVlan(ofFactory, matchBuilder, criteria.getInVlan());
+            matchVlan(ofFactory, matchBuilder, criteria.getEncapsulationId());
             builder.setMatch(matchBuilder.build());
         }
 

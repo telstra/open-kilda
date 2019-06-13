@@ -15,6 +15,7 @@
 
 package org.openkilda.messaging.command;
 
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -23,7 +24,8 @@ public final class Constants {
     public static final SwitchId switchId = new SwitchId("00:00:00:00:00:00:00:01");
     public static final int inputPort = 1;
     public static final int outputPort = 2;
-    public static final int transitVlanId = 100;
+    public static final int transitEncapsulationId = 100;
+    public static final FlowEncapsulationType transitEncapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
     public static final int outputVlanId = 200;
     public static final int inputVlanId = 300;
     public static final long bandwidth = 10000;

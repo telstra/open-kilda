@@ -26,6 +26,8 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -44,7 +46,9 @@ public class BaseFlowServiceTest extends Neo4jBasedTest {
     public void setUp() {
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        flowService = new BaseFlowService(persistenceManager);
+        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
+        flowService = new BaseFlowService(persistenceManager, resourcesManager);
     }
 
     @Test

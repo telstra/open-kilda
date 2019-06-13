@@ -20,6 +20,7 @@ import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPair;
@@ -30,6 +31,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.model.UnidirectionalFlow;
+import org.openkilda.model.Vxlan;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -98,15 +100,11 @@ public abstract class FlowMapper {
 
         FlowPath flowPath = buildPath(flow, flowDto);
         flow.setForwardPath(flowPath);
+        EncapsulationId encapsulationId = convertToEncapsulationId(flow, flowPath, flowDto);
 
-        TransitVlan transitVlan = TransitVlan.builder()
-                .flowId(flow.getFlowId())
-                .pathId(flowPath.getPathId())
-                .vlan(flowDto.getTransitVlan())
-                .build();
-
-        return new UnidirectionalFlow(flowPath, transitVlan, true);
+        return new UnidirectionalFlow(flowPath, encapsulationId, true);
     }
+
 
     /**
      * Convert {@link FlowPairDto} to {@link FlowPair}.
@@ -123,20 +121,11 @@ public abstract class FlowMapper {
 
         flow.setForwardPath(forwardPath);
         flow.setReversePath(reversePath);
+        EncapsulationId forwardEncapsulationId = convertToEncapsulationId(flow, forwardPath, flowPair.getLeft());
 
-        TransitVlan forwardTransitVlan = TransitVlan.builder()
-                .flowId(flow.getFlowId())
-                .pathId(forwardPath.getPathId())
-                .vlan(flowPair.getLeft().getTransitVlan())
-                .build();
+        EncapsulationId reverseEncapsulationId = convertToEncapsulationId(flow, reversePath, flowPair.getRight());
 
-        TransitVlan reverseTransitVlan = TransitVlan.builder()
-                .flowId(flow.getFlowId())
-                .pathId(reversePath.getPathId())
-                .vlan(flowPair.getRight().getTransitVlan())
-                .build();
-
-        return new FlowPair(flow, forwardTransitVlan, reverseTransitVlan);
+        return new FlowPair(flow, forwardEncapsulationId, reverseEncapsulationId);
     }
 
     /**
@@ -223,6 +212,27 @@ public abstract class FlowMapper {
         return encapsulationType != null ? org.openkilda.messaging.payload.flow.FlowEncapsulationType.valueOf(
                 encapsulationType.name()) : null;
     }
+
+    private EncapsulationId convertToEncapsulationId(Flow flow, FlowPath flowPath, FlowDto flowDto) {
+        FlowEncapsulationType flowEncapsulationType = flow.getEncapsulationType();
+        EncapsulationId encapsulationId = null;
+        if (FlowEncapsulationType.TRANSIT_VLAN.equals(flowEncapsulationType)) {
+
+            encapsulationId = TransitVlan.builder()
+                    .flowId(flow.getFlowId())
+                    .pathId(flowPath.getPathId())
+                    .vlan(flowDto.getTransitEncapsulationId())
+                    .build();
+        } else if (FlowEncapsulationType.VXLAN.equals(flowEncapsulationType)) {
+            encapsulationId = Vxlan.builder()
+                    .flowId(flow.getFlowId())
+                    .pathId(flowPath.getPathId())
+                    .vni(flowDto.getTransitEncapsulationId())
+                    .build();
+        }
+        return encapsulationId;
+    }
+
 
     private FlowPath buildPath(Flow flow, FlowDto flowDto) {
         Switch srcSwitch = Switch.builder().switchId(flowDto.getSourceSwitch()).build();

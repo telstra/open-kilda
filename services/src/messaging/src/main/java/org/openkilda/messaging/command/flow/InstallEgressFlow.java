@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -48,7 +49,8 @@ import java.util.UUID;
         "switch_id",
         "input_port",
         "output_port",
-        "transit_vlan_id",
+        "transit_encapsulation_id",
+        "transit_encapsulation_type",
         "output_vlan_id",
         "output_vlan_type"})
 public class InstallEgressFlow extends InstallTransitFlow {
@@ -78,7 +80,8 @@ public class InstallEgressFlow extends InstallTransitFlow {
      * @param switchId       switch ID for flow installation
      * @param inputPort      input port of the flow
      * @param outputPort     output port of the flow
-     * @param transitVlanId  transit vlan id value
+     * @param transitEncapsulationId  transit encapsulation id value
+     * @param transitEncapsulationType  transit encapsulation type value
      * @param outputVlanId   output vlan id value
      * @param outputVlanType output vlan tag action
      * @throws IllegalArgumentException if any of mandatory parameters is null
@@ -90,10 +93,13 @@ public class InstallEgressFlow extends InstallTransitFlow {
                              @JsonProperty("switch_id") final SwitchId switchId,
                              @JsonProperty("input_port") final Integer inputPort,
                              @JsonProperty("output_port") final Integer outputPort,
-                             @JsonProperty("transit_vlan_id") final Integer transitVlanId,
+                             @JsonProperty("transit_encapsulation_id") final Integer transitEncapsulationId,
+                             @JsonProperty("transit_encapsulation_type") final FlowEncapsulationType
+                                         transitEncapsulationType,
                              @JsonProperty("output_vlan_id") final Integer outputVlanId,
                              @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType) {
-        super(transactionId, id, cookie, switchId, inputPort, outputPort, transitVlanId);
+        super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
+                transitEncapsulationType);
         setOutputVlanId(outputVlanId);
         setOutputVlanType(outputVlanType);
     }
@@ -158,7 +164,8 @@ public class InstallEgressFlow extends InstallTransitFlow {
                 .add("switch_id", switchId)
                 .add("input_port", inputPort)
                 .add("output_port", outputPort)
-                .add("transit_vlan_id", transitVlanId)
+                .add("transit_encapsulation_id", transitEncapsulationId)
+                .add("transit_encapsulation_type", transitEncapsulationType)
                 .add("output_vlan_id", outputVlanId)
                 .add("output_vlan_type", outputVlanType)
                 .toString();
@@ -183,7 +190,8 @@ public class InstallEgressFlow extends InstallTransitFlow {
                 && Objects.equals(getSwitchId(), that.getSwitchId())
                 && Objects.equals(getInputPort(), that.getInputPort())
                 && Objects.equals(getOutputPort(), that.getOutputPort())
-                && Objects.equals(getTransitVlanId(), that.getTransitVlanId())
+                && Objects.equals(getTransitEncapsulationId(), that.getTransitEncapsulationId())
+                && Objects.equals(getTransitEncapsulationType(), that.getTransitEncapsulationType())
                 && Objects.equals(getOutputVlanId(), that.getOutputVlanId())
                 && Objects.equals(getOutputVlanType(), that.getOutputVlanType());
     }
@@ -193,7 +201,7 @@ public class InstallEgressFlow extends InstallTransitFlow {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort,
-                transitVlanId, outputVlanType, outputVlanId);
+        return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
+                transitEncapsulationType, outputVlanType, outputVlanId);
     }
 }

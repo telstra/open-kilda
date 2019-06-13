@@ -60,4 +60,6 @@ public interface RepositoryFactory {
     BfdSessionRepository createBfdSessionRepository();
 
     KildaConfigurationRepository createKildaConfigurationRepository();
+
+    SwitchFeaturesRepository createSwitchFeaturesRepository();
 }

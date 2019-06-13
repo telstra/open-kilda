@@ -39,7 +39,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = {"entityId"})
 @NodeEntity(label = "vxlan")
-public class Vxlan implements Serializable {
+public class Vxlan implements Serializable, EncapsulationId {
     private static final long serialVersionUID = 1L;
 
     // Hidden as needed for OGM only.
@@ -69,5 +69,10 @@ public class Vxlan implements Serializable {
         this.flowId = flowId;
         this.pathId = pathId;
         this.vni = vni;
+    }
+
+    @Override
+    public int getEncapsulationId() {
+        return vni;
     }
 }

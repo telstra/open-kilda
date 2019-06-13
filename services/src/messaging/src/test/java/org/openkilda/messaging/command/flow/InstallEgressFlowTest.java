@@ -15,16 +15,17 @@
 
 package org.openkilda.messaging.command.flow;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.openkilda.messaging.command.Constants.flowName;
 import static org.openkilda.messaging.command.Constants.inputPort;
 import static org.openkilda.messaging.command.Constants.outputPort;
 import static org.openkilda.messaging.command.Constants.outputVlanId;
 import static org.openkilda.messaging.command.Constants.outputVlanType;
 import static org.openkilda.messaging.command.Constants.switchId;
-import static org.openkilda.messaging.command.Constants.transitVlanId;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
+import static org.openkilda.messaging.command.Constants.transitEncapsulationId;
+import static org.openkilda.messaging.command.Constants.transitEncapsulationType;
 
 import org.openkilda.model.OutputVlanType;
 
@@ -34,7 +35,7 @@ import java.util.UUID;
 
 public class InstallEgressFlowTest {
     private InstallEgressFlow flow = new InstallEgressFlow(UUID.randomUUID(), flowName, 0L, switchId, inputPort,
-            outputPort, transitVlanId, outputVlanId, outputVlanType);
+            outputPort, transitEncapsulationId, transitEncapsulationType, outputVlanId, outputVlanType);
 
     @Test
     public void toStringTest() {

@@ -20,6 +20,7 @@ import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
@@ -123,7 +124,6 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     public SwitchFsm(PersistenceManager persistenceManager, SwitchId switchId, Integer bfdLocalPortOffset) {
         this.transactionManager = persistenceManager.getTransactionManager();
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
-
         this.switchId = switchId;
         this.bfdLogicalPortOffset = bfdLocalPortOffset;
     }
@@ -301,7 +301,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     private void persistSwitchData(SwitchFsmContext context) {
         Switch sw = switchRepository.findById(switchId)
-                .orElseGet(() -> Switch.builder().switchId(switchId).build());
+                .orElseGet(() -> Switch.builder().switchId(switchId)
+                        .switchFeatures(SwitchFeatures.builder().build()).build());
 
         SpeakerSwitchView speakerData = context.getSpeakerData();
         InetSocketAddress socketAddress = speakerData.getSwitchSocketAddress();

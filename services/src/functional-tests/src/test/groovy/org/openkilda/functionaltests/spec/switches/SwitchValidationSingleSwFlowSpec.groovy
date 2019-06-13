@@ -20,6 +20,7 @@ import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.Cookie
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.MeterId
 import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
@@ -350,12 +351,14 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
                 .meterEntries*.meterId).first()
         producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
-                new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1, 1,
-                        OutputVlanType.REPLACE)).toJson()))
+                new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1,
+                        FlowEncapsulationType.TRANSIT_VLAN, 1, OutputVlanType.REPLACE)).toJson()))
         producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
-                new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 3)).toJson()))
+                new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 3,
+                FlowEncapsulationType.TRANSIT_VLAN)).toJson()))
         producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 5, 3,
+                        FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, fakeBandwidth, excessMeterId)).toJson()))
 
         then: "System detects created rules as excess rules"

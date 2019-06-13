@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.share.flow.resources.vxlan;
 
+import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.Vxlan;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
@@ -30,5 +31,14 @@ public class VxlanEncapsulation implements EncapsulationResources {
     @Override
     public final FlowEncapsulationType getEncapsulationType() {
         return FlowEncapsulationType.VXLAN;
+    }
+
+    @Override
+    public Integer getTransitEncapsulationId() {
+        return vxlan.getVni();
+    }
+
+    public EncapsulationId getEncapsulation() {
+        return vxlan;
     }
 }

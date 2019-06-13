@@ -27,6 +27,7 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.VxlanRepository;
@@ -137,5 +138,10 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public KildaConfigurationRepository createKildaConfigurationRepository() {
         return new Neo4jKildaConfigurationRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public SwitchFeaturesRepository createSwitchFeaturesRepository() {
+        return new Neo4jSwitchFeaturesRepository(sessionFactory, transactionManager);
     }
 }

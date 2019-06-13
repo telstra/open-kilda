@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,16 +15,18 @@
 
 package org.openkilda.wfm.topology.flow.service;
 
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPair;
-import org.openkilda.model.PathId;
-import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
-import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
+import org.openkilda.persistence.repositories.VxlanRepository;
+import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
 
 import lombok.extern.slf4j.Slf4j;
@@ -35,17 +37,21 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class BaseFlowService {
+    protected final FlowResourcesManager flowResourcesManager;
     protected final TransactionManager transactionManager;
     protected final FlowRepository flowRepository;
     protected final FlowPairRepository flowPairRepository;
     private final TransitVlanRepository transitVlanRepository;
+    private final VxlanRepository vxlanRepository;
 
-    public BaseFlowService(PersistenceManager persistenceManager) {
+    public BaseFlowService(PersistenceManager persistenceManager, FlowResourcesManager flowResourcesManager) {
         transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowRepository = repositoryFactory.createFlowRepository();
         flowPairRepository = repositoryFactory.createFlowPairRepository();
         transitVlanRepository = repositoryFactory.createTransitVlanRepository();
+        vxlanRepository = repositoryFactory.createVxlanRepository();
+        this.flowResourcesManager = flowResourcesManager;
     }
 
     public boolean doesFlowExist(String flowId) {
@@ -67,36 +73,32 @@ public class BaseFlowService {
                 .collect(Collectors.toList());
     }
 
-    protected TransitVlan findTransitVlan(PathId pathId, PathId oppositePathId) {
-        return transitVlanRepository.findByPathId(pathId, oppositePathId).stream()
-                .findAny().orElse(null);
-    }
-
     protected Optional<FlowPathsWithEncapsulation> getFlowPathPairWithEncapsulation(String flowId) {
-        return flowRepository.findById(flowId)
-                .map(flow ->
-                    FlowPathsWithEncapsulation.builder()
-                            .flow(flow)
-                            .forwardPath(flow.getForwardPath())
-                            .reversePath(flow.getReversePath())
-                            //TODO: hard-coded encapsulation will be removed in Flow H&S
-                            .forwardEncapsulation(TransitVlanEncapsulation.builder()
-                                    .transitVlan(findTransitVlan(flow.getForwardPathId(), flow.getReversePathId()))
-                                    .build())
-                            .reverseEncapsulation(TransitVlanEncapsulation.builder()
-                                    .transitVlan(findTransitVlan(flow.getReversePathId(), flow.getForwardPathId()))
-                                    .build())
-                            .protectedForwardPath(flow.getProtectedForwardPath())
-                            .protectedReversePath(flow.getProtectedReversePath())
-                            .protectedForwardEncapsulation(TransitVlanEncapsulation.builder()
-                                    .transitVlan(findTransitVlan(flow.getProtectedForwardPathId(),
-                                                                 flow.getProtectedReversePathId()))
-                                    .build())
-                            .protectedReverseEncapsulation(TransitVlanEncapsulation.builder()
-                                    .transitVlan(findTransitVlan(flow.getProtectedReversePathId(),
-                                                                 flow.getProtectedForwardPathId()))
-                                    .build())
-                            .build()
-                );
+        Optional<Flow> foundFlow = flowRepository.findById(flowId);
+        if (foundFlow.isPresent()) {
+            Flow flow = foundFlow.get();
+            FlowEncapsulationType encapsulationType = flow.getEncapsulationType();
+            EncapsulationResources forwardEncapsulation = flowResourcesManager.getEncapsulationResources(
+                    flow.getForwardPathId(), flow.getReversePathId(), encapsulationType).orElse(null);
+            EncapsulationResources reverseEncapsulation = flowResourcesManager.getEncapsulationResources(
+                    flow.getReversePathId(), flow.getForwardPathId(), encapsulationType).orElse(null);
+            EncapsulationResources protectedForwardEncapsulation = flowResourcesManager.getEncapsulationResources(
+                    flow.getProtectedForwardPathId(), flow.getProtectedReversePathId(), encapsulationType).orElse(null);
+            EncapsulationResources protectedReverseEncapsulation = flowResourcesManager.getEncapsulationResources(
+                    flow.getProtectedReversePathId(), flow.getProtectedForwardPathId(), encapsulationType).orElse(null);
+            return Optional.of(FlowPathsWithEncapsulation.builder()
+                    .flow(flow)
+                    .forwardPath(flow.getForwardPath())
+                    .reversePath(flow.getReversePath())
+                    .forwardEncapsulation(forwardEncapsulation)
+                    .reverseEncapsulation(reverseEncapsulation)
+                    .protectedForwardPath(flow.getProtectedForwardPath())
+                    .protectedReversePath(flow.getProtectedReversePath())
+                    .protectedForwardEncapsulation(protectedForwardEncapsulation)
+                    .protectedReverseEncapsulation(protectedReverseEncapsulation)
+                    .build());
+        } else {
+            return Optional.empty();
+        }
     }
 }

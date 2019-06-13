@@ -97,6 +97,18 @@ public final class Utils {
     private static final int MAX_VLAN_ID = 4095;
 
     /**
+     * Minimum allowable VXLAN VNI value.
+     */
+    private static final int MIN_VXLAN_ID = 0;
+
+    /**
+     * Maximum allowable VXLAN VNI value.
+     */
+    private static final int MAX_VXLAN_ID = 16777214;
+
+
+
+    /**
      * A private constructor.
      */
     private Utils() {
@@ -111,6 +123,10 @@ public final class Utils {
      */
     public static boolean validateVlanRange(final Integer vlanId) {
         return (vlanId >= MIN_VLAN_ID) && (vlanId <= MAX_VLAN_ID);
+    }
+
+    public static boolean validateVxlanRange(final Integer vni) {
+        return (vni >= MIN_VXLAN_ID) && (vni <= MAX_VXLAN_ID);
     }
 
     /**
