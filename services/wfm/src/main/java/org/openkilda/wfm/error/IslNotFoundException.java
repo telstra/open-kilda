@@ -21,4 +21,8 @@ public class IslNotFoundException extends Exception {
     public IslNotFoundException(SwitchId srcSwitchId, Integer srcPort, SwitchId dstSwitchId, Integer dstPort) {
         super(String.format("There is no ISL between %s-%d and %s-%d.", srcSwitchId, srcPort, dstSwitchId, dstPort));
     }
+
+    public IslNotFoundException(String message) {
+        super(message);
+    }
 }

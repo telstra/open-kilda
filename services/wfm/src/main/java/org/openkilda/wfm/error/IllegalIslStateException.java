@@ -24,4 +24,8 @@ public class IllegalIslStateException extends Exception {
                           + "source '%s_%d', destination '%s_%d'. %s",
                 srcSwitch, srcPort, dstSwitch, dstPort, s));
     }
+
+    public IllegalIslStateException(String message) {
+        super(message);
+    }
 }

@@ -13,22 +13,12 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.pathverification;
+package org.openkilda.wfm.topology.isllatency.carriers;
 
-import lombok.Builder;
-import lombok.Data;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
+import org.openkilda.messaging.info.event.IslRoundTripLatency;
+import org.openkilda.wfm.share.model.Endpoint;
 
-@Builder
-@Data
-class DiscoveryPacketData {
-    private long timestamp;
-    private int pathOrdinal;
-    private long switchT0;
-    private long switchT1;
-    private DatapathId remoteSwitchId;
-    private OFPort remotePort;
-    private Long packetId;
-    private boolean signed;
+
+public interface CacheCarrier {
+    void emitCachedData(IslRoundTripLatency data, Endpoint destination);
 }
