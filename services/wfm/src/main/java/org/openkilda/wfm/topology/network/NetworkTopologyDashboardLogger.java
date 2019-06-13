@@ -131,12 +131,12 @@ public class NetworkTopologyDashboardLogger extends AbstractLogWrapper {
      * @param switchId a switch ID.
      * @param state a switch state.
      */
-    public void onSwitchUpdateStatus(SwitchId switchId, String state) {
+    public void onSwitchUpdateStatus(SwitchId switchId, SwitchState state) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "switch-port-isl");
         data.put(TYPE, "switch");
         data.put(SWITCH_ID, switchId.toString());
-        data.put(STATE, state);
+        data.put(STATE, state.name());
         proceed(Level.INFO, String.format("Switch '%s' change status to '%s'", switchId, state), data);
     }
 
@@ -176,5 +176,9 @@ public class NetworkTopologyDashboardLogger extends AbstractLogWrapper {
         public NetworkTopologyDashboardLogger build(Logger logger) {
             return new NetworkTopologyDashboardLogger(logger);
         }
+    }
+
+    public enum SwitchState {
+        ONLINE, OFFLINE
     }
 }

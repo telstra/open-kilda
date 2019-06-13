@@ -141,7 +141,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     public void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
-        logWrapper.onSwitchAdd(switchId);
+        logWrapper.onSwitchUpdateStatus(switchId, NetworkTopologyDashboardLogger.SwitchState.ONLINE);
 
         transactionManager.doInTransaction(() -> persistSwitchData(context));
         updatePorts(context, true);
@@ -153,7 +153,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     public void offlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                              SwitchFsmContext context) {
-        logWrapper.onSwitchUpdateStatus(switchId, SwitchFsmEvent.OFFLINE.toString());
+        logWrapper.onSwitchUpdateStatus(switchId, NetworkTopologyDashboardLogger.SwitchState.OFFLINE);
         transactionManager.doInTransaction(() -> updatePersistentStatus(SwitchStatus.INACTIVE));
 
         for (AbstractPort port : portByNumber.values()) {
