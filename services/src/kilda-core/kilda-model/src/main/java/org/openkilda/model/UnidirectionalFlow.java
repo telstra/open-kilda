@@ -175,4 +175,8 @@ public class UnidirectionalFlow implements Serializable {
     public Integer getPriority() {
         return getFlow().getPriority();
     }
+
+    public FlowEncapsulationType getEncapsulationType() {
+        return getFlow().getEncapsulationType();
+    }
 }

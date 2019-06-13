@@ -23,6 +23,7 @@ import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.SwapFlowDto;
+import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -125,6 +126,17 @@ public interface FlowMapper {
         }
 
         return state.getState();
+    }
+
+    /**
+     * Convert {@link FlowEncapsulationType} to {@link String}.
+     */
+    default String map(FlowEncapsulationType encapsulationType) {
+        if (encapsulationType == null) {
+            return null;
+        }
+
+        return encapsulationType.toString().toLowerCase();
     }
 
     /**

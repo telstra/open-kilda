@@ -52,6 +52,7 @@ public class TestFlowBuilder {
     private FlowStatus status = FlowStatus.UP;
     private Integer maxLatency = null;
     private Integer priority = null;
+    private FlowEncapsulationType encapsulationType;
 
     public TestFlowBuilder() {
     }
@@ -74,7 +75,7 @@ public class TestFlowBuilder {
                 .destVlan(destVlan)
                 .bandwidth(bandwidth)
                 .ignoreBandwidth(ignoreBandwidth)
-                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .encapsulationType(encapsulationType)
                 .maxLatency(maxLatency)
                 .priority(priority)
                 .build();

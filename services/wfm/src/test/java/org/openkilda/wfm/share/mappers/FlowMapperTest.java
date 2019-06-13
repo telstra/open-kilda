@@ -22,6 +22,7 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.SwitchId;
 
@@ -58,6 +59,7 @@ public class FlowMapperTest {
         forwardFlow.setMeterId(65);
         forwardFlow.setIgnoreBandwidth(true);
         forwardFlow.setPeriodicPings(true);
+        forwardFlow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
 
         PathInfoData reversePathInfoData = new PathInfoData();
         reversePathInfoData.setLatency(1L);
@@ -83,6 +85,7 @@ public class FlowMapperTest {
         reverseFlow.setMeterId(66);
         reverseFlow.setIgnoreBandwidth(true);
         reverseFlow.setPeriodicPings(true);
+        reverseFlow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
 
         FlowPairDto<FlowDto, FlowDto> pair = new FlowPairDto<>(forwardFlow, reverseFlow);
         FlowPair p = FlowMapper.INSTANCE.map(pair);
