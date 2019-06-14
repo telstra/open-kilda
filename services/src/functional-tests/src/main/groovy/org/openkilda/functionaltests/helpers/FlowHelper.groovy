@@ -14,6 +14,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.model.Cookie
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
@@ -190,6 +191,15 @@ class FlowHelper {
                         (newEp.vlanId == it.vlanId || it.vlanId == 0 || newEp.vlanId == 0)
             }
         } || existingFlows*.id.contains(newFlow.id)
+    }
+
+    /**
+     * Converts a given FlowEndpointPayload object to FlowEndpointV2 object.
+     *
+     * @param endpoint FlowEndpointPayload object to convert
+     */
+    static FlowEndpointV2 toFlowEndpointV2(FlowEndpointPayload endpoint) {
+        new FlowEndpointV2(endpoint.datapath, endpoint.portNumber, endpoint.vlanId)
     }
 
     /**

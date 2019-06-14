@@ -50,6 +50,8 @@ import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import java.util.List;
@@ -92,6 +94,8 @@ public interface NorthboundService {
     FlowMeterEntries resetMeters(String flowId);
 
     FlowPayload swapFlowPath(String flowId);
+
+    SwapFlowEndpointPayload swapFlowEndpoint(SwapFlowPayload firstFlow, SwapFlowPayload secondFlow);
 
     //switches
 

@@ -9,6 +9,7 @@ import org.openkilda.functionaltests.extension.fixture.SetupOnce
 import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -58,6 +59,9 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
 
     @Autowired
     PathHelper pathHelper
+
+    @Autowired
+    SwitchHelper switchHelper
 
     @Autowired
     GrpcService grpc
