@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.topology.network.model;
 
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
+
 import lombok.Getter;
 
 import java.util.Arrays;

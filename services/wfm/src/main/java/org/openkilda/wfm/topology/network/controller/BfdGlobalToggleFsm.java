@@ -17,9 +17,9 @@ package org.openkilda.wfm.topology.network.controller;
 
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
-import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.service.IBfdGlobalToggleCarrier;
 
 import lombok.Builder;

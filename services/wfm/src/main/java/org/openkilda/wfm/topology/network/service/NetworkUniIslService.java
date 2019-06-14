@@ -17,12 +17,12 @@ package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
+import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmContext;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmEvent;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmState;
-import org.openkilda.wfm.topology.network.model.Endpoint;
 
 import lombok.extern.slf4j.Slf4j;
 
