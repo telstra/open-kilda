@@ -46,6 +46,8 @@ import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.Relationship;
 
 import java.io.Serializable;
+import java.util.Collections;
+import java.util.Set;
 
 
 @Data
@@ -56,6 +58,8 @@ import java.io.Serializable;
 public class SwitchFeatures implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    public static Set<FlowEncapsulationType> DEFAULT_FLOW_ENCAPSULATION_TYPES = Collections.singleton(
+            FlowEncapsulationType.TRANSIT_VLAN);
     @Id
     @GeneratedValue
     @Setter(AccessLevel.NONE)
@@ -74,12 +78,16 @@ public class SwitchFeatures implements Serializable {
     @Property(name = "support_vxlan_vni_match")
     private boolean supportVxlanVniMatch;
 
+    @Property(name = "supported_transit_encapsulation")
+    private Set<FlowEncapsulationType> supportedTransitEncapsulation;
+
     @Builder(toBuilder = true)
     public SwitchFeatures(Switch switchObj, boolean supportBfd, boolean supportVxlanPushPop,
-                          boolean supportVxlanVniMatch) {
+                          boolean supportVxlanVniMatch, Set<FlowEncapsulationType> supportedTransitEncapsulation) {
         this.switchObj = switchObj;
         this.supportBfd = supportBfd;
         this.supportVxlanPushPop = supportVxlanPushPop;
         this.supportVxlanVniMatch = supportVxlanVniMatch;
+        this.supportedTransitEncapsulation = supportedTransitEncapsulation;
     }
 }

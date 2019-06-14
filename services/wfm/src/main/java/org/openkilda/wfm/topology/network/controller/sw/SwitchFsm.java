@@ -302,7 +302,9 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private void persistSwitchData(SwitchFsmContext context) {
         Switch sw = switchRepository.findById(switchId)
                 .orElseGet(() -> Switch.builder().switchId(switchId)
-                        .switchFeatures(SwitchFeatures.builder().build()).build());
+                        .switchFeatures(SwitchFeatures.builder()
+                                .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES)
+                                .build()).build());
 
         SpeakerSwitchView speakerData = context.getSpeakerData();
         InetSocketAddress socketAddress = speakerData.getSwitchSocketAddress();

@@ -21,8 +21,10 @@ import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -43,6 +45,7 @@ public class FlowCreateService {
     private final PersistenceManager persistenceManager;
     private final PathComputer pathComputer;
     private final FlowResourcesManager flowResourcesManager;
+    private final KildaConfigurationRepository kildaConfigurationRepository;
 
     public FlowCreateService(FlowCreateHubCarrier carrier, PersistenceManager persistenceManager,
                              PathComputer pathComputer, FlowResourcesManager flowResourcesManager) {
@@ -50,6 +53,8 @@ public class FlowCreateService {
         this.persistenceManager = persistenceManager;
         this.pathComputer = pathComputer;
         this.flowResourcesManager = flowResourcesManager;
+        this.kildaConfigurationRepository = persistenceManager.getRepositoryFactory()
+                .createKildaConfigurationRepository();
     }
 
     /**
@@ -59,6 +64,11 @@ public class FlowCreateService {
      */
     public void handleRequest(String key, CommandContext commandContext, FlowDto dto, FlowCreateHubCarrier carrier) {
         log.debug("Handling flow create request with key {}", key);
+        if (dto.getEncapsulationType() == null) {
+            dto.setEncapsulationType(FlowMapper.INSTANCE.map(
+                    kildaConfigurationRepository.get().getFlowEncapsulationType()));
+
+        }
         FlowCreateFsm fsm = FlowCreateFsm.newInstance(commandContext, carrier, persistenceManager,
                 flowResourcesManager, pathComputer);
         fsms.put(key, fsm);

@@ -16,6 +16,7 @@
 package org.openkilda.persistence;
 
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
@@ -88,6 +89,8 @@ public abstract class Neo4jBasedTest {
                 .status(SwitchStatus.ACTIVE)
                 .timeCreate(Instant.now())
                 .timeModify(Instant.now())
+                .switchFeatures(SwitchFeatures.builder()
+                        .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES).build())
                 .build();
     }
 }

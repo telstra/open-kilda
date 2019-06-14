@@ -58,6 +58,7 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.Neo4jConfig;
@@ -757,7 +758,10 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         if (!switchRepository.exists(switchIdObj)) {
-            Switch sw = Switch.builder().switchId(switchIdObj).status(SwitchStatus.ACTIVE).build();
+            Switch sw = Switch.builder().switchId(switchIdObj).status(SwitchStatus.ACTIVE)
+                    .switchFeatures(SwitchFeatures.builder()
+                            .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES).build())
+                    .build();
             switchRepository.createOrUpdate(sw);
         }
     }

@@ -23,12 +23,14 @@ import static org.junit.Assert.assertThat;
 import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.pce.AvailableNetworkFactory;
@@ -516,6 +518,7 @@ public class InMemoryPathComputerTest {
                 .bandwidth(10)
                 .srcSwitch(switchRepository.findById(new SwitchId("00:0A")).get())
                 .destSwitch(switchRepository.findById(new SwitchId("00:0D")).get())
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build();
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair diversePath = pathComputer.getPath(flow);
@@ -539,6 +542,7 @@ public class InMemoryPathComputerTest {
                 .srcPort(10)
                 .destSwitch(switchRepository.findById(new SwitchId("00:0D")).get())
                 .destPort(10)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build();
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         PathPair diversePath = pathComputer.getPath(flow);
@@ -654,6 +658,7 @@ public class InMemoryPathComputerTest {
                 .destSwitch(nodeD).destPort(16)
                 .groupId(groupId)
                 .bandwidth(bandwith)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build();
 
         FlowPath forwardPath = FlowPath.builder()
@@ -738,7 +743,10 @@ public class InMemoryPathComputerTest {
     }
 
     private Switch createSwitch(String name) {
-        Switch sw = Switch.builder().switchId(new SwitchId(name)).status(SwitchStatus.ACTIVE).build();
+        Switch sw = Switch.builder().switchId(new SwitchId(name)).status(SwitchStatus.ACTIVE)
+                .switchFeatures(SwitchFeatures.builder()
+                        .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES).build())
+                .build();
 
         switchRepository.createOrUpdate(sw);
         return sw;
