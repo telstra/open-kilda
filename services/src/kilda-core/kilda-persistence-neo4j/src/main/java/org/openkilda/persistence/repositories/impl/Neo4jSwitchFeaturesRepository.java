@@ -15,12 +15,27 @@
 
 package org.openkilda.persistence.repositories.impl;
 
+import static java.lang.String.format;
+import static org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository.SWITCH_NAME_PROPERTY_NAME;
+
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeatures;
+import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 
+import com.google.common.collect.Lists;
+import org.neo4j.ogm.cypher.ComparisonOperator;
+import org.neo4j.ogm.cypher.Filter;
+
+import java.util.Collection;
+import java.util.Optional;
+
 public class Neo4jSwitchFeaturesRepository extends Neo4jGenericRepository<SwitchFeatures>
         implements SwitchFeaturesRepository {
+    private static final String SWITCH_FIELD = "switchObj";
+
 
     public Neo4jSwitchFeaturesRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
@@ -29,5 +44,27 @@ public class Neo4jSwitchFeaturesRepository extends Neo4jGenericRepository<Switch
     @Override
     protected Class<SwitchFeatures> getEntityType() {
         return SwitchFeatures.class;
+    }
+
+    @Override
+    public Optional<SwitchFeatures> findBySwitchId(SwitchId switchId) {
+        if (switchId == null) {
+            throw new IllegalArgumentException("Switch id should be not null for SwitchFeatures");
+        }
+        Filter switchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId.toString());
+        switchFilter.setNestedPath(new Filter.NestedPathSegment(SWITCH_FIELD, Switch.class));
+
+        Collection<SwitchFeatures> results = Lists.newArrayList(loadAll(switchFilter));
+
+        if (results.size() > 1) {
+            throw new PersistenceException(format("Found more that 1 SwitchFeatures entity by %s as switch name",
+                    switchId));
+        }
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.iterator().next());
+    }
+
+    @Override
+    protected int getDepthCreateUpdateEntity() {
+        return 1;
     }
 }

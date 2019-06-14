@@ -104,10 +104,11 @@ public class AvailableNetworkFactory {
     private Collection<Isl> getAvailableIsls(BuildStrategy buildStrategy, Flow flow) {
         if (buildStrategy == BuildStrategy.COST) {
             return flow.isIgnoreBandwidth() ? islRepository.findAllActive() :
-                    islRepository.findActiveWithAvailableBandwidth(flow.getBandwidth());
+                    islRepository.findActiveWithAvailableBandwidth(flow.getBandwidth(), flow.getEncapsulationType());
         } else if (buildStrategy == BuildStrategy.SYMMETRIC_COST) {
             return flow.isIgnoreBandwidth() ? islRepository.findAllActive() :
-                    islRepository.findSymmetricActiveWithAvailableBandwidth(flow.getBandwidth());
+                    islRepository.findSymmetricActiveWithAvailableBandwidth(flow.getBandwidth(),
+                            flow.getEncapsulationType());
         } else {
             throw new UnsupportedOperationException(String.format("Unsupported buildStrategy type %s", buildStrategy));
         }

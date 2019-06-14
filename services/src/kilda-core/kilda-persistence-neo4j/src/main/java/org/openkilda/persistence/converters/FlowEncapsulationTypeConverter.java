@@ -29,7 +29,7 @@ public class FlowEncapsulationTypeConverter implements AttributeConverter<FlowEn
         if (value == null) {
             return null;
         }
-        return value.name().toLowerCase();
+        return value.name();
     }
 
     @Override
@@ -37,6 +37,6 @@ public class FlowEncapsulationTypeConverter implements AttributeConverter<FlowEn
         if (value == null || value.trim().isEmpty()) {
             return null;
         }
-        return FlowEncapsulationType.valueOf(value.toUpperCase());
+        return FlowEncapsulationType.valueOf(value);
     }
 }
