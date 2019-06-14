@@ -17,6 +17,7 @@ package org.openkilda.persistence.repositories.impl;
 
 import static java.lang.String.format;
 
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.PathId;
@@ -154,14 +155,8 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
 
     @Override
     public Collection<Isl> findAllActive() {
-        // 0 bandwidth means ignore it.
-        return findActiveWithAvailableBandwidth(0L);
-    }
-
-    @Override
-    public Collection<Isl> findActiveWithAvailableBandwidth(long requiredBandwidth) {
         Map<String, Object> parameters = ImmutableMap.of(
-                "requested_bandwidth", requiredBandwidth,
+                "requested_bandwidth", 0L,
                 "switch_status", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
                 "isl_status", islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
 
@@ -174,18 +169,51 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     }
 
     @Override
-    public Collection<Isl> findSymmetricActiveWithAvailableBandwidth(long requiredBandwidth) {
+    public Collection<Isl> findActiveWithAvailableBandwidth(long requiredBandwidth,
+                                                            FlowEncapsulationType flowEncapsulationType) {
+        String encapsulationType = null;
+        if (flowEncapsulationType != null) {
+            encapsulationType = flowEncapsulationType.toString();
+        }
+        Map<String, Object> parameters = ImmutableMap.of(
+                "requested_bandwidth", requiredBandwidth,
+                "switch_status", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
+                "isl_status", islStatusConverter.toGraphProperty(IslStatus.ACTIVE),
+                "supported_transit_encapsulation", encapsulationType);
+
+        String query = "MATCH (src_features:switch_features)<-[:has]-(src:switch)-[link:isl]->"
+                + "(dst:switch)-[:has]->(dst_features:switch_features) "
+                + "WHERE src.state = $switch_status AND dst.state = $switch_status AND link.status = $isl_status "
+                + "AND link.available_bandwidth >= $requested_bandwidth "
+                + "AND $supported_transit_encapsulation IN src_features.supported_transit_encapsulation "
+                + "AND $supported_transit_encapsulation IN dst_features.supported_transit_encapsulation "
+                + "RETURN src_features, src, link, dst, dst_features";
+
+        return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
+    }
+
+    @Override
+    public Collection<Isl> findSymmetricActiveWithAvailableBandwidth(long requiredBandwidth,
+                                                                     FlowEncapsulationType flowEncapsulationType) {
+        String encapsulationType = null;
+        if (flowEncapsulationType != null) {
+            encapsulationType = flowEncapsulationType.toString();
+        }
         Map<String, Object> parameters = ImmutableMap.of(
                 "required_bandwidth", requiredBandwidth,
                 "active_switch", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
-                "active_isl", islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
+                "active_isl", islStatusConverter.toGraphProperty(IslStatus.ACTIVE),
+                "supported_transit_encapsulation", encapsulationType);
 
-        String query = "MATCH (source:switch)-[link:isl]->(dest:switch) "
+        String query = "MATCH  (src_features:switch_features)<-[:has]-(source:switch)-[link:isl]->"
+                + "(dest:switch)-[:has]->(dst_features:switch_features) "
                 + "MATCH (dest)-[reverse:isl {src_port: link.dst_port, dst_port: link.src_port}]->(source) "
                 + "WHERE source.state = $active_switch AND dest.state = $active_switch AND link.status = $active_isl "
-                + " AND link.available_bandwidth >= $required_bandwidth "
-                + " AND reverse.available_bandwidth >= $required_bandwidth "
-                + "RETURN source, link, dest";
+                + "AND link.available_bandwidth >= $required_bandwidth "
+                + "AND reverse.available_bandwidth >= $required_bandwidth "
+                + "AND $supported_transit_encapsulation IN src_features.supported_transit_encapsulation "
+                + "AND $supported_transit_encapsulation IN dst_features.supported_transit_encapsulation "
+                + "RETURN src_features, source, link, dest, dst_features";
 
         return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
     }

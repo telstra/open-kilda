@@ -15,9 +15,20 @@
 
 package org.openkilda.persistence.repositories.impl;
 
+import static java.lang.String.format;
+
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeatures;
+import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
+
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+
+import java.util.Collection;
+import java.util.Map;
+import java.util.Optional;
 
 public class Neo4jSwitchFeaturesRepository extends Neo4jGenericRepository<SwitchFeatures>
         implements SwitchFeaturesRepository {
@@ -29,5 +40,28 @@ public class Neo4jSwitchFeaturesRepository extends Neo4jGenericRepository<Switch
     @Override
     protected Class<SwitchFeatures> getEntityType() {
         return SwitchFeatures.class;
+    }
+
+    @Override
+    public Optional<SwitchFeatures> findBySwitch(Switch theSwitch) {
+        Map<String, Object> parameters = ImmutableMap.of(
+                "switch_id", theSwitch.getSwitchId()
+                );
+
+        String query = "MATCH  (sf:switch_features)<-[:has]-(sw:switch) "
+                + "WHERE sw.name = $switch_id "
+                + "RETURN sf, sw";
+        Collection<SwitchFeatures> results = Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
+
+        if (results.size() > 1) {
+            throw new PersistenceException(format("Found more that 1 SwitchFeatures entity by %s as switch name",
+                    theSwitch.getSwitchId()));
+        }
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.iterator().next());
+    }
+
+    @Override
+    protected int getDepthCreateUpdateEntity() {
+        return 1;
     }
 }

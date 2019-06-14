@@ -21,6 +21,7 @@ import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
@@ -28,6 +29,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -43,6 +45,7 @@ public class FlowCreateService {
     private final PersistenceManager persistenceManager;
     private final PathComputer pathComputer;
     private final FlowResourcesManager flowResourcesManager;
+    private final KildaConfigurationRepository kildaConfigurationRepository;
 
     public FlowCreateService(FlowCreateHubCarrier carrier, PersistenceManager persistenceManager,
                              PathComputer pathComputer, FlowResourcesManager flowResourcesManager) {
@@ -50,6 +53,8 @@ public class FlowCreateService {
         this.persistenceManager = persistenceManager;
         this.pathComputer = pathComputer;
         this.flowResourcesManager = flowResourcesManager;
+        this.kildaConfigurationRepository = persistenceManager.getRepositoryFactory()
+                .createKildaConfigurationRepository();
     }
 
     /**
@@ -62,9 +67,12 @@ public class FlowCreateService {
         FlowCreateFsm fsm = FlowCreateFsm.newInstance(commandContext, carrier, persistenceManager,
                 flowResourcesManager, pathComputer);
         fsms.put(key, fsm);
-
+        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(dto);
+        if (requestedFlow.getFlowEncapsulationType() == null) {
+            requestedFlow.setFlowEncapsulationType(kildaConfigurationRepository.get().getFlowEncapsulationType());
+        }
         FlowCreateContext context = FlowCreateContext.builder()
-                .flowDetails(RequestedFlowMapper.INSTANCE.toRequestedFlow(dto))
+                .flowDetails(requestedFlow)
                 .build();
         fsm.fire(Event.NEXT, context);
 

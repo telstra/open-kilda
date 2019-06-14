@@ -355,7 +355,7 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
         flowPathRepository.createOrUpdate(flowPath);
 
         Optional<FlowPath> foundPath = flowPathRepository.findById(flowPath.getPathId());
-        assertEquals(foundPath.get().getSegments().get(0).getDestSwitch(), switchC);
+        assertEquals(foundPath.get().getSegments().get(0).getDestSwitch().getSwitchId(), switchC.getSwitchId());
     }
 
     private FlowPath buildTestFlowPath() {

@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.nbworker.services;
 
 import org.openkilda.messaging.info.network.PathsInfoData;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.Path;
@@ -24,6 +25,7 @@ import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
@@ -40,9 +42,11 @@ public class PathsService {
     private static final int MAX_PATH_COUNT = 500;
     private PathComputer pathComputer;
     private SwitchRepository switchRepository;
+    private KildaConfigurationRepository kildaConfigurationRepository;
 
     public PathsService(RepositoryFactory repositoryFactory, PathComputerConfig pathComputerConfig) {
         switchRepository = repositoryFactory.createSwitchRepository();
+        kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
         PathComputerFactory pathComputerFactory = new PathComputerFactory(
                 pathComputerConfig, new AvailableNetworkFactory(pathComputerConfig, repositoryFactory));
         pathComputer = pathComputerFactory.getPathComputer();
@@ -63,8 +67,9 @@ public class PathsService {
         if (!switchRepository.exists(dstSwitchId)) {
             throw new SwitchNotFoundException(dstSwitchId);
         }
-
-        List<Path> flowPaths = pathComputer.getNPaths(srcSwitchId, dstSwitchId, MAX_PATH_COUNT);
+        // TODO(tdurakov): NB request should accept encapsulation type as well, right now will use env default
+        FlowEncapsulationType flowEncapsulationType = kildaConfigurationRepository.get().getFlowEncapsulationType();
+        List<Path> flowPaths = pathComputer.getNPaths(srcSwitchId, dstSwitchId, MAX_PATH_COUNT, flowEncapsulationType);
 
         return flowPaths.stream().map(PathMapper.INSTANCE::map)
                 .map(path -> PathsInfoData.builder().path(path).build())
