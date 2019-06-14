@@ -16,10 +16,10 @@
 package org.openkilda.wfm.topology.network;
 
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.share.utils.AbstractLogWrapper;
 import org.openkilda.wfm.topology.network.controller.sw.AbstractPort;
-import org.openkilda.wfm.topology.network.model.Endpoint;
-import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 
 import org.slf4j.Logger;

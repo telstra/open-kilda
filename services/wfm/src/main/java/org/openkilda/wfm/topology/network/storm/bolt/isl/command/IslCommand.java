@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.isl.command;
 
-import org.openkilda.wfm.topology.network.model.Endpoint;
-import org.openkilda.wfm.topology.network.model.IslReference;
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.storm.ICommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 
