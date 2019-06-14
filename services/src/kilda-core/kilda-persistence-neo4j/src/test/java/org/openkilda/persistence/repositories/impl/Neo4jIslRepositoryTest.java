@@ -224,7 +224,8 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
 
         islRepository.createOrUpdate(isl);
 
-        List<Isl> foundIsl = Lists.newArrayList(islRepository.findActiveWithAvailableBandwidth(100));
+        List<Isl> foundIsl = Lists.newArrayList(islRepository.findActiveWithAvailableBandwidth(100,
+                false));
         assertThat(foundIsl, Matchers.hasSize(1));
     }
 
@@ -238,7 +239,8 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
 
         islRepository.createOrUpdate(isl);
 
-        List<Isl> foundIsl = Lists.newArrayList(islRepository.findActiveWithAvailableBandwidth(100));
+        List<Isl> foundIsl = Lists.newArrayList(islRepository.findActiveWithAvailableBandwidth(100,
+                false));
         assertThat(foundIsl, Matchers.hasSize(0));
     }
 
@@ -387,7 +389,7 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         reverseIsl.setAvailableBandwidth(availableBandwidth);
         islRepository.createOrUpdate(reverseIsl);
 
-        assertEquals(2, islRepository.findSymmetricActiveWithAvailableBandwidth(availableBandwidth).size());
+        assertEquals(2, islRepository.findSymmetricActiveWithAvailableBandwidth(availableBandwidth, false).size());
     }
 
     @Test
@@ -412,7 +414,8 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         reverseIsl.setAvailableBandwidth(availableBandwidth - 1);
         islRepository.createOrUpdate(reverseIsl);
 
-        assertEquals(0, islRepository.findSymmetricActiveWithAvailableBandwidth(availableBandwidth).size());
+        assertEquals(0, islRepository.findSymmetricActiveWithAvailableBandwidth(availableBandwidth,
+                false).size());
     }
 
     private Flow buildFlowWithPath(int forwardBandwidth, int reverseBandwidth) {

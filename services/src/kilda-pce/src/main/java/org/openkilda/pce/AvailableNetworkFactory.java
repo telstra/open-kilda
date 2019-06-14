@@ -16,6 +16,7 @@
 package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.PathId;
@@ -102,12 +103,13 @@ public class AvailableNetworkFactory {
     }
 
     private Collection<Isl> getAvailableIsls(BuildStrategy buildStrategy, Flow flow) {
+        boolean requireVxlan = FlowEncapsulationType.VXLAN.equals(flow.getEncapsulationType());
         if (buildStrategy == BuildStrategy.COST) {
             return flow.isIgnoreBandwidth() ? islRepository.findAllActive() :
-                    islRepository.findActiveWithAvailableBandwidth(flow.getBandwidth());
+                    islRepository.findActiveWithAvailableBandwidth(flow.getBandwidth(), requireVxlan);
         } else if (buildStrategy == BuildStrategy.SYMMETRIC_COST) {
             return flow.isIgnoreBandwidth() ? islRepository.findAllActive() :
-                    islRepository.findSymmetricActiveWithAvailableBandwidth(flow.getBandwidth());
+                    islRepository.findSymmetricActiveWithAvailableBandwidth(flow.getBandwidth(), requireVxlan);
         } else {
             throw new UnsupportedOperationException(String.format("Unsupported buildStrategy type %s", buildStrategy));
         }

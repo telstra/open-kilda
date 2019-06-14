@@ -68,13 +68,15 @@ public interface IslRepository extends Repository<Isl> {
      * Finds all active ISLs, filtering out ISLs that don't have enough available bandwidth.
      *
      * @param requiredBandwidth required bandwidth amount that should be available on ISLs.
+     * @param supportsVxlan required VXLAN encapsulation support
      */
-    Collection<Isl> findActiveWithAvailableBandwidth(long requiredBandwidth);
+    Collection<Isl> findActiveWithAvailableBandwidth(long requiredBandwidth, boolean supportsVxlan);
 
     /**
      * Finds all active ISLs, ignores ISLs if they have not enough bandwidth in any direction.
      * @param requiredBandwidth required available bandwidth amount.
+     * @param supportsVxlan required VXLAN encapsulation support
      * @return list of ISLs.
      */
-    Collection<Isl> findSymmetricActiveWithAvailableBandwidth(long requiredBandwidth);
+    Collection<Isl> findSymmetricActiveWithAvailableBandwidth(long requiredBandwidth, boolean supportsVxlan);
 }
