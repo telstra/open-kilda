@@ -15,7 +15,11 @@
 
 package org.openkilda.persistence.repositories;
 
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeatures;
 
+import java.util.Optional;
+
 public interface SwitchFeaturesRepository extends Repository<SwitchFeatures> {
+    Optional<SwitchFeatures> findBySwitch(Switch theSwitch);
 }

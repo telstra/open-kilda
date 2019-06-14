@@ -58,12 +58,14 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.Neo4jPersistenceManager;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.wfm.AbstractStormTest;
@@ -86,6 +88,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -757,8 +760,19 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         if (!switchRepository.exists(switchIdObj)) {
-            Switch sw = Switch.builder().switchId(switchIdObj).status(SwitchStatus.ACTIVE).build();
+            Switch sw = Switch.builder().switchId(switchIdObj).status(SwitchStatus.ACTIVE)
+                    .build();
             switchRepository.createOrUpdate(sw);
+
+            SwitchFeaturesRepository switchFeaturesRepository = persistenceManager.getRepositoryFactory()
+                    .createSwitchFeaturesRepository();
+            Optional<SwitchFeatures> switchFeaturesResult = switchFeaturesRepository.findBySwitch(sw);
+            if (!switchFeaturesResult.isPresent()) {
+                SwitchFeatures switchFeatures = SwitchFeatures.builder().switchObj(sw)
+                        .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
+                switchFeaturesRepository.createOrUpdate(switchFeatures);
+            }
+
         }
     }
 

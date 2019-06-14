@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.model;
 
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.SwitchId;
 
 import lombok.Builder;
@@ -36,4 +37,5 @@ public class RequestedFlow {
     private long bandwidth;
     private boolean ignoreBandwidth;
     private boolean periodicPings;
+    private FlowEncapsulationType flowEncapsulationType;
 }

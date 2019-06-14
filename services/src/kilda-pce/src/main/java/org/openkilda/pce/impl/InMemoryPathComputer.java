@@ -19,6 +19,7 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -87,13 +88,15 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     @Override
-    public List<Path> getNPaths(SwitchId srcSwitchId, SwitchId dstSwitchId, int count)
+    public List<Path> getNPaths(SwitchId srcSwitchId, SwitchId dstSwitchId, int count,
+                                FlowEncapsulationType flowEncapsulationType)
             throws RecoverableException, UnroutableFlowException {
         Flow flow = Flow.builder()
                 .flowId("") // just any id, as not used.
                 .srcSwitch(Switch.builder().switchId(srcSwitchId).build())
                 .destSwitch(Switch.builder().switchId(dstSwitchId).build())
                 .ignoreBandwidth(false)
+                .encapsulationType(flowEncapsulationType)
                 .bandwidth(1) // to get ISLs with non zero available bandwidth
                 .build();
 

@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
@@ -29,12 +30,14 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.collect.Lists;
@@ -55,6 +58,7 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
 
     static IslRepository islRepository;
     static SwitchRepository switchRepository;
+    static SwitchFeaturesRepository switchFeaturesRepository;
     static FlowRepository flowRepository;
     static FlowPathRepository flowPathRepository;
 
@@ -67,16 +71,23 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         switchRepository = new Neo4jSwitchRepository(neo4jSessionFactory, txManager);
         flowRepository = new Neo4jFlowRepository(neo4jSessionFactory, txManager);
         flowPathRepository = new Neo4jFlowPathRepository(neo4jSessionFactory, txManager);
+        switchFeaturesRepository = new Neo4jSwitchFeaturesRepository(neo4jSessionFactory, txManager);
     }
 
     @Before
     public void createSwitches() {
         switchA = buildTestSwitch(1);
         switchRepository.createOrUpdate(switchA);
-
+        SwitchFeatures switchAFeatures = SwitchFeatures.builder()
+                .switchObj(switchA)
+                .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
+        switchFeaturesRepository.createOrUpdate(switchAFeatures);
         switchB = buildTestSwitch(2);
         switchRepository.createOrUpdate(switchB);
-
+        SwitchFeatures switchBFeatures = SwitchFeatures.builder()
+                .switchObj(switchB)
+                .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
+        switchFeaturesRepository.createOrUpdate(switchBFeatures);
         assertEquals(2, switchRepository.findAll().size());
     }
 
@@ -224,7 +235,8 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
 
         islRepository.createOrUpdate(isl);
 
-        List<Isl> foundIsl = Lists.newArrayList(islRepository.findActiveWithAvailableBandwidth(100));
+        List<Isl> foundIsl = Lists.newArrayList(islRepository.findActiveWithAvailableBandwidth(100,
+                FlowEncapsulationType.TRANSIT_VLAN));
         assertThat(foundIsl, Matchers.hasSize(1));
     }
 
@@ -238,7 +250,8 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
 
         islRepository.createOrUpdate(isl);
 
-        List<Isl> foundIsl = Lists.newArrayList(islRepository.findActiveWithAvailableBandwidth(100));
+        List<Isl> foundIsl = Lists.newArrayList(islRepository.findActiveWithAvailableBandwidth(100,
+                FlowEncapsulationType.TRANSIT_VLAN));
         assertThat(foundIsl, Matchers.hasSize(0));
     }
 
@@ -387,7 +400,8 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         reverseIsl.setAvailableBandwidth(availableBandwidth);
         islRepository.createOrUpdate(reverseIsl);
 
-        assertEquals(2, islRepository.findSymmetricActiveWithAvailableBandwidth(availableBandwidth).size());
+        assertEquals(2, islRepository.findSymmetricActiveWithAvailableBandwidth(availableBandwidth,
+                FlowEncapsulationType.TRANSIT_VLAN).size());
     }
 
     @Test
@@ -412,7 +426,8 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         reverseIsl.setAvailableBandwidth(availableBandwidth - 1);
         islRepository.createOrUpdate(reverseIsl);
 
-        assertEquals(0, islRepository.findSymmetricActiveWithAvailableBandwidth(availableBandwidth).size());
+        assertEquals(0, islRepository.findSymmetricActiveWithAvailableBandwidth(availableBandwidth,
+                FlowEncapsulationType.TRANSIT_VLAN).size());
     }
 
     private Flow buildFlowWithPath(int forwardBandwidth, int reverseBandwidth) {

@@ -33,12 +33,14 @@ import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionCallbackWithoutResult;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
@@ -80,6 +82,9 @@ public class NetworkSwitchServiceTest {
 
     @Mock
     private SwitchRepository switchRepository;
+
+    @Mock
+    private SwitchFeaturesRepository switchFeaturesRepository;
 
     private static final int BFD_LOGICAL_PORT_OFFSET = 200;
 
@@ -134,6 +139,7 @@ public class NetworkSwitchServiceTest {
 
         reset(repositoryFactory);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
+        when(repositoryFactory.createSwitchFeaturesRepository()).thenReturn(switchFeaturesRepository);
     }
 
     @Test
@@ -180,6 +186,8 @@ public class NetworkSwitchServiceTest {
 
         verify(switchRepository).createOrUpdate(argThat(sw ->
                 sw.getStatus() == SwitchStatus.ACTIVE && sw.getSwitchId() == alphaDatapath));
+        verify(switchFeaturesRepository).createOrUpdate(argThat(sf ->
+                sf.getSupportedTransitEncapsulation().equals(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES)));
     }
 
     @Test
