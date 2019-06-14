@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.isl;
 
-import org.openkilda.wfm.topology.network.model.IslReference;
+import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.service.IIslCarrier;
 
 public class BfdManager {

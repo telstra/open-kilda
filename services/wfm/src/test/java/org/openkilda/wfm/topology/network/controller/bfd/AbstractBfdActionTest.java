@@ -19,7 +19,7 @@ import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.messaging.model.SwitchReference;
 import org.openkilda.model.SwitchId;
-import org.openkilda.wfm.topology.network.model.Endpoint;
+import org.openkilda.wfm.share.model.Endpoint;
 
 import org.junit.Assert;
 import org.junit.Test;
