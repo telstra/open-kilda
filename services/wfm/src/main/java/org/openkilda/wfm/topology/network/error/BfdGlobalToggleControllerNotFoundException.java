@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.network.error;
 
-import org.openkilda.wfm.topology.network.model.Endpoint;
+import org.openkilda.wfm.share.model.Endpoint;
 
 public class BfdGlobalToggleControllerNotFoundException extends ControllerNotFoundException {
     public BfdGlobalToggleControllerNotFoundException(Endpoint anchor) {

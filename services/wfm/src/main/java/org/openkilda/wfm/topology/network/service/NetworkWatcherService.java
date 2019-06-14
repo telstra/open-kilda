@@ -17,8 +17,8 @@ package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.wfm.topology.network.model.Endpoint;
-import org.openkilda.wfm.topology.network.model.IslReference;
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Value;

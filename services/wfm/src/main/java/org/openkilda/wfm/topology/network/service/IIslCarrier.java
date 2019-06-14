@@ -16,8 +16,8 @@
 package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.messaging.command.reroute.RerouteFlows;
-import org.openkilda.wfm.topology.network.model.Endpoint;
-import org.openkilda.wfm.topology.network.model.IslReference;
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
 
 public interface IIslCarrier {
     void bfdEnableRequest(Endpoint physicalEndpoint, IslReference reference);
