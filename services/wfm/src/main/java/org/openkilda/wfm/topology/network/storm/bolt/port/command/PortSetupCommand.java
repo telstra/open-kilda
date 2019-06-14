@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.network.storm.bolt.port.command;
 
 import org.openkilda.model.Isl;
-import org.openkilda.wfm.topology.network.model.Endpoint;
+import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.storm.bolt.port.PortHandler;
 
 public class PortSetupCommand extends PortCommand {

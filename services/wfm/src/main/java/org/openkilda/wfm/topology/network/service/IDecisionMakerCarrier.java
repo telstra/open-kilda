@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.wfm.topology.network.model.Endpoint;
+import org.openkilda.wfm.share.model.Endpoint;
 
 public interface IDecisionMakerCarrier {
     void linkDiscovered(IslInfoData discoveryEvent);

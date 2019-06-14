@@ -18,14 +18,14 @@ package org.openkilda.wfm.topology.network.controller;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmContext;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmEvent;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmState;
-import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
-import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.service.IUniIslCarrier;
 
 import lombok.Builder;

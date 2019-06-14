@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.bfdport.command;
 
-import org.openkilda.wfm.topology.network.model.Endpoint;
+import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.storm.bolt.bfdport.BfdPortHandler;
 
 public class BfdPortOnlineModeCommand extends BfdPortCommand {
