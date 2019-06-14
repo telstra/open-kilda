@@ -109,6 +109,8 @@ class TagExtension extends AbstractGlobalExtension {
     }
 
     static Set<Tag> collectAllTags(IterationInfo iteration) {
+        if (iteration == null)
+            return [] as Set
         def feature = iteration.feature
         def iterationTags = (feature.featureMethod.getAnnotation(IterationTags)?.value()?.toList() ?: [] +
                 feature.featureMethod.getAnnotation(IterationTag)).findAll()
