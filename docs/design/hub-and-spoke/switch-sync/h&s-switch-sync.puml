@@ -1,9 +1,10 @@
 @startuml
-title Switch synchronization
+title Switch rules and meters sync
 
 actor User
 boundary Northbound as NB
 participant SwitchManager << Hub >>
+participant SpeakerWorker
 participant CommandBuilder
 participant Floodlight as FL
 database DAO
@@ -34,12 +35,21 @@ end
 
 group Sending rules commands
     opt Missing rules commands exists
-        SwitchManager ->> FL : BatchInstallRequest
-        FL ->> SwitchManager : BatchFlowInstallResponse
+        loop for each missing rule
+            SwitchManager ->> SpeakerWorker : InstallFlowForSwitchManagerRequest
+            SpeakerWorker ->> FL : InstallFlowForSwitchManagerRequest
+
+            FL ->> SpeakerWorker
+            SpeakerWorker ->> SwitchManager
+        end
     end
     opt Excess rules commands exists
-        SwitchManager ->> FL : BatchRemoveRequest
-        FL ->> SwitchManager : BatchFlowRemoveResponse
+        loop for each excess rule
+            SwitchManager ->> SpeakerWorker : RemoveFlowForSwitchManagerRequest
+            SpeakerWorker ->> FL : RemoveFlowForSwitchManagerRequest
+            FL ->> SpeakerWorker
+            SpeakerWorker ->> SwitchManager
+        end
     end
 
 end
@@ -49,8 +59,12 @@ opt processMeters=true, removeExcess=true and Excess meters exists
 end
 
 opt Excess meters commands exists
-    SwitchManager ->> FL : BatchRemoveMeters
-    FL ->> SwitchManager : BatchMetersRemoveResponse
+    loop for each excess meter
+        SwitchManager ->> SpeakerWorker : DeleterMeterForSwitchManagerRequest
+        SpeakerWorker ->> FL : DeleterMeterForSwitchManagerRequest
+        FL ->> SpeakerWorker
+        SpeakerWorker --> SwitchManager
+    end
 end
 
 SwitchManager -> SwitchManager: make SwitchSyncResponse

@@ -17,5 +17,5 @@ package org.openkilda.messaging.info.flow;
 
 import org.openkilda.messaging.info.InfoData;
 
-public class BatchFlowRemoveResponse extends InfoData {
+public class FlowInstallResponse extends InfoData {
 }

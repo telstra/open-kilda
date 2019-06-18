@@ -4,6 +4,7 @@ title Switch rules and meters validation
 actor User
 boundary Northbound as NB
 participant SwitchManager << Hub >>
+participant SpeakerWorker
 participant ValidationService
 participant Floodlight as FL
 database DAO
@@ -14,12 +15,17 @@ activate NB
 NB -> SwitchManager : SwitchValidateRequest
 activate SwitchManager
 
-SwitchManager ->> FL : DumpRulesRequest
-SwitchManager ->> FL : DumpMetersRequest
+SwitchManager ->> SpeakerWorker : DumpRulesRequest
+SpeakerWorker ->> FL : DumpRulesRequest
+
+SwitchManager ->> SpeakerWorker : DumpMetersRequest
+SpeakerWorker ->> FL : DumpRulesRequest
 deactivate SwitchManager
 
-FL ->> SwitchManager : SwitchFlowEntries
-FL ->> SwitchManager : SwitchMeterData
+FL ->> SpeakerWorker : SwitchFlowEntries
+SpeakerWorker ->> SwitchManager : SwitchFlowEntries
+FL ->> SpeakerWorker : SwitchMeterData
+SpeakerWorker ->> SwitchManager : SwitchMeterData
 
 activate SwitchManager
 SwitchManager -> ValidationService : Validate rules

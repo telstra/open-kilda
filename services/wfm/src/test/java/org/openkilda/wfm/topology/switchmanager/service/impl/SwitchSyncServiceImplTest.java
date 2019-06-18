@@ -27,9 +27,11 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
-import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -46,11 +48,11 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
-import org.openkilda.wfm.topology.switchmanager.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.CommandBuilder;
+import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -125,8 +127,8 @@ public class SwitchSyncServiceImplTest {
 
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
-        verify(carrier).endProcessing(eq(KEY));
         verify(carrier).response(eq(KEY), any(InfoMessage.class));
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
 
         verifyNoMoreInteractions(commandBuilder);
         verifyNoMoreInteractions(carrier);
@@ -141,8 +143,8 @@ public class SwitchSyncServiceImplTest {
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
         verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
-        verify(carrier).endProcessing(eq(KEY));
         ArgumentCaptor<ErrorMessage> errorCaptor = ArgumentCaptor.forClass(ErrorMessage.class);
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).response(eq(KEY), errorCaptor.capture());
         assertEquals(errorMessage, errorCaptor.getValue().getData().getErrorMessage());
 
@@ -163,11 +165,11 @@ public class SwitchSyncServiceImplTest {
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
         verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
-        verify(carrier).sendCommand(eq(KEY), any(CommandMessage.class));
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
 
         service.handleInstallRulesResponse(KEY);
 
-        verify(carrier).endProcessing(eq(KEY));
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).response(eq(KEY), any(InfoMessage.class));
 
         verifyNoMoreInteractions(commandBuilder);
@@ -179,11 +181,10 @@ public class SwitchSyncServiceImplTest {
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
         verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
-        verify(carrier).sendCommand(eq(KEY), any(CommandMessage.class));
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
 
         service.handleTaskTimeout(KEY);
 
-        verify(carrier).endProcessing(eq(KEY));
         verify(carrier).response(eq(KEY), any(ErrorMessage.class));
 
         verifyNoMoreInteractions(commandBuilder);
@@ -195,13 +196,13 @@ public class SwitchSyncServiceImplTest {
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
         verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
-        verify(carrier).sendCommand(eq(KEY), any(CommandMessage.class));
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(InstallFlowForSwitchManagerRequest.class));
 
         ErrorMessage errorMessage = getErrorMessage();
         service.handleTaskError(KEY, errorMessage);
 
-        verify(carrier).endProcessing(eq(KEY));
-        verify(carrier).response(eq(KEY), eq(errorMessage));
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
+        verify(carrier).response(eq(KEY), any(ErrorMessage.class));
 
         verifyNoMoreInteractions(commandBuilder);
         verifyNoMoreInteractions(carrier);
@@ -215,13 +216,13 @@ public class SwitchSyncServiceImplTest {
                 new MeterInfoEntry(EXCESS_COOKIE, EXCESS_COOKIE, FLOW_ID, 0L, 0L, new String[]{}, null, null));
 
         service.handleSwitchSync(KEY, request, makeValidationResult());
-        verify(carrier).sendCommand(eq(KEY), any(CommandMessage.class));
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
 
         ErrorMessage errorMessage = getErrorMessage();
         service.handleTaskError(KEY, errorMessage);
 
-        verify(carrier).endProcessing(eq(KEY));
-        verify(carrier).response(eq(KEY), eq(errorMessage));
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
+        verify(carrier).response(eq(KEY), any(ErrorMessage.class));
 
         verifyNoMoreInteractions(commandBuilder);
         verifyNoMoreInteractions(carrier);
@@ -234,7 +235,7 @@ public class SwitchSyncServiceImplTest {
 
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
-        verify(carrier).endProcessing(eq(KEY));
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).response(eq(KEY), any(InfoMessage.class));
 
         verifyNoMoreInteractions(commandBuilder);
@@ -259,15 +260,16 @@ public class SwitchSyncServiceImplTest {
         verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
         verify(commandBuilder).buildCommandsToRemoveExcessRules(
                 eq(SWITCH_ID), eq(singletonList(flowEntry)), eq(excessRules));
-        verify(carrier, times(2)).sendCommand(eq(KEY), any(CommandMessage.class));
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(InstallFlowForSwitchManagerRequest.class));
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(RemoveFlowForSwitchManagerRequest.class));
 
         service.handleInstallRulesResponse(KEY);
         service.handleRemoveRulesResponse(KEY);
 
         service.handleRemoveMetersResponse(KEY);
-        verify(carrier, times(3)).sendCommand(eq(KEY), any(CommandMessage.class));
+        verify(carrier, times(3)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
 
-        verify(carrier).endProcessing(eq(KEY));
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).response(eq(KEY), any(InfoMessage.class));
 
         verifyNoMoreInteractions(commandBuilder);
@@ -283,10 +285,10 @@ public class SwitchSyncServiceImplTest {
 
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
-        verify(carrier).sendCommand(eq(KEY), any(CommandMessage.class));
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
         service.handleRemoveMetersResponse(KEY);
 
-        verify(carrier).endProcessing(eq(KEY));
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
         verify(carrier).response(eq(KEY), any(InfoMessage.class));
 
         verifyNoMoreInteractions(commandBuilder);
@@ -302,11 +304,11 @@ public class SwitchSyncServiceImplTest {
                 tempResult.getFlowEntries(), false, tempResult.getValidateRulesResult(), null));
 
         verify(commandBuilder).buildCommandsToSyncMissingRules(eq(SWITCH_ID), eq(missingRules));
-        verify(carrier).sendCommand(eq(KEY), any(CommandMessage.class));
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
 
         service.handleInstallRulesResponse(KEY);
 
-        verify(carrier).endProcessing(eq(KEY));
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
         verify(carrier).response(eq(KEY), responseCaptor.capture());
         assertNull(((SwitchSyncResponse) responseCaptor.getValue().getData()).getMeters());

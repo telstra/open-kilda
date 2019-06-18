@@ -138,8 +138,10 @@ public class CommandBuilderImpl implements CommandBuilder {
 
         Integer outPort = actions.map(FlowApplyActions::getFlowOutput).map(Integer::valueOf).orElse(null);
 
+        SwitchId ingressSwitchId = entryMatch.map(FlowMatchField::getEthSrc).map(SwitchId::new).orElse(null);
+
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(entry.getCookie(), inPort, vlan,
-                0, outPort, FlowEncapsulationType.TRANSIT_VLAN);
+                0, outPort, FlowEncapsulationType.TRANSIT_VLAN, ingressSwitchId);
 
         return new RemoveFlow(transactionIdGenerator.generate(), "SWMANAGER_BATCH_REMOVE", entry.getCookie(),
                 switchId, null, criteria);

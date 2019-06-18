@@ -13,9 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.flow;
+package org.openkilda.wfm.topology.switchmanager.service;
 
-import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.wfm.error.PipelineException;
 
-public class BatchFlowInstallResponse extends InfoData {
+public interface SpeakerCommandCarrier {
+
+    void sendCommand(String key, CommandMessage command) throws PipelineException;
+
+    void sendResponse(String key, Message response) throws PipelineException;
 }
