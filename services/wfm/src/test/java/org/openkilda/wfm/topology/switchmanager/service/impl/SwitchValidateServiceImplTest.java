@@ -29,7 +29,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
-import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -44,10 +44,10 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.topology.switchmanager.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
+import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -121,7 +121,6 @@ public class SwitchValidateServiceImplTest {
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
         service.handleTaskTimeout(KEY);
 
-        verify(carrier).endProcessing(eq(KEY));
         verify(carrier).response(eq(KEY), any(ErrorMessage.class));
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
@@ -135,8 +134,9 @@ public class SwitchValidateServiceImplTest {
         ErrorMessage errorMessage = getErrorMessage();
         service.handleTaskError(KEY, errorMessage);
 
-        verify(carrier).endProcessing(eq(KEY));
-        verify(carrier).response(eq(KEY), eq(errorMessage));
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
+        verify(carrier).response(eq(KEY), any(ErrorMessage.class));
+
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
     }
@@ -149,8 +149,7 @@ public class SwitchValidateServiceImplTest {
         handleRequestAndInitDataReceive();
         handleDataReceiveAndValidate();
 
-        verify(carrier).endProcessing(eq(KEY));
-
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
         verify(carrier).response(eq(KEY), responseCaptor.capture());
         SwitchValidationResponse response = (SwitchValidationResponse) responseCaptor.getValue().getData();
@@ -165,13 +164,12 @@ public class SwitchValidateServiceImplTest {
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).build();
 
         service.handleSwitchValidateRequest(KEY, request);
-        verify(carrier).sendCommand(eq(KEY), any(CommandMessage.class));
+        verify(carrier).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
 
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
         verify(validationService).validateRules(eq(SWITCH_ID), any());
 
-        verify(carrier).endProcessing(eq(KEY));
-
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
         verify(carrier).response(eq(KEY), responseCaptor.capture());
 
@@ -190,8 +188,8 @@ public class SwitchValidateServiceImplTest {
         service.handleMetersUnsupportedResponse(KEY);
 
         verify(validationService).validateRules(eq(SWITCH_ID), any());
-        verify(carrier).endProcessing(eq(KEY));
 
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
         verify(carrier).response(eq(KEY), responseCaptor.capture());
 
@@ -212,11 +210,11 @@ public class SwitchValidateServiceImplTest {
                 .thenThrow(new IllegalArgumentException(errorMessage));
         handleDataReceiveAndValidate();
 
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<ErrorMessage> errorCaptor = ArgumentCaptor.forClass(ErrorMessage.class);
         verify(carrier).response(eq(KEY), errorCaptor.capture());
         assertEquals(errorMessage, errorCaptor.getValue().getData().getErrorMessage());
 
-        verify(carrier).endProcessing(eq(KEY));
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
     }
@@ -245,7 +243,7 @@ public class SwitchValidateServiceImplTest {
     private void handleRequestAndInitDataReceive() {
         service.handleSwitchValidateRequest(KEY, request);
 
-        verify(carrier, times(2)).sendCommand(eq(KEY), any(CommandMessage.class));
+        verify(carrier, times(2)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
         verifyNoMoreInteractions(carrier);
     }
 
