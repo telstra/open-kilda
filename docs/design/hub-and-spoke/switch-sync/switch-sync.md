@@ -2,7 +2,7 @@
 
 ## Synchronization switch rules using hub and spoke
 
-![Switch sync design](h&s-implementation-switch-sync.png "Switch sync design")
+![Switch sync design](h&s-switch-sync.png "Switch sync design")
 
 ## FSM for synchronization switch rules
 Here is a FSM diagram that helps to understand main steps of switch synchronization.

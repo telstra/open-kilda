@@ -188,6 +188,10 @@ public interface KafkaTopicsConfig {
     @Default("kilda.topo.reroute.storm")
     String getTopoRerouteTopic();
 
+    @Key("topo.switch.manager.nb")
+    @Default("kilda.nb.swmanager_request.priv")
+    String getTopoSwitchManagerNbTopic();
+
     @Key("topo.switch.manager")
     @Default("kilda.topo.switch.manager.storm")
     String getTopoSwitchManagerTopic();

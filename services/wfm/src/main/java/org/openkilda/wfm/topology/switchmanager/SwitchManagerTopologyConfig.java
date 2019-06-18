@@ -29,6 +29,10 @@ public interface SwitchManagerTopologyConfig  extends AbstractTopologyConfig {
         return getKafkaTopics().getTopoSwitchManagerTopic();
     }
 
+    default String getKafkaSwitchManagerNbTopic() {
+        return getKafkaTopics().getTopoSwitchManagerNbTopic();
+    }
+
     default String getKafkaNorthboundTopic() {
         return getKafkaTopics().getNorthboundTopic();
     }
@@ -52,8 +56,13 @@ public interface SwitchManagerTopologyConfig  extends AbstractTopologyConfig {
             + "if calculated value will be less than value of this option.")
     long getFlowMeterMinBurstSizeInKbits();
 
-    @Key("swmanager.operation.timeout")
-    @Default("10000")
+    @Key("swmanager.operation.timeout.seconds")
+    @Default("10")
     @Description("The timeout for performing async operations")
     int getOperationTimeout();
+
+    @Key("swmanager.process.timeout.seconds")
+    @Default("20")
+    @Description("The timeout for performing validate and synchronize operations")
+    int getProcessTimeout();
 }
