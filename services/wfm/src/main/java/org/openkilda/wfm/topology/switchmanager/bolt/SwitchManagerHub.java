@@ -18,26 +18,24 @@ package org.openkilda.wfm.topology.switchmanager.bolt;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
+import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.flow.BatchFlowInstallResponse;
-import org.openkilda.messaging.info.flow.BatchFlowRemoveResponse;
-import org.openkilda.messaging.info.meter.BatchMetersRemoveResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterData;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
-import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
-import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt.CoordinatorCommand;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
+import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.switchmanager.StreamType;
-import org.openkilda.wfm.topology.switchmanager.SwitchManagerCarrier;
-import org.openkilda.wfm.topology.switchmanager.command.RemoveKeyRouterBolt;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
+import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchSyncService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
 import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchSyncServiceImpl;
@@ -53,10 +51,9 @@ import org.apache.storm.tuple.Values;
 
 import java.util.Map;
 
-public class SwitchManager extends HubBolt implements SwitchManagerCarrier {
-    public static final String ID = "switch.validate";
-    public static final String INCOME_STREAM = "validate.command";
-    private static final boolean AUTO_ACK = true;
+public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
+    public static final String ID = "switch.manager.hub";
+    public static final String INCOME_STREAM = "switch.manage.command";
 
     private final PersistenceManager persistenceManager;
     private transient SwitchValidateService validateService;
@@ -65,13 +62,9 @@ public class SwitchManager extends HubBolt implements SwitchManagerCarrier {
     private long flowMeterMinBurstSizeInKbits;
     private double flowMeterBurstCoefficient;
 
-    public SwitchManager(String requestSenderComponent, PersistenceManager persistenceManager, int operationTimeout,
-                         long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
-        super(HubBolt.Config.builder()
-                .requestSenderComponent(requestSenderComponent)
-                .timeoutMs(operationTimeout)
-                .autoAck(AUTO_ACK)
-                .build());
+    public SwitchManagerHub(HubBolt.Config hubConfig, PersistenceManager persistenceManager,
+                            long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
+        super(hubConfig);
 
         this.persistenceManager = persistenceManager;
         this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
@@ -87,34 +80,14 @@ public class SwitchManager extends HubBolt implements SwitchManagerCarrier {
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
-        String key = input.getStringByField(MessageTranslator.KEY_FIELD);
-        Message message = pullValue(input, MessageTranslator.FIELD_ID_PAYLOAD, Message.class);
+        String key = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
+        CommandMessage message = pullValue(input, MessageTranslator.FIELD_ID_PAYLOAD, CommandMessage.class);
 
-        if (message instanceof CommandMessage) {
-            CommandData data = ((CommandMessage) message).getData();
-            if (data instanceof SwitchValidateRequest) {
-                validateService.handleSwitchValidateRequest(key, (SwitchValidateRequest) data);
-            }
-
-        } else if (message instanceof InfoMessage) {
-            InfoData data = ((InfoMessage) message).getData();
-            if (data instanceof SwitchFlowEntries) {
-                validateService.handleFlowEntriesResponse(key, (SwitchFlowEntries) data);
-            } else if (data instanceof SwitchMeterData) {
-                handleMetersResponse(key, (SwitchMeterData) data);
-            } else if (data instanceof BatchFlowInstallResponse) {
-                syncService.handleInstallRulesResponse(key);
-            } else if (data instanceof BatchFlowRemoveResponse) {
-                syncService.handleRemoveRulesResponse(key);
-            } else if (data instanceof BatchMetersRemoveResponse) {
-                syncService.handleRemoveMetersResponse(key);
-            } else {
-                log.warn("Receive unexpected InfoData for key {}: {}", key, data);
-            }
-        } else if (message instanceof ErrorMessage) {
-            log.warn("Receive ErrorMessage for key {}", key);
-            validateService.handleTaskError(key, (ErrorMessage) message);
-            syncService.handleTaskError(key, (ErrorMessage) message);
+        CommandData data = message.getData();
+        if (data instanceof SwitchValidateRequest) {
+            validateService.handleSwitchValidateRequest(key, (SwitchValidateRequest) data);
+        } else {
+            log.warn("Receive unexpected CommandMessage for key {}: {}", key, data);
         }
     }
 
@@ -129,8 +102,35 @@ public class SwitchManager extends HubBolt implements SwitchManagerCarrier {
     }
 
     @Override
-    protected void onWorkerResponse(Tuple input) {
-        throw new UnsupportedOperationException();
+    protected void onWorkerResponse(Tuple input) throws PipelineException {
+        String key = KeyProvider.getParentKey(input.getStringByField(MessageTranslator.FIELD_ID_KEY));
+        Message message = pullValue(input, MessageTranslator.FIELD_ID_PAYLOAD, Message.class);
+
+        if (message instanceof CommandMessage) {
+            CommandData data = ((CommandMessage) message).getData();
+            if (data instanceof InstallFlowForSwitchManagerRequest) {
+                syncService.handleInstallRulesResponse(key);
+            } else if (data instanceof RemoveFlowForSwitchManagerRequest) {
+                syncService.handleRemoveRulesResponse(key);
+            } else if (data instanceof DeleterMeterForSwitchManagerRequest) {
+                syncService.handleRemoveMetersResponse(key);
+            } else {
+                log.warn("Receive unexpected CommandData for key {}: {}", key, data);
+            }
+        } else if (message instanceof InfoMessage) {
+            InfoData data = ((InfoMessage) message).getData();
+            if (data instanceof SwitchFlowEntries) {
+                validateService.handleFlowEntriesResponse(key, (SwitchFlowEntries) data);
+            } else if (data instanceof SwitchMeterData) {
+                handleMetersResponse(key, (SwitchMeterData) data);
+            } else {
+                log.warn("Receive unexpected InfoData for key {}: {}", key, data);
+            }
+        } else if (message instanceof ErrorMessage) {
+            log.warn("Receive ErrorMessage for key {}", key);
+            validateService.handleTaskError(key, (ErrorMessage) message);
+            syncService.handleTaskError(key, (ErrorMessage) message);
+        }
     }
 
     @Override
@@ -141,29 +141,15 @@ public class SwitchManager extends HubBolt implements SwitchManagerCarrier {
     }
 
     @Override
-    public void sendCommand(String key, CommandMessage command) {
-        getOutput().emit(StreamType.TO_FLOODLIGHT.toString(), new Values(key, command));
+    public void sendCommandToSpeaker(String key, CommandData command) {
+        emitWithContext(SpeakerWorkerBolt.INCOME_STREAM, getCurrentTuple(),
+                new Values(KeyProvider.generateChainedKey(key), command));
     }
 
     @Override
     public void response(String key, Message message) {
         getOutput().emit(StreamType.TO_NORTHBOUND.toString(), new Values(key, message));
-    }
-
-    @Override
-    public void endProcessing(String key) {
-        cancelCallback(key);
-        removeKeyFromRouterBolt(key);
-    }
-
-    private void cancelCallback(String key) {
-        getOutput().emit(CoordinatorBolt.INCOME_STREAM, new Values(key, CoordinatorCommand.CANCEL_CALLBACK, 0, null));
-    }
-
-    private void removeKeyFromRouterBolt(String key) {
-        CommandMessage commandMessage =
-                new CommandMessage(new RemoveKeyRouterBolt(key), System.currentTimeMillis(), key);
-        getOutput().emit(RouterBolt.INCOME_STREAM, new Values(key, commandMessage, getCommandContext()));
+        cancelCallback(key, getCurrentTuple());
     }
 
     @Override
@@ -184,11 +170,9 @@ public class SwitchManager extends HubBolt implements SwitchManagerCarrier {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
+        declarer.declareStream(SpeakerWorkerBolt.INCOME_STREAM, MessageTranslator.STREAM_FIELDS);
 
         Fields fields = new Fields(MessageTranslator.FIELD_ID_KEY, MessageTranslator.FIELD_ID_PAYLOAD);
         declarer.declareStream(StreamType.TO_NORTHBOUND.toString(), fields);
-        declarer.declareStream(StreamType.TO_FLOODLIGHT.toString(), fields);
-        declarer.declareStream(RouterBolt.INCOME_STREAM, MessageTranslator.STREAM_FIELDS);
-
     }
 }

@@ -22,22 +22,20 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 
-import java.util.List;
-
 @Value
 @Builder
-public class BatchRemoveFlowForSwitchManagerRequest extends CommandData {
+public class InstallFlowForSwitchManagerRequest extends CommandData {
 
     @JsonProperty("switch_id")
-    SwitchId switchId;
+    private SwitchId switchId;
 
-    @JsonProperty("flow_commands")
-    List<RemoveFlow> flowCommands;
+    @JsonProperty("flow_command")
+    private BaseInstallFlow flowCommand;
 
-    public BatchRemoveFlowForSwitchManagerRequest(
+    public InstallFlowForSwitchManagerRequest(
             @JsonProperty("switch_id") SwitchId switchId,
-            @JsonProperty("flow_commands") List<RemoveFlow> flowCommands) {
+            @JsonProperty("flow_command") BaseInstallFlow flowCommand) {
         this.switchId = switchId;
-        this.flowCommands = flowCommands;
+        this.flowCommand = flowCommand;
     }
 }

@@ -13,30 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.switches;
+package org.openkilda.wfm.topology.switchmanager.service;
 
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.model.SwitchId;
+import org.openkilda.messaging.command.switches.SwitchValidateRequest;
+import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+public interface SwitchManagerCarrier {
+    void sendCommandToSpeaker(String key, CommandData command);
 
-import java.util.List;
+    void response(String key, Message message);
 
-@Value
-public class BatchRemoveMeters extends CommandData {
+    long getFlowMeterMinBurstSizeInKbits();
 
-    @JsonProperty("switch_id")
-    SwitchId switchId;
+    double getFlowMeterBurstCoefficient();
 
-    @JsonProperty("meters_id")
-    List<Long> metersId;
-
-    @JsonCreator
-    public BatchRemoveMeters(@JsonProperty("switch_id") SwitchId switchId,
-                             @JsonProperty("meters_id") List<Long> metersId) {
-        this.switchId = switchId;
-        this.metersId = metersId;
-    }
+    void runSwitchSync(String key, SwitchValidateRequest request, ValidationResult validationResult);
 }

@@ -96,7 +96,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
     private String nbworkerTopic;
 
-    @Value("#{kafkaTopicsConfig.getTopoSwitchManagerTopic()}")
+    @Value("#{kafkaTopicsConfig.getTopoSwitchManagerNbTopic()}")
     private String switchManagerTopic;
 
     /**
