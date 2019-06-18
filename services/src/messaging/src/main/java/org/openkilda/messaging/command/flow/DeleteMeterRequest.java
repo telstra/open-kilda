@@ -20,9 +20,11 @@ import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 
-@Value
+@Getter
+@EqualsAndHashCode
 public class DeleteMeterRequest extends CommandData {
 
     @JsonProperty("switch_id")
