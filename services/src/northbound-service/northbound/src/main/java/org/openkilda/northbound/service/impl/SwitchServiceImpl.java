@@ -96,7 +96,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
     private String nbworkerTopic;
 
-    @Value("#{kafkaTopicsConfig.getTopoSwitchManagerTopic()}")
+    @Value("#{kafkaTopicsConfig.getTopoSwitchManagerNbTopic()}")
     private String switchManagerTopic;
 
     /**
@@ -212,14 +212,9 @@ public class SwitchServiceImpl implements SwitchService {
     @Override
     public CompletableFuture<RulesValidationResult> validateRules(SwitchId switchId) {
         logger.info("Validate rules request for switch {}", switchId);
-        final String correlationId = RequestCorrelationId.getId();
 
-        CommandMessage validateCommandMessage = new CommandMessage(
-                SwitchValidateRequest.builder().switchId(switchId).build(),
-                System.currentTimeMillis(), correlationId);
-
-        return messagingChannel.sendAndGet(switchManagerTopic, validateCommandMessage)
-                .thenApply(SwitchValidationResponse.class::cast)
+        return performValidate(
+                SwitchValidateRequest.builder().switchId(switchId).build())
                 .thenApply(switchMapper::toRulesValidationResult);
     }
 
@@ -227,25 +222,26 @@ public class SwitchServiceImpl implements SwitchService {
     public CompletableFuture<SwitchValidationResult> validateSwitch(SwitchId switchId) {
         logger.info("Validate request for switch {}", switchId);
 
-        CommandMessage syncCommandMessage = new CommandMessage(
-                SwitchValidateRequest.builder().switchId(switchId).processMeters(true).build(),
+        return performValidate(
+                SwitchValidateRequest.builder().switchId(switchId).processMeters(true).build())
+                .thenApply(switchMapper::toSwitchValidationResult);
+    }
+
+    private CompletableFuture<SwitchValidationResponse> performValidate(SwitchValidateRequest request) {
+        CommandMessage validateCommandMessage = new CommandMessage(
+                request,
                 System.currentTimeMillis(), RequestCorrelationId.getId());
 
-        return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
-                .thenApply(SwitchValidationResponse.class::cast)
-                .thenApply(switchMapper::toSwitchValidationResult);
+        return messagingChannel.sendAndGet(switchManagerTopic, validateCommandMessage)
+                .thenApply(SwitchValidationResponse.class::cast);
     }
 
     @Override
     public CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId) {
         logger.info("Sync rules request for switch {}", switchId);
 
-        CommandMessage syncCommandMessage = new CommandMessage(
-                SwitchValidateRequest.builder().switchId(switchId).performSync(true).build(),
-                System.currentTimeMillis(), RequestCorrelationId.getId());
-
-        return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
-                .thenApply(SwitchSyncResponse.class::cast)
+        return performSync(
+                SwitchValidateRequest.builder().switchId(switchId).performSync(true).build())
                 .thenApply(switchMapper::toRulesSyncResult);
     }
 
@@ -253,14 +249,19 @@ public class SwitchServiceImpl implements SwitchService {
     public CompletableFuture<SwitchSyncResult> syncSwitch(SwitchId switchId, boolean removeExcess) {
         logger.info("Sync request for switch {}. Remove excess {}", switchId, removeExcess);
 
-        CommandMessage syncCommandMessage = new CommandMessage(
+        return performSync(
                 SwitchValidateRequest.builder().switchId(switchId).processMeters(true).performSync(true)
-                        .removeExcess(removeExcess).build(),
+                        .removeExcess(removeExcess).build())
+                .thenApply(switchMapper::toSwitchSyncResult);
+    }
+
+    private CompletableFuture<SwitchSyncResponse> performSync(SwitchValidateRequest request) {
+        CommandMessage validateCommandMessage = new CommandMessage(
+                request,
                 System.currentTimeMillis(), RequestCorrelationId.getId());
 
-        return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
-                .thenApply(SwitchSyncResponse.class::cast)
-                .thenApply(switchMapper::toSwitchSyncResult);
+        return messagingChannel.sendAndGet(switchManagerTopic, validateCommandMessage)
+                .thenApply(SwitchSyncResponse.class::cast);
     }
 
     @Override

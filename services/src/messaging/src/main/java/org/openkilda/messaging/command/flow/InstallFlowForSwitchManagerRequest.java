@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -22,22 +22,20 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 
-import java.util.List;
-
 @Value
 @Builder
-public class BatchInstallRequest extends CommandData {
+public class InstallFlowForSwitchManagerRequest extends CommandData {
 
     @JsonProperty("switch_id")
     private SwitchId switchId;
 
-    @JsonProperty("flow_commands")
-    private List<BaseInstallFlow> flowCommands;
+    @JsonProperty("flow_command")
+    private BaseInstallFlow flowCommand;
 
-    public BatchInstallRequest(
+    public InstallFlowForSwitchManagerRequest(
             @JsonProperty("switch_id") SwitchId switchId,
-            @JsonProperty("flow_commands") List<BaseInstallFlow> flowCommands) {
+            @JsonProperty("flow_command") BaseInstallFlow flowCommand) {
         this.switchId = switchId;
-        this.flowCommands = flowCommands;
+        this.flowCommand = flowCommand;
     }
 }

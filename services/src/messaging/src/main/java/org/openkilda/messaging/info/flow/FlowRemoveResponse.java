@@ -13,9 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.meter;
+package org.openkilda.messaging.info.flow;
 
 import org.openkilda.messaging.info.InfoData;
 
-public class BatchMetersRemoveResponse extends InfoData {
+public class FlowRemoveResponse extends InfoData {
 }
