@@ -87,7 +87,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -633,12 +632,13 @@ public class FlowService extends BaseFlowService {
                 } else {
                     log.warn("Reroute {} is unsuccessful: can't find non overlapping new protected path.", flowId);
 
-                    flow.setStatus(FlowStatus.DOWN);
                     currentForwardPath.setStatus(FlowPathStatus.INACTIVE);
                     currentReversePath.setStatus(FlowPathStatus.INACTIVE);
 
                     flowPathRepository.createOrUpdate(currentForwardPath);
                     flowPathRepository.createOrUpdate(currentReversePath);
+
+                    flow.setStatus(computeFlowStatus(flow));
                     flowRepository.createOrUpdate(flow);
 
                     toRemoveBuilder.protectedForwardPath(null).protectedReversePath(null);
@@ -777,29 +777,7 @@ public class FlowService extends BaseFlowService {
         transactionManager.doInTransaction(() -> {
             Flow flow = flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
-            FlowPathStatus prioritizedPathsStatus = Stream.of(flow.getForwardPath(),
-                    flow.getReversePath(), flow.getProtectedForwardPath(), flow.getProtectedReversePath())
-                    .filter(Objects::nonNull)
-                    .map(FlowPath::getStatus)
-                    .max(FlowPathStatus::compareTo)
-                    .orElse(null);
-
-            // Calculate the combined flow status.
-            FlowStatus flowStatus;
-            switch (prioritizedPathsStatus) {
-                case ACTIVE:
-                    flowStatus = FlowStatus.UP;
-                    break;
-                case INACTIVE:
-                    flowStatus = FlowStatus.DOWN;
-                    break;
-                case IN_PROGRESS:
-                    flowStatus = FlowStatus.IN_PROGRESS;
-                    break;
-                default:
-                    throw new IllegalArgumentException(
-                            format("Unsupported flow path status %s", prioritizedPathsStatus));
-            }
+            FlowStatus flowStatus = computeFlowStatus(flow);
 
             if (flowStatus != flow.getStatus()) {
                 log.debug("Set flow {} status to {}", flowId, flowStatus);
@@ -808,6 +786,30 @@ public class FlowService extends BaseFlowService {
                 flowRepository.createOrUpdate(flow);
             }
         });
+    }
+
+    private FlowStatus computeFlowStatus(Flow flow) {
+        FlowPathStatus mainFlowPrioritizedPathsStatus = flow.getMainFlowPrioritizedPathsStatus();
+        FlowPathStatus protectedFlowPrioritizedPathsStatus = flow.getProtectedFlowPrioritizedPathsStatus();
+
+        // Calculate the combined flow status.
+        if (protectedFlowPrioritizedPathsStatus != null
+                && protectedFlowPrioritizedPathsStatus != FlowPathStatus.ACTIVE
+                && mainFlowPrioritizedPathsStatus == FlowPathStatus.ACTIVE) {
+            return FlowStatus.DEGRADED;
+        } else {
+            switch (mainFlowPrioritizedPathsStatus) {
+                case ACTIVE:
+                    return FlowStatus.UP;
+                case INACTIVE:
+                    return FlowStatus.DOWN;
+                case IN_PROGRESS:
+                    return FlowStatus.IN_PROGRESS;
+                default:
+                    throw new IllegalArgumentException(
+                            format("Unsupported flow path status %s", mainFlowPrioritizedPathsStatus));
+            }
+        }
     }
 
     /**
