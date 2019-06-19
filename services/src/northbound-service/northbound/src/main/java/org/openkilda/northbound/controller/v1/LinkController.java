@@ -15,7 +15,7 @@
 
 package org.openkilda.northbound.controller.v1;
 
-import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.BatchResults;
@@ -135,15 +135,19 @@ public class LinkController extends BaseController {
      *
      * @return list of flows for a particular link.
      */
-    @ApiOperation(value = "Get all flows for a particular link, based on arguments.", response = FlowPayload.class,
-            responseContainer = "List")
+    @ApiOperation(value = "Get all flows for a particular link, based on arguments.",
+            response = FlowResponsePayload.class, responseContainer = "List")
     @GetMapping(path = "/links/flows",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<List<FlowPayload>> getFlowsForLink(@RequestParam(value = "src_switch") SwitchId srcSwitch,
-                                                                @RequestParam(value = "src_port") Integer srcPort,
-                                                                @RequestParam(value = "dst_switch") SwitchId dstSwitch,
-                                                                @RequestParam(value = "dst_port") Integer dstPort) {
+    public CompletableFuture<List<FlowResponsePayload>> getFlowsForLink(@RequestParam(value = "src_switch")
+                                                                                    SwitchId srcSwitch,
+                                                                        @RequestParam(value = "src_port")
+                                                                                Integer srcPort,
+                                                                        @RequestParam(value = "dst_switch")
+                                                                                    SwitchId dstSwitch,
+                                                                        @RequestParam(value = "dst_port")
+                                                                                    Integer dstPort) {
         return linkService.getFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 

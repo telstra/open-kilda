@@ -145,9 +145,10 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
 
     @Override
     public Collection<Flow> findDownFlows() {
-        Filter flowStatusFilter = new Filter(STATUS_PROPERTY_NAME, ComparisonOperator.EQUALS, FlowStatus.DOWN);
+        Filter flowStatusDown = new Filter(STATUS_PROPERTY_NAME, ComparisonOperator.EQUALS, FlowStatus.DOWN);
+        Filter flowStatusDegraded = new Filter(STATUS_PROPERTY_NAME, ComparisonOperator.EQUALS, FlowStatus.DEGRADED);
 
-        return loadAll(flowStatusFilter);
+        return loadAll(flowStatusDown.or(flowStatusDegraded));
     }
 
     @Override

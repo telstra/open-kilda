@@ -20,7 +20,6 @@ import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
-import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
@@ -85,10 +84,10 @@ public class FlowController extends BaseController {
      * @param flow          flow
      * @return flow
      */
-    @ApiOperation(value = "Creates new flow", response = FlowPayload.class)
+    @ApiOperation(value = "Creates new flow", response = FlowResponsePayload.class)
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FlowPayload> createFlow(@RequestBody FlowCreatePayload flow) {
+    public CompletableFuture<FlowResponsePayload> createFlow(@RequestBody FlowCreatePayload flow) {
         return flowService.createFlow(flow);
     }
 
@@ -111,10 +110,10 @@ public class FlowController extends BaseController {
      * @param flowId        flow id
      * @return flow
      */
-    @ApiOperation(value = "Deletes flow", response = FlowPayload.class)
+    @ApiOperation(value = "Deletes flow", response = FlowResponsePayload.class)
     @DeleteMapping(value = "/{flow-id:.+}")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FlowPayload> deleteFlow(@PathVariable(name = "flow-id") String flowId) {
+    public CompletableFuture<FlowResponsePayload> deleteFlow(@PathVariable(name = "flow-id") String flowId) {
         return flowService.deleteFlow(flowId);
     }
 
@@ -125,11 +124,11 @@ public class FlowController extends BaseController {
      * @param flowId        flow id
      * @return flow
      */
-    @ApiOperation(value = "Updates flow", response = FlowPayload.class)
+    @ApiOperation(value = "Updates flow", response = FlowResponsePayload.class)
     @PutMapping(value = "/{flow-id:.+}")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FlowPayload> updateFlow(@PathVariable(name = "flow-id") String flowId,
-                                                     @RequestBody FlowUpdatePayload flow) {
+    public CompletableFuture<FlowResponsePayload> updateFlow(@PathVariable(name = "flow-id") String flowId,
+                                                             @RequestBody FlowUpdatePayload flow) {
         return flowService.updateFlow(flow);
     }
 
@@ -140,11 +139,11 @@ public class FlowController extends BaseController {
      * @param flowId        flow id
      * @return flow
      */
-    @ApiOperation(value = "Updates flow", response = FlowPayload.class)
+    @ApiOperation(value = "Updates flow", response = FlowResponsePayload.class)
     @PatchMapping(value = "/{flow-id:.+}")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FlowPayload> patchFlow(@PathVariable(name = "flow-id") String flowId,
-                                                    @RequestBody FlowPatchDto flowPatchDto) {
+    public CompletableFuture<FlowResponsePayload> patchFlow(@PathVariable(name = "flow-id") String flowId,
+                                                            @RequestBody FlowPatchDto flowPatchDto) {
         return flowService.patchFlow(flowId, flowPatchDto);
     }
 
@@ -153,10 +152,10 @@ public class FlowController extends BaseController {
      *
      * @return list of flow
      */
-    @ApiOperation(value = "Dumps all flows", response = FlowPayload.class, responseContainer = "List")
+    @ApiOperation(value = "Dumps all flows", response = FlowResponsePayload.class, responseContainer = "List")
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<List<FlowPayload>> getFlows() {
+    public CompletableFuture<List<FlowResponsePayload>> getFlows() {
         return flowService.getAllFlows();
     }
 
@@ -165,12 +164,12 @@ public class FlowController extends BaseController {
      *
      * @return list of flows that have been deleted
      */
-    @ApiOperation(value = "Delete all flows. Requires special authorization", response = FlowPayload.class,
+    @ApiOperation(value = "Delete all flows. Requires special authorization", response = FlowResponsePayload.class,
             responseContainer = "List")
     @DeleteMapping
     @ResponseStatus(HttpStatus.OK)
     @ExtraAuthRequired
-    public CompletableFuture<List<FlowPayload>> deleteFlows() {
+    public CompletableFuture<List<FlowResponsePayload>> deleteFlows() {
         return flowService.deleteAllFlows();
     }
 
@@ -271,10 +270,10 @@ public class FlowController extends BaseController {
      * @param flowId id of flow to swap paths.
      * @return flow payload.
      */
-    @ApiOperation(value = "Swap paths for flow with protected path", response = FlowPayload.class)
+    @ApiOperation(value = "Swap paths for flow with protected path", response = FlowResponsePayload.class)
     @PatchMapping(path = "/{flow_id}/swap")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FlowPayload> swapFlowPaths(@PathVariable("flow_id") String flowId) {
+    public CompletableFuture<FlowResponsePayload> swapFlowPaths(@PathVariable("flow_id") String flowId) {
         return flowService.swapFlowPaths(flowId);
     }
 

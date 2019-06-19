@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,31 +13,28 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model;
+package org.openkilda.messaging.payload.flow;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 
 /**
- * Represents flow statuses.
+ * Class contains main and protected flow path statuses.
  */
-public enum FlowStatus {
+@Data
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class FlowStatusDetailsDto {
 
     /**
-     * Flow is in creating/deleting state.
+     * Main flow path status.
      */
-    IN_PROGRESS,
+    @JsonProperty("main-path")
+    private String mainFlowPathStatus;
 
     /**
-     * Flow is in UP state.
+     * Protected flow path status.
      */
-    UP,
-
-    /**
-     * Flow is in down state.
-     */
-    DOWN,
-
-    /**
-     * Flow is in degraded state.
-     */
-    DEGRADED
+    @JsonProperty("protected-path")
+    private String protectedFlowPathStatus;
 }
-
