@@ -13,6 +13,7 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
@@ -85,6 +86,7 @@ class IntentionalRerouteV2Spec extends BaseSpecification {
                 assumeTrue("No suiting switches found", false)
         def flow = flowHelper.randomFlow(switchPair)
         flow.maximumBandwidth = 10000
+        flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
         flowHelper.addFlow(flow)
         def currentPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
@@ -197,6 +199,7 @@ class IntentionalRerouteV2Spec extends BaseSpecification {
         def flow = flowHelper.randomFlow(switchPair)
         flow.maximumBandwidth = 10000
         flow.ignoreBandwidth = true
+        flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
         flowHelper.addFlow(flow)
         def currentPathDto = northbound.getFlowPath(flow.id)
         def currentPath = PathHelper.convert(currentPathDto)

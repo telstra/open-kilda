@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -82,6 +82,9 @@ public class FlowPayload implements Serializable {
     @JsonProperty("pinned")
     private boolean pinned = false;
 
+    @JsonProperty("encapsulation-type")
+    private String encapsulationType;
+
     /**
      * Instance constructor.
      *
@@ -99,6 +102,7 @@ public class FlowPayload implements Serializable {
      * @param maxLatency            max latency
      * @param priority              flow priority
      * @param pinned           pinned flag
+     * @param encapsulationType     flow encapsulation type
      */
     @Builder
     @JsonCreator
@@ -115,7 +119,8 @@ public class FlowPayload implements Serializable {
                        @JsonProperty("status") String status,
                        @JsonProperty("max-latency") Integer maxLatency,
                        @JsonProperty("priority") Integer priority,
-                       @JsonProperty("pinned") Boolean pinned) {
+                       @JsonProperty("pinned") Boolean pinned,
+                       @JsonProperty("encapsulation-type") String encapsulationType) {
         setId(id);
         setSource(source);
         setDestination(destination);
@@ -139,6 +144,7 @@ public class FlowPayload implements Serializable {
         this.status = status;
         this.maxLatency = maxLatency;
         this.priority = priority;
+        this.encapsulationType = encapsulationType;
     }
 
     /**

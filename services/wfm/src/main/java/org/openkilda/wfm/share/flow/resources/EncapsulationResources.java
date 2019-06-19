@@ -15,8 +15,13 @@
 
 package org.openkilda.wfm.share.flow.resources;
 
+import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.FlowEncapsulationType;
 
 public interface EncapsulationResources {
     FlowEncapsulationType getEncapsulationType();
+
+    Integer getTransitEncapsulationId();
+
+    EncapsulationId getEncapsulation();
 }

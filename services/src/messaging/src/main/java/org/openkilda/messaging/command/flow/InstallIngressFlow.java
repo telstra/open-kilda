@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -50,7 +51,8 @@ import java.util.UUID;
         "input_port",
         "output_port",
         "input_vlan_id",
-        "transit_vlan_id",
+        "transit_encapsulation_id",
+        "transit_encapsulation_type",
         "output_vlan_type",
         "bandwidth",
         "meter_id"})
@@ -94,7 +96,8 @@ public class InstallIngressFlow extends InstallTransitFlow {
      * @param inputPort      input port of the flow
      * @param outputPort     output port of the flow
      * @param inputVlanId    input vlan id value
-     * @param transitVlanId  transit vlan id value
+     * @param transitEncapsulationId  transit encapsulation id value
+     * @param transitEncapsulationType  transit encapsulation type value
      * @param outputVlanType output vlan type action
      * @param bandwidth      flow bandwidth
      * @param meterId        flow meter id
@@ -108,11 +111,14 @@ public class InstallIngressFlow extends InstallTransitFlow {
                               @JsonProperty("input_port") final Integer inputPort,
                               @JsonProperty("output_port") final Integer outputPort,
                               @JsonProperty("input_vlan_id") final Integer inputVlanId,
-                              @JsonProperty("transit_vlan_id") final Integer transitVlanId,
+                              @JsonProperty("transit_encapsulation_id") final Integer transitEncapsulationId,
+                              @JsonProperty("transit_encapsulation_type") final FlowEncapsulationType
+                                          transitEncapsulationType,
                               @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                               @JsonProperty("bandwidth") final Long bandwidth,
                               @JsonProperty("meter_id") final Long meterId) {
-        super(transactionId, id, cookie, switchId, inputPort, outputPort, transitVlanId);
+        super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
+                transitEncapsulationType);
         setInputVlanId(inputVlanId);
         setOutputVlanType(outputVlanType);
         setBandwidth(bandwidth);
@@ -224,7 +230,8 @@ public class InstallIngressFlow extends InstallTransitFlow {
                 .add("input_port", inputPort)
                 .add("output_port", outputPort)
                 .add("input_vlan_id", inputVlanId)
-                .add("transit_vlan_id", transitVlanId)
+                .add("transit_encapsulation_id", transitEncapsulationId)
+                .add("transit_encapsulation_type", transitEncapsulationType)
                 .add("output_vlan_type", outputVlanType)
                 .add("bandwidth", bandwidth)
                 .add("meter_id", meterId)
@@ -251,7 +258,8 @@ public class InstallIngressFlow extends InstallTransitFlow {
                 && Objects.equals(getInputPort(), that.getInputPort())
                 && Objects.equals(getOutputPort(), that.getOutputPort())
                 && Objects.equals(getInputVlanId(), that.getInputVlanId())
-                && Objects.equals(getOutputPort(), that.getOutputPort())
+                && Objects.equals(getTransitEncapsulationId(), that.getTransitEncapsulationId())
+                && Objects.equals(getTransitEncapsulationType(), that.getTransitEncapsulationType())
                 && Objects.equals(getOutputVlanType(), that.getOutputVlanType())
                 && Objects.equals(getBandwidth(), that.getBandwidth())
                 && Objects.equals(getMeterId(), that.getMeterId());
@@ -263,6 +271,6 @@ public class InstallIngressFlow extends InstallTransitFlow {
     @Override
     public int hashCode() {
         return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort,
-                inputVlanId, transitVlanId, outputVlanType, bandwidth, meterId);
+                inputVlanId, transitEncapsulationId, transitEncapsulationType, outputVlanType, bandwidth, meterId);
     }
 }

@@ -90,6 +90,7 @@ import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
+import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.BatchInstallResponse;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
@@ -307,7 +308,7 @@ class RecordHandler implements Runnable {
                 command.getInputPort(),
                 command.getOutputPort(),
                 command.getInputVlanId(),
-                command.getTransitVlanId(),
+                command.getTransitEncapsulationId(),
                 command.getOutputVlanType(),
                 meterId);
     }
@@ -346,7 +347,7 @@ class RecordHandler implements Runnable {
                 command.getCookie(),
                 command.getInputPort(),
                 command.getOutputPort(),
-                command.getTransitVlanId(),
+                command.getTransitEncapsulationId(),
                 command.getOutputVlanId(),
                 command.getOutputVlanType());
     }
@@ -385,7 +386,7 @@ class RecordHandler implements Runnable {
                 command.getCookie(),
                 command.getInputPort(),
                 command.getOutputPort(),
-                command.getTransitVlanId());
+                command.getTransitEncapsulationId());
     }
 
     /**
@@ -978,14 +979,9 @@ class RecordHandler implements Runnable {
             InfoMessage infoMessage = new InfoMessage(response, timestamp, correlationId);
             producerService.sendMessageAndTrack(replyToTopic, correlationId, infoMessage);
         } catch (UnsupportedSwitchOperationException e) {
-            String messageString = "Not supported: " + switchId;
-            logger.error(messageString, e);
-            anError(ErrorType.PARAMETERS_INVALID)
-                    .withMessage(e.getMessage())
-                    .withDescription(messageString)
-                    .withCorrelationId(correlationId)
-                    .withTopic(replyToTopic)
-                    .sendVia(producerService);
+            logger.info("Meters not supported: {}", switchId);
+            InfoMessage infoMessage = new InfoMessage(new SwitchMeterUnsupported(), timestamp, correlationId);
+            producerService.sendMessageAndTrack(replyToTopic, correlationId, infoMessage);
         } catch (SwitchNotFoundException e) {
             logger.info("Dumping switch meters is unsuccessful. Switch {} not found", switchId);
             anError(ErrorType.NOT_FOUND)

@@ -92,5 +92,10 @@ public enum StreamType {
     /**
      * History messages.
      */
-    HISTORY;
+    HISTORY,
+
+    /**
+     * Swap endpoint messages.
+     */
+    SWAP_ENDPOINT;
 }

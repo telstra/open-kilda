@@ -99,6 +99,8 @@ idle. Step repeats pre-defined number of times"
         topoHelper.purgeTopology(topo)
     }
 
+    //TODO(rtretiak): test that continuously add/remove different switches. Ensure no memory leak over time
+
     def createFlow() {
         Wrappers.silent {
             def flow = flowHelper.randomFlow(*topoHelper.getRandomSwitchPair(), false, flows)

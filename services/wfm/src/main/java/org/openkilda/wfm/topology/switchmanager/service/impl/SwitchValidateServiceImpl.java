@@ -85,6 +85,18 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
     }
 
     @Override
+    public void handleMetersUnsupportedResponse(String key) {
+        SwitchValidateFsm fsm = fsms.get(key);
+        if (fsm == null) {
+            logFsmNotFound(key);
+            return;
+        }
+
+        fsm.fire(SwitchValidateEvent.METERS_UNSUPPORTED);
+        process(fsm);
+    }
+
+    @Override
     public void handleTaskTimeout(String key) {
         SwitchValidateFsm fsm = fsms.get(key);
         if (fsm == null) {

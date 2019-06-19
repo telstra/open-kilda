@@ -30,8 +30,8 @@ class SwitchFailuresSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         when: "Two neighbouring switches of the flow go down simultaneously"
-        lockKeeper.knockoutSwitch(isl.srcSwitch.dpId)
-        lockKeeper.knockoutSwitch(isl.dstSwitch.dpId)
+        lockKeeper.knockoutSwitch(isl.srcSwitch)
+        lockKeeper.knockoutSwitch(isl.dstSwitch)
         def timeSwitchesBroke = System.currentTimeMillis()
         def untilIslShouldFail = { timeSwitchesBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
@@ -39,8 +39,8 @@ class SwitchFailuresSpec extends BaseSpecification {
         lockKeeper.removeFlows([isl.aswitch])
 
         and: "Switches go back up"
-        lockKeeper.reviveSwitch(isl.srcSwitch.dpId)
-        lockKeeper.reviveSwitch(isl.dstSwitch.dpId)
+        lockKeeper.reviveSwitch(isl.srcSwitch)
+        lockKeeper.reviveSwitch(isl.dstSwitch)
 
         then: "ISL still remains up right before discovery timeout should end"
         sleep(untilIslShouldFail() - 2000)
@@ -79,12 +79,12 @@ class SwitchFailuresSpec extends BaseSpecification {
         addFlow.start()
 
         and: "One of the switches goes down without waiting for flow's UP status"
-        lockKeeper.knockoutSwitch(srcSwitch.dpId)
+        lockKeeper.knockoutSwitch(srcSwitch)
         addFlow.join()
 
         and: "Goes back up in 2 seconds"
         TimeUnit.SECONDS.sleep(2)
-        lockKeeper.reviveSwitch(srcSwitch.dpId)
+        lockKeeper.reviveSwitch(srcSwitch)
 
         then: "The flow is UP and valid"
         Wrappers.wait(WAIT_OFFSET) {
@@ -122,12 +122,12 @@ class SwitchFailuresSpec extends BaseSpecification {
         reroute.start()
 
         and: "Immediately disconnect a switch on the new path"
-        lockKeeper.knockoutSwitch(uniqueSwitch.dpId)
+        lockKeeper.knockoutSwitch(uniqueSwitch)
         reroute.join()
 
         and: "Reconnect it back in a couple of seconds"
         TimeUnit.SECONDS.sleep(2)
-        lockKeeper.reviveSwitch(uniqueSwitch.dpId)
+        lockKeeper.reviveSwitch(uniqueSwitch)
 
         then: "The flow is UP and valid"
         Wrappers.wait(WAIT_OFFSET) {

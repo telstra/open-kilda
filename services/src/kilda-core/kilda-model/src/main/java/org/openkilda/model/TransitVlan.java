@@ -39,7 +39,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = {"entityId"})
 @NodeEntity(label = "transit_vlan")
-public class TransitVlan implements Serializable {
+public class TransitVlan implements Serializable, EncapsulationId {
     private static final long serialVersionUID = 1L;
 
     // Hidden as needed for OGM only.
@@ -69,5 +69,10 @@ public class TransitVlan implements Serializable {
         this.flowId = flowId;
         this.pathId = pathId;
         this.vlan = vlan;
+    }
+
+    @Override
+    public int getEncapsulationId() {
+        return vlan;
     }
 }

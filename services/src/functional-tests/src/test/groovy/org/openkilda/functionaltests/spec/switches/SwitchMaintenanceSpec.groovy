@@ -161,7 +161,7 @@ class SwitchMaintenanceSpec extends BaseSpecification {
         given: "An active switch under maintenance disconnected from the controller"
         def sw = topology.activeSwitches.first()
         northbound.setSwitchMaintenance(sw.dpId, true, false)
-        lockKeeper.knockoutSwitch(sw.dpId)
+        lockKeeper.knockoutSwitch(sw)
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             northbound.getAllLinks().findAll { sw.dpId in [it.source, it.destination]*.switchId }.each {
                 assert it.state == IslChangeType.FAILED
@@ -196,7 +196,7 @@ class SwitchMaintenanceSpec extends BaseSpecification {
                 "requested bandwidth=$flow.maximumBandwidth: Switch $sw.dpId doesn't have links with enough bandwidth"
 
         and: "Connect the switch back to the controller and unset maintenance mode"
-        lockKeeper.reviveSwitch(sw.dpId)
+        lockKeeper.reviveSwitch(sw)
         northbound.setSwitchMaintenance(sw.dpId, false, false)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }

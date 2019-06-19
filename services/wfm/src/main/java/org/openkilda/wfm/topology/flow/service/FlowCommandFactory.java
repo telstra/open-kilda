@@ -26,12 +26,13 @@ import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.TransitVlan;
+import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
@@ -51,8 +52,8 @@ public class FlowCommandFactory {
      * @param flowPath flow path with segments to be used for building of install rules.
      * @return list of commands
      */
-    public List<InstallTransitFlow> createInstallTransitAndEgressRulesForFlow(FlowPath flowPath,
-                                                                              TransitVlan transitVlan) {
+    public List<InstallTransitFlow> createInstallTransitAndEgressRulesForFlow(
+            FlowPath flowPath, EncapsulationResources encapsulationResources) {
         Flow flow = flowPath.getFlow();
 
         if (flow.isOneSwitchFlow()) {
@@ -68,7 +69,7 @@ public class FlowCommandFactory {
             PathSegment dst = segments.get(i);
 
             commands.add(buildInstallTransitFlow(flowPath, src.getDestSwitch().getSwitchId(), src.getDestPort(),
-                    dst.getSrcPort(), transitVlan));
+                    dst.getSrcPort(), encapsulationResources));
         }
 
         PathSegment egressSegment = segments.get(segments.size() - 1);
@@ -76,7 +77,7 @@ public class FlowCommandFactory {
             throw new IllegalStateException(
                     format("FlowSegment was not found for egress flow rule, flowId: %s", flow.getFlowId()));
         }
-        commands.add(buildInstallEgressFlow(flowPath, egressSegment.getDestPort(), transitVlan));
+        commands.add(buildInstallEgressFlow(flowPath, egressSegment.getDestPort(), encapsulationResources));
         return commands;
     }
 
@@ -86,7 +87,8 @@ public class FlowCommandFactory {
      * @param flowPath flow path with segments to be used for building of install rules.
      * @return list of commands
      */
-    public BaseInstallFlow createInstallIngressRulesForFlow(FlowPath flowPath, TransitVlan transitVlan) {
+    public BaseInstallFlow createInstallIngressRulesForFlow(FlowPath flowPath,
+                                                            EncapsulationResources encapsulationResources) {
         Flow flow = flowPath.getFlow();
 
         if (flow.isOneSwitchFlow()) {
@@ -101,7 +103,7 @@ public class FlowCommandFactory {
                     format("FlowSegment was not found for ingress flow rule, flowId: %s", flow.getFlowId()));
         }
 
-        return buildInstallIngressFlow(flow, flowPath, ingressSegment.getSrcPort(), transitVlan);
+        return buildInstallIngressFlow(flow, flowPath, ingressSegment.getSrcPort(), encapsulationResources);
     }
 
     /**
@@ -110,7 +112,8 @@ public class FlowCommandFactory {
      * @param flowPath flow path with segments to be used for building of install rules.
      * @return list of commands
      */
-    public List<RemoveFlow> createRemoveTransitAndEgressRulesForFlow(FlowPath flowPath, TransitVlan transitVlan) {
+    public List<RemoveFlow> createRemoveTransitAndEgressRulesForFlow(FlowPath flowPath,
+                                                                     EncapsulationResources encapsulationResources) {
         Flow flow = flowPath.getFlow();
 
         if (flow.isOneSwitchFlow()) {
@@ -127,7 +130,7 @@ public class FlowCommandFactory {
             PathSegment dst = segments.get(i);
 
             commands.add(buildRemoveTransitFlow(flowPath, src.getDestSwitch().getSwitchId(), src.getDestPort(),
-                    dst.getSrcPort(), transitVlan));
+                    dst.getSrcPort(), encapsulationResources));
         }
 
         PathSegment egressSegment = segments.get(segments.size() - 1);
@@ -135,7 +138,7 @@ public class FlowCommandFactory {
             throw new IllegalStateException(
                     format("FlowSegment was not found for egress flow rule, flowId: %s", flow.getFlowId()));
         }
-        commands.add(buildRemoveEgressFlow(flow, flowPath, egressSegment.getDestPort(), transitVlan));
+        commands.add(buildRemoveEgressFlow(flow, flowPath, egressSegment.getDestPort(), encapsulationResources));
         return commands;
     }
 
@@ -149,7 +152,7 @@ public class FlowCommandFactory {
         Flow flow = flowPath.getFlow();
         if (flow.isOneSwitchFlow()) {
             // Removing of single switch rules is done with no output port in criteria.
-            return buildRemoveIngressFlow(flow, flowPath, null);
+            return buildRemoveIngressFlow(flow, flowPath, null, null);
         }
         List<PathSegment> segments = flowPath.getSegments();
         requireSegments(segments);
@@ -160,7 +163,7 @@ public class FlowCommandFactory {
                     format("FlowSegment was not found for ingress flow rule, flowId: %s", flow.getFlowId()));
         }
 
-        return buildRemoveIngressFlow(flow, flowPath, ingressSegment.getSrcPort());
+        return buildRemoveIngressFlow(flow, flowPath, ingressSegment.getSrcPort(), flow.getEncapsulationType());
     }
 
     /**
@@ -182,7 +185,8 @@ public class FlowCommandFactory {
         }
     }
 
-    private InstallEgressFlow buildInstallEgressFlow(FlowPath flowPath, int inputPortNo, TransitVlan transitVlan) {
+    private InstallEgressFlow buildInstallEgressFlow(FlowPath flowPath, int inputPortNo,
+                                                     EncapsulationResources encapsulationResources) {
         Flow flow = flowPath.getFlow();
 
         boolean isForward = flow.isForward(flowPath);
@@ -192,38 +196,45 @@ public class FlowCommandFactory {
 
         return new InstallEgressFlow(transactionIdGenerator.generate(), flow.getFlowId(),
                 flowPath.getCookie().getValue(), switchId, inputPortNo, outPort,
-                transitVlan.getVlan(), outVlan, getOutputVlanType(flow, flowPath));
+                encapsulationResources.getTransitEncapsulationId(),
+                encapsulationResources.getEncapsulationType(), outVlan, getOutputVlanType(flow, flowPath));
     }
 
-    private RemoveFlow buildRemoveEgressFlow(Flow flow, FlowPath flowPath, int inputPortNo, TransitVlan transitVlan) {
+    private RemoveFlow buildRemoveEgressFlow(Flow flow, FlowPath flowPath, int inputPortNo,
+                                             EncapsulationResources encapsulationResources) {
         boolean isForward = flow.isForward(flowPath);
         SwitchId switchId = isForward ? flow.getDestSwitch().getSwitchId() : flow.getSrcSwitch().getSwitchId();
         int outPort = isForward ? flow.getDestPort() : flow.getSrcPort();
 
         long cookie = flowPath.getCookie().getValue();
-        DeleteRulesCriteria criteria = new DeleteRulesCriteria(cookie, inputPortNo, transitVlan.getVlan(),
-                0, outPort);
+        DeleteRulesCriteria criteria = new DeleteRulesCriteria(cookie, inputPortNo,
+                encapsulationResources.getTransitEncapsulationId(),
+                0, outPort, encapsulationResources.getEncapsulationType());
         return new RemoveFlow(transactionIdGenerator.generate(), flow.getFlowId(), cookie,
                 switchId, null, criteria);
     }
 
     private InstallTransitFlow buildInstallTransitFlow(FlowPath flowPath, SwitchId switchId,
-                                                       int inputPortNo, int outputPortNo, TransitVlan transitVlan) {
+                                                       int inputPortNo, int outputPortNo,
+                                                       EncapsulationResources encapsulationResources) {
         return new InstallTransitFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(),
-                flowPath.getCookie().getValue(), switchId, inputPortNo, outputPortNo, transitVlan.getVlan());
+                flowPath.getCookie().getValue(), switchId, inputPortNo, outputPortNo,
+                encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType());
     }
 
     private RemoveFlow buildRemoveTransitFlow(FlowPath flowPath, SwitchId switchId,
-                                              int inputPortNo, int outputPortNo, TransitVlan transitVlan) {
+                                              int inputPortNo, int outputPortNo,
+                                              EncapsulationResources encapsulationResources) {
         long cookie = flowPath.getCookie().getValue();
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(cookie,
-                inputPortNo, transitVlan.getVlan(), 0, outputPortNo);
+                inputPortNo, encapsulationResources.getTransitEncapsulationId(), 0, outputPortNo,
+                encapsulationResources.getEncapsulationType());
         return new RemoveFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(), cookie,
                 switchId, null, criteria);
     }
 
     private BaseInstallFlow buildInstallIngressFlow(Flow flow, FlowPath flowPath, int outputPortNo,
-                                                    TransitVlan transitVlan) {
+                                                    EncapsulationResources encapsulationResources) {
         boolean isForward = flow.isForward(flowPath);
         SwitchId switchId = isForward ? flow.getSrcSwitch().getSwitchId() : flow.getDestSwitch().getSwitchId();
         int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
@@ -233,11 +244,13 @@ public class FlowCommandFactory {
 
         return new InstallIngressFlow(transactionIdGenerator.generate(), flow.getFlowId(),
                 flowPath.getCookie().getValue(), switchId, inPort,
-                outputPortNo, inVlan, transitVlan.getVlan(), getOutputVlanType(flow, flowPath),
+                outputPortNo, inVlan, encapsulationResources.getTransitEncapsulationId(),
+                encapsulationResources.getEncapsulationType(), getOutputVlanType(flow, flowPath),
                 flow.getBandwidth(), meterId);
     }
 
-    private RemoveFlow buildRemoveIngressFlow(Flow flow, FlowPath flowPath, Integer outputPortNo) {
+    private RemoveFlow buildRemoveIngressFlow(Flow flow, FlowPath flowPath, Integer outputPortNo,
+                                              FlowEncapsulationType encapsulationType) {
         boolean isForward = flow.isForward(flowPath);
         SwitchId switchId = isForward ? flow.getSrcSwitch().getSwitchId() : flow.getDestSwitch().getSwitchId();
         int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
@@ -246,7 +259,7 @@ public class FlowCommandFactory {
         long cookie = flowPath.getCookie().getValue();
         Long meterId = Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null);
         DeleteRulesCriteria ingressCriteria = new DeleteRulesCriteria(cookie, inPort,
-                inVlan, 0, outputPortNo);
+                inVlan, 0, outputPortNo, encapsulationType);
         return new RemoveFlow(transactionIdGenerator.generate(), flow.getFlowId(),
                 cookie, switchId, meterId, ingressCriteria);
     }

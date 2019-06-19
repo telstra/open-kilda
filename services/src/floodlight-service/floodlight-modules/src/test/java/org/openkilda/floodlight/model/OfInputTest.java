@@ -67,7 +67,7 @@ public class OfInputTest extends EasyMockSupport {
     @Test
     public void isCookieMismatch0() {
         OfInput input = makeInput(U64.of(cookieAlpha.getValue()));
-        Assert.assertFalse(input.packetInCookieMismatch(cookieAlpha, callerLogger));
+        Assert.assertFalse(input.packetInCookieMismatchAll(callerLogger, cookieAlpha));
     }
 
     /**
@@ -76,10 +76,10 @@ public class OfInputTest extends EasyMockSupport {
     @Test
     public void isCookieMismatch1() {
         OfInput input = makeInput(U64.of(-1));
-        Assert.assertFalse(input.packetInCookieMismatch(cookieAlpha, callerLogger));
+        Assert.assertFalse(input.packetInCookieMismatchAll(callerLogger, cookieAlpha));
 
         input = makeInput(U64.ZERO);
-        Assert.assertFalse(input.packetInCookieMismatch(cookieAlpha, callerLogger));
+        Assert.assertFalse(input.packetInCookieMismatchAll(callerLogger, cookieAlpha));
     }
 
     /**
@@ -95,7 +95,7 @@ public class OfInputTest extends EasyMockSupport {
 
         FloodlightContext messageMetadata = new FloodlightContext();
         OfInput input = new OfInput(ofSwitch, message, messageMetadata);
-        Assert.assertFalse(input.packetInCookieMismatch(cookieAlpha, callerLogger));
+        Assert.assertFalse(input.packetInCookieMismatchAll(callerLogger, cookieAlpha));
     }
 
     /**
@@ -104,7 +104,7 @@ public class OfInputTest extends EasyMockSupport {
     @Test
     public void isCookieMismatch3() {
         OfInput input = makeInput(cookieAlpha);
-        Assert.assertTrue(input.packetInCookieMismatch(cookieBeta, callerLogger));
+        Assert.assertTrue(input.packetInCookieMismatchAll(callerLogger, cookieBeta));
     }
 
     private OfInput makeInput(U64 cookie) {

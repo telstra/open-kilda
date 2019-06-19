@@ -39,8 +39,14 @@ class BaseSpecification extends Specification implements SetupOnce {
     @Autowired
     IslUtils islUtils
 
-    @Value('#{\'${floodlight.controller.uri}\'.split(\',\')}')
-    List<String> controllerHosts;
+    @Value("#{'\${floodlight.regions}'.split(',')}")
+    List<String> regions
+    
+    @Value("#{'\${floodlight.controllers.management}'.split(',')}")
+    List<String> managementControllers
+
+    @Value("#{'\${floodlight.controllers.stat}'.split(',')}")
+    List<String> statControllers
 
     @Value('${discovery.interval}')
     int discoveryInterval

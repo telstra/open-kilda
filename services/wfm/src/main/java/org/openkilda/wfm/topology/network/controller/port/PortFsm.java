@@ -28,9 +28,11 @@ import org.openkilda.wfm.topology.network.service.IPortCarrier;
 
 import lombok.Builder;
 import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
+@Slf4j
 public final class PortFsm extends AbstractBaseFsm<PortFsm, PortFsmState, PortFsmEvent,
         PortFsmContext> {
     private final Endpoint endpoint;

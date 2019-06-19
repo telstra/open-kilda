@@ -68,12 +68,12 @@ public class OfInput {
     }
 
     /**
-     * Check current packet(PACKET_IN) cookie value is mismatched with expected value.
+     * Check current packet(PACKET_IN) cookie value is mismatched with all expected values.
      */
-    public boolean packetInCookieMismatch(U64 expected, Logger log) {
+    public boolean packetInCookieMismatchAll(Logger log, U64... expected) {
         boolean isMismatched = packetInCookieMismatchCheck(expected);
         if (isMismatched) {
-            log.debug("{} - cookie mismatch (expected:{} != actual:{})", this, expected, packetInCookie());
+            log.debug("{} - cookie mismatch (expected one of:{}, actual:{})", this, expected, packetInCookie());
         }
         return isMismatched;
     }
@@ -107,7 +107,7 @@ public class OfInput {
         return String.format("%s ===> %s.%s:%d", dpId, message.getType(), message.getVersion(), message.getXid());
     }
 
-    private boolean packetInCookieMismatchCheck(U64 expected) {
+    private boolean packetInCookieMismatchCheck(U64... expectedCookies) {
         U64 actual = packetInCookie();
 
         if (actual == null) {
@@ -120,7 +120,12 @@ public class OfInput {
             return false;
         }
 
-        return !actual.equals(expected);
+        for (U64 expected : expectedCookies) {
+            if (actual.equals(expected)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static Ethernet extractPacketInPayload(OFMessage message, FloodlightContext context) {

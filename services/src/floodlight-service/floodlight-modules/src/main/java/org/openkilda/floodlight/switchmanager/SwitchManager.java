@@ -167,6 +167,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int CATCH_BFD_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int ROUND_TRIP_LATENCY_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
+    public static final int DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1;
     public static final int BDF_DEFAULT_PORT = 3784;
     public static final int MIN_RATE_IN_KBPS = 64;
     public static final int ROUND_TRIP_LATENCY_GROUP_ID = 1;
@@ -389,8 +390,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         // build match by input port and input vlan id
         Match match = matchFlow(ofFactory, inputPort, inputVlanId);
 
+        int flowPriority = getFlowPriority(inputVlanId);
+
         // build FLOW_MOD command with meter
-        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY)
+        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority)
                 .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
                 .setMatch(match);
 
@@ -496,8 +499,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         // build match by input port and transit vlan id
         Match match = matchFlow(ofFactory, inputPort, inputVlanId);
 
+        int flowPriority = getFlowPriority(inputVlanId);
+
         // build FLOW_MOD command with meter
-        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY)
+        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority)
                 .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
                 .setMatch(match);
 
@@ -886,7 +891,17 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setActions(Lists.newArrayList(
                         actionSetDstMac(sw, dpIdToMac(sw.getId())),
                         actionSendToController(sw)))
-                .setWatchPort(OFPort.ANY)
+                .setWatchGroup(OFGroup.ANY)
+                .build());
+
+        TransportPort udpPort = TransportPort.of(LATENCY_PACKET_UDP_PORT);
+        List<OFAction> latencyActions = ImmutableList.of(
+                ofFactory.actions().setField(ofFactory.oxms().udpDst(udpPort)),
+                actionSetOutputPort(ofFactory, OFPort.IN_PORT));
+
+        bucketList.add(ofFactory
+                .buildBucket()
+                .setActions(latencyActions)
                 .setWatchGroup(OFGroup.ANY)
                 .build());
 
@@ -899,8 +914,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @VisibleForTesting
     boolean validateRoundTripLatencyGroup(DatapathId dpId, OFGroupDescStatsEntry groupDesc) {
-        return groupDesc.getBuckets().size() == 1
-                && validateRoundTripSendToControllerBucket(dpId, groupDesc.getBuckets().get(0));
+        return groupDesc.getBuckets().size() == 2
+                && validateRoundTripSendToControllerBucket(dpId, groupDesc.getBuckets().get(0))
+                && validateRoundTripSendBackBucket(groupDesc.getBuckets().get(1));
     }
 
     private boolean validateRoundTripSendToControllerBucket(DatapathId dpId, OFBucket bucket) {
@@ -910,6 +926,17 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 && dpIdToMac(dpId).equals(((OFActionSetField) actions.get(0)).getField().getValue())
                 && actions.get(1).getType() == OFActionType.OUTPUT          // second action is send to controller
                 && OFPort.CONTROLLER.equals(((OFActionOutput) actions.get(1)).getPort());
+    }
+
+    private boolean validateRoundTripSendBackBucket(OFBucket bucket) {
+        List<OFAction> actions = bucket.getActions();
+        TransportPort udpPort = TransportPort.of(LATENCY_PACKET_UDP_PORT);
+
+        return actions.size() == 2
+                && actions.get(0).getType() == OFActionType.SET_FIELD
+                && udpPort.equals(((OFActionSetField) actions.get(0)).getField().getValue())
+                && actions.get(1).getType() == OFActionType.OUTPUT
+                && OFPort.IN_PORT.equals(((OFActionOutput) actions.get(1)).getPort());
     }
 
     private List<OFGroupDescStatsEntry> dumpGroups(IOFSwitch sw) {
@@ -1190,13 +1217,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         if (criteria.getInPort() != null) {
             // Match either In Port or both Port & Vlan criteria.
             Match match = matchFlow(ofFactory, criteria.getInPort(),
-                    Optional.ofNullable(criteria.getInVlan()).orElse(0));
+                    Optional.ofNullable(criteria.getEncapsulationId()).orElse(0));
             builder.setMatch(match);
 
-        } else if (criteria.getInVlan() != null) {
+        } else if (criteria.getEncapsulationId() != null) {
             // Match In Vlan criterion if In Port is not specified
             Match.Builder matchBuilder = ofFactory.buildMatch();
-            matchVlan(ofFactory, matchBuilder, criteria.getInVlan());
+            matchVlan(ofFactory, matchBuilder, criteria.getEncapsulationId());
             builder.setMatch(matchBuilder.build());
         }
 
@@ -1938,5 +1965,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .filter(meterConfig -> meterConfig.getMeterId() == meter)
                 .findFirst()
                 .orElse(null);
+    }
+
+    private int getFlowPriority(int inputVlanId) {
+        return inputVlanId == 0 ? DEFAULT_FLOW_PRIORITY : FLOW_PRIORITY;
     }
 }

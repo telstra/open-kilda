@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.network;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.utils.AbstractLogWrapper;
 import org.openkilda.wfm.topology.network.controller.sw.AbstractPort;
+import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 
@@ -40,6 +41,7 @@ public class NetworkTopologyDashboardLogger extends AbstractLogWrapper {
     private static final String SRC_SWITCH_PORT = "src_switch_port";
     private static final String DST_SWITCH_PORT = "dst_switch_port";
     private static final String PORT_TYPE = "port_type";
+    private static final String SWITCH_PORT = "switch_port";
 
     private static final String TAG = "SWITCH_PORT_ISL_DASHBOARD";
 
@@ -61,6 +63,7 @@ public class NetworkTopologyDashboardLogger extends AbstractLogWrapper {
         data.put(PORT, String.valueOf(port.getPortNumber()));
         data.put(STATE, "add");
         data.put(PORT_TYPE, port.getLogIdentifier());
+        data.put(SWITCH_PORT, port.getEndpoint().toString());
         proceed(Level.INFO, String.format("Add port %d on switch %s", port.getPortNumber(), switchId), data);
     }
 
@@ -78,25 +81,26 @@ public class NetworkTopologyDashboardLogger extends AbstractLogWrapper {
         data.put(PORT, String.valueOf(port.getPortNumber()));
         data.put(STATE, "delete");
         data.put(PORT_TYPE, port.getLogIdentifier());
+        data.put(SWITCH_PORT, port.getEndpoint().toString());
         proceed(Level.INFO, String.format("Delete port %d on switch %s", port.getPortNumber(), switchId), data);
     }
 
     /**
      * Log a port changing state event.
      *
-     * @param switchId a switch ID.
-     * @param port a port number.
+     * @param endpoint an endpoint.
      * @param linkStatus a port status.
      */
-    public void onUpdatePortStatus(SwitchId switchId, int port, LinkStatus linkStatus) {
+    public void onUpdatePortStatus(Endpoint endpoint, LinkStatus linkStatus) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "switch-port-isl");
         data.put(TYPE, PORT);
-        data.put(SWITCH_ID, switchId.toString());
-        data.put(PORT, String.valueOf(port));
+        data.put(SWITCH_ID, endpoint.getDatapath().toString());
+        data.put(PORT, String.valueOf(endpoint.getPortNumber()));
         data.put(STATE, linkStatus.toString());
+        data.put(SWITCH_PORT, endpoint.toString());
         String message = String.format("Port status event: switch_id=%s, port_id=%d, state=%s",
-                switchId, port, linkStatus);
+                endpoint.getDatapath().toString(), endpoint.getPortNumber(), linkStatus);
         proceed(Level.INFO, message, data);
     }
 
@@ -117,7 +121,8 @@ public class NetworkTopologyDashboardLogger extends AbstractLogWrapper {
         data.put(DST_PORT, String.valueOf(ref.getDest().getPortNumber()));
         data.put(SRC_SWITCH_PORT, ref.getSource().toString());
         data.put(DST_SWITCH_PORT, ref.getDest().toString());
-        proceed(Level.INFO, String.format("ISL changed status to: %s", state), data);
+        String message = String.format("ISL %s changed status to: %s", ref.toString(), state);
+        proceed(Level.INFO, message, data);
     }
 
     /**
@@ -126,12 +131,12 @@ public class NetworkTopologyDashboardLogger extends AbstractLogWrapper {
      * @param switchId a switch ID.
      * @param state a switch state.
      */
-    public void onSwitchUpdateStatus(SwitchId switchId, String state) {
+    public void onSwitchUpdateStatus(SwitchId switchId, SwitchState state) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "switch-port-isl");
         data.put(TYPE, "switch");
         data.put(SWITCH_ID, switchId.toString());
-        data.put(STATE, state);
+        data.put(STATE, state.name());
         proceed(Level.INFO, String.format("Switch '%s' change status to '%s'", switchId, state), data);
     }
 
@@ -171,5 +176,9 @@ public class NetworkTopologyDashboardLogger extends AbstractLogWrapper {
         public NetworkTopologyDashboardLogger build(Logger logger) {
             return new NetworkTopologyDashboardLogger(logger);
         }
+    }
+
+    public enum SwitchState {
+        ONLINE, OFFLINE
     }
 }

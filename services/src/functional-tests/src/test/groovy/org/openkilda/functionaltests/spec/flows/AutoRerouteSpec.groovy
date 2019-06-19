@@ -15,6 +15,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import spock.lang.Narrative
@@ -100,7 +101,7 @@ class AutoRerouteSpec extends BaseSpecification {
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
         when: "An intermediate switch is disconnected"
-        lockKeeper.knockoutSwitch(flowPath[1].switchId)
+        lockKeeper.knockoutSwitch(findSw(flowPath[1].switchId))
 
         then: "All ISLs going through the intermediate switch are 'FAILED'"
         Wrappers.wait(discoveryTimeout * 1.5 + WAIT_OFFSET) {
@@ -118,7 +119,7 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         and: "Connect the intermediate switch back and delete the flow"
-        lockKeeper.reviveSwitch(flowPath[1].switchId)
+        lockKeeper.reviveSwitch(findSw(flowPath[1].switchId))
         Wrappers.wait(WAIT_OFFSET) { assert flowPath[1].switchId in northbound.getActiveSwitches()*.switchId }
         northbound.deleteSwitchRules(flowPath[1].switchId, DeleteRulesAction.IGNORE_DEFAULTS) || true
         flowHelper.deleteFlow(flow.id)
@@ -137,7 +138,7 @@ class AutoRerouteSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         when: "The #switchType switch is disconnected"
-        lockKeeper.knockoutSwitch(sw)
+        lockKeeper.knockoutSwitch(findSw(sw))
 
         then: "The flow becomes 'Down'"
         Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
@@ -145,7 +146,7 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         when: "The #switchType switch is connected back"
-        lockKeeper.reviveSwitch(sw)
+        lockKeeper.reviveSwitch(findSw(sw))
 
         then: "The flow becomes 'Up'"
         Wrappers.wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
@@ -184,7 +185,7 @@ class AutoRerouteSpec extends BaseSpecification {
         }
 
         when: "The intermediate switch is disconnected"
-        lockKeeper.knockoutSwitch(flowPath[1].switchId)
+        lockKeeper.knockoutSwitch(findSw(flowPath[1].switchId))
 
         then: "The flow becomes 'Down'"
         Wrappers.wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
@@ -193,11 +194,11 @@ class AutoRerouteSpec extends BaseSpecification {
 
         when: "Set flowsRerouteOnIslDiscovery=#flowsRerouteOnIslDiscovery"
         northbound.toggleFeature(FeatureTogglesDto.builder()
-                .flowsRerouteOnIslDiscoveryEnabled(flowsRerouteOnIslDiscovery)
-                .build())
+                                                  .flowsRerouteOnIslDiscoveryEnabled(flowsRerouteOnIslDiscovery)
+                                                  .build())
 
         and: "Connect the intermediate switch back"
-        lockKeeper.reviveSwitch(flowPath[1].switchId)
+        lockKeeper.reviveSwitch(findSw(flowPath[1].switchId))
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches*.switchId.contains(flowPath[1].switchId) }
 
         then: "The flow is #flowStatus"
@@ -272,7 +273,7 @@ class AutoRerouteSpec extends BaseSpecification {
             !(it.switchId in [flowPath.first(), flowPath.last()]*.switchId)
         }.each { sw ->
             disconnectedSwitches.add(sw)
-            lockKeeper.knockoutSwitch(sw.switchId)
+            lockKeeper.knockoutSwitch(findSw(sw.switchId))
         }
         Wrappers.wait(WAIT_OFFSET) {
             def actualSwitches = northbound.activeSwitches*.switchId
@@ -286,7 +287,7 @@ class AutoRerouteSpec extends BaseSpecification {
 
         when: "Connect switches that are involved in the alternative paths"
         disconnectedSwitches.findAll { !(it.switchId in flowPath*.switchId) }.each {
-            lockKeeper.reviveSwitch(it.switchId)
+            lockKeeper.reviveSwitch(findSw(it.switchId))
             disconnectedSwitches.remove(it)
         }
         def connectedSwitches = topology.activeSwitches*.dpId.findAll { !disconnectedSwitches*.switchId.contains(it) }
@@ -304,7 +305,7 @@ class AutoRerouteSpec extends BaseSpecification {
         PathHelper.convert(northbound.getFlowPath(flow.id)) != flowPath
 
         and: "Connect switches back involved in the original path and delete the flow"
-        disconnectedSwitches.each { lockKeeper.reviveSwitch(it.switchId) }
+        disconnectedSwitches.each { lockKeeper.reviveSwitch(findSw(it.switchId)) }
         Wrappers.wait(WAIT_OFFSET) {
             def activeSwitches = northbound.getActiveSwitches()*.switchId
             disconnectedSwitches.each { assert it.switchId in activeSwitches }
@@ -365,13 +366,13 @@ class AutoRerouteSpec extends BaseSpecification {
         when: "Disconnect one of the switches not used by flow"
         def involvedSwitches = pathHelper.getInvolvedSwitches(flowPath)
         def switchToDisconnect = topology.getActiveSwitches().find { !involvedSwitches.contains(it) }
-        lockKeeper.knockoutSwitch(switchToDisconnect.dpId)
+        lockKeeper.knockoutSwitch(switchToDisconnect)
 
         then: "The switch is really disconnected from the controller"
         Wrappers.wait(WAIT_OFFSET) { assert !(switchToDisconnect.dpId in northbound.getActiveSwitches()*.switchId) }
 
         when: "Connect the switch back to the controller"
-        lockKeeper.reviveSwitch(switchToDisconnect.dpId)
+        lockKeeper.reviveSwitch(switchToDisconnect)
 
         then: "The switch is really connected to the controller"
         Wrappers.wait(WAIT_OFFSET) { assert switchToDisconnect.dpId in northbound.getActiveSwitches()*.switchId }
@@ -432,6 +433,10 @@ class AutoRerouteSpec extends BaseSpecification {
         def switchPair = switchPairs.find { it.paths.size() > minAltPathsCount } ?:
                 assumeTrue("No suiting switches found", false)
         return [flowHelper.randomFlow(switchPair), switchPair.paths]
+    }
+
+    def findSw(SwitchId swId) {
+        topology.switches.find { it.dpId == swId }
     }
 
     def cleanup() {

@@ -15,7 +15,6 @@
 
 package org.openkilda.messaging.info.meter;
 
-import org.openkilda.messaging.info.InfoData;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -27,7 +26,7 @@ import java.util.List;
 
 @Value
 @Builder
-public class SwitchMeterEntries extends InfoData {
+public class SwitchMeterEntries extends SwitchMeterData {
 
     @JsonProperty(value = "switch_id")
     private SwitchId switchId;

@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -45,7 +46,9 @@ import java.util.UUID;
         "switch_id",
         "input_port",
         "output_port",
-        "transit_vlan_id"})
+        "transit_encapsulation_id",
+        "transit_encapsulation_type"
+        })
 public class InstallTransitFlow extends BaseInstallFlow {
     /**
      * Serialization version number constant.
@@ -53,10 +56,16 @@ public class InstallTransitFlow extends BaseInstallFlow {
     private static final long serialVersionUID = 1L;
 
     /**
-     * The transit vlan id value.
+     * The transit encapsulation id value.
      */
-    @JsonProperty("transit_vlan_id")
-    protected Integer transitVlanId;
+    @JsonProperty("transit_encapsulation_id")
+    protected Integer transitEncapsulationId;
+
+    /**
+     * The transit encapsulation type.
+     */
+    @JsonProperty("transit_encapsulation_type")
+    protected FlowEncapsulationType transitEncapsulationType;
 
     /**
      * Instance constructor.
@@ -67,7 +76,8 @@ public class InstallTransitFlow extends BaseInstallFlow {
      * @param switchId      switch ID for flow installation
      * @param inputPort     input port of the flow
      * @param outputPort    output port of the flow
-     * @param transitVlanId transit vlan id value
+     * @param transitEncapsulationId transit encapsulation id value
+     * @param transitEncapsulationType transit encapsulation type
      * @throws IllegalArgumentException if any of parameters parameters is null
      */
     @JsonCreator
@@ -77,34 +87,65 @@ public class InstallTransitFlow extends BaseInstallFlow {
                               @JsonProperty("switch_id") final SwitchId switchId,
                               @JsonProperty("input_port") final Integer inputPort,
                               @JsonProperty("output_port") final Integer outputPort,
-                              @JsonProperty("transit_vlan_id") final Integer transitVlanId) {
+                              @JsonProperty("transit_encapsulation_id") final Integer transitEncapsulationId,
+                              @JsonProperty("transit_encapsulation_type") final FlowEncapsulationType
+                                          transitEncapsulationType) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort);
-        setTransitVlanId(transitVlanId);
+        setTransitEncapsulationType(transitEncapsulationType);
+        setTransitEncapsulationId(transitEncapsulationId);
     }
 
     /**
-     * Returns transit vlan id of the flow.
+     * Returns transit encapsulation id of the flow.
      *
-     * @return transit vlan id of the flow
+     * @return transit encapsulation id of the flow
      */
-    public Integer getTransitVlanId() {
-        return transitVlanId;
+    public Integer getTransitEncapsulationId() {
+        return transitEncapsulationId;
     }
 
     /**
-     * Sets transit vlan id of the flow.
+     * Sets transit encapsulation id of the flow.
      *
-     * @param transitVlanId vlan id of the flow
+     * @param transitEncapsulationId encapsulation id of the flow
      */
-    public void setTransitVlanId(final Integer transitVlanId) {
-        if (transitVlanId == null) {
-            throw new IllegalArgumentException("need to set transit_vlan_id");
+    public void setTransitEncapsulationId(final Integer transitEncapsulationId) {
+        if (transitEncapsulationId == null) {
+            throw new IllegalArgumentException("need to set transit_encapsulation_id");
         }
-        if (!Utils.validateVlanRange(transitVlanId) || transitVlanId == 0L) {
-            throw new IllegalArgumentException("need to set valid value for transit_vlan_id");
+        if (FlowEncapsulationType.TRANSIT_VLAN.equals(transitEncapsulationType)) {
+            if (!Utils.validateVlanRange(transitEncapsulationId) || transitEncapsulationId == 0L) {
+                throw new IllegalArgumentException("need to set valid value for transit_encapsulation_id");
+            }
+        } else if (FlowEncapsulationType.VXLAN.equals(transitEncapsulationType)) {
+            if (!Utils.validateVxlanRange(transitEncapsulationId)) {
+                throw new IllegalArgumentException("need to set valid value for transit_encapsulation_id");
+            }
         }
-        this.transitVlanId = transitVlanId;
+        this.transitEncapsulationId = transitEncapsulationId;
     }
+
+    /**
+     * Returns transit encapsulation type.
+     *
+     * @return transit flow encapsulation type
+     */
+    public FlowEncapsulationType getTransitEncapsulationType() {
+        return transitEncapsulationType;
+    }
+
+    /**
+     * Set transit encapsulation type of the flow.
+     *
+     * @param transitEncapsulationType flow encapsulation type
+     */
+    public void setTransitEncapsulationType(FlowEncapsulationType transitEncapsulationType) {
+        if (transitEncapsulationType == null) {
+            throw new IllegalArgumentException("need to set transit_encapsulation_type");
+        }
+        this.transitEncapsulationType = transitEncapsulationType;
+    }
+
 
     /**
      * {@inheritDoc}
@@ -118,7 +159,8 @@ public class InstallTransitFlow extends BaseInstallFlow {
                 .add("switch_id", switchId)
                 .add("input_port", inputPort)
                 .add("output_port", outputPort)
-                .add("transit_vlan_id", transitVlanId)
+                .add("transit_encapsulation_id", transitEncapsulationId)
+                .add("transit_encapsulation_type", transitEncapsulationType)
                 .toString();
     }
 
@@ -141,7 +183,8 @@ public class InstallTransitFlow extends BaseInstallFlow {
                 && Objects.equals(getSwitchId(), that.getSwitchId())
                 && Objects.equals(getInputPort(), that.getInputPort())
                 && Objects.equals(getOutputPort(), that.getOutputPort())
-                && Objects.equals(getTransitVlanId(), that.getTransitVlanId());
+                && Objects.equals(getTransitEncapsulationId(), that.getTransitEncapsulationId())
+                && Objects.equals(getTransitEncapsulationType(), that.getTransitEncapsulationType());
     }
 
     /**
@@ -149,6 +192,7 @@ public class InstallTransitFlow extends BaseInstallFlow {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort, transitVlanId);
+        return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
+                transitEncapsulationType);
     }
 }

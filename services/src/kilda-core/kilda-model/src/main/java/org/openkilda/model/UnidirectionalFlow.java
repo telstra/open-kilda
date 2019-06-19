@@ -33,12 +33,12 @@ public class UnidirectionalFlow implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final FlowPath flowPath;
-    private final TransitVlan transitVlan;
+    private final EncapsulationId encapsulationId;
     private final boolean forward;
 
-    public UnidirectionalFlow(FlowPath flowPath, TransitVlan transitVlan, boolean forward) {
+    public UnidirectionalFlow(FlowPath flowPath, EncapsulationId encapsulationId, boolean forward) {
         this.flowPath = flowPath;
-        this.transitVlan = transitVlan;
+        this.encapsulationId = encapsulationId;
         this.forward = forward;
     }
 
@@ -82,8 +82,8 @@ public class UnidirectionalFlow implements Serializable {
         return getFlow().getDescription();
     }
 
-    public int getTransitVlan() {
-        return transitVlan != null ? transitVlan.getVlan() : 0;
+    public EncapsulationId getEncapsulationId() {
+        return encapsulationId;
     }
 
     public Long getMeterId() {
@@ -156,10 +156,6 @@ public class UnidirectionalFlow implements Serializable {
         return flowPath;
     }
 
-    public TransitVlan getTransitVlanEntity() {
-        return transitVlan;
-    }
-
     public String getGroupId() {
         return getFlow().getGroupId();
     }
@@ -174,5 +170,9 @@ public class UnidirectionalFlow implements Serializable {
 
     public Integer getPriority() {
         return getFlow().getPriority();
+    }
+
+    public FlowEncapsulationType getEncapsulationType() {
+        return getFlow().getEncapsulationType();
     }
 }

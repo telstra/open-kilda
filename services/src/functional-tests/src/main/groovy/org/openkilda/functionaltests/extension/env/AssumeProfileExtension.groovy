@@ -27,8 +27,7 @@ class AssumeProfileExtension extends ContextAwareGlobalExtension {
         spec.allFeatures*.addInterceptor(new IMethodInterceptor() {
             @Override
             void intercept(IMethodInvocation invocation) throws Throwable {
-                def tags = TagExtension.collectAllTagsAnnotations(invocation.feature)
-                        .collectMany { it.value().toList() } as Set
+                def tags = TagExtension.collectAllTags(invocation.feature)
                 checkTags(tags)
                 invocation.proceed()
             }

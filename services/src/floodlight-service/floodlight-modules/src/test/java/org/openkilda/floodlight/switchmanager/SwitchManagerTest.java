@@ -44,6 +44,7 @@ import static org.openkilda.floodlight.Constants.meterId;
 import static org.openkilda.floodlight.Constants.outputPort;
 import static org.openkilda.floodlight.Constants.outputVlanId;
 import static org.openkilda.floodlight.Constants.transitVlanId;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.LATENCY_PACKET_UDP_PORT;
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.OVS_MANUFACTURER;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
@@ -122,6 +123,7 @@ import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.ArrayList;
@@ -139,7 +141,6 @@ public class SwitchManagerTest {
     private static final FloodlightModuleContext context = new FloodlightModuleContext();
     private static final long cookie = 123L;
     private static final long bandwidth = 20000L;
-    private static final long smallBandwidth = 100L;
     private static final String cookieHex = "7B";
     private static final SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
     private static final DatapathId defaultDpid = DatapathId.of(1);
@@ -751,7 +752,7 @@ public class SwitchManagerTest {
         replay(ofSwitchService, iofSwitch);
 
         // when
-        DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().inVlan((int) testInVlan).build();
+        DeleteRulesCriteria criteria = DeleteRulesCriteria.builder().encapsulationId((int) testInVlan).build();
         List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
 
         // then
@@ -790,7 +791,7 @@ public class SwitchManagerTest {
         // when
         DeleteRulesCriteria criteria = DeleteRulesCriteria.builder()
                 .inPort(testInPort)
-                .inVlan((int) testInVlan).build();
+                .encapsulationId((int) testInVlan).build();
         List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
 
         // then
@@ -867,7 +868,7 @@ public class SwitchManagerTest {
         // when
         DeleteRulesCriteria criteria = DeleteRulesCriteria.builder()
                 .inPort(testInPort)
-                .inVlan((int) testInVlan)
+                .encapsulationId((int) testInVlan)
                 .priority(testPriority).build();
         List<Long> deletedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
 
@@ -1078,6 +1079,7 @@ public class SwitchManagerTest {
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
         expect(iofSwitch.getId()).andStubReturn(dpid);
         expect(switchDescription.getManufacturerDescription()).andStubReturn(StringUtils.EMPTY);
+        expect(switchDescription.getSoftwareDescription()).andStubReturn(StringUtils.EMPTY);
         Capture<OFFlowMod> capture = EasyMock.newCapture();
         expect(iofSwitch.write(capture(capture))).andStubReturn(true);
         expect(featureDetectorService.detectSwitch(iofSwitch))
@@ -1229,7 +1231,8 @@ public class SwitchManagerTest {
     private void mockGetGroupsRequest(List<Integer> groupIds) throws Exception {
         List<OFGroupDescStatsEntry> meterConfigs = new ArrayList<>(groupIds.size());
         for (Integer groupId : groupIds) {
-            OFBucket bucket = mock(OFBucket.class);
+            OFBucket firstBucket = mock(OFBucket.class);
+            OFBucket secondBucket = mock(OFBucket.class);
 
             OFActionSetField setDestMacAction = ofFactory.actions()
                     .buildSetField()
@@ -1240,15 +1243,20 @@ public class SwitchManagerTest {
                     .build();
 
             OFActionOutput sendToControllerAction = ofFactory.actions().output(OFPort.CONTROLLER, 0xFFFFFFFF);
+            TransportPort udpPort = TransportPort.of(LATENCY_PACKET_UDP_PORT);
+            OFActionSetField setUdpDstAction = ofFactory.actions().setField(ofFactory.oxms().udpDst(udpPort));
+            OFActionOutput sendInPortAction = ofFactory.actions().output(OFPort.IN_PORT, 0xFFFFFFFF);
 
-            expect(bucket.getActions()).andStubReturn(
+            expect(firstBucket.getActions()).andStubReturn(
                     Lists.newArrayList(setDestMacAction, sendToControllerAction));
+            expect(secondBucket.getActions()).andStubReturn(
+                    Lists.newArrayList(setUdpDstAction, sendInPortAction));
 
             OFGroupDescStatsEntry groupEntry = mock(OFGroupDescStatsEntry.class);
             expect(groupEntry.getGroup()).andStubReturn(OFGroup.of(groupId));
-            expect(groupEntry.getBuckets()).andStubReturn(Lists.newArrayList(bucket));
+            expect(groupEntry.getBuckets()).andStubReturn(Lists.newArrayList(firstBucket, secondBucket));
 
-            replay(bucket, groupEntry);
+            replay(firstBucket,  secondBucket, groupEntry);
             meterConfigs.add(groupEntry);
         }
 

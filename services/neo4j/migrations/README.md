@@ -22,5 +22,3 @@ $> ./liquigraph.sh --changelog MIGRATION_SCRIPT_DIR/changelog.xml" \
     --password \ # leave empty (password prompt will appear)
     --graph-db-uri jdbc:neo4j:http://localhost:7474/
 ```
-
-

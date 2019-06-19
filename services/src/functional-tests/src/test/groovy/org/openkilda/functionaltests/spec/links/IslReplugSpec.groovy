@@ -11,7 +11,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.testing.Constants.DefaultRule
-import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
@@ -86,20 +86,16 @@ class IslReplugSpec extends BaseSpecification {
 
     def "New potential self-loop ISL (different ports on the same switch) is not getting discovered when replugging"() {
         given: "Two a-switch links on a single switch"
-        def isls = topology.isls.findAll { it.aswitch && it.srcSwitch?.active }
-                .inject([:].withDefault { [] }) { r, link ->
-            link.srcSwitch && r[link.srcSwitch] << link
-            link.dstSwitch && r[link.dstSwitch] << link.reversed
-            r //map where key: switch, value: list of a-switch isls related to this switch
-        }.find { k, v ->
-            k.ofVersion != "OF_12" &&
-                    v.findAll { !it.dstSwitch }.size() > 1 //contains at least 2 not connected asw link
-        }?.value as List<TopologyDefinition.Isl>
-        assumeNotNull("Not able to find required switch with enough free a-switch ISLs", isls)
+        List<Isl> allNotConnectedIsls = topology.getNotConnectedIsls()
+        List<Isl> notConnectedSwIsls = []
+        def sw = topology.activeSwitches.find { sw ->
+            notConnectedSwIsls = allNotConnectedIsls.findAll { it.srcSwitch.dpId == sw.dpId }
+            sw.ofVersion != "OF_12" && notConnectedSwIsls.size() >= 2
+        }
+        assumeNotNull("Not able to find required switch with enough number of free a-switch ISLs", sw)
 
-        def notConnectedIsls = isls.findAll { !it.dstSwitch }
-        def islToPlug = notConnectedIsls[0]
-        def islToPlugInto = notConnectedIsls[1]
+        def islToPlug = notConnectedSwIsls[0]
+        def islToPlugInto = notConnectedSwIsls[1]
 
         when: "Plug an ISL between two ports on the same switch"
         def beforeReplugTime = new Date()

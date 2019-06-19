@@ -15,8 +15,10 @@
 
 package org.openkilda.wfm.topology.switchmanager.fsm;
 
+import static java.util.Collections.emptyList;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.ERROR;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.METERS_RECEIVED;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.METERS_UNSUPPORTED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.NEXT;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.RULES_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.TIMEOUT;
@@ -71,6 +73,7 @@ public class SwitchValidateFsm
     private final SwitchManagerCarrier carrier;
     private final ValidationService validationService;
     private SwitchId switchId;
+    private boolean isSwitchSupportMeters = true;
     private List<FlowEntry> flowEntries;
     private List<MeterEntry> presentMeters;
     private ValidateRulesResult validateRulesResult;
@@ -105,6 +108,8 @@ public class SwitchValidateFsm
                 .callMethod("receiveData");
         builder.internalTransition().within(RECEIVE_DATA).on(RULES_RECEIVED).callMethod("rulesReceived");
         builder.internalTransition().within(RECEIVE_DATA).on(METERS_RECEIVED).callMethod("metersReceived");
+        builder.internalTransition().within(RECEIVE_DATA).on(METERS_UNSUPPORTED)
+                .callMethod("metersUnsupported");
 
         builder.externalTransition().from(RECEIVE_DATA).to(FINISHED_WITH_ERROR).on(TIMEOUT)
                 .callMethod("receivingDataFailedByTimeout");
@@ -161,6 +166,14 @@ public class SwitchValidateFsm
         checkAllDataReceived();
     }
 
+    protected void metersUnsupported(SwitchValidateState from, SwitchValidateState to,
+                                  SwitchValidateEvent event, Object context) {
+        log.info("Key: {}, switch meters unsupported", key);
+        this.presentMeters = emptyList();
+        this.isSwitchSupportMeters = false;
+        checkAllDataReceived();
+    }
+
     private void checkAllDataReceived() {
         if (flowEntries != null && presentMeters != null) {
             fire(NEXT);
@@ -195,10 +208,12 @@ public class SwitchValidateFsm
 
     protected void validateMeters(SwitchValidateState from, SwitchValidateState to,
                                   SwitchValidateEvent event, Object context) {
-        log.info("Key: {}, validate meters", key);
         try {
-            validateMetersResult = validationService.validateMeters(switchId, presentMeters,
-                    carrier.getFlowMeterMinBurstSizeInKbits(), carrier.getFlowMeterBurstCoefficient());
+            if (isSwitchSupportMeters) {
+                log.info("Key: {}, validate meters", key);
+                validateMetersResult = validationService.validateMeters(switchId, presentMeters,
+                        carrier.getFlowMeterMinBurstSizeInKbits(), carrier.getFlowMeterBurstCoefficient());
+            }
 
         } catch (Exception e) {
             sendException(e);
@@ -213,9 +228,13 @@ public class SwitchValidateFsm
         } else {
             RulesValidationEntry rulesValidationEntry = new RulesValidationEntry(validateRulesResult.getMissingRules(),
                     validateRulesResult.getProperRules(), validateRulesResult.getExcessRules());
-            MetersValidationEntry metersValidationEntry = new MetersValidationEntry(
-                    validateMetersResult.getMissingMeters(), validateMetersResult.getMisconfiguredMeters(),
-                    validateMetersResult.getProperMeters(), validateMetersResult.getExcessMeters());
+
+            MetersValidationEntry metersValidationEntry = null;
+            if (isSwitchSupportMeters) {
+                metersValidationEntry = new MetersValidationEntry(
+                        validateMetersResult.getMissingMeters(), validateMetersResult.getMisconfiguredMeters(),
+                        validateMetersResult.getProperMeters(), validateMetersResult.getExcessMeters());
+            }
 
             SwitchValidationResponse response = new SwitchValidationResponse(
                     rulesValidationEntry, metersValidationEntry);
@@ -253,6 +272,7 @@ public class SwitchValidateFsm
         NEXT,
         RULES_RECEIVED,
         METERS_RECEIVED,
+        METERS_UNSUPPORTED,
         TIMEOUT,
         ERROR
     }

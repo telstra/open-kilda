@@ -4,7 +4,9 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.performancetests.model.CustomTopology
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.labservice.LabService
@@ -28,18 +30,27 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
     @Value('${discovery.timeout}')
     int discoveryTimeout
     
-    @Value('#{\'${floodlight.controller.uri}\'.split(\',\')}')
-    List<String> controllerHosts
+    @Value("#{'\${floodlight.regions}'.split(',')}")
+    List<String> regions
+
+    @Value("#{'\${floodlight.controllers.management}'.split(',')}")
+    List<String> managementControllers
+
+    @Value("#{'\${floodlight.controllers.stat}'.split(',')}")
+    String statControllers
     
     CustomTopology createRandomTopology(int switchesAmount, int islsAmount) {
         def topo = new CustomTopology()
-        switchesAmount.times { topo.addCasualSwitch(controllerHosts[0]) }
+        switchesAmount.times { i ->
+            def region = i % regions.size()
+            topo.addCasualSwitch("${managementControllers[region]} ${statControllers[region]}") 
+        }
         islsAmount.times {
             def src = topo.pickRandomSwitch()
             def dst = topo.pickRandomSwitch([src])
             topo.addIsl(src, dst)
         }
-        topo.setControllers(controllerHosts)
+        topo.setControllers(managementControllers)
         labService.createLab(topo)
         Wrappers.wait(30 + switchesAmount * 3, 5) {
             verifyTopology(topo)
@@ -76,17 +87,20 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
      */
     def purgeTopology(TopologyDefinition topo, LabInstance lab = null) {
         lab ? labService.deleteLab(lab) : labService.deleteLab()
+        List<IslInfoData> topoIsls
         Wrappers.wait(WAIT_OFFSET + discoveryTimeout) {
-            northbound.getAllLinks().findAll {
+            topoIsls = northbound.getAllLinks().findAll {
                 it.source.switchId in topo.activeSwitches*.dpId ||
                         it.destination.switchId in topo.activeSwitches*.dpId
-            }.each { assert it.state == IslChangeType.FAILED }
+            }.unique({ [it.source.switchId, it.source.portNo, it.destination.switchId, it.destination.portNo].sort() })
+            topoIsls.each { assert it.state == IslChangeType.FAILED } || true
         }
-        topo.isls.each {
+        topoIsls.each {
             northbound.deleteLink(islUtils.toLinkParameters(it))
         }
-        topo.switches.each {
-            northbound.deleteSwitch(it.dpId, false)
+        def topoSwitches = northbound.getAllSwitches().findAll { it.switchId in topo.switches*.dpId }
+        topoSwitches.each {
+            northbound.deleteSwitch(it.switchId, false)
         }
     }
 }

@@ -30,12 +30,6 @@ class MflStatSpec extends BaseSpecification {
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix
 
-    @Value('${floodlight.controller.management}')
-    private String managementController
-
-    @Value('${floodlight.controller.stat}')
-    private String statController
-
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
@@ -68,7 +62,7 @@ class MflStatSpec extends BaseSpecification {
         }
 
         when: "Set management controller only on the src switch"
-        lockKeeper.setController(srcSwitch.dpId, managementController)
+        lockKeeper.setController(srcSwitch, managementControllers[0])
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -83,7 +77,7 @@ class MflStatSpec extends BaseSpecification {
         }
 
         when: "Set statistic controller only on the src switch"
-        lockKeeper.setController(srcSwitch.dpId, statController)
+        lockKeeper.setController(srcSwitch, statControllers[0])
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -98,7 +92,7 @@ class MflStatSpec extends BaseSpecification {
         }
 
         when: "Disconnect the src switch from the management and statistic controllers"
-        lockKeeper.knockoutSwitch(srcSwitch.dpId)
+        lockKeeper.knockoutSwitch(srcSwitch)
         Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northbound.getActiveSwitches()*.switchId) }
 
         and: "Generate traffic on the given flow"
@@ -115,7 +109,7 @@ class MflStatSpec extends BaseSpecification {
         }
 
         when: "Restore default controllers on the src switches"
-        lockKeeper.reviveSwitch(srcSwitch.dpId)
+        lockKeeper.reviveSwitch(srcSwitch)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert srcSwitch.dpId in northbound.getActiveSwitches()*.switchId
             assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.empty

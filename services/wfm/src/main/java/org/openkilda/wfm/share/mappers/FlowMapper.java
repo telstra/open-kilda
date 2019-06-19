@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@ package org.openkilda.wfm.share.mappers;
 
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
+import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPair;
@@ -29,6 +31,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.model.UnidirectionalFlow;
+import org.openkilda.model.Vxlan;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -97,15 +100,11 @@ public abstract class FlowMapper {
 
         FlowPath flowPath = buildPath(flow, flowDto);
         flow.setForwardPath(flowPath);
+        EncapsulationId encapsulationId = convertToEncapsulationId(flow, flowPath, flowDto);
 
-        TransitVlan transitVlan = TransitVlan.builder()
-                .flowId(flow.getFlowId())
-                .pathId(flowPath.getPathId())
-                .vlan(flowDto.getTransitVlan())
-                .build();
-
-        return new UnidirectionalFlow(flowPath, transitVlan, true);
+        return new UnidirectionalFlow(flowPath, encapsulationId, true);
     }
+
 
     /**
      * Convert {@link FlowPairDto} to {@link FlowPair}.
@@ -122,20 +121,11 @@ public abstract class FlowMapper {
 
         flow.setForwardPath(forwardPath);
         flow.setReversePath(reversePath);
+        EncapsulationId forwardEncapsulationId = convertToEncapsulationId(flow, forwardPath, flowPair.getLeft());
 
-        TransitVlan forwardTransitVlan = TransitVlan.builder()
-                .flowId(flow.getFlowId())
-                .pathId(forwardPath.getPathId())
-                .vlan(flowPair.getLeft().getTransitVlan())
-                .build();
+        EncapsulationId reverseEncapsulationId = convertToEncapsulationId(flow, reversePath, flowPair.getRight());
 
-        TransitVlan reverseTransitVlan = TransitVlan.builder()
-                .flowId(flow.getFlowId())
-                .pathId(reversePath.getPathId())
-                .vlan(flowPair.getRight().getTransitVlan())
-                .build();
-
-        return new FlowPair(flow, forwardTransitVlan, reverseTransitVlan);
+        return new FlowPair(flow, forwardEncapsulationId, reverseEncapsulationId);
     }
 
     /**
@@ -207,6 +197,42 @@ public abstract class FlowMapper {
     public Long map(MeterId meterId) {
         return Optional.ofNullable(meterId).map(MeterId::getValue).orElse(null);
     }
+    
+    /**
+     * Convert {@link org.openkilda.messaging.payload.flow.FlowEncapsulationType} to {@link FlowEncapsulationType}.
+     */
+    public FlowEncapsulationType map(org.openkilda.messaging.payload.flow.FlowEncapsulationType encapsulationType) {
+        return encapsulationType != null ? FlowEncapsulationType.valueOf(encapsulationType.name()) : null;
+    }
+
+    /**
+     * Convert {@link FlowEncapsulationType} to {@link org.openkilda.messaging.payload.flow.FlowEncapsulationType}.
+     */
+    public org.openkilda.messaging.payload.flow.FlowEncapsulationType map(FlowEncapsulationType encapsulationType) {
+        return encapsulationType != null ? org.openkilda.messaging.payload.flow.FlowEncapsulationType.valueOf(
+                encapsulationType.name()) : null;
+    }
+
+    private EncapsulationId convertToEncapsulationId(Flow flow, FlowPath flowPath, FlowDto flowDto) {
+        FlowEncapsulationType flowEncapsulationType = flow.getEncapsulationType();
+        EncapsulationId encapsulationId = null;
+        if (FlowEncapsulationType.TRANSIT_VLAN.equals(flowEncapsulationType)) {
+
+            encapsulationId = TransitVlan.builder()
+                    .flowId(flow.getFlowId())
+                    .pathId(flowPath.getPathId())
+                    .vlan(flowDto.getTransitEncapsulationId())
+                    .build();
+        } else if (FlowEncapsulationType.VXLAN.equals(flowEncapsulationType)) {
+            encapsulationId = Vxlan.builder()
+                    .flowId(flow.getFlowId())
+                    .pathId(flowPath.getPathId())
+                    .vni(flowDto.getTransitEncapsulationId())
+                    .build();
+        }
+        return encapsulationId;
+    }
+
 
     private FlowPath buildPath(Flow flow, FlowDto flowDto) {
         Switch srcSwitch = Switch.builder().switchId(flowDto.getSourceSwitch()).build();
@@ -245,13 +271,33 @@ public abstract class FlowMapper {
                 .ignoreBandwidth(flow.isIgnoreBandwidth())
                 .periodicPings(flow.isPeriodicPings())
                 .allocateProtectedPath(flow.isAllocateProtectedPath())
-                //TODO: hard-coded encapsulation will be removed in Flow H&S
-                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .encapsulationType(map(flow.getEncapsulationType()))
                 .maxLatency(flow.getMaxLatency())
                 .priority(flow.getPriority())
                 .timeCreate(map(flow.getCreatedTime()))
                 .timeModify(map(flow.getLastUpdated()))
                 .pinned(flow.isPinned())
+                .build();
+    }
+
+    /**
+     * Builds a flow from swap flow dto.
+     *
+     * @param flow a swap flow dto.
+     * @return a flow.
+     */
+    public Flow buildFlow(SwapFlowDto flow) {
+        Switch srcSwitch = Switch.builder().switchId(flow.getSourceSwitch()).build();
+        Switch dstSwitch = Switch.builder().switchId(flow.getDestinationSwitch()).build();
+
+        return Flow.builder()
+                .flowId(flow.getFlowId())
+                .srcSwitch(srcSwitch)
+                .srcPort(flow.getSourcePort())
+                .srcVlan(flow.getSourceVlan())
+                .destSwitch(dstSwitch)
+                .destPort(flow.getDestinationPort())
+                .destVlan(flow.getDestinationVlan())
                 .build();
     }
 }

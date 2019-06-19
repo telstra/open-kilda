@@ -16,6 +16,7 @@
 package org.openkilda.wfm.share.flow;
 
 import org.openkilda.model.Cookie;
+import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -25,6 +26,11 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.model.UnidirectionalFlow;
+import org.openkilda.model.Vxlan;
+import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
+import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
+import org.openkilda.wfm.share.flow.resources.vxlan.VxlanEncapsulation;
+import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
 
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -47,11 +53,12 @@ public class TestFlowBuilder {
     private long unmaskedCookie = 1;
     private long bandwidth;
     private boolean ignoreBandwidth = false;
-    private int transitVlan = 0;
+    private int transitEncapsulationId = 0;
     private Integer meterId = null;
     private FlowStatus status = FlowStatus.UP;
     private Integer maxLatency = null;
     private Integer priority = null;
+    private FlowEncapsulationType encapsulationType;
 
     public TestFlowBuilder() {
     }
@@ -74,7 +81,7 @@ public class TestFlowBuilder {
                 .destVlan(destVlan)
                 .bandwidth(bandwidth)
                 .ignoreBandwidth(ignoreBandwidth)
-                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .encapsulationType(encapsulationType)
                 .maxLatency(maxLatency)
                 .priority(priority)
                 .build();
@@ -98,15 +105,48 @@ public class TestFlowBuilder {
      */
     public UnidirectionalFlow buildUnidirectionalFlow() {
         Flow flow = build();
+        EncapsulationId forwardEncapsulationId = null;
+        if (FlowEncapsulationType.TRANSIT_VLAN.equals(encapsulationType)) {
+            //TODO: hard-coded encapsulation will be removed in Flow H&S
+            forwardEncapsulationId = TransitVlan.builder()
+                    .flowId(flowId)
+                    .pathId(flow.getForwardPath().getPathId())
+                    .vlan(transitEncapsulationId > 0 ? transitEncapsulationId : srcVlan + destVlan + 1)
+                    .build();
+        } else if (FlowEncapsulationType.VXLAN.equals(encapsulationType)) {
+            forwardEncapsulationId = Vxlan.builder()
+                    .flowId(flowId)
+                    .pathId(flow.getForwardPath().getPathId())
+                    .vni(transitEncapsulationId > 0 ? transitEncapsulationId : srcVlan + destVlan + 1)
+                    .build();
+        }
+        return new UnidirectionalFlow(flow.getForwardPath(), forwardEncapsulationId, true);
+    }
 
-        //TODO: hard-coded encapsulation will be removed in Flow H&S
-        TransitVlan forwardTransitVlan = TransitVlan.builder()
-                .flowId(flowId)
-                .pathId(flow.getForwardPath().getPathId())
-                .vlan(transitVlan > 0 ? transitVlan : srcVlan + destVlan + 1)
-                .build();
-
-        return new UnidirectionalFlow(flow.getForwardPath(), forwardTransitVlan, true);
+    /**
+     * Build a UnidirectionalFlow with set properties.
+     */
+    public FlowPathsWithEncapsulation buildFlowPathsWithEncapsulation() {
+        Flow flow = build();
+        EncapsulationResources encapsulationResources = null;
+        if (FlowEncapsulationType.TRANSIT_VLAN.equals(encapsulationType)) {
+            //TODO: hard-coded encapsulation will be removed in Flow H&S
+            TransitVlan transitVlan = TransitVlan.builder()
+                    .flowId(flowId)
+                    .pathId(flow.getForwardPath().getPathId())
+                    .vlan(transitEncapsulationId > 0 ? transitEncapsulationId : srcVlan + destVlan + 1)
+                    .build();
+            encapsulationResources = TransitVlanEncapsulation.builder().transitVlan(transitVlan).build();
+        } else if (FlowEncapsulationType.VXLAN.equals(encapsulationType)) {
+            Vxlan vxlan = Vxlan.builder()
+                    .flowId(flowId)
+                    .pathId(flow.getForwardPath().getPathId())
+                    .vni(transitEncapsulationId > 0 ? transitEncapsulationId : srcVlan + destVlan + 1)
+                    .build();
+            encapsulationResources = VxlanEncapsulation.builder().vxlan(vxlan).build();
+        }
+        return FlowPathsWithEncapsulation.builder().flow(flow).forwardPath(flow.getForwardPath())
+                .forwardEncapsulation(encapsulationResources).build();
     }
 
     private FlowPath buildFlowPath(Flow flow, Switch pathSrc, Switch pathDest, Cookie cookie, MeterId meterId) {
