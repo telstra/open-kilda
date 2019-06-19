@@ -33,8 +33,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Unroll
+
 
 @Narrative("""This test suite checks the switch validate feature on a single flow switch.
 Description of fields:
@@ -398,7 +400,7 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
         "Centec"     | getCentecSwitches()
         "non-Centec" | getNonCentecSwitches()
     }
-
+    @Ignore("This is not implemented yet.")
     def "Not able to get the switch validate info on a NOT supported switch"() {
         given: "Not supported switch"
         def sw = topology.activeSwitches.find { it.ofVersion == "OF_12" }
