@@ -474,7 +474,7 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public List<LinkDto> setLinkBfd(LinkEnableBfdDto link) {
-        log.debug("Changing bfd status to '%s' for link %s:%s-%s:%s", link.isEnableBfd(), link.getSrcSwitch(),
+        log.debug("Changing bfd status to '{}' for link {}:{}-{}:{}", link.isEnableBfd(), link.getSrcSwitch(),
                 link.getSrcPort(), link.getDstSwitch(), link.getDstPort());
         LinkDto[] updatedLinks = restTemplate.exchange("api/v1/links/enable-bfd", HttpMethod.PATCH,
                 new HttpEntity<>(link, buildHeadersWithCorrelationId()), LinkDto[].class).getBody();
