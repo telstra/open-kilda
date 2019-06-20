@@ -1,8 +1,10 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.model.FlowDto
@@ -26,6 +28,7 @@ import spock.lang.Unroll
 class FlowValidationNegativeSpec extends BaseSpecification {
 
     @Unroll
+    @IterationTag(tags = [SMOKE], iterationNameRegex = /reverse/)
     def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration"() {
         given: "Two flows with #flowConfig configuration"
         def flowToBreak = (switchPair.src == switchPair.dst) ? flowHelper.singleSwitchFlow(switchPair.src)

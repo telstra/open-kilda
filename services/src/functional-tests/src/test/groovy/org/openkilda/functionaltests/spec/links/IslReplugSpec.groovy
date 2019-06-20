@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeNotNull
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
@@ -9,6 +10,7 @@ import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
@@ -84,6 +86,7 @@ class IslReplugSpec extends BaseSpecification {
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
     }
 
+    @Tags(SMOKE)
     def "New potential self-loop ISL (different ports on the same switch) is not getting discovered when replugging"() {
         given: "Two a-switch links on a single switch"
         List<Isl> allNotConnectedIsls = topology.getNotConnectedIsls()

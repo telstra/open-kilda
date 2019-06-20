@@ -2,12 +2,14 @@ package org.openkilda.functionaltests.spec.flows
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -101,6 +103,7 @@ class FlowPingSpec extends BaseSpecification {
     }
 
     @Unroll("Flow ping can detect a broken #description")
+    @IterationTag(tags = [SMOKE], iterationNameRegex = /forward path/)
     def "Flow ping can detect a broken path"() {
         given: "A flow with at least 1 a-switch link"
         def switches = topology.activeSwitches.findAll { !it.centec && it.ofVersion != "OF_12" }

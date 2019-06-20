@@ -1,8 +1,10 @@
 package org.openkilda.functionaltests.spec.logging
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.testing.service.elastic.ElasticQueryBuilder
@@ -16,6 +18,7 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
 @Slf4j
+@Tags(SMOKE)
 @Narrative("This specification ensures that all logging facilities are up and running after Kilda deployment")
 class CheckLoggingSpec extends BaseSpecification {
 

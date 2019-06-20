@@ -1,10 +1,12 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -37,6 +39,7 @@ Description of fields:
 - excess - those meters/rules, which are present on a switch, but are NOT present in db
 - proper - meters/rules values are the same on a switch and in db
 """)
+@Tags(SMOKE)
 class SwitchValidationSpec extends BaseSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
     String flowTopic
@@ -357,7 +360,6 @@ class SwitchValidationSpec extends BaseSpecification {
             }
         }
     }
-
 
     def "Able to get empty switch validate information from the intermediate switch(flow contains > 2 switches)"() {
         given: "Two active not neighboring switches"

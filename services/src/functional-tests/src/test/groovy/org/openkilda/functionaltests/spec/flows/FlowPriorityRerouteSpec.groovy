@@ -1,10 +1,12 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowPayload
@@ -16,7 +18,8 @@ import spock.lang.Unroll
 
 class FlowPriorityRerouteSpec extends BaseSpecification {
     @Unroll
-    def "System is able to reroute(automatically) flow in the correct order based on the priority field"() {
+    @IterationTag(tags = [SMOKE], iterationNameRegex = /without protected path/)
+    def "System is able to reroute(automatically) flow #info in the correct order based on the priority field"() {
         given: "Three flows on the same path, with alt paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)

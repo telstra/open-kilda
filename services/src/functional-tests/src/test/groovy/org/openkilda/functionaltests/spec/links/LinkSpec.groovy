@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -25,6 +26,7 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Unroll
 
 class LinkSpec extends BaseSpecification {
+    @Tags(SMOKE)
     def "Link (not BFD) status is properly changed when link connectivity is broken (not port down)"() {
         given: "A link going through a-switch"
         def isl = topology.islsForActiveSwitches.find {
@@ -99,6 +101,7 @@ class LinkSpec extends BaseSpecification {
         }
     }
 
+    @Tags(SMOKE)
     def "Get all flows (UP/DOWN) going through a particular link"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getNotNeighboringSwitchPair()
@@ -325,7 +328,8 @@ class LinkSpec extends BaseSpecification {
         [islDescription, isl] << [
                 ["direct", getTopology().islsForActiveSwitches.find { !it.aswitch }],
                 ["a-switch", getTopology().islsForActiveSwitches.find {
-                    it.aswitch?.inPort && it.aswitch?.outPort }]
+                    it.aswitch?.inPort && it.aswitch?.outPort
+                }]
         ]
     }
 
@@ -477,7 +481,7 @@ class LinkSpec extends BaseSpecification {
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
     }
 
-    @Tags(VIRTUAL)
+    @Tags([VIRTUAL, SMOKE])
     def "ISL is able to properly fail when both src and dst switches suddenly disconnect"() {
         given: "An active ISL"
         def isl = topology.islsForActiveSwitches.first()
@@ -504,6 +508,7 @@ class LinkSpec extends BaseSpecification {
         }
     }
 
+    @Tags(SMOKE)
     def "Able to update max bandwidth for a link"() {
         given: "An active ISL"
         // Find such an ISL that is the only ISL between switches.

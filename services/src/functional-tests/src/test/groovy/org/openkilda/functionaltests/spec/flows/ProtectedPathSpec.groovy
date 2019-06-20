@@ -1,11 +1,13 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -79,6 +81,7 @@ class ProtectedPathSpec extends BaseSpecification {
         0         | 0
     }
 
+    @Tags(SMOKE)
     def "Able to enable/disable protected path on a flow"() {
         given: "Two active not neighboring switches with two diverse paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
@@ -655,6 +658,7 @@ class ProtectedPathSpec extends BaseSpecification {
         "an unmetered"  | 0
     }
 
+    @Tags(SMOKE)
     def "Able to swap main and protected paths manually"() {
         given: "A simple flow"
         def tgSwitches = topology.getActiveTraffGens()*.getSwitchConnected()

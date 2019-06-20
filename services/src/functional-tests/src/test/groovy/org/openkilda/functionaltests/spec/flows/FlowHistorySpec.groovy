@@ -1,8 +1,10 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import spock.lang.Narrative
@@ -23,6 +25,7 @@ class FlowHistorySpec extends BaseSpecification {
         timestampBefore = System.currentTimeSeconds() - 5
     }
 
+    @Tags(SMOKE)
     def "History records are created for the create/update actions using custom timeline"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches

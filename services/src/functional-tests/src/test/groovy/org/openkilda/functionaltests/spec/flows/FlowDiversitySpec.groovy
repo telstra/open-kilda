@@ -1,9 +1,11 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
@@ -38,6 +40,7 @@ class FlowDiversitySpec extends BaseSpecification {
     @Value('${diversity.switch.weight}')
     int diversitySwitchWeight
 
+    @Tags(SMOKE)
     def "Able to create diverse flows"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
         def switchPair = getSwitchPair(3)
@@ -96,6 +99,7 @@ class FlowDiversitySpec extends BaseSpecification {
         [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
     }
 
+    @Tags(SMOKE)
     def "Able to update flows to become not diverse"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
         def switchPair = getSwitchPair(3)
@@ -132,6 +136,7 @@ class FlowDiversitySpec extends BaseSpecification {
         [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
     }
 
+    @Tags(SMOKE)
     def "Diverse flows are built through the same path if there are no alternative paths available"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
         def switchPair = getSwitchPair(2)
@@ -171,6 +176,7 @@ class FlowDiversitySpec extends BaseSpecification {
         database.resetCosts()
     }
 
+    @Tags(SMOKE)
     def "Links and switches get extra cost that is considered while calculating diverse flow paths"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
         def switchPair = getSwitchPair(3)

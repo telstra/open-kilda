@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -26,6 +27,7 @@ import java.util.concurrent.TimeUnit
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
 class AutoRerouteSpec extends BaseSpecification {
 
+    @Tags(SMOKE)
     def "Flow is rerouted when one of the flow ISLs fails"() {
         given: "A flow with one alternative path at least"
         def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
@@ -53,6 +55,7 @@ class AutoRerouteSpec extends BaseSpecification {
         }
     }
 
+    @Tags(SMOKE)
     def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no ability to reroute"() {
         given: "A flow without alternative paths"
         def (flow, allFlowPaths) = noIntermediateSwitchFlow(0, true)
@@ -219,6 +222,7 @@ class AutoRerouteSpec extends BaseSpecification {
         false                      | FlowState.DOWN
     }
 
+    @Tags(SMOKE)
     def "Flow in 'Down' status is rerouted when discovering a new ISL"() {
         given: "An intermediate-switch flow with one alternative path at least"
         def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
@@ -260,7 +264,7 @@ class AutoRerouteSpec extends BaseSpecification {
         }
     }
 
-    @Tags(VIRTUAL)
+    @Tags([VIRTUAL, SMOKE])
     def "Flow in 'Down' status is rerouted when connecting a new switch"() {
         given: "An intermediate-switch flow with one alternative path at least"
         def (flow, allFlowPaths) = intermediateSwitchFlow(1, true)
@@ -317,6 +321,7 @@ class AutoRerouteSpec extends BaseSpecification {
         }
     }
 
+    @Tags(SMOKE)
     def "Flow in 'Up' status is not rerouted when discovering a new ISL and more preferable path is available"() {
         given: "A flow with one alternative path at least"
         def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
@@ -353,7 +358,7 @@ class AutoRerouteSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
-    @Tags(VIRTUAL)
+    @Tags([VIRTUAL, SMOKE])
     def "Flow in 'Up' status is not rerouted when connecting a new switch and more preferable path is available"() {
         given: "A flow with one alternative path at least"
         def (flow, allFlowPaths) = noIntermediateSwitchFlow(1, true)
@@ -386,7 +391,7 @@ class AutoRerouteSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
-    @Tags(HARDWARE)
+    @Tags([HARDWARE, SMOKE])
     def "Flow is not rerouted when one of the flow ports goes down"() {
         given: "An intermediate-switch flow with one alternative path at least"
         def (flow, allFlowPaths) = intermediateSwitchFlow(1, true)

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -24,6 +25,7 @@ class SwitchDeleteSpec extends BaseSpecification {
         exc.rawStatusCode == 404
     }
 
+    @Tags(SMOKE)
     def "Unable to delete an active switch"() {
         given: "An active switch"
         def switchId = topology.getActiveSwitches()[0].dpId
@@ -209,7 +211,7 @@ class SwitchDeleteSpec extends BaseSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             swIsls.collectMany { [it, it.reversed] }
-                  .each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
+                    .each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
         database.resetCosts()
     }

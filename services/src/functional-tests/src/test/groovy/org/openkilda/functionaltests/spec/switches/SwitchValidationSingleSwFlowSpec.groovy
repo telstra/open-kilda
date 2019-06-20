@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
@@ -55,7 +56,7 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
     SwitchHelper switchHelper
 
     @Unroll
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Switch validation is able to store correct information on a #switchType switch in the 'proper' section"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 

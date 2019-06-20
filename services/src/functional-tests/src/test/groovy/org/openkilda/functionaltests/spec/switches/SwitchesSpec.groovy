@@ -1,8 +1,10 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.SwitchChangeType
 
@@ -15,6 +17,7 @@ class SwitchesSpec extends BaseSpecification {
         !northbound.getAllSwitches().empty
     }
 
+    @Tags(SMOKE)
     def "System is able to return a certain switch info by its id"() {
         when: "Request info about certain switch from Northbound"
         def sw = topology.activeSwitches[0]
