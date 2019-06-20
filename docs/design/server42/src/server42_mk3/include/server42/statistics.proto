@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package org.openkilda;
+
+
+message FlowLatencyPacket {
+    bytes flow_id = 1;
+    int64 t0 = 2;
+    int64 t1 = 3;
+    uint64 packet_id = 4;
+}
+
+message FlowLatencyPacketBucket {
+    repeated FlowLatencyPacket packet = 1;
+}

@@ -1,0 +1,47 @@
+@startuml
+
+node "Sriov-Host" {
+    node "VM with DPDK" {
+        artifact server42
+        artifact "Controll Application" as cpa
+        artifact "Stats Application" as statsa
+        card dpdk_interface
+    }
+    card sirov_interface
+}
+
+queue kafka
+
+node "Storm" {
+   artifact server42_stats
+   artifact server42_cp
+}
+
+node user_sw1
+node user_sw2
+
+cloud Network {
+
+}
+node switch1
+node switch2
+
+kafka - server42_stats
+kafka -- server42_cp
+
+switch1 -down- Network
+switch2 -up- Network
+user_sw1 -- switch1
+user_sw2 -up- switch2
+
+server42 -- cpa : zeromq/loopback
+server42 -down- statsa : zeromq/loopback
+server42 - dpdk_interface : DPDK/PMD
+
+dpdk_interface -- sirov_interface
+switch1 -- sirov_interface
+
+cpa -down- kafka
+statsa - kafka
+
+@enduml
