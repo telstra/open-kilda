@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
@@ -21,8 +22,10 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.Cookie
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
@@ -546,6 +549,115 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
             def links = northbound.getAllLinks()
             swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
+    }
+
+    @Ignore("Encapsulation type is not implemented yet in APIv2")
+    @Unroll
+    @Tags(HARDWARE)
+    def "System allows to create/update encapsulation type for a flow\
+(#encapsulationCreate.toString() -> #encapsulationUpdate.toString())"() {
+        given: "Two active not neighboring switches"
+        def noviflowSwitchesIds = topology.activeSwitches.findAll { !it.centec && it.ofVersion == "OF_13" }*.dpId
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected.findAll {
+            noviflowSwitchesIds.contains(it.dpId)
+        }
+        assumeTrue("There should be at least two active traffgens connected to NoviFlow switches for test execution",
+                srcSwitch != null && dstSwitch != null)
+        when: "Create a flow with #encapsulationCreate.toString() encapsulation type"
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flow.encapsulationType = encapsulationCreate
+        flowHelperV2.addFlow(flow)
+
+        then: "Flow is created with the #encapsulationCreate.toString() encapsulation type"
+        def flowInfo = northbound.getFlow(flow.flowId)
+        flowInfo.encapsulationType == encapsulationCreate.toString().toLowerCase()
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        and: "The flow allows traffic"
+        def traffExam = traffExamProvider.get()
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 0)
+        [exam.forward, exam.reverse].each { direction ->
+            def resources = traffExam.startExam(direction)
+            direction.setResources(resources)
+            assert traffExam.waitExam(direction).hasTraffic()
+        }
+
+        and: "Flow is pingable"
+        def responsePing1 = northbound.pingFlow(flow.flowId, new PingInput())
+        responsePing1.forward.pingSuccess
+        responsePing1.reverse.pingSuccess
+
+        when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
+        northbound.updateFlow(flow.flowId, flow.tap { it.encapsulationType = encapsulationUpdate })
+
+        then: "The encapsulation type is changed to #encapsulationUpdate.toString()"
+        def flowInfo2 = northbound.getFlow(flow.flowId)
+        flowInfo2.encapsulationType == encapsulationUpdate.toString().toLowerCase()
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+
+        and: "The flow allows traffic"
+        [exam.forward, exam.reverse].each { direction ->
+            def resources = traffExam.startExam(direction)
+            direction.setResources(resources)
+            assert traffExam.waitExam(direction).hasTraffic()
+        }
+
+        and: "Flow is pingable"
+        def responsePing2 = northbound.pingFlow(flow.flowId, new PingInput())
+        responsePing2.forward.pingSuccess
+        responsePing2.reverse.pingSuccess
+
+        and: "Cleanup: Delete the flow"
+        flowHelper.deleteFlow(flow.flowId)
+
+        where:
+        encapsulationCreate                | encapsulationUpdate
+        FlowEncapsulationType.TRANSIT_VLAN | FlowEncapsulationType.VXLAN
+        FlowEncapsulationType.VXLAN        | FlowEncapsulationType.TRANSIT_VLAN
+    }
+
+    @Ignore("Encapsulation type is not implemented yet in APIv2")
+    @Tags(VIRTUAL)
+    def "System doesn't allow to create a flow with 'VXLAN' encapsulation on an OVS switch"() {
+        when: "Try to create a flow with 'VXLAN' encapsulation on an OVS switch"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flow.encapsulationType = FlowEncapsulationType.VXLAN
+        flowHelperV2.addFlow(flow)
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 404
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Could not create flow: \
+Not enough bandwidth found or path not found. Failed to find path with requested bandwidth=$flow.maximumBandwidth: \
+Switch $srcSwitch.dpId doesn't have links with enough bandwidth"
+    }
+
+    @Ignore("Encapsulation type is not implemented yet in APIv2")
+    @Tags(VIRTUAL)
+    def "System doesn't allow to enable the 'VXLAN' encapsulation for a flow on an OVS switch"() {
+        given: "A flow with 'TRANSIT_VLAN' encapsulation"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
+        flowHelperV2.addFlow(flow)
+
+        when: "Try to change the encapsulation type to VXLAN"
+        flowHelper.updateFlow(flow.flowId, flow.tap { it.encapsulationType = FlowEncapsulationType.VXLAN })
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 404
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Could not update flow: \
+Not enough bandwidth found or path not found. Failed to find path with requested bandwidth=$flow.maximumBandwidth: \
+Switch $srcSwitch.dpId doesn't have links with enough bandwidth"
+
+        and: "Cleanup: Delete the flow"
+        flowHelper.deleteFlow(flow.flowId)
     }
 
     @Shared
