@@ -18,9 +18,12 @@ package org.openkilda.testing.service.database;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.model.Flow;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.TransitVlan;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -53,6 +56,8 @@ public interface Database {
     int countFlows();
 
     Flow getFlow(String flowId);
+
+    Collection<TransitVlan> getTransitVlans(PathId forwardPathId, PathId reversePathId);
 
     void updateFlowBandwidth(String flowId, long newBw);
 
