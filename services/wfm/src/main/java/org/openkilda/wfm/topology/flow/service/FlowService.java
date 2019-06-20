@@ -154,11 +154,11 @@ public class FlowService extends BaseFlowService {
         try {
             result = (FlowPathsWithEncapsulation) getFailsafe().get(
                     () -> transactionManager.doInTransaction(() -> {
+                        ensureEncapsulationType(flow);
                         // TODO: the strategy is defined either per flow or system-wide.
                         PathComputer pathComputer = pathComputerFactory.getPathComputer();
                         PathPair pathPair = pathComputer.getPath(flow);
 
-                        ensureEncapsulationType(flow);
                         FlowResources flowResources = flowResourcesManager.allocateFlowResources(flow);
 
                         Instant timestamp = Instant.now();
@@ -372,13 +372,13 @@ public class FlowService extends BaseFlowService {
         try {
             result = (UpdatedFlowPathsWithEncapsulation) getFailsafe().get(
                     () -> transactionManager.doInTransaction(() -> {
+                        ensureEncapsulationType(updatingFlow);
                         PathComputer pathComputer = pathComputerFactory.getPathComputer();
                         PathPair newPathPair = pathComputer.getPath(updatingFlow,
                                 currentFlow.getFlow().getFlowPathIds());
 
                         log.info("Updating the flow with {} and path: {}", updatingFlow, newPathPair);
 
-                        ensureEncapsulationType(updatingFlow);
                         FlowResources flowResources = flowResourcesManager.allocateFlowResources(updatingFlow);
 
                         // Recreate the flow, use allocated resources for new paths.
@@ -1320,6 +1320,7 @@ public class FlowService extends BaseFlowService {
                 .destSwitch(Switch.builder().switchId(firstFlow.getDestSwitch().getSwitchId()).build())
                 .destPort(firstFlow.getDestPort())
                 .destVlan(firstFlow.getDestVlan())
+                .encapsulationType(existingFirstFlow.getEncapsulationType())
                 .build();
 
         existingSecondFlow = existingSecondFlow.toBuilder()
@@ -1329,6 +1330,7 @@ public class FlowService extends BaseFlowService {
                 .destSwitch(Switch.builder().switchId(secondFlow.getDestSwitch().getSwitchId()).build())
                 .destPort(secondFlow.getDestPort())
                 .destVlan(secondFlow.getDestVlan())
+                .encapsulationType(existingSecondFlow.getEncapsulationType())
                 .build();
 
         return swapFlows(currentFirstFlow, existingFirstFlow, currentSecondFlow, existingSecondFlow, sender);
@@ -1342,9 +1344,6 @@ public class FlowService extends BaseFlowService {
         PathPair newPathPair = pathComputer.getPath(updatingFlow, pathIds);
 
         log.info("Updating the flow with {} and path: {}", updatingFlow, newPathPair);
-
-        //TODO: hard-coded encapsulation will be removed in Flow H&S
-        updatingFlow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
 
         FlowResources flowResources = flowResourcesManager.allocateFlowResources(updatingFlow);
 

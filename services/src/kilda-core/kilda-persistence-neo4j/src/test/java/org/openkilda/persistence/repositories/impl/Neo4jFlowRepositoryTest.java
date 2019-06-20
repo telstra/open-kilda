@@ -128,8 +128,8 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         assertThat(allFlows, Matchers.hasSize(1));
 
         Flow foundFlow = allFlows.iterator().next();
-        assertEquals(flow.getSrcSwitch(), foundFlow.getSrcSwitch());
-        assertEquals(flow.getDestSwitch(), foundFlow.getDestSwitch());
+        assertEquals(flow.getSrcSwitch().getSwitchId(), foundFlow.getSrcSwitch().getSwitchId());
+        assertEquals(flow.getDestSwitch().getSwitchId(), foundFlow.getDestSwitch().getSwitchId());
         assertEquals(flow.getBandwidth(), foundFlow.getBandwidth());
         assertEquals(flow.getDescription(), foundFlow.getDescription());
     }

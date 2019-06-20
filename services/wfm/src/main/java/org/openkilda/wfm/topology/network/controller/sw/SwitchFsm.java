@@ -25,6 +25,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -49,6 +50,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 @Slf4j
@@ -58,6 +60,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     private final TransactionManager transactionManager;
     private final SwitchRepository switchRepository;
+    private final SwitchFeaturesRepository switchFeaturesRepository;
 
     private final SwitchId switchId;
     private final Integer bfdLogicalPortOffset;
@@ -126,6 +129,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.switchId = switchId;
         this.bfdLogicalPortOffset = bfdLocalPortOffset;
+        this.switchFeaturesRepository = persistenceManager.getRepositoryFactory().createSwitchFeaturesRepository();
     }
 
     // -- FSM actions --
@@ -301,8 +305,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     private void persistSwitchData(SwitchFsmContext context) {
         Switch sw = switchRepository.findById(switchId)
-                .orElseGet(() -> Switch.builder().switchId(switchId)
-                        .switchFeatures(SwitchFeatures.builder().build()).build());
+                .orElseGet(() -> Switch.builder().switchId(switchId).build());
 
         SpeakerSwitchView speakerData = context.getSpeakerData();
         InetSocketAddress socketAddress = speakerData.getSwitchSocketAddress();
@@ -325,6 +328,10 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         sw.setStatus(SwitchStatus.ACTIVE);
 
         switchRepository.createOrUpdate(sw);
+        Optional<SwitchFeatures> switchFeaturesResult = switchFeaturesRepository.findBySwitchId(sw.getSwitchId());
+        SwitchFeatures switchFeatures = switchFeaturesResult.orElseGet(() -> SwitchFeatures.builder()
+                .switchObj(sw).supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES).build());
+        switchFeaturesRepository.createOrUpdate(switchFeatures);
     }
 
     private void updatePersistentStatus(SwitchStatus status) {

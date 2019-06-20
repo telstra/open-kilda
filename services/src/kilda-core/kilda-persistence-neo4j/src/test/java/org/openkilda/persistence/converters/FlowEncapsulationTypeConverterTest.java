@@ -26,15 +26,13 @@ public class FlowEncapsulationTypeConverterTest {
     public void shouldConvertToGraphProperty() {
         FlowEncapsulationTypeConverter converter = new FlowEncapsulationTypeConverter();
 
-        assertEquals("transit_vlan", converter.toGraphProperty(FlowEncapsulationType.TRANSIT_VLAN));
+        assertEquals("TRANSIT_VLAN", converter.toGraphProperty(FlowEncapsulationType.TRANSIT_VLAN));
     }
 
     @Test
     public void shouldConvertToEntity() {
         FlowEncapsulationTypeConverter converter = new FlowEncapsulationTypeConverter();
 
-        assertEquals(FlowEncapsulationType.TRANSIT_VLAN, converter.toEntityAttribute("transit_vlan"));
-        assertEquals(FlowEncapsulationType.TRANSIT_VLAN, converter.toEntityAttribute("Transit_Vlan"));
         assertEquals(FlowEncapsulationType.TRANSIT_VLAN, converter.toEntityAttribute("TRANSIT_VLAN"));
     }
 }
