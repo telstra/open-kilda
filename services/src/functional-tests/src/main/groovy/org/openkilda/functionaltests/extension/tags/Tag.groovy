@@ -13,6 +13,7 @@ enum Tag {
 
     //additional markers
     TOPOLOGY_DEPENDENT, //changing the environment or topology may affect the amount of iterations executed
+    SMOKE_SWITCHES, // to make sure switches works fine
 
     //speed
     SLOW,//usually for 1minute+ tests
