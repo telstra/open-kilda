@@ -53,12 +53,6 @@ logger.level = INFO
 discovery.interval = {{ getv "/kilda_discovery_interval" }}
 discovery.packet.ttl = {{ getv "/kilda_discovery_packet_ttl" }}
 discovery.timeout = {{ getv "/kilda_discovery_timeout" }}
-discovery.limit = {{ getv "/kilda_discovery_limit" }}
-discovery.keep.removed.isl = {{ getv "/kilda_discovery_keep_removed_isl" }}
-
-# deprecated since multi-FL release (must be dropped with "event" topology)
-discovery.speaker-failure-timeout = 5
-discovery.dump-request-timeout-seconds=60
 
 # multi-FL
 floodlight.alive.timeout = {{ getv "/kilda_floodlight_alive_timeout" }}
