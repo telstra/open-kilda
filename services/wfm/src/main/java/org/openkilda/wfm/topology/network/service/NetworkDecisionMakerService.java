@@ -31,11 +31,10 @@ import java.util.Map;
 @Slf4j
 public class NetworkDecisionMakerService {
 
+    private final DecisionMakerFsm.DecisionMakerFsmFactory controllerFactory;
     private final Map<Endpoint, DecisionMakerFsm> controller = new HashMap<>();
-
     private final FsmExecutor<DecisionMakerFsm, DecisionMakerFsmState, DecisionMakerFsmEvent,
-            DecisionMakerFsmContext> controllerExecutor
-            = DecisionMakerFsm.makeExecutor();
+            DecisionMakerFsmContext> controllerExecutor;
 
     private final IDecisionMakerCarrier carrier;
     private final long failTimeout;
@@ -45,6 +44,9 @@ public class NetworkDecisionMakerService {
         this.carrier = carrier;
         this.failTimeout = failTimeout;
         this.awaitTime = awaitTime;
+
+        controllerFactory = DecisionMakerFsm.factory();
+        controllerExecutor = controllerFactory.produceExecutor();
     }
 
     public void discovered(Endpoint endpoint, long packetId, IslInfoData discoveryEvent) {
@@ -98,7 +100,7 @@ public class NetworkDecisionMakerService {
     }
 
     private DecisionMakerFsm locateControllerCreateIfAbsent(Endpoint endpoint) {
-        return controller.computeIfAbsent(endpoint, key -> DecisionMakerFsm.create(endpoint, failTimeout, awaitTime));
+        return controller.computeIfAbsent(endpoint, key -> controllerFactory.produce(endpoint, failTimeout, awaitTime));
     }
 
     public void clear(Endpoint endpoint) {

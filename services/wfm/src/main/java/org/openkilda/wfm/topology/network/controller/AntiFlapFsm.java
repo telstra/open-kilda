@@ -34,62 +34,6 @@ import java.io.Serializable;
 
 @Slf4j
 public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event, Context>  {
-
-    private static final StateMachineBuilder<AntiFlapFsm, State, Event, Context> builder;
-
-    static {
-        builder = StateMachineBuilderFactory.create(
-                AntiFlapFsm.class, State.class, Event.class, Context.class,
-                // extra parameters
-                Config.class);
-
-        // INIT
-        builder.transition()
-                .from(State.INIT).to(State.NOTHING).on(Event.PORT_UP)
-                .callMethod("emitPortUpAndSaveTime");
-        builder.transition()
-                .from(State.INIT).to(State.NOTHING).on(Event.PORT_DOWN)
-                .callMethod("emitPortDownAndSaveTime");
-
-        // NOTHING
-        builder.internalTransition()
-                .within(State.NOTHING).on(Event.PORT_UP)
-                .callMethod("portUpOnNothing");
-        builder.internalTransition()
-                .within(State.NOTHING).on(Event.PORT_DOWN)
-                .callMethod("portDownOnNothing");
-        builder.transition()
-                .from(State.NOTHING).to(State.WARMING_UP).on(Event.TO_WARMING_UP);
-
-        // State.WARMING_UP
-        builder.onEntry(State.WARMING_UP)
-                .callMethod("saveStartTimeAndDownTime");
-        builder.internalTransition().within(State.WARMING_UP).on(Event.PORT_UP)
-                .callMethod("savePortUpTime");
-        builder.internalTransition().within(State.WARMING_UP).on(Event.PORT_DOWN)
-                .callMethod("savePortDownTime");
-        builder.internalTransition().within(State.WARMING_UP).on(Event.TICK)
-                .callMethod("tickOnWarmingUp");
-        builder.transition()
-                .from(State.WARMING_UP).to(State.NOTHING).on(Event.TO_NOTHING);
-        builder.transition()
-                .from(State.WARMING_UP).to(State.COOLING_DOWN).on(Event.TO_COOLING_DOWN);
-
-        // State.COOLING_DOWN
-        builder.onEntry(State.COOLING_DOWN)
-                .callMethod("emitPortDown");
-        builder.onExit(State.COOLING_DOWN)
-                .callMethod("exitCoolingDown");
-        builder.internalTransition().within(State.COOLING_DOWN).on(Event.PORT_UP)
-                .callMethod("savePortUpTime");
-        builder.internalTransition().within(State.COOLING_DOWN).on(Event.PORT_DOWN)
-                .callMethod("savePortDownTime");
-        builder.internalTransition().within(State.COOLING_DOWN).on(Event.TICK)
-                .callMethod("tickCoolingDown");
-        builder.transition()
-                .from(State.COOLING_DOWN).to(State.NOTHING).on(Event.TO_NOTHING);
-    }
-
     private final Endpoint endpoint;
     private final long delayWarmUp;
     private final long delayCoolingDown;
@@ -99,6 +43,10 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
     private long upTime = 0;
     private long startTime = 0;
 
+    public static AntiFlapFsmFactory factory() {
+        return new AntiFlapFsmFactory();
+    }
+
     public AntiFlapFsm(Config config) {
         endpoint = config.getEndpoint();
         delayCoolingDown = config.getDelayCoolingDown();
@@ -106,14 +54,6 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
         delayMin = config.getDelayMin();
 
         log.debug("{}", config);
-    }
-
-    public static FsmExecutor<AntiFlapFsm, State, Event, Context> makeExecutor() {
-        return new FsmExecutor<>(Event.NEXT);
-    }
-
-    public static AntiFlapFsm create(Config config) {
-        return builder.newStateMachine(State.INIT, config);
     }
 
     // -- FSM actions --
@@ -239,6 +179,71 @@ public final class AntiFlapFsm extends AbstractBaseFsm<AntiFlapFsm, State, Event
 
     private long last() {
         return Math.max(downTime, upTime);
+    }
+
+    public static class AntiFlapFsmFactory {
+        private final StateMachineBuilder<AntiFlapFsm, State, Event, Context> builder;
+
+        AntiFlapFsmFactory() {
+            builder = StateMachineBuilderFactory.create(
+                    AntiFlapFsm.class, State.class, Event.class, Context.class,
+                    // extra parameters
+                    Config.class);
+
+            // INIT
+            builder.transition()
+                    .from(State.INIT).to(State.NOTHING).on(Event.PORT_UP)
+                    .callMethod("emitPortUpAndSaveTime");
+            builder.transition()
+                    .from(State.INIT).to(State.NOTHING).on(Event.PORT_DOWN)
+                    .callMethod("emitPortDownAndSaveTime");
+
+            // NOTHING
+            builder.internalTransition()
+                    .within(State.NOTHING).on(Event.PORT_UP)
+                    .callMethod("portUpOnNothing");
+            builder.internalTransition()
+                    .within(State.NOTHING).on(Event.PORT_DOWN)
+                    .callMethod("portDownOnNothing");
+            builder.transition()
+                    .from(State.NOTHING).to(State.WARMING_UP).on(Event.TO_WARMING_UP);
+
+            // State.WARMING_UP
+            builder.onEntry(State.WARMING_UP)
+                    .callMethod("saveStartTimeAndDownTime");
+            builder.internalTransition().within(State.WARMING_UP).on(Event.PORT_UP)
+                    .callMethod("savePortUpTime");
+            builder.internalTransition().within(State.WARMING_UP).on(Event.PORT_DOWN)
+                    .callMethod("savePortDownTime");
+            builder.internalTransition().within(State.WARMING_UP).on(Event.TICK)
+                    .callMethod("tickOnWarmingUp");
+            builder.transition()
+                    .from(State.WARMING_UP).to(State.NOTHING).on(Event.TO_NOTHING);
+            builder.transition()
+                    .from(State.WARMING_UP).to(State.COOLING_DOWN).on(Event.TO_COOLING_DOWN);
+
+            // State.COOLING_DOWN
+            builder.onEntry(State.COOLING_DOWN)
+                    .callMethod("emitPortDown");
+            builder.onExit(State.COOLING_DOWN)
+                    .callMethod("exitCoolingDown");
+            builder.internalTransition().within(State.COOLING_DOWN).on(Event.PORT_UP)
+                    .callMethod("savePortUpTime");
+            builder.internalTransition().within(State.COOLING_DOWN).on(Event.PORT_DOWN)
+                    .callMethod("savePortDownTime");
+            builder.internalTransition().within(State.COOLING_DOWN).on(Event.TICK)
+                    .callMethod("tickCoolingDown");
+            builder.transition()
+                    .from(State.COOLING_DOWN).to(State.NOTHING).on(Event.TO_NOTHING);
+        }
+
+        public FsmExecutor<AntiFlapFsm, State, Event, Context> produceExecutor() {
+            return new FsmExecutor<>(Event.NEXT);
+        }
+
+        public AntiFlapFsm produce(Config config) {
+            return builder.newStateMachine(State.INIT, config);
+        }
     }
 
     public enum Event {

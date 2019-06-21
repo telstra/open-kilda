@@ -41,83 +41,8 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
     private IslReference islReference;
     private IslDataHolder islData = null;
 
-    private static final StateMachineBuilder<UniIslFsm, UniIslFsmState, UniIslFsmEvent, UniIslFsmContext> builder;
-
-    static {
-        builder = StateMachineBuilderFactory.create(
-                UniIslFsm.class, UniIslFsmState.class, UniIslFsmEvent.class, UniIslFsmContext.class,
-                // extra parameters
-                Endpoint.class);
-
-        // INIT
-        builder.transition()
-                .from(UniIslFsmState.INIT).to(UniIslFsmState.UNKNOWN).on(UniIslFsmEvent.ACTIVATE)
-                .callMethod("handleActivate");
-
-        // UNKNOWN
-        builder.transition()
-                .from(UniIslFsmState.UNKNOWN).to(UniIslFsmState.DISCOVERY_CHOICE).on(UniIslFsmEvent.DISCOVERY);
-        builder.transition()
-                .from(UniIslFsmState.UNKNOWN).to(UniIslFsmState.DOWN).on(UniIslFsmEvent.FAIL);
-        builder.transition()
-                .from(UniIslFsmState.UNKNOWN).to(UniIslFsmState.DOWN).on(UniIslFsmEvent.PHYSICAL_DOWN);
-
-        // DISCOVERY_CHOICE
-        builder.transition()
-                .from(UniIslFsmState.DISCOVERY_CHOICE).to(UniIslFsmState.SELF_LOOP_CHOICE)
-                .on(UniIslFsmEvent._DISCOVERY_CHOICE_MOVED)
-                .callMethod("handleMoved");
-        builder.transition()
-                .from(UniIslFsmState.DISCOVERY_CHOICE).to(UniIslFsmState.UP).on(UniIslFsmEvent._DISCOVERY_CHOICE_SAME);
-        builder.onEntry(UniIslFsmState.DISCOVERY_CHOICE)
-                .callMethod("doDiscoveryChoice");
-        
-        // SELF_LOOP_CHOICE
-        builder.transition()
-                .from(UniIslFsmState.SELF_LOOP_CHOICE).to(UniIslFsmState.UP).on(UniIslFsmEvent._SELF_LOOP_CHOICE_FALSE);
-        builder.transition()
-                .from(UniIslFsmState.SELF_LOOP_CHOICE).to(UniIslFsmState.UNKNOWN)
-                .on(UniIslFsmEvent._SELF_LOOP_CHOICE_TRUE);
-        builder.onEntry(UniIslFsmState.SELF_LOOP_CHOICE)
-                .callMethod("doSelfLoopChoice");
-
-        // UP
-        builder.transition()
-                .from(UniIslFsmState.UP).to(UniIslFsmState.DISCOVERY_CHOICE).on(UniIslFsmEvent.DISCOVERY);
-        builder.transition()
-                .from(UniIslFsmState.UP).to(UniIslFsmState.DOWN).on(UniIslFsmEvent.FAIL);
-        builder.transition()
-                .from(UniIslFsmState.UP).to(UniIslFsmState.DOWN).on(UniIslFsmEvent.PHYSICAL_DOWN);
-        builder.transition()
-                .from(UniIslFsmState.UP).to(UniIslFsmState.BFD).on(UniIslFsmEvent.BFD_UP);
-        builder.onEntry(UniIslFsmState.UP)
-                .callMethod("upEnter");
-
-        // DOWN
-        builder.transition()
-                .from(UniIslFsmState.DOWN).to(UniIslFsmState.DISCOVERY_CHOICE).on(UniIslFsmEvent.DISCOVERY);
-        builder.transition()
-                .from(UniIslFsmState.DOWN).to(UniIslFsmState.BFD).on(UniIslFsmEvent.BFD_UP);
-        builder.onEntry(UniIslFsmState.DOWN)
-                .callMethod("downEnter");
-
-        // BFD
-        builder.transition()
-                .from(UniIslFsmState.BFD).to(UniIslFsmState.DOWN).on(UniIslFsmEvent.PHYSICAL_DOWN);
-        builder.transition()
-                .from(UniIslFsmState.BFD).to(UniIslFsmState.DOWN).on(UniIslFsmEvent.BFD_DOWN);
-        builder.transition()
-                .from(UniIslFsmState.BFD).to(UniIslFsmState.UP).on(UniIslFsmEvent.BFD_KILL);
-        builder.onEntry(UniIslFsmState.BFD)
-                .callMethod("bfdEnter");
-    }
-
-    public static FsmExecutor<UniIslFsm, UniIslFsmState, UniIslFsmEvent, UniIslFsmContext> makeExecutor() {
-        return new FsmExecutor<>(UniIslFsmEvent.NEXT);
-    }
-
-    public static UniIslFsm create(Endpoint endpoint) {
-        return builder.newStateMachine(UniIslFsmState.INIT, endpoint);
+    public static UniIslFsmFactory factory() {
+        return new UniIslFsmFactory();
     }
 
     public UniIslFsm(Endpoint endpoint) {
@@ -223,6 +148,89 @@ public class UniIslFsm extends AbstractBaseFsm<UniIslFsm, UniIslFsmState,
     }
 
     // -- service data types --
+
+    public static class UniIslFsmFactory {
+        private final StateMachineBuilder<UniIslFsm, UniIslFsmState, UniIslFsmEvent, UniIslFsmContext> builder;
+
+        UniIslFsmFactory() {
+            builder = StateMachineBuilderFactory.create(
+                    UniIslFsm.class, UniIslFsmState.class, UniIslFsmEvent.class, UniIslFsmContext.class,
+                    // extra parameters
+                    Endpoint.class);
+
+            // INIT
+            builder.transition()
+                    .from(UniIslFsmState.INIT).to(UniIslFsmState.UNKNOWN).on(UniIslFsmEvent.ACTIVATE)
+                    .callMethod("handleActivate");
+
+            // UNKNOWN
+            builder.transition()
+                    .from(UniIslFsmState.UNKNOWN).to(UniIslFsmState.DISCOVERY_CHOICE).on(UniIslFsmEvent.DISCOVERY);
+            builder.transition()
+                    .from(UniIslFsmState.UNKNOWN).to(UniIslFsmState.DOWN).on(UniIslFsmEvent.FAIL);
+            builder.transition()
+                    .from(UniIslFsmState.UNKNOWN).to(UniIslFsmState.DOWN).on(UniIslFsmEvent.PHYSICAL_DOWN);
+
+            // DISCOVERY_CHOICE
+            builder.transition()
+                    .from(UniIslFsmState.DISCOVERY_CHOICE).to(UniIslFsmState.SELF_LOOP_CHOICE)
+                    .on(UniIslFsmEvent._DISCOVERY_CHOICE_MOVED)
+                    .callMethod("handleMoved");
+            builder.transition()
+                    .from(UniIslFsmState.DISCOVERY_CHOICE).to(UniIslFsmState.UP)
+                    .on(UniIslFsmEvent._DISCOVERY_CHOICE_SAME);
+            builder.onEntry(UniIslFsmState.DISCOVERY_CHOICE)
+                    .callMethod("doDiscoveryChoice");
+
+            // SELF_LOOP_CHOICE
+            builder.transition()
+                    .from(UniIslFsmState.SELF_LOOP_CHOICE).to(UniIslFsmState.UP)
+                    .on(UniIslFsmEvent._SELF_LOOP_CHOICE_FALSE);
+            builder.transition()
+                    .from(UniIslFsmState.SELF_LOOP_CHOICE).to(UniIslFsmState.UNKNOWN)
+                    .on(UniIslFsmEvent._SELF_LOOP_CHOICE_TRUE);
+            builder.onEntry(UniIslFsmState.SELF_LOOP_CHOICE)
+                    .callMethod("doSelfLoopChoice");
+
+            // UP
+            builder.transition()
+                    .from(UniIslFsmState.UP).to(UniIslFsmState.DISCOVERY_CHOICE).on(UniIslFsmEvent.DISCOVERY);
+            builder.transition()
+                    .from(UniIslFsmState.UP).to(UniIslFsmState.DOWN).on(UniIslFsmEvent.FAIL);
+            builder.transition()
+                    .from(UniIslFsmState.UP).to(UniIslFsmState.DOWN).on(UniIslFsmEvent.PHYSICAL_DOWN);
+            builder.transition()
+                    .from(UniIslFsmState.UP).to(UniIslFsmState.BFD).on(UniIslFsmEvent.BFD_UP);
+            builder.onEntry(UniIslFsmState.UP)
+                    .callMethod("upEnter");
+
+            // DOWN
+            builder.transition()
+                    .from(UniIslFsmState.DOWN).to(UniIslFsmState.DISCOVERY_CHOICE).on(UniIslFsmEvent.DISCOVERY);
+            builder.transition()
+                    .from(UniIslFsmState.DOWN).to(UniIslFsmState.BFD).on(UniIslFsmEvent.BFD_UP);
+            builder.onEntry(UniIslFsmState.DOWN)
+                    .callMethod("downEnter");
+
+            // BFD
+            builder.transition()
+                    .from(UniIslFsmState.BFD).to(UniIslFsmState.DOWN).on(UniIslFsmEvent.PHYSICAL_DOWN);
+            builder.transition()
+                    .from(UniIslFsmState.BFD).to(UniIslFsmState.DOWN).on(UniIslFsmEvent.BFD_DOWN);
+            builder.transition()
+                    .from(UniIslFsmState.BFD).to(UniIslFsmState.UP).on(UniIslFsmEvent.BFD_KILL);
+            builder.onEntry(UniIslFsmState.BFD)
+                    .callMethod("bfdEnter");
+        }
+
+        public FsmExecutor<UniIslFsm, UniIslFsmState, UniIslFsmEvent, UniIslFsmContext> produceExecutor() {
+            return new FsmExecutor<>(UniIslFsmEvent.NEXT);
+        }
+
+        public UniIslFsm produce(Endpoint endpoint) {
+            return builder.newStateMachine(UniIslFsmState.INIT, endpoint);
+        }
+    }
 
     @Value
     @Builder

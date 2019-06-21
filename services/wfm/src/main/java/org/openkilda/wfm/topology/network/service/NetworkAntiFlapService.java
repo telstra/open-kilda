@@ -31,9 +31,9 @@ import java.util.Map;
 
 @Slf4j
 public class NetworkAntiFlapService {
+    private final AntiFlapFsm.AntiFlapFsmFactory controllerFactory;
     private final Map<Endpoint, AntiFlapFsm> controller = new HashMap<>();
-    private final FsmExecutor<AntiFlapFsm, State, Event, Context> controllerExecutor
-            = AntiFlapFsm.makeExecutor();
+    private final FsmExecutor<AntiFlapFsm, State, Event, Context> controllerExecutor;
 
     private final IAntiFlapCarrier carrier;
     private final AntiFlapFsm.Config config;
@@ -41,8 +41,10 @@ public class NetworkAntiFlapService {
     public NetworkAntiFlapService(IAntiFlapCarrier carrier, AntiFlapFsm.Config config) {
         this.carrier = carrier;
         this.config = config;
-    }
 
+        controllerFactory = AntiFlapFsm.factory();
+        controllerExecutor = controllerFactory.produceExecutor();
+    }
 
     public void filterLinkStatus(Endpoint endpoint, LinkStatus status) {
         filterLinkStatus(endpoint, status, now());
@@ -82,7 +84,7 @@ public class NetworkAntiFlapService {
     private AntiFlapFsm locateController(Endpoint endpoint) {
         AntiFlapFsm fsm = controller.get(endpoint);
         if (fsm == null) {
-            fsm = AntiFlapFsm.create(config.toBuilder().endpoint(endpoint).build());
+            fsm = controllerFactory.produce(config.toBuilder().endpoint(endpoint).build());
             controller.put(endpoint, fsm);
         }
         return fsm;

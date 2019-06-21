@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.network.controller;
 
 import org.openkilda.model.FeatureToggles;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
@@ -36,83 +37,8 @@ public class BfdGlobalToggleFsm
     private final IBfdGlobalToggleCarrier carrier;
     private final Endpoint endpoint;
 
-    private static final StateMachineBuilder<BfdGlobalToggleFsm, BfdGlobalToggleFsmState, BfdGlobalToggleFsmEvent,
-            BfdGlobalToggleFsmContext> builder;
-
-    static {
-        builder = StateMachineBuilderFactory.create(
-                BfdGlobalToggleFsm.class, BfdGlobalToggleFsmState.class, BfdGlobalToggleFsmEvent.class,
-                BfdGlobalToggleFsmContext.class,
-                // extra parameters
-                IBfdGlobalToggleCarrier.class, Endpoint.class);
-
-        // DOWN_ENABLED
-        builder.transition()
-                .from(BfdGlobalToggleFsmState.DOWN_ENABLED).to(BfdGlobalToggleFsmState.DOWN_DISABLED)
-                .on(BfdGlobalToggleFsmEvent.DISABLE);
-        builder.transition()
-                .from(BfdGlobalToggleFsmState.DOWN_ENABLED).to(BfdGlobalToggleFsmState.UP_ENABLED)
-                .on(BfdGlobalToggleFsmEvent.BFD_UP);
-
-        // DOWN_DISABLED
-        builder.transition()
-                .from(BfdGlobalToggleFsmState.DOWN_DISABLED).to(BfdGlobalToggleFsmState.DOWN_ENABLED)
-                .on(BfdGlobalToggleFsmEvent.ENABLE);
-        builder.transition()
-                .from(BfdGlobalToggleFsmState.DOWN_DISABLED).to(BfdGlobalToggleFsmState.UP_DISABLED)
-                .on(BfdGlobalToggleFsmEvent.BFD_UP);
-
-        // UP_ENABLED
-        builder.transition()
-                .from(BfdGlobalToggleFsmState.UP_ENABLED).to(BfdGlobalToggleFsmState.UP_DISABLED)
-                .on(BfdGlobalToggleFsmEvent.DISABLE)
-                .callMethod("emitBfdKill");
-        builder.transition()
-                .from(BfdGlobalToggleFsmState.UP_ENABLED).to(BfdGlobalToggleFsmState.DOWN_ENABLED)
-                .on(BfdGlobalToggleFsmEvent.BFD_DOWN)
-                .callMethod("emitBfdDown");
-        builder.transition()
-                .from(BfdGlobalToggleFsmState.UP_ENABLED).to(BfdGlobalToggleFsmState.DOWN_ENABLED)
-                .on(BfdGlobalToggleFsmEvent.BFD_KILL)
-                .callMethod("emitBfdKill");
-        builder.onEntry(BfdGlobalToggleFsmState.UP_ENABLED)
-                .callMethod("emitBfdUp");
-
-        // UP_DISABLED
-        builder.transition()
-                .from(BfdGlobalToggleFsmState.UP_DISABLED).to(BfdGlobalToggleFsmState.UP_ENABLED)
-                .on(BfdGlobalToggleFsmEvent.ENABLE);
-        builder.transition()
-                .from(BfdGlobalToggleFsmState.UP_DISABLED).to(BfdGlobalToggleFsmState.DOWN_DISABLED)
-                .on(BfdGlobalToggleFsmEvent.BFD_DOWN);
-    }
-
-    public static FsmExecutor<BfdGlobalToggleFsm, BfdGlobalToggleFsmState, BfdGlobalToggleFsmEvent,
-            BfdGlobalToggleFsmContext> makeExecutor() {
-        return new FsmExecutor<>(BfdGlobalToggleFsmEvent.NEXT);
-    }
-
-    /**
-     * Determine initial state and create {@link BfdGlobalToggleFsm} instance.
-     */
-    public static BfdGlobalToggleFsm create(IBfdGlobalToggleCarrier carrier, Endpoint endpoint,
-                                            FeatureTogglesRepository featureTogglesRepository) {
-        Boolean toggle = featureTogglesRepository.find()
-                .map(FeatureToggles::getUseBfdForIslIntegrityCheck)
-                .orElseGet(FeatureToggles.DEFAULTS::getUseBfdForIslIntegrityCheck);
-        if (toggle == null) {
-            throw new IllegalStateException("Unable to identify initial BFD-global-toggle value (it is null at"
-                                                    + " this moment)");
-        }
-
-        BfdGlobalToggleFsmState state;
-        if (toggle) {
-            state = BfdGlobalToggleFsmState.DOWN_ENABLED;
-        } else {
-            state = BfdGlobalToggleFsmState.DOWN_DISABLED;
-        }
-
-        return builder.newStateMachine(state, carrier, endpoint);
+    public static BfdGlobalToggleFsmFactory factory(PersistenceManager persistenceManager) {
+        return new BfdGlobalToggleFsmFactory(persistenceManager);
     }
 
     // -- FSM actions --
@@ -142,6 +68,90 @@ public class BfdGlobalToggleFsm
     public BfdGlobalToggleFsm(IBfdGlobalToggleCarrier carrier, Endpoint endpoint) {
         this.carrier = carrier;
         this.endpoint = endpoint;
+    }
+
+    public static class BfdGlobalToggleFsmFactory {
+        private final FeatureTogglesRepository featureTogglesRepository;
+
+        private final StateMachineBuilder<BfdGlobalToggleFsm, BfdGlobalToggleFsmState, BfdGlobalToggleFsmEvent,
+                BfdGlobalToggleFsmContext> builder;
+
+        BfdGlobalToggleFsmFactory(PersistenceManager persistenceManager) {
+            featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
+
+            builder = StateMachineBuilderFactory.create(
+                    BfdGlobalToggleFsm.class, BfdGlobalToggleFsmState.class, BfdGlobalToggleFsmEvent.class,
+                    BfdGlobalToggleFsmContext.class,
+                    // extra parameters
+                    IBfdGlobalToggleCarrier.class, Endpoint.class);
+
+            // DOWN_ENABLED
+            builder.transition()
+                    .from(BfdGlobalToggleFsmState.DOWN_ENABLED).to(BfdGlobalToggleFsmState.DOWN_DISABLED)
+                    .on(BfdGlobalToggleFsmEvent.DISABLE);
+            builder.transition()
+                    .from(BfdGlobalToggleFsmState.DOWN_ENABLED).to(BfdGlobalToggleFsmState.UP_ENABLED)
+                    .on(BfdGlobalToggleFsmEvent.BFD_UP);
+
+            // DOWN_DISABLED
+            builder.transition()
+                    .from(BfdGlobalToggleFsmState.DOWN_DISABLED).to(BfdGlobalToggleFsmState.DOWN_ENABLED)
+                    .on(BfdGlobalToggleFsmEvent.ENABLE);
+            builder.transition()
+                    .from(BfdGlobalToggleFsmState.DOWN_DISABLED).to(BfdGlobalToggleFsmState.UP_DISABLED)
+                    .on(BfdGlobalToggleFsmEvent.BFD_UP);
+
+            // UP_ENABLED
+            builder.transition()
+                    .from(BfdGlobalToggleFsmState.UP_ENABLED).to(BfdGlobalToggleFsmState.UP_DISABLED)
+                    .on(BfdGlobalToggleFsmEvent.DISABLE)
+                    .callMethod("emitBfdKill");
+            builder.transition()
+                    .from(BfdGlobalToggleFsmState.UP_ENABLED).to(BfdGlobalToggleFsmState.DOWN_ENABLED)
+                    .on(BfdGlobalToggleFsmEvent.BFD_DOWN)
+                    .callMethod("emitBfdDown");
+            builder.transition()
+                    .from(BfdGlobalToggleFsmState.UP_ENABLED).to(BfdGlobalToggleFsmState.DOWN_ENABLED)
+                    .on(BfdGlobalToggleFsmEvent.BFD_KILL)
+                    .callMethod("emitBfdKill");
+            builder.onEntry(BfdGlobalToggleFsmState.UP_ENABLED)
+                    .callMethod("emitBfdUp");
+
+            // UP_DISABLED
+            builder.transition()
+                    .from(BfdGlobalToggleFsmState.UP_DISABLED).to(BfdGlobalToggleFsmState.UP_ENABLED)
+                    .on(BfdGlobalToggleFsmEvent.ENABLE);
+            builder.transition()
+                    .from(BfdGlobalToggleFsmState.UP_DISABLED).to(BfdGlobalToggleFsmState.DOWN_DISABLED)
+                    .on(BfdGlobalToggleFsmEvent.BFD_DOWN);
+        }
+
+        public FsmExecutor<BfdGlobalToggleFsm, BfdGlobalToggleFsmState, BfdGlobalToggleFsmEvent,
+                BfdGlobalToggleFsmContext> produceExecutor() {
+            return new FsmExecutor<>(BfdGlobalToggleFsmEvent.NEXT);
+        }
+
+        /**
+         * Determine initial state and create {@link BfdGlobalToggleFsm} instance.
+         */
+        public BfdGlobalToggleFsm produce(IBfdGlobalToggleCarrier carrier, Endpoint endpoint) {
+            Boolean toggle = featureTogglesRepository.find()
+                    .map(FeatureToggles::getUseBfdForIslIntegrityCheck)
+                    .orElseGet(FeatureToggles.DEFAULTS::getUseBfdForIslIntegrityCheck);
+            if (toggle == null) {
+                throw new IllegalStateException("Unable to identify initial BFD-global-toggle value (it is null at"
+                                                        + " this moment)");
+            }
+
+            BfdGlobalToggleFsmState state;
+            if (toggle) {
+                state = BfdGlobalToggleFsmState.DOWN_ENABLED;
+            } else {
+                state = BfdGlobalToggleFsmState.DOWN_DISABLED;
+            }
+
+            return builder.newStateMachine(state, carrier, endpoint);
+        }
     }
 
     @Value

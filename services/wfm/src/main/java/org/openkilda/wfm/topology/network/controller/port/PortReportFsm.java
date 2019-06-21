@@ -34,35 +34,8 @@ public class PortReportFsm
 
     private final Endpoint endpoint;
 
-    private static StateMachineBuilder<PortReportFsm, PortFsm.PortFsmState, PortFsm.PortFsmEvent, Void> builder;
-
-    static {
-        builder = StateMachineBuilderFactory.create(
-                PortReportFsm.class, PortFsm.PortFsmState.class, PortFsm.PortFsmEvent.class, Void.class,
-                // extra parameters
-                NetworkTopologyDashboardLogger.Builder.class, Endpoint.class);
-
-        // INIT
-        builder.transition()
-                .from(PortFsm.PortFsmState.INIT).to(PortFsm.PortFsmState.UP).on(PortFsm.PortFsmEvent.PORT_UP);
-        builder.transition()
-                .from(PortFsm.PortFsmState.INIT).to(PortFsm.PortFsmState.DOWN).on(PortFsm.PortFsmEvent.PORT_DOWN);
-
-        // UP
-        builder.transition()
-                .from(PortFsm.PortFsmState.UP).to(PortFsm.PortFsmState.DOWN).on(PortFsm.PortFsmEvent.PORT_DOWN);
-        builder.onEntry(PortFsm.PortFsmState.UP)
-                .callMethod("becomeUp");
-        // DOWN
-        builder.transition()
-                .from(PortFsm.PortFsmState.DOWN).to(PortFsm.PortFsmState.UP).on(PortFsm.PortFsmEvent.PORT_UP);
-        builder.onEntry(PortFsm.PortFsmState.DOWN)
-                .callMethod("becomeDown");
-    }
-
-    public static PortReportFsm create(NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder,
-                                       Endpoint endpoint) {
-        return builder.newStateMachine(PortFsm.PortFsmState.INIT, dashboardLoggerBuilder, endpoint);
+    public static PortReportFsmFactory factory(NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder) {
+        return new PortReportFsmFactory(dashboardLoggerBuilder);
     }
 
     public PortReportFsm(NetworkTopologyDashboardLogger.Builder dashboardLoggerBuider, Endpoint endpoint) {
@@ -78,5 +51,42 @@ public class PortReportFsm
 
     public void becomeDown(PortFsm.PortFsmState from, PortFsm.PortFsmState to, PortFsm.PortFsmEvent event) {
         dashboardLogger.onUpdatePortStatus(endpoint, LinkStatus.DOWN);
+    }
+
+    // -- service data types --
+
+    public static class PortReportFsmFactory {
+        private final NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder;
+        private final StateMachineBuilder<PortReportFsm, PortFsm.PortFsmState, PortFsm.PortFsmEvent, Void> builder;
+
+        PortReportFsmFactory(NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder) {
+            this.dashboardLoggerBuilder = dashboardLoggerBuilder;
+
+            builder = StateMachineBuilderFactory.create(
+                    PortReportFsm.class, PortFsm.PortFsmState.class, PortFsm.PortFsmEvent.class, Void.class,
+                    // extra parameters
+                    NetworkTopologyDashboardLogger.Builder.class, Endpoint.class);
+
+            // INIT
+            builder.transition()
+                    .from(PortFsm.PortFsmState.INIT).to(PortFsm.PortFsmState.UP).on(PortFsm.PortFsmEvent.PORT_UP);
+            builder.transition()
+                    .from(PortFsm.PortFsmState.INIT).to(PortFsm.PortFsmState.DOWN).on(PortFsm.PortFsmEvent.PORT_DOWN);
+
+            // UP
+            builder.transition()
+                    .from(PortFsm.PortFsmState.UP).to(PortFsm.PortFsmState.DOWN).on(PortFsm.PortFsmEvent.PORT_DOWN);
+            builder.onEntry(PortFsm.PortFsmState.UP)
+                    .callMethod("becomeUp");
+            // DOWN
+            builder.transition()
+                    .from(PortFsm.PortFsmState.DOWN).to(PortFsm.PortFsmState.UP).on(PortFsm.PortFsmEvent.PORT_UP);
+            builder.onEntry(PortFsm.PortFsmState.DOWN)
+                    .callMethod("becomeDown");
+        }
+
+        public PortReportFsm produce(Endpoint endpoint) {
+            return builder.newStateMachine(PortFsm.PortFsmState.INIT, dashboardLoggerBuilder, endpoint);
+        }
     }
 }
