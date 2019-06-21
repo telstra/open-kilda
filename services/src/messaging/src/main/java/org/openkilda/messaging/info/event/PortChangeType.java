@@ -51,12 +51,7 @@ public enum PortChangeType {
     /**
      * Down port change message type.
      */
-    DOWN("DOWN"),
-
-    /**
-     * Port's switch was cached.
-     */
-    CACHED("CACHED");
+    DOWN("DOWN");
 
     /**
      * Info Message type.
