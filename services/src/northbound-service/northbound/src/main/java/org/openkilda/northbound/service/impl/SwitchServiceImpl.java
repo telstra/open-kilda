@@ -223,7 +223,7 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Override
     public CompletableFuture<SwitchValidationResult> validateSwitch(SwitchId switchId) {
-        logger.info("Sync rules request for switch {}", switchId);
+        logger.info("Validate request for switch {}", switchId);
 
         CommandMessage syncCommandMessage = new CommandMessage(
                 new SwitchValidateRequest(switchId, false), System.currentTimeMillis(), RequestCorrelationId.getId());
