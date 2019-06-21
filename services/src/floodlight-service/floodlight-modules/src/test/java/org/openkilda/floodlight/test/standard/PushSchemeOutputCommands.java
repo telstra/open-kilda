@@ -31,7 +31,9 @@ import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
@@ -45,21 +47,24 @@ import java.util.List;
  * Code duplication is for more clear commands representation.
  */
 public class PushSchemeOutputCommands implements OutputCommands {
+
     @Override
     public OFFlowAdd ingressMatchVlanIdFlowMod(int inputPort, int outputPort, int inputVlan,
                                                int tunnelId, long meterId, long cookie,
-                                               FlowEncapsulationType encapsulationType) {
+                                               FlowEncapsulationType encapsulationType,
+                                               DatapathId ingressSwitchDpid) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setPriority(FLOW_PRIORITY)
-                .setMatch(matchFlow(inputPort, inputVlan, encapsulationType))
+                .setMatch(matchFlow(inputPort, inputVlan, encapsulationType, ingressSwitchDpid))
                 .setInstructions(Arrays.asList(
                         ofFactory.instructions().buildMeter().setMeterId(meterId).build(),
                         ofFactory.instructions()
-                                .applyActions(getPushActions(outputPort, tunnelId, encapsulationType))
+                                .applyActions(getPushActions(outputPort, tunnelId, encapsulationType,
+                                        ingressSwitchDpid))
                                 .createBuilder()
                                 .build()))
                 .setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS))
@@ -70,7 +75,8 @@ public class PushSchemeOutputCommands implements OutputCommands {
 
     @Override
     public OFFlowAdd ingressNoMatchVlanIdFlowMod(int inputPort, int outputPort, int tunnelId,
-                                                 long meterId, long cookie, FlowEncapsulationType encapsulationType) {
+                                                 long meterId, long cookie, FlowEncapsulationType encapsulationType,
+                                                 DatapathId ingressSwitchDpId) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
@@ -83,7 +89,8 @@ public class PushSchemeOutputCommands implements OutputCommands {
                 .setInstructions(Arrays.asList(
                         ofFactory.instructions().buildMeter().setMeterId(meterId).build(),
                         ofFactory.instructions()
-                                .applyActions(getPushActions(outputPort, tunnelId, encapsulationType))
+                                .applyActions(getPushActions(outputPort, tunnelId, encapsulationType,
+                                        ingressSwitchDpId))
                                 .createBuilder()
                                 .build()))
                 .setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS))
@@ -94,14 +101,14 @@ public class PushSchemeOutputCommands implements OutputCommands {
 
     @Override
     public OFFlowAdd egressPushFlowMod(int inputPort, int outputPort, int tunnelId, int outputVlan, long cookie,
-                                       FlowEncapsulationType encapsulationType) {
+                                       FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpid) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setPriority(FLOW_PRIORITY)
-                .setMatch(matchFlow(inputPort, tunnelId, encapsulationType))
+                .setMatch(matchFlow(inputPort, tunnelId, encapsulationType, ingressSwitchDpid))
                 .setInstructions(singletonList(
                         ofFactory.instructions().applyActions(Arrays.asList(
                                 ofFactory.actions().popVlan(),
@@ -123,7 +130,8 @@ public class PushSchemeOutputCommands implements OutputCommands {
                 .build();
     }
 
-    private List<OFAction> getPushActions(int outputPort, int tunnelId, FlowEncapsulationType encapsulationType) {
+    private List<OFAction> getPushActions(int outputPort, int tunnelId, FlowEncapsulationType encapsulationType,
+                                          DatapathId ingressSwitchDpId) {
         switch (encapsulationType) {
             default:
             case TRANSIT_VLAN:
@@ -141,15 +149,16 @@ public class PushSchemeOutputCommands implements OutputCommands {
                                 .setPort(OFPort.of(outputPort))
                                 .build());
             case VXLAN:
-                return getPushVxlanAction(outputPort, tunnelId);
+                return getPushVxlanAction(outputPort, tunnelId, ingressSwitchDpId);
         }
     }
 
-    protected List<OFAction> getPushVxlanAction(int outputPort, int tunnelId) {
+    protected List<OFAction> getPushVxlanAction(int outputPort, int tunnelId,
+                                                DatapathId ingressSwitchDpId) {
         return Arrays.asList(
                 ofFactory.actions().buildNoviflowPushVxlanTunnel()
                         .setFlags((short) 0x01)
-                        .setEthSrc(SwitchManager.STUB_VXLAN_ETH_SRC_MAC)
+                        .setEthSrc(MacAddress.of(Arrays.copyOfRange(ingressSwitchDpId.getBytes(), 2, 8)))
                         .setEthDst(SwitchManager.STUB_VXLAN_ETH_DST_MAC)
                         .setIpv4Src(SwitchManager.STUB_VXLAN_IPV4_SRC)
                         .setIpv4Dst(SwitchManager.STUB_VXLAN_IPV4_DST)
@@ -184,14 +193,14 @@ public class PushSchemeOutputCommands implements OutputCommands {
 
     @Override
     public OFFlowAdd egressPopFlowMod(int inputPort, int outputPort, int tunnelId, long cookie,
-                                      FlowEncapsulationType encapsulationType) {
+                                      FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpId) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setPriority(FLOW_PRIORITY)
-                .setMatch(matchFlow(inputPort, tunnelId, encapsulationType))
+                .setMatch(matchFlow(inputPort, tunnelId, encapsulationType, ingressSwitchDpId))
                 .setInstructions(singletonList(
                         ofFactory.instructions().applyActions(getPopActions(outputPort, encapsulationType))
                                 .createBuilder()
@@ -202,14 +211,15 @@ public class PushSchemeOutputCommands implements OutputCommands {
 
     @Override
     public OFFlowAdd egressFlowMod(int inputPort, int outputPort, int tunnelId, long cookie,
-                                       FlowEncapsulationType encapsulationType, OFInstructionApplyActions actions) {
+                                   FlowEncapsulationType encapsulationType, OFInstructionApplyActions actions,
+                                   DatapathId ingressSwitchDpid) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setPriority(FLOW_PRIORITY)
-                .setMatch(matchFlow(inputPort, tunnelId, encapsulationType))
+                .setMatch(matchFlow(inputPort, tunnelId, encapsulationType, ingressSwitchDpid))
                 .setInstructions(singletonList(actions))
                 .setXid(0L)
                 .build();
@@ -217,14 +227,14 @@ public class PushSchemeOutputCommands implements OutputCommands {
 
     @Override
     public OFFlowAdd egressNoneFlowMod(int inputPort, int outputPort, int tunnelId, long cookie,
-                                       FlowEncapsulationType encapsulationType) {
+                                       FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpId) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setPriority(FLOW_PRIORITY)
-                .setMatch(matchFlow(inputPort, tunnelId, encapsulationType))
+                .setMatch(matchFlow(inputPort, tunnelId, encapsulationType, ingressSwitchDpId))
                 .setInstructions(singletonList(
                         ofFactory.instructions().applyActions(getPopActions(outputPort, encapsulationType))
                                 .createBuilder()
@@ -235,7 +245,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
 
     @Override
     public OFFlowAdd egressReplaceFlowMod(int inputPort, int outputPort, int inputVlan, int outputVlan, long cookie,
-                                          FlowEncapsulationType encapsulationType) {
+                                          FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpId) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)

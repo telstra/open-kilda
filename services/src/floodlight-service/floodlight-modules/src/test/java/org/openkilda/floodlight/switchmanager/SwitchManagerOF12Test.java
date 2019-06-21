@@ -39,6 +39,7 @@ public class SwitchManagerOF12Test {
 
     private final OFFactory ofFactory = new OFFactoryVer12Mock();
     private final DatapathId switchDpId = DatapathId.of(0xdeadbeaf00000001L);
+    private final DatapathId ingressSwitchDpId = DatapathId.of(0xdeadbeaf00000001L);
     private final long commonFlowCookie = 0x77AA55AA0001L;
     private IOFSwitch ofSwitch = createMock(IOFSwitch.class);
 
@@ -74,7 +75,7 @@ public class SwitchManagerOF12Test {
         int outputPort = 4;
         int transitVlanId = 512;
         switchManager.installTransitFlow(switchDpId, flowId, commonFlowCookie, inputPort, outputPort, transitVlanId,
-                FlowEncapsulationType.TRANSIT_VLAN);
+                FlowEncapsulationType.TRANSIT_VLAN, ingressSwitchDpId);
 
         OFFactory referenceOfFactory = new OFFactoryVer12Mock();
         OFFlowMod expected = referenceOfFactory.buildFlowAdd()
