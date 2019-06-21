@@ -62,7 +62,6 @@ public enum Destination {
      */
     WFM_TRANSACTION("WFM_TRANSACTION"),
 
-    WFM_OF_DISCOVERY("WFM_OF_DISCOVERY"),
     WFM_FLOW_LCM("WFM_FLOW_LCM"),
 
     WFM_CTRL("WFM_CTRL"),
