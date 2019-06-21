@@ -76,6 +76,10 @@ kilda_kafka_te_consumer_group: "kilda-tpe"
 kilda_discovery_interval: 3
 kilda_discovery_packet_ttl: 5
 kilda_discovery_timeout: "15"
+# discovery_limit of -1 is forever
+# 28000 is about a day (test every 3 seconds, 20 failures per minute, 1200 per hour ..
+kilda_discovery_limit: "-1"
+kilda_discovery_keep_removed_isl: 60
 kilda_worker_pool_size: 512
 kilda_opentsdb_timeout: 30
 kilda_opentsdb_num_spouts: 1
