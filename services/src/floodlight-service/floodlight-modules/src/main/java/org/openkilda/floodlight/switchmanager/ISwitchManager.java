@@ -120,12 +120,13 @@ public interface ISwitchManager extends IFloodlightService {
      * @param inputVlanId       input vlan to match on, 0 means not to match on vlan
      * @param transitTunnelId   vlan or vni to add before outputing on outputPort
      * @param encapsulationType flow encapsulation type
+     * @param ingressSwitchDpid datapathId of the ingress switch
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
     long installIngressFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort, int inputVlanId,
                             int transitTunnelId, OutputVlanType outputVlanType, long meterId,
-                            FlowEncapsulationType encapsulationType)
+                            FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpid)
             throws SwitchOperationException;
 
     /**
@@ -139,12 +140,13 @@ public interface ISwitchManager extends IFloodlightService {
      * @param outputVlanId      set vlan on packet before forwarding via outputPort; 0 means not to set
      * @param outputVlanType    type of action to apply to the outputVlanId if greater than 0
      * @param encapsulationType flow encapsulation type
+     * @param ingressSwitchDpId datapathId of the ingress switch
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
     long installEgressFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
                            int transitTunnelId, int outputVlanId, OutputVlanType outputVlanType,
-                           FlowEncapsulationType encapsulationType)
+                           FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpId)
             throws SwitchOperationException;
 
     /**
@@ -156,11 +158,13 @@ public interface ISwitchManager extends IFloodlightService {
      * @param outputPort        port to forward packet out
      * @param transitTunnelId   vlan or vni to match on inputPort
      * @param encapsulationType flow encapsulation type
+     * @param  ingressSwitchDpId datapathId of the ingress switch
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
     long installTransitFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
-                            int transitTunnelId, FlowEncapsulationType encapsulationType)
+                            int transitTunnelId, FlowEncapsulationType encapsulationType,
+                            DatapathId ingressSwitchDpId)
             throws SwitchOperationException;
 
     /**

@@ -101,6 +101,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
      * @param outputVlanType output vlan type action
      * @param bandwidth      flow bandwidth
      * @param meterId        flow meter id
+     * @param ingressSwitchId id of the ingress switch
      * @throws IllegalArgumentException if any of mandatory parameters is null
      */
     @JsonCreator
@@ -116,9 +117,10 @@ public class InstallIngressFlow extends InstallTransitFlow {
                                           transitEncapsulationType,
                               @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                               @JsonProperty("bandwidth") final Long bandwidth,
-                              @JsonProperty("meter_id") final Long meterId) {
+                              @JsonProperty("meter_id") final Long meterId,
+                              @JsonProperty("ingress_switch_id") final SwitchId ingressSwitchId) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
-                transitEncapsulationType);
+                transitEncapsulationType, ingressSwitchId);
         setInputVlanId(inputVlanId);
         setOutputVlanType(outputVlanType);
         setBandwidth(bandwidth);

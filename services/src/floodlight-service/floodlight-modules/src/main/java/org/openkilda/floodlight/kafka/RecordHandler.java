@@ -311,7 +311,8 @@ class RecordHandler implements Runnable {
                 command.getTransitEncapsulationId(),
                 command.getOutputVlanType(),
                 meterId,
-                command.getTransitEncapsulationType());
+                command.getTransitEncapsulationType(),
+                DatapathId.of(command.getIngressSwitchId().toLong()));
     }
 
     /**
@@ -351,7 +352,8 @@ class RecordHandler implements Runnable {
                 command.getTransitEncapsulationId(),
                 command.getOutputVlanId(),
                 command.getOutputVlanType(),
-                command.getTransitEncapsulationType());
+                command.getTransitEncapsulationType(),
+                DatapathId.of(command.getIngressSwitchId().toLong()));
     }
 
     /**
@@ -389,7 +391,8 @@ class RecordHandler implements Runnable {
                 command.getInputPort(),
                 command.getOutputPort(),
                 command.getTransitEncapsulationId(),
-                command.getTransitEncapsulationType());
+                command.getTransitEncapsulationType(),
+                DatapathId.of(command.getIngressSwitchId().toLong()));
     }
 
     /**
