@@ -48,7 +48,12 @@ class FlowDiversitySpec extends BaseSpecification {
         def flow3 = flowHelper.randomFlow(switchPair, false, [flow1, flow2]).tap { it.diverseFlowId = flow2.id }
         [flow1, flow2, flow3].each { flowHelper.addFlow(it) }
 
-        then: "All flows have different paths"
+        then: "All flows have diverse flow IDs in response"
+        northbound.getFlow(flow1.id).diverseWith.sort() == [flow2.id, flow3.id].sort()
+        northbound.getFlow(flow2.id).diverseWith.sort() == [flow1.id, flow3.id].sort()
+        northbound.getFlow(flow3.id).diverseWith.sort() == [flow1.id, flow2.id].sort()
+
+        and: "All flows have different paths"
         def allInvolvedIsls = [flow1, flow2, flow3].collectMany {
             pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(it.id)))
         }
@@ -56,23 +61,6 @@ class FlowDiversitySpec extends BaseSpecification {
 
         and: "Delete flows"
         [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
-    }
-
-    def "Able to get diverse flows id in flow get response"() {
-        given: "Two active neighboring switches with two not overlapping paths at least"
-        def switchPair = getSwitchPair(2)
-
-        when: "Create three flows with diversity enabled"
-        def flow1 = flowHelper.randomFlow(switchPair, false)
-        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.id }
-        [flow1, flow2].each { flowHelper.addFlow(it) }
-
-        then: "Flow has diverse flows id in response"
-        assert northbound.getFlow(flow1.getId()).getDiverseWith() == [flow2.getId()]
-        assert northbound.getFlow(flow2.getId()).getDiverseWith() == [flow1.getId()]
-
-        and: "Delete flows"
-        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
     }
 
     def "Able to update flows to become diverse"() {
@@ -96,6 +84,11 @@ class FlowDiversitySpec extends BaseSpecification {
         then: "The flow became diverse and changed the path"
         def flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.id))
         flow2PathUpdated != flow2Path
+
+        and: "All flows except last one have the 'diverse_with' field"
+        northbound.getFlow(flow1.id).diverseWith == [flow2.id]
+        northbound.getFlow(flow2.id).diverseWith == [flow1.id]
+        !northbound.getFlow(flow3.id).diverseWith
 
         when: "Update the third flow to become diverse"
         flowHelper.updateFlow(flow3.id, flow3.tap { it.diverseFlowId = flow2.id })
@@ -137,6 +130,9 @@ class FlowDiversitySpec extends BaseSpecification {
         flow2PathUpdated != flow2Path
         flow2PathUpdated == flow1Path
 
+        and: "The 'diverse_with' field is removed"
+        !northbound.getFlow(flow2.id).diverseWith
+
         when: "Update the third flow to become not diverse"
         flowHelper.updateFlow(flow3.id, flow3.tap { it.diverseFlowId = null })
 
@@ -144,6 +140,9 @@ class FlowDiversitySpec extends BaseSpecification {
         def flow3PathUpdated = PathHelper.convert(northbound.getFlowPath(flow3.id))
         flow3PathUpdated != flow3Path
         flow3PathUpdated == flow1Path
+
+        and: "The 'diverse_with' field is removed"
+        !northbound.getFlow(flow3.id).diverseWith
 
         and: "Delete flows"
         [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
