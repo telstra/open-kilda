@@ -15,7 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
-import org.openkilda.model.FlowStatus;
+import org.openkilda.model.Flow;
+import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
@@ -38,7 +39,8 @@ public class MarkFlowUpAction extends
         String flowId = stateMachine.getFlowId();
         log.debug("Set the flow status of {} to down.", flowId);
 
-        flowRepository.updateStatus(flowId, FlowStatus.UP);
+        Flow flow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
+        flowRepository.updateStatus(flowId, flow.computeFlowStatus());
 
         saveHistory(stateMachine, stateMachine.getCarrier(), flowId,
                 "Set the flow status to up.");

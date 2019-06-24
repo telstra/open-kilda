@@ -59,6 +59,10 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowRerouteFsm, St
         transactionManager.doInTransaction(() -> {
             Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
 
+            if (stateMachine.getNewEncapsulationType() != null) {
+                flow.setEncapsulationType(stateMachine.getNewEncapsulationType());
+            }
+
             if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
                 FlowPath oldForward = getFlowPath(flow, flow.getForwardPathId());
                 stateMachine.setOldPrimaryForwardPath(oldForward.getPathId());
@@ -70,7 +74,7 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowRerouteFsm, St
                 stateMachine.setOldPrimaryReversePathStatus(oldReverse.getStatus());
                 flowPathRepository.updateStatus(oldReverse.getPathId(), FlowPathStatus.IN_PROGRESS);
 
-                FlowResources oldResources = getResources(flow, oldForward, oldReverse);
+                FlowResources oldResources = getOldResources(flow, oldForward, oldReverse);
                 stateMachine.addOldResources(oldResources);
 
                 PathId newForward = stateMachine.getNewPrimaryForwardPath();
@@ -97,7 +101,7 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowRerouteFsm, St
                 stateMachine.setOldProtectedReversePathStatus(oldReverse.getStatus());
                 flowPathRepository.updateStatus(oldReverse.getPathId(), FlowPathStatus.IN_PROGRESS);
 
-                FlowResources oldResources = getResources(flow, oldForward, oldReverse);
+                FlowResources oldResources = getOldResources(flow, oldForward, oldReverse);
                 stateMachine.addOldResources(oldResources);
 
                 PathId newForward = stateMachine.getNewProtectedForwardPath();
@@ -116,7 +120,7 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowRerouteFsm, St
         });
     }
 
-    private FlowResources getResources(Flow flow, FlowPath forwardPath, FlowPath reversePath) {
+    private FlowResources getOldResources(Flow flow, FlowPath forwardPath, FlowPath reversePath) {
         EncapsulationResources encapsulationResources = resourcesManager.getEncapsulationResources(
                 forwardPath.getPathId(), reversePath.getPathId(), flow.getEncapsulationType()).orElse(null);
         return FlowResources.builder()

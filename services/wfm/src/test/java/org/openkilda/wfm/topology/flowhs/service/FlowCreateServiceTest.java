@@ -38,6 +38,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.MeterId;
@@ -59,7 +60,6 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
@@ -78,8 +78,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -105,9 +103,6 @@ public class FlowCreateServiceTest {
     private TransactionManager transactionManager;
 
     @Mock
-    private TransitVlanRepository transitVlanRepository;
-
-    @Mock
     private RepositoryFactory repositoryFactory;
 
     @Mock
@@ -130,7 +125,7 @@ public class FlowCreateServiceTest {
 
     @Mock
     private FlowResourcesManager flowResourcesManager;
-    
+
     @Mock
     private PathComputer pathComputer;
 
@@ -165,7 +160,6 @@ public class FlowCreateServiceTest {
         }).when(flowRepository).createOrUpdate(any(Flow.class));
         when(kildaConfigurationRepository.get()).thenReturn(KildaConfiguration.DEFAULTS);
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
-        when(repositoryFactory.createTransitVlanRepository()).thenReturn(transitVlanRepository);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
 
         when(switchRepository.reload(any(Switch.class))).thenAnswer((invocation) -> invocation.getArgument(0));
@@ -183,7 +177,7 @@ public class FlowCreateServiceTest {
 
     @After
     public void reset() {
-        Mockito.reset(persistenceManager, transactionManager, transitVlanRepository, repositoryFactory,
+        Mockito.reset(persistenceManager, transactionManager, repositoryFactory,
                 featureTogglesRepository, flowRepository, flowPathRepository, islRepository, switchRepository,
                 kildaConfigurationRepository, flowResourcesManager, pathComputer, carrier);
     }
@@ -423,18 +417,22 @@ public class FlowCreateServiceTest {
                 .build();
 
         when(flowResourcesManager.allocateFlowResources(any(Flow.class))).thenReturn(flowResources);
-        when(transitVlanRepository.findByPathId(forwardResources.getPathId(), reverseResources.getPathId()))
-                .thenReturn(getTransitVlans(flowResources, true));
-        when(transitVlanRepository.findByPathId(reverseResources.getPathId(), forwardResources.getPathId()))
-                .thenReturn(getTransitVlans(flowResources, false));
+        when(flowResourcesManager.getEncapsulationResources(eq(forwardResources.getPathId()),
+                eq(reverseResources.getPathId()), eq(FlowEncapsulationType.TRANSIT_VLAN)))
+                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
+                        getTransitVlans(flowResources, true)).build()));
+        when(flowResourcesManager.getEncapsulationResources(eq(reverseResources.getPathId()),
+                eq(forwardResources.getPathId()), eq(FlowEncapsulationType.TRANSIT_VLAN)))
+                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
+                        getTransitVlans(flowResources, false)).build()));
     }
 
-    private Collection<TransitVlan> getTransitVlans(FlowResources flowResources, boolean forward) {
+    private TransitVlan getTransitVlans(FlowResources flowResources, boolean forward) {
         TransitVlanEncapsulation encap = forward
                 ? (TransitVlanEncapsulation) flowResources.getForward().getEncapsulationResources()
                 : (TransitVlanEncapsulation) flowResources.getReverse().getEncapsulationResources();
 
-        return Collections.singleton((encap).getTransitVlan());
+        return encap.getTransitVlan();
     }
 
     private FlowResponse getFlowRule(FlowRequest request) {
@@ -446,7 +444,7 @@ public class FlowCreateServiceTest {
                     .commandId(request.getCommandId())
                     .success(true)
                     .cookie(command.getCookie())
-                    .inVlan(command.getTransitVlanId())
+                    .inVlan(command.getTransitEncapsulationId())
                     .outVlan(command.getOutputVlanId())
                     .inPort(command.getInputPort())
                     .outPort(command.getOutputPort())
@@ -458,8 +456,8 @@ public class FlowCreateServiceTest {
                     .commandId(request.getCommandId())
                     .success(true)
                     .cookie(command.getCookie())
-                    .inVlan(command.getTransitVlanId())
-                    .outVlan(command.getTransitVlanId())
+                    .inVlan(command.getTransitEncapsulationId())
+                    .outVlan(command.getTransitEncapsulationId())
                     .inPort(command.getInputPort())
                     .outPort(command.getOutputPort())
                     .build();

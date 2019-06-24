@@ -25,14 +25,22 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.share.history.model.FlowEventData;
+import org.openkilda.wfm.share.history.model.FlowHistoryData;
+import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
+import org.openkilda.wfm.topology.flowhs.service.FlowHistorySupportingCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -43,9 +51,14 @@ public class ValidateFlowAction extends
         NbTrackableAction<FlowRerouteFsm, FlowRerouteFsm.State, FlowRerouteFsm.Event, FlowRerouteContext> {
 
     private final FlowRepository flowRepository;
+    private final KildaConfigurationRepository kildaConfigurationRepository;
+    private final FeatureTogglesRepository featureTogglesRepository;
 
     public ValidateFlowAction(PersistenceManager persistenceManager) {
-        flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
+        flowRepository = repositoryFactory.createFlowRepository();
+        kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
+        featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }
 
     @Override
@@ -69,7 +82,16 @@ public class ValidateFlowAction extends
             }
 
             stateMachine.setOriginalFlowStatus(flow.getStatus());
+            stateMachine.setOriginalEncapsulationType(flow.getEncapsulationType());
             stateMachine.setRecreateIfSamePath(!flow.isActive() || context.isForceReroute());
+
+            featureTogglesRepository.find().ifPresent(featureToggles ->
+                    Optional.ofNullable(featureToggles.getFlowsRerouteUsingDefaultEncapType()).ifPresent(toggle -> {
+                        if (toggle) {
+                            stateMachine.setNewEncapsulationType(
+                                    kildaConfigurationRepository.get().getFlowEncapsulationType());
+                        }
+                    }));
 
             Set<PathId> pathsToReroute =
                     new HashSet<>(Optional.ofNullable(context.getPathsToReroute()).orElse(emptySet()));
@@ -93,6 +115,11 @@ public class ValidateFlowAction extends
             stateMachine.setReroutePrimary(reroutePrimary);
             stateMachine.setRerouteProtected(rerouteProtected);
 
+            if (stateMachine.isRerouteProtected() && flow.isPinned()) {
+                throw new FlowProcessingException(ErrorType.REQUEST_INVALID, getGenericErrorMessage(),
+                        format("Flow %s is pinned, fail to reroute its protected paths", flowId));
+            }
+
             saveHistory(stateMachine, stateMachine.getCarrier(), flowId, "Flow was validated successfully");
 
             return Optional.empty();
@@ -109,6 +136,26 @@ public class ValidateFlowAction extends
             return Optional.of(buildErrorMessage(stateMachine, e.getErrorType(), e.getErrorMessage(),
                     e.getErrorDescription()));
         }
+    }
+
+    @Override
+    protected void saveHistory(FlowRerouteFsm stateMachine, FlowHistorySupportingCarrier carrier,
+                               String flowId, String action) {
+        Instant timestamp = Instant.now();
+        FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
+                .taskId(stateMachine.getCommandContext().getCorrelationId())
+                .flowHistoryData(FlowHistoryData.builder()
+                        .action(action)
+                        .time(Instant.now())
+                        .flowId(flowId)
+                        .build())
+                .flowEventData(FlowEventData.builder()
+                        .flowId(flowId)
+                        .event(FlowEventData.Event.REROUTE)
+                        .time(timestamp)
+                        .build())
+                .build();
+        carrier.sendHistoryUpdate(historyHolder);
     }
 
     @Override

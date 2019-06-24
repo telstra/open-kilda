@@ -459,7 +459,6 @@ public class Flow implements Serializable {
         return paths.stream().map(FlowPath::getPathId).collect(Collectors.toList());
     }
 
-
     /**
      * Return main flow prioritized paths status.
      */
@@ -480,5 +479,32 @@ public class Flow implements Serializable {
                 .map(FlowPath::getStatus)
                 .max(FlowPathStatus::compareTo)
                 .orElse(null);
+    }
+
+    /**
+     * Calculate the combined flow status based on the status of primary and protected paths.
+     */
+    public FlowStatus computeFlowStatus() {
+        FlowPathStatus mainFlowPrioritizedPathsStatus = getMainFlowPrioritizedPathsStatus();
+        FlowPathStatus protectedFlowPrioritizedPathsStatus = getProtectedFlowPrioritizedPathsStatus();
+
+        // Calculate the combined flow status.
+        if (protectedFlowPrioritizedPathsStatus != null
+                && protectedFlowPrioritizedPathsStatus != FlowPathStatus.ACTIVE
+                && mainFlowPrioritizedPathsStatus == FlowPathStatus.ACTIVE) {
+            return FlowStatus.DEGRADED;
+        } else {
+            switch (mainFlowPrioritizedPathsStatus) {
+                case ACTIVE:
+                    return FlowStatus.UP;
+                case INACTIVE:
+                    return FlowStatus.DOWN;
+                case IN_PROGRESS:
+                    return FlowStatus.IN_PROGRESS;
+                default:
+                    throw new IllegalArgumentException(
+                            format("Unsupported flow path status %s", mainFlowPrioritizedPathsStatus));
+            }
+        }
     }
 }

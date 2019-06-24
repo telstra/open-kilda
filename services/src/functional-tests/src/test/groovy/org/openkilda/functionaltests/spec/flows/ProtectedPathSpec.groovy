@@ -914,8 +914,12 @@ class ProtectedPathSpec extends BaseSpecification {
         northbound.portUp(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
 
         //TODO (andriidovhan) state should change to DEGRADED when pr2430 is merged
-        then: "Flow state is still DOWN"
-        Wrappers.timedLoop(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
+        then: "Flow state is still DEGRADED"
+        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
+        // Revise and fix the test appropriately.
+        Wrappers.wait(WAIT_OFFSET * 2) {
+            assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED
+        }
 
         when: "Try to swap paths when the main path is available and the protected path is not available"
         northbound.swapFlowPath(flow.id)

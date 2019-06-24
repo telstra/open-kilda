@@ -107,14 +107,14 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                 .from(State.RESOURCES_ALLOCATED)
                 .to(State.INSTALLING_INGRESS_RULES)
                 .on(Event.SKIP_NON_INGRESS_RULES_INSTALL)
-                .perform(new InstallIngressRulesAction(persistenceManager));
+                .perform(new InstallIngressRulesAction(persistenceManager, resourcesManager));
 
         // install and validate transit and egress rules
         builder.externalTransition()
                 .from(State.RESOURCES_ALLOCATED)
                 .to(State.INSTALLING_NON_INGRESS_RULES)
                 .on(Event.NEXT)
-                .perform(new InstallNonIngressRulesAction(persistenceManager));
+                .perform(new InstallNonIngressRulesAction(persistenceManager, resourcesManager));
 
         builder.internalTransition()
                 .within(State.INSTALLING_NON_INGRESS_RULES)
@@ -136,7 +136,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                 .from(State.VALIDATING_NON_INGRESS_RULES)
                 .toAmong(State.INSTALLING_INGRESS_RULES)
                 .onEach(Event.NEXT)
-                .perform(new InstallIngressRulesAction(persistenceManager));
+                .perform(new InstallIngressRulesAction(persistenceManager, resourcesManager));
 
         builder.internalTransition()
                 .within(State.INSTALLING_INGRESS_RULES)
@@ -174,25 +174,25 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                 .from(State.INSTALLING_NON_INGRESS_RULES)
                 .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
                 .onEach(Event.TIMEOUT, Event.ERROR)
-                .perform(new RollbackInstalledRulesAction(persistenceManager));
+                .perform(new RollbackInstalledRulesAction(persistenceManager, resourcesManager));
 
         builder.transitions()
                 .from(State.VALIDATING_NON_INGRESS_RULES)
                 .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
                 .onEach(Event.TIMEOUT, Event.ERROR)
-                .perform(new RollbackInstalledRulesAction(persistenceManager));
+                .perform(new RollbackInstalledRulesAction(persistenceManager, resourcesManager));
 
         builder.transitions()
                 .from(State.INSTALLING_INGRESS_RULES)
                 .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
                 .onEach(Event.TIMEOUT, Event.ERROR)
-                .perform(new RollbackInstalledRulesAction(persistenceManager));
+                .perform(new RollbackInstalledRulesAction(persistenceManager, resourcesManager));
 
         builder.transitions()
                 .from(State.VALIDATING_INGRESS_RULES)
                 .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
                 .onEach(Event.TIMEOUT, Event.ERROR)
-                .perform(new RollbackInstalledRulesAction(persistenceManager));
+                .perform(new RollbackInstalledRulesAction(persistenceManager, resourcesManager));
 
         // rules deletion
         builder.transitions()

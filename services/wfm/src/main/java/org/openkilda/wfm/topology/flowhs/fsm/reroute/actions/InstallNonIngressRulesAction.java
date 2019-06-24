@@ -18,15 +18,17 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.AbstractFlowCommandFactory;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandFactory;
+import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
+import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,32 +43,35 @@ import java.util.stream.Collectors;
 public class InstallNonIngressRulesAction extends
         FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
-    private final AbstractFlowCommandFactory commandFactory;
+    private final FlowCommandBuilderFactory commandBuilderFactory;
 
-    public InstallNonIngressRulesAction(PersistenceManager persistenceManager) {
+    public InstallNonIngressRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
 
-        commandFactory = new AbstractFlowCommandFactory(persistenceManager);
+        commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
     }
 
     @Override
     protected void perform(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
                            FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         Flow flow = getFlow(stateMachine.getFlowId());
-        FlowCommandFactory flowCommandFactory = commandFactory.getFactory(flow.getEncapsulationType());
+
+        FlowEncapsulationType encapsulationType = stateMachine.getNewEncapsulationType() != null
+                ? stateMachine.getNewEncapsulationType() : flow.getEncapsulationType();
+        FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(encapsulationType);
 
         Collection<InstallTransitRule> commands = new ArrayList<>();
 
         if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
-            commands.addAll(flowCommandFactory.createInstallNonIngressRules(
+            commands.addAll(commandBuilder.createInstallNonIngressRules(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
         if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
-            commands.addAll(flowCommandFactory.createInstallNonIngressRules(
+            commands.addAll(commandBuilder.createInstallNonIngressRules(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
 

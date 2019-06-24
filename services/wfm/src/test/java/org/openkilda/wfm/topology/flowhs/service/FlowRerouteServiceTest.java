@@ -63,17 +63,18 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionCallback;
 import org.openkilda.persistence.TransactionCallbackWithoutResult;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
-import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
+import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
 
 import lombok.SneakyThrows;
 import net.jodah.failsafe.Failsafe;
@@ -108,8 +109,6 @@ public class FlowRerouteServiceTest {
     @Mock
     private FlowPathRepository flowPathRepository;
     @Mock
-    private TransitVlanRepository transitVlanRepository;
-    @Mock
     private PathComputer pathComputer;
     @Mock
     private FlowResourcesManager flowResourcesManager;
@@ -137,7 +136,8 @@ public class FlowRerouteServiceTest {
         when(switchRepository.reload(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
 
-        when(repositoryFactory.createTransitVlanRepository()).thenReturn(transitVlanRepository);
+        FeatureTogglesRepository featureTogglesRepository = mock(FeatureTogglesRepository.class);
+        when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
 
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
         when(persistenceManager.getTransactionManager()).thenReturn(new TransactionManager() {
@@ -741,19 +741,27 @@ public class FlowRerouteServiceTest {
 
         when(flowResourcesManager.allocateFlowResources(any())).thenReturn(flowResources);
 
-        when(transitVlanRepository.findByPathId(eq(NEW_FORWARD_FLOW_PATH), eq(NEW_REVERSE_FLOW_PATH)))
-                .thenReturn(Collections.singletonList(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(101).build()));
-        when(transitVlanRepository.findByPathId(eq(NEW_REVERSE_FLOW_PATH), eq(NEW_FORWARD_FLOW_PATH)))
-                .thenReturn(Collections.singletonList(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(102).build()));
+        when(flowResourcesManager.getEncapsulationResources(eq(NEW_FORWARD_FLOW_PATH), eq(NEW_REVERSE_FLOW_PATH),
+                eq(FlowEncapsulationType.TRANSIT_VLAN)))
+                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
+                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(101).build())
+                        .build()));
+        when(flowResourcesManager.getEncapsulationResources(eq(NEW_REVERSE_FLOW_PATH), eq(NEW_FORWARD_FLOW_PATH),
+                eq(FlowEncapsulationType.TRANSIT_VLAN)))
+                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
+                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(102).build())
+                        .build()));
 
-        when(transitVlanRepository.findByPathId(eq(OLD_FORWARD_FLOW_PATH), eq(OLD_REVERSE_FLOW_PATH)))
-                .thenReturn(Collections.singletonList(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(201).build()));
-        when(transitVlanRepository.findByPathId(eq(OLD_REVERSE_FLOW_PATH), eq(OLD_FORWARD_FLOW_PATH)))
-                .thenReturn(Collections.singletonList(
-                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(202).build()));
+        when(flowResourcesManager.getEncapsulationResources(eq(OLD_FORWARD_FLOW_PATH), eq(OLD_REVERSE_FLOW_PATH),
+                eq(FlowEncapsulationType.TRANSIT_VLAN)))
+                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
+                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_FORWARD_FLOW_PATH).vlan(201).build())
+                        .build()));
+        when(flowResourcesManager.getEncapsulationResources(eq(OLD_REVERSE_FLOW_PATH), eq(OLD_FORWARD_FLOW_PATH),
+                eq(FlowEncapsulationType.TRANSIT_VLAN)))
+                .thenReturn(Optional.of(TransitVlanEncapsulation.builder().transitVlan(
+                        TransitVlan.builder().flowId(FLOW_ID).pathId(NEW_REVERSE_FLOW_PATH).vlan(202).build())
+                        .build()));
 
         return flowResources;
     }
@@ -774,11 +782,11 @@ public class FlowRerouteServiceTest {
                 .inPort(rule.getInputPort())
                 .outPort(rule.getOutputPort());
         if (rule instanceof InstallEgressRule) {
-            builder.inVlan(((InstallEgressRule) rule).getTransitVlanId());
+            builder.inVlan(((InstallEgressRule) rule).getTransitEncapsulationId());
             builder.outVlan(((InstallEgressRule) rule).getOutputVlanId());
         } else if (rule instanceof InstallTransitRule) {
-            builder.inVlan(((InstallTransitRule) rule).getTransitVlanId());
-            builder.outVlan(((InstallTransitRule) rule).getTransitVlanId());
+            builder.inVlan(((InstallTransitRule) rule).getTransitEncapsulationId());
+            builder.outVlan(((InstallTransitRule) rule).getTransitEncapsulationId());
         } else if (rule instanceof InstallIngressRule) {
             InstallIngressRule ingressRule = (InstallIngressRule) rule;
             builder.inVlan(ingressRule.getInputVlanId())

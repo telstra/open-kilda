@@ -40,7 +40,6 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
-import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
@@ -219,7 +218,6 @@ abstract class BaseResourceAllocationAction extends
 
     protected void saveHistory(FlowRerouteFsm stateMachine, Flow flow,
                                FlowPathPair oldFlowPaths, FlowPathPair newFlowPaths) {
-        Instant timestamp = Instant.now();
         FlowDumpData oldDumpData = HistoryMapper.INSTANCE.map(flow,
                 oldFlowPaths.getForward(), oldFlowPaths.getReverse());
         oldDumpData.setDumpType(DumpType.STATE_BEFORE);
@@ -234,13 +232,8 @@ abstract class BaseResourceAllocationAction extends
                     .flowDumpData(dumpData)
                     .flowHistoryData(FlowHistoryData.builder()
                             .action("New paths were created (with allocated resources)")
-                            .time(timestamp)
+                            .time(Instant.now())
                             .flowId(flow.getFlowId())
-                            .build())
-                    .flowEventData(FlowEventData.builder()
-                            .flowId(flow.getFlowId())
-                            .event(FlowEventData.Event.REROUTE)
-                            .time(timestamp)
                             .build())
                     .build();
             stateMachine.getCarrier().sendHistoryUpdate(historyHolder);

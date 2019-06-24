@@ -27,6 +27,7 @@ import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
@@ -72,12 +73,15 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
                                      @JsonProperty("switch_id") SwitchId switchId,
                                      @JsonProperty("input_port") Integer inputPort,
                                      @JsonProperty("output_port") Integer outputPort,
-                                     @JsonProperty("transit_vlan_id") Integer transitVlanId,
                                      @JsonProperty("bandwidth") Long bandwidth,
                                      @JsonProperty("input_vlan_id") Integer inputVlanId,
                                      @JsonProperty("output_vlan_type") OutputVlanType outputVlanType,
-                                     @JsonProperty("meter_id") MeterId meterId) {
-        super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort, transitVlanId);
+                                     @JsonProperty("meter_id") MeterId meterId,
+                                     @JsonProperty("transit_encapsulation_id") Integer transitEncapsulationId,
+                                     @JsonProperty("transit_encapsulation_type")
+                                             FlowEncapsulationType transitEncapsulationType) {
+        super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort,
+                transitEncapsulationId, transitEncapsulationType);
         this.bandwidth = bandwidth;
         this.inputVlanId = inputVlanId;
         this.outputVlanType = outputVlanType;
@@ -142,7 +146,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
         if (outputVlanType == OutputVlanType.PUSH || outputVlanType == OutputVlanType.NONE) {
             actionList.add(actionPushVlan(ofFactory, ETH_TYPE));
         }
-        actionList.add(actionReplaceVlan(ofFactory, transitVlanId));
+        actionList.add(actionReplaceVlan(ofFactory, transitEncapsulationId));
         return actionList;
     }
 

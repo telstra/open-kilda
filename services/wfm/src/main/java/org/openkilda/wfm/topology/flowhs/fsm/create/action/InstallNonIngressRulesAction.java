@@ -19,12 +19,14 @@ import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.TransitVlanCommandFactory;
+import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
+import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,19 +39,20 @@ import java.util.stream.Collectors;
 @Slf4j
 public class InstallNonIngressRulesAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
-    private TransitVlanCommandFactory commandFactory;
+    private final FlowCommandBuilderFactory commandBuilderFactory;
 
-    public InstallNonIngressRulesAction(PersistenceManager persistenceManager) {
+    public InstallNonIngressRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
-        this.commandFactory =
-                new TransitVlanCommandFactory(persistenceManager.getRepositoryFactory().createTransitVlanRepository());
+
+        commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         Flow flow = getFlow(stateMachine.getFlowId());
+        FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
         List<InstallTransitRule> commands =
-                commandFactory.createInstallNonIngressRules(stateMachine.getCommandContext(), flow);
+                commandBuilder.createInstallNonIngressRules(stateMachine.getCommandContext(), flow);
 
         if (commands.isEmpty()) {
             log.debug("No need to install non ingress rules for one switch flow");

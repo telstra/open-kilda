@@ -63,6 +63,10 @@ public class AllocateProtectedResourcesAction extends BaseResourceAllocationActi
         FlowPath primaryReversePath = flow.getPath(stateMachine.getNewPrimaryReversePath())
                 .orElse(flow.getReversePath());
 
+        if (stateMachine.getNewEncapsulationType() != null) {
+            flow.setEncapsulationType(stateMachine.getNewEncapsulationType());
+        }
+
         log.debug("Finding a new protected path for flow {}", flowId);
         PathPair potentialPath = pathComputer.getPath(flow,
                 asList(flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()));
@@ -81,7 +85,7 @@ public class AllocateProtectedResourcesAction extends BaseResourceAllocationActi
             FlowPath protectedReversePath = flow.getProtectedReversePath();
             flowPathRepository.updateStatus(protectedReversePath.getPathId(), FlowPathStatus.INACTIVE);
 
-            flowRepository.updateStatus(flow.getFlowId(), FlowStatus.DOWN);
+            flowRepository.updateStatus(flow.getFlowId(), flow.computeFlowStatus());
         } else {
             boolean newPathFound = isNotSamePath(potentialPath, flow.getProtectedForwardPath(),
                     flow.getProtectedReversePath());

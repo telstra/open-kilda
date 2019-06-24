@@ -638,7 +638,7 @@ public class FlowService extends BaseFlowService {
                     flowPathRepository.createOrUpdate(currentForwardPath);
                     flowPathRepository.createOrUpdate(currentReversePath);
 
-                    flow.setStatus(computeFlowStatus(flow));
+                    flow.setStatus(flow.computeFlowStatus());
                     flowRepository.createOrUpdate(flow);
 
                     toRemoveBuilder.protectedForwardPath(null).protectedReversePath(null);
@@ -777,7 +777,7 @@ public class FlowService extends BaseFlowService {
         transactionManager.doInTransaction(() -> {
             Flow flow = flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
-            FlowStatus flowStatus = computeFlowStatus(flow);
+            FlowStatus flowStatus = flow.computeFlowStatus();
 
             if (flowStatus != flow.getStatus()) {
                 log.debug("Set flow {} status to {}", flowId, flowStatus);
@@ -786,30 +786,6 @@ public class FlowService extends BaseFlowService {
                 flowRepository.createOrUpdate(flow);
             }
         });
-    }
-
-    private FlowStatus computeFlowStatus(Flow flow) {
-        FlowPathStatus mainFlowPrioritizedPathsStatus = flow.getMainFlowPrioritizedPathsStatus();
-        FlowPathStatus protectedFlowPrioritizedPathsStatus = flow.getProtectedFlowPrioritizedPathsStatus();
-
-        // Calculate the combined flow status.
-        if (protectedFlowPrioritizedPathsStatus != null
-                && protectedFlowPrioritizedPathsStatus != FlowPathStatus.ACTIVE
-                && mainFlowPrioritizedPathsStatus == FlowPathStatus.ACTIVE) {
-            return FlowStatus.DEGRADED;
-        } else {
-            switch (mainFlowPrioritizedPathsStatus) {
-                case ACTIVE:
-                    return FlowStatus.UP;
-                case INACTIVE:
-                    return FlowStatus.DOWN;
-                case IN_PROGRESS:
-                    return FlowStatus.IN_PROGRESS;
-                default:
-                    throw new IllegalArgumentException(
-                            format("Unsupported flow path status %s", mainFlowPrioritizedPathsStatus));
-            }
-        }
     }
 
     /**
