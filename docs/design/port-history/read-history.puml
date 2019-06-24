@@ -1,0 +1,20 @@
+@startuml
+title Read port status history
+
+participant Northbound as nb
+control kafka as k
+participant "NB worker" as nbw
+database Neo4j as db
+
+-> nb: get history
+activate nb
+nb -> k: Get history request
+k -> nbw: Get history requeset
+nbw -> db: Read history
+db --> nbw
+nbw --> k: Port history
+k --> nb: Port history
+<- nb: provide port history
+deactivate nb
+
+@enduml

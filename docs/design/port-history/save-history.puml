@@ -1,0 +1,22 @@
+@startuml
+title Save port status history
+
+collections Switches as sw
+participant Floodlight as fl
+control kafka as k
+box "Network Topology" #LightBlue
+participant "InputSpeaker" as is
+participant "SpeakerRouter" as sr
+participant "SwitchHandler" as sh
+end box
+database Neo4j as db
+
+sw -> fl: Send "PortStatus"
+fl -> k: Send "PortInfoData"
+k -> is: Receive "PortInfoData"
+is -> sr
+sr -> sh
+sh -> db: Save history record
+sh -> sh: Process switch port event\nas usual
+
+@enduml
