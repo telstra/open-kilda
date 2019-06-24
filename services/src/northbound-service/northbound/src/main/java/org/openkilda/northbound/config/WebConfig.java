@@ -17,14 +17,12 @@ package org.openkilda.northbound.config;
 
 import org.openkilda.northbound.utils.ExecutionTimeInterceptor;
 import org.openkilda.northbound.utils.ExtraAuthInterceptor;
-import org.openkilda.northbound.utils.RequestCorrelationFilter;
 import org.openkilda.northbound.utils.async.CompletableFutureReturnValueHandler;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
-import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
 import org.springframework.web.servlet.config.annotation.DefaultServletHandlerConfigurer;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
@@ -111,10 +109,4 @@ public class WebConfig extends WebMvcConfigurerAdapter {
     public ExtraAuthInterceptor extraAuthInterceptor() {
         return new ExtraAuthInterceptor();
     }
-
-    @Bean
-    public OncePerRequestFilter requestCorrelationIdFilter() {
-        return new RequestCorrelationFilter();
-    }
-
 }

@@ -23,6 +23,8 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
 import org.openkilda.messaging.error.MessageException;
 
+import org.slf4j.MDC;
+import org.slf4j.MDC.MDCCloseable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -85,7 +87,9 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
         MessageError error = new MessageError(exception.getCorrelationId(), exception.getTimestamp(),
                 exception.getErrorType().toString(), exception.getMessage(), exception.getErrorDescription());
 
-        logger.warn(format("Error %s caught.", error), exception);
+        try (MDCCloseable mdcCloseable = MDC.putCloseable(CORRELATION_ID, exception.getCorrelationId())) {
+            logger.warn(format("Error %s caught.", error), exception);
+        }
 
         return super.handleExceptionInternal(exception, error, new HttpHeaders(), status, request);
     }
