@@ -19,6 +19,7 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -34,8 +35,17 @@ import java.util.UUID;
 @EqualsAndHashCode(callSuper = true)
 public class InstallTransitRule extends InstallFlowRule {
 
-    @JsonProperty("transit_vlan_id")
-    protected Integer transitVlanId;
+    /**
+     * The transit encapsulation id value.
+     */
+    @JsonProperty("transit_encapsulation_id")
+    protected Integer transitEncapsulationId;
+
+    /**
+     * The transit encapsulation type.
+     */
+    @JsonProperty("transit_encapsulation_type")
+    protected FlowEncapsulationType transitEncapsulationType;
 
     @JsonCreator
     public InstallTransitRule(@JsonProperty("message_context") MessageContext messageContext,
@@ -45,8 +55,11 @@ public class InstallTransitRule extends InstallFlowRule {
                               @JsonProperty("switch_id") SwitchId switchId,
                               @JsonProperty("input_port") Integer inputPort,
                               @JsonProperty("output_port") Integer outputPort,
-                              @JsonProperty("transit_vlan_id") Integer transitVlanId) {
+                              @JsonProperty("transit_encapsulation_id") Integer transitEncapsulationId,
+                              @JsonProperty("transit_encapsulation_type")
+                                      FlowEncapsulationType transitEncapsulationType) {
         super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort);
-        this.transitVlanId = transitVlanId;
+        this.transitEncapsulationId = transitEncapsulationId;
+        this.transitEncapsulationType = transitEncapsulationType;
     }
 }

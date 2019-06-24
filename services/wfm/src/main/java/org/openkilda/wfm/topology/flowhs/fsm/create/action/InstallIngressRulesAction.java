@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
+import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
@@ -24,7 +25,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.TransitVlanCommandFactory;
+import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
+import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,18 +39,20 @@ import java.util.stream.Collectors;
 @Slf4j
 public class InstallIngressRulesAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
-    private final TransitVlanCommandFactory flowCommandFactory;
+    private final FlowCommandBuilderFactory commandBuilderFactory;
 
     public InstallIngressRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
-        this.flowCommandFactory = new TransitVlanCommandFactory(
-                persistenceManager.getRepositoryFactory().createTransitVlanRepository());
+
+        commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        List<InstallIngressRule> commands = flowCommandFactory.createInstallIngressRules(
-                stateMachine.getCommandContext(), getFlow(stateMachine.getFlowId()));
+        Flow flow = getFlow(stateMachine.getFlowId());
+        FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
+        List<InstallIngressRule> commands = commandBuilder.createInstallIngressRules(
+                stateMachine.getCommandContext(), flow);
         commands.forEach(command -> stateMachine.getCarrier().sendSpeakerRequest(command));
 
         stateMachine.setIngressCommands(commands.stream()

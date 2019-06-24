@@ -18,6 +18,7 @@ package org.openkilda.floodlight.command.flow;
 import org.openkilda.floodlight.command.MessageWriter;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -47,10 +48,13 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
                                     @JsonProperty("switch_id") SwitchId switchId,
                                     @JsonProperty("input_port") Integer inputPort,
                                     @JsonProperty("output_port") Integer outputPort,
-                                    @JsonProperty("transit_vlan_id") Integer transitVlanId,
                                     @JsonProperty("output_vlan_type") OutputVlanType outputVlanType,
-                                    @JsonProperty("output_vlan_id")Integer outputVlanId) {
-        super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort, transitVlanId);
+                                    @JsonProperty("output_vlan_id") Integer outputVlanId,
+                                    @JsonProperty("transit_encapsulation_id") Integer transitEncapsulationId,
+                                    @JsonProperty("transit_encapsulation_type")
+                                            FlowEncapsulationType transitEncapsulationType) {
+        super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort,
+                transitEncapsulationId, transitEncapsulationType);
         this.outputVlanType = outputVlanType;
         this.outputVlanId = outputVlanId;
     }
@@ -71,7 +75,7 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
 
         // build FLOW_MOD command, no meter
         OFFlowMod flowMod = prepareFlowModBuilder(ofFactory)
-                .setMatch(matchFlow(inputPort, transitVlanId, ofFactory))
+                .setMatch(matchFlow(inputPort, transitEncapsulationId, ofFactory))
                 .setInstructions(ImmutableList.of(actions))
                 .build();
 

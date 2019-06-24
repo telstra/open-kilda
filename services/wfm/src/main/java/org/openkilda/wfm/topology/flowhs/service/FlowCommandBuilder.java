@@ -24,7 +24,7 @@ import org.openkilda.wfm.CommandContext;
 
 import java.util.List;
 
-public interface FlowCommandFactory {
+public interface FlowCommandBuilder {
     /**
      * Build install commands for transit(if needed) and egress rules for active forward and reverse paths.
      *

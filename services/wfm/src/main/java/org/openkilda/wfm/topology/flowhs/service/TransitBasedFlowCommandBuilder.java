@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -29,16 +29,16 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.TransitVlan;
-import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
 import com.google.common.collect.ImmutableList;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
 
@@ -47,13 +47,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-@Slf4j
-public class TransitVlanCommandFactory implements FlowCommandFactory {
+public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
     private final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();
-    private final TransitVlanRepository transitVlanRepository;
+    private final FlowResourcesManager resourcesManager;
+    private final FlowEncapsulationType encapsulationType;
 
-    public TransitVlanCommandFactory(TransitVlanRepository transitVlanRepository) {
-        this.transitVlanRepository = transitVlanRepository;
+    public TransitBasedFlowCommandBuilder(FlowResourcesManager resourcesManager,
+                                          FlowEncapsulationType encapsulationType) {
+        this.resourcesManager = resourcesManager;
+        this.encapsulationType = encapsulationType;
     }
 
     @Override
@@ -68,12 +70,12 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
             return Collections.emptyList();
         }
 
-        List<InstallTransitRule> forwardRules = collectNonIngressRules(
-                context, forwardPath, flow.getDestPort(),
-                flow.getSrcVlan(), getTransitVlan(forwardPath, reversePath), flow.getDestVlan());
-        List<InstallTransitRule> reverseRules = collectNonIngressRules(
-                context, reversePath, flow.getSrcPort(),
-                flow.getDestVlan(), getTransitVlan(reversePath, forwardPath), flow.getSrcVlan());
+        List<InstallTransitRule> forwardRules = collectNonIngressRules(context, forwardPath,
+                flow.getDestPort(), flow.getSrcVlan(), flow.getDestVlan(),
+                getEncapsulation(forwardPath.getPathId(), reversePath.getPathId()));
+        List<InstallTransitRule> reverseRules = collectNonIngressRules(context, reversePath,
+                flow.getSrcPort(), flow.getDestVlan(), flow.getSrcVlan(),
+                getEncapsulation(reversePath.getPathId(), forwardPath.getPathId()));
         return ListUtils.union(forwardRules, reverseRules);
     }
 
@@ -94,13 +96,12 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
                     flow.getDestPort(), flow.getSrcPort(), flow.getDestVlan(), flow.getSrcVlan());
         } else {
             forwardRule = buildInstallIngressRule(context, forwardPath,
-                                                  flow.getSrcPort(), flow.getSrcVlan(),
-                                                  getTransitVlan(forwardPath, reversePath), flow.getDestVlan());
+                    flow.getSrcPort(), flow.getSrcVlan(), flow.getDestVlan(),
+                    getEncapsulation(forwardPath.getPathId(), reversePath.getPathId()));
             reverseRule = buildInstallIngressRule(context, reversePath,
-                                                  flow.getDestPort(), flow.getDestVlan(),
-                                                  getTransitVlan(reversePath, forwardPath), flow.getSrcVlan());
+                    flow.getDestPort(), flow.getDestVlan(), flow.getSrcVlan(),
+                    getEncapsulation(reversePath.getPathId(), forwardPath.getPathId()));
         }
-
         return ImmutableList.of(forwardRule, reverseRule);
     }
 
@@ -118,10 +119,10 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
         }
 
         List<RemoveRule> commands = new ArrayList<>();
-        commands.addAll(collectRemoveNonIngressRules(context, forwardPath, getTransitVlan(forwardPath, reversePath),
-                                                     flow.getDestPort()));
-        commands.addAll(collectRemoveNonIngressRules(context, reversePath, getTransitVlan(reversePath, forwardPath),
-                                                     flow.getSrcPort()));
+        commands.addAll(collectRemoveNonIngressRules(context, forwardPath, flow.getDestPort(),
+                getEncapsulation(forwardPath.getPathId(), reversePath.getPathId())));
+        commands.addAll(collectRemoveNonIngressRules(context, reversePath, flow.getSrcPort(),
+                getEncapsulation(reversePath.getPathId(), forwardPath.getPathId())));
         return commands;
     }
 
@@ -134,16 +135,17 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
     public List<RemoveRule> createRemoveIngressRules(CommandContext context, Flow flow,
                                                      FlowPath forwardPath, FlowPath reversePath) {
         RemoveRule removeForwardIngress =
-                buildRemoveIngressRule(context, forwardPath, flow.getSrcPort(), flow.getSrcVlan());
+                buildRemoveIngressRule(context, forwardPath, flow.getSrcPort(), flow.getSrcVlan(),
+                        getEncapsulation(forwardPath.getPathId(), reversePath.getPathId()));
         RemoveRule removeReverseIngress =
-                buildRemoveIngressRule(context, reversePath, flow.getDestPort(), flow.getDestVlan());
-
+                buildRemoveIngressRule(context, reversePath, flow.getDestPort(), flow.getDestVlan(),
+                        getEncapsulation(reversePath.getPathId(), forwardPath.getPathId()));
         return ImmutableList.of(removeForwardIngress, removeReverseIngress);
     }
 
     private InstallMultiSwitchIngressRule buildInstallIngressRule(CommandContext context, FlowPath flowPath,
-                                                                  int inputPort,
-                                                                  int inputVlanId, int transitVlan, int outputVlanId) {
+                                                                  int inputPort, int inputVlanId, int outputVlanId,
+                                                                  EncapsulationResources encapsulationResources) {
         PathSegment ingressSegment = flowPath.getSegments().stream()
                 .filter(segment -> segment.getSrcSwitch().equals(flowPath.getSrcSwitch()))
                 .findFirst()
@@ -164,7 +166,8 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
                 .outputPort(ingressSegment.getSrcPort())
                 .outputVlanType(getOutputVlanType(inputVlanId, outputVlanId))
                 .inputVlanId(inputVlanId)
-                .transitVlanId(transitVlan)
+                .transitEncapsulationId(encapsulationResources.getTransitEncapsulationId())
+                .transitEncapsulationType(encapsulationResources.getEncapsulationType())
                 .build();
     }
 
@@ -188,8 +191,9 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
                 .build();
     }
 
-    private List<InstallTransitRule> collectNonIngressRules(CommandContext context, FlowPath flowPath, int outputPort,
-                                                            int srcVlan, int transitVlan, int destVlan) {
+    private List<InstallTransitRule> collectNonIngressRules(CommandContext context, FlowPath flowPath,
+                                                            int outputPort, int srcVlan, int destVlan,
+                                                            EncapsulationResources encapsulationResources) {
         if (flowPath == null || CollectionUtils.isEmpty(flowPath.getSegments())) {
             throw new IllegalArgumentException("Flow path with segments is required");
         }
@@ -202,7 +206,8 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
             PathSegment outcome = segments.get(i);
 
             InstallTransitRule transitRule = buildInstallTransitRule(context, flowPath,
-                    income.getDestSwitch().getSwitchId(), income.getDestPort(), outcome.getSrcPort(), transitVlan);
+                    income.getDestSwitch().getSwitchId(), income.getDestPort(), outcome.getSrcPort(),
+                    encapsulationResources);
             commands.add(transitRule);
         }
 
@@ -212,24 +217,28 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
                     flowPath.getPathId()));
         }
 
-        InstallEgressRule egressRule = buildInstallEgressRule(context, flowPath, egressSegment.getDestPort(),
-                outputPort, srcVlan, transitVlan, destVlan);
+        InstallEgressRule egressRule = buildInstallEgressRule(context, flowPath,
+                egressSegment.getDestPort(), outputPort, srcVlan, destVlan,
+                encapsulationResources);
         commands.add(egressRule);
 
         return commands;
     }
 
-    private InstallTransitRule buildInstallTransitRule(CommandContext context, FlowPath flowPath, SwitchId switchId,
-                                                       int inputPort, int outputPort, int transitVlan) {
+    private InstallTransitRule buildInstallTransitRule(CommandContext context, FlowPath flowPath,
+                                                       SwitchId switchId, int inputPort, int outputPort,
+                                                       EncapsulationResources encapsulationResources) {
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
 
         return new InstallTransitRule(messageContext, commandId, flowPath.getFlow().getFlowId(), flowPath.getCookie(),
-                switchId, inputPort, outputPort, transitVlan);
+                switchId, inputPort, outputPort,
+                encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType());
     }
 
-    private InstallEgressRule buildInstallEgressRule(CommandContext context, FlowPath flowPath, int inputPort,
-                                                     int outputPort, int srcVlan, int transitVlan, int destVlan) {
+    private InstallEgressRule buildInstallEgressRule(CommandContext context, FlowPath flowPath,
+                                                     int inputPort, int outputPort, int srcVlan, int destVlan,
+                                                     EncapsulationResources encapsulationResources) {
         UUID commandId = commandIdGenerator.generate();
         return InstallEgressRule.builder()
                 .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
@@ -238,15 +247,16 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
                 .switchId(flowPath.getDestSwitch().getSwitchId())
                 .cookie(flowPath.getCookie())
                 .inputPort(inputPort)
-                .transitVlanId(transitVlan)
+                .transitEncapsulationId(encapsulationResources.getTransitEncapsulationId())
+                .transitEncapsulationType(encapsulationResources.getEncapsulationType())
                 .outputPort(outputPort)
                 .outputVlanId(destVlan)
                 .outputVlanType(getOutputVlanType(srcVlan, destVlan))
                 .build();
     }
 
-    private RemoveRule buildRemoveIngressRule(CommandContext context, FlowPath flowPath, int inputPort,
-                                              int inputVlanId) {
+    private RemoveRule buildRemoveIngressRule(CommandContext context, FlowPath flowPath, int inputPort, int inputVlanId,
+                                              EncapsulationResources encapsulationResources) {
         PathSegment ingressSegment = flowPath.getSegments().stream()
                 .filter(segment -> segment.getSrcSwitch().equals(flowPath.getSrcSwitch()))
                 .findFirst()
@@ -255,7 +265,7 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
                                 flowPath.getFlow().getFlowId())));
 
         DeleteRulesCriteria ingressCriteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort,
-                inputVlanId, 0, ingressSegment.getSrcPort(), FlowEncapsulationType.TRANSIT_VLAN,
+                inputVlanId, 0, ingressSegment.getSrcPort(), encapsulationResources.getEncapsulationType(),
                 flowPath.getSrcSwitch().getSwitchId());
         UUID commandId = commandIdGenerator.generate();
         return RemoveRule.builder()
@@ -269,8 +279,8 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
                 .build();
     }
 
-    private List<RemoveRule> collectRemoveNonIngressRules(CommandContext context, FlowPath flowPath, int transitVlan,
-                                                          int outputPort) {
+    private List<RemoveRule> collectRemoveNonIngressRules(CommandContext context, FlowPath flowPath, int outputPort,
+                                                          EncapsulationResources encapsulationResources) {
         if (flowPath == null || CollectionUtils.isEmpty(flowPath.getSegments())) {
             throw new IllegalArgumentException("Flow path with segments is required");
         }
@@ -282,8 +292,9 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
             PathSegment income = segments.get(i - 1);
             PathSegment outcome = segments.get(i);
 
-            RemoveRule transitRule = buildRemoveTransitRule(context, flowPath, income.getDestSwitch().getSwitchId(),
-                    income.getDestPort(), outcome.getSrcPort(), transitVlan);
+            RemoveRule transitRule = buildRemoveTransitRule(context, flowPath,
+                    income.getDestSwitch().getSwitchId(), income.getDestPort(), outcome.getSrcPort(),
+                    encapsulationResources);
             commands.add(transitRule);
         }
 
@@ -294,17 +305,19 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
                             flowPath.getFlow().getFlowId()));
         }
 
-        RemoveRule egressRule =
-                buildRemoveEgressRule(context, flowPath, egressSegment.getDestPort(), outputPort, transitVlan);
+        RemoveRule egressRule = buildRemoveEgressRule(context, flowPath,
+                egressSegment.getDestPort(), outputPort, encapsulationResources);
         commands.add(egressRule);
 
         return commands;
     }
 
-    private RemoveRule buildRemoveTransitRule(CommandContext context, FlowPath flowPath, SwitchId switchId,
-                                              int inputPort, int outputPort, int transitVlan) {
-        DeleteRulesCriteria criteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort, transitVlan,
-                0, outputPort, FlowEncapsulationType.TRANSIT_VLAN, flowPath.getSrcSwitch().getSwitchId());
+    private RemoveRule buildRemoveTransitRule(CommandContext context, FlowPath flowPath,
+                                              SwitchId switchId, int inputPort, int outputPort,
+                                              EncapsulationResources encapsulationResources) {
+        DeleteRulesCriteria criteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort,
+                encapsulationResources.getTransitEncapsulationId(),
+                0, outputPort, encapsulationResources.getEncapsulationType(), flowPath.getSrcSwitch().getSwitchId());
         UUID commandId = commandIdGenerator.generate();
         return RemoveRule.builder()
                 .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
@@ -317,9 +330,10 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
     }
 
     private RemoveRule buildRemoveEgressRule(CommandContext context, FlowPath flowPath, int inputPort, int outputPort,
-                                             int transitVlan) {
-        DeleteRulesCriteria criteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort, transitVlan,
-                0, outputPort, FlowEncapsulationType.TRANSIT_VLAN, flowPath.getSrcSwitch().getSwitchId());
+                                             EncapsulationResources encapsulationResources) {
+        DeleteRulesCriteria criteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort,
+                encapsulationResources.getTransitEncapsulationId(),
+                0, outputPort, encapsulationResources.getEncapsulationType(), flowPath.getSrcSwitch().getSwitchId());
         UUID commandId = commandIdGenerator.generate();
         return RemoveRule.builder()
                 .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
@@ -338,13 +352,11 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
         return destVlan == 0 ? OutputVlanType.POP : OutputVlanType.REPLACE;
     }
 
-    private int getTransitVlan(FlowPath path, FlowPath oppositePath) {
-        return transitVlanRepository.findByPathId(path.getPathId(), oppositePath.getPathId()).stream()
-                .findAny()
-                .map(TransitVlan::getVlan)
-                .orElseThrow(() ->
-                        new IllegalStateException(format(
-                                "No transit VLAN found for flow path %s (opposite: %s)",
-                                path.getPathId(), oppositePath.getPathId())));
+    private EncapsulationResources getEncapsulation(PathId pathId, PathId oppositePathId) {
+        return resourcesManager.getEncapsulationResources(pathId,
+                oppositePathId, encapsulationType).orElseThrow(() ->
+                new IllegalStateException(format(
+                        "No encapsulation resources found for flow path %s (opposite: %s)",
+                        pathId, oppositePathId)));
     }
 }
