@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.isllatency;
 
 import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.openkilda.wfm.topology.isllatency.bolts.IslStatsBolt.LATENCY_METRIC_NAME;
 
 import org.openkilda.messaging.info.Datapoint;
@@ -154,9 +155,9 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         IslRoundTripLatency firstRoundTripLatency = new IslRoundTripLatency(SWITCH_ID_1, PORT_1, latency2, PACKET_ID);
         IslRoundTripLatency secondRoundTripLatency = new IslRoundTripLatency(SWITCH_ID_1, PORT_1, latency4, PACKET_ID);
 
-        // we have no round trip latency so we have to use one way latency
-        long timestamp1 = pushMessage(firstOneWayLatency);
-        assertMetric(FORWARD_ISL, latency1, timestamp1);
+        // we have no round trip latency so we have to use one way latency for Neo4j, but not for OpenTSDB
+        pushMessage(firstOneWayLatency);
+        assertTrue(otsdbConsumer.isEmpty());
         assertEquals(latency1, getIslLatency(FORWARD_ISL));
 
         // we got round trip latency so we will use it for metric and database
@@ -165,8 +166,8 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         assertEquals(latency2, getIslLatency(FORWARD_ISL));
 
         // we got one way latency but bolts already has data with RTL latency. one way latency will be ignored
-        long timestamp3 = pushMessage(secondOneWayLatency);
-        assertMetric(FORWARD_ISL, latency2, timestamp3);
+        pushMessage(secondOneWayLatency);
+        assertTrue(otsdbConsumer.isEmpty());
         assertEquals(latency2, getIslLatency(FORWARD_ISL));
 
         // we got new round trip latency and it will be used for metric

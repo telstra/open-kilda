@@ -33,7 +33,6 @@ import org.openkilda.wfm.topology.isllatency.model.LatencyRecord;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Clock;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -220,7 +219,7 @@ public class IslLatencyService {
         if (recordsQueue == null) {
             return;
         }
-        Instant oldestTimeInRange = Clock.systemUTC().instant().minusSeconds(latencyUpdateTimeRange);
+        Instant oldestTimeInRange = Instant.now().minusSeconds(latencyUpdateTimeRange);
         while (!recordsQueue.isEmpty()
                 && Instant.ofEpochMilli(recordsQueue.peek().getTimestamp()).isBefore(oldestTimeInRange)) {
             recordsQueue.poll();
@@ -243,14 +242,12 @@ public class IslLatencyService {
 
     @VisibleForTesting
     boolean isUpdateRequired(IslKey islKey) {
-        Instant currentTime = Clock.systemUTC().instant();
-        return currentTime.isAfter(nextUpdateTimeMap.getOrDefault(islKey, Instant.MIN));
+        return Instant.now().isAfter(nextUpdateTimeMap.getOrDefault(islKey, Instant.MIN));
     }
 
     @VisibleForTesting
     Instant getNextUpdateTime() {
-        Instant currentTime = Clock.systemUTC().instant();
-        return currentTime.plusSeconds(latencyUpdateInterval);
+        return Instant.now().plusSeconds(latencyUpdateInterval);
     }
 
     /**
