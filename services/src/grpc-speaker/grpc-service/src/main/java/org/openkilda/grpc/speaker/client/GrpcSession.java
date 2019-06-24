@@ -23,6 +23,7 @@ import org.openkilda.grpc.speaker.model.LogOferrorsDto;
 import org.openkilda.grpc.speaker.model.LogicalPortDto;
 import org.openkilda.grpc.speaker.model.PortConfigDto;
 import org.openkilda.grpc.speaker.model.RemoteLogServerDto;
+import org.openkilda.messaging.error.ErrorType;
 
 import com.google.common.net.InetAddresses;
 import io.grpc.ManagedChannel;
@@ -63,7 +64,9 @@ public class GrpcSession {
 
     public GrpcSession(String address) {
         if (!InetAddresses.isInetAddress(address) && !InetAddresses.isUriInetAddress(address)) {
-            throw new GrpcRequestFailureException(ErrorCode.ERRNO_23.getCode(), ErrorCode.ERRNO_23.getMessage());
+            log.warn("IP address '{}' of switch is not valid");
+            throw new GrpcRequestFailureException(ErrorCode.ERRNO_23.getCode(), ErrorCode.ERRNO_23.getMessage(),
+                    ErrorType.REQUEST_INVALID);
         }
         this.address = address;
         this.channel = ManagedChannelBuilder.forAddress(address, PORT)
