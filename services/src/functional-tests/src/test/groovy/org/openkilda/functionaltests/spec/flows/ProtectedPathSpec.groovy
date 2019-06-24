@@ -103,6 +103,9 @@ class ProtectedPathSpec extends BaseSpecification {
         then: "Protected path is enabled"
         def flowPathInfoAfterUpdating = northbound.getFlowPath(flow.id)
         flowPathInfoAfterUpdating.protectedPath
+        def flowInfo = database.getFlow(flow.id)
+        def protectedForwardCookie = flowInfo.protectedForwardPath.cookie.value
+        def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
 
         currentLastUpdate < northbound.getFlow(flow.id).lastUpdated
 
@@ -122,9 +125,7 @@ class ProtectedPathSpec extends BaseSpecification {
                 def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
                     !Cookie.isDefaultRule(it.cookie)
                 }
-
-                assert flowHelper.findForwardPathRules(rules, sw).size() == 0
-                assert flowHelper.findReversePathRules(rules, sw).size() == 0
+                assert rules.every { it != protectedForwardCookie && it != protectedReverseCookie }
             }
         }
 
@@ -230,6 +231,7 @@ class ProtectedPathSpec extends BaseSpecification {
 
         and: "Cleanup: revert system to original state"
         flowHelper.deleteFlow(flow.id)
+        northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
 
         where:
@@ -464,10 +466,9 @@ class ProtectedPathSpec extends BaseSpecification {
         northbound.getFlowPath(flow.id).protectedPath
 
         and: "One transit vlan is created for main and protected paths"
-        //TODO(andriidovhan) rewrite when new implementation of the getFlow method is merged
-        //and compare transitVlan for protected path
         def flowInfo = database.getFlow(flow.id)
-        flowInfo.left.transitEncapsulationId == flowInfo.right.transitEncapsulationId
+        database.getTransitVlans(flowInfo.forwardPathId, flowInfo.reversePathId).size() == 1
+        database.getTransitVlans(flowInfo.protectedForwardPathId, flowInfo.protectedReversePathId).size() == 1
 
         and: "Cleanup: delete the flow and restore available bandwidth"
         flowHelper.deleteFlow(flow.id)
@@ -623,11 +624,11 @@ class ProtectedPathSpec extends BaseSpecification {
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
         List<PathNode> broughtDownPorts = []
         switchPair.paths.findAll { it != pathHelper.convert(northbound.getFlowPath(flow.id)) }.unique { it.first() }
-        .each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
-        }
+                .each { path ->
+                    def src = path.first()
+                    broughtDownPorts.add(src)
+                    northbound.portDown(src.switchId, src.portNo)
+                }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
                 it.state == IslChangeType.FAILED
@@ -941,7 +942,9 @@ class ProtectedPathSpec extends BaseSpecification {
         def currentPath = pathHelper.convert(flowPathInfo)
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
         List<PathNode> broughtDownPorts = []
-        switchPair.paths.findAll { it != currentPath && it != currentProtectedPath }.unique { it.first() }.each { path ->
+        switchPair.paths.findAll { it != currentPath && it != currentProtectedPath }.unique {
+            it.first()
+        }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
             northbound.portDown(src.switchId, src.portNo)
@@ -963,7 +966,9 @@ class ProtectedPathSpec extends BaseSpecification {
         def currentIsl = pathHelper.getInvolvedIsls(currentPath)[0]
         def alternativeIsl = pathHelper.getInvolvedIsls(alternativePath)[0]
 
-        switchPair.paths.findAll { it != alternativePath }.each { pathHelper.makePathMorePreferable(alternativePath, it) }
+        switchPair.paths.findAll { it != alternativePath }.each {
+            pathHelper.makePathMorePreferable(alternativePath, it)
+        }
         assert northbound.getLink(currentIsl).cost > northbound.getLink(alternativeIsl).cost
 
         and: "Make alternative path available(bring port up on the source switch)"
@@ -1010,11 +1015,11 @@ class ProtectedPathSpec extends BaseSpecification {
         when: "All alternative paths are unavailable (bring ports down on the source switch and on the protected path)"
         List<PathNode> broughtDownPorts = []
         switchPair.paths.findAll { it != pathHelper.convert(northbound.getFlowPath(flow.id)) }.unique { it.first() }
-            .each { path ->
-                def src = path.first()
-                broughtDownPorts.add(src)
-                northbound.portDown(src.switchId, src.portNo)
-            }
+                .each { path ->
+                    def src = path.first()
+                    broughtDownPorts.add(src)
+                    northbound.portDown(src.switchId, src.portNo)
+                }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
                 it.state == IslChangeType.FAILED
