@@ -17,6 +17,7 @@ package org.openkilda.grpc.speaker.client;
 
 import org.openkilda.grpc.speaker.exception.GrpcRequestFailureException;
 import org.openkilda.grpc.speaker.model.ErrorCode;
+import org.openkilda.messaging.error.ErrorType;
 
 import io.grpc.noviflow.ResponseMarker;
 import io.grpc.stub.StreamObserver;
@@ -47,11 +48,7 @@ public class GrpcResponseObserver<V> implements StreamObserver<V> {
             int replyStatus = ((ResponseMarker) reply).getReplyStatus();
 
             if (replyStatus != 0) {
-                ErrorCode errorCode = ErrorCode.getByCode(replyStatus);
-                log.warn("Response code of gRPC request is {}: {}", replyStatus, errorCode.getMessage());
-
-                future.completeExceptionally(new GrpcRequestFailureException(replyStatus,
-                        errorCode.getMessage()));
+                processErrorResponse(replyStatus);
             }
             return replyStatus == 0;
         }
@@ -70,5 +67,36 @@ public class GrpcResponseObserver<V> implements StreamObserver<V> {
         if (!future.isDone()) {
             future.complete(responses);
         }
+    }
+
+    private void processErrorResponse(int replyStatus) {
+
+        ErrorCode errorCode = ErrorCode.getByCode(replyStatus);
+        log.warn("Response code of gRPC request is {}: {}", replyStatus, errorCode.getMessage());
+
+        ErrorType errorType;
+        switch (errorCode) {
+            case ERRNO_57:
+            case ERRNO_58:
+            case ERRNO_126:
+            case ERRNO_392:
+                errorType = ErrorType.AUTH_FAILED;
+                break;
+            case ERRNO_68:
+            case ERRNO_69:
+            case ERRNO_97:
+            case ERRNO_176:
+            case ERRNO_191:
+                errorType = ErrorType.NOT_FOUND;
+                break;
+            case ERRNO_56:
+            case ERRNO_187:
+                errorType = ErrorType.ALREADY_EXISTS;
+                break;
+            default:
+                errorType = ErrorType.REQUEST_INVALID;
+        }
+        future.completeExceptionally(new GrpcRequestFailureException(replyStatus,
+                errorCode.getMessage(), errorType));
     }
 }

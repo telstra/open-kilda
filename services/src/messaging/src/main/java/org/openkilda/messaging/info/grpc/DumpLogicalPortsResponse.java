@@ -33,10 +33,15 @@ public class DumpLogicalPortsResponse extends InfoData {
     @JsonProperty("logical_ports")
     private List<LogicalPort> logicalPorts;
 
+    @JsonProperty("key")
+    private String key;
+
     @JsonCreator
     public DumpLogicalPortsResponse(@JsonProperty("switch_address") String switchAddress,
-                                    @JsonProperty("logical_ports") List<LogicalPort> logicalPorts) {
+                                    @JsonProperty("logical_ports") List<LogicalPort> logicalPorts,
+                                    @JsonProperty("key") String key) {
         this.switchAddress = switchAddress;
         this.logicalPorts = logicalPorts;
+        this.key = key;
     }
 }

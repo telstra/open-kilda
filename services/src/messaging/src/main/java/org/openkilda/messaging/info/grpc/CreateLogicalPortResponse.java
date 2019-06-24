@@ -34,12 +34,17 @@ public class CreateLogicalPortResponse extends InfoData {
     @JsonProperty("created")
     private boolean created;
 
+    @JsonProperty("key")
+    private String key;
+
     @JsonCreator
     public CreateLogicalPortResponse(@JsonProperty("switch_address") String switchAddress,
                                      @JsonProperty("logical_port") LogicalPort logicalPort,
-                                     @JsonProperty("created") boolean created) {
+                                     @JsonProperty("created") boolean created,
+                                     @JsonProperty("key") String key) {
         this.switchAddress = switchAddress;
         this.logicalPort = logicalPort;
         this.created = created;
+        this.key = key;
     }
 }

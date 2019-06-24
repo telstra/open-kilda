@@ -31,10 +31,15 @@ public class GetSwitchInfoResponse extends InfoData {
     @JsonProperty("switch_info")
     private SwitchInfoStatus switchInfoStatus;
 
+    @JsonProperty("key")
+    private String key;
+
     @JsonCreator
     public GetSwitchInfoResponse(@JsonProperty("switch_address") String switchAddress,
-                                 @JsonProperty("switch_info") SwitchInfoStatus switchInfoStatus) {
+                                 @JsonProperty("switch_info") SwitchInfoStatus switchInfoStatus,
+                                 @JsonProperty("key") String key) {
         this.switchAddress = switchAddress;
         this.switchInfoStatus = switchInfoStatus;
+        this.key = key;
     }
 }

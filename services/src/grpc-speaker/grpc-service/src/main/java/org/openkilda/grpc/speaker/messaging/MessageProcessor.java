@@ -25,17 +25,18 @@ import org.openkilda.messaging.command.grpc.DumpLogicalPortsRequest;
 import org.openkilda.messaging.command.grpc.GetSwitchInfoRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
 import org.openkilda.messaging.info.grpc.GetSwitchInfoResponse;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class MessageProcessor {
 
@@ -55,22 +56,25 @@ public class MessageProcessor {
      * Process request.
      *
      * @param message a command data.
+     * @param key a kafka key.
      */
-    public void processRequest(CommandMessage message) {
+    public void processRequest(CommandMessage message, String key) {
         CommandData command = message.getData();
         if (command instanceof CreateLogicalPortRequest) {
-            handleCreateLogicalPortRequest((CreateLogicalPortRequest) command, message.getCorrelationId());
+            handleCreateLogicalPortRequest((CreateLogicalPortRequest) command, message.getCorrelationId(), key);
         } else if (command instanceof DumpLogicalPortsRequest) {
-            handleDumpLogicalPortsRequest((DumpLogicalPortsRequest) command, message.getCorrelationId());
+            handleDumpLogicalPortsRequest((DumpLogicalPortsRequest) command, message.getCorrelationId(), key);
         } else if (command instanceof GetSwitchInfoRequest) {
-            handleGetSwitchInfoRequest((GetSwitchInfoRequest) command, message.getCorrelationId());
+            handleGetSwitchInfoRequest((GetSwitchInfoRequest) command, message.getCorrelationId(), key);
+        } else {
+            log.error("Unable to handle '{}' request - handler not found.", command);
         }
     }
 
-    private void handleCreateLogicalPortRequest(CreateLogicalPortRequest req, String correlationId) {
+    private void handleCreateLogicalPortRequest(CreateLogicalPortRequest req, String correlationId, String key) {
         service.createLogicalPort(req.getAddress(), requestMapper.toLogicalPort(req))
                 .thenAccept(port -> sendResponse(
-                        new CreateLogicalPortResponse(req.getAddress(), port, true), correlationId))
+                        new CreateLogicalPortResponse(req.getAddress(), port, true, key), correlationId))
                 .whenComplete((e, ex) -> {
                     if (ex != null) {
                         sendErrorResponse((GrpcRequestFailureException) ex.getCause(), correlationId);
@@ -78,9 +82,10 @@ public class MessageProcessor {
                 });
     }
 
-    private void handleDumpLogicalPortsRequest(DumpLogicalPortsRequest req, String correlationId) {
+    private void handleDumpLogicalPortsRequest(DumpLogicalPortsRequest req, String correlationId, String key) {
         service.dumpLogicalPorts(req.getAddress())
-                .thenAccept(e -> sendResponse(new DumpLogicalPortsResponse(req.getAddress(), e), correlationId))
+                .thenAccept(ports -> sendResponse(
+                        new DumpLogicalPortsResponse(req.getAddress(), ports, key), correlationId))
                 .whenComplete((e, ex) -> {
                     if (ex != null) {
                         sendErrorResponse((GrpcRequestFailureException) ex.getCause(), correlationId);
@@ -88,9 +93,10 @@ public class MessageProcessor {
                 });
     }
 
-    private void handleGetSwitchInfoRequest(GetSwitchInfoRequest req, String correlationId) {
+    private void handleGetSwitchInfoRequest(GetSwitchInfoRequest req, String correlationId, String key) {
         service.getSwitchStatus(req.getAddress())
-                .thenAccept(e -> sendResponse(new GetSwitchInfoResponse(req.getAddress(), e), correlationId))
+                .thenAccept(switchInfo -> sendResponse(
+                        new GetSwitchInfoResponse(req.getAddress(), switchInfo, key), correlationId))
                 .whenComplete((e, ex) -> {
                     if (ex != null) {
                         sendErrorResponse((GrpcRequestFailureException) ex.getCause(), correlationId);
@@ -104,19 +110,7 @@ public class MessageProcessor {
     }
 
     private void sendErrorResponse(GrpcRequestFailureException ex, String correlationId) {
-        ErrorType errorType;
-        switch (ex.getCode()) {
-            case 57:
-                errorType = ErrorType.AUTH_FAILED;
-                break;
-            case 191:
-                errorType = ErrorType.NOT_FOUND;
-                break;
-            default:
-                errorType = ErrorType.REQUEST_INVALID;
-                break;
-        }
-        ErrorData data = new ErrorData(errorType, ex.getMessage(), "");
+        ErrorData data = new ErrorData(ex.getErrorType(), ex.getMessage(), "");
         ErrorMessage error = new ErrorMessage(data, System.currentTimeMillis(), correlationId);
         messageProducer.send(responseTopic, error);
     }

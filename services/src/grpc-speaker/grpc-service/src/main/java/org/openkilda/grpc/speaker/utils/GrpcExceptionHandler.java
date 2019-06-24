@@ -37,12 +37,15 @@ public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
                                                                WebRequest request) {
         HttpStatus status;
 
-        switch (ex.getCode()) {
-            case 57:
+        switch (ex.getErrorType()) {
+            case AUTH_FAILED:
                 status = HttpStatus.UNAUTHORIZED;
                 break;
-            case 191:
+            case NOT_FOUND:
                 status = HttpStatus.NOT_FOUND;
+                break;
+            case ALREADY_EXISTS:
+                status = HttpStatus.CONFLICT;
                 break;
             default:
                 status = HttpStatus.BAD_REQUEST;

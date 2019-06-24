@@ -23,6 +23,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 /**
@@ -42,13 +44,13 @@ public class KafkaMessageListener {
      * @param message received  message.
      */
     @KafkaHandler
-    public void onMessage(CommandMessage message) {
+    public void onMessage(@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String key, CommandMessage message) {
         if (!isValid(message)) {
             log.warn("Skipping invalid message: {}", message);
             return;
         }
         log.debug("Message received: {} - {}", Thread.currentThread().getId(), message);
-        messageProcessor.processRequest(message);
+        messageProcessor.processRequest(message, key);
     }
 
     private boolean isValid(Message message) {
