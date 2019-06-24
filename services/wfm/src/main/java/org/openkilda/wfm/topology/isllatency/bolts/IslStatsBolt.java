@@ -20,7 +20,7 @@ import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.CACHE_DAT
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ISL_STATUS_FIELD;
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ISL_STATUS_UPDATE_BOLT_ID;
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.LATENCY_DATA_FIELD;
-import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ROUTER_BOLT_ID;
+import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ONE_WAY_MANIPULATION_BOLT_ID;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
@@ -87,7 +87,7 @@ public class IslStatsBolt extends AbstractBolt implements IslStatsCarrier {
     protected void handleInput(Tuple input) throws Exception {
         if (ISL_STATUS_UPDATE_BOLT_ID.equals(input.getSourceComponent())) {
             handleStatusUpdate(input);
-        } else if (ROUTER_BOLT_ID.equals(input.getSourceComponent())
+        } else if (ONE_WAY_MANIPULATION_BOLT_ID.equals(input.getSourceComponent())
                 || CACHE_BOLT_ID.equals(input.getSourceComponent())) {
             handleLatencyData(input);
         } else {
