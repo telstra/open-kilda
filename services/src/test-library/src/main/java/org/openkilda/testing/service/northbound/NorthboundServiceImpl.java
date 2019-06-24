@@ -36,6 +36,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.PortStatus;
@@ -98,9 +99,9 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public FlowPayload getFlow(String flowId) {
+    public FlowResponsePayload getFlow(String flowId) {
         return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowResponsePayload.class, flowId).getBody();
     }
 
     @Override

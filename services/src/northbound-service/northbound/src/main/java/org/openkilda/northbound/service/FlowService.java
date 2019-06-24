@@ -22,6 +22,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.northbound.dto.BatchResults;
@@ -88,7 +89,7 @@ public interface FlowService {
      * @param id flow id
      * @return flow
      */
-    CompletableFuture<FlowPayload> getFlow(final String id);
+    CompletableFuture<FlowResponsePayload> getFlow(final String id);
 
     /**
      * Gets all the flows.

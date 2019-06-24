@@ -22,6 +22,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.northbound.controller.BaseController;
@@ -97,10 +98,10 @@ public class FlowController extends BaseController {
      * @param flowId        flow id
      * @return flow
      */
-    @ApiOperation(value = "Gets flow", response = FlowPayload.class)
+    @ApiOperation(value = "Gets flow", response = FlowResponsePayload.class)
     @GetMapping(value = "/{flow-id:.+}")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FlowPayload> getFlow(@PathVariable(name = "flow-id") String flowId) {
+    public CompletableFuture<FlowResponsePayload> getFlow(@PathVariable(name = "flow-id") String flowId) {
         return flowService.getFlow(flowId);
     }
 

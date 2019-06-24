@@ -28,6 +28,8 @@ import org.openkilda.persistence.converters.FlowStatusConverter;
 import org.openkilda.persistence.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowRepository;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
@@ -35,6 +37,7 @@ import org.neo4j.ogm.session.Session;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -101,6 +104,14 @@ public class Neo4jFlowRepository extends Neo4jGenericRepository<Flow> implements
         Filter groupIdFilter = new Filter(GROUP_ID_PROPERTY_NAME, ComparisonOperator.EQUALS, flowGroupId);
 
         return loadAll(groupIdFilter);
+    }
+
+    @Override
+    public Collection<String> findFlowsIdByGroupId(String flowGroupId) {
+        Map<String, Object> flowParameters = ImmutableMap.of("flow_group_id", flowGroupId);
+
+        return Lists.newArrayList(getSession().query(String.class,
+                "MATCH (f:flow {group_id: $flow_group_id}) RETURN f.flow_id", flowParameters));
     }
 
     @Override

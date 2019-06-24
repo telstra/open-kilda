@@ -37,6 +37,8 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<Flow> findByGroupId(String flowGroupId);
 
+    Collection<String> findFlowsIdByGroupId(String flowGroupId);
+
     Collection<Flow> findWithPeriodicPingsEnabled();
 
     Collection<Flow> findByEndpoint(SwitchId switchId, int port);

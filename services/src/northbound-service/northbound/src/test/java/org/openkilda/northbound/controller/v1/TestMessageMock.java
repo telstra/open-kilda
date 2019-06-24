@@ -129,7 +129,7 @@ public class TestMessageMock implements MessagingChannel {
     private static final FlowResponse secondFlowResponse = new FlowResponse(secondFlowModel);
     static final SwapFlowResponse bulkFlowResponse = new SwapFlowResponse(flowResponse, secondFlowResponse);
     static final FlowReadResponse FLOW_RESPONSE =
-            new FlowReadResponse(new BidirectionalFlowDto(flowModel, flowModel));
+            new FlowReadResponse(new BidirectionalFlowDto(flowModel, flowModel), null);
     static final GetFlowPathResponse FLOW_PATH_RESPONSE =
             new GetFlowPathResponse(FlowPathDto.builder()
                     .id(FLOW_ID)

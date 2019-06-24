@@ -18,6 +18,7 @@ package org.openkilda.northbound.converter;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
+import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
 import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
@@ -28,6 +29,7 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
@@ -56,6 +58,31 @@ public interface FlowMapper {
     @Mapping(target = "created", source = "createdTime")
     @Mapping(target = "pinned", source = "pinned")
     FlowPayload toFlowOutput(FlowDto f);
+
+    /**
+     * Map FlowReadResponse.
+     *
+     * @param r  {@link FlowReadResponse} instance.
+     * @return {@link FlowResponsePayload} instance.
+     */
+    default FlowResponsePayload toFlowResponseOutput(FlowReadResponse r) {
+        FlowResponsePayload response = toFlowResponseOutput(r.getPayload().getForward());
+        response.setDiverseWith(r.getDiverseWith());
+        return response;
+    }
+
+    @Mapping(target = "id", source = "flowId")
+    @Mapping(target = "source",
+            expression = "java(new FlowEndpointPayload(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")
+    @Mapping(target = "destination",
+            expression = "java(new FlowEndpointPayload(f.getDestinationSwitch(), f.getDestinationPort(), "
+                    + "f.getDestinationVlan()))")
+    @Mapping(target = "maximumBandwidth", source = "bandwidth")
+    @Mapping(target = "ignoreBandwidth", source = "ignoreBandwidth")
+    @Mapping(target = "status", source = "state")
+    @Mapping(target = "created", source = "createdTime")
+    @Mapping(target = "pinned", source = "pinned")
+    FlowResponsePayload toFlowResponseOutput(FlowDto f);
 
     @Mapping(target = "source",
             expression = "java(new FlowEndpointV2(f.getSourceSwitch(), f.getSourcePort(), f.getSourceVlan()))")

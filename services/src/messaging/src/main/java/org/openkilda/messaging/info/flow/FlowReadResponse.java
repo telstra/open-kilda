@@ -22,6 +22,8 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
 
+import java.util.List;
+
 /**
  * Represents a flow read northbound response.
  */
@@ -38,13 +40,18 @@ public class FlowReadResponse extends InfoData {
     @JsonProperty("payload")
     protected BidirectionalFlowDto payload;
 
+    @JsonProperty("diverse_with")
+    protected List<String> diverseWith;
+
     /**
      * Instance constructor.
      *
      * @param payload response payload
      */
     @JsonCreator
-    public FlowReadResponse(@JsonProperty("payload") BidirectionalFlowDto payload) {
+    public FlowReadResponse(@JsonProperty("payload") BidirectionalFlowDto payload,
+                            @JsonProperty("diverse_with") List<String> diverseWith) {
         this.payload = payload;
+        this.diverseWith = diverseWith;
     }
 }

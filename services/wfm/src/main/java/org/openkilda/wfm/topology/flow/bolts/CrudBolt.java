@@ -668,7 +668,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         } else {
             int i = 0;
             for (BidirectionalFlowDto flow : flows) {
-                Message response = new ChunkedInfoMessage(new FlowReadResponse(flow), System.currentTimeMillis(),
+                Message response = new ChunkedInfoMessage(new FlowReadResponse(flow, null), System.currentTimeMillis(),
                         requestId, i++, flows.size());
 
                 outputCollector.emit(StreamType.RESPONSE.toString(), tuple, new Values(response));
@@ -685,7 +685,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                 new BidirectionalFlowDto(FlowMapper.INSTANCE.map(flowPair));
         logger.debug("Got bidirectional flow: {}, correlationId {}", flow, message.getCorrelationId());
 
-        Values values = new Values(new InfoMessage(new FlowReadResponse(flow),
+        List<String> diverseFlowsId = flowService.getDiverseFlowsId(flowPair.getForward().getFlow());
+
+        Values values = new Values(new InfoMessage(new FlowReadResponse(flow, diverseFlowsId),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
     }
