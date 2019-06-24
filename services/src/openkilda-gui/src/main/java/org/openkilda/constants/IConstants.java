@@ -329,7 +329,7 @@ public abstract class IConstants {
 
         FLOW_TABLEID("Flow_tableid", "flow.tableid"),
 
-        ISL_LATENCY("Isl_latency", "isl.latency"),
+        ISL_LATENCY("Isl_latency", "isl.rtt"),
 
         SWITCH_COLLISIONS("Switch_collisions", "switch.collisions"),    
 
