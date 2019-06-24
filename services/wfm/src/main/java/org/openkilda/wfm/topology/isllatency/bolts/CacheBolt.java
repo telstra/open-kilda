@@ -17,14 +17,11 @@ package org.openkilda.wfm.topology.isllatency.bolts;
 
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.CACHE_DATA_FIELD;
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ISL_GROUPING_FIELD;
-import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ISL_STATUS_SPOUT_ID;
+import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ISL_STATUS_FIELD;
+import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ISL_STATUS_UPDATE_BOLT_ID;
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.LATENCY_DATA_FIELD;
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ROUTER_BOLT_ID;
-import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
-import org.openkilda.messaging.Message;
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.IslRoundTripLatency;
 import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.persistence.PersistenceManager;
@@ -58,7 +55,7 @@ public class CacheBolt extends AbstractBolt implements CacheCarrier {
     @Override
     protected void handleInput(Tuple tuple) throws PipelineException {
 
-        if (ISL_STATUS_SPOUT_ID.equals(tuple.getSourceComponent())) {
+        if (ISL_STATUS_UPDATE_BOLT_ID.equals(tuple.getSourceComponent())) {
             handleStatusUpdate(tuple);
         } else if (ROUTER_BOLT_ID.equals(tuple.getSourceComponent())) {
             IslRoundTripLatency roundTripLatency = pullValue(tuple, LATENCY_DATA_FIELD, IslRoundTripLatency.class);
@@ -69,18 +66,9 @@ public class CacheBolt extends AbstractBolt implements CacheCarrier {
     }
 
     private void handleStatusUpdate(Tuple tuple) throws PipelineException {
-        Message message = pullValue(tuple, FIELD_ID_PAYLOAD, Message.class);
-        if (message instanceof InfoMessage) {
-            InfoData data = ((InfoMessage) message).getData();
-
-            if (data instanceof IslStatusUpdateNotification) {
-                cacheService.handleUpdateCache((IslStatusUpdateNotification) data);
-            } else {
-                unhandledInput(tuple);
-            }
-        } else {
-            unhandledInput(tuple);
-        }
+        IslStatusUpdateNotification notification = pullValue(
+                tuple, ISL_STATUS_FIELD, IslStatusUpdateNotification.class);
+        cacheService.handleUpdateCache(notification);
     }
 
     @Override
