@@ -19,6 +19,7 @@ import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.openkilda.wfm.topology.isllatency.bolts.IslStatsBolt.LATENCY_METRIC_NAME;
+import static org.openkilda.wfm.topology.isllatency.service.OneWayLatencyManipulationService.ONE_WAY_LATENCY_MULTIPLIER;
 
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
@@ -145,12 +146,9 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         long latency4 = 4;
         long latency5 = 5;
 
-        IslOneWayLatency firstOneWayLatency = new IslOneWayLatency(
-                SWITCH_ID_1, PORT_1, SWITCH_ID_2, PORT_2, latency1, PACKET_ID);
-        IslOneWayLatency secondOneWayLatency = new IslOneWayLatency(
-                SWITCH_ID_1, PORT_1, SWITCH_ID_2, PORT_2, latency3, PACKET_ID);
-        IslOneWayLatency reverseOneWayLatency = new IslOneWayLatency(
-                SWITCH_ID_2, PORT_2, SWITCH_ID_1, PORT_1, latency5, PACKET_ID);
+        IslOneWayLatency firstOneWayLatency = createForwardIslOneWayLatency(latency1);
+        IslOneWayLatency secondOneWayLatency = createForwardIslOneWayLatency(latency3);
+        IslOneWayLatency reverseOneWayLatency = createReverseIslOneWayLatency(latency5);
 
         IslRoundTripLatency firstRoundTripLatency = new IslRoundTripLatency(SWITCH_ID_1, PORT_1, latency2, PACKET_ID);
         IslRoundTripLatency secondRoundTripLatency = new IslRoundTripLatency(SWITCH_ID_1, PORT_1, latency4, PACKET_ID);
@@ -158,7 +156,7 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         // we have no round trip latency so we have to use one way latency fot Neo4j, but not for OpenTSDB
         pushMessage(firstOneWayLatency);
         assertTrue(otsdbConsumer.isEmpty());
-        assertEquals(latency1, getIslLatency(FORWARD_ISL));
+        assertEquals(latency1 * ONE_WAY_LATENCY_MULTIPLIER, getIslLatency(FORWARD_ISL));
 
         // we got round trip latency so we will use it for metric and database
         long timestamp2 = pushMessage(firstRoundTripLatency);
@@ -247,5 +245,13 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         return islRepository.findByEndpoints(srcSwitchId, srcPort, dstSwitchId, dstPort)
                 .orElseThrow(() -> new IslNotFoundException(srcSwitchId, srcPort, dstSwitchId, dstPort))
                 .getLatency();
+    }
+
+    private IslOneWayLatency createForwardIslOneWayLatency(long latency) {
+        return new IslOneWayLatency(SWITCH_ID_1, PORT_1, SWITCH_ID_2, PORT_2, latency, PACKET_ID);
+    }
+
+    private IslOneWayLatency createReverseIslOneWayLatency(long latency) {
+        return new IslOneWayLatency(SWITCH_ID_2, PORT_2, SWITCH_ID_1, PORT_1, latency, PACKET_ID);
     }
 }

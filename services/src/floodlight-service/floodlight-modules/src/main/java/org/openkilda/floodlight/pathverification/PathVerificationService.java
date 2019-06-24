@@ -570,7 +570,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
     private void handleDiscoveryPacket(OfInput input, IOFSwitch destSwitch, DiscoveryPacketData data) {
         OFPort inPort = OFMessageUtils.getInPort((OFPacketIn) input.getMessage());
         long latency = measureLatency(input, data.getTimestamp());
-        logIsl.info("link discovered: {}-{} ===( {} ms )===> {}-{} id:{}",
+        logIsl.info("link discovered: {}-{} ===( {} ns )===> {}-{} id:{}",
                 data.getRemoteSwitchId(), data.getRemotePort(), latency, input.getDpId(), inPort, data.getPacketId());
 
         // this discovery packet was sent from remote switch/port to received switch/port

@@ -86,6 +86,10 @@ public class IslLatencyService {
             return;
         }
 
+        log.debug("Received round trip latency {} for ISL {}_{} ===> {}_{}. Packet Id: {}",
+                data.getLatency(), data.getSrcSwitchId(), data.getSrcPortNo(),
+                destination.getDatapath(), destination.getPortNumber(), data.getPacketId());
+
         IslKey islKey = new IslKey(data, destination);
 
         roundTripLatencyStorage.putIfAbsent(islKey, new LinkedList<>());
@@ -103,13 +107,9 @@ public class IslLatencyService {
      * @param timestamp latency timestamp
      */
     public void handleOneWayIslLatency(IslOneWayLatency data, long timestamp) {
-        if (data.getLatency() < 0) {
-            log.warn("Received invalid one way latency {} for ISL {}_{} ===> {}_{}. Packet Id: {}",
-                    data.getLatency(), data.getSrcSwitchId(), data.getSrcPortNo(),
-                    data.getDstSwitchId(), data.getDstPortNo(), data.getPacketId());
-            return;
-        }
-
+        log.debug("Received one way latency {} for ISL {}_{} ===> {}_{}, Packet Id: {}",
+                data.getLatency(), data.getSrcSwitchId(), data.getSrcPortNo(),
+                data.getDstSwitchId(), data.getDstPortNo(), data.getPacketId());
 
         IslKey islKey = new IslKey(data);
 
@@ -205,7 +205,7 @@ public class IslLatencyService {
 
         try {
             updateIslLatency(srcSwitch, srcPort, dstSwitch, dstPort, latency);
-            log.debug("Updated {} latency for ISL {}_{} ===( {} ms )===> {}_{}. Packet id:{}",
+            log.debug("Updated {} latency for ISL {}_{} ===( {} ns )===> {}_{}. Packet id:{}",
                     latencyType, srcSwitch, srcPort, latency, dstSwitch, dstPort, packetId);
         } catch (SwitchNotFoundException | IslNotFoundException e) {
             log.warn("Couldn't update {} latency for ISL {}_{} ===> {}_{}. Packet id:{}. {}",

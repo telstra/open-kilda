@@ -64,7 +64,7 @@ public class RouterBolt extends AbstractBolt {
                 Endpoint.of(data.getSrcSwitchId(), data.getSrcPortNo()),
                 Endpoint.of(data.getDstSwitchId(), data.getDstPortNo()));
         Values values = new Values(islReference, data, getCommandContext());
-        getOutput().emit(StreamType.LATENCY.toString(), input, values);
+        getOutput().emit(StreamType.ONE_WAY_MANIPULATION.toString(), input, values);
     }
 
     private void handleRoundTripLatency(Tuple input, IslRoundTripLatency data) {
@@ -75,7 +75,7 @@ public class RouterBolt extends AbstractBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         Fields oneWayLatencyFields = new Fields(ISL_GROUPING_FIELD, LATENCY_DATA_FIELD, FIELD_ID_CONTEXT);
-        declarer.declareStream(StreamType.LATENCY.toString(), oneWayLatencyFields);
+        declarer.declareStream(StreamType.ONE_WAY_MANIPULATION.toString(), oneWayLatencyFields);
         declarer.declareStream(StreamType.CACHE.toString(),
                 new Fields(SWITCH_KEY_FIELD, LATENCY_DATA_FIELD, FIELD_ID_CONTEXT));
     }

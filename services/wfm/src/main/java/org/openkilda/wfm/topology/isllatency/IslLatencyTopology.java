@@ -23,6 +23,7 @@ import org.openkilda.wfm.topology.isllatency.bolts.CacheBolt;
 import org.openkilda.wfm.topology.isllatency.bolts.IslLatencyBolt;
 import org.openkilda.wfm.topology.isllatency.bolts.IslStatsBolt;
 import org.openkilda.wfm.topology.isllatency.bolts.IslStatusUpdateBolt;
+import org.openkilda.wfm.topology.isllatency.bolts.OneWayLatencyManipulationBolt;
 import org.openkilda.wfm.topology.isllatency.bolts.RouterBolt;
 import org.openkilda.wfm.topology.isllatency.model.StreamType;
 
@@ -41,6 +42,7 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
     public static final String ROUTER_BOLT_ID = "router-bolt";
     public static final String CACHE_BOLT_ID = "cache-bolt";
     public static final String ISL_STATUS_UPDATE_BOLT_ID = "isl-status-update-bolt";
+    public static final String ONE_WAY_MANIPULATION_BOLT_ID = "one-way-manipulation-bolt";
 
     public static final String ISL_GROUPING_FIELD = "isl_group_field";
     public static final String SWITCH_KEY_FIELD = "switch_key";
@@ -73,6 +75,7 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
 
         createRouterBolt(builder);
         createStatsBolt(builder);
+        createOneWayManipulationBolt(builder);
 
         createOpenTsdbBolt(builder);
 
@@ -92,7 +95,7 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
                 topologyConfig.getLatencyUpdateInterval(),
                 topologyConfig.getLatencyUpdateTimeRange());
         builder.setBolt(ISL_LATENCY_BOLT_ID, islLatencyBolt, topologyConfig.getNewParallelism())
-                .fieldsGrouping(ROUTER_BOLT_ID, StreamType.LATENCY.toString(), ISL_GROUPING_FIELDS)
+                .fieldsGrouping(ONE_WAY_MANIPULATION_BOLT_ID, StreamType.LATENCY.toString(), ISL_GROUPING_FIELDS)
                 .fieldsGrouping(CACHE_BOLT_ID, StreamType.LATENCY.toString(), ISL_GROUPING_FIELDS);
     }
 
@@ -102,10 +105,18 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
 
         IslStatsBolt islStatsBolt = new IslStatsBolt(topologyConfig.getMetricPrefix(), latencyTimeout);
         builder.setBolt(ISL_STATS_BOLT_ID, islStatsBolt, topologyConfig.getNewParallelism())
-                .fieldsGrouping(ROUTER_BOLT_ID, StreamType.LATENCY.toString(), ISL_GROUPING_FIELDS)
+                .fieldsGrouping(ONE_WAY_MANIPULATION_BOLT_ID, StreamType.LATENCY.toString(), ISL_GROUPING_FIELDS)
                 .fieldsGrouping(CACHE_BOLT_ID, StreamType.LATENCY.toString(), ISL_GROUPING_FIELDS)
                 .fieldsGrouping(ISL_STATUS_UPDATE_BOLT_ID, StreamType.ISL_STATUS.toString(), ISL_GROUPING_FIELDS);
     }
+
+    private void createOneWayManipulationBolt(TopologyBuilder builder) {
+        OneWayLatencyManipulationBolt oneWayLatencyManipulationBolt = new OneWayLatencyManipulationBolt();
+
+        builder.setBolt(ONE_WAY_MANIPULATION_BOLT_ID, oneWayLatencyManipulationBolt, topologyConfig.getNewParallelism())
+                .fieldsGrouping(ROUTER_BOLT_ID, StreamType.ONE_WAY_MANIPULATION.toString(), ISL_GROUPING_FIELDS);
+    }
+
 
     private void createCacheBolt(TopologyBuilder builder, PersistenceManager persistenceManager) {
         CacheBolt cacheBolt = new CacheBolt(persistenceManager);

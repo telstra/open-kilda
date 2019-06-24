@@ -25,6 +25,7 @@ import org.openkilda.wfm.topology.isllatency.model.IslKey;
 import org.openkilda.wfm.topology.isllatency.model.LatencyRecord;
 
 import com.google.common.annotations.VisibleForTesting;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -33,6 +34,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
+@Slf4j
 public class IslStatsService {
     private final IslStatsCarrier carrier;
     private final long latencyTimeout;
@@ -57,6 +59,11 @@ public class IslStatsService {
      * @param destination isl destination endpoint
      */
     public void handleRoundTripLatencyMetric(long timestamp, IslRoundTripLatency data, Endpoint destination) {
+        log.debug("Received round trip latency {} for ISL {}_{} ===> {}_{}. Packet Id: {}",
+                data.getLatency(), data.getSrcSwitchId(), data.getSrcPortNo(),
+                destination.getDatapath(), destination.getPortNumber(), data.getPacketId());
+
+
         IslKey islKey = new IslKey(data, destination);
         roundTripLatencyStorage.put(islKey, new LatencyRecord(data.getLatency(), timestamp));
 
@@ -81,6 +88,10 @@ public class IslStatsService {
      * @param data isl one way latency info data
      */
     public void handleOneWayLatencyMetric(long timestamp, IslOneWayLatency data) {
+        log.debug("Received one way latency {} for ISL {}_{} ===> {}_{}, Packet Id: {}",
+                data.getLatency(), data.getSrcSwitchId(), data.getSrcPortNo(),
+                data.getDstSwitchId(), data.getDstPortNo(), data.getPacketId());
+
         IslKey forward = new IslKey(data);
 
         if (haveValidRoundTripLatencyRecord(forward)) {

@@ -13,8 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.isllatency.model;
+package org.openkilda.wfm.topology.isllatency.carriers;
 
-public enum StreamType {
-    CACHE, LATENCY, ISL_STATUS, ONE_WAY_MANIPULATION
+import org.openkilda.messaging.info.event.IslOneWayLatency;
+
+import org.openkilda.wfm.error.PipelineException;
+
+
+public interface OneWayLatencyManipulationCarrier {
+    void emitIslOneWayLatency(IslOneWayLatency islOneWayLatency) throws PipelineException;
 }
