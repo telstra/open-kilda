@@ -1,0 +1,52 @@
+@startuml
+title New implementation of ISL discovery and round-trip latency with NoviFlow switches and groups support
+
+
+participant Floodlight_A as FLA
+participant Floodlight_B as FLB
+participant "Switch_A\n(Noviflow)" as SWA
+participant "Switch_B\n(supports groups)" as SWB
+control kilda.topo.disco as DI
+participant NetworkTopology as NT
+database DB
+control kilda.isl.latency as LT
+participant IslLatencyTopology as ILT
+control kilda.otsdb as OTSDB
+participant OpenTSDBTopology as OTOP
+FLA -> FLA : set current timestemp **T**
+FLA -> SWA : Discovery Packet
+activate SWA
+SWA -> SWA : Set **t0** timestamp
+SWA -> SWB : Discovery Packet
+deactivate SWA
+activate SWB
+SWB -> SWB : Clone packet \n(get P1 and P2)
+SWB -> FLB : Discovery Packet P1 (old style)
+activate FLB
+FLB -> DI : IslInfoData\n(without latency)
+FLB -> LT : IslOneWayLatency
+deactivate FLB
+LT -> ILT : IslOneWayLatency
+DI -> NT : IslInfoData\n(without latency)
+activate NT
+NT -> DB : Store ISL
+deactivate NT
+SWB -> SWB : Change UDP port in P2\n(to match P2 on Switch_A)
+SWB -> SWA : Packet P2
+deactivate SWB
+activate SWA
+SWA -> SWA : Set **t1** timestamp
+SWA -> FLA : Packet P2
+deactivate SWA
+activate FLA
+FLA -> FLA : Calculate latency \n**t1** - **t0**
+FLA -> LT : IslRoundTripLatency
+deactivate FLA
+LT -> ILT : IslRoundTripLatency
+activate ILT
+ILT -> DB : Set Latency
+ILT -> OTSDB : latency metric
+deactivate ILT
+OTSDB -> OTOP : latency metric
+
+@enduml
