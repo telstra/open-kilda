@@ -1,49 +1,53 @@
 <div class="row">
+  <button *ngIf="hasDiverseGroup"  class="btn btn-dark" style="position:absolute;top:15px; right:135px;" (click)="viewDiverseGroup()">Diverse Group</button>
   <div id="ForwardRow" class="col-xs-12 col-md-12 col-lg-12">
     <h3 class="text-center">
       FORWARD PATH
-      <a class="badge badge-dark custom-button cursor-pointer" (click)="viewPathGraph('forward')">
+      <a class="custom-button cursor-pointer" (click)="viewPathGraph('forward')">
         <i class="fa" [ngClass]="{'fa-minus': forwardPathGraph, 'fa-plus': !forwardPathGraph}"> </i>
       </a>
     </h3>
 
-    <div  *ngFor="let path of forwardPathData" class="path">
+    <div  *ngFor="let path of forwardPathData; let i = index" class="path">
+      <div *ngIf="forwardPathData.length > 5 && (i+1) % 4 == 0" class="vertical-line-2"></div>
       <div class="number" ngbTooltip="{{path.switch_name}}">{{path.input_port}}</div>
       <div class="line"></div>
       <div class="text cursor-pointer" id="switch-name" (click)="loadSwitchDetail(path.switch_id)">{{path.switch_name}}</div>
       <div class="line"></div>
       <div class="number" ngbTooltip="{{path.switch_name}}">{{path.output_port}}</div>
-      <div class="line islPath"  (click)="loadIslDetail('forward')"></div>
-      <div *ngIf="forwardPathData.length > 5" class="vertical-line"></div>
-      <div *ngIf="forwardPathData.length > 5" class="horizontal-line"></div>
-      <div *ngIf="forwardPathData.length > 5" class="vertical-line-2"></div>
+      <div class="line islPath" [ngClass]="{'connecting_isl': (i+1) % 4 == 0}" (click)="loadIslDetail('forward')"></div>
+      <div *ngIf="forwardPathData.length > 5 && (i+1) % 4 == 0" class="vertical-line"></div>
+      <div *ngIf="forwardPathData.length > 5 && (i+1) % 4 == 0" class="horizontal-line"></div>
     </div>
 
   </div>
 </div>
+<app-flow-diverse-path [data]="diversePath" path-type='forward' [colourCodes]="colourCodes"  *ngIf="showDiverseGroup"></app-flow-diverse-path>
+
 <app-flow-path-graph [data]="flowPathData" path-type="forward"  *ngIf="forwardPathGraph"></app-flow-path-graph>
 <div class="row">
 
   <div id="ReversePath" class="col-xs-12 col-md-12 col-lg-12">
     <h3 class="text-center">
       REVERSE PATH
-      <a class="badge badge-dark custom-button cursor-pointer" (click)="viewPathGraph('reverse')">
+      <a class=" custom-button cursor-pointer" (click)="viewPathGraph('reverse')">
         <i class="fa" [ngClass]="{'fa-minus': reversePathGraph, 'fa-plus': !reversePathGraph}"> </i>
       </a>
-    </h3>
+   </h3>
 
-    <div  *ngFor="let path of reversePathData" class="path">
+    <div  *ngFor="let path of reversePathData;let i = index" class="path">      
+        <div *ngIf="reversePathData.length > 5 && (i+1) % 4 == 0" class="vertical-line-2"></div>
       <div class="number" ngbTooltip="{{path.switch_name}}">{{path.input_port}}</div>
       <div class="line"></div>
       <div class="text cursor-pointer"  id="switch-name" (click)="loadSwitchDetail(path.switch_id)">{{path.switch_name}}</div>
       <div class="line"></div>
       <div class="number" ngbTooltip="{{path.switch_name}}">{{path.output_port}}</div>
-      <div class="line islPath"  (click)="loadIslDetail('reverse')"></div>
-      <div *ngIf="reversePathData.length > 5" class="vertical-line"></div>
-      <div *ngIf="reversePathData.length > 5" class="horizontal-line"></div>
-      <div *ngIf="reversePathData.length > 5" class="vertical-line-2"></div>
+      <div class="line islPath" [ngClass]="{'connecting_isl': (i+1) % 4 == 0}" (click)="loadIslDetail('reverse')"></div>
+      <div *ngIf="reversePathData.length > 5 && (i+1) % 4 == 0" class="vertical-line"></div>
+      <div *ngIf="reversePathData.length > 5 && (i+1) % 4 == 0" class="horizontal-line"></div>
     </div>
     
   </div>
 </div>
+<app-flow-diverse-reversepath [data]="diversePath" path-type='reverse' [colourCodes]="colourCodes" *ngIf="showDiverseGroup"></app-flow-diverse-reversepath>
 <app-flow-path-graph [data]="flowPathData" path-type="reverse" *ngIf="reversePathGraph"></app-flow-path-graph>

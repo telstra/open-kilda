@@ -93,6 +93,9 @@ public class IslLinkInfo implements Serializable {
     @JsonProperty("evacuate")
     private boolean evacuate;
     
+    @JsonProperty("enable_bfd")
+    private boolean enableBfd;
+    
     public String getCost() {
         return cost;
     }

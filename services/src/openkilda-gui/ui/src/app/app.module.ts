@@ -87,6 +87,8 @@ import { SessionComponent } from './modules/settings/session/session.component';
 import { ImportTopologySettingComponent } from './modules/topology/import-topology-setting/import-topology-setting.component';
 import { ExportTopologySettingComponent } from './modules/topology/export-topology-setting/export-topology-setting.component';
 import { IslmaintenancemodalComponent } from './common/components/islmaintenancemodal/islmaintenancemodal.component';
+import { FlowDiversePathComponent } from './modules/flows/flow-diverse-path/flow-diverse-path.component';
+import { FlowDiverseReversepathComponent } from './modules/flows/flow-diverse-reversepath/flow-diverse-reversepath.component';
 
 @NgModule({
   declarations: [
@@ -160,6 +162,8 @@ import { IslmaintenancemodalComponent } from './common/components/islmaintenance
     ImportTopologySettingComponent,
     ExportTopologySettingComponent,
     IslmaintenancemodalComponent,
+    FlowDiversePathComponent,
+    FlowDiverseReversepathComponent,
   ],
   imports: [
     HttpClientModule,

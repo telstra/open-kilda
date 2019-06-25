@@ -3,6 +3,7 @@ import { FlowsService } from "../../../common/services/flows.service";
 import { NgxSpinnerService } from "ngx-spinner";
 import { LoaderService } from "../../../common/services/loader.service";
 import { Router } from "@angular/router";
+import { CommonService } from "src/app/common/services/common.service";
 
 @Component({
   selector: "app-flow-path",
@@ -15,14 +16,23 @@ export class FlowPathComponent implements OnInit, OnDestroy {
   flowPathData: any;
   forwardPathGraph: Boolean = false;
   reversePathGraph: Boolean = false;
-
+  diversePath = {};
+  diverseGroup = [];
+  colourCodes=[];
+  hasDiverseGroup:boolean=false;
+  forwardPathSwitches = [];
+  reversePathSwitches = [];
   reversePathData = [];
   forwardPathData = [];
+  showDiverseGroup :boolean = false;
+  diverseUniqueSwitches = [];
+  diverseGroupCommonSwitch = [];
 
   constructor(
     private flowService: FlowsService,
     private loaderService: LoaderService,
-    private router:Router
+    private router:Router,
+    private commonService:CommonService,
   ) {}
 
   ngOnInit() {
@@ -40,6 +50,8 @@ export class FlowPathComponent implements OnInit, OnDestroy {
         this.flowPathData = data;
         this.forwardPathData = data.flowpath_forward;
         this.reversePathData = data.flowpath_reverse;
+        this.loadDiverseGroup();
+        
         this.loaderService.hide();
       },
       error => {
@@ -47,6 +59,48 @@ export class FlowPathComponent implements OnInit, OnDestroy {
       }
     );
   }
+
+ loadDiverseGroup(){
+    var self = this;
+    var otherFLows = this.flowPathData && this.flowPathData['diverse_group'] && this.flowPathData['diverse_group']['other_flows'] ? this.flowPathData['diverse_group']['other_flows'] :  null;
+    this.hasDiverseGroup = this.flowPathData && this.flowPathData['diverse_group'] && this.flowPathData['diverse_group']['other_flows'];
+    if(otherFLows && otherFLows.length){
+      for(let flow in otherFLows){
+         var coloCode = this.commonService.getCommonColorCode(flow,self.colourCodes);
+          this.colourCodes.push(coloCode);
+          if(otherFLows[flow] && otherFLows[flow]['flowpath_forward']){
+            var flowid = otherFLows[flow]['flowid'];
+            if(this.diversePath && this.diversePath[flowid]){
+              this.diversePath[flowid]['forward_path'] = otherFLows[flow]['flowpath_forward'];
+            }else{
+              this.diversePath[flowid] = {};
+              this.diversePath[flowid]['forward_path'] = otherFLows[flow]['flowpath_forward'];
+            }            
+          }
+          if(otherFLows[flow] && otherFLows[flow]['flowpath_reverse']){
+            var flowid = otherFLows[flow]['flowid'];
+            if(this.diversePath && this.diversePath[flowid]){
+              this.diversePath[flowid]['reverse_path'] = otherFLows[flow]['flowpath_reverse'];
+            }else{
+              this.diversePath[flowid] = {};
+              this.diversePath[flowid]['reverse_path'] = otherFLows[flow]['flowpath_reverse'];
+            }
+            
+          }
+        }
+        // add flows to diverse group
+        Object.keys(this.diversePath).map(function(i,v){
+          self.diverseGroup.push(i);
+        })
+        
+      }
+      
+  }
+
+  viewDiverseGroup(flowid){
+    this.showDiverseGroup = true;
+  }
+
  loadIslDetail(type){
    if(type=='forward'){
     var src_switch = (this.forwardPathData && this.forwardPathData.length && this.forwardPathData[0]['switch_id'] ) ? this.forwardPathData[0]['switch_id']:null;
