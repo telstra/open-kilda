@@ -41,6 +41,7 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
 
     @Override
     protected void init() {
+        super.init();
         service = new SpeakerWorkerService(this);
     }
 
@@ -53,16 +54,16 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     }
 
     @Override
-    protected void onAsyncResponse(Tuple input) throws PipelineException {
-        String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
-        Message message = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Message.class);
+    protected void onAsyncResponse(Tuple request, Tuple response) throws Exception {
+        String key = pullKey();
+        Message message = pullValue(response, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Message.class);
 
         service.handleResponse(key, message);
     }
 
     @Override
-    public void onTimeout(String key, Tuple tuple) throws PipelineException {
-        service.handleTimeout(key);
+    protected void onRequestTimeout(Tuple request) throws PipelineException {
+        service.handleTimeout(pullKey(request));
     }
 
     @Override

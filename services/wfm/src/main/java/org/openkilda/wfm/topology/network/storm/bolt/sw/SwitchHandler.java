@@ -189,7 +189,8 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
     }
 
     private Values makeSwitchManagerWorkerTuple(String key, SwitchId switchId) {
-        return new Values(key, new SwitchManagerSynchronizeSwitchCommand(key, switchId), getCommandContext());
+        return new Values(
+                key, new SwitchManagerSynchronizeSwitchCommand(key, switchId), getCommandContext().fork("sync"));
     }
 
     // SwitchCommand processing

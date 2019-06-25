@@ -118,7 +118,7 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
 
     @Override
     public void cancelTimeoutCallback(String key) {
-        cancelCallback(key, getCurrentTuple());
+        cancelCallback(key);
     }
 
     @Override

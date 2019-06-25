@@ -16,6 +16,7 @@
 package org.openkilda.wfm.share.hubandspoke;
 
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt.CoordinatorCommand;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
@@ -27,7 +28,7 @@ import org.apache.storm.tuple.Values;
 /**
  * This class provides callbacks and timeout handlers for asynchronous operations.
  */
-abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
+abstract class CoordinatedBolt extends AbstractBolt {
     static final String COMMAND_FIELD = "command";
     static final String TIMEOUT_FIELD = "timeout_ms";
 
@@ -64,11 +65,18 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
     }
 
     /**
+     * Handler for timeout for pending request and define the way how such case will be processed.
+     * @param key request id.
+     * @param tuple anchor tuple.
+     */
+    protected abstract void onTimeout(String key, Tuple tuple) throws PipelineException;
+
+    /**
      * Should be called once operation is finished and callback/timer should be cancelled.
      * @param key request's identifier.
      */
-    protected void cancelCallback(String key, Tuple tuple) {
-        emitWithContext(CoordinatorBolt.INCOME_STREAM, tuple,
+    protected void cancelCallback(String key) {
+        emitWithContext(CoordinatorBolt.INCOME_STREAM, getCurrentTuple(),
                         new Values(key, CoordinatorCommand.CANCEL_CALLBACK, 0));
     }
 
@@ -77,8 +85,8 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
      * used.
      * @param key operation identifier.
      */
-    protected void registerCallback(String key, Tuple tuple) {
-        registerCallback(key, defaultTimeout, tuple);
+    protected void registerCallback(String key) {
+        registerCallback(key, defaultTimeout);
     }
 
     /**
@@ -86,8 +94,8 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
      * @param key operation identifier.
      * @param timeout how long coordinator waits for a response. If no response received - timeout error occurs.
      */
-    protected void registerCallback(String key, int timeout, Tuple tuple) {
-        emitWithContext(CoordinatorBolt.INCOME_STREAM, tuple,
+    protected void registerCallback(String key, int timeout) {
+        emitWithContext(CoordinatorBolt.INCOME_STREAM, getCurrentTuple(),
                         new Values(key, CoordinatorCommand.REQUEST_CALLBACK, timeout));
     }
 }
