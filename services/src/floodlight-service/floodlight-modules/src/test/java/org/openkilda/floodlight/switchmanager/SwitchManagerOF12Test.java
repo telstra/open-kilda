@@ -14,6 +14,7 @@ import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationServiceConfig;
+import org.openkilda.model.FlowEncapsulationType;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -65,14 +66,15 @@ public class SwitchManagerOF12Test {
     }
 
     @Test
-    public void installTransitFlow() throws Exception {
+    public void installTransitFlowUsingTransitVlan() throws Exception {
         Capture<OFFlowMod> capture = prepareForInstallFlowOperation();
 
         String flowId = "test-transit-flow-rule";
         int inputPort = 2;
         int outputPort = 4;
         int transitVlanId = 512;
-        switchManager.installTransitFlow(switchDpId, flowId, commonFlowCookie, inputPort, outputPort, transitVlanId);
+        switchManager.installTransitFlow(switchDpId, flowId, commonFlowCookie, inputPort, outputPort, transitVlanId,
+                FlowEncapsulationType.TRANSIT_VLAN);
 
         OFFactory referenceOfFactory = new OFFactoryVer12Mock();
         OFFlowMod expected = referenceOfFactory.buildFlowAdd()

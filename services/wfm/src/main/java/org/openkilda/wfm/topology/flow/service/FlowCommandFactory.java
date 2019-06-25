@@ -152,7 +152,7 @@ public class FlowCommandFactory {
         Flow flow = flowPath.getFlow();
         if (flow.isOneSwitchFlow()) {
             // Removing of single switch rules is done with no output port in criteria.
-            return buildRemoveIngressFlow(flow, flowPath, null, null);
+            return buildRemoveIngressFlow(flow, flowPath, null, flow.getEncapsulationType());
         }
         List<PathSegment> segments = flowPath.getSegments();
         requireSegments(segments);
