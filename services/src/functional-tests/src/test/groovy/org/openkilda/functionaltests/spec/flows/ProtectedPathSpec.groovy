@@ -8,7 +8,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
@@ -692,13 +691,14 @@ class ProtectedPathSpec extends BaseSpecification {
         currentPath != currentProtectedPath
 
         and: "Rules for main and protected paths are created"
-        Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
-
-        def cookiesAfterEnablingProtectedPath = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            !Cookie.isDefaultRule(it.cookie)
-        }*.cookie
-        // two for main path + one for protected path
-        cookiesAfterEnablingProtectedPath.size() == 3
+        Wrappers.wait(WAIT_OFFSET) {
+            flowHelper.verifyRulesOnProtectedFlow(flow.id)
+            def cookiesAfterEnablingProtectedPath = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
+                !Cookie.isDefaultRule(it.cookie)
+            }*.cookie
+            // two for main path + one for protected path
+            cookiesAfterEnablingProtectedPath.size() == 3
+        }
 
         and: "No rule discrepancies on every switch of the flow on the main path"
         def mainSwitches = pathHelper.getInvolvedSwitches(currentPath)
