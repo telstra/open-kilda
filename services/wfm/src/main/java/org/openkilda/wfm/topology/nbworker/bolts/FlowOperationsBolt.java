@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -26,11 +26,11 @@ import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForIslRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.RerouteFlowsForIslRequest;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
@@ -38,6 +38,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
+import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
@@ -50,7 +51,6 @@ import org.apache.storm.tuple.Values;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class FlowOperationsBolt extends PersistenceOperationsBolt {
@@ -76,6 +76,8 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         List<? extends InfoData> result = null;
         if (request instanceof GetFlowsForIslRequest) {
             result = processGetFlowsForLinkRequest((GetFlowsForIslRequest) request);
+        } else if (request instanceof GetFlowsForSwitchRequest) {
+            result = processGetFlowsForSwitchRequest((GetFlowsForSwitchRequest) request);
         } else if (request instanceof RerouteFlowsForIslRequest) {
             result = processRerouteFlowsForLinkRequest((RerouteFlowsForIslRequest) request, tuple);
         } else if (request instanceof GetFlowPathRequest) {
@@ -96,20 +98,30 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         Integer dstPort = request.getDestination().getPortNumber();
 
         try {
-            // TODO not optimal and should be rewrited
             return flowOperationsService.getFlowPathsForLink(srcSwitch, srcPort, dstSwitch, dstPort).stream()
                     .map(FlowPath::getFlow)
-                    .map(Flow::getFlowId)
                     .distinct()
-                    .map(flowOperationsService::getFlowPairById)
-                    .filter(Optional::isPresent)
-                    .map(Optional::get)
-                    .map(FlowPair::getForward)
                     .map(FlowMapper.INSTANCE::map)
                     .map(FlowResponse::new)
                     .collect(Collectors.toList());
         } catch (IslNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "ISL was not found.");
+        }
+    }
+
+    private List<FlowResponse> processGetFlowsForSwitchRequest(GetFlowsForSwitchRequest request) {
+        SwitchId srcSwitch = request.getSwitchId();
+        Integer srcPort = request.getPort();
+
+        try {
+            return flowOperationsService.getFlowPathsForEndpoint(srcSwitch, srcPort).stream()
+                    .map(FlowPath::getFlow)
+                    .distinct()
+                    .map(FlowMapper.INSTANCE::map)
+                    .map(FlowResponse::new)
+                    .collect(Collectors.toList());
+        } catch (SwitchNotFoundException e) {
+            throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch was not found.");
         }
     }
 

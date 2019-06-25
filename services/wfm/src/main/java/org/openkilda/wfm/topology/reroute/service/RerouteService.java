@@ -154,7 +154,7 @@ public class RerouteService {
      */
     public Collection<FlowPath> getAffectedFlowPaths(SwitchId switchId, int port) {
         log.info("Get affected flow paths by node {}_{}", switchId, port);
-        return pathRepository.findAffectedPaths(switchId, port);
+        return pathRepository.findBySegmentEndpoint(switchId, port);
     }
 
 

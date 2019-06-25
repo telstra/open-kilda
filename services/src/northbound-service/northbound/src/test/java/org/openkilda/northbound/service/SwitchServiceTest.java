@@ -24,6 +24,8 @@ import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.MessageExchanger;
 import org.openkilda.northbound.config.KafkaConfig;
+import org.openkilda.northbound.converter.FlowMapper;
+import org.openkilda.northbound.converter.FlowMapperImpl;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.converter.SwitchMapperImpl;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
@@ -116,6 +118,11 @@ public class SwitchServiceTest {
         @Bean
         public SwitchMapper switchMapper() {
             return new SwitchMapperImpl();
+        }
+
+        @Bean
+        public FlowMapper flowMapper() {
+            return new FlowMapperImpl();
         }
     }
 
