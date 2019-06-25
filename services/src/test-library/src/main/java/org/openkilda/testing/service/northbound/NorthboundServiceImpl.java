@@ -578,6 +578,22 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
+    public List<FlowPayload> getSwitchFlows(SwitchId switchId) {
+        FlowPayload[] switchFlows = restTemplate.exchange("/api/v1/switches/{switch_id}/flows", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload[].class, switchId).getBody();
+        return Arrays.asList(switchFlows);
+    }
+
+    @Override
+    public List<FlowPayload> getSwitchFlows(SwitchId switchId, Integer port) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/switches/{switch_id}/flows");
+        uriBuilder.queryParam("port", port);
+        FlowPayload[] switchFlows = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload[].class, switchId).getBody();
+        return Arrays.asList(switchFlows);
+    }
+
+    @Override
     public PathsDto getPaths(SwitchId srcSwitch, SwitchId dstSwitch) {
         return restTemplate.exchange(
                 "/api/v1/network/paths?src_switch={src_switch}&dst_switch={dst_switch}", HttpMethod.GET,
