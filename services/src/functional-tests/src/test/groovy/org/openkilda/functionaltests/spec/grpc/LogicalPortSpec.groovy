@@ -62,7 +62,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
         portExists && grpc.deleteSwitchLogicalPort(sw.address, switchLogicalPort)
 
         where:
-        sw << getNoviflowSwitches("6.5")
+        sw << getNoviflowSwitches(6.5)
     }
 
     @Unroll
@@ -108,6 +108,6 @@ class LogicalPortSpec extends GrpcBaseSpecification {
         exc.responseBodyAsString.to(MessageError).errorMessage == "Provided logical port does not exist."
 
         where:
-        sw << getNoviflowSwitches("6.4")
+        sw << getNoviflowSwitches(6.4)
     }
 }

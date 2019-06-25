@@ -26,6 +26,6 @@ class LicenseSpec extends GrpcBaseSpecification {
         exc.responseBodyAsString.to(MessageError).errorMessage == "Invalid license key."
 
         where:
-        sw << getNoviflowSwitches("6.4")
+        sw << getNoviflowSwitches(6.4)
     }
 }
