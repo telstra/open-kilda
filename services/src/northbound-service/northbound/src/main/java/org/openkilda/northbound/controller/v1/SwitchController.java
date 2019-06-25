@@ -28,6 +28,7 @@ import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.controller.BaseController;
@@ -372,5 +373,22 @@ public class SwitchController extends BaseController {
                     + "there is no flow with this switch, switch has no ISLs) will be ignored.")
             @RequestParam(name = "force", required = false, defaultValue = "false") boolean force) {
         return switchService.deleteSwitch(switchId, force);
+    }
+
+    /**
+     * Get all flows for a particular switch.
+     *
+     * @param switchId the switch
+     * @param port the port
+     * @return all flows for a particular switch.
+     */
+    @ApiOperation(value = "Get a list of flows that goes through a particular switch, based on arguments.",
+            response = FlowPayload.class, responseContainer = "List")
+    @GetMapping(value = "/{switch-id}/flows", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<List<FlowPayload>> getFlowsForSwitch(@PathVariable(value = "switch-id") SwitchId switchId,
+                                                                  @RequestParam(value = "port", required = false)
+                                                                          Integer port) {
+        return switchService.getFlowsForSwitch(switchId, port);
     }
 }
