@@ -1,0 +1,65 @@
+@startuml
+title New implementation of ISL discovery and round-trip latency with NoviFlow switches and groups support
+
+
+collections Floodlights as FL
+participant Floodlight_B as FL
+participant "Switch_A\n(Noviflow)" as SWA
+participant "Switch_B\n(supports groups)" as SWB
+control kilda.topo.disco as DI
+participant NetworkTopology as NT
+database DB
+control kilda.isl.latency as LT
+participant IslLatencyTopology as ILT
+control kilda.otsdb as OTSDB
+participant OpenTSDBTopology as OTOP
+FL -> FL : set current timestemp **T**
+FL -> SWA : Discovery Packet
+activate SWA
+SWA -> SWA : Set **t0** timestamp
+SWA -> SWB : Discovery Packet
+deactivate SWA
+activate SWB
+SWB -> SWB : Copy  packet \n(get P1 and P2)
+SWB -> FL : Discovery Packet P1\n(old style)
+activate FL
+FL -> DI : IslInfoData\n(without latency)
+FL -> LT : IslOneWayLatency
+deactivate FL
+LT -> ILT : IslOneWayLatency
+activate ILT
+ILT -> ILT : Collecting of\nIslOneWayLatency
+deactivate ILT
+note left
+More information
+about choosing
+between round trip
+latency and one way
+latency you can find
+in "One way latency
+VS round trip latency"
+section.
+end note
+DI -> NT : IslInfoData\n(without latency)
+activate NT
+NT -> DB : Store ISL
+deactivate NT
+SWB -> SWB : Change UDP port in P2\n(to match P2 on Switch_A)
+SWB -> SWA : Packet P2
+deactivate SWB
+activate SWA
+SWA -> SWA : Set **t1** timestamp
+SWA -> FL : Packet P2
+deactivate SWA
+activate FL
+FL -> FL : Calculate latency \n**t1** - **t0**
+FL -> LT : IslRoundTripLatency
+deactivate FL
+LT -> ILT : IslRoundTripLatency
+activate ILT
+ILT -> DB : Set Latency
+ILT -> OTSDB : latency metric
+deactivate ILT
+OTSDB -> OTOP : latency metric
+
+@enduml

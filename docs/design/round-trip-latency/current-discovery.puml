@@ -1,0 +1,41 @@
+@startuml
+title Current implementation of ISL discovery
+
+
+collections Floodlights as FL
+participant Switch_A as SWA
+participant Switch_B as SWB
+control kilda.topo.disco as DI
+participant NetworkTopology as NT
+database DB
+participant IslLatencyTopology as ST
+control kilda.otsdb as OTSDB
+participant OpenTSDBTopology as OTOP
+
+
+activate FL
+FL -> FL : set current timestemp **T**
+FL -> SWA : Discovery Packet
+deactivate FL
+activate SWA
+SWA -> SWB : Discovery Packet
+deactivate SWA
+activate SWB
+SWB -> FL : Discovery Packet
+deactivate SWB
+activate FL
+FL -> FL : calculate latency \n**curTime - T - controller latency**
+FL -> DI : IslInfoData
+deactivate FL
+DI -> NT : IslInfoData
+activate NT
+NT -> DB : Store ISL
+deactivate NT
+
+DI -> ST : IslInfoData
+activate ST
+ST -> OTSDB : latency metric
+deactivate ST
+OTSDB -> OTOP : latency metric
+
+@enduml
