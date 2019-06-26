@@ -20,6 +20,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.openkilda.messaging.command.Constants.bandwidth;
 import static org.openkilda.messaging.command.Constants.flowName;
+import static org.openkilda.messaging.command.Constants.ingresSwitchId;
 import static org.openkilda.messaging.command.Constants.inputPort;
 import static org.openkilda.messaging.command.Constants.inputVlanId;
 import static org.openkilda.messaging.command.Constants.meterId;
@@ -36,7 +37,7 @@ import java.util.UUID;
 public class InstallIngressFlowTest {
     private InstallIngressFlow flow = new InstallIngressFlow(UUID.randomUUID(), flowName, 0L, switchId, inputPort,
             outputPort, inputVlanId, transitEncapsulationId, transitEncapsulationType,
-            outputVlanType, bandwidth, meterId);
+            outputVlanType, bandwidth, meterId, ingresSwitchId);
 
     @Test
     public void toStringTest() throws Exception {

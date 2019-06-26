@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.switches;
 
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -51,6 +52,9 @@ public class DeleteRulesCriteria implements Serializable {
     @JsonProperty("encapsulation_type")
     FlowEncapsulationType encapsulationType;
 
+    @JsonProperty("ingress_switch_id")
+    SwitchId ingressSwitchId;
+
     @JsonCreator
     public DeleteRulesCriteria(
             @JsonProperty("cookie") Long cookie,
@@ -58,13 +62,15 @@ public class DeleteRulesCriteria implements Serializable {
             @JsonProperty("encapsulation_id") Integer encapsulationId,
             @JsonProperty("priority") Integer priority,
             @JsonProperty("out_port") Integer outPort,
-            @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType) {
+            @JsonProperty("encapsulation_type") FlowEncapsulationType encapsulationType,
+            @JsonProperty("ingress_switch_id") SwitchId ingressSwitchId) {
         if ((cookie == null || cookie == 0)
                 && (inPort == null || inPort == 0)
                 && (encapsulationId == null || encapsulationId == 0)
                 && (priority == null || priority == 0)
                 && (outPort == null || outPort == 0)
-                && (encapsulationType == null)) {
+                && (encapsulationType == null)
+                && (ingressSwitchId == null)) {
             throw new IllegalArgumentException("DeleteRulesCriteria can't be constructed empty.");
         }
 
@@ -74,6 +80,7 @@ public class DeleteRulesCriteria implements Serializable {
         this.priority = priority;
         this.outPort = outPort;
         this.encapsulationType = encapsulationType;
+        this.ingressSwitchId = ingressSwitchId;
     }
 }
 

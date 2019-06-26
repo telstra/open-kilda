@@ -418,7 +418,7 @@ public class FlowCommandFactoryTest {
         assertEquals(1, (int) command.getCriteria().getInPort());
         assertEquals(11, (int) command.getCriteria().getOutPort());
         assertEquals(101, (int) command.getCriteria().getEncapsulationId());
-        assertEquals(encapsulationType, command.getCriteria().getEncapsulationType());
+        assertEquals(FlowEncapsulationType.TRANSIT_VLAN, command.getCriteria().getEncapsulationType());
         assertNull(command.getMeterId());
     }
 
