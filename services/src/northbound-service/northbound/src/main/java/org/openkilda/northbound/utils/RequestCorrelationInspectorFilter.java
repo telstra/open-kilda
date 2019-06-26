@@ -34,15 +34,19 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
- * Filter that controls existence of correlation id in the header. IT should not allow to access to any resources
- * without correlation id (except v1 APIs).
+ * Filter that controls existence of correlation id in the header. It should not allow to access to any resources
+ * without correlation id (except v1 APIs and swagger API).
  */
 @Priority(value = Ordered.LOWEST_PRECEDENCE - 1)
 @Component
 public class RequestCorrelationInspectorFilter extends OncePerRequestFilter {
 
     private static final List<String> EXCLUDE_PATTERNS = ImmutableList.of(
-            "/v1/**"
+            "/v1/**",
+            // swagger related patterns
+            "/swagger*/**",
+            "/webjars/**",
+            "/v2/api-docs"
     );
 
     private final PathMatcher matcher = new AntPathMatcher();
