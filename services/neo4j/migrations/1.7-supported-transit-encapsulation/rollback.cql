@@ -1,0 +1,1 @@
+MATCH (n:switch_features) REMOVE n.supported_transit_encapsulation
