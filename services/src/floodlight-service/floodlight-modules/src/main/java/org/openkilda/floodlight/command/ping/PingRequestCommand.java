@@ -85,10 +85,11 @@ public class PingRequestCommand extends PingCommand {
     private void send(IOFSwitch sw) throws PingImpossibleException {
         PingData data = PingData.of(ping);
         data.setSenderLatency(sw.getLatency().getValue());
+        data.setSendTime(System.currentTimeMillis());
 
         PingService pingService = getPingService();
-        byte[] signedData = pingService.getSignature().sign(data);
-        byte[] rawPackage = pingService.wrapData(ping, signedData).serialize();
+        byte[] payloadData = data.serialize();
+        byte[] rawPackage = pingService.wrapData(ping, payloadData).serialize();
         OFMessage message = makePacketOut(sw, rawPackage);
 
         if (!sw.write(message)) {

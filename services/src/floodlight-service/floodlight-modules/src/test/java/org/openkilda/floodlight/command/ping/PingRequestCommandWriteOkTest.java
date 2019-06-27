@@ -16,29 +16,35 @@
 package org.openkilda.floodlight.command.ping;
 
 import static org.easymock.EasyMock.anyObject;
+import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.expect;
 
 import org.openkilda.floodlight.command.CommandContext;
-import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.service.ping.PingInputTranslator;
 import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.Ping.Errors;
+import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
+import org.easymock.Capture;
+import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.List;
+import java.util.UUID;
 
 public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTest {
     private final PingService realPingService = new PingService();
@@ -52,7 +58,6 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
         inputService.addTranslator(eq(OFType.PACKET_IN), anyObject(PingInputTranslator.class));
         moduleContext.addService(InputService.class, inputService);
 
-        expect(pingService.getSignature()).andDelegateTo(realPingService);
         expect(pingService.wrapData(anyObject(Ping.class), anyObject())).andDelegateTo(realPingService);
 
         expect(switchAlpha.getLatency()).andReturn(U64.of(1L)).anyTimes();
@@ -87,9 +92,38 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
         verifySentErrorResponse(ping, Errors.WRITE_FAILURE);
     }
 
+    @Test
+    public void packetPadToSizePositive() throws Exception {
+        Capture<OFPacketOut> ofMessageCapture = EasyMock.newCapture();
+        expect(switchAlpha.write(capture(ofMessageCapture))).andReturn(true).anyTimes();
+        switchIntoTestMode();
+
+        int packetSize = 500;
+        Ping pingRequest = createPingWithPacketSize(packetSize);
+
+        expectSuccess(pingRequest);
+
+        OFPacketOut message = ofMessageCapture.getValue();
+        Assert.assertEquals(packetSize, message.getData().length);
+    }
+
+    @Test
+    public void packetPadToSizeFailTooSmall() throws Exception {
+        Capture<OFPacketOut> ofMessageCapture = EasyMock.newCapture();
+        expect(switchAlpha.write(capture(ofMessageCapture))).andReturn(true).anyTimes();
+        switchIntoTestMode();
+
+        int packetSize = 50;
+        Ping pingRequest = createPingWithPacketSize(packetSize);
+
+        PingRequestCommand command = makeCommand(pingRequest);
+        command.call();
+
+        verifySentErrorResponse(pingRequest, Errors.LOW_PACKET_SIZE);
+    }
+
     private void switchIntoTestMode() throws Exception {
         replayAll();
-        moduleContext.addConfigParam(new PathVerificationService(), "hmac256-secret", "secret");
         realPingService.setup(moduleContext);
     }
 
@@ -104,5 +138,14 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
     private PingRequestCommand makeCommand(Ping ping) {
         CommandContext context = commandContextFactory.produce();
         return new PingRequestCommand(context, ping);
+    }
+
+    private Ping createPingWithPacketSize(int packetSize) {
+        return new Ping(
+                UUID.randomUUID(),
+                (short) 0x100,
+                new NetworkEndpoint(new SwitchId(switchAlpha.getId().getLong()), 8),
+                new NetworkEndpoint(new SwitchId(switchBeta.getId().getLong()), 9),
+                packetSize, true);
     }
 }

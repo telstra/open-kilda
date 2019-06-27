@@ -22,7 +22,6 @@ import static org.easymock.EasyMock.expect;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.model.PingData;
-import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -125,11 +124,10 @@ public class PingResponseCommandTest extends PingCommandTest {
                 new NetworkEndpoint(new SwitchId(dpId.getLong()), 9));
         final PingData payload = PingData.of(ping);
 
-        moduleContext.addConfigParam(new PathVerificationService(), "hmac256-secret", "secret");
         realPingService.setup(moduleContext);
 
-        byte[] signedPayload = realPingService.getSignature().sign(payload);
-        Ethernet wrappedPayload = realPingService.wrapData(ping, signedPayload);
+        byte[] serializedPayload = payload.serialize();
+        Ethernet wrappedPayload = realPingService.wrapData(ping, serializedPayload);
 
         OFFactory ofFactory = new OFFactoryVer13();
         OFPacketIn message = ofFactory.buildPacketIn()

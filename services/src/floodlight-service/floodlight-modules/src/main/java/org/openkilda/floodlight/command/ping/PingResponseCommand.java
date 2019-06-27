@@ -24,8 +24,8 @@ import org.openkilda.floodlight.service.ping.PingService;
 import org.openkilda.messaging.floodlight.response.PingResponse;
 import org.openkilda.messaging.model.PingMeters;
 
-import com.auth0.jwt.interfaces.DecodedJWT;
 import net.floodlightcontroller.packet.Ethernet;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +33,10 @@ public class PingResponseCommand extends PingCommand {
     private static final Logger log = LoggerFactory.getLogger(PingResponseCommand.class);
 
     private final OfInput input;
+
+    private short sourceVlan;
+    private DatapathId sourceDp;
+    private DatapathId destDp;
 
     public PingResponseCommand(CommandContext context, OfInput input) {
         super(context);
@@ -72,18 +76,25 @@ public class PingResponseCommand extends PingCommand {
             return null;
         }
 
+        sourceVlan = ethernetPackage.getVlanID();
+        try {
+            sourceDp = DatapathId.of(ethernetPackage.getSourceMACAddress());
+            destDp = DatapathId.of(ethernetPackage.getDestinationMACAddress());
+        } catch (Exception e) {
+            log.warn("Couldn't get L2 MAC addresses of ping package, ignoring", e);
+        }
+
         return getPingService().unwrapData(input.getDpId(), ethernetPackage);
     }
 
     private PingData decode(byte[] payload) throws CorruptedNetworkDataException {
-        DecodedJWT token = getPingService().getSignature().verify(payload);
-        return PingData.of(token);
+        return PingData.of(payload);
     }
 
     private void process(PingData data) {
         Long latency = input.getLatency();
         if (latency == null) {
-            log.warn("There is no latency info for {} - ping latency is unreliable");
+            log.warn("There is no latency info for {} - ping latency is unreliable", destDp);
             latency = 0L;
         }
         PingMeters meters = data.produceMeasurements(input.getReceiveTime(), latency);
@@ -96,12 +107,12 @@ public class PingResponseCommand extends PingCommand {
     private void logCatch(PingData data, PingMeters meters) {
         String pingId = String.format("ping{%s}", data.getPingId().toString());
 
-        String source = data.getSource().toString();
-        if (data.getSourceVlan() != null) {
-            source += "-" + data.getSourceVlan().toString();
+        String source = String.valueOf(sourceDp);
+        if (sourceVlan == 0) {
+            source += "-" + sourceVlan;
         }
         logPing.info(
                 "Catch ping {} ===( {}, latency: {}ms )===> {}",
-                source, pingId, meters.getNetworkLatency(), data.getDest());
+                source, pingId, meters.getNetworkLatency(), destDp);
     }
 }

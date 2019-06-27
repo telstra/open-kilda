@@ -29,7 +29,8 @@ public class Ping implements Serializable {
         WRITE_FAILURE,
         NOT_CAPABLE,
         SOURCE_NOT_AVAILABLE,
-        DEST_NOT_AVAILABLE
+        DEST_NOT_AVAILABLE,
+        LOW_PACKET_SIZE
     }
 
     @JsonProperty(value = "ping_id", required = true)
@@ -44,12 +45,20 @@ public class Ping implements Serializable {
     @JsonProperty(value = "dest", required = true)
     private NetworkEndpoint dest;
 
+    @JsonProperty(value = "packet_size")
+    private Integer packetSize;
+
+    @JsonProperty(value = "not_fragment")
+    private boolean notFragment;
+
     @JsonCreator
     public Ping(
             @JsonProperty("ping_id") UUID pingId,
             @JsonProperty("source_vlan") Short sourceVlanId,
             @JsonProperty("source") NetworkEndpoint source,
-            @JsonProperty("dest") NetworkEndpoint dest) {
+            @JsonProperty("dest") NetworkEndpoint dest,
+            @JsonProperty(value = "packet_size") Integer packetSize,
+            @JsonProperty(value = "not_fragment") boolean notFragment) {
 
         this.pingId = pingId;
 
@@ -61,16 +70,19 @@ public class Ping implements Serializable {
 
         this.source = source;
         this.dest = dest;
+        this.packetSize = packetSize;
+        this.notFragment = notFragment;
     }
 
     public Ping(Short sourceVlanId, NetworkEndpoint source, NetworkEndpoint dest) {
-        this(UUID.randomUUID(), sourceVlanId, source, dest);
+        this(UUID.randomUUID(), sourceVlanId, source, dest, null, false);
     }
 
     public Ping(FlowDto flow) {
         this(UUID.randomUUID(), (short) flow.getSourceVlan(),
                 new NetworkEndpoint(flow.getSourceSwitch(), flow.getSourcePort()),
-                new NetworkEndpoint(flow.getDestinationSwitch(), flow.getDestinationPort()));
+                new NetworkEndpoint(flow.getDestinationSwitch(), flow.getDestinationPort()),
+                null, false);
     }
 
     @Override

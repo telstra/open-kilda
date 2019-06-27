@@ -15,17 +15,16 @@
 
 package org.openkilda.floodlight.service.ping;
 
-import org.openkilda.floodlight.error.InvalidSignatureConfigurationException;
+import org.openkilda.floodlight.error.PingImpossibleException;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.service.IService;
 import org.openkilda.floodlight.service.of.InputService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
-import org.openkilda.floodlight.utils.DataSignature;
 import org.openkilda.messaging.model.Ping;
+import org.openkilda.messaging.model.Ping.Errors;
 import org.openkilda.model.Cookie;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
@@ -36,16 +35,24 @@ import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.Map;
+import java.util.Arrays;
 
 public class PingService implements IService {
+    private static Logger log = LoggerFactory.getLogger(PingService.class);
+
     public static final U64 OF_CATCH_RULE_COOKIE = U64.of(Cookie.VERIFICATION_UNICAST_RULE_COOKIE);
     private static final String NET_L3_ADDRESS = "127.0.0.2";
     private static final int NET_L3_PORT = PathVerificationService.DISCOVERY_PACKET_UDP_PORT + 1;
     private static final byte NET_L3_TTL = 96;
 
-    private DataSignature signature = null;
+    private static final int ETHERNET_HEADER_SIZE = 14;
+    private static final int VLAN_HEADER_SIZE = 4;
+    private static final int IP_HEADER_SIZE = 20;
+    private static final int UDP_HEADER_SIZE = 8;
+
     private ISwitchManager switchManager;
 
     /**
@@ -53,15 +60,7 @@ public class PingService implements IService {
      * been loaded.
      */
     @Override
-    public void setup(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
-        // FIXME(surabujin): avoid usage foreign module configuration
-        Map<String, String> config = moduleContext.getConfigParams(PathVerificationService.class);
-        try {
-            signature = new DataSignature(config.get("hmac256-secret"));
-        } catch (InvalidSignatureConfigurationException e) {
-            throw new FloodlightModuleException(String.format("Unable to initialize %s", getClass().getName()), e);
-        }
-
+    public void setup(FloodlightModuleContext moduleContext) {
         switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
 
         InputService inputService = moduleContext.getServiceImpl(InputService.class);
@@ -71,7 +70,11 @@ public class PingService implements IService {
     /**
      * Wrap ping data into L2, l3 and L4 network packages.
      */
-    public Ethernet wrapData(Ping ping, byte[] payload) {
+    public Ethernet wrapData(Ping ping, byte[] payload) throws PingImpossibleException {
+        if (ping.getPacketSize() != null) {
+            payload = padPayloadData(ping, payload);
+        }
+
         Data l7 = new Data(payload);
 
         UDP l4 = new UDP();
@@ -84,6 +87,9 @@ public class PingService implements IService {
         l3.setSourceAddress(NET_L3_ADDRESS);
         l3.setDestinationAddress(NET_L3_ADDRESS);
         l3.setTtl(NET_L3_TTL);
+        if (ping.isNotFragment()) {
+            l3.setFlags(IPv4.IPV4_FLAGS_DONTFRAG);
+        }
 
         Ethernet l2 = new Ethernet();
         l2.setPayload(l3);
@@ -96,6 +102,23 @@ public class PingService implements IService {
         }
 
         return l2;
+    }
+
+    private byte[] padPayloadData(Ping ping, byte[] data) throws PingImpossibleException {
+        int headersSize = ETHERNET_HEADER_SIZE
+                + (ping.getSourceVlanId() == null ? 0 : VLAN_HEADER_SIZE)
+                + IP_HEADER_SIZE
+                + UDP_HEADER_SIZE;
+
+        int wantedPayloadSize = ping.getPacketSize() - headersSize;
+
+        if (wantedPayloadSize < data.length) {
+            log.error("Requested packet size {} is less than minimum packet size {}",
+                    ping.getPacketSize(), headersSize + data.length);
+            throw new PingImpossibleException(ping, Errors.LOW_PACKET_SIZE);
+        }
+
+        return Arrays.copyOf(data, wantedPayloadSize);
     }
 
     /**
@@ -133,9 +156,5 @@ public class PingService implements IService {
         }
 
         return ((Data) udp.getPayload()).getData();
-    }
-
-    public DataSignature getSignature() {
-        return signature;
     }
 }
