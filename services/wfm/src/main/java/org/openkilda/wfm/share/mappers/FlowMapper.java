@@ -19,6 +19,7 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.model.SwapFlowDto;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.FlowStatusDetails;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
@@ -45,7 +46,7 @@ import java.util.UUID;
 /**
  * Convert {@link UnidirectionalFlow} to {@link FlowDto} and back.
  */
-@Mapper(uses = {FlowPathMapper.class})
+@Mapper(uses = {FlowPathMapper.class}, imports = {FlowStatusDetails.class})
 public abstract class FlowMapper {
 
     public static final FlowMapper INSTANCE = Mappers.getMapper(FlowMapper.class);
@@ -63,6 +64,10 @@ public abstract class FlowMapper {
     @Mapping(source = "timeModify", target = "lastUpdated")
     @Mapping(source = "timeCreate", target = "createdTime")
     @Mapping(source = "pinned", target = "pinned")
+    @Mapping(target = "flowStatusDetails",
+            expression = "java(flow.getFlow().isAllocateProtectedPath() ? "
+                    + "new FlowStatusDetails(flow.getFlow().getMainFlowPrioritizedPathsStatus(), "
+                    + "flow.getFlow().getProtectedFlowPrioritizedPathsStatus()) : null)")
     public abstract FlowDto map(UnidirectionalFlow flow);
 
     @Mapping(source = "srcPort", target = "sourcePort")
@@ -74,6 +79,10 @@ public abstract class FlowMapper {
     @Mapping(source = "status", target = "state")
     @Mapping(source = "timeModify", target = "lastUpdated")
     @Mapping(source = "timeCreate", target = "createdTime")
+    @Mapping(target = "flowStatusDetails",
+            expression = "java(flow.isAllocateProtectedPath() ? "
+                    + "new FlowStatusDetails(flow.getMainFlowPrioritizedPathsStatus(), "
+                    + "flow.getProtectedFlowPrioritizedPathsStatus()) : null)")
     public abstract FlowDto map(Flow flow);
 
     /**
@@ -165,6 +174,8 @@ public abstract class FlowMapper {
                 return FlowState.UP;
             case DOWN:
                 return FlowState.DOWN;
+            case DEGRADED:
+                return FlowState.DEGRADED;
             default:
                 throw new IllegalArgumentException("Unsupported Flow status: " + status);
         }
@@ -185,6 +196,8 @@ public abstract class FlowMapper {
                 return FlowStatus.UP;
             case DOWN:
                 return FlowStatus.DOWN;
+            case DEGRADED:
+                return FlowStatus.DEGRADED;
             default:
                 throw new IllegalArgumentException("Unsupported Flow status: " + status);
         }

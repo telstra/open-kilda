@@ -17,14 +17,22 @@ package org.openkilda.wfm.share.mappers;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
+import org.openkilda.model.Cookie;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPair;
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.PathId;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.UnidirectionalFlow;
 
 import org.junit.Test;
 
@@ -90,5 +98,69 @@ public class FlowMapperTest {
         FlowPairDto<FlowDto, FlowDto> pair = new FlowPairDto<>(forwardFlow, reverseFlow);
         FlowPair p = FlowMapper.INSTANCE.map(pair);
         assertEquals(p.getForward().getFlowId(), pair.getLeft().getFlowId());
+    }
+
+    @Test
+    public void testStatusDetailsMapping() {
+        Flow flow = Flow.builder()
+                .flowId("test_flow")
+                .srcSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
+                .destSwitch(Switch.builder().switchId(DST_SWITCH_ID).build())
+                .allocateProtectedPath(true)
+                .build();
+
+        FlowPath forwardFlowPath = FlowPath.builder()
+                .pathId(new PathId("forward_flow_path"))
+                .srcSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
+                .destSwitch(Switch.builder().switchId(DST_SWITCH_ID).build())
+                .cookie(new Cookie(Cookie.FORWARD_FLOW_COOKIE_MASK | 1))
+                .flow(flow)
+                .status(FlowPathStatus.ACTIVE)
+                .build();
+        flow.setForwardPath(forwardFlowPath);
+
+        FlowPath reverseFlowPath = FlowPath.builder()
+                .pathId(new PathId("reverse_flow_path"))
+                .srcSwitch(Switch.builder().switchId(DST_SWITCH_ID).build())
+                .destSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
+                .cookie(new Cookie(Cookie.REVERSE_FLOW_COOKIE_MASK | 1))
+                .flow(flow)
+                .status(FlowPathStatus.ACTIVE)
+                .build();
+        flow.setReversePath(reverseFlowPath);
+
+        FlowPath forwardProtectedFlowPath = FlowPath.builder()
+                .pathId(new PathId("forward_protected_flow_path"))
+                .srcSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
+                .destSwitch(Switch.builder().switchId(DST_SWITCH_ID).build())
+                .cookie(new Cookie(Cookie.FORWARD_FLOW_COOKIE_MASK | 2))
+                .flow(flow)
+                .status(FlowPathStatus.INACTIVE)
+                .build();
+        flow.setProtectedForwardPath(forwardProtectedFlowPath);
+
+        FlowPath reverseProtectedFlowPath = FlowPath.builder()
+                .pathId(new PathId("reverse_protected_flow_path"))
+                .srcSwitch(Switch.builder().switchId(DST_SWITCH_ID).build())
+                .destSwitch(Switch.builder().switchId(SRC_SWITCH_ID).build())
+                .cookie(new Cookie(Cookie.REVERSE_FLOW_COOKIE_MASK | 2))
+                .flow(flow)
+                .status(FlowPathStatus.INACTIVE)
+                .build();
+        flow.setProtectedReversePath(reverseProtectedFlowPath);
+
+        FlowDto flowDto = FlowMapper.INSTANCE.map(flow);
+
+        assertNotNull(flowDto.getFlowStatusDetails());
+        assertEquals(FlowPathStatus.ACTIVE, flowDto.getFlowStatusDetails().getMainFlowPathStatus());
+        assertEquals(FlowPathStatus.INACTIVE, flowDto.getFlowStatusDetails().getProtectedFlowPathStatus());
+
+        UnidirectionalFlow unidirectionalFlow = new UnidirectionalFlow(forwardFlowPath, null, true);
+
+        flowDto = FlowMapper.INSTANCE.map(unidirectionalFlow);
+
+        assertNotNull(flowDto.getFlowStatusDetails());
+        assertEquals(FlowPathStatus.ACTIVE, flowDto.getFlowStatusDetails().getMainFlowPathStatus());
+        assertEquals(FlowPathStatus.INACTIVE, flowDto.getFlowStatusDetails().getProtectedFlowPathStatus());
     }
 }

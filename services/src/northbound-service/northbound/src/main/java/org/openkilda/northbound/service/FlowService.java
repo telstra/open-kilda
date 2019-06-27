@@ -20,7 +20,6 @@ import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
-import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
@@ -48,7 +47,7 @@ public interface FlowService {
      * @param flow flow
      * @return created flow
      */
-    CompletableFuture<FlowPayload> createFlow(final FlowCreatePayload flow);
+    CompletableFuture<FlowResponsePayload> createFlow(final FlowCreatePayload flow);
 
     /**
      * Creates new flow.
@@ -64,7 +63,7 @@ public interface FlowService {
      * @param id flow id
      * @return deleted flow
      */
-    CompletableFuture<FlowPayload> deleteFlow(final String id);
+    CompletableFuture<FlowResponsePayload> deleteFlow(final String id);
 
     /**
      * Updates flow.
@@ -72,7 +71,7 @@ public interface FlowService {
      * @param flow flow
      * @return updated flow
      */
-    CompletableFuture<FlowPayload> updateFlow(final FlowUpdatePayload flow);
+    CompletableFuture<FlowResponsePayload> updateFlow(final FlowUpdatePayload flow);
 
     /**
      * Patch flow.
@@ -81,7 +80,7 @@ public interface FlowService {
      * @param flowPatchDto flow parameters for update
      * @return updated flow
      */
-    CompletableFuture<FlowPayload> patchFlow(final String flowId, final FlowPatchDto flowPatchDto);
+    CompletableFuture<FlowResponsePayload> patchFlow(final String flowId, final FlowPatchDto flowPatchDto);
 
     /**
      * Gets flow by id.
@@ -96,7 +95,7 @@ public interface FlowService {
      *
      * @return the list of all flows with specified status
      */
-    CompletableFuture<List<FlowPayload>> getAllFlows();
+    CompletableFuture<List<FlowResponsePayload>> getAllFlows();
 
     /**
      * Deletes all flows. Primarily this is a combination of getAllFlows and deleteFlow.
@@ -104,7 +103,7 @@ public interface FlowService {
      *
      * @return the list of all deleted flows
      */
-    CompletableFuture<List<FlowPayload>> deleteAllFlows();
+    CompletableFuture<List<FlowResponsePayload>> deleteAllFlows();
 
     /**
      * Gets flow status by id.
@@ -156,7 +155,7 @@ public interface FlowService {
      * @param flowId id of the flow to swap paths.
      * @return flow payload.
      */
-    CompletableFuture<FlowPayload> swapFlowPaths(final String flowId);
+    CompletableFuture<FlowResponsePayload> swapFlowPaths(final String flowId);
 
     /**
      * Performs rerouting of specific flow.

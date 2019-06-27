@@ -39,7 +39,7 @@ import org.openkilda.messaging.nbtopology.request.UpdateLinkEnableBfdRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateLinkUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.LinkPropsData;
 import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
-import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.FlowMapper;
@@ -233,8 +233,8 @@ public class LinkServiceImpl implements LinkService {
     }
 
     @Override
-    public CompletableFuture<List<FlowPayload>> getFlowsForLink(SwitchId srcSwitch, Integer srcPort,
-                                                                SwitchId dstSwitch, Integer dstPort) {
+    public CompletableFuture<List<FlowResponsePayload>> getFlowsForLink(SwitchId srcSwitch, Integer srcPort,
+                                                                        SwitchId dstSwitch, Integer dstPort) {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Get all flows for a particular link request processing");
         GetFlowsForIslRequest data = null;
@@ -252,7 +252,7 @@ public class LinkServiceImpl implements LinkService {
                 .thenApply(response -> response.stream()
                         .map(FlowResponse.class::cast)
                         .map(FlowResponse::getPayload)
-                        .map(flowMapper::toFlowOutput)
+                        .map(flowMapper::toFlowResponseOutput)
                         .collect(Collectors.toList()));
     }
 

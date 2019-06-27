@@ -20,6 +20,7 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.flow.FlowStatusDetails;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -146,6 +147,9 @@ public class FlowDto implements Serializable {
     @JsonProperty("state")
     private FlowState state;
 
+    @JsonProperty("status_details")
+    private FlowStatusDetails flowStatusDetails;
+
     @JsonProperty("max_latency")
     private Integer maxLatency;
 
@@ -209,6 +213,7 @@ public class FlowDto implements Serializable {
                    @JsonProperty("transit_encapsulation_id") final int transitEncapsulationId,
                    @JsonProperty(Utils.FLOW_PATH) final PathInfoData flowPath,
                    @JsonProperty("state") FlowState state,
+                   @JsonProperty("status_details") FlowStatusDetails flowStatusDetails,
                    @JsonProperty("max_latency") Integer maxLatency,
                    @JsonProperty("priority") Integer priority,
                    @JsonProperty("pinned") boolean pinned,
@@ -232,6 +237,7 @@ public class FlowDto implements Serializable {
         this.meterId = meterId;
         this.flowPath = flowPath;
         this.state = state;
+        this.flowStatusDetails = flowStatusDetails;
         this.maxLatency = maxLatency;
         this.priority = priority;
         this.pinned = pinned;
@@ -273,7 +279,7 @@ public class FlowDto implements Serializable {
                 destinationPort,
                 sourceVlan,
                 destinationVlan,
-                null, 0, null, null, null, null, pinned, null);
+                null, 0, null, null, null, null, null, pinned, null);
     }
 
     public FlowDto(FlowPayload input) {
@@ -291,7 +297,7 @@ public class FlowDto implements Serializable {
                 input.getDestination().getPortNumber(),
                 input.getSource().getVlanId(),
                 input.getDestination().getVlanId(),
-                null, 0, null, null,
+                null, 0, null, null, null,
                 input.getMaxLatency(),
                 input.getPriority(),
                 input.isPinned(),

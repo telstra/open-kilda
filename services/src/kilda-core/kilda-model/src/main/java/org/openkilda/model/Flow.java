@@ -42,6 +42,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Represents a bi-directional flow. This includes the source and destination, flow status,
@@ -378,5 +379,28 @@ public class Flow implements Serializable {
 
     public List<PathId> getFlowPathIds() {
         return paths.stream().map(FlowPath::getPathId).collect(Collectors.toList());
+    }
+
+
+    /**
+     * Return main flow prioritized paths status.
+     */
+    public FlowPathStatus getMainFlowPrioritizedPathsStatus() {
+        return getFlowPrioritizedPathStatus(getForwardPath(), getReversePath());
+    }
+
+    /**
+     * Return protected flow prioritized paths status.
+     */
+    public FlowPathStatus getProtectedFlowPrioritizedPathsStatus() {
+        return getFlowPrioritizedPathStatus(getProtectedForwardPath(), getProtectedReversePath());
+    }
+
+    private FlowPathStatus getFlowPrioritizedPathStatus(FlowPath... flowPaths) {
+        return Stream.of(flowPaths)
+                .filter(Objects::nonNull)
+                .map(FlowPath::getStatus)
+                .max(FlowPathStatus::compareTo)
+                .orElse(null);
     }
 }
