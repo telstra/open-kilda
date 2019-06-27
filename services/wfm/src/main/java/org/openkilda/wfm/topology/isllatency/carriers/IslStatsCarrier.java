@@ -17,10 +17,7 @@ package org.openkilda.wfm.topology.isllatency.carriers;
 
 import org.openkilda.model.SwitchId;
 
-import org.apache.storm.tuple.Tuple;
-
 
 public interface IslStatsCarrier {
-    void emitLatency(Tuple input, SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort,
-                     long latency, long timestamp);
+    void emitLatency(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort, long latency, long timestamp);
 }

@@ -38,7 +38,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -219,7 +218,7 @@ public class IslLatencyServiceTest extends Neo4jBasedTest {
 
     @Test
     public void pollExpiredRecordsTest() {
-        Instant time = Clock.systemUTC().instant().minusSeconds(LATENCY_UPDATE_TIME_RANGE * 2);
+        Instant time = Instant.now().minusSeconds(LATENCY_UPDATE_TIME_RANGE * 2);
         Queue<LatencyRecord> latencyRecords = new LinkedList<>();
 
         for (int i = 0; i < 5; i++) {
@@ -227,7 +226,7 @@ public class IslLatencyServiceTest extends Neo4jBasedTest {
             time = time.plusSeconds(1);
         }
 
-        time = Clock.systemUTC().instant().minusSeconds(LATENCY_UPDATE_TIME_RANGE - 7);
+        time = Instant.now().minusSeconds(LATENCY_UPDATE_TIME_RANGE - 7);
         for (int i = 5; i < 10; i++) {
             latencyRecords.add(new LatencyRecord(i, time.toEpochMilli()));
             time = time.plusSeconds(1);

@@ -55,8 +55,9 @@ public class IslStatusUpdateNotification extends InfoData {
                                        @JsonProperty("dst_port_no") int dstPortNo,
                                        @JsonProperty("status") IslStatus status) {
         this.srcSwitchId = srcSwitchId;
-        this.dstPortNo = srcPortNo;
+        this.srcPortNo = srcPortNo;
         this.dstSwitchId = dstSwitchId;
         this.dstPortNo = dstPortNo;
+        this.status = status;
     }
 }

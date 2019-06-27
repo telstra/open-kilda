@@ -15,16 +15,22 @@
 
 package org.openkilda.wfm.topology.isllatency.bolts;
 
+import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.CACHE_BOLT_ID;
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.CACHE_DATA_FIELD;
+import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ISL_STATUS_FIELD;
+import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ISL_STATUS_UPDATE_BOLT_ID;
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.LATENCY_DATA_FIELD;
+import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ROUTER_BOLT_ID;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.IslOneWayLatency;
 import org.openkilda.messaging.info.event.IslRoundTripLatency;
+import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractBolt;
+import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.AbstractTopology;
@@ -79,21 +85,38 @@ public class IslStatsBolt extends AbstractBolt implements IslStatsCarrier {
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        InfoData data = pullValue(input, LATENCY_DATA_FIELD, InfoData.class);
-        long timestamp = getCommandContext().getCreateTime();
-
-        if (data instanceof IslRoundTripLatency) {
-            Endpoint destination = pullValue(input, CACHE_DATA_FIELD, Endpoint.class);
-            islStatsService.handleRoundTripLatencyMetric(input, timestamp, (IslRoundTripLatency) data, destination);
-        } else if (data instanceof IslOneWayLatency) {
-            islStatsService.handleOneWayLatencyMetric(input, timestamp, (IslOneWayLatency) data);
+        if (ISL_STATUS_UPDATE_BOLT_ID.equals(input.getSourceComponent())) {
+            handleStatusUpdate(input);
+        } else if (ROUTER_BOLT_ID.equals(input.getSourceComponent())
+                || CACHE_BOLT_ID.equals(input.getSourceComponent())) {
+            handleLatencyData(input);
         } else {
             unhandledInput(input);
         }
     }
 
+    private void handleLatencyData(Tuple input) throws PipelineException {
+        InfoData data = pullValue(input, LATENCY_DATA_FIELD, InfoData.class);
+        long timestamp = getCommandContext().getCreateTime();
+
+        if (data instanceof IslRoundTripLatency) {
+            Endpoint destination = pullValue(input, CACHE_DATA_FIELD, Endpoint.class);
+            islStatsService.handleRoundTripLatencyMetric(timestamp, (IslRoundTripLatency) data, destination);
+        } else if (data instanceof IslOneWayLatency) {
+            islStatsService.handleOneWayLatencyMetric(timestamp, (IslOneWayLatency) data);
+        } else {
+            unhandledInput(input);
+        }
+    }
+
+    private void handleStatusUpdate(Tuple tuple) throws PipelineException {
+        IslStatusUpdateNotification notification = pullValue(
+                tuple, ISL_STATUS_FIELD, IslStatusUpdateNotification.class);
+        islStatsService.handleIstStatusUpdateNotification(notification);
+    }
+
     @Override
-    public void emitLatency(Tuple input, SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort,
+    public void emitLatency(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort,
                             long latency, long timestamp) {
         List<Object> tsdbTuple;
         try {
@@ -102,7 +125,7 @@ public class IslStatsBolt extends AbstractBolt implements IslStatsCarrier {
             log.error(String.format("Couldn't create OpenTSDB tuple: %s", e.getMessage()), e);
             return;
         }
-        emit(input, tsdbTuple);
+        emit(getCurrentTuple(), tsdbTuple);
     }
 
     @Override
