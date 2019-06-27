@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.network.controller;
 
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
+import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Isl;
@@ -36,6 +37,8 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
@@ -43,10 +46,8 @@ import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmContext;
 import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmEvent;
 import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmState;
 import org.openkilda.wfm.topology.network.model.BiIslDataHolder;
-import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.IslEndpointStatus;
-import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.facts.DiscoveryFacts;
 import org.openkilda.wfm.topology.network.service.IIslCarrier;
@@ -156,6 +157,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     public void downEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
         saveStatusTransaction();
+        sendIslStatusUpdateNotification(context, IslStatus.INACTIVE);
     }
 
     public void handleUpAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -203,6 +205,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     public void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
         saveStatusTransaction();
+        sendIslStatusUpdateNotification(context, IslStatus.MOVED);
         bfdManager.disable(context.getOutput());
     }
 
@@ -214,6 +217,16 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     // -- private/service methods --
+
+    private void sendIslStatusUpdateNotification(IslFsmContext context, IslStatus status) {
+        IslStatusUpdateNotification trigger = new IslStatusUpdateNotification(
+                discoveryFacts.getReference().getSource().getDatapath(),
+                discoveryFacts.getReference().getSource().getPortNumber(),
+                discoveryFacts.getReference().getDest().getDatapath(),
+                discoveryFacts.getReference().getDest().getPortNumber(),
+                status);
+        context.getOutput().islStatusUpdateNotification(trigger);
+    }
 
     private void updateLinkData(Endpoint bind, IslDataHolder data) {
         log.info("ISL {} data update - bind:{} - {}", discoveryFacts.getReference(), bind, data);
@@ -444,7 +457,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         }
 
         link.setSpeed(aggData.getSpeed());
-        link.setLatency(aggData.getLatency());
         link.setMaxBandwidth(aggData.getMaximumBandwidth());
         link.setDefaultMaxBandwidth(aggData.getEffectiveMaximumBandwidth());
     }

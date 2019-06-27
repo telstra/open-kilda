@@ -47,9 +47,9 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.EmbeddedNeo4jDatabase;
-import org.openkilda.wfm.topology.network.model.Endpoint;
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
-import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 
 import org.junit.Before;
@@ -189,7 +189,7 @@ public class NetworkIslServiceTest {
         });
 
         IslReference ref = new IslReference(endpointAlpha1, endpointBeta2);
-        IslDataHolder islData = new IslDataHolder(1000, 50, 1000, 1000);
+        IslDataHolder islData = new IslDataHolder(1000, 1000, 1000);
         service = new NetworkIslService(carrier, persistenceManager, options);
         service.islUp(ref.getSource(), ref, islData);
 
@@ -500,11 +500,11 @@ public class NetworkIslServiceTest {
         mockPersistenceBandwidthAllocation(endpointBeta2, endpointAlpha1, 0L);
 
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
-        service.islUp(endpointAlpha1, reference, new IslDataHolder(200L, 20, 200L, 200L));
+        service.islUp(endpointAlpha1, reference, new IslDataHolder(200L, 200L, 200L));
 
         mockPersistenceIsl(endpointAlpha1, endpointBeta2, islAlphaBeta);
         mockPersistenceIsl(endpointBeta2, endpointAlpha1, islBetaAlpha);
-        service.islUp(endpointBeta2, reference, new IslDataHolder(200L, 20, 200L, 200L));
+        service.islUp(endpointBeta2, reference, new IslDataHolder(200L, 200L, 200L));
         verifyIslBandwidthUpdate(50L, 200L);
     }
 
@@ -527,11 +527,11 @@ public class NetworkIslServiceTest {
         mockPersistenceLinkProps(endpointBeta2, endpointAlpha1, null);
 
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
-        service.islUp(endpointAlpha1, reference, new IslDataHolder(300L, 20, 300L, 300L));
+        service.islUp(endpointAlpha1, reference, new IslDataHolder(300L, 300L, 300L));
 
         mockPersistenceIsl(endpointAlpha1, endpointBeta2, islAlphaBeta);
         mockPersistenceIsl(endpointBeta2, endpointAlpha1, islBetaAlpha);
-        service.islUp(endpointBeta2, reference, new IslDataHolder(300L, 20, 300L, 300L));
+        service.islUp(endpointBeta2, reference, new IslDataHolder(300L, 300L, 300L));
 
         verifyIslBandwidthUpdate(300L, 300L);
 
@@ -552,8 +552,8 @@ public class NetworkIslServiceTest {
                                          .build());
         mockPersistenceLinkProps(endpointBeta2, endpointAlpha1, null);
 
-        service.islUp(endpointAlpha1, reference, new IslDataHolder(300L, 20, 300L, 300L));
-        service.islUp(endpointBeta2, reference, new IslDataHolder(300L, 20, 300L, 300L));
+        service.islUp(endpointAlpha1, reference, new IslDataHolder(300L, 300L, 300L));
+        service.islUp(endpointBeta2, reference, new IslDataHolder(300L, 300L, 300L));
 
         verifyIslBandwidthUpdate(50L, 300L);
     }

@@ -16,8 +16,8 @@
 package org.openkilda.wfm.topology.network.storm.bolt.isl.command;
 
 import org.openkilda.messaging.info.event.DeactivateIslInfoData;
-import org.openkilda.wfm.topology.network.model.Endpoint;
-import org.openkilda.wfm.topology.network.model.IslReference;
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 
 public class IslDeleteCommand extends IslCommand {

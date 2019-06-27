@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.network.controller.sw;
 
-import org.openkilda.wfm.topology.network.model.Endpoint;
+import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.service.ISwitchCarrier;
 
