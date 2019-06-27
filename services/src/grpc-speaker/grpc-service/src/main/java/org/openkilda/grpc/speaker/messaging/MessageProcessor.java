@@ -21,6 +21,7 @@ import org.openkilda.grpc.speaker.service.GrpcSenderService;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.grpc.CreateLogicalPortRequest;
+import org.openkilda.messaging.command.grpc.DeleteLogicalPortRequest;
 import org.openkilda.messaging.command.grpc.DumpLogicalPortsRequest;
 import org.openkilda.messaging.command.grpc.GetSwitchInfoRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -28,6 +29,7 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.grpc.CreateLogicalPortResponse;
+import org.openkilda.messaging.info.grpc.DeleteLogicalPortResponse;
 import org.openkilda.messaging.info.grpc.DumpLogicalPortsResponse;
 import org.openkilda.messaging.info.grpc.GetSwitchInfoResponse;
 
@@ -66,6 +68,8 @@ public class MessageProcessor {
             handleDumpLogicalPortsRequest((DumpLogicalPortsRequest) command, message.getCorrelationId(), key);
         } else if (command instanceof GetSwitchInfoRequest) {
             handleGetSwitchInfoRequest((GetSwitchInfoRequest) command, message.getCorrelationId(), key);
+        } else if (command instanceof DeleteLogicalPortRequest) {
+            handleDeleteLogicalPortRequest((DeleteLogicalPortRequest) command, message.getCorrelationId(), key);
         } else {
             log.error("Unable to handle '{}' request - handler not found.", command);
         }
@@ -97,6 +101,18 @@ public class MessageProcessor {
         service.getSwitchStatus(req.getAddress())
                 .thenAccept(switchInfo -> sendResponse(
                         new GetSwitchInfoResponse(req.getAddress(), switchInfo), correlationId, key))
+                .whenComplete((e, ex) -> {
+                    if (ex != null) {
+                        sendErrorResponse((GrpcRequestFailureException) ex.getCause(), correlationId, key);
+                    }
+                });
+    }
+
+    private void handleDeleteLogicalPortRequest(DeleteLogicalPortRequest command, String correlationId, String key) {
+        service.deleteConfigLogicalPort(command.getAddress(), command.getLogicalPortNumber())
+                .thenAccept(port -> sendResponse(
+                        new DeleteLogicalPortResponse(command.getAddress(), command.getLogicalPortNumber(),
+                                port.getDeleted()), correlationId, key))
                 .whenComplete((e, ex) -> {
                     if (ex != null) {
                         sendErrorResponse((GrpcRequestFailureException) ex.getCause(), correlationId, key);
