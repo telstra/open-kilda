@@ -15,11 +15,15 @@
 
 package org.openkilda.grpc.speaker.messaging;
 
+import static org.openkilda.messaging.Utils.CORRELATION_ID;
+
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.MDC;
+import org.slf4j.MDC.MDCCloseable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -45,12 +49,14 @@ public class KafkaMessageListener {
      */
     @KafkaHandler
     public void onMessage(@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String key, CommandMessage message) {
-        if (!isValid(message)) {
-            log.warn("Skipping invalid message: {}", message);
-            return;
+        try (MDCCloseable closable = MDC.putCloseable(CORRELATION_ID, message.getCorrelationId())) {
+            if (!isValid(message)) {
+                log.warn("Skipping invalid message: {}", message);
+                return;
+            }
+            log.info("Message received: {} - {}", Thread.currentThread().getId(), message);
+            messageProcessor.processRequest(message, key);
         }
-        log.debug("Message received: {} - {}", Thread.currentThread().getId(), message);
-        messageProcessor.processRequest(message, key);
     }
 
     private boolean isValid(Message message) {
