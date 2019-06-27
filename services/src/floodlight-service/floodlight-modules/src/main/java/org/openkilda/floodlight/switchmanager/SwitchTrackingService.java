@@ -30,6 +30,7 @@ import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.NetworkDumpSwitchData;
+import org.openkilda.messaging.info.event.PortConfig;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
@@ -45,6 +46,7 @@ import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import org.projectfloodlight.openflow.protocol.OFPortConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -54,6 +56,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -147,7 +150,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         logPortEvent(switchId, port, type);
 
         if (ISwitchManager.isPhysicalPort(portDesc)) {
-            portDiscovery(switchId, port, type);
+            portDiscovery(switchId, portDesc, type);
         }
     }
 
@@ -197,10 +200,10 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         }
     }
 
-    private void portDiscovery(DatapathId dpId, OFPort port, PortChangeType changeType) {
+    private void portDiscovery(DatapathId dpId, OFPortDesc portDesc, PortChangeType changeType) {
         discoveryLock.readLock().lock();
         try {
-            portDiscoveryAction(dpId, port, changeType);
+            portDiscoveryAction(dpId, portDesc, changeType);
         } finally {
             discoveryLock.readLock().unlock();
         }
@@ -227,9 +230,9 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         producerService.sendMessageAndTrack(discoveryTopic, dpId.toString(), message);
     }
 
-    private void portDiscoveryAction(DatapathId dpId, OFPort port, PortChangeType changeType) {
-        logger.info("Send port discovery ({}-{} - {})", dpId, port, changeType);
-        Message message = buildPortMessage(dpId, port, changeType);
+    private void portDiscoveryAction(DatapathId dpId, OFPortDesc portDesc, PortChangeType changeType) {
+        logger.info("Send port discovery ({}-{} - {})", dpId, portDesc.getPortNo(), changeType);
+        Message message = buildPortMessage(dpId, portDesc, changeType);
         producerService.sendMessageAndTrack(discoveryTopic, dpId.toString(), message);
     }
 
@@ -280,6 +283,37 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         }
     }
 
+    private static List<PortConfig> mapPortConfigs(Set<OFPortConfig> portConfigs) {
+        return portConfigs.stream()
+                .map(SwitchTrackingService::mapPortConfig)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    private static PortConfig mapPortConfig(OFPortConfig portConfig) {
+        switch (portConfig) {
+            case NO_FWD:
+                return PortConfig.NO_FWD;
+            case NO_STP:
+                return PortConfig.NO_STP;
+            case NO_RECV:
+                return PortConfig.NO_RECV;
+            case NO_FLOOD:
+                return PortConfig.NO_FLOOD;
+            case PORT_DOWN:
+                return PortConfig.PORT_DOWN;
+            case NO_RECV_STP:
+                return PortConfig.NO_RECV_STP;
+            case NO_PACKET_IN:
+                return PortConfig.NO_PACKET_IN;
+            case BSN_MIRROR_DEST:
+                return PortConfig.BSN_MIRROR_DEST;
+            default:
+                logger.error("Can't map OFPortConfig {} to PortConfig", portConfig);
+                return null;
+        }
+    }
+
     /**
      * Builds fully filled switch ISL discovery message.
      *
@@ -306,14 +340,14 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
      * Builds a port state change message with port number.
      *
      * @param switchId datapathId of switch
-     * @param port port that triggered the event
+     * @param portDesc description of the port that triggered the event
      * @param type type of port event
      * @return Message
      */
-    private Message buildPortMessage(final DatapathId switchId, final OFPort port, final PortChangeType type) {
+    private Message buildPortMessage(final DatapathId switchId, final OFPortDesc portDesc, final PortChangeType type) {
         InfoData data = new PortInfoData(
-                new SwitchId(switchId.getLong()), port.getPortNumber(), mapChangeType(type),
-                obtainPortEnableStatus(switchId, port, type));
+                new SwitchId(switchId.getLong()), portDesc.getPortNo().getPortNumber(), null, mapChangeType(type),
+                obtainPortEnableStatus(switchId, portDesc.getPortNo(), type), mapPortConfigs(portDesc.getConfig()));
         return buildMessage(data);
     }
 

@@ -22,9 +22,10 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.google.common.base.Objects;
 import lombok.Data;
 
-import java.util.Objects;
+import java.util.List;
 
 /**
  * Defines the payload payload of a Message representing a port info.
@@ -64,6 +65,9 @@ public class PortInfoData extends InfoData {
     @JsonProperty("enabled")
     private Boolean enabled;
 
+    @JsonProperty("config")
+    private List<PortConfig> config;
+
     /**
      * Default constructor.
      */
@@ -89,18 +93,18 @@ public class PortInfoData extends InfoData {
      * @param state    port state
      */
     public PortInfoData(final SwitchId switchId, final int portNo, final PortChangeType state) {
-        this(switchId, portNo, null, state, null);
+        this(switchId, portNo, null, state, null, null);
     }
 
     public PortInfoData(SwitchId switchId, int portNo, PortChangeType event, Boolean enabled) {
-        this(switchId, portNo, null, event, enabled);
+        this(switchId, portNo, null, event, enabled, null);
     }
 
     public PortInfoData(final SwitchId switchId,
                         final int portNo,
                         final Integer maxCapacity,
                         PortChangeType state) {
-        this(switchId, portNo, maxCapacity, state, null);
+        this(switchId, portNo, maxCapacity, state, null, null);
     }
 
     /**
@@ -116,38 +120,35 @@ public class PortInfoData extends InfoData {
                         @JsonProperty("port_no") final int portNo,
                         @JsonProperty("max_capacity") final Integer maxCapacity,
                         @JsonProperty("state") final PortChangeType state,
-                        @JsonProperty("enabled") Boolean enabled) {
+                        @JsonProperty("enabled") Boolean enabled,
+                        @JsonProperty("config") List<PortConfig> config) {
         this.switchId = switchId;
         this.portNo = portNo;
         this.maxCapacity = maxCapacity;
         this.state = state;
         this.enabled = enabled;
+        this.config = config;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public int hashCode() {
-        return Objects.hash(switchId, portNo, maxCapacity, state);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean equals(Object object) {
-        if (this == object) {
+    public boolean equals(Object o) {
+        if (this == o) {
             return true;
         }
-        if (object == null || getClass() != object.getClass()) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
+        PortInfoData that = (PortInfoData) o;
+        return portNo == that.portNo
+                && Objects.equal(switchId, that.switchId)
+                && Objects.equal(maxCapacity, that.maxCapacity)
+                && state == that.state
+                && Objects.equal(enabled, that.enabled)
+                && Objects.equal(config, that.config);
+    }
 
-        PortInfoData that = (PortInfoData) object;
-        return Objects.equals(getSwitchId(), that.getSwitchId())
-                && Objects.equals(getPortNo(), that.getPortNo())
-                && Objects.equals(getMaxCapacity(), that.getMaxCapacity())
-                && Objects.equals(getState(), that.getState());
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(switchId, portNo, maxCapacity, state, enabled, config);
     }
 }

@@ -28,6 +28,7 @@ public enum ComponentId {
     SPEAKER_ROUTER("speaker.router"),
     SWITCH_HANDLER("switch-handler"),
     PORT_HANDLER("port-handler"),
+    HISTORY_HANDLER("history-handler"),
     BFD_PORT_HANDLER("bfd-port-handler"),
     UNI_ISL_HANDLER("uni-isl-handler"),
     ISL_HANDLER("isl-handler"),

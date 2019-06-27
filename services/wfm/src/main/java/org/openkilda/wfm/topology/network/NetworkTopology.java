@@ -29,6 +29,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.RerouteEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.SpeakerEncoder;
 import org.openkilda.wfm.topology.network.storm.bolt.bfdport.BfdPortHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.decisionmaker.DecisionMakerHandler;
+import org.openkilda.wfm.topology.network.storm.bolt.history.HistoryHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.IslHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.port.PortHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
@@ -44,6 +45,7 @@ import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.TopologyBuilder;
+import org.apache.storm.topology.base.BaseWindowedBolt.Duration;
 import org.apache.storm.tuple.Fields;
 
 import java.util.concurrent.TimeUnit;
@@ -82,6 +84,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
 
         switchHandler(topology, scaleFactor);
         portHandler(topology, scaleFactor);
+        portHistoryHandler(topology, scaleFactor);
         bfdPortHandler(topology, scaleFactor);
         uniIslHandler(topology, scaleFactor);
         islHandler(topology, scaleFactor);
@@ -179,6 +182,14 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
                 .allGrouping(CoordinatorSpout.ID)
                 .fieldsGrouping(SwitchHandler.BOLT_ID, SwitchHandler.STREAM_PORT_ID, endpointGrouping)
                 .fieldsGrouping(DecisionMakerHandler.BOLT_ID, decisionMakerGrouping);
+    }
+
+    private void portHistoryHandler(TopologyBuilder topology, int scaleFactor) {
+        HistoryHandler bolt = new HistoryHandler(persistenceManager);
+        Duration duration = Duration.seconds(30);
+        Fields endpointGrouping = new Fields(SwitchHandler.FIELD_ID_DATAPATH, SwitchHandler.FIELD_ID_PORT_NUMBER);
+        topology.setBolt(HistoryHandler.BOLT_ID, bolt.withWindow(duration), scaleFactor)
+                .fieldsGrouping(SpeakerRouter.BOLT_ID, SpeakerRouter.STREAM_HISTORY_ID, endpointGrouping);
     }
 
     private void bfdPortHandler(TopologyBuilder topology, int scaleFactor) {

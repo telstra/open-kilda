@@ -36,6 +36,8 @@ import org.openkilda.wfm.share.mappers.FeatureTogglesMapper;
 import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
+import org.openkilda.wfm.topology.network.storm.bolt.history.command.HistoryCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.history.command.HistoryPortEventCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslBfdFlagUpdatedCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.isl.command.IslDeleteCommand;
@@ -88,6 +90,10 @@ public class SpeakerRouter extends AbstractBolt {
     public static final String STREAM_WORKER_ID = "worker";
     public static final Fields STREAM_WORKER_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_INPUT, FIELD_ID_CONTEXT);
 
+    public static final String STREAM_HISTORY_ID = "history";
+    public static final Fields STREAM_HISTORY_FIELDS =
+            new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER, FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
+
     @Override
     protected void handleInput(Tuple input) throws Exception {
         String source = input.getSourceComponent();
@@ -121,7 +127,9 @@ public class SpeakerRouter extends AbstractBolt {
         } else if (payload instanceof SwitchInfoData) {
             emit(input, makeDefaultTuple(input, new SwitchEventCommand((SwitchInfoData) payload)));
         } else if (payload instanceof PortInfoData) {
-            emit(input, makeDefaultTuple(input, new SwitchPortEventCommand((PortInfoData) payload)));
+            PortInfoData portInfoData = (PortInfoData) payload;
+            emit(input, makeDefaultTuple(input, new SwitchPortEventCommand(portInfoData)));
+            emit(STREAM_HISTORY_ID, input, makeHistoryTuple(input, new HistoryPortEventCommand(portInfoData)));
         } else if (payload instanceof NetworkDumpSwitchData) {
             emit(input, makeDefaultTuple(
                     input, new SwitchManagedEventCommand(((NetworkDumpSwitchData) payload).getSwitchView())));
@@ -155,10 +163,15 @@ public class SpeakerRouter extends AbstractBolt {
         streamManager.declareStream(STREAM_ISL_ID, STREAM_ISL_FIELDS);
         streamManager.declareStream(STREAM_WORKER_ID, STREAM_WORKER_FIELDS);
         streamManager.declareStream(STREAM_BCAST_ID, STREAM_BCAST_FIELDS);
+        streamManager.declareStream(STREAM_HISTORY_ID, STREAM_HISTORY_FIELDS);
     }
 
     private Values makeDefaultTuple(Tuple input, SwitchCommand command) throws PipelineException {
         return new Values(command.getDatapath(), command, pullContext(input));
+    }
+
+    private Values makeHistoryTuple(Tuple input, HistoryCommand command) throws PipelineException {
+        return new Values(command.getDatapath(), command.getPortNo(), command, pullContext(input));
     }
 
     private Values makeWatcherTuple(Tuple input, WatcherCommand command) throws PipelineException {
