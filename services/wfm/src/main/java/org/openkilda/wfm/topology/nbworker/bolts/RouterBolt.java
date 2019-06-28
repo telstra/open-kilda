@@ -22,9 +22,6 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
-import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.FeatureTogglesBaseRequest;
 import org.openkilda.messaging.nbtopology.request.FlowsBaseRequest;
@@ -59,11 +56,6 @@ public class RouterBolt extends AbstractBolt {
                 BaseRequest baseRequest = (BaseRequest) data;
                 processRequest(input, key, baseRequest);
             }
-        } else if (message instanceof InfoMessage) {
-            log.debug("Received info message {}", message);
-            InfoMessage info = (InfoMessage) message;
-            InfoData data = info.getData();
-            processRequest(input, data);
         } else if (message instanceof ErrorMessage) {
             log.debug("Received error message {}", message);
             ErrorMessage error = (ErrorMessage) message;
@@ -94,14 +86,6 @@ public class RouterBolt extends AbstractBolt {
         }
     }
 
-    private void processRequest(Tuple input, InfoData data) {
-        if (data instanceof SwitchFlowEntries) {
-            getOutput().emit(StreamType.VALIDATION.toString(), input, new Values(data, getCommandContext()));
-        } else {
-            unhandledInput(input);
-        }
-    }
-
     private void processRequest(Tuple input, ErrorData data) {
         getOutput().emit(StreamType.ERROR.toString(), input, new Values(data, getCommandContext()));
     }
@@ -117,9 +101,6 @@ public class RouterBolt extends AbstractBolt {
         declarer.declareStream(StreamType.KILDA_CONFIG.toString(), fields);
         declarer.declareStream(StreamType.PATHS.toString(), fields);
         declarer.declareStream(StreamType.HISTORY.toString(), fields);
-
-        declarer.declareStream(StreamType.VALIDATION.toString(),
-                new Fields(SwitchValidationsBolt.FIELD_ID_REQUEST, SwitchValidationsBolt.FIELD_ID_CONTEXT));
 
         declarer.declareStream(StreamType.ERROR.toString(),
                 new Fields(MessageEncoder.FIELD_ID_PAYLOAD, MessageEncoder.FIELD_ID_CONTEXT));

@@ -31,7 +31,6 @@ import org.openkilda.wfm.topology.nbworker.bolts.PathsBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.ResponseSplitterBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.RouterBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.SwitchOperationsBolt;
-import org.openkilda.wfm.topology.nbworker.bolts.SwitchValidationsBolt;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -63,7 +62,6 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String FEATURE_TOGGLES_BOLT_NAME = "feature-toggles-bolt";
     private static final String KILDA_CONFIG_BOLT_NAME = "kilda-config-bolt";
     private static final String PATHS_BOLT_NAME = "paths-bolt";
-    private static final String SWITCH_VALIDATIONS_BOLT_NAME = "switch-validations-bolt";
     private static final String MESSAGE_ENCODER_BOLT_NAME = "message-encoder-bolt";
     private static final String DISCOVERY_ENCODER_BOLT_NAME = "discovery-encoder-bolt";
     private static final String SPLITTER_BOLT_NAME = "response-splitter-bolt";
@@ -123,10 +121,6 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         tb.setBolt(PATHS_BOLT_NAME, pathsBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.PATHS.toString());
 
-        SwitchValidationsBolt validationBolt = new SwitchValidationsBolt(persistenceManager);
-        tb.setBolt(SWITCH_VALIDATIONS_BOLT_NAME, validationBolt, parallelism)
-                .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.VALIDATION.toString());
-
         HistoryOperationsBolt historyBolt = new HistoryOperationsBolt(persistenceManager);
         tb.setBolt(HISTORY_BOLT_NAME, historyBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.HISTORY.toString());
@@ -139,7 +133,6 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .shuffleGrouping(FEATURE_TOGGLES_BOLT_NAME)
                 .shuffleGrouping(KILDA_CONFIG_BOLT_NAME)
                 .shuffleGrouping(PATHS_BOLT_NAME)
-                .shuffleGrouping(SWITCH_VALIDATIONS_BOLT_NAME)
                 .shuffleGrouping(HISTORY_BOLT_NAME);
 
         MessageEncoder messageEncoder = new MessageEncoder();

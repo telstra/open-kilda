@@ -25,7 +25,6 @@ public enum StreamType {
     KILDA_CONFIG,
     NOTIFICATION,
     PATHS,
-    VALIDATION,
     DISCO,
     ERROR,
     HISTORY
