@@ -1,0 +1,36 @@
+@startuml
+title Encapsulation transformation
+
+actor customer as CustomerA
+control ingress
+control transit as transitA
+control transit as transitB
+control egress
+actor customer as CustomerB
+
+CustomerA -> ingress : L2
+note right of ingress: ingress match\n port+ingress encapsulation
+ingress -> ingress: push transit\nencapsulation
+
+ingress -> transitA : transit(L2)
+
+note right of transitA: transit match\nport+transit encapsulation
+transitA -> transitB : transit(L2)
+note right of transitB: transit match\nport+transit encapsulation
+
+transitB -> egress : transit(L2)
+note right of egress: transit match\nport+transit encapsulation
+
+egress -> egress : pop transit encapsulation
+
+loop all ingress VLAN tags
+egress -> egress: pop ingress VLAN tag
+end loop
+
+loop all egress VLAN tags\n(innermost to outermost)
+egress -> egress: push egress VLAN tag
+end loop
+
+egress -> CustomerB : L2
+
+@enduml
