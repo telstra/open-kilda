@@ -63,6 +63,7 @@ import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMock;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
@@ -74,6 +75,7 @@ import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
+@Ignore
 public class ReplaceInstallFlowTest {
     private static final String KAFKA_ISL_DISCOVERY_TOPIC = "kilda.topo.disco";
     private static final String KAFKA_FLOW_TOPIC = "kilda.flow";
