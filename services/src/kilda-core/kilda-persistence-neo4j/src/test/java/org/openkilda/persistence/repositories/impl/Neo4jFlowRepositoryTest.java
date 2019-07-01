@@ -118,6 +118,7 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
     public void shouldUpdateFlow() {
         Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
         flow.setBandwidth(10000);
+        flow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
         flowRepository.createOrUpdate(flow);
 
         flow.setBandwidth(100);

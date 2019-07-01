@@ -15,13 +15,15 @@
 
 package org.openkilda.persistence.repositories.impl;
 
+import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPair;
-import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
+import org.openkilda.persistence.repositories.VxlanRepository;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -37,10 +39,12 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
 
     private FlowRepository flowRepository;
     private TransitVlanRepository transitVlanRepository;
+    private VxlanRepository vxlanRepository;
 
     public Neo4jFlowPairRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         flowRepository = new Neo4jFlowRepository(sessionFactory, transactionManager);
         transitVlanRepository = new Neo4jTransitVlanRepository(sessionFactory, transactionManager);
+        vxlanRepository =  new Neo4jVxlanRepository(sessionFactory, transactionManager);
     }
 
     @Override
@@ -56,11 +60,19 @@ public class Neo4jFlowPairRepository implements FlowPairRepository {
     }
 
     private FlowPair toFlowPair(Flow flow) {
-        TransitVlan forwardTransitVlan = transitVlanRepository.findByPathId(
-                flow.getForwardPathId(), flow.getReversePathId()).stream().findAny().orElse(null);
-        TransitVlan reverseTransitVlan = transitVlanRepository.findByPathId(
-                flow.getReversePathId(), flow.getForwardPathId()).stream().findAny().orElse(null);
-
-        return new FlowPair(flow, forwardTransitVlan, reverseTransitVlan);
+        EncapsulationId forwardEncapsulationId = null;
+        EncapsulationId reverseEncapsulationId = null;
+        if (flow.getEncapsulationType() == FlowEncapsulationType.TRANSIT_VLAN) {
+            forwardEncapsulationId = transitVlanRepository.findByPathId(
+                    flow.getForwardPathId(), flow.getReversePathId()).stream().findAny().orElse(null);
+            reverseEncapsulationId = transitVlanRepository.findByPathId(
+                    flow.getReversePathId(), flow.getForwardPathId()).stream().findAny().orElse(null);
+        } else if (flow.getEncapsulationType() == FlowEncapsulationType.VXLAN) {
+            forwardEncapsulationId = vxlanRepository.findByPathId(
+                    flow.getForwardPathId(), flow.getReversePathId()).stream().findAny().orElse(null);
+            reverseEncapsulationId = vxlanRepository.findByPathId(
+                    flow.getReversePathId(), flow.getForwardPathId()).stream().findAny().orElse(null);
+        }
+        return new FlowPair(flow, forwardEncapsulationId, reverseEncapsulationId);
     }
 }
