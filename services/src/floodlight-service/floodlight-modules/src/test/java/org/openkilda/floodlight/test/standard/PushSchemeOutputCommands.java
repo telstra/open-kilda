@@ -19,6 +19,8 @@ import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.DEFAULT_FLOW_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.INTERNAL_ETH_DEST_OFFSET;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.MAC_ADDRESS_SIZE_IN_BITS;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 
 import org.openkilda.floodlight.switchmanager.SwitchManager;
@@ -31,6 +33,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.MacAddress;
@@ -155,6 +158,8 @@ public class PushSchemeOutputCommands implements OutputCommands {
 
     protected List<OFAction> getPushVxlanAction(int outputPort, int tunnelId,
                                                 DatapathId ingressSwitchDpId) {
+        OFOxms oxms = ofFactory.oxms();
+
         return Arrays.asList(
                 ofFactory.actions().buildNoviflowPushVxlanTunnel()
                         .setFlags((short) 0x01)
@@ -165,6 +170,11 @@ public class PushSchemeOutputCommands implements OutputCommands {
                         .setUdpSrc(SwitchManager.STUB_VXLAN_UDP_SRC)
                         .setVni(tunnelId)
                         .build(),
+                ofFactory.actions().buildNoviflowCopyField().setNBits(MAC_ADDRESS_SIZE_IN_BITS)
+                        .setSrcOffset(INTERNAL_ETH_DEST_OFFSET)
+                        .setDstOffset(0)
+                        .setOxmSrcHeader(oxms.buildNoviflowPacketOffset().getTypeLen())
+                        .setOxmDstHeader(oxms.buildNoviflowPacketOffset().getTypeLen()).build(),
                 ofFactory.actions().buildOutput()
                         .setMaxLen(0xFFFFFFFF)
                         .setPort(OFPort.of(outputPort))

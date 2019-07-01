@@ -177,6 +177,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final IPv4Address STUB_VXLAN_IPV4_SRC = IPv4Address.of("127.0.0.1");
     public static final IPv4Address STUB_VXLAN_IPV4_DST = IPv4Address.of("127.0.0.2");
     public static final int STUB_VXLAN_UDP_SRC = 4500;
+    public static final int INTERNAL_ETH_DEST_OFFSET = 400;
+    public static final int MAC_ADDRESS_SIZE_IN_BITS = 48;
 
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
@@ -1458,6 +1460,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 break;
             case VXLAN:
                 actionList.add(actionPushVxlan(ofFactory, transitTunnelId, dpIdToMac(ethSrc)));
+                actionList.add(actionVxlanEthDstCopyField(ofFactory));
                 break;
             default:
                 throw new UnsupportedOperationException(
@@ -1523,6 +1526,17 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setIpv4Src(STUB_VXLAN_IPV4_SRC)
                 .setIpv4Dst(STUB_VXLAN_IPV4_DST)
                 .setFlags((short) 0x01)
+                .build();
+    }
+
+    private OFAction actionVxlanEthDstCopyField(OFFactory ofFactory) {
+        OFOxms oxms = ofFactory.oxms();
+        return ofFactory.actions().buildNoviflowCopyField()
+                .setNBits(MAC_ADDRESS_SIZE_IN_BITS)
+                .setSrcOffset(INTERNAL_ETH_DEST_OFFSET)
+                .setDstOffset(0)
+                .setOxmSrcHeader(oxms.buildNoviflowPacketOffset().getTypeLen())
+                .setOxmDstHeader(oxms.buildNoviflowPacketOffset().getTypeLen())
                 .build();
     }
 
