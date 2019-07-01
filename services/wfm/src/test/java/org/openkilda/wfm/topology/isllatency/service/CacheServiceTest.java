@@ -85,12 +85,21 @@ public class CacheServiceTest extends Neo4jBasedTest {
     }
 
     @Test()
-    public void handleGetDataFromCacheNotFromInitCacheTest() {
+    public void handleGetDataFromCacheNotFromInitCacheActiveTest() {
+        testGetDataFromCacheNotFromInitCache(ACTIVE);
+    }
+
+    @Test()
+    public void handleGetDataFromCacheNotFromInitCacheInactiveTest() {
+        testGetDataFromCacheNotFromInitCache(INACTIVE);
+    }
+
+    private void testGetDataFromCacheNotFromInitCache(IslStatus islStatus) {
         int srcPort = 5;
         int dstPort = 6;
         // isl is not in init cache yet
-        createActiveIsl(switchRepository.findById(SWITCH_ID_1).get(), srcPort,
-                switchRepository.findById(SWITCH_ID_2).get(), dstPort, 10);
+        createIsl(switchRepository.findById(SWITCH_ID_1).get(), srcPort,
+                switchRepository.findById(SWITCH_ID_2).get(), dstPort, 10, islStatus);
 
         IslRoundTripLatency forward = new IslRoundTripLatency(SWITCH_ID_1, srcPort, 1, 0L);
         IslRoundTripLatency reverse = new IslRoundTripLatency(SWITCH_ID_2, dstPort, 1, 0L);
@@ -113,17 +122,24 @@ public class CacheServiceTest extends Neo4jBasedTest {
 
     @Test()
     public void handleUpdateCacheInactiveTest() {
-        testHandleUpdateCache(INACTIVE);
+        IslStatusUpdateNotification notification =
+                new IslStatusUpdateNotification(SWITCH_ID_1, PORT_1, SWITCH_ID_2, PORT_2, INACTIVE);
+
+        updateIslStatus(SWITCH_ID_1, PORT_1, SWITCH_ID_2, PORT_2, INACTIVE);
+        updateIslStatus(SWITCH_ID_2, PORT_2, SWITCH_ID_1, PORT_1, INACTIVE);
+
+        cacheService.handleUpdateCache(notification);
+
+        IslRoundTripLatency forward = new IslRoundTripLatency(SWITCH_ID_1, PORT_1, 1, 0L);
+        checkHandleGetDataFromCache(forward, SWITCH_ID_2, PORT_2);
+
+        IslRoundTripLatency reverse = new IslRoundTripLatency(SWITCH_ID_2, PORT_2, 1, 0L);
+        checkHandleGetDataFromCache(reverse, SWITCH_ID_1, PORT_1);
     }
 
     @Test()
     public void handleUpdateCacheMovedTest() {
         testHandleUpdateCache(MOVED);
-    }
-
-    @Test()
-    public void handleGetDataFromCacheInactiveTest() {
-        testGetDataFromCache(INACTIVE);
     }
 
     @Test()
