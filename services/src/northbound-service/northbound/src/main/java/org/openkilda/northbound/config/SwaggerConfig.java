@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.config;
 
+import static org.openkilda.messaging.Utils.CORRELATION_ID;
+
 import org.openkilda.model.SwitchId;
 
 import org.springframework.context.annotation.Bean;
@@ -34,7 +36,7 @@ import java.util.Collections;
 public class SwaggerConfig {
 
     private final ParameterBuilder correlationIdParameter = new ParameterBuilder()
-                .name("Correlation id")
+                .name(CORRELATION_ID)
                 .description("Request's unique identifier")
                 .parameterType("header")
                 .modelRef(new ModelRef("string"));
