@@ -31,9 +31,9 @@ import org.openkilda.model.IslStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.mappers.IslMapper;
-import org.openkilda.wfm.topology.network.model.Endpoint;
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
-import org.openkilda.wfm.topology.network.model.IslReference;
 
 import org.junit.Before;
 import org.junit.Test;

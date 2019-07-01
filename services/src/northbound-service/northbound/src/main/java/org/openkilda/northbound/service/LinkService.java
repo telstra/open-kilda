@@ -15,7 +15,7 @@
 
 package org.openkilda.northbound.service;
 
-import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.links.LinkDto;
@@ -75,8 +75,8 @@ public interface LinkService {
      * @param dstPort destination port number.
      * @return all flows for a particular link.
      */
-    CompletableFuture<List<FlowPayload>> getFlowsForLink(SwitchId srcSwitch, Integer srcPort,
-                                                         SwitchId dstSwitch, Integer dstPort);
+    CompletableFuture<List<FlowResponsePayload>> getFlowsForLink(SwitchId srcSwitch, Integer srcPort,
+                                                                 SwitchId dstSwitch, Integer dstPort);
 
     /**
      * Reroute all flows for a particular link.

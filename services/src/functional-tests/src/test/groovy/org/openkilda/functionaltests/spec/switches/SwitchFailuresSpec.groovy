@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -23,6 +24,7 @@ Note: For now it is only runnable on virtual env due to no ability to disconnect
 """)
 @Tags(VIRTUAL)
 class SwitchFailuresSpec extends BaseSpecification {
+    @Tags(SMOKE)
     def "ISL is still able to properly fail even after switches were reconnected"() {
         given: "A flow"
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }

@@ -3,6 +3,8 @@ package org.openkilda.functionaltests.spec.switches
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeFalse
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
@@ -13,6 +15,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -54,7 +57,7 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll("Default rules are installed on an #sw.ofVersion switch(#sw.dpId)")
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Default rules are installed on switches"() {
         expect: "Default rules are installed on the switch"
         def cookies = northbound.getSwitchRules(sw.dpId).flowEntries*.cookie
@@ -64,7 +67,7 @@ class SwitchRulesSpec extends BaseSpecification {
         sw << uniqueSwitches
     }
 
-    @Tags(VIRTUAL)
+    @Tags([VIRTUAL, SMOKE])
     def "Default rules are installed when a new switch is connected"() {
         given: "A switch with no rules installed and not connected to the controller"
         northbound.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.DROP_ALL)
@@ -82,7 +85,7 @@ class SwitchRulesSpec extends BaseSpecification {
         cookies.sort() == srcSwitch.defaultCookies.sort()
     }
 
-    @Tags(VIRTUAL)
+    @Tags([VIRTUAL, SMOKE])
     def "Pre-installed rules are not deleted from a new switch connected to the controller"() {
         given: "A switch with some rules installed (including default) and not connected to the controller"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -116,7 +119,7 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to install default rule on an #sw.ofVersion switch(#sw.dpId, install-action=#data.installRulesAction)"() {
         assumeFalse("Unable to run the test because an OF_12 switch has one broadcast rule as the default",
                 sw.ofVersion == "OF_12" && data.installRulesAction != InstallRulesAction.INSTALL_BROADCAST)
@@ -177,7 +180,7 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Able to install default rules on an #sw.ofVersion switch(#sw.dpId, install-action=INSTALL_DEFAULTS)"() {
         given: "A switch without any rules"
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
@@ -201,6 +204,7 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll
+    @Tags([SMOKE, SMOKE_SWITCHES])
     def "Able to delete rules from a switch (delete-action=#data.deleteRulesAction)"() {
         given: "A switch with some flow rules installed"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -262,6 +266,7 @@ class SwitchRulesSpec extends BaseSpecification {
         ]
     }
 
+    @Tags(SMOKE)
     def "Able to validate switch rules in case flow is created with protected path"() {
         given: "A switch and a flow with protected path"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -339,7 +344,7 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Able to delete default rule from an #sw.ofVersion switch (#sw.dpId, delete-action=#data.deleteRulesAction)"() {
         assumeFalse("Unable to run the test because an OF_12 switch has one broadcast rule as the default",
                 sw.ofVersion == "OF_12" && data.cookie != Cookie.VERIFICATION_BROADCAST_RULE_COOKIE)
@@ -387,6 +392,7 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll("Able to delete switch rules by #data.description")
+    @Tags([SMOKE, SMOKE_SWITCHES])
     def "Able to delete switch rules by cookie/priority"() {
         given: "A switch with some flow rules installed"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -455,12 +461,15 @@ class SwitchRulesSpec extends BaseSpecification {
     }
 
     @Unroll("Able to delete switch rules by #data.description")
+    @Tags(SMOKE_SWITCHES)
+    @IterationTag(tags = [SMOKE], iterationNameRegex = /inPort/)
     def "Able to delete switch rules by inPort/inVlan/outPort"() {
         given: "A switch with some flow rules installed"
         flowHelper.addFlow(flow)
 
         when: "Delete switch rules by #data.description"
-        def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan, data.outPort)
+        def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan,
+                data.encapsulationType, data.outPort)
 
         then: "The requested rules are really deleted"
         deletedRules.size() == 1
@@ -476,45 +485,51 @@ class SwitchRulesSpec extends BaseSpecification {
 
         where:
         flow << [buildFlow()] * 4
-        data << [[description : "inPort",
-                  switch      : srcSwitch,
-                  defaultRules: srcSwDefaultRules,
-                  inPort      : flow.source.portNumber,
-                  inVlan      : null,
-                  outPort     : null
+        data << [[description      : "inPort",
+                  switch           : srcSwitch,
+                  defaultRules     : srcSwDefaultRules,
+                  inPort           : flow.source.portNumber,
+                  inVlan           : null,
+                  encapsulationType: null,
+                  outPort          : null
                  ],
-                 [description : "inVlan",
-                  switch      : srcSwitch,
-                  defaultRules: srcSwDefaultRules,
-                  inPort      : null,
-                  inVlan      : flow.source.vlanId,
-                  outPort     : null
+                 [description      : "inVlan",
+                  switch           : srcSwitch,
+                  defaultRules     : srcSwDefaultRules,
+                  inPort           : null,
+                  inVlan           : flow.source.vlanId,
+                  encapsulationType: "TRANSIT_VLAN",
+                  outPort          : null
                  ],
-                 [description : "inPort and inVlan",
-                  switch      : srcSwitch,
-                  defaultRules: srcSwDefaultRules,
-                  inPort      : flow.source.portNumber,
-                  inVlan      : flow.source.vlanId,
-                  outPort     : null
+                 [description      : "inPort and inVlan",
+                  switch           : srcSwitch,
+                  defaultRules     : srcSwDefaultRules,
+                  inPort           : flow.source.portNumber,
+                  inVlan           : flow.source.vlanId,
+                  encapsulationType: "TRANSIT_VLAN",
+                  outPort          : null
                  ],
-                 [description : "outPort",
-                  switch      : dstSwitch,
-                  defaultRules: dstSwDefaultRules,
-                  inPort      : null,
-                  inVlan      : null,
-                  outPort     : flow.destination.portNumber
+                 [description      : "outPort",
+                  switch           : dstSwitch,
+                  defaultRules     : dstSwDefaultRules,
+                  inPort           : null,
+                  inVlan           : null,
+                  encapsulationType: null,
+                  outPort          : flow.destination.portNumber
                  ]
         ]
     }
 
     @Unroll("Attempt to delete switch rules by supplying non-existing #data.description leaves all rules intact")
+    @IterationTag(tags = [SMOKE], iterationNameRegex = /inVlan/)
     def "Attempt to delete switch rules by supplying non-existing inPort/inVlan/outPort leaves all rules intact"() {
         given: "A switch with some flow rules installed"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
 
         when: "Delete switch rules by non-existing #data.description"
-        def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan, data.outPort)
+        def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan,
+                data.encapsulationType, data.outPort)
 
         then: "All rules are kept intact"
         deletedRules.size() == 0
@@ -524,39 +539,43 @@ class SwitchRulesSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
 
         where:
-        data << [[description : "inPort",
-                  switch      : srcSwitch,
-                  defaultRules: srcSwDefaultRules,
-                  inPort      : Integer.MAX_VALUE - 1,
-                  inVlan      : null,
-                  outPort     : null
+        data << [[description      : "inPort",
+                  switch           : srcSwitch,
+                  defaultRules     : srcSwDefaultRules,
+                  inPort           : Integer.MAX_VALUE - 1,
+                  inVlan           : null,
+                  encapsulationType: null,
+                  outPort          : null
                  ],
-                 [description : "inVlan",
-                  switch      : srcSwitch,
-                  defaultRules: srcSwDefaultRules,
-                  inPort      : null,
-                  inVlan      : 4095,
-                  outPort     : null
+                 [description      : "inVlan",
+                  switch           : srcSwitch,
+                  defaultRules     : srcSwDefaultRules,
+                  inPort           : null,
+                  inVlan           : 4095,
+                  encapsulationType: "TRANSIT_VLAN",
+                  outPort          : null
                  ],
-                 [description : "inPort and inVlan",
-                  switch      : srcSwitch,
-                  defaultRules: srcSwDefaultRules,
-                  inPort      : Integer.MAX_VALUE - 1,
-                  inVlan      : 4095,
-                  outPort     : null
+                 [description      : "inPort and inVlan",
+                  switch           : srcSwitch,
+                  defaultRules     : srcSwDefaultRules,
+                  inPort           : Integer.MAX_VALUE - 1,
+                  inVlan           : 4095,
+                  encapsulationType: "TRANSIT_VLAN",
+                  outPort          : null
                  ],
-                 [description : "outPort",
-                  switch      : dstSwitch,
-                  defaultRules: dstSwDefaultRules,
-                  inPort      : null,
-                  inVlan      : null,
-                  outPort     : Integer.MAX_VALUE - 1
+                 [description      : "outPort",
+                  switch           : dstSwitch,
+                  defaultRules     : dstSwDefaultRules,
+                  inPort           : null,
+                  inVlan           : null,
+                  encapsulationType: null,
+                  outPort          : Integer.MAX_VALUE - 1
                  ]
         ]
     }
 
     @Unroll
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Able to synchronize rules for #description on different switches (install missing rules)"() {
         given: "Two active not neighboring switches with the longest available path"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().max { pair ->
@@ -707,6 +726,7 @@ class SwitchRulesSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Tags(SMOKE)
     def "Traffic counters in ingress rule are reset on flow rerouting"() {
         given: "Two active neighboring switches and two possible flow paths at least"
         List<List<PathNode>> possibleFlowPaths = []

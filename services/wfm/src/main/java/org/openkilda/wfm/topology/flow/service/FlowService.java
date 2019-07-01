@@ -87,7 +87,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -154,11 +153,11 @@ public class FlowService extends BaseFlowService {
         try {
             result = (FlowPathsWithEncapsulation) getFailsafe().get(
                     () -> transactionManager.doInTransaction(() -> {
+                        ensureEncapsulationType(flow);
                         // TODO: the strategy is defined either per flow or system-wide.
                         PathComputer pathComputer = pathComputerFactory.getPathComputer();
                         PathPair pathPair = pathComputer.getPath(flow);
 
-                        ensureEncapsulationType(flow);
                         FlowResources flowResources = flowResourcesManager.allocateFlowResources(flow);
 
                         Instant timestamp = Instant.now();
@@ -372,13 +371,13 @@ public class FlowService extends BaseFlowService {
         try {
             result = (UpdatedFlowPathsWithEncapsulation) getFailsafe().get(
                     () -> transactionManager.doInTransaction(() -> {
+                        ensureEncapsulationType(updatingFlow);
                         PathComputer pathComputer = pathComputerFactory.getPathComputer();
                         PathPair newPathPair = pathComputer.getPath(updatingFlow,
                                 currentFlow.getFlow().getFlowPathIds());
 
                         log.info("Updating the flow with {} and path: {}", updatingFlow, newPathPair);
 
-                        ensureEncapsulationType(updatingFlow);
                         FlowResources flowResources = flowResourcesManager.allocateFlowResources(updatingFlow);
 
                         // Recreate the flow, use allocated resources for new paths.
@@ -633,12 +632,13 @@ public class FlowService extends BaseFlowService {
                 } else {
                     log.warn("Reroute {} is unsuccessful: can't find non overlapping new protected path.", flowId);
 
-                    flow.setStatus(FlowStatus.DOWN);
                     currentForwardPath.setStatus(FlowPathStatus.INACTIVE);
                     currentReversePath.setStatus(FlowPathStatus.INACTIVE);
 
                     flowPathRepository.createOrUpdate(currentForwardPath);
                     flowPathRepository.createOrUpdate(currentReversePath);
+
+                    flow.setStatus(computeFlowStatus(flow));
                     flowRepository.createOrUpdate(flow);
 
                     toRemoveBuilder.protectedForwardPath(null).protectedReversePath(null);
@@ -777,29 +777,7 @@ public class FlowService extends BaseFlowService {
         transactionManager.doInTransaction(() -> {
             Flow flow = flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
-            FlowPathStatus prioritizedPathsStatus = Stream.of(flow.getForwardPath(),
-                    flow.getReversePath(), flow.getProtectedForwardPath(), flow.getProtectedReversePath())
-                    .filter(Objects::nonNull)
-                    .map(FlowPath::getStatus)
-                    .max(FlowPathStatus::compareTo)
-                    .orElse(null);
-
-            // Calculate the combined flow status.
-            FlowStatus flowStatus;
-            switch (prioritizedPathsStatus) {
-                case ACTIVE:
-                    flowStatus = FlowStatus.UP;
-                    break;
-                case INACTIVE:
-                    flowStatus = FlowStatus.DOWN;
-                    break;
-                case IN_PROGRESS:
-                    flowStatus = FlowStatus.IN_PROGRESS;
-                    break;
-                default:
-                    throw new IllegalArgumentException(
-                            format("Unsupported flow path status %s", prioritizedPathsStatus));
-            }
+            FlowStatus flowStatus = computeFlowStatus(flow);
 
             if (flowStatus != flow.getStatus()) {
                 log.debug("Set flow {} status to {}", flowId, flowStatus);
@@ -808,6 +786,47 @@ public class FlowService extends BaseFlowService {
                 flowRepository.createOrUpdate(flow);
             }
         });
+    }
+
+    private FlowStatus computeFlowStatus(Flow flow) {
+        FlowPathStatus mainFlowPrioritizedPathsStatus = flow.getMainFlowPrioritizedPathsStatus();
+        FlowPathStatus protectedFlowPrioritizedPathsStatus = flow.getProtectedFlowPrioritizedPathsStatus();
+
+        // Calculate the combined flow status.
+        if (protectedFlowPrioritizedPathsStatus != null
+                && protectedFlowPrioritizedPathsStatus != FlowPathStatus.ACTIVE
+                && mainFlowPrioritizedPathsStatus == FlowPathStatus.ACTIVE) {
+            return FlowStatus.DEGRADED;
+        } else {
+            switch (mainFlowPrioritizedPathsStatus) {
+                case ACTIVE:
+                    return FlowStatus.UP;
+                case INACTIVE:
+                    return FlowStatus.DOWN;
+                case IN_PROGRESS:
+                    return FlowStatus.IN_PROGRESS;
+                default:
+                    throw new IllegalArgumentException(
+                            format("Unsupported flow path status %s", mainFlowPrioritizedPathsStatus));
+            }
+        }
+    }
+
+    /**
+     * Returns list of flows id in diverse group.
+     * @param flow the flow to get diverse group.
+     * @return list of flows id.
+     */
+    public List<String> getDiverseFlowsId(Flow flow) {
+        String groupId = flow.getGroupId();
+
+        if (groupId == null) {
+            return null;
+        }
+
+        return flowRepository.findFlowsIdByGroupId(groupId).stream()
+                .filter(id -> !id.equals(flow.getFlowId()))
+                .collect(Collectors.toList());
     }
 
     private FlowPathPair buildFlowPathPair(FlowPair flowPair, FlowResources flowResources, Instant timeCreate) {
@@ -1320,6 +1339,7 @@ public class FlowService extends BaseFlowService {
                 .destSwitch(Switch.builder().switchId(firstFlow.getDestSwitch().getSwitchId()).build())
                 .destPort(firstFlow.getDestPort())
                 .destVlan(firstFlow.getDestVlan())
+                .encapsulationType(existingFirstFlow.getEncapsulationType())
                 .build();
 
         existingSecondFlow = existingSecondFlow.toBuilder()
@@ -1329,6 +1349,7 @@ public class FlowService extends BaseFlowService {
                 .destSwitch(Switch.builder().switchId(secondFlow.getDestSwitch().getSwitchId()).build())
                 .destPort(secondFlow.getDestPort())
                 .destVlan(secondFlow.getDestVlan())
+                .encapsulationType(existingSecondFlow.getEncapsulationType())
                 .build();
 
         return swapFlows(currentFirstFlow, existingFirstFlow, currentSecondFlow, existingSecondFlow, sender);
@@ -1342,9 +1363,6 @@ public class FlowService extends BaseFlowService {
         PathPair newPathPair = pathComputer.getPath(updatingFlow, pathIds);
 
         log.info("Updating the flow with {} and path: {}", updatingFlow, newPathPair);
-
-        //TODO: hard-coded encapsulation will be removed in Flow H&S
-        updatingFlow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
 
         FlowResources flowResources = flowResourcesManager.allocateFlowResources(updatingFlow);
 

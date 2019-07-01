@@ -101,7 +101,7 @@ public class FlowPayload implements Serializable {
      * @param status                flow status
      * @param maxLatency            max latency
      * @param priority              flow priority
-     * @param pinned           pinned flag
+     * @param pinned                pinned flag
      * @param encapsulationType     flow encapsulation type
      */
     @Builder

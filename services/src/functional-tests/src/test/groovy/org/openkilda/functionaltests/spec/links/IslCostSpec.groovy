@@ -1,9 +1,11 @@
 package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 
@@ -20,6 +22,7 @@ class IslCostSpec extends BaseSpecification {
     }
 
     @Unroll
+    @IterationTag(tags = [SMOKE], iterationNameRegex = /a direct/)
     def "Cost of #description ISL is increased due to bringing port down on a switch \
 (ISL cost < isl.cost.when.port.down)"() {
         given: "An active ISL with created link props"
@@ -55,6 +58,7 @@ class IslCostSpec extends BaseSpecification {
     }
 
     @Unroll
+    @IterationTag(tags = [SMOKE], iterationNameRegex = /an a-switch/)
     def "Cost of #data.description ISL is NOT increased due to bringing port down on a switch \
 (ISL cost #data.condition isl.cost.when.port.down)"() {
         given: "An active ISL with created link props"

@@ -32,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.openkilda.northbound.controller.NorthboundBaseTest;
 import org.openkilda.northbound.controller.TestConfig;
 import org.openkilda.northbound.utils.RequestCorrelationFilter;
+import org.openkilda.northbound.utils.RequestCorrelationInspectorFilter;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -66,7 +67,7 @@ public class SwitchControllerTest extends NorthboundBaseTest {
     @Before
     public void setUp() throws Exception {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
-                .addFilters(new RequestCorrelationFilter())
+                .addFilters(new RequestCorrelationInspectorFilter(), new RequestCorrelationFilter())
                 .apply(springSecurity())
                 .build();
     }

@@ -16,12 +16,12 @@
 package org.openkilda.wfm.topology.network.controller;
 
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.controller.DecisionMakerFsm.DecisionMakerFsmContext;
 import org.openkilda.wfm.topology.network.controller.DecisionMakerFsm.DecisionMakerFsmEvent;
 import org.openkilda.wfm.topology.network.controller.DecisionMakerFsm.DecisionMakerFsmState;
-import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.service.IDecisionMakerCarrier;
 
 import lombok.Builder;
@@ -33,67 +33,6 @@ public final class DecisionMakerFsm extends AbstractBaseFsm<DecisionMakerFsm,
         DecisionMakerFsmState,
         DecisionMakerFsmEvent,
         DecisionMakerFsmContext> {
-    private static final StateMachineBuilder<DecisionMakerFsm, DecisionMakerFsmState, DecisionMakerFsmEvent,
-            DecisionMakerFsmContext> builder;
-
-    static {
-        builder = StateMachineBuilderFactory.create(
-                DecisionMakerFsm.class, DecisionMakerFsmState.class, DecisionMakerFsmEvent.class,
-                DecisionMakerFsmContext.class,
-                Endpoint.class, Long.class, Long.class);
-
-        final String verifyAndTransit = "verifyAndTransit";
-
-        // INIT
-        builder.transition()
-                .from(DecisionMakerFsmState.INIT).to(DecisionMakerFsmState.DISCOVERED)
-                .on(DecisionMakerFsmEvent.DISCOVERY);
-        builder.transition()
-                .from(DecisionMakerFsmState.INIT).to(DecisionMakerFsmState.UNSTABLE)
-                .on(DecisionMakerFsmEvent.FAIL);
-
-        // UNSTABLE
-        builder.onEntry(DecisionMakerFsmState.UNSTABLE)
-                .callMethod("saveFailTime");
-        builder.internalTransition().within(DecisionMakerFsmState.UNSTABLE).on(DecisionMakerFsmEvent.DISCOVERY)
-                .callMethod(verifyAndTransit);
-        builder.internalTransition().within(DecisionMakerFsmState.UNSTABLE).on(DecisionMakerFsmEvent.FAIL)
-                .callMethod(verifyAndTransit);
-        builder.transition()
-                .from(DecisionMakerFsmState.UNSTABLE).to(DecisionMakerFsmState.DISCOVERED)
-                .on(DecisionMakerFsmEvent.VALID_DISCOVERY);
-        builder.internalTransition().within(DecisionMakerFsmState.UNSTABLE).on(DecisionMakerFsmEvent.VALID_FAIL)
-                .callMethod("tick");
-        builder.internalTransition().within(DecisionMakerFsmState.UNSTABLE).on(DecisionMakerFsmEvent.TICK)
-                .callMethod("tick");
-        builder.transition()
-                .from(DecisionMakerFsmState.UNSTABLE).to(DecisionMakerFsmState.FAILED)
-                .on(DecisionMakerFsmEvent.FAIL_BY_TIMEOUT);
-
-        // DISCOVERED
-        builder.onEntry(DecisionMakerFsmState.DISCOVERED)
-                .callMethod("emitDiscovery");
-        builder.internalTransition()
-                .within(DecisionMakerFsmState.DISCOVERED).on(DecisionMakerFsmEvent.FAIL)
-                .callMethod(verifyAndTransit);
-        builder.internalTransition().within(DecisionMakerFsmState.DISCOVERED).on(DecisionMakerFsmEvent.DISCOVERY)
-                .callMethod(verifyAndTransit);
-        builder.transition()
-                .from(DecisionMakerFsmState.DISCOVERED).to(DecisionMakerFsmState.UNSTABLE)
-                .on(DecisionMakerFsmEvent.VALID_FAIL);
-        builder.internalTransition().within(DecisionMakerFsmState.DISCOVERED).on(DecisionMakerFsmEvent.VALID_DISCOVERY)
-                .callMethod("emitDiscovery");
-
-        // FAILED
-        builder.onEntry(DecisionMakerFsmState.FAILED)
-                .callMethod("emitFailed");
-        builder.internalTransition()
-                .within(DecisionMakerFsmState.FAILED).on(DecisionMakerFsmEvent.DISCOVERY)
-                .callMethod(verifyAndTransit);
-        builder.transition()
-                .from(DecisionMakerFsmState.FAILED).to(DecisionMakerFsmState.DISCOVERED)
-                .on(DecisionMakerFsmEvent.VALID_DISCOVERY);
-    }
 
     private final Endpoint endpoint;
     private final Long failTimeout;
@@ -101,19 +40,14 @@ public final class DecisionMakerFsm extends AbstractBaseFsm<DecisionMakerFsm,
     private Long failTime;
     private Long lastProcessedPacketId;
 
+    public static DecisionMakerFsmFactory factory() {
+        return new DecisionMakerFsmFactory();
+    }
+
     public DecisionMakerFsm(Endpoint endpoint, Long failTimeout, Long awaitTime) {
         this.endpoint = endpoint;
         this.failTimeout = failTimeout;
         this.awaitTime = awaitTime;
-    }
-
-    public static FsmExecutor<DecisionMakerFsm, DecisionMakerFsmState, DecisionMakerFsmEvent,
-            DecisionMakerFsmContext> makeExecutor() {
-        return new FsmExecutor<>(DecisionMakerFsmEvent.NEXT);
-    }
-
-    public static DecisionMakerFsm create(Endpoint endpoint, Long failTimeout, Long awaitTime) {
-        return builder.newStateMachine(DecisionMakerFsmState.INIT, endpoint, failTimeout, awaitTime);
     }
 
     // -- FSM actions --
@@ -186,6 +120,80 @@ public final class DecisionMakerFsm extends AbstractBaseFsm<DecisionMakerFsm,
     }
 
     // -- service data types --
+
+    public static class DecisionMakerFsmFactory {
+        private final StateMachineBuilder<DecisionMakerFsm, DecisionMakerFsmState, DecisionMakerFsmEvent,
+                DecisionMakerFsmContext> builder;
+
+        DecisionMakerFsmFactory() {
+            builder = StateMachineBuilderFactory.create(
+                    DecisionMakerFsm.class, DecisionMakerFsmState.class, DecisionMakerFsmEvent.class,
+                    DecisionMakerFsmContext.class,
+                    Endpoint.class, Long.class, Long.class);
+
+            final String verifyAndTransit = "verifyAndTransit";
+
+            // INIT
+            builder.transition()
+                    .from(DecisionMakerFsmState.INIT).to(DecisionMakerFsmState.DISCOVERED)
+                    .on(DecisionMakerFsmEvent.DISCOVERY);
+            builder.transition()
+                    .from(DecisionMakerFsmState.INIT).to(DecisionMakerFsmState.UNSTABLE)
+                    .on(DecisionMakerFsmEvent.FAIL);
+
+            // UNSTABLE
+            builder.onEntry(DecisionMakerFsmState.UNSTABLE)
+                    .callMethod("saveFailTime");
+            builder.internalTransition().within(DecisionMakerFsmState.UNSTABLE).on(DecisionMakerFsmEvent.DISCOVERY)
+                    .callMethod(verifyAndTransit);
+            builder.internalTransition().within(DecisionMakerFsmState.UNSTABLE).on(DecisionMakerFsmEvent.FAIL)
+                    .callMethod(verifyAndTransit);
+            builder.transition()
+                    .from(DecisionMakerFsmState.UNSTABLE).to(DecisionMakerFsmState.DISCOVERED)
+                    .on(DecisionMakerFsmEvent.VALID_DISCOVERY);
+            builder.internalTransition().within(DecisionMakerFsmState.UNSTABLE).on(DecisionMakerFsmEvent.VALID_FAIL)
+                    .callMethod("tick");
+            builder.internalTransition().within(DecisionMakerFsmState.UNSTABLE).on(DecisionMakerFsmEvent.TICK)
+                    .callMethod("tick");
+            builder.transition()
+                    .from(DecisionMakerFsmState.UNSTABLE).to(DecisionMakerFsmState.FAILED)
+                    .on(DecisionMakerFsmEvent.FAIL_BY_TIMEOUT);
+
+            // DISCOVERED
+            builder.onEntry(DecisionMakerFsmState.DISCOVERED)
+                    .callMethod("emitDiscovery");
+            builder.internalTransition()
+                    .within(DecisionMakerFsmState.DISCOVERED).on(DecisionMakerFsmEvent.FAIL)
+                    .callMethod(verifyAndTransit);
+            builder.internalTransition().within(DecisionMakerFsmState.DISCOVERED).on(DecisionMakerFsmEvent.DISCOVERY)
+                    .callMethod(verifyAndTransit);
+            builder.transition()
+                    .from(DecisionMakerFsmState.DISCOVERED).to(DecisionMakerFsmState.UNSTABLE)
+                    .on(DecisionMakerFsmEvent.VALID_FAIL);
+            builder.internalTransition().within(DecisionMakerFsmState.DISCOVERED)
+                    .on(DecisionMakerFsmEvent.VALID_DISCOVERY)
+                    .callMethod("emitDiscovery");
+
+            // FAILED
+            builder.onEntry(DecisionMakerFsmState.FAILED)
+                    .callMethod("emitFailed");
+            builder.internalTransition()
+                    .within(DecisionMakerFsmState.FAILED).on(DecisionMakerFsmEvent.DISCOVERY)
+                    .callMethod(verifyAndTransit);
+            builder.transition()
+                    .from(DecisionMakerFsmState.FAILED).to(DecisionMakerFsmState.DISCOVERED)
+                    .on(DecisionMakerFsmEvent.VALID_DISCOVERY);
+        }
+
+        public FsmExecutor<DecisionMakerFsm, DecisionMakerFsmState, DecisionMakerFsmEvent,
+                DecisionMakerFsmContext> produceExecutor() {
+            return new FsmExecutor<>(DecisionMakerFsmEvent.NEXT);
+        }
+
+        public DecisionMakerFsm produce(Endpoint endpoint, Long failTimeout, Long awaitTime) {
+            return builder.newStateMachine(DecisionMakerFsmState.INIT, endpoint, failTimeout, awaitTime);
+        }
+    }
 
     @Data
     @Builder

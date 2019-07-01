@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.network.storm.bolt.watcher.command;
 
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.wfm.topology.network.model.Endpoint;
+import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.WatcherHandler;
 
 public class WatcherSpeakerDiscoveryCommand extends WatcherCommand {

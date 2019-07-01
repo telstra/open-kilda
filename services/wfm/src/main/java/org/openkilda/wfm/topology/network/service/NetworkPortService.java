@@ -17,13 +17,14 @@ package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
+import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
 import org.openkilda.wfm.topology.network.controller.port.PortFsm;
 import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmContext;
 import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmEvent;
 import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmState;
-import org.openkilda.wfm.topology.network.model.Endpoint;
+import org.openkilda.wfm.topology.network.controller.port.PortReportFsm;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -34,17 +35,25 @@ import java.util.Map;
 
 @Slf4j
 public class NetworkPortService {
+    private final PortFsm.PortFsmFactory controllerFactory;
+    private final PortReportFsm.PortReportFsmFactory reportFactory;
     private final Map<Endpoint, PortFsm> controller = new HashMap<>();
-    private final FsmExecutor<PortFsm, PortFsmState, PortFsmEvent, PortFsmContext> controllerExecutor
-            = PortFsm.makeExecutor();
+    private final FsmExecutor<PortFsm, PortFsmState, PortFsmEvent, PortFsmContext> controllerExecutor;
 
     private final IPortCarrier carrier;
 
-    private NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder;
-
     public NetworkPortService(IPortCarrier carrier) {
+        this(carrier, NetworkTopologyDashboardLogger.builder());
+    }
+
+    @VisibleForTesting
+    NetworkPortService(IPortCarrier carrier, NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder) {
         this.carrier = carrier;
-        this.dashboardLoggerBuilder = NetworkTopologyDashboardLogger.builder();
+
+        controllerFactory = PortFsm.factory();
+        controllerExecutor = controllerFactory.produceExecutor();
+
+        reportFactory = PortReportFsm.factory(dashboardLoggerBuilder);
     }
 
     /**
@@ -53,7 +62,7 @@ public class NetworkPortService {
     public void setup(Endpoint endpoint, Isl history) {
         log.info("Port service receive setup request for {}", endpoint);
         // TODO: try to switch on atomic action i.e. port-setup + online|offline action in one event
-        PortFsm portFsm = PortFsm.create(dashboardLoggerBuilder, endpoint, history);
+        PortFsm portFsm = controllerFactory.produce(reportFactory, endpoint, history);
         controller.put(endpoint, portFsm);
     }
 
@@ -129,13 +138,6 @@ public class NetworkPortService {
         PortFsmContext context = PortFsmContext.builder(carrier).build();
 
         controllerExecutor.fire(portFsm, PortFsmEvent.FAIL, context);
-    }
-
-    // -- for tests --
-
-    @VisibleForTesting
-    public void setDashboardLoggerBuilder(NetworkTopologyDashboardLogger.Builder builder) {
-        dashboardLoggerBuilder = builder;
     }
 
     // -- private --

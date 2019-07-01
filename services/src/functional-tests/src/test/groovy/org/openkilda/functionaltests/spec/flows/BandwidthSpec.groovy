@@ -1,9 +1,11 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslInfoData
@@ -16,6 +18,7 @@ import spock.lang.Narrative
 @Narrative("Verify that ISL's bandwidth behaves consistently and does not allow any oversubscribtions etc.")
 class BandwidthSpec extends BaseSpecification {
 
+    @Tags(SMOKE)
     def "Available bandwidth on ISLs changes respectively when creating/updating/deleting a flow"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getNotNeighboringSwitchPair()

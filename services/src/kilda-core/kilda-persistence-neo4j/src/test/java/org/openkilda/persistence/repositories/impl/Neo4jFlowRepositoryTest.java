@@ -128,8 +128,8 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
         assertThat(allFlows, Matchers.hasSize(1));
 
         Flow foundFlow = allFlows.iterator().next();
-        assertEquals(flow.getSrcSwitch(), foundFlow.getSrcSwitch());
-        assertEquals(flow.getDestSwitch(), foundFlow.getDestSwitch());
+        assertEquals(flow.getSrcSwitch().getSwitchId(), foundFlow.getSrcSwitch().getSwitchId());
+        assertEquals(flow.getDestSwitch().getSwitchId(), foundFlow.getDestSwitch().getSwitchId());
         assertEquals(flow.getBandwidth(), foundFlow.getBandwidth());
         assertEquals(flow.getDescription(), foundFlow.getDescription());
     }
@@ -183,6 +183,18 @@ public class Neo4jFlowRepositoryTest extends Neo4jBasedTest {
 
         List<Flow> foundFlow = Lists.newArrayList(flowRepository.findByGroupId(TEST_GROUP_ID));
         assertThat(foundFlow, Matchers.hasSize(1));
+        assertEquals(Collections.singletonList(flow), foundFlow);
+    }
+
+    @Test
+    public void shouldFindFlowsIdByGroupId() {
+        Flow flow = buildTestFlow(TEST_FLOW_ID, switchA, switchB);
+        flow.setGroupId(TEST_GROUP_ID);
+        flowRepository.createOrUpdate(flow);
+
+        List<String> foundFlowId = Lists.newArrayList(flowRepository.findFlowsIdByGroupId(TEST_GROUP_ID));
+        assertThat(foundFlowId, Matchers.hasSize(1));
+        assertEquals(Collections.singletonList(TEST_FLOW_ID), foundFlowId);
     }
 
     @Test

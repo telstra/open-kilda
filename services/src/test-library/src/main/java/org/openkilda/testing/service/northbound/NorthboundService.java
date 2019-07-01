@@ -30,6 +30,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.SwitchId;
@@ -50,6 +51,8 @@ import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import java.util.List;
@@ -61,7 +64,7 @@ public interface NorthboundService {
 
     //flows
 
-    FlowPayload getFlow(String flowId);
+    FlowResponsePayload getFlow(String flowId);
 
     List<FlowEventPayload> getFlowHistory(String flowId);
 
@@ -93,6 +96,8 @@ public interface NorthboundService {
 
     FlowPayload swapFlowPath(String flowId);
 
+    SwapFlowEndpointPayload swapFlowEndpoint(SwapFlowPayload firstFlow, SwapFlowPayload secondFlow);
+
     //switches
 
     SwitchFlowEntries getSwitchRules(SwitchId switchId);
@@ -101,7 +106,8 @@ public interface NorthboundService {
 
     List<Long> deleteSwitchRules(SwitchId switchId, DeleteRulesAction deleteAction);
 
-    List<Long> deleteSwitchRules(SwitchId switchId, Integer inPort, Integer inVlan, Integer outPort);
+    List<Long> deleteSwitchRules(SwitchId switchId, Integer inPort, Integer inVlan, String encapsulationType,
+                                 Integer outPort);
 
     List<Long> deleteSwitchRules(SwitchId switchId, long cookie);
 

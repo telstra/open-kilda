@@ -1,7 +1,8 @@
 package org.openkilda.functionaltests.spec.stats
 
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -23,7 +24,7 @@ class OpenTsdbSpec extends BaseSpecification {
     String metricPrefix
 
     @Unroll("Stats are being logged for metric:#metric, tags:#tags")
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Basic stats are being logged"(metric, tags) {
         expect: "At least 1 result in the past 2 minutes"
         otsdb.query(2.minutes.ago, metric, tags).dps.size() > 0
@@ -35,9 +36,9 @@ class OpenTsdbSpec extends BaseSpecification {
                   metricPrefix + "switch.tx-bytes", metricPrefix + "switch.tx-bits", metricPrefix + "switch.tx-packets"],
                 uniqueSwitches.collect { [switchid: it.dpId.toOtsdFormat()] }].combinations()
                 //isl latency stats, use every unique switch in src_switch tag
-                + [[metricPrefix + "isl.latency"], uniqueSwitches.collect { [src_switch: it.dpId.toOtsdFormat()] }].combinations()
+                + [[metricPrefix + "isl.rtt"], uniqueSwitches.collect { [src_switch: it.dpId.toOtsdFormat()] }].combinations()
                 //isl latency stats, use every unique switch in dst_switch tag
-                + [[metricPrefix + "isl.latency"], uniqueSwitches.collect { [dst_switch: it.dpId.toOtsdFormat()] }].combinations()
+                + [[metricPrefix + "isl.rtt"], uniqueSwitches.collect { [dst_switch: it.dpId.toOtsdFormat()] }].combinations()
                 //stats for default rules. use discovery packet cookie in tags, as is doesn't need any specific actions
                 + [[metricPrefix + "switch.flow.system.packets", metricPrefix + "switch.flow.system.bytes", metricPrefix + "switch.flow.system.bits"],
                    [[cookieHex: DefaultRule.VERIFICATION_BROADCAST_RULE.toHexString()]]].combinations())

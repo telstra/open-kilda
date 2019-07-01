@@ -35,9 +35,9 @@ import java.util.Map;
 
 @Slf4j
 public class NetworkSwitchService {
+    private final SwitchFsm.SwitchFsmFactory controllerFactory;
     private final Map<SwitchId, SwitchFsm> controller = new HashMap<>();
-    private final FsmExecutor<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> controllerExecutor
-            = SwitchFsm.makeExecutor();
+    private final FsmExecutor<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> controllerExecutor;
 
     private static final NetworkTopologyDashboardLogger logWrapper = new NetworkTopologyDashboardLogger(log);
 
@@ -53,6 +53,9 @@ public class NetworkSwitchService {
         this.persistenceManager = persistenceManager;
         this.bfdLogicalPortOffset = bfdLogicalPortOffset;
 
+        controllerFactory = SwitchFsm.factory();
+        controllerExecutor = controllerFactory.produceExecutor();
+
         log.info("Discovery switch service configuration: bfd-logical-port-offset:{}", bfdLogicalPortOffset);
     }
 
@@ -61,7 +64,8 @@ public class NetworkSwitchService {
      */
     public void switchAddWithHistory(HistoryFacts history) {
         log.info("Switch service receive switch ADD from history request for {}", history.getSwitchId());
-        SwitchFsm switchFsm = SwitchFsm.create(persistenceManager, history.getSwitchId(), bfdLogicalPortOffset);
+        SwitchFsm switchFsm = controllerFactory.produce(persistenceManager, history.getSwitchId(),
+                                                        bfdLogicalPortOffset);
 
         SwitchFsmContext fsmContext = SwitchFsmContext.builder(carrier)
                 .history(history)
@@ -197,7 +201,7 @@ public class NetworkSwitchService {
         return controller.computeIfAbsent(
                 datapath, key -> {
                     logWrapper.onSwitchAdd(key);
-                    return SwitchFsm.create(persistenceManager, datapath, bfdLogicalPortOffset);
+                    return controllerFactory.produce(persistenceManager, datapath, bfdLogicalPortOffset);
                 });
     }
 }

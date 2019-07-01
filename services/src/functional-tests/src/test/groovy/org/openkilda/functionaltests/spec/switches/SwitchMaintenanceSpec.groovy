@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -27,6 +28,7 @@ class SwitchMaintenanceSpec extends BaseSpecification {
         database.resetCosts()  // set default cost on all links before tests
     }
 
+    @Tags(SMOKE)
     def "Maintenance mode can be set/unset for a particular switch"() {
         given: "An active switch"
         def sw = topology.activeSwitches.first()
@@ -68,6 +70,7 @@ class SwitchMaintenanceSpec extends BaseSpecification {
         }
     }
 
+    @Tags(SMOKE)
     def "Flows can be evacuated (rerouted) from a particular switch when setting maintenance mode for it"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:

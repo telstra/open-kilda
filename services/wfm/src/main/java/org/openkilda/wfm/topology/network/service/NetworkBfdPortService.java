@@ -17,14 +17,14 @@ package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.controller.bfd.BfdPortFsm;
 import org.openkilda.wfm.topology.network.controller.bfd.BfdPortFsm.BfdPortFsmContext;
 import org.openkilda.wfm.topology.network.controller.bfd.BfdPortFsm.BfdPortFsmEvent;
 import org.openkilda.wfm.topology.network.controller.bfd.BfdPortFsm.BfdPortFsmState;
 import org.openkilda.wfm.topology.network.error.BfdPortControllerNotFoundException;
-import org.openkilda.wfm.topology.network.model.Endpoint;
-import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 
 import lombok.extern.slf4j.Slf4j;
@@ -40,17 +40,20 @@ public class NetworkBfdPortService {
     private final IBfdPortCarrier carrier;
     private final PersistenceManager persistenceManager;
 
+    private final BfdPortFsm.BfdPortFsmFactory controllerFactory;
     private final Map<Endpoint, BfdPortFsm> controllerByPhysicalPort = new HashMap<>();
     private final Map<Endpoint, BfdPortFsm> controllerByLogicalPort = new HashMap<>();
     private final List<BfdPortFsm> pendingCleanup = new LinkedList<>();
     private final Map<Endpoint, IslReference> autostart = new HashMap<>();
 
-    private final FsmExecutor<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> controllerExecutor
-            = BfdPortFsm.makeExecutor();
+    private final FsmExecutor<BfdPortFsm, BfdPortFsmState, BfdPortFsmEvent, BfdPortFsmContext> controllerExecutor;
 
     public NetworkBfdPortService(IBfdPortCarrier carrier, PersistenceManager persistenceManager) {
         this.carrier = carrier;
         this.persistenceManager = persistenceManager;
+
+        controllerFactory = BfdPortFsm.factory();
+        controllerExecutor = controllerFactory.produceExecutor();
     }
 
     /**
@@ -59,7 +62,7 @@ public class NetworkBfdPortService {
     public void setup(Endpoint endpoint, int physicalPortNumber) {
         log.info("BFD-port service receive SETUP request for {} (physical-port:{})",
                   endpoint, physicalPortNumber);
-        BfdPortFsm controller = BfdPortFsm.create(persistenceManager, endpoint, physicalPortNumber);
+        BfdPortFsm controller = controllerFactory.produce(persistenceManager, endpoint, physicalPortNumber);
 
         BfdPortFsmContext context = BfdPortFsmContext.builder(carrier).build();
         controllerExecutor.fire(controller, BfdPortFsmEvent.HISTORY, context);

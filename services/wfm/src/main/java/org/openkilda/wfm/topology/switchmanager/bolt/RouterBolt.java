@@ -51,7 +51,12 @@ public class RouterBolt extends AbstractBolt {
                 streams.remove(((RemoveKeyRouterBolt) data).getKey());
             }
         } else {
-            emit(streams.get(key), input, key, message);
+            String stream = streams.get(key);
+            if (stream == null) {
+                log.warn("No defined stream for received key {}. Dropping message", key);
+            } else {
+                emit(stream, input, key, message);
+            }
         }
     }
 

@@ -37,7 +37,7 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
                 TagExtension.collectAllTags(nonSpecialFeatures[0]).contains(Tag.HARDWARE)
         specInfo.getAllFeatures().find {
             it.featureMethod.getAnnotation(PrepareSpringContextDummy)
-        }?.excluded = !(nonSpecialFeatures[0].parameterized || isProfileDependent) ||
+        }?.excluded = !((nonSpecialFeatures.size() > 0 && nonSpecialFeatures[0].parameterized)|| isProfileDependent) ||
                 specInfo.getFeatures().every { it.excluded || it.skipped } as boolean
 
         specInfo.allFixtureMethods*.addInterceptor(new IMethodInterceptor() {

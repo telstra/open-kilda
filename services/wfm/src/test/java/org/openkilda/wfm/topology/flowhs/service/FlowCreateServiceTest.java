@@ -39,6 +39,7 @@ import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
@@ -55,6 +56,7 @@ import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
@@ -124,6 +126,9 @@ public class FlowCreateServiceTest {
     private SwitchRepository switchRepository;
 
     @Mock
+    private KildaConfigurationRepository kildaConfigurationRepository;
+
+    @Mock
     private FlowResourcesManager flowResourcesManager;
     
     @Mock
@@ -147,7 +152,7 @@ public class FlowCreateServiceTest {
 
         when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
-
+        when(repositoryFactory.createKildaConfigurationRepository()).thenReturn(kildaConfigurationRepository);
         when(featureTogglesRepository.find()).thenReturn(Optional.of(getFeatureToggles()));
         when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
 
@@ -158,7 +163,7 @@ public class FlowCreateServiceTest {
             when(flowRepository.findById(eq(flow.getFlowId()))).thenReturn(Optional.of(flow));
             return null;
         }).when(flowRepository).createOrUpdate(any(Flow.class));
-
+        when(kildaConfigurationRepository.get()).thenReturn(KildaConfiguration.DEFAULTS);
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         when(repositoryFactory.createTransitVlanRepository()).thenReturn(transitVlanRepository);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
@@ -180,7 +185,7 @@ public class FlowCreateServiceTest {
     public void reset() {
         Mockito.reset(persistenceManager, transactionManager, transitVlanRepository, repositoryFactory,
                 featureTogglesRepository, flowRepository, flowPathRepository, islRepository, switchRepository,
-                flowResourcesManager, pathComputer, carrier);
+                kildaConfigurationRepository, flowResourcesManager, pathComputer, carrier);
     }
 
     @Test

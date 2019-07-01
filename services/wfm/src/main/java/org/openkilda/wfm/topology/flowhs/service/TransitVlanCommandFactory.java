@@ -255,7 +255,8 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
                                 flowPath.getFlow().getFlowId())));
 
         DeleteRulesCriteria ingressCriteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort,
-                inputVlanId, 0, ingressSegment.getSrcPort(), FlowEncapsulationType.TRANSIT_VLAN);
+                inputVlanId, 0, ingressSegment.getSrcPort(), FlowEncapsulationType.TRANSIT_VLAN,
+                flowPath.getSrcSwitch().getSwitchId());
         UUID commandId = commandIdGenerator.generate();
         return RemoveRule.builder()
                 .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
@@ -303,7 +304,7 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
     private RemoveRule buildRemoveTransitRule(CommandContext context, FlowPath flowPath, SwitchId switchId,
                                               int inputPort, int outputPort, int transitVlan) {
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort, transitVlan,
-                0, outputPort, FlowEncapsulationType.TRANSIT_VLAN);
+                0, outputPort, FlowEncapsulationType.TRANSIT_VLAN, flowPath.getSrcSwitch().getSwitchId());
         UUID commandId = commandIdGenerator.generate();
         return RemoveRule.builder()
                 .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
@@ -318,7 +319,7 @@ public class TransitVlanCommandFactory implements FlowCommandFactory {
     private RemoveRule buildRemoveEgressRule(CommandContext context, FlowPath flowPath, int inputPort, int outputPort,
                                              int transitVlan) {
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort, transitVlan,
-                0, outputPort, FlowEncapsulationType.TRANSIT_VLAN);
+                0, outputPort, FlowEncapsulationType.TRANSIT_VLAN, flowPath.getSrcSwitch().getSwitchId());
         UUID commandId = commandIdGenerator.generate();
         return RemoveRule.builder()
                 .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))

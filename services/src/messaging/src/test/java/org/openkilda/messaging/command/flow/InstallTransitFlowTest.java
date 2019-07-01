@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.openkilda.messaging.command.Constants.flowName;
+import static org.openkilda.messaging.command.Constants.ingresSwitchId;
 import static org.openkilda.messaging.command.Constants.inputPort;
 import static org.openkilda.messaging.command.Constants.outputPort;
 import static org.openkilda.messaging.command.Constants.switchId;
@@ -31,7 +32,8 @@ import java.util.UUID;
 
 public class InstallTransitFlowTest {
     private InstallTransitFlow flow = new InstallTransitFlow(UUID.randomUUID(),
-            flowName, 0L, switchId, inputPort, outputPort, transitEncapsulationId, transitEncapsulationType);
+            flowName, 0L, switchId, inputPort, outputPort, transitEncapsulationId, transitEncapsulationType,
+            ingresSwitchId);
 
     @Test
     public void toStringTest() throws Exception {

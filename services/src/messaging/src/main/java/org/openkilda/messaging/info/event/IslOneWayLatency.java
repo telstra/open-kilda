@@ -35,30 +35,15 @@ public class IslOneWayLatency extends IslBaseLatency {
     @JsonProperty("dst_port_no")
     private int dstPortNo;
 
-    @JsonProperty("src_switch_supports_copy_field")
-    private boolean srcSwitchSupportsCopyField;
-
-    @JsonProperty("dst_switch_supports_copy_field")
-    private boolean dstSwitchSupportsCopyField;
-
-    @JsonProperty("dst_switch_supports_groups")
-    private boolean dstSwitchSupportsGroups;
-
     @JsonCreator
     public IslOneWayLatency(@JsonProperty("src_switch_id") SwitchId srcSwitchId,
                             @JsonProperty("src_port_no") int srcPortNo,
                             @JsonProperty("dst_switch_id") SwitchId dstSwitchId,
                             @JsonProperty("dst_port_no") int dstPortNo,
                             @JsonProperty("latency_ns") long latency,
-                            @JsonProperty("packet_id") Long packetId,
-                            @JsonProperty("src_switch_supports_copy_field") boolean srcSwitchSupportsCopyField,
-                            @JsonProperty("dst_switch_supports_copy_field") boolean dstSwitchSupportsCopyField,
-                            @JsonProperty("dst_switch_supports_groups") boolean dstSwitchSupportsGroups) {
+                            @JsonProperty("packet_id") Long packetId) {
         super(srcSwitchId, srcPortNo, latency, packetId);
         this.dstSwitchId = dstSwitchId;
         this.dstPortNo = dstPortNo;
-        this.srcSwitchSupportsCopyField = srcSwitchSupportsCopyField;
-        this.dstSwitchSupportsCopyField = dstSwitchSupportsCopyField;
-        this.dstSwitchSupportsGroups = dstSwitchSupportsGroups;
     }
 }

@@ -157,13 +157,15 @@ public class CommandBuilderImpl implements CommandBuilder {
         int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
         int inVlan = forward ? flow.getSrcVlan() : flow.getDestVlan();
         int outVlan = forward ? flow.getDestVlan() : flow.getSrcVlan();
+        SwitchId ingressSwitchId = forward ? flow.getSrcSwitch().getSwitchId() : flow.getDestSwitch().getSwitchId();
         OutputVlanType outputVlanType = getOutputVlanType(inVlan, outVlan);
 
         return new InstallIngressFlow(transactionIdGenerator.generate(), flow.getFlowId(),
                 flowPath.getCookie().getValue(), flowPath.getSrcSwitch().getSwitchId(), inPort,
                 outputPortNo, inVlan, transitEncapsulationId, flowEncapsulationType, outputVlanType,
                 flowPath.getBandwidth(),
-                Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null));
+                Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null),
+                ingressSwitchId);
     }
 
     private InstallTransitFlow buildInstallTransitRuleCommand(FlowPath flowPath, SwitchId switchId,
@@ -172,7 +174,8 @@ public class CommandBuilderImpl implements CommandBuilder {
                                                               FlowEncapsulationType flowEncapsulationType) {
         return new InstallTransitFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(),
                 flowPath.getCookie().getValue(),
-                switchId, inputPortNo, outputPortNo, transitEncapsulationId, flowEncapsulationType);
+                switchId, inputPortNo, outputPortNo, transitEncapsulationId, flowEncapsulationType,
+                flowPath.getSrcSwitch().getSwitchId());
     }
 
     private InstallEgressFlow buildInstallEgressRuleCommand(Flow flow, FlowPath flowPath, int inputPortNo,
@@ -182,11 +185,12 @@ public class CommandBuilderImpl implements CommandBuilder {
         int inVlan = forward ? flow.getSrcVlan() : flow.getDestVlan();
         int outPort = forward ? flow.getDestPort() : flow.getSrcPort();
         int outVlan = forward ? flow.getDestVlan() : flow.getSrcVlan();
+        SwitchId ingressSwitchId = forward ? flow.getSrcSwitch().getSwitchId() : flow.getDestSwitch().getSwitchId();
         OutputVlanType outputVlanType = getOutputVlanType(inVlan, outVlan);
 
         return new InstallEgressFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(),
                 flowPath.getCookie().getValue(), flowPath.getDestSwitch().getSwitchId(), inputPortNo, outPort,
-                transitEncapsulationId, flowEncapsulationType, outVlan, outputVlanType);
+                transitEncapsulationId, flowEncapsulationType, outVlan, outputVlanType, ingressSwitchId);
     }
 
     private InstallOneSwitchFlow buildOneSwitchRuleCommand(Flow flow, FlowPath flowPath) {

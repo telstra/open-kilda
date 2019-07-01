@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
@@ -8,6 +9,7 @@ import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -48,6 +50,7 @@ class FlowCrudSpec extends BaseSpecification {
     @Unroll("Valid #data.description has traffic and no rule discrepancies \
 (#flow.source.datapath - #flow.destination.datapath)")
     @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [SMOKE], iterationNameRegex = /vlan /)
     def "Valid flow has no rule discrepancies"() {
         given: "A flow"
         def traffExam = traffExamProvider.get()
@@ -102,6 +105,7 @@ class FlowCrudSpec extends BaseSpecification {
     }
 
     @Unroll("Able to create a second flow if #data.description")
+    @Tags(SMOKE)
     def "Able to create multiple flows on certain combinations of switch-port-vlans"() {
         given: "Two potential flows that should not conflict"
         Tuple2<FlowPayload, FlowPayload> flows = data.getNotConflictingFlows()
@@ -279,7 +283,7 @@ class FlowCrudSpec extends BaseSpecification {
     }
 
     @Unroll
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Able to create single switch single port flow with different vlan (#flow.source.datapath)"(FlowPayload flow) {
         given: "A flow"
         flowHelper.addFlow(flow)

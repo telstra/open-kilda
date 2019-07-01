@@ -36,6 +36,7 @@ import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.PortStatus;
@@ -59,6 +60,8 @@ import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
+import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import com.google.common.collect.ImmutableMap;
@@ -96,9 +99,9 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public FlowPayload getFlow(String flowId) {
+    public FlowResponsePayload getFlow(String flowId) {
         return restTemplate.exchange("/api/v1/flows/{flow_id}", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
+                new HttpEntity(buildHeadersWithCorrelationId()), FlowResponsePayload.class, flowId).getBody();
     }
 
     @Override
@@ -211,13 +214,17 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public List<Long> deleteSwitchRules(SwitchId switchId, Integer inPort, Integer inVlan, Integer outPort) {
+    public List<Long> deleteSwitchRules(SwitchId switchId, Integer inPort, Integer inVlan, String encapsulationType,
+                                        Integer outPort) {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/switches/{switch_id}/rules");
         if (inPort != null) {
             uriBuilder.queryParam("in-port", inPort);
         }
         if (inVlan != null) {
             uriBuilder.queryParam("in-vlan", inVlan);
+        }
+        if (encapsulationType != null) {
+            uriBuilder.queryParam("encapsulation-type", encapsulationType);
         }
         if (outPort != null) {
             uriBuilder.queryParam("out-port", outPort);
@@ -297,6 +304,15 @@ public class NorthboundServiceImpl implements NorthboundService {
     public FlowPayload swapFlowPath(String flowId) {
         return restTemplate.exchange("/api/v1/flows/{flowId}/swap", HttpMethod.PATCH,
                 new HttpEntity(buildHeadersWithCorrelationId()), FlowPayload.class, flowId).getBody();
+    }
+
+    @Override
+    public SwapFlowEndpointPayload swapFlowEndpoint(SwapFlowPayload firstFlow, SwapFlowPayload secondFlow) {
+        log.debug("Swap flow endpoints. First flow: {}. Second flow: {}", firstFlow, secondFlow);
+        HttpEntity<SwapFlowEndpointPayload> httpEntity = new HttpEntity<>(
+                new SwapFlowEndpointPayload(firstFlow, secondFlow), buildHeadersWithCorrelationId());
+        return restTemplate.exchange("/api/v2/flows/swap-endpoint", HttpMethod.POST, httpEntity,
+                SwapFlowEndpointPayload.class).getBody();
     }
 
     @Override
@@ -463,7 +479,7 @@ public class NorthboundServiceImpl implements NorthboundService {
 
     @Override
     public List<LinkDto> setLinkBfd(LinkEnableBfdDto link) {
-        log.debug("Changing bfd status to '%s' for link %s:%s-%s:%s", link.isEnableBfd(), link.getSrcSwitch(),
+        log.debug("Changing bfd status to '{}' for link {}:{}-{}:{}", link.isEnableBfd(), link.getSrcSwitch(),
                 link.getSrcPort(), link.getDstSwitch(), link.getDstPort());
         LinkDto[] updatedLinks = restTemplate.exchange("api/v1/links/enable-bfd", HttpMethod.PATCH,
                 new HttpEntity<>(link, buildHeadersWithCorrelationId()), LinkDto[].class).getBody();

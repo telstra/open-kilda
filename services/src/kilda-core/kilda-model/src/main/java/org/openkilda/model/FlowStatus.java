@@ -33,6 +33,11 @@ public enum FlowStatus {
     /**
      * Flow is in down state.
      */
-    DOWN
+    DOWN,
+
+    /**
+     * Flow is in degraded state.
+     */
+    DEGRADED
 }
 

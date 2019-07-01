@@ -47,7 +47,7 @@ class TagExtension extends AbstractGlobalExtension {
                 iteration.name =~ it.iterationNameRegex()
             }.collectMany { it.tags().toList() }
             def tagsAnnotation = featureMethod.getAnnotation(Tags)
-            if(tagsAnnotation) {
+            if (tagsAnnotation) {
                 applicableTags.addAll(tagsAnnotation.value().toList())
             }
             return iteration.name + tagsCollectionToString(applicableTags)
@@ -61,13 +61,13 @@ class TagExtension extends AbstractGlobalExtension {
             return
         }
         spec.getAllFeatures().findAll { !isFeatureSpecial(it) }.each { feature ->
-            if(feature.excluded) { //do not compete if feature is already excluded somehow
+            if (feature.excluded) { //do not compete if feature is already excluded somehow
                 return
             }
             def tags = collectAllTags(feature)
             def iterationTags = (feature.featureMethod.getAnnotation(IterationTags)?.value()?.toList() ?: [] +
                     feature.featureMethod.getAnnotation(IterationTag)).findAll()
-            feature.excluded = !matches(tagsExpression, tags + iterationTags.collectMany {it.tags().toList() })
+            feature.excluded = !matches(tagsExpression, tags + iterationTags.collectMany { it.tags().toList() })
             if (iterationTags) {
                 feature.addIterationInterceptor(new IMethodInterceptor() {
                     /*This stores how many times did we match a certain iteration tag.
@@ -87,10 +87,11 @@ class TagExtension extends AbstractGlobalExtension {
                             return
                         }
                         //otherwise, look whether any of found iteration tags allow further execution
-                        def allowingTag = applicableITags.find { itag, executions ->
-                            matches(tagsExpression,
-                                    (tags + applicableITags.keySet().collectMany { it.tags().toList() }) as Set) &&
-                                    executions < itag.take()
+                        def allowingTag = tagExecutions.find { itag, executions ->
+                            itag in applicableITags.keySet() && executions < itag.take() &&
+                                    matches(tagsExpression, (tags + applicableITags.keySet().collectMany {
+                                        it.tags().toList()
+                                    }) as Set)
                         }
                         if (allowingTag) {
                             allowingTag.value++
@@ -103,12 +104,14 @@ class TagExtension extends AbstractGlobalExtension {
                 })
             }
         }
-        if(spec.getFeatures().every { it.excluded || it.skipped }) {
+        if (spec.getFeatures().every { it.excluded || it.skipped }) {
             spec.skipped = true
         }
     }
 
     static Set<Tag> collectAllTags(IterationInfo iteration) {
+        if (iteration == null)
+            return [] as Set
         def feature = iteration.feature
         def iterationTags = (feature.featureMethod.getAnnotation(IterationTags)?.value()?.toList() ?: [] +
                 feature.featureMethod.getAnnotation(IterationTag)).findAll()
@@ -116,7 +119,7 @@ class TagExtension extends AbstractGlobalExtension {
             iteration.name =~ it.iterationNameRegex()
         }.collectMany { it.tags().toList() }
         def tagsAnnotations = collectAllTags(feature)
-        if(tagsAnnotations) {
+        if (tagsAnnotations) {
             applicableTags.addAll(tagsAnnotations)
         }
         return applicableTags as Set
@@ -176,7 +179,7 @@ class TagExtension extends AbstractGlobalExtension {
     }
 
     private static String tagsCollectionToString(Collection<Tag> input) {
-        if(input.empty) {
+        if (input.empty) {
             return ""
         } else {
             return (input as Set)*.toString().inspect()

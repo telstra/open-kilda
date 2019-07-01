@@ -65,6 +65,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
+import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
@@ -240,7 +241,7 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowPayload> createFlow(final FlowCreatePayload input) {
+    public CompletableFuture<FlowResponsePayload> createFlow(final FlowCreatePayload input) {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Create flow: {}", input);
 
@@ -259,7 +260,7 @@ public class FlowServiceImpl implements FlowService {
         return messagingChannel.sendAndGet(topic, request)
                 .thenApply(FlowResponse.class::cast)
                 .thenApply(FlowResponse::getPayload)
-                .thenApply(flowMapper::toFlowOutput);
+                .thenApply(flowMapper::toFlowResponseOutput);
     }
 
     @Override
@@ -280,19 +281,18 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowPayload> getFlow(final String id) {
+    public CompletableFuture<FlowResponsePayload> getFlow(final String id) {
         logger.debug("Get flow request for flow {}", id);
 
-        return getBidirectionalFlow(id, RequestCorrelationId.getId())
-                .thenApply(BidirectionalFlowDto::getForward)
-                .thenApply(flowMapper::toFlowOutput);
+        return getFlowReadResponse(id, RequestCorrelationId.getId())
+                .thenApply(flowMapper::toFlowResponseOutput);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowPayload> updateFlow(final FlowUpdatePayload input) {
+    public CompletableFuture<FlowResponsePayload> updateFlow(final FlowUpdatePayload input) {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Update flow request for flow {}", input.getId());
 
@@ -310,11 +310,11 @@ public class FlowServiceImpl implements FlowService {
         return messagingChannel.sendAndGet(topic, request)
                 .thenApply(FlowResponse.class::cast)
                 .thenApply(FlowResponse::getPayload)
-                .thenApply(flowMapper::toFlowOutput);
+                .thenApply(flowMapper::toFlowResponseOutput);
     }
 
     @Override
-    public CompletableFuture<FlowPayload> patchFlow(String flowId, FlowPatchDto flowPatchDto) {
+    public CompletableFuture<FlowResponsePayload> patchFlow(String flowId, FlowPatchDto flowPatchDto) {
         logger.info("Patch flow request for flow {}", flowId);
 
         FlowDto flowDto = flowMapper.toFlowDto(flowPatchDto);
@@ -325,14 +325,14 @@ public class FlowServiceImpl implements FlowService {
         return messagingChannel.sendAndGet(nbworkerTopic, request)
                 .thenApply(FlowResponse.class::cast)
                 .thenApply(FlowResponse::getPayload)
-                .thenApply(flowMapper::toFlowOutput);
+                .thenApply(flowMapper::toFlowResponseOutput);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<List<FlowPayload>> getAllFlows() {
+    public CompletableFuture<List<FlowResponsePayload>> getAllFlows() {
         final String correlationId = RequestCorrelationId.getId();
         logger.debug("Get flows request processing");
         FlowsDumpRequest data = new FlowsDumpRequest();
@@ -343,7 +343,7 @@ public class FlowServiceImpl implements FlowService {
                         .map(FlowReadResponse.class::cast)
                         .map(FlowReadResponse::getPayload)
                         .map(BidirectionalFlowDto::getForward)
-                        .map(flowMapper::toFlowOutput)
+                        .map(flowMapper::toFlowResponseOutput)
                         .collect(Collectors.toList()));
     }
 
@@ -351,11 +351,11 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<List<FlowPayload>> deleteAllFlows() {
-        CompletableFuture<List<FlowPayload>> result = new CompletableFuture<>();
+    public CompletableFuture<List<FlowResponsePayload>> deleteAllFlows() {
+        CompletableFuture<List<FlowResponsePayload>> result = new CompletableFuture<>();
         logger.warn("Delete all flows request");
         // TODO: Need a getFlowIDs .. since that is all we need
-        CompletableFuture<List<FlowPayload>> getFlowsStage = this.getAllFlows();
+        CompletableFuture<List<FlowResponsePayload>> getFlowsStage = this.getAllFlows();
 
         getFlowsStage.thenApply(flows -> {
             List<CompletableFuture<?>> deletionRequests = new ArrayList<>();
@@ -365,7 +365,7 @@ public class FlowServiceImpl implements FlowService {
                 deletionRequests.add(sendDeleteFlow(flow.getId(), requestId));
             }
             return deletionRequests;
-        }).thenApply(requests -> collectResponses(requests, FlowPayload.class)
+        }).thenApply(requests -> collectResponses(requests, FlowResponsePayload.class)
                 .thenApply(result::complete));
 
         return result;
@@ -375,20 +375,20 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowPayload> deleteFlow(final String id) {
+    public CompletableFuture<FlowResponsePayload> deleteFlow(final String id) {
         logger.info("Delete flow request for flow: {}", id);
         final String correlationId = RequestCorrelationId.getId();
 
         return sendDeleteFlow(id, correlationId);
     }
 
-    private CompletableFuture<FlowPayload> sendDeleteFlow(String flowId, String correlationId) {
+    private CompletableFuture<FlowResponsePayload> sendDeleteFlow(String flowId, String correlationId) {
         CommandMessage request = buildDeleteFlowCommand(flowId, correlationId);
 
         return messagingChannel.sendAndGet(topic, request)
                 .thenApply(FlowResponse.class::cast)
                 .thenApply(FlowResponse::getPayload)
-                .thenApply(flowMapper::toFlowOutput);
+                .thenApply(flowMapper::toFlowResponseOutput);
     }
 
     /**
@@ -409,7 +409,8 @@ public class FlowServiceImpl implements FlowService {
     @Override
     public CompletableFuture<FlowIdStatusPayload> statusFlow(final String id) {
         logger.debug("Flow status request for flow: {}", id);
-        return getBidirectionalFlow(id, RequestCorrelationId.getId())
+        return getFlowReadResponse(id, RequestCorrelationId.getId())
+                .thenApply(FlowReadResponse::getPayload)
                 .thenApply(flowMapper::toFlowIdStatusPayload);
     }
 
@@ -502,13 +503,12 @@ public class FlowServiceImpl implements FlowService {
      *
      * @return the bidirectional flow.
      */
-    private CompletableFuture<BidirectionalFlowDto> getBidirectionalFlow(String flowId, String correlationId) {
+    private CompletableFuture<FlowReadResponse> getFlowReadResponse(String flowId, String correlationId) {
         FlowReadRequest data = new FlowReadRequest(flowId);
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId, Destination.WFM);
 
         return messagingChannel.sendAndGet(topic, request)
-                .thenApply(FlowReadResponse.class::cast)
-                .thenApply(FlowReadResponse::getPayload);
+                .thenApply(FlowReadResponse.class::cast);
     }
 
     /**
@@ -565,7 +565,7 @@ public class FlowServiceImpl implements FlowService {
      * {@inheritDoc}
      */
     @Override
-    public CompletableFuture<FlowPayload> swapFlowPaths(String flowId) {
+    public CompletableFuture<FlowResponsePayload> swapFlowPaths(String flowId) {
         final String correlationId = RequestCorrelationId.getId();
         logger.info("Swapping paths for flow : {}", flowId);
 
@@ -576,7 +576,7 @@ public class FlowServiceImpl implements FlowService {
         return messagingChannel.sendAndGet(topic, request)
                 .thenApply(FlowResponse.class::cast)
                 .thenApply(FlowResponse::getPayload)
-                .thenApply(flowMapper::toFlowOutput);
+                .thenApply(flowMapper::toFlowResponseOutput);
     }
 
     /**

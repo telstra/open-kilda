@@ -25,14 +25,15 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
 import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm.SwitchFsmContext;
 import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm.SwitchFsmEvent;
 import org.openkilda.wfm.topology.network.controller.sw.SwitchFsm.SwitchFsmState;
-import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.facts.HistoryFacts;
 import org.openkilda.wfm.topology.network.service.ISwitchCarrier;
@@ -49,6 +50,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 @Slf4j
@@ -58,6 +60,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     private final TransactionManager transactionManager;
     private final SwitchRepository switchRepository;
+    private final SwitchFeaturesRepository switchFeaturesRepository;
 
     private final SwitchId switchId;
     private final Integer bfdLogicalPortOffset;
@@ -65,60 +68,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private final Set<SpeakerSwitchView.Feature> features = new HashSet<>();
     private final Map<Integer, AbstractPort> portByNumber = new HashMap<>();
 
-    private static final StateMachineBuilder<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> builder;
-
-    static {
-        builder = StateMachineBuilderFactory.create(
-                SwitchFsm.class, SwitchFsmState.class, SwitchFsmEvent.class, SwitchFsmContext.class,
-                // extra parameters
-                PersistenceManager.class, SwitchId.class, Integer.class);
-
-        // INIT
-        builder.transition()
-                .from(SwitchFsmState.INIT).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.HISTORY)
-                .callMethod("applyHistory");
-        builder.transition()
-                .from(SwitchFsmState.INIT).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.ONLINE);
-
-        // SETUP
-        builder.transition()
-                .from(SwitchFsmState.SETUP).to(SwitchFsmState.ONLINE).on(SwitchFsmEvent.NEXT);
-        builder.onEntry(SwitchFsmState.SETUP)
-                .callMethod("setupEnter");
-
-        // ONLINE
-        builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.ONLINE)
-                .callMethod("syncState");
-        builder.transition().from(SwitchFsmState.ONLINE).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
-        builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_ADD)
-                .callMethod("handlePortAdd");
-        builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_DEL)
-                .callMethod("handlePortDel");
-        builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_UP)
-                .callMethod("handlePortLinkStateChange");
-        builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_DOWN)
-                .callMethod("handlePortLinkStateChange");
-        builder.onEntry(SwitchFsmState.ONLINE)
-                .callMethod("onlineEnter");
-
-        // OFFLINE
-        builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.ONLINE);
-        builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.DELETED).on(SwitchFsmEvent.SWITCH_REMOVE)
-                .callMethod("removePortsFsm");
-        builder.onEntry(SwitchFsmState.OFFLINE)
-                .callMethod("offlineEnter");
-
-        // DELETED
-        builder.defineFinalState(SwitchFsmState.DELETED);
-    }
-
-    public static FsmExecutor<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> makeExecutor() {
-        return new FsmExecutor<>(SwitchFsmEvent.NEXT);
-    }
-
-    public static SwitchFsm create(PersistenceManager persistenceManager, SwitchId switchId,
-                                   Integer bfdLocalPortOffset) {
-        return builder.newStateMachine(SwitchFsmState.INIT, persistenceManager, switchId, bfdLocalPortOffset);
+    public static SwitchFsmFactory factory() {
+        return new SwitchFsmFactory();
     }
 
     public SwitchFsm(PersistenceManager persistenceManager, SwitchId switchId, Integer bfdLocalPortOffset) {
@@ -126,6 +77,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.switchId = switchId;
         this.bfdLogicalPortOffset = bfdLocalPortOffset;
+        this.switchFeaturesRepository = persistenceManager.getRepositoryFactory().createSwitchFeaturesRepository();
     }
 
     // -- FSM actions --
@@ -301,8 +253,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     private void persistSwitchData(SwitchFsmContext context) {
         Switch sw = switchRepository.findById(switchId)
-                .orElseGet(() -> Switch.builder().switchId(switchId)
-                        .switchFeatures(SwitchFeatures.builder().build()).build());
+                .orElseGet(() -> Switch.builder().switchId(switchId).build());
 
         SpeakerSwitchView speakerData = context.getSpeakerData();
         InetSocketAddress socketAddress = speakerData.getSwitchSocketAddress();
@@ -325,6 +276,10 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         sw.setStatus(SwitchStatus.ACTIVE);
 
         switchRepository.createOrUpdate(sw);
+        Optional<SwitchFeatures> switchFeaturesResult = switchFeaturesRepository.findBySwitchId(sw.getSwitchId());
+        SwitchFeatures switchFeatures = switchFeaturesResult.orElseGet(() -> SwitchFeatures.builder()
+                .switchObj(sw).supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES).build());
+        switchFeaturesRepository.createOrUpdate(switchFeatures);
     }
 
     private void updatePersistentStatus(SwitchStatus status) {
@@ -371,6 +326,65 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     // -- service data types --
+
+    public static class SwitchFsmFactory {
+        private final StateMachineBuilder<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> builder;
+
+        SwitchFsmFactory() {
+            builder = StateMachineBuilderFactory.create(
+                    SwitchFsm.class, SwitchFsmState.class, SwitchFsmEvent.class, SwitchFsmContext.class,
+                    // extra parameters
+                    PersistenceManager.class, SwitchId.class, Integer.class);
+
+            // INIT
+            builder.transition()
+                    .from(SwitchFsmState.INIT).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.HISTORY)
+                    .callMethod("applyHistory");
+            builder.transition()
+                    .from(SwitchFsmState.INIT).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.ONLINE);
+
+            // SETUP
+            builder.transition()
+                    .from(SwitchFsmState.SETUP).to(SwitchFsmState.ONLINE).on(SwitchFsmEvent.NEXT);
+            builder.onEntry(SwitchFsmState.SETUP)
+                    .callMethod("setupEnter");
+
+            // ONLINE
+            builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.ONLINE)
+                    .callMethod("syncState");
+            builder.transition().from(SwitchFsmState.ONLINE).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.OFFLINE);
+            builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_ADD)
+                    .callMethod("handlePortAdd");
+            builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_DEL)
+                    .callMethod("handlePortDel");
+            builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_UP)
+                    .callMethod("handlePortLinkStateChange");
+            builder.internalTransition().within(SwitchFsmState.ONLINE).on(SwitchFsmEvent.PORT_DOWN)
+                    .callMethod("handlePortLinkStateChange");
+            builder.onEntry(SwitchFsmState.ONLINE)
+                    .callMethod("onlineEnter");
+
+            // OFFLINE
+            builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.ONLINE);
+            builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.DELETED)
+                    .on(SwitchFsmEvent.SWITCH_REMOVE)
+                    .callMethod("removePortsFsm");
+            builder.onEntry(SwitchFsmState.OFFLINE)
+                    .callMethod("offlineEnter");
+
+            // DELETED
+            builder.defineFinalState(SwitchFsmState.DELETED);
+        }
+
+        public FsmExecutor<SwitchFsm, SwitchFsmState, SwitchFsmEvent, SwitchFsmContext> produceExecutor() {
+            return new FsmExecutor<>(SwitchFsmEvent.NEXT);
+        }
+
+        public SwitchFsm produce(PersistenceManager persistenceManager, SwitchId switchId,
+                                 Integer bfdLocalPortOffset) {
+            return builder.newStateMachine(SwitchFsmState.INIT, persistenceManager, switchId, bfdLocalPortOffset);
+        }
+    }
 
     @Value
     @Builder(toBuilder = true)

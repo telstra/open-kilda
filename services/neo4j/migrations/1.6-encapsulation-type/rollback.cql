@@ -1,0 +1,1 @@
+MATCH (n:flow) SET n.encapsulation_type = toLower(n.encapsulation_type)

@@ -14,6 +14,7 @@ import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationServiceConfig;
+import org.openkilda.model.FlowEncapsulationType;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -38,6 +39,7 @@ public class SwitchManagerOF12Test {
 
     private final OFFactory ofFactory = new OFFactoryVer12Mock();
     private final DatapathId switchDpId = DatapathId.of(0xdeadbeaf00000001L);
+    private final DatapathId ingressSwitchDpId = DatapathId.of(0xdeadbeaf00000001L);
     private final long commonFlowCookie = 0x77AA55AA0001L;
     private IOFSwitch ofSwitch = createMock(IOFSwitch.class);
 
@@ -65,14 +67,15 @@ public class SwitchManagerOF12Test {
     }
 
     @Test
-    public void installTransitFlow() throws Exception {
+    public void installTransitFlowUsingTransitVlan() throws Exception {
         Capture<OFFlowMod> capture = prepareForInstallFlowOperation();
 
         String flowId = "test-transit-flow-rule";
         int inputPort = 2;
         int outputPort = 4;
         int transitVlanId = 512;
-        switchManager.installTransitFlow(switchDpId, flowId, commonFlowCookie, inputPort, outputPort, transitVlanId);
+        switchManager.installTransitFlow(switchDpId, flowId, commonFlowCookie, inputPort, outputPort, transitVlanId,
+                FlowEncapsulationType.TRANSIT_VLAN, ingressSwitchDpId);
 
         OFFactory referenceOfFactory = new OFFactoryVer12Mock();
         OFFlowMod expected = referenceOfFactory.buildFlowAdd()

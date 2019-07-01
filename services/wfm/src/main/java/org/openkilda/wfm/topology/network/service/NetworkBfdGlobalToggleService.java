@@ -17,11 +17,10 @@ package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.controller.BfdGlobalToggleFsm;
 import org.openkilda.wfm.topology.network.error.BfdGlobalToggleControllerNotFoundException;
-import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 
 import lombok.extern.slf4j.Slf4j;
@@ -33,18 +32,18 @@ import java.util.Map;
 public class NetworkBfdGlobalToggleService {
     private final IBfdGlobalToggleCarrier carrier;
 
-    private final FeatureTogglesRepository featureTogglesRepository;
-
+    private final BfdGlobalToggleFsm.BfdGlobalToggleFsmFactory controllerFactory;
     private final Map<Endpoint, BfdGlobalToggleFsm> controllerByEndpoint = new HashMap<>();
 
     private final FsmExecutor<BfdGlobalToggleFsm, BfdGlobalToggleFsm.BfdGlobalToggleFsmState,
-            BfdGlobalToggleFsm.BfdGlobalToggleFsmEvent, BfdGlobalToggleFsm.BfdGlobalToggleFsmContext> controllerExecutor
-            = BfdGlobalToggleFsm.makeExecutor();
+            BfdGlobalToggleFsm.BfdGlobalToggleFsmEvent,
+            BfdGlobalToggleFsm.BfdGlobalToggleFsmContext> controllerExecutor;
 
     public NetworkBfdGlobalToggleService(IBfdGlobalToggleCarrier carrier, PersistenceManager persistenceManager) {
         this.carrier = carrier;
 
-        this.featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
+        controllerFactory = BfdGlobalToggleFsm.factory(persistenceManager);
+        controllerExecutor = controllerFactory.produceExecutor();
     }
 
     /**
@@ -58,7 +57,7 @@ public class NetworkBfdGlobalToggleService {
                             + " existing handler)", endpoint));
         }
 
-        BfdGlobalToggleFsm fsm = BfdGlobalToggleFsm.create(carrier, endpoint, featureTogglesRepository);
+        BfdGlobalToggleFsm fsm = controllerFactory.produce(carrier, endpoint);
         controllerByEndpoint.put(endpoint, fsm);
     }
 

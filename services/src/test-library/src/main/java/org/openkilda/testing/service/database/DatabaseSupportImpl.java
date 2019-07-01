@@ -23,14 +23,14 @@ import static org.openkilda.testing.Constants.DEFAULT_COST;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.FlowDto;
-import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.model.TransitVlan;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
@@ -40,6 +40,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
@@ -74,6 +75,7 @@ public class DatabaseSupportImpl implements Database {
     private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
     private final FlowPairRepository flowPairRepository;
+    private final TransitVlanRepository transitVlanRepository;
 
     public DatabaseSupportImpl(PersistenceManager persistenceManager) {
         this.transactionManager = persistenceManager.getTransactionManager();
@@ -83,6 +85,7 @@ public class DatabaseSupportImpl implements Database {
         flowRepository = repositoryFactory.createFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
         flowPairRepository = repositoryFactory.createFlowPairRepository();
+        transitVlanRepository = repositoryFactory.createTransitVlanRepository();
     }
 
     /**
@@ -295,14 +298,26 @@ public class DatabaseSupportImpl implements Database {
      * Get flow.
      *
      * @param flowId flow ID
-     * @return FlowPair object
+     * @return Flow
      */
     @Override
-    public FlowPairDto<FlowDto, FlowDto> getFlow(String flowId) {
-        Optional<FlowPair> flowPair = flowPairRepository.findById(flowId);
-        return flowPair
-                .map(flow -> new FlowPairDto<>(convert(flow.getForward()), convert(flow.getReverse())))
-                .orElse(null);
+    public Flow getFlow(String flowId) {
+        return flowRepository.findById(flowId).get();
+    }
+
+    /**
+     * Get transit VLAN for a flow.
+     * Pay attention: 2 transit VLANs can be returned for an old flow,
+     * because system used to create two different transit VLANs for a flow.
+     * Now system creates one transit VLAN for a flow.
+     *
+     * @param forwardPathId forward path Id
+     * @param reversePathId reverse path Id
+     * @return Collection of TransitVlan
+     */
+    @Override
+    public Collection<TransitVlan> getTransitVlans(PathId forwardPathId, PathId reversePathId) {
+        return transitVlanRepository.findByPathId(forwardPathId, reversePathId);
     }
 
     /**

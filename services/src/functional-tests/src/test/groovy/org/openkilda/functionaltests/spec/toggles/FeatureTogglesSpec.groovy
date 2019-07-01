@@ -1,8 +1,12 @@
 package org.openkilda.functionaltests.spec.toggles
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.model.system.FeatureTogglesDto
+
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -14,6 +18,7 @@ creation of new flows via Northbound API. This spec verifies that Feature Toggle
 /*Note that the 'flowReroute' toggle is tested under AutoRerouteSpec#"Flow goes to 'Down' status when an intermediate
 switch is disconnected and there is no ability to reroute".
 BFD toggle is tested in BfdSpec*/
+@Tags(SMOKE)
 class FeatureTogglesSpec extends BaseSpecification {
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"

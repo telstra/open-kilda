@@ -1,9 +1,11 @@
 package org.openkilda.functionaltests.spec.links
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.fixture.TestFixture
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
@@ -191,6 +193,7 @@ class LinkPropertiesSpec extends BaseSpecification {
         islUtils.getIslInfo(links, isl.reversed).get().maxBandwidth == initialMaxBandwidth
     }
 
+    @Tags(SMOKE)
     def "Newly discovered link gets cost and max bandwidth from link props"() {
         given: "An active ISL"
         def isl = topology.islsForActiveSwitches.first()

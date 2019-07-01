@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.network.controller;
 
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteInactiveFlows;
+import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Isl;
@@ -36,6 +37,8 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
@@ -43,10 +46,8 @@ import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmContext;
 import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmEvent;
 import org.openkilda.wfm.topology.network.controller.IslFsm.IslFsmState;
 import org.openkilda.wfm.topology.network.model.BiIslDataHolder;
-import org.openkilda.wfm.topology.network.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.IslEndpointStatus;
-import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.facts.DiscoveryFacts;
 import org.openkilda.wfm.topology.network.service.IIslCarrier;
@@ -63,8 +64,7 @@ import java.util.Collection;
 import java.util.Optional;
 
 @Slf4j
-public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEvent,
-        IslFsmContext> {
+public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> {
     private final IslRepository islRepository;
     private final LinkPropsRepository linkPropsRepository;
     private final FlowPathRepository flowPathRepository;
@@ -80,107 +80,10 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     private final DiscoveryFacts discoveryFacts;
 
-    private static final StateMachineBuilder<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> builder;
-
     private final NetworkTopologyDashboardLogger logWrapper = new NetworkTopologyDashboardLogger(log);
 
-    static {
-        builder = StateMachineBuilderFactory.create(
-                IslFsm.class, IslFsmState.class, IslFsmEvent.class, IslFsmContext.class,
-                // extra parameters
-                PersistenceManager.class, BfdManager.class, NetworkOptions.class, IslReference.class);
-
-        String updateEndpointStatusMethod = "updateEndpointStatus";
-        String updateAndPersistEndpointStatusMethod = "updateAndPersistEndpointStatus";
-
-        // INIT
-        builder.transition()
-                .from(IslFsmState.INIT).to(IslFsmState.DOWN).on(IslFsmEvent.ISL_UP)
-                .callMethod("handleInitialDiscovery");
-        builder.transition()
-                .from(IslFsmState.INIT).to(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN)
-                .callMethod(updateAndPersistEndpointStatusMethod);
-        builder.transition()
-                .from(IslFsmState.INIT).to(IslFsmState.MOVED).on(IslFsmEvent.ISL_MOVE)
-                .callMethod(updateAndPersistEndpointStatusMethod);
-        builder.transition()
-                .from(IslFsmState.INIT).to(IslFsmState.DOWN).on(IslFsmEvent._HISTORY_DOWN);
-        builder.transition()
-                .from(IslFsmState.INIT).to(IslFsmState.UP).on(IslFsmEvent._HISTORY_UP)
-                .callMethod("historyRestoreUp");
-        builder.transition()
-                .from(IslFsmState.INIT).to(IslFsmState.MOVED).on(IslFsmEvent._HISTORY_MOVED);
-        builder.internalTransition()
-                .within(IslFsmState.INIT).on(IslFsmEvent.HISTORY)
-                .callMethod("handleHistory");
-
-        // DOWN
-        builder.transition()
-                .from(IslFsmState.DOWN).to(IslFsmState.UP_ATTEMPT).on(IslFsmEvent.ISL_UP)
-                .callMethod(updateEndpointStatusMethod);
-        builder.transition()
-                .from(IslFsmState.DOWN).to(IslFsmState.MOVED).on(IslFsmEvent.ISL_MOVE)
-                .callMethod(updateEndpointStatusMethod);
-        builder.internalTransition()
-                .within(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN)
-                .callMethod(updateAndPersistEndpointStatusMethod);
-        builder.internalTransition()
-                .within(IslFsmState.DOWN).on(IslFsmEvent.ISL_REMOVE)
-                .callMethod("removeAttempt");
-        builder.transition()
-                .from(IslFsmState.DOWN).to(IslFsmState.DELETED).on(IslFsmEvent._ISL_REMOVE_SUCESS);
-        builder.onEntry(IslFsmState.DOWN)
-                .callMethod("downEnter");
-
-        // UP_ATTEMPT
-        builder.transition()
-                .from(IslFsmState.UP_ATTEMPT).to(IslFsmState.DOWN).on(IslFsmEvent._UP_ATTEMPT_FAIL);
-        builder.transition()
-                .from(IslFsmState.UP_ATTEMPT).to(IslFsmState.UP).on(IslFsmEvent._UP_ATTEMPT_SUCCESS);
-        builder.onEntry(IslFsmState.UP_ATTEMPT)
-                .callMethod("handleUpAttempt");
-
-        // UP
-        builder.transition()
-                .from(IslFsmState.UP).to(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN);
-        builder.transition()
-                .from(IslFsmState.UP).to(IslFsmState.MOVED).on(IslFsmEvent.ISL_MOVE);
-        builder.onEntry(IslFsmState.UP)
-                .callMethod("upEnter");
-        builder.onExit(IslFsmState.UP)
-                .callMethod("upExit");
-
-        // MOVED
-        builder.transition()
-                .from(IslFsmState.MOVED).to(IslFsmState.UP_ATTEMPT).on(IslFsmEvent.ISL_UP)
-                .callMethod(updateEndpointStatusMethod);
-        builder.internalTransition()
-                .within(IslFsmState.MOVED).on(IslFsmEvent.ISL_DOWN)
-                .callMethod(updateAndPersistEndpointStatusMethod);
-        builder.internalTransition()
-                .within(IslFsmState.MOVED).on(IslFsmEvent.ISL_REMOVE)
-                .callMethod("removeAttempt");
-        builder.transition()
-                .from(IslFsmState.MOVED).to(IslFsmState.DELETED).on(IslFsmEvent._ISL_REMOVE_SUCESS);
-        builder.onEntry(IslFsmState.MOVED)
-                .callMethod("movedEnter");
-
-        // DELETED
-        builder.defineFinalState(IslFsmState.DELETED);
-    }
-
-    public static FsmExecutor<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> makeExecutor() {
-        return new FsmExecutor<>(IslFsmEvent.NEXT);
-    }
-
-    /**
-     * Create and properly initialize new {@link IslFsm}.
-     */
-    public static IslFsm create(PersistenceManager persistenceManager, BfdManager bfdManager, NetworkOptions options,
-                                IslReference reference) {
-        IslFsm fsm = builder.newStateMachine(IslFsmState.INIT, persistenceManager, bfdManager, options, reference);
-        fsm.start();
-        return fsm;
+    public static IslFsmFactory factory(PersistenceManager persistenceManager) {
+        return new IslFsmFactory(persistenceManager);
     }
 
     public IslFsm(PersistenceManager persistenceManager, BfdManager bfdManager, NetworkOptions options,
@@ -254,6 +157,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     public void downEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
         saveStatusTransaction();
+        sendIslStatusUpdateNotification(context, IslStatus.INACTIVE);
     }
 
     public void handleUpAttempt(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
@@ -301,6 +205,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     public void movedEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
         saveStatusTransaction();
+        sendIslStatusUpdateNotification(context, IslStatus.MOVED);
         bfdManager.disable(context.getOutput());
     }
 
@@ -312,6 +217,16 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     // -- private/service methods --
+
+    private void sendIslStatusUpdateNotification(IslFsmContext context, IslStatus status) {
+        IslStatusUpdateNotification trigger = new IslStatusUpdateNotification(
+                discoveryFacts.getReference().getSource().getDatapath(),
+                discoveryFacts.getReference().getSource().getPortNumber(),
+                discoveryFacts.getReference().getDest().getDatapath(),
+                discoveryFacts.getReference().getDest().getPortNumber(),
+                status);
+        context.getOutput().islStatusUpdateNotification(trigger);
+    }
 
     private void updateLinkData(Endpoint bind, IslDataHolder data) {
         log.info("ISL {} data update - bind:{} - {}", discoveryFacts.getReference(), bind, data);
@@ -535,12 +450,15 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     private void applyIslGenericData(Isl link) {
         IslDataHolder aggData = discoveryFacts.makeAggregatedData();
-        if (aggData != null) {
-            link.setSpeed(aggData.getSpeed());
-            link.setLatency(aggData.getLatency());
-            link.setMaxBandwidth(aggData.getMaximumBandwidth());
-            link.setDefaultMaxBandwidth(aggData.getEffectiveMaximumBandwidth());
+        if (aggData == null) {
+            throw new IllegalStateException(String.format(
+                    "There is no ISL data available for %s, unable to calculate available_bandwidth",
+                    discoveryFacts.getReference()));
         }
+
+        link.setSpeed(aggData.getSpeed());
+        link.setMaxBandwidth(aggData.getMaximumBandwidth());
+        link.setDefaultMaxBandwidth(aggData.getEffectiveMaximumBandwidth());
     }
 
     private void applyIslStatus(Isl link, IslEndpointStatus endpointData, Instant timeNow) {
@@ -568,18 +486,10 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     private void applyIslAvailableBandwidth(Isl link, Endpoint source, Endpoint dest) {
-        IslDataHolder dataHolder = discoveryFacts.get(source);
-        if (dataHolder == null) {
-            throw new IllegalStateException(String.format(
-                    "There is no ISL data available for %s, unable to calculate available_bandwidth",
-                    discoveryFacts.getReference()));
-        }
-
-        long maximumBandwidth = dataHolder.getMaximumBandwidth();
         long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(
                 source.getDatapath(), source.getPortNumber(),
                 dest.getDatapath(), dest.getPortNumber());
-        link.setAvailableBandwidth(maximumBandwidth - usedBandwidth);
+        link.setAvailableBandwidth(link.getMaxBandwidth() - usedBandwidth);
     }
 
     private void applyIslCostRaiseOnPhysicalDown(Isl link, Instant timeNow) {
@@ -752,6 +662,111 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private static class Socket {
         Anchor source;
         Anchor dest;
+    }
+
+    public static class IslFsmFactory {
+        private final PersistenceManager persistenceManager;
+        private final StateMachineBuilder<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> builder;
+
+        IslFsmFactory(PersistenceManager persistenceManager) {
+            this.persistenceManager = persistenceManager;
+
+            builder = StateMachineBuilderFactory.create(
+                    IslFsm.class, IslFsmState.class, IslFsmEvent.class, IslFsmContext.class,
+                    // extra parameters
+                    PersistenceManager.class, BfdManager.class, NetworkOptions.class, IslReference.class);
+
+            String updateEndpointStatusMethod = "updateEndpointStatus";
+            String updateAndPersistEndpointStatusMethod = "updateAndPersistEndpointStatus";
+
+            // INIT
+            builder.transition()
+                    .from(IslFsmState.INIT).to(IslFsmState.DOWN).on(IslFsmEvent.ISL_UP)
+                    .callMethod("handleInitialDiscovery");
+            builder.transition()
+                    .from(IslFsmState.INIT).to(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN)
+                    .callMethod(updateAndPersistEndpointStatusMethod);
+            builder.transition()
+                    .from(IslFsmState.INIT).to(IslFsmState.MOVED).on(IslFsmEvent.ISL_MOVE)
+                    .callMethod(updateAndPersistEndpointStatusMethod);
+            builder.transition()
+                    .from(IslFsmState.INIT).to(IslFsmState.DOWN).on(IslFsmEvent._HISTORY_DOWN);
+            builder.transition()
+                    .from(IslFsmState.INIT).to(IslFsmState.UP).on(IslFsmEvent._HISTORY_UP)
+                    .callMethod("historyRestoreUp");
+            builder.transition()
+                    .from(IslFsmState.INIT).to(IslFsmState.MOVED).on(IslFsmEvent._HISTORY_MOVED);
+            builder.internalTransition()
+                    .within(IslFsmState.INIT).on(IslFsmEvent.HISTORY)
+                    .callMethod("handleHistory");
+
+            // DOWN
+            builder.transition()
+                    .from(IslFsmState.DOWN).to(IslFsmState.UP_ATTEMPT).on(IslFsmEvent.ISL_UP)
+                    .callMethod(updateEndpointStatusMethod);
+            builder.transition()
+                    .from(IslFsmState.DOWN).to(IslFsmState.MOVED).on(IslFsmEvent.ISL_MOVE)
+                    .callMethod(updateEndpointStatusMethod);
+            builder.internalTransition()
+                    .within(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN)
+                    .callMethod(updateAndPersistEndpointStatusMethod);
+            builder.internalTransition()
+                    .within(IslFsmState.DOWN).on(IslFsmEvent.ISL_REMOVE)
+                    .callMethod("removeAttempt");
+            builder.transition()
+                    .from(IslFsmState.DOWN).to(IslFsmState.DELETED).on(IslFsmEvent._ISL_REMOVE_SUCESS);
+            builder.onEntry(IslFsmState.DOWN)
+                    .callMethod("downEnter");
+
+            // UP_ATTEMPT
+            builder.transition()
+                    .from(IslFsmState.UP_ATTEMPT).to(IslFsmState.DOWN).on(IslFsmEvent._UP_ATTEMPT_FAIL);
+            builder.transition()
+                    .from(IslFsmState.UP_ATTEMPT).to(IslFsmState.UP).on(IslFsmEvent._UP_ATTEMPT_SUCCESS);
+            builder.onEntry(IslFsmState.UP_ATTEMPT)
+                    .callMethod("handleUpAttempt");
+
+            // UP
+            builder.transition()
+                    .from(IslFsmState.UP).to(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN);
+            builder.transition()
+                    .from(IslFsmState.UP).to(IslFsmState.MOVED).on(IslFsmEvent.ISL_MOVE);
+            builder.onEntry(IslFsmState.UP)
+                    .callMethod("upEnter");
+            builder.onExit(IslFsmState.UP)
+                    .callMethod("upExit");
+
+            // MOVED
+            builder.transition()
+                    .from(IslFsmState.MOVED).to(IslFsmState.UP_ATTEMPT).on(IslFsmEvent.ISL_UP)
+                    .callMethod(updateEndpointStatusMethod);
+            builder.internalTransition()
+                    .within(IslFsmState.MOVED).on(IslFsmEvent.ISL_DOWN)
+                    .callMethod(updateAndPersistEndpointStatusMethod);
+            builder.internalTransition()
+                    .within(IslFsmState.MOVED).on(IslFsmEvent.ISL_REMOVE)
+                    .callMethod("removeAttempt");
+            builder.transition()
+                    .from(IslFsmState.MOVED).to(IslFsmState.DELETED).on(IslFsmEvent._ISL_REMOVE_SUCESS);
+            builder.onEntry(IslFsmState.MOVED)
+                    .callMethod("movedEnter");
+
+            // DELETED
+            builder.defineFinalState(IslFsmState.DELETED);
+        }
+
+        public FsmExecutor<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> produceExecutor() {
+            return new FsmExecutor<>(IslFsmEvent.NEXT);
+        }
+
+        /**
+         * Create and properly initialize new {@link IslFsm}.
+         */
+        public IslFsm produce(BfdManager bfdManager, NetworkOptions options, IslReference reference) {
+            IslFsm fsm = builder.newStateMachine(IslFsmState.INIT, persistenceManager, bfdManager, options, reference);
+            fsm.start();
+            return fsm;
+        }
     }
 
     @Value

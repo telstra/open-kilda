@@ -1,8 +1,10 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.PortBlinker
 import org.openkilda.messaging.info.event.IslChangeType
@@ -52,6 +54,7 @@ class PortAntiflapSpec extends BaseSpecification {
         getNorthbound().toggleFeature(FeatureTogglesDto.builder().floodlightRoutePeriodicSync(true).build())
     }
 
+    @Tags(SMOKE)
     def "Flapping port is brought down only after antiflap warmup and stable port is brought up only after cooldown \
 timeout"() {
         given: "Switch, port and ISL related to that port"
@@ -121,6 +124,7 @@ timeout"() {
      * directly to kafka, because currently it is the only way to simulate an incredibly rapid port flapping that
      * may sometimes occur on hardware switches(overheat?)
      */
+    @Tags(SMOKE)
     def "System properly registers events order when port flaps incredibly fast (end with Up)"() {
 
         when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in UP state"
@@ -147,6 +151,7 @@ timeout"() {
      * directly to kafka, because currently it is the only way to simulate an incredibly rapid port flapping that
      * may sometimes occur on hardware switches(overheat?)
      */
+    @Tags(SMOKE)
     def "System properly registers events order when port flaps incredibly fast (end with Down)"() {
 
         when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in DOWN state"

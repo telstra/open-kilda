@@ -17,12 +17,12 @@ package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
+import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmContext;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmEvent;
 import org.openkilda.wfm.topology.network.controller.UniIslFsm.UniIslFsmState;
-import org.openkilda.wfm.topology.network.model.Endpoint;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,15 +31,17 @@ import java.util.Map;
 
 @Slf4j
 public class NetworkUniIslService {
+    private final UniIslFsm.UniIslFsmFactory controllerFactory;
     private final Map<Endpoint, UniIslFsm> controller = new HashMap<>();
-
-    private final FsmExecutor<UniIslFsm, UniIslFsmState, UniIslFsmEvent, UniIslFsmContext> controllerExecutor
-            = UniIslFsm.makeExecutor();
+    private final FsmExecutor<UniIslFsm, UniIslFsmState, UniIslFsmEvent, UniIslFsmContext> controllerExecutor;
 
     private final IUniIslCarrier carrier;
 
     public NetworkUniIslService(IUniIslCarrier carrier) {
         this.carrier = carrier;
+
+        controllerFactory = UniIslFsm.factory();
+        controllerExecutor = controllerFactory.produceExecutor();
     }
 
     /**
@@ -47,7 +49,7 @@ public class NetworkUniIslService {
      */
     public void uniIslSetup(Endpoint endpoint, Isl history) {
         log.info("Uni-ISL service receive SETUP request for {}", endpoint);
-        UniIslFsm fsm = UniIslFsm.create(endpoint);
+        UniIslFsm fsm = controllerFactory.produce(endpoint);
         UniIslFsmContext context = UniIslFsmContext.builder(carrier)
                 .history(history)
                 .build();

@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -67,6 +67,9 @@ public class InstallTransitFlow extends BaseInstallFlow {
     @JsonProperty("transit_encapsulation_type")
     protected FlowEncapsulationType transitEncapsulationType;
 
+    @JsonProperty("ingress_switch_id")
+    protected SwitchId ingressSwitchId;
+
     /**
      * Instance constructor.
      *
@@ -78,6 +81,7 @@ public class InstallTransitFlow extends BaseInstallFlow {
      * @param outputPort    output port of the flow
      * @param transitEncapsulationId transit encapsulation id value
      * @param transitEncapsulationType transit encapsulation type
+     * @param ingressSwitchId id of the ingress switch
      * @throws IllegalArgumentException if any of parameters parameters is null
      */
     @JsonCreator
@@ -89,10 +93,12 @@ public class InstallTransitFlow extends BaseInstallFlow {
                               @JsonProperty("output_port") final Integer outputPort,
                               @JsonProperty("transit_encapsulation_id") final Integer transitEncapsulationId,
                               @JsonProperty("transit_encapsulation_type") final FlowEncapsulationType
-                                          transitEncapsulationType) {
+                                          transitEncapsulationType,
+                              @JsonProperty("ingress_switch_id") final SwitchId ingressSwitchId) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort);
         setTransitEncapsulationType(transitEncapsulationType);
         setTransitEncapsulationId(transitEncapsulationId);
+        setIngressSwitchId(ingressSwitchId);
     }
 
     /**
@@ -146,6 +152,22 @@ public class InstallTransitFlow extends BaseInstallFlow {
         this.transitEncapsulationType = transitEncapsulationType;
     }
 
+    /**
+     * Set flow ingress switchId.
+     *
+     * @param ingressSwitchId - id of ingress switch
+     */
+    public void setIngressSwitchId(SwitchId ingressSwitchId) {
+        this.ingressSwitchId = ingressSwitchId;
+    }
+
+    /**
+     * Get flow ingress switchId.
+     * @return ingress switch id
+     */
+    public SwitchId getIngressSwitchId() {
+        return this.ingressSwitchId;
+    }
 
     /**
      * {@inheritDoc}

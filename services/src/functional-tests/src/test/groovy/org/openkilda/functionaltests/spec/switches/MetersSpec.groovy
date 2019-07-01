@@ -3,11 +3,14 @@ package org.openkilda.functionaltests.spec.switches
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -46,7 +49,8 @@ class MetersSpec extends BaseSpecification {
     double burstCoefficient
 
     @Unroll
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE])
+    @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /non-Centec/)
     def "Able to delete a meter from a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
@@ -123,7 +127,7 @@ class MetersSpec extends BaseSpecification {
         }
     }
 
-    @Tags(HARDWARE)
+    @Tags([HARDWARE, SMOKE_SWITCHES])
     def "Default meters should express bandwidth in pktps on non-Centec switches"() {
         //TODO: Research how to calculate burstSize on OpenVSwitch in this case
         // now burstSize is equal to 4096, rate == 200
@@ -146,6 +150,7 @@ class MetersSpec extends BaseSpecification {
 
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /non-Centec/)
     def "Meters are created/deleted when creating/deleting a single-switch flow with ignore_bandwidth=#ignoreBandwidth \
 on a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
@@ -299,7 +304,7 @@ meters in flow rules at all (#data.flowType flow)"() {
     }
 
     @Unroll
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Meter burst size is correctly set on non-Centec switches for #flowRate flow rate"() {
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible switch"
         def switches = getNonCentecSwitches()
@@ -399,6 +404,7 @@ meters in flow rules at all (#data.flowType flow)"() {
 
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /nonCentec-nonCentec/)
     def "System allows to reset meter values to defaults without reinstalling rules for #data.description flow"() {
         given: "Switches combination (#data.description)"
         assumeTrue("Desired switch combination is not available in current topology", data.switches.size() > 1)
