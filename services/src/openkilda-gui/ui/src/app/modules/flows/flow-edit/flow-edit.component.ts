@@ -103,7 +103,7 @@ export class FlowEditComponent implements OnInit {
           target_switch: flow.target_switch,
           target_port: flow.dst_port.toString(),
           target_vlan: flow.dst_vlan.toString(),
-          diverse_flowid:flow['diverse-flowid']
+          diverse_flowid:flow['diverse-flowid'] || null,
         };
         this.flowId = flow.flowid;
         this.flowEditForm.setValue(this.flowDetail);
