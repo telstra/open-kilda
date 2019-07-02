@@ -26,6 +26,7 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_M
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_RULE_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.VERIFICATION_RULE_VXLAN_PRIORITY;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.BURST;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.KBPS;
@@ -46,6 +47,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.Match.Builder;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -485,6 +487,38 @@ public interface OutputCommands {
                                 .setPort(OFPort.CONTROLLER)
                                 .setMaxLen(0xFFFFFFFF)
                                 .build()))
+                .build();
+    }
+
+    /**
+     * Expected result for install default unicast verification rule for vxlan.
+     *
+     * @param dpid datapath of the switch.
+     * @return expected OFFlowAdd instance.
+     */
+    default OFFlowAdd installUnicastVerificationRuleVxlan(DatapathId dpid) {
+        Builder builder = ofFactory.buildMatch();
+        builder.setMasked(MatchField.ETH_DST, MacAddress.of(dpid), MacAddress.NO_MASK);
+        builder.setExact(MatchField.UDP_SRC, TransportPort.of(4500));
+        Match match = builder.build();
+
+        return ofFactory.buildFlowAdd()
+                .setCookie(U64.of(Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE))
+                .setMatch(match)
+                .setPriority(VERIFICATION_RULE_VXLAN_PRIORITY)
+                .setInstructions(Arrays.asList(ofFactory.instructions().buildMeter().setMeterId(7L).build(),
+                        ofFactory.instructions().applyActions(ImmutableList.of(
+                                ofFactory.actions().noviflowPopVxlanTunnel(),
+                                ofFactory.actions().buildOutput()
+                                        .setPort(OFPort.CONTROLLER)
+                                        .setMaxLen(0xFFFFFFFF)
+                                        .build(),
+                                ofFactory.actions().buildSetField()
+                                        .setField(
+                                                ofFactory.oxms().buildEthDst()
+                                                        .setValue(MacAddress.of(dpid))
+                                                        .build()).build()))
+                        ))
                 .build();
     }
 }
