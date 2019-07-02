@@ -32,6 +32,7 @@ import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.command.switches.ValidateRulesRequest;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.FlowEntry;
@@ -45,13 +46,16 @@ import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.v1.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.v1.switches.DeleteSwitchResult;
@@ -86,6 +90,9 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Autowired
     private SwitchMapper switchMapper;
+
+    @Autowired
+    private FlowMapper flowMapper;
 
     @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
     private String floodlightTopic;
@@ -361,6 +368,21 @@ public class SwitchServiceImpl implements SwitchService {
         return messagingChannel.sendAndGet(nbworkerTopic, deleteCommand)
                 .thenApply(DeleteSwitchResponse.class::cast)
                 .thenApply(response -> new DeleteSwitchResult(response.isDeleted()));
+    }
+
+    @Override
+    public CompletableFuture<List<FlowPayload>> getFlowsForSwitch(SwitchId switchId, Integer port) {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Get all flows for the switch: {}", switchId);
+        GetFlowsForSwitchRequest data = new GetFlowsForSwitchRequest(switchId, port);
+        CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId);
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
+                .thenApply(response -> response.stream()
+                        .map(FlowResponse.class::cast)
+                        .map(FlowResponse::getPayload)
+                        .map(flowMapper::toFlowOutput)
+                        .collect(Collectors.toList()));
     }
 
     private Boolean toPortAdminDown(PortStatus status) {

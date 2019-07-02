@@ -214,7 +214,7 @@ public class Neo4jFlowPathRepository extends Neo4jGenericRepository<FlowPath> im
     }
 
     @Override
-    public Collection<FlowPath> findAffectedPaths(SwitchId switchId, int port) {
+    public Collection<FlowPath> findBySegmentEndpoint(SwitchId switchId, int port) {
         Map<String, Object> parameters = ImmutableMap.of(
                 "switch_id", switchIdConverter.toGraphProperty(switchId),
                 "port", port);

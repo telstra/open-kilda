@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v1.switches.DeleteMeterResult;
@@ -196,4 +197,13 @@ public interface SwitchService {
      * @return result of the operation wrapped into {@link DeleteSwitchResult}. True means no errors is occurred.
      */
     CompletableFuture<DeleteSwitchResult> deleteSwitch(SwitchId switchId, boolean force);
+
+    /**
+     * Get a list of flows that goes through a particular switch.
+     *
+     * @param switchId the switch id.
+     * @param port the port of switch.
+     * @return list of flows that goes through a particular switch.
+     */
+    CompletableFuture<List<FlowPayload>> getFlowsForSwitch(SwitchId switchId, Integer port);
 }
