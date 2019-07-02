@@ -66,6 +66,13 @@ public interface ISwitchManager extends IFloodlightService {
     void installDefaultRules(final DatapathId dpid) throws SwitchOperationException;
 
     /**
+     * Add default rule for install verfication rule applicable for vxlan.
+     * @param dpid datapathId of switch
+     * @throws SwitchOperationException in case of errors
+     */
+    void installUnicastVerificationRuleVxlan(final DatapathId dpid) throws SwitchOperationException;
+
+    /**
      * Installs the default verification rule, if it is allowed. One case where it isn't -
      * if the switch is an OpenFlow 1.2 switch and isBroadcast = false. In that scenario, nothing
      * happens.
