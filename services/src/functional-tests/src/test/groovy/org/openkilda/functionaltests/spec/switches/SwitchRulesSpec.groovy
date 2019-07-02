@@ -581,6 +581,7 @@ class SwitchRulesSpec extends BaseSpecification {
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().max { pair ->
             pair.paths.max { it.size() }.size()
         }
+        assumeTrue("Unable to find required switches in topology", switchPair as boolean)
         def longPath = switchPair.paths.max { it.size() }
         switchPair.paths.findAll { it != longPath }.each { pathHelper.makePathMorePreferable(longPath, it) }
 

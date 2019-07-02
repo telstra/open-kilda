@@ -62,6 +62,8 @@ class FlowCrudV2Spec extends BaseSpecification {
     @Tags([TOPOLOGY_DEPENDENT])
     def "Valid flow has no rule discrepancies"() {
         given: "A flow"
+        assumeTrue("There should be at least two active traffgens for test execution",
+                topology.activeTraffGens.size() >= 2)
         def traffExam = traffExamProvider.get()
         flowHelperV2.addFlow(flow)
         def path = PathHelper.convert(northbound.getFlowPath(flow.flowId))
