@@ -29,6 +29,7 @@ import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
+import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 import static org.openkilda.model.Cookie.isDefaultRule;
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
@@ -164,7 +165,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     public static final long FLOW_COOKIE_MASK = 0x7FFFFFFFFFFFFFFFL;
 
+
     public static final int VERIFICATION_RULE_PRIORITY = FlowModUtils.PRIORITY_MAX - 1000;
+    public static final int VERIFICATION_RULE_VXLAN_PRIORITY = VERIFICATION_RULE_PRIORITY + 1;
     public static final int DROP_VERIFICATION_LOOP_RULE_PRIORITY = VERIFICATION_RULE_PRIORITY + 1;
     public static final int CATCH_BFD_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int ROUND_TRIP_LATENCY_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
@@ -369,6 +372,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         installDropLoopRule(dpid);
         installBfdCatchFlow(dpid);
         installRoundTripLatencyFlow(dpid);
+        installUnicastVerificationRuleVxlan(dpid);
     }
 
     /**
@@ -797,6 +801,42 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
 
         return deletedRules;
+    }
+
+    @Override
+    public void installUnicastVerificationRuleVxlan(final DatapathId dpid) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        // NOTE(tdurakov): reusing copy field feature here, since only switches with it supports pop/push vxlan's
+        // should be replaced with fair feature detection based on ActionId's during handshake
+        if (!featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
+            logger.debug("Skip installation of unicast verification vxlan rule for switch {}", dpid);
+        } else {
+            OFFactory ofFactory = sw.getOFFactory();
+            ArrayList<OFAction> actionList = new ArrayList<>();
+            actionList.add(ofFactory.actions().noviflowPopVxlanTunnel());
+            actionList.add(actionSendToController(sw));
+
+            actionList.add(actionSetDstMac(sw, dpIdToMac(sw.getId())));
+            long cookie = VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
+            long meterId = createMeterIdForDefaultRule(cookie).getValue();
+            long meterRate = config.getUnicastRateLimit();
+            OFInstructionMeter meter = installMeterForDefaultRule(sw, meterId, meterRate, actionList);
+            OFInstructionApplyActions actions = ofFactory.instructions()
+                    .applyActions(actionList).createBuilder().build();
+
+            MacAddress dstMac = dpIdToMac(sw.getId());
+            Builder builder = sw.getOFFactory().buildMatch();
+            builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.NO_MASK);
+            builder.setExact(MatchField.UDP_SRC, TransportPort.of(4500));
+            Match match = builder.build();
+            OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie, VERIFICATION_RULE_VXLAN_PRIORITY)
+                    .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
+                    .setMatch(match)
+                    .build();
+            String flowname = "Unicast Vxlan";
+            flowname += "--VerificationFlowVxlan--" + dpid.toString();
+            pushFlow(sw, flowname, flowMod);
+        }
     }
 
     /**

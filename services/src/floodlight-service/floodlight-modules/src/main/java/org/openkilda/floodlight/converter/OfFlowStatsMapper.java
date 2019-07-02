@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -150,7 +151,14 @@ public abstract class OfFlowStatsMapper {
     public FlowApplyActions toFlowApplyActions(OFInstruction instruction) {
         Map<OFActionType, OFAction> actions = ((OFInstructionApplyActions) instruction).getActions()
                 .stream()
+                .filter(ofAction -> !ofAction.getType().equals(OFActionType.EXPERIMENTER))
                 .collect(Collectors.toMap(OFAction::getType, action -> action));
+        // NOTE(tdurakov): there are could be more then one action of type experimenter, better to filter them out
+        // and handle independently
+        Set<OFAction> experimenterActions = ((OFInstructionApplyActions) instruction).getActions()
+                .stream()
+                .filter(ofAction -> ofAction.getType().equals(OFActionType.EXPERIMENTER))
+                .collect(Collectors.toSet());
         return FlowApplyActions.builder()
                 .meter(Optional.ofNullable(actions.get(OFActionType.METER))
                         .map(action -> String.valueOf(((OFActionMeter) action).getMeterId()))
