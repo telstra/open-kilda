@@ -19,6 +19,6 @@ class GrpcCommonSpec extends GrpcBaseSpecification {
         response.cpuPercentage != null
 
         where:
-        sw << getNoviflowSwitches("6.4")
+        sw << getNoviflowSwitches(6.4)
     }
 }

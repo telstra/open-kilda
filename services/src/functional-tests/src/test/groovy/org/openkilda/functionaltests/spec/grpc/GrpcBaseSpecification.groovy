@@ -17,10 +17,10 @@ class GrpcBaseSpecification extends BaseSpecification {
      * @param minVersion include only numeric part, e.g 6.4, 6.5, 6.6
      */
     @Memoized
-    List<SwitchInfoData> getNoviflowSwitches(String minVersion) {
+    List<SwitchInfoData> getNoviflowSwitches(Float minVersion) {
         northbound.activeSwitches.findAll {
-            def matcher = it.description =~ /NW[0-9]+.([0-9].[0-9])/
-            return matcher && matcher[0][1] > minVersion
+            def matcher = it.description =~ /NW[0-9]+\.([0-9]\.[0-9])/
+            return matcher && matcher[0][1].toFloat() > minVersion
         }
     }
 }

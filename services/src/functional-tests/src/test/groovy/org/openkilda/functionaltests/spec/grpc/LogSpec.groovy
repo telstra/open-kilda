@@ -46,7 +46,7 @@ class LogSpec extends GrpcBaseSpecification {
         grpc.enableLogMessagesOnSwitch(sw.address, new LogMessagesDto(DEFAULT_LOG_MESSAGES_STATE))
 
         where:
-        sw << getNoviflowSwitches("6.4")
+        sw << getNoviflowSwitches(6.4)
     }
 
     @Unroll
@@ -67,7 +67,7 @@ class LogSpec extends GrpcBaseSpecification {
         grpc.enableLogOfErrorsOnSwitch(sw.address, new LogOferrorsDto(DEFAULT_LOG_OF_MESSAGES_STATE))
 
         where:
-        sw << getNoviflowSwitches("6.4")
+        sw << getNoviflowSwitches(6.4)
     }
 
     @Unroll
@@ -98,7 +98,7 @@ class LogSpec extends GrpcBaseSpecification {
                 new RemoteLogServerDto(defaultRemoteLogServerIp, defaultRemoteLogServerPort))
 
         where:
-        sw << getNoviflowSwitches("6.4")
+        sw << getNoviflowSwitches(6.4)
     }
 
     @Unroll
@@ -121,6 +121,6 @@ on the #sw.switchId switch"() {
                         [remoteIp    : REMOTE_LOG_IP,
                          remotePort  : 65537,
                          errorMessage: "Invalid remotelogserver port."]
-                ], getNoviflowSwitches("6.4")].combinations()
+                ], getNoviflowSwitches(6.4)].combinations()
     }
 }
