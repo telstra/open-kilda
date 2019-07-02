@@ -67,7 +67,6 @@ class TagExtension extends AbstractGlobalExtension {
             def tags = collectAllTags(feature)
             def iterationTags = (feature.featureMethod.getAnnotation(IterationTags)?.value()?.toList() ?: [] +
                     feature.featureMethod.getAnnotation(IterationTag)).findAll()
-            feature.excluded = !matches(tagsExpression, tags + iterationTags.collectMany { it.tags().toList() })
             if (iterationTags) {
                 feature.addIterationInterceptor(new IMethodInterceptor() {
                     /*This stores how many times did we match a certain iteration tag.
@@ -76,25 +75,20 @@ class TagExtension extends AbstractGlobalExtension {
 
                     @Override
                     void intercept(IMethodInvocation invocation) throws Throwable {
+                        //find all iteration tags that apply to current iteration name
                         def iteration = invocation.iteration
-                        //look for iteration which matches our iteration name regexp
-                        Map<IterationTag, Integer> applicableITags = tagExecutions.findAll { itag, exec ->
-                            iteration.name =~ itag.iterationNameRegex()
+                        Map<IterationTag, Integer> applicableITags = tagExecutions.findAll { tagEntry ->
+                            iteration.name =~ tagEntry.key.iterationNameRegex() && tagEntry.key.take() > tagEntry.value
                         }
-                        //If no applicable iteration tags found, try checking whether top-level tags allow execution
-                        if (applicableITags.isEmpty() && matches(tagsExpression, tags)) {
-                            invocation.proceed()
-                            return
-                        }
-                        //otherwise, look whether any of found iteration tags allow further execution
-                        def allowingTag = tagExecutions.find { itag, executions ->
-                            itag in applicableITags.keySet() && executions < itag.take() &&
-                                    matches(tagsExpression, (tags + applicableITags.keySet().collectMany {
-                                        it.tags().toList()
-                                    }) as Set)
-                        }
-                        if (allowingTag) {
-                            allowingTag.value++
+                        //compare whether the list of tags matches our tag expression, include top-level tags
+                        def matched = matches(tagsExpression, tags + (Set) applicableITags.keySet()*.tags().flatten())
+                        if (matched) {
+                            //increment 'exec' counter for used tags
+                            tagExecutions.each { tagEntry ->
+                                if (tagEntry.key in applicableITags.keySet()) {
+                                    tagEntry.value++
+                                }
+                            }
                             invocation.proceed()
                         } else {
                             throw new AssumptionViolatedException("The test '$iteration.feature.spec.name#" +

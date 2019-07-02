@@ -1,10 +1,11 @@
 package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -17,9 +18,9 @@ import spock.lang.See
 @Narrative("""BFD stands for Bidirectional Forwarding Detection. For now tested only on Noviflow switches. 
 Main purpose is to detect ISL failure on switch level, which should be times faster than a regular 
 controller-involved discovery mechanism""")
-@Tags(Tag.HARDWARE)
+@Tags([HARDWARE])
 class BfdSpec extends HealthCheckSpecification {
-
+    @Tags([SMOKE_SWITCHES])
     def "Able to create a valid BFD session between two Noviflow switches"() {
         given: "An a-switch ISL between two Noviflow switches"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow &&

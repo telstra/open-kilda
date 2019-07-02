@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
@@ -78,7 +79,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTags([
-        @IterationTag(tags = [SMOKE], iterationNameRegex = /vlan /),
+        @IterationTag(tags = [SMOKE_SWITCHES], take = 1),
+        @IterationTag(tags = [SMOKE], iterationNameRegex = /random vlans/),
         @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /and vlan only on/)
     ])
     @Unroll("Valid #data.description has traffic and no rule discrepancies \

@@ -91,7 +91,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     @Unroll
-    @Tags([SMOKE, SMOKE_SWITCHES])
+    @Tags([SMOKE])
+    @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /delete-action=DROP_ALL\)/)
     def "Able to delete rules from a switch (delete-action=#data.deleteRulesAction)"() {
         given: "A switch with some flow rules installed"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -229,7 +230,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         and: "Cleanup: delete the flow"
         flowHelper.deleteFlow(flow.id)
     }
-    
+
     @Unroll("Able to delete switch rules by #data.description")
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Able to delete switch rules by cookie/priority"() {
@@ -566,7 +567,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
-    @Tags(SMOKE)
+    @Tags([SMOKE, SMOKE_SWITCHES])
     def "Traffic counters in ingress rule are reset on flow rerouting"() {
         given: "Two active neighboring switches and two possible flow paths at least"
         List<List<PathNode>> possibleFlowPaths = []

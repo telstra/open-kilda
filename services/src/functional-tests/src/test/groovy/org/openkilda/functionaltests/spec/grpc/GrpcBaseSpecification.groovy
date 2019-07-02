@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.grpc
 
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -12,7 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.See
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/grpc-client")
-@Tags(HARDWARE)
+@Tags([HARDWARE, SMOKE_SWITCHES])
 class GrpcBaseSpecification extends HealthCheckSpecification {
     @Autowired
     GrpcService grpc
