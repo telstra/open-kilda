@@ -62,7 +62,8 @@ public class PingResponseCommand extends PingCommand {
     }
 
     private byte[] unwrap() {
-        if (input.packetInCookieMismatchAll(log, PingService.OF_CATCH_RULE_COOKIE)) {
+        if (input.packetInCookieMismatchAll(log, PingService.OF_CATCH_RULE_COOKIE)
+                && input.packetInCookieMismatchAll(log, PingService.OF_CATCH_RULE_COOKIE_VXLAN)) {
             return null;
         }
 
