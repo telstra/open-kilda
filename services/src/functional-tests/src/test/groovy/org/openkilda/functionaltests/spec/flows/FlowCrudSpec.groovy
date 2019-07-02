@@ -54,6 +54,8 @@ class FlowCrudSpec extends BaseSpecification {
     @IterationTag(tags = [SMOKE], iterationNameRegex = /vlan /)
     def "Valid flow has no rule discrepancies"() {
         given: "A flow"
+        assumeTrue("There should be at least two active traffgens for test execution",
+                topology.activeTraffGens.size() >= 2)
         def traffExam = traffExamProvider.get()
         flowHelper.addFlow(flow)
         def path = PathHelper.convert(northbound.getFlowPath(flow.id))
