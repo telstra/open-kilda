@@ -32,7 +32,7 @@ public class IslPath {
     @JsonProperty("seq_id")
     private Integer seqId;
     @JsonProperty("segment_latency")
-    private Integer segmentLatency;
+    private Long segmentLatency;
 
     public String getSwitchId() {
         return switchId;
@@ -58,11 +58,11 @@ public class IslPath {
         this.seqId = seqId;
     }
 
-    public Integer getSegmentLatency() {
+    public Long getSegmentLatency() {
         return segmentLatency;
     }
 
-    public void setSegmentLatency(final Integer segmentLatency) {
+    public void setSegmentLatency(final Long segmentLatency) {
         this.segmentLatency = segmentLatency;
     }
 

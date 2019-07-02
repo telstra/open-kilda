@@ -1,5 +1,101 @@
 # Changelog
 
+## v1.25.0 (01/07/2019)
+
+### Features:
+-  [#2508](https://github.com/telstra/open-kilda/pull/2508) PCE takes into account encapsulation type [**storm-topologies**]
+-  [#2518](https://github.com/telstra/open-kilda/pull/2518) Add protected path status to API. (Issue: [#2513](https://github.com/telstra/open-kilda/issues/2513)) [**northbound**][**storm-topologies**]
+-  [#2521](https://github.com/telstra/open-kilda/pull/2521) Tunnel id match extended [**floodlight**][**storm-topologies**]
+-  [#2392](https://github.com/telstra/open-kilda/pull/2392) Add functional tests for flow swap endpoint feature [**tests**]
+-  [#2530](https://github.com/telstra/open-kilda/pull/2530) RTL Part 5: change handling of OpenTsdb records (Issue: [#580](https://github.com/telstra/open-kilda/issues/580)) [**storm-topologies**]
+-  [#2533](https://github.com/telstra/open-kilda/pull/2533) RTL Part 6: Added One Way latency manipulation (Issue: [#580](https://github.com/telstra/open-kilda/issues/580)) [**floodlight**][**storm-topologies**]
+-  [#2473](https://github.com/telstra/open-kilda/pull/2473) Return diverse group flows id in get flow response (Issue: [#2465](https://github.com/telstra/open-kilda/issues/2465)) [**api**][**northbound**][**storm-topologies**]
+-  [#2485](https://github.com/telstra/open-kilda/pull/2485) Issue 647 add vxlan methods to fl rebased [**floodlight**][**northbound**][**storm-topologies**]
+-  [#2486](https://github.com/telstra/open-kilda/pull/2486) Design for representing protected path status in API [**api**]
+-  [#2292](https://github.com/telstra/open-kilda/pull/2292) Feature/580 round trip latency (Issue: [#580](https://github.com/telstra/open-kilda/issues/580)) [**floodlight**][**storm-topologies**]
+-  [#2558](https://github.com/telstra/open-kilda/pull/2558) Changed 'isl.latency' to 'isl.rtt' metric in GUI (Issue: [#580](https://github.com/telstra/open-kilda/issues/580)) [**gui**]
+
+### Bug Fixes:
+-  [#2498](https://github.com/telstra/open-kilda/pull/2498) Minor fixes for nb correlation id check and logging [**northbound**]
+-  [#2504](https://github.com/telstra/open-kilda/pull/2504) Fix TagExtension to properly count execution times for a tag [**tests**]
+-  [#2507](https://github.com/telstra/open-kilda/pull/2507) Fix for separate functional test execution [**tests**]
+-  [#2510](https://github.com/telstra/open-kilda/pull/2510) Fix NPE in SwManager RouterBolt (Issue: [#2219](https://github.com/telstra/open-kilda/issues/2219)) [**storm-topologies**]
+-  [#2520](https://github.com/telstra/open-kilda/pull/2520) Fix log message for validate switch request. [**northbound**]
+-  [#2463](https://github.com/telstra/open-kilda/pull/2463) Make FSM independent (network-topology) (Issue: [#2457](https://github.com/telstra/open-kilda/issues/2457)) [**storm-topologies**]
+-  [#2541](https://github.com/telstra/open-kilda/pull/2541) Fix correlation id checks for swagger ui (Issue: [#2515](https://github.com/telstra/open-kilda/issues/2515)) [**northbound**]
+-  [#2548](https://github.com/telstra/open-kilda/pull/2548) Data migration for supported_transit_encapsulation 
+-  [#2549](https://github.com/telstra/open-kilda/pull/2549) Fix for swagger correlation id header name [**northbound**]
+-  [#2556](https://github.com/telstra/open-kilda/pull/2556) Fix for round trip latency  (Issues: [#2554](https://github.com/telstra/open-kilda/issues/2554) [#580](https://github.com/telstra/open-kilda/issues/580)) [**gui**]
+
+### Improvements:
+-  [#2500](https://github.com/telstra/open-kilda/pull/2500) extend default flow tests [**tests**]
+-  [#2446](https://github.com/telstra/open-kilda/pull/2446) add tests to smoke iteration [**tests**]
+-  [#2514](https://github.com/telstra/open-kilda/pull/2514) fix logging for the setLinkBfd method [**tests**]
+-  [#2519](https://github.com/telstra/open-kilda/pull/2519) add smoke_switches tag, and mark needed tests [**tests**]
+-  [#2404](https://github.com/telstra/open-kilda/pull/2404) add possibility to use the `verifyRulesOnProtectedFlow` method when we have 1+ flows (Issue: [#2282](https://github.com/telstra/open-kilda/issues/2282)) [**tests**]
+-  [#2346](https://github.com/telstra/open-kilda/pull/2346) Ensure ISL use link props data (Issue: [#2220](https://github.com/telstra/open-kilda/issues/2220)) [**storm-topologies**]
+-  [#2540](https://github.com/telstra/open-kilda/pull/2540) fix test "Able to swap main and protected paths manually" [**tests**]
+
+### Other changes:
+-  [#2496](https://github.com/telstra/open-kilda/pull/2496) Make 'ovs-meters-enabled' configurable [**configuration**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.24.0...v1.25.0).
+
+### Affected Components:
+fl, gui, network, neo4j, flow, nb, isllatency, swmanager
+
+### Upgrade notes:
+Use following migration scripts to update db:
+- [1.6 migration-script.xml](https://github.com/telstra/open-kilda/blob/v1.25.0/services/neo4j/migrations/1.6-encapsulation-type/1-upper-case-flow-encapsulation-type-changelog.xml)
+- [1.7 migration-script.xml](https://github.com/telstra/open-kilda/blob/v1.25.0/services/neo4j/migrations/1.7-supported-transit-encapsulation/1-supported-transit-encapsulation-to-switch-features-changelog.xml)
+
+In case of issues these rollback scripts should be executed:
+- [1.6 rollback.cql](https://github.com/telstra/open-kilda/blob/v1.25.0/services/neo4j/migrations/1.6-encapsulation-type/rollback.cql)
+- [1.7 rollback.cql](https://github.com/telstra/open-kilda/blob/v1.25.0/services/neo4j/migrations/1.7-supported-transit-encapsulation/rollback.cql)
+
+---
+
+## v1.24.0 (19/06/2019)
+
+### Features:
+-  [#2304](https://github.com/telstra/open-kilda/pull/2304) Swap endpoints for flow [**api**][**northbound**][**storm-topologies**]
+-  [#2471](https://github.com/telstra/open-kilda/pull/2471) RTL Part 3: Handle RTL packet in Floodlight (Issue: [#580](https://github.com/telstra/open-kilda/issues/580)) [**floodlight**][**storm-topologies**]
+-  [#2472](https://github.com/telstra/open-kilda/pull/2472) Storm side vxlan rules [**storm-topologies**]
+-  [#2350](https://github.com/telstra/open-kilda/pull/2350) Add an ability to choose encapsulation type in the CRUD flow over REST API. (Issue: [#647](https://github.com/telstra/open-kilda/issues/647)) [**northbound**][**storm-topologies**]
+-  [#2417](https://github.com/telstra/open-kilda/pull/2417) Allow both default and VLAN tagged flows for the same port (Issue: [#2411](https://github.com/telstra/open-kilda/issues/2411)) [**floodlight**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#2499](https://github.com/telstra/open-kilda/pull/2499) Restored cookie mismatch debug log level [**floodlight**]
+-  [#2464](https://github.com/telstra/open-kilda/pull/2464) Fix switch validate and rules sync on meters unsupported switches (Issue: [#2453](https://github.com/telstra/open-kilda/issues/2453)) [**floodlight**][**storm-topologies**]
+-  [#2469](https://github.com/telstra/open-kilda/pull/2469) Propagate API_HOST from lab-api into lab-service [**tests**]
+-  [#2480](https://github.com/telstra/open-kilda/pull/2480) Fix to protected path tests [**tests**]
+-  [#2483](https://github.com/telstra/open-kilda/pull/2483) Fix assumeProfile failing if first feature is profile-dependent [**tests**]
+-  [#2484](https://github.com/telstra/open-kilda/pull/2484) Fix: Remove the notification stream going to the HS kafka bolt. [**storm-topologies**]
+-  [#2487](https://github.com/telstra/open-kilda/pull/2487) Fix functional test for pinned flow [**tests**]
+-  [#2488](https://github.com/telstra/open-kilda/pull/2488) Fix functional test for ISL min port speed feature [**tests**]
+-  [#2428](https://github.com/telstra/open-kilda/pull/2428) Fix switch status update logging [**storm-topologies**]
+-  [#2512](https://github.com/telstra/open-kilda/pull/2512) Partially revert PR2212 - deduplicate port event notifications (Issue: [#2212](https://github.com/telstra/open-kilda/issues/2212)) [**storm-topologies**]
+
+### Improvements:
+-  [#2434](https://github.com/telstra/open-kilda/pull/2434) check that system allows to pass traffic via default and vlan flows when they are on the same port (Issue: [#2433](https://github.com/telstra/open-kilda/issues/2433)) [**tests**]
+-  [#2502](https://github.com/telstra/open-kilda/pull/2502) ignore test, functionality is not implemented yet [**tests**]
+-  [#2454](https://github.com/telstra/open-kilda/pull/2454) Improve sync rules test to use path with max amount of switches (Issue: [#2453](https://github.com/telstra/open-kilda/issues/2453)) [**tests**]
+-  [#2212](https://github.com/telstra/open-kilda/pull/2212) Improvements of Network topology dashboard logger. (Issue: [#1157](https://github.com/telstra/open-kilda/issues/1157)) [**storm-topologies**]
+-  [#2477](https://github.com/telstra/open-kilda/pull/2477) Add test that slowly discovers switches one by one [**tests**]
+-  [#2489](https://github.com/telstra/open-kilda/pull/2489) Small refactoring of self-loop ISL test [**tests**]
+
+### Other changes:
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.23.0...v1.24.0).
+
+### Affected Components:
+router, fl, flow, reroute, swmanager, network, nb
+
+### Upgrade notes:
+
+---
+
 ## v1.23.0 (10/06/2019)
 
 ### Features:

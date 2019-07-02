@@ -100,6 +100,10 @@ public class TestKafkaConsumer extends Thread {
         consumer.wakeup();
     }
 
+    public boolean isEmpty() {
+        return records.isEmpty();
+    }
+
     private boolean checkDestination(final String recordValue) {
 
         if (!checkDestination) {

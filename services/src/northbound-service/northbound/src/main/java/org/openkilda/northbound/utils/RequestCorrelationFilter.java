@@ -48,7 +48,11 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(RequestCorrelationFilter.class);
 
     private static final List<String> EXCLUDE_PATTERNS = ImmutableList.of(
-            "/v1/health-check"
+            "/v1/health-check",
+            // swagger related patterns
+            "/swagger*/**",
+            "/webjars/**",
+            "/v2/api-docs"
     );
 
     private final PathMatcher matcher = new AntPathMatcher();

@@ -355,14 +355,14 @@ class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
                 .meterEntries*.meterId).first()
         producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 1L, sw.dpId, 1, 2, 1,
-                        FlowEncapsulationType.TRANSIT_VLAN, 1, OutputVlanType.REPLACE)).toJson()))
+                        FlowEncapsulationType.TRANSIT_VLAN, 1, OutputVlanType.REPLACE, sw.dpId)).toJson()))
         producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
                 new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 3,
-                FlowEncapsulationType.TRANSIT_VLAN)).toJson()))
+                FlowEncapsulationType.TRANSIT_VLAN, sw.dpId)).toJson()))
         producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 5, 3,
                         FlowEncapsulationType.TRANSIT_VLAN,
-                        OutputVlanType.REPLACE, fakeBandwidth, excessMeterId)).toJson()))
+                        OutputVlanType.REPLACE, fakeBandwidth, excessMeterId, sw.dpId)).toJson()))
 
         then: "System detects created rules as excess rules"
         //excess egress/ingress/transit rules are not added yet

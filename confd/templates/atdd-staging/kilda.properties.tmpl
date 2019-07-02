@@ -60,3 +60,7 @@ grpc.remote.log.server.port={{ getv "/kilda_grpc_remote_log_server_port" }}
 
 use.hs=false
 
+# round trip latency
+latency.update.interval = {{ getv "/kilda_latency_update_interval" }}
+latency.update.time.range = {{ getv "/kilda_latency_update_time_range" }}
+latency.discovery.interval.multiplier = {{ getv "/kilda_latency_discovery_interval_multiplier" }}

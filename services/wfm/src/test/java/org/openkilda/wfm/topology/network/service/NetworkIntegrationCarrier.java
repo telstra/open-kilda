@@ -17,12 +17,13 @@ package org.openkilda.wfm.topology.network.service;
 
 import org.openkilda.messaging.command.reroute.RerouteFlows;
 import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
-import org.openkilda.wfm.topology.network.model.Endpoint;
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
-import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 
 import lombok.Data;
@@ -191,6 +192,11 @@ public class NetworkIntegrationCarrier
     }
 
     public void triggerReroute(RerouteFlows trigger) {
+        // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
+    }
+
+    @Override
+    public void islStatusUpdateNotification(IslStatusUpdateNotification trigger) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
     }
 }

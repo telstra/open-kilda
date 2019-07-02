@@ -18,15 +18,16 @@ package org.openkilda.wfm.topology.network.storm.bolt.isl;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.reroute.RerouteFlows;
 import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
+import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.bolt.KafkaEncoder;
-import org.openkilda.wfm.topology.network.model.Endpoint;
+import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
-import org.openkilda.wfm.topology.network.model.IslReference;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.service.IIslCarrier;
 import org.openkilda.wfm.topology.network.service.NetworkIslService;
@@ -55,6 +56,10 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
 
     public static final String STREAM_REROUTE_ID = "reroute";
     public static final Fields STREAM_REROUTE_FIELDS = new Fields(
+            KafkaEncoder.FIELD_ID_KEY, KafkaEncoder.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
+
+    public static final String STREAM_STATUS_ID = "status";
+    public static final Fields STREAM_STATUS_FIELDS = new Fields(
             KafkaEncoder.FIELD_ID_KEY, KafkaEncoder.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     private final PersistenceManager persistenceManager;
@@ -98,6 +103,7 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     public void declareOutputFields(OutputFieldsDeclarer streamManager) {
         streamManager.declareStream(STREAM_BFD_PORT_ID, STREAM_BFD_PORT_FIELDS);
         streamManager.declareStream(STREAM_REROUTE_ID, STREAM_REROUTE_FIELDS);
+        streamManager.declareStream(STREAM_STATUS_ID, STREAM_STATUS_FIELDS);
     }
 
     @Override
@@ -117,6 +123,11 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
         emit(STREAM_REROUTE_ID, getCurrentTuple(), makeRerouteTuple(trigger));
     }
 
+    @Override
+    public void islStatusUpdateNotification(IslStatusUpdateNotification trigger) {
+        emit(STREAM_STATUS_ID, getCurrentTuple(), makeStatusUpdateTuple(trigger));
+    }
+
     private Values makeBfdPortTuple(BfdPortCommand command) {
         Endpoint endpoint = command.getEndpoint();
         return new Values(endpoint.getDatapath(), command,
@@ -124,6 +135,10 @@ public class IslHandler extends AbstractBolt implements IIslCarrier {
     }
 
     private Values makeRerouteTuple(CommandData payload) {
+        return new Values(null, payload, getCommandContext());
+    }
+
+    private Values makeStatusUpdateTuple(IslStatusUpdateNotification payload) {
         return new Values(null, payload, getCommandContext());
     }
 

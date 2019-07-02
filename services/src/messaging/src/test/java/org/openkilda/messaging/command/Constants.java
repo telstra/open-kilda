@@ -26,12 +26,14 @@ public final class Constants {
     public static final int outputPort = 2;
     public static final int transitEncapsulationId = 100;
     public static final FlowEncapsulationType transitEncapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
+    public static final SwitchId ingresSwitchId = new SwitchId("00:00:00:00:00:00:00:02");
     public static final int outputVlanId = 200;
     public static final int inputVlanId = 300;
     public static final long bandwidth = 10000;
     public static final long meterId = 1;
     public static final long burstSize = 1024;
     public static final OutputVlanType outputVlanType = OutputVlanType.REPLACE;
+    public static final FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
 
     private Constants() {
         throw new UnsupportedOperationException();

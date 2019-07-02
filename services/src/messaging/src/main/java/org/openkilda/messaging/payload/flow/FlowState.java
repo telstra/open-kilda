@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -35,7 +35,12 @@ public enum FlowState {
     /**
      * Flow down state.
      */
-    DOWN("Down");
+    DOWN("Down"),
+
+    /**
+     * Flow degraded state.
+     */
+    DEGRADED("Degraded");
 
     /**
      * Flow state.

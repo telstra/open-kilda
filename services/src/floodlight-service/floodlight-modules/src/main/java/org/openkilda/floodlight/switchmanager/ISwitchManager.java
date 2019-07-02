@@ -19,6 +19,7 @@ import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -112,51 +113,57 @@ public interface ISwitchManager extends IFloodlightService {
     /**
      * Installs an flow on ingress switch.
      *
-     * @param dpid          datapathId of the switch
-     * @param flowId        flow id
-     * @param inputPort     port to expect the packet on
-     * @param outputPort    port to forward the packet out
-     * @param inputVlanId   input vlan to match on, 0 means not to match on vlan
-     * @param transitVlanId vlan to add before outputing on outputPort
+     * @param dpid              datapathId of the switch
+     * @param flowId            flow id
+     * @param inputPort         port to expect the packet on
+     * @param outputPort        port to forward the packet out
+     * @param inputVlanId       input vlan to match on, 0 means not to match on vlan
+     * @param transitTunnelId   vlan or vni to add before outputing on outputPort
+     * @param encapsulationType flow encapsulation type
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
-    long installIngressFlow(final DatapathId dpid, final String flowId, final Long cookie,
-                                                    final int inputPort, final int outputPort, final int inputVlanId,
-                                                    final int transitVlanId, final OutputVlanType outputVlanType,
-                                                    final long meterId) throws SwitchOperationException;
+    long installIngressFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort, int inputVlanId,
+                            int transitTunnelId, OutputVlanType outputVlanType, long meterId,
+                            FlowEncapsulationType encapsulationType)
+            throws SwitchOperationException;
 
     /**
      * Installs flow on egress swtich.
      *
-     * @param dpid           datapathId of the switch
-     * @param flowId         flow id
-     * @param inputPort      port to expect the packet on
-     * @param outputPort     port to forward the packet out
-     * @param transitVlanId  vlan to match on the ingressPort
-     * @param outputVlanId   set vlan on packet before forwarding via outputPort; 0 means not to set
-     * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
+     * @param dpid              datapathId of the switch
+     * @param flowId            flow id
+     * @param inputPort         port to expect the packet on
+     * @param outputPort        port to forward the packet out
+     * @param transitTunnelId   vlan or vni to match on the ingressPort
+     * @param outputVlanId      set vlan on packet before forwarding via outputPort; 0 means not to set
+     * @param outputVlanType    type of action to apply to the outputVlanId if greater than 0
+     * @param encapsulationType flow encapsulation type
+     * @param ingressSwitchDpId datapathId of the ingress switch
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
-    long installEgressFlow(final DatapathId dpid, final String flowId, final Long cookie,
-                                                   final int inputPort, final int outputPort, final int transitVlanId,
-                                                   final int outputVlanId, final OutputVlanType outputVlanType)
+    long installEgressFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
+                           int transitTunnelId, int outputVlanId, OutputVlanType outputVlanType,
+                           FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpId)
             throws SwitchOperationException;
 
     /**
      * Installs flow on a transit switch.
      *
-     * @param dpid          datapathId of the switch
-     * @param flowId        flow id
-     * @param inputPort     port to expect packet on
-     * @param outputPort    port to forward packet out
-     * @param transitVlanId vlan to match on inputPort
+     * @param dpid              datapathId of the switch
+     * @param flowId            flow id
+     * @param inputPort         port to expect packet on
+     * @param outputPort        port to forward packet out
+     * @param transitTunnelId   vlan or vni to match on inputPort
+     * @param encapsulationType flow encapsulation type
+     * @param  ingressSwitchDpId datapathId of the ingress switch
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
-    long installTransitFlow(final DatapathId dpid, final String flowId, final Long cookie,
-                                                    final int inputPort, final int outputPort, final int transitVlanId)
+    long installTransitFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
+                            int transitTunnelId, FlowEncapsulationType encapsulationType,
+                            DatapathId ingressSwitchDpId)
             throws SwitchOperationException;
 
     /**

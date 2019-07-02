@@ -15,17 +15,27 @@
 
 package org.openkilda.wfm.topology.isllatency.bolts;
 
-import org.openkilda.messaging.Message;
+import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.CACHE_BOLT_ID;
+import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.CACHE_DATA_FIELD;
+import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ISL_STATUS_FIELD;
+import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ISL_STATUS_UPDATE_BOLT_ID;
+import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.LATENCY_DATA_FIELD;
+import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ONE_WAY_MANIPULATION_BOLT_ID;
+
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.IslInfoData;
+import org.openkilda.messaging.info.event.IslOneWayLatency;
+import org.openkilda.messaging.info.event.IslRoundTripLatency;
+import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.JsonEncodeException;
+import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
+import org.openkilda.wfm.topology.isllatency.carriers.IslStatsCarrier;
+import org.openkilda.wfm.topology.isllatency.service.IslStatsService;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
@@ -39,57 +49,83 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-public class IslStatsBolt extends AbstractBolt {
+public class IslStatsBolt extends AbstractBolt implements IslStatsCarrier {
+    public static final String LATENCY_METRIC_NAME = "isl.rtt";
+    private transient IslStatsService islStatsService;
+    private final long latencyTimeout;
     private MetricFormatter metricFormatter;
 
-    public IslStatsBolt(String metricPrefix) {
+    public IslStatsBolt(String metricPrefix, long latencyTimeout) {
         this.metricFormatter = new MetricFormatter(metricPrefix);
+        this.latencyTimeout = latencyTimeout;
+    }
+
+    @Override
+    protected void init() {
+        islStatsService = new IslStatsService(this, latencyTimeout);
     }
 
     private static List<Object> tsdbTuple(String metric, long timestamp, Number value, Map<String, String> tag)
-            throws JsonEncodeException {
+            throws JsonProcessingException {
         Datapoint datapoint = new Datapoint(metric, timestamp, tag, value);
-        try {
-            return Collections.singletonList(Utils.MAPPER.writeValueAsString(datapoint));
-        } catch (JsonProcessingException e) {
-            throw new JsonEncodeException(datapoint, e);
-        }
+        return Collections.singletonList(Utils.MAPPER.writeValueAsString(datapoint));
     }
 
     @VisibleForTesting
-    List<Object> buildTsdbTuple(IslInfoData data, long timestamp) throws JsonEncodeException {
+    List<Object> buildTsdbTuple(SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort,
+                                long latency, long timestamp) throws JsonProcessingException {
         Map<String, String> tags = new HashMap<>();
-        tags.put("src_switch", data.getSource().getSwitchId().toOtsdFormat());
-        tags.put("src_port", String.valueOf(data.getSource().getPortNo()));
-        tags.put("dst_switch", data.getDestination().getSwitchId().toOtsdFormat());
-        tags.put("dst_port", String.valueOf(data.getDestination().getPortNo()));
+        tags.put("src_switch", srcSwitchId.toOtsdFormat());
+        tags.put("src_port", String.valueOf(srcPort));
+        tags.put("dst_switch", dstSwitchId.toOtsdFormat());
+        tags.put("dst_port", String.valueOf(dstPort));
 
-        return tsdbTuple(metricFormatter.format("isl.latency"), timestamp, data.getLatency(), tags);
+        return tsdbTuple(metricFormatter.format(LATENCY_METRIC_NAME), timestamp, latency, tags);
     }
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        Message message = pullValue(input, KafkaRecordTranslator.FIELD_ID_PAYLOAD, Message.class);
-
-        if (message instanceof InfoMessage) {
-            InfoData data = ((InfoMessage) message).getData();
-            if (data instanceof IslInfoData) {
-                handleIslInfoData(input, message, (IslInfoData) data);
-            } else {
-                // There are much info data messages in kilda.topo.disco.storm topic.
-                // All of them except IslInfoData are useless for stats bolt so they will be ignored.
-                // It will be fixed by round trip latency feature. https://github.com/telstra/open-kilda/issues/580
-                // This feature adds separate topic for latency data.
-                // TODO: add unhandledInput(input) when round trip latency feature will be merged
-            }
+        if (ISL_STATUS_UPDATE_BOLT_ID.equals(input.getSourceComponent())) {
+            handleStatusUpdate(input);
+        } else if (ONE_WAY_MANIPULATION_BOLT_ID.equals(input.getSourceComponent())
+                || CACHE_BOLT_ID.equals(input.getSourceComponent())) {
+            handleLatencyData(input);
         } else {
             unhandledInput(input);
         }
     }
 
-    private void handleIslInfoData(Tuple input, Message message, IslInfoData data) throws JsonEncodeException {
-        List<Object> results = buildTsdbTuple(data, message.getTimestamp());
-        getOutput().emit(input, results);
+    private void handleLatencyData(Tuple input) throws PipelineException {
+        InfoData data = pullValue(input, LATENCY_DATA_FIELD, InfoData.class);
+        long timestamp = getCommandContext().getCreateTime();
+
+        if (data instanceof IslRoundTripLatency) {
+            Endpoint destination = pullValue(input, CACHE_DATA_FIELD, Endpoint.class);
+            islStatsService.handleRoundTripLatencyMetric(timestamp, (IslRoundTripLatency) data, destination);
+        } else if (data instanceof IslOneWayLatency) {
+            islStatsService.handleOneWayLatencyMetric(timestamp, (IslOneWayLatency) data);
+        } else {
+            unhandledInput(input);
+        }
+    }
+
+    private void handleStatusUpdate(Tuple tuple) throws PipelineException {
+        IslStatusUpdateNotification notification = pullValue(
+                tuple, ISL_STATUS_FIELD, IslStatusUpdateNotification.class);
+        islStatsService.handleIstStatusUpdateNotification(notification);
+    }
+
+    @Override
+    public void emitLatency(SwitchId srcSwitch, int srcPort, SwitchId dstSwitch, int dstPort,
+                            long latency, long timestamp) {
+        List<Object> tsdbTuple;
+        try {
+            tsdbTuple = buildTsdbTuple(srcSwitch, srcPort, dstSwitch, dstPort, latency, timestamp);
+        } catch (JsonProcessingException e) {
+            log.error(String.format("Couldn't create OpenTSDB tuple: %s", e.getMessage()), e);
+            return;
+        }
+        emit(getCurrentTuple(), tsdbTuple);
     }
 
     @Override

@@ -31,8 +31,4 @@ class DiscoveryPacketData {
     private OFPort remotePort;
     private Long packetId;
     private boolean signed;
-
-    public boolean hasRoundTripLatencyInfo() {
-        return switchT0 > 0;
-    }
 }

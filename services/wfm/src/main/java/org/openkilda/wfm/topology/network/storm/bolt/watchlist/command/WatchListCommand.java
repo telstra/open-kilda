@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.watchlist.command;
 
-import org.openkilda.wfm.topology.network.model.Endpoint;
+import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.storm.ICommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.WatchListHandler;
 

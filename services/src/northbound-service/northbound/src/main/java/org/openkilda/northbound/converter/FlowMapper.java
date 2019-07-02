@@ -31,6 +31,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput;
@@ -153,6 +154,26 @@ public interface FlowMapper {
         }
 
         return state.getState();
+    }
+
+    /**
+     * Convert {@link FlowPathStatus} to {@link String}.
+     */
+    default String map(FlowPathStatus flowPathStatus) {
+        if (flowPathStatus == null) {
+            return null;
+        }
+
+        switch (flowPathStatus) {
+            case ACTIVE:
+                return "Up";
+            case INACTIVE:
+                return "Down";
+            case IN_PROGRESS:
+                return "In progress";
+            default:
+                return flowPathStatus.toString().toLowerCase();
+        }
     }
 
     /**

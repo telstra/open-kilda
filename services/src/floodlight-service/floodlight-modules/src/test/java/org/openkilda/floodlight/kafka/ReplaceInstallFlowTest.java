@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -79,6 +79,7 @@ public class ReplaceInstallFlowTest {
     private static final String KAFKA_FLOW_TOPIC = "kilda.flow";
     private static final String KAFKA_NORTHBOUND_TOPIC = "kilda.northbound";
     private static final DatapathId SWITCH_ID = DatapathId.of("00:00:00:00:00:00:00:09");
+    private static final DatapathId INGRESS_SWITCH_DP_ID = DatapathId.of("00:00:00:00:00:00:00:09");
 
     private static final FloodlightModuleContext context = new FloodlightModuleContext();
     private final ExecutorService parseRecordExecutor = MoreExecutors.sameThreadExecutor();
@@ -200,7 +201,8 @@ public class ReplaceInstallFlowTest {
         OFMeterMod meterCommand =
                 scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
         OFFlowAdd flowCommand = scheme.ingressNoneFlowMod(data.getInputPort(), data.getOutputPort(),
-                data.getTransitEncapsulationId(), data.getMeterId(), 123L);
+                data.getTransitEncapsulationId(), data.getMeterId(), 123L, data.getTransitEncapsulationType(),
+                DatapathId.of(data.getIngressSwitchId().toLong()));
         runTest(value, flowCommand, meterCommand, null, null);
     }
 
@@ -211,7 +213,8 @@ public class ReplaceInstallFlowTest {
         OFMeterMod meterCommand =
                 scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
         OFFlowAdd flowCommand = scheme.ingressReplaceFlowMod(data.getInputPort(), data.getOutputPort(),
-                data.getInputVlanId(), data.getTransitEncapsulationId(), data.getMeterId(), 123L);
+                data.getInputVlanId(), data.getTransitEncapsulationId(), data.getMeterId(), 123L,
+                data.getTransitEncapsulationType(), DatapathId.of(data.getIngressSwitchId().toLong()));
         runTest(value, flowCommand, meterCommand, null, null);
     }
 
@@ -222,7 +225,8 @@ public class ReplaceInstallFlowTest {
         OFMeterMod meterCommand =
                 scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
         OFFlowAdd flowCommand = scheme.ingressPushFlowMod(data.getInputPort(), data.getOutputPort(),
-                data.getTransitEncapsulationId(), data.getMeterId(), 123L);
+                data.getTransitEncapsulationId(), data.getMeterId(), 123L, data.getTransitEncapsulationType(),
+                DatapathId.of(data.getIngressSwitchId().toLong()));
         runTest(value, flowCommand, meterCommand, null, null);
     }
 
@@ -233,7 +237,8 @@ public class ReplaceInstallFlowTest {
         OFMeterMod meterCommand =
                 scheme.installMeter(data.getBandwidth(), calculateBurstSize(data.getBandwidth()), data.getMeterId());
         OFFlowAdd flowCommand = scheme.ingressPopFlowMod(data.getInputPort(), data.getOutputPort(),
-                data.getInputVlanId(), data.getTransitEncapsulationId(), data.getMeterId(), 123L);
+                data.getInputVlanId(), data.getTransitEncapsulationId(), data.getMeterId(), 123L,
+                data.getTransitEncapsulationType(), DatapathId.of(data.getIngressSwitchId().toLong()));
         runTest(value, flowCommand, meterCommand, null, null);
     }
 
@@ -242,7 +247,7 @@ public class ReplaceInstallFlowTest {
         String value = Resources.toString(getClass().getResource("/install_egress_none_flow.json"), Charsets.UTF_8);
         InstallEgressFlow data = (InstallEgressFlow) prepareData(value);
         OFFlowAdd flowCommand = scheme.egressNoneFlowMod(data.getInputPort(), data.getOutputPort(),
-                data.getTransitEncapsulationId(), 123L);
+                data.getTransitEncapsulationId(), 123L, data.getTransitEncapsulationType(), INGRESS_SWITCH_DP_ID);
         runTest(value, flowCommand, null, null, null);
     }
 
@@ -251,7 +256,8 @@ public class ReplaceInstallFlowTest {
         String value = Resources.toString(getClass().getResource("/install_egress_replace_flow.json"), Charsets.UTF_8);
         InstallEgressFlow data = (InstallEgressFlow) prepareData(value);
         OFFlowAdd flowCommand = scheme.egressReplaceFlowMod(data.getInputPort(), data.getOutputPort(),
-                data.getTransitEncapsulationId(), data.getOutputVlanId(), 123L);
+                data.getTransitEncapsulationId(), data.getOutputVlanId(), 123L, data.getTransitEncapsulationType(),
+                DatapathId.of(data.getIngressSwitchId().toLong()));
         runTest(value, flowCommand, null, null, null);
     }
 
@@ -260,7 +266,8 @@ public class ReplaceInstallFlowTest {
         String value = Resources.toString(getClass().getResource("/install_egress_push_flow.json"), Charsets.UTF_8);
         InstallEgressFlow data = (InstallEgressFlow) prepareData(value);
         OFFlowAdd flowCommand = scheme.egressPushFlowMod(data.getInputPort(), data.getOutputPort(),
-                data.getTransitEncapsulationId(), data.getOutputVlanId(), 123L);
+                data.getTransitEncapsulationId(), data.getOutputVlanId(), 123L, data.getTransitEncapsulationType(),
+                DatapathId.of(data.getIngressSwitchId().toLong()));
         runTest(value, flowCommand, null, null, null);
     }
 
@@ -269,7 +276,8 @@ public class ReplaceInstallFlowTest {
         String value = Resources.toString(getClass().getResource("/install_egress_pop_flow.json"), Charsets.UTF_8);
         InstallEgressFlow data = (InstallEgressFlow) prepareData(value);
         OFFlowAdd flowCommand = scheme.egressPopFlowMod(data.getInputPort(), data.getOutputPort(),
-                data.getTransitEncapsulationId(), 123L);
+                data.getTransitEncapsulationId(), 123L, data.getTransitEncapsulationType(),
+                INGRESS_SWITCH_DP_ID);
         runTest(value, flowCommand, null, null, null);
     }
 
@@ -278,7 +286,8 @@ public class ReplaceInstallFlowTest {
         String value = Resources.toString(getClass().getResource("/install_transit_flow.json"), Charsets.UTF_8);
         InstallTransitFlow data = (InstallTransitFlow) prepareData(value);
         OFFlowAdd flowCommand = scheme.transitFlowMod(data.getInputPort(), data.getOutputPort(),
-                data.getTransitEncapsulationId(), 123L);
+                data.getTransitEncapsulationId(), 123L, data.getTransitEncapsulationType(),
+                DatapathId.of(data.getIngressSwitchId().toLong()));
         runTest(value, flowCommand, null, null, null);
     }
 

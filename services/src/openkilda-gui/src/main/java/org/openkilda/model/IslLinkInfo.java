@@ -42,7 +42,7 @@ public class IslLinkInfo implements Serializable {
     private int srcPort;
 
     @JsonProperty("latency")
-    private int latency;
+    private Long latency;
 
     @JsonProperty("source_switch")
     private String srcSwitch;
@@ -139,7 +139,7 @@ public class IslLinkInfo implements Serializable {
      * @return the latency
      */
 
-    public int getLatency() {
+    public Long getLatency() {
         return latency;
     }
 
@@ -149,7 +149,7 @@ public class IslLinkInfo implements Serializable {
      * @param latency the new latency
      */
 
-    public void setLatency(final int latency) {
+    public void setLatency(final Long latency) {
         this.latency = latency;
     }
 

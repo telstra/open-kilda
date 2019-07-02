@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -84,6 +84,7 @@ public class InstallEgressFlow extends InstallTransitFlow {
      * @param transitEncapsulationType  transit encapsulation type value
      * @param outputVlanId   output vlan id value
      * @param outputVlanType output vlan tag action
+     * @param ingressSwitchId id of the ingress switch
      * @throws IllegalArgumentException if any of mandatory parameters is null
      */
     @JsonCreator
@@ -97,9 +98,10 @@ public class InstallEgressFlow extends InstallTransitFlow {
                              @JsonProperty("transit_encapsulation_type") final FlowEncapsulationType
                                          transitEncapsulationType,
                              @JsonProperty("output_vlan_id") final Integer outputVlanId,
-                             @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType) {
+                             @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
+                             @JsonProperty("ingress_switch_id") final SwitchId ingressSwitchId) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
-                transitEncapsulationType);
+                transitEncapsulationType, ingressSwitchId);
         setOutputVlanId(outputVlanId);
         setOutputVlanType(outputVlanType);
     }
