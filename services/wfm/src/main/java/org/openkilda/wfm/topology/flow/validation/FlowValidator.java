@@ -27,6 +27,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableSet;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -74,8 +75,8 @@ public class FlowValidator {
     public void validateFowSwap(Flow firstFlow, Flow secondFlow) throws FlowValidationException {
         checkFlowForIslConflicts(firstFlow);
         checkFlowForIslConflicts(secondFlow);
-        checkFlowForEndpointConflicts(firstFlow, firstFlow.getFlowId(), secondFlow.getFlowId());
-        checkFlowForEndpointConflicts(secondFlow, firstFlow.getFlowId(), secondFlow.getFlowId());
+        checkFlowForEndpointConflicts(firstFlow, secondFlow.getFlowId());
+        checkFlowForEndpointConflicts(secondFlow, firstFlow.getFlowId());
         checkForEqualsEndpoints(firstFlow, secondFlow);
     }
 
@@ -219,18 +220,17 @@ public class FlowValidator {
     }
 
     @VisibleForTesting
-    void checkFlowForEndpointConflicts(Flow checkedFlow, String firstFlowId, String secondFlowId)
+    void checkFlowForEndpointConflicts(Flow checkedFlow, String flowIdToBeSwappedWith)
             throws FlowValidationException {
         Collection<Flow> conflictsOnSource = flowRepository.findByEndpoint(checkedFlow.getSrcSwitch().getSwitchId(),
                 checkedFlow.getSrcPort());
 
+        Set<String> processingFlowIds = ImmutableSet.of(checkedFlow.getFlowId(), flowIdToBeSwappedWith);
         Optional<Flow> conflictSrcSrc = conflictsOnSource.stream()
-                .filter(flow -> !firstFlowId.equals(flow.getFlowId()))
-                .filter(flow -> !secondFlowId.equals(flow.getFlowId()))
+                .filter(flow -> !processingFlowIds.contains(flow.getFlowId()))
                 .filter(flow -> flow.getSrcSwitch().getSwitchId().equals(checkedFlow.getSrcSwitch().getSwitchId())
                         && flow.getSrcPort() == checkedFlow.getSrcPort()
-                        && (flow.getSrcVlan() == checkedFlow.getSrcVlan()
-                        || flow.getSrcVlan() == 0 || checkedFlow.getSrcVlan() == 0))
+                        && (flow.getSrcVlan() == checkedFlow.getSrcVlan()))
                 .findAny();
 
         if (conflictSrcSrc.isPresent()) {
@@ -241,12 +241,10 @@ public class FlowValidator {
         }
 
         Optional<Flow> conflictDstSrc = conflictsOnSource.stream()
-                .filter(flow -> !firstFlowId.equals(flow.getFlowId()))
-                .filter(flow -> !secondFlowId.equals(flow.getFlowId()))
+                .filter(flow -> !processingFlowIds.contains(flow.getFlowId()))
                 .filter(flow -> flow.getDestSwitch().getSwitchId().equals(checkedFlow.getSrcSwitch().getSwitchId())
                         && flow.getDestPort() == checkedFlow.getSrcPort()
-                        && (flow.getDestVlan() == checkedFlow.getSrcVlan()
-                        || flow.getDestVlan() == 0 || checkedFlow.getSrcVlan() == 0))
+                        && (flow.getDestVlan() == checkedFlow.getSrcVlan()))
                 .findAny();
 
         if (conflictDstSrc.isPresent()) {
@@ -263,12 +261,10 @@ public class FlowValidator {
 
 
         Optional<Flow> conflictSrcDst = conflictsOnDest.stream()
-                .filter(flow -> !firstFlowId.equals(flow.getFlowId()))
-                .filter(flow -> !secondFlowId.equals(flow.getFlowId()))
+                .filter(flow -> !processingFlowIds.contains(flow.getFlowId()))
                 .filter(flow -> flow.getSrcSwitch().getSwitchId().equals(checkedFlow.getDestSwitch().getSwitchId())
                         && flow.getSrcPort() == checkedFlow.getDestPort()
-                        && (flow.getSrcVlan() == checkedFlow.getDestVlan()
-                        || flow.getSrcVlan() == 0 || checkedFlow.getDestVlan() == 0))
+                        && (flow.getSrcVlan() == checkedFlow.getDestVlan()))
                 .findAny();
 
         if (conflictSrcDst.isPresent()) {
@@ -279,12 +275,10 @@ public class FlowValidator {
         }
 
         Optional<Flow> conflictDstDst = conflictsOnDest.stream()
-                .filter(flow -> !firstFlowId.equals(flow.getFlowId()))
-                .filter(flow -> !secondFlowId.equals(flow.getFlowId()))
+                .filter(flow -> !processingFlowIds.contains(flow.getFlowId()))
                 .filter(flow -> flow.getDestSwitch().getSwitchId().equals(checkedFlow.getDestSwitch().getSwitchId())
                         && flow.getDestPort() == checkedFlow.getDestPort()
-                        && (flow.getDestVlan() == checkedFlow.getDestVlan()
-                        || flow.getDestVlan() == 0 || checkedFlow.getDestVlan() == 0))
+                        && (flow.getDestVlan() == checkedFlow.getDestVlan()))
                 .findAny();
 
         if (conflictDstDst.isPresent()) {
