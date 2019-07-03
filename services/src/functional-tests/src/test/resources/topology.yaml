@@ -159,7 +159,7 @@ isls:
     a_switch:
       in_port: 20
 
-traffgens:
+traff_gens:
   - name: tg1
     iface: eth0
     control_endpoint: http://0.0.0.0:4041
@@ -180,6 +180,6 @@ traffgens:
     switch_port: 10
     status: active
 
-traffgen_config:
+traff_gen_config:
   address_pool_base: 172.16.80.0
   address_pool_prefix_len: 20

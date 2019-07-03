@@ -83,7 +83,7 @@ isls:
       dst_port: 7
       max_bandwidth: 10000
 
-traffgens:
+traff_gens:
     - name: tg1
       iface: eth0
       control_endpoint: http://192.168.0.1:80/
@@ -105,6 +105,6 @@ traffgens:
       switch_port: 10
       status: active
 
-traffgen_config:
+traff_gen_config:
     address_pool_base: 172.16.80.0
     address_pool_prefix_len: 20

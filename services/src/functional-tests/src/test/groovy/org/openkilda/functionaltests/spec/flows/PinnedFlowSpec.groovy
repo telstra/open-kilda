@@ -4,7 +4,7 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
 - In case of isl down such flow should be marked as DOWN.
 - On Isl up event such flow shouldn't be re-routed as well.
   Instead kilda should verify that it's path is online and mark flow as UP.""")
-class PinnedFlowSpec extends BaseSpecification {
+class PinnedFlowSpec extends HealthCheckSpecification {
 
     def "System doesn't reroute(automatically) pinned flow when flow path is partially broken"() {
         given: "A pinned flow going through a long not preferable path"

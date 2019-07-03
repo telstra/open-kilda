@@ -3,7 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
@@ -12,7 +12,7 @@ import spock.lang.Shared
 
 @Narrative("""Verify that history records are created for the create/update actions.
 History record is created in case the create/update action is completed successfully.""")
-class FlowHistorySpec extends BaseSpecification {
+class FlowHistorySpec extends HealthCheckSpecification {
     String createAction = "Flow creating"
     String createHistoryAction = "Created the flow"
     String updateAction = "Flow updating"

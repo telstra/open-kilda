@@ -6,7 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDEN
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -18,7 +18,7 @@ import spock.lang.Narrative
 import spock.lang.Unroll
 
 @Narrative("Verify that Kilda allows to properly control port state on switches (bring ports up or down).")
-class SwitchPortConfigSpec extends BaseSpecification {
+class SwitchPortConfigSpec extends HealthCheckSpecification {
 
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix

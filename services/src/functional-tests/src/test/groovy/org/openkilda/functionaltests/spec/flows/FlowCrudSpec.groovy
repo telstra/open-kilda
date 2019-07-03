@@ -9,7 +9,7 @@ import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -38,7 +38,7 @@ import javax.inject.Provider
 
 @Slf4j
 @Narrative("Verify CRUD operations and health of most typical types of flows on different types of switches.")
-class FlowCrudSpec extends BaseSpecification {
+class FlowCrudSpec extends HealthCheckSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider

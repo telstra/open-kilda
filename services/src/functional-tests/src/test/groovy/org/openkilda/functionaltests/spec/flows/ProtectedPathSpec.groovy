@@ -7,7 +7,7 @@ import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -40,7 +40,7 @@ System can start to use protected path in two case:
 A flow has the status degraded in case when the main path is up and the protected path is down.
 
 Main and protected paths can't use the same link.""")
-class ProtectedPathSpec extends BaseSpecification {
+class ProtectedPathSpec extends HealthCheckSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider

@@ -4,7 +4,7 @@ package org.openkilda.functionaltests.spec.stats
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -25,7 +25,7 @@ import javax.inject.Provider
 @Narrative("""Now we have two FL instances: Management and Statistics.
 - FL Stats: collect statistics only from the switches.
 - FL Management: do the other work and can collect statistics as well when a switch doesn't connect to FL Stats.""")
-class MflStatSpec extends BaseSpecification {
+class MflStatSpec extends HealthCheckSpecification {
     @Shared
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix

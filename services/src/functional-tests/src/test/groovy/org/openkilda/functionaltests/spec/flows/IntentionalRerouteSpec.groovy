@@ -6,8 +6,8 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.rerun.Rerun
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -23,7 +23,7 @@ import spock.lang.Narrative
 import javax.inject.Provider
 
 @Narrative("Verify that on-demand reroute operations are performed accurately.")
-class IntentionalRerouteSpec extends BaseSpecification {
+class IntentionalRerouteSpec extends HealthCheckSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider

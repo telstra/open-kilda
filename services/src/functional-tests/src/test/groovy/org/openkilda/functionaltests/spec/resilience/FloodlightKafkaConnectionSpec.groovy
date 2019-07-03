@@ -2,7 +2,7 @@ package org.openkilda.functionaltests.spec.resilience
 
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.ctrl.KafkaBreakTarget
 import org.openkilda.messaging.info.event.IslChangeType
@@ -14,7 +14,7 @@ import spock.lang.Ignore
 
 import java.util.concurrent.TimeUnit
 
-class FloodlightKafkaConnectionSpec extends BaseSpecification {
+class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
     @Autowired
     KafkaBreaker kafkaBreaker
 

@@ -4,7 +4,7 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -12,7 +12,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Unroll
 
-class IslCostSpec extends BaseSpecification {
+class IslCostSpec extends HealthCheckSpecification {
 
     @Value('${isl.cost.when.port.down}')
     int islCostWhenPortDown

@@ -4,7 +4,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.testing.Constants.DefaultRule
 
@@ -17,7 +17,7 @@ import spock.util.mop.Use
 
 @Use(TimeCategory)
 @Narrative("Verify that basic stats logging happens.")
-class OpenTsdbSpec extends BaseSpecification {
+class OpenTsdbSpec extends HealthCheckSpecification {
 
     @Shared
     @Value('${opentsdb.metric.prefix}')

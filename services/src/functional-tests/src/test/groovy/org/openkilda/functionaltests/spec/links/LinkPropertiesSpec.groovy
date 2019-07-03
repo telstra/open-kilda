@@ -3,7 +3,7 @@ package org.openkilda.functionaltests.spec.links
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.fixture.TestFixture
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -15,7 +15,7 @@ import org.openkilda.testing.Constants
 import spock.lang.Shared
 import spock.lang.Unroll
 
-class LinkPropertiesSpec extends BaseSpecification {
+class LinkPropertiesSpec extends HealthCheckSpecification {
 
     @Shared
     def propsDataForSearch = [

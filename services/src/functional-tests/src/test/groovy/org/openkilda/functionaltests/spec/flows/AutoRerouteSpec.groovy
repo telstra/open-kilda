@@ -6,7 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -25,7 +25,7 @@ import spock.lang.Unroll
 import java.util.concurrent.TimeUnit
 
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
-class AutoRerouteSpec extends BaseSpecification {
+class AutoRerouteSpec extends HealthCheckSpecification {
 
     @Tags(SMOKE)
     def "Flow is rerouted when one of the flow ISLs fails"() {

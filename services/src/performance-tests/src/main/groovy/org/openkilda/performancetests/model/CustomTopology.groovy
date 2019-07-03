@@ -12,7 +12,7 @@ class CustomTopology extends TopologyDefinition {
     def r = new Random()
 
     CustomTopology() {
-        super([], [], [], new TraffGenConfig("172.16.80.0", 20))
+        super([], [], [], TraffGenConfig.defaultConfig())
     }
 
     /**
