@@ -29,7 +29,6 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.Swi
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState.VALIDATE_METERS;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState.VALIDATE_RULES;
 
-import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
@@ -44,12 +43,12 @@ import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
-import org.openkilda.wfm.topology.switchmanager.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
+import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -73,7 +72,7 @@ public class SwitchValidateFsm
     private final SwitchManagerCarrier carrier;
     private final ValidationService validationService;
     private SwitchId switchId;
-    private boolean isSwitchSupportMeters = true;
+    private boolean processMeters;
     private List<FlowEntry> flowEntries;
     private List<MeterEntry> presentMeters;
     private ValidateRulesResult validateRulesResult;
@@ -85,6 +84,8 @@ public class SwitchValidateFsm
         this.key = key;
         this.request = request;
         this.validationService = validationService;
+        this.processMeters = request.isProcessMeters();
+        this.switchId = request.getSwitchId();
     }
 
     /**
@@ -138,18 +139,19 @@ public class SwitchValidateFsm
     protected void initialized(SwitchValidateState from, SwitchValidateState to,
                                SwitchValidateEvent event, Object context) {
         log.info("Key: {}, validate FSM initialized", key);
-        switchId = request.getSwitchId();
     }
 
     protected void receiveData(SwitchValidateState from, SwitchValidateState to,
                                SwitchValidateEvent event, Object context) {
         log.info("Key: {}, sending requests to get switch rules and meters", key);
 
-        carrier.sendCommand(key, new CommandMessage(new DumpRulesForSwitchManagerRequest(switchId),
-                System.currentTimeMillis(), key));
+        carrier.sendCommandToSpeaker(key, new DumpRulesForSwitchManagerRequest(switchId));
 
-        carrier.sendCommand(key, new CommandMessage(new DumpMetersForSwitchManagerRequest(switchId),
-                System.currentTimeMillis(), key));
+        if (processMeters) {
+            carrier.sendCommandToSpeaker(key, new DumpMetersForSwitchManagerRequest(switchId));
+        } else {
+            presentMeters = emptyList();
+        }
     }
 
     protected void rulesReceived(SwitchValidateState from, SwitchValidateState to,
@@ -170,7 +172,7 @@ public class SwitchValidateFsm
                                   SwitchValidateEvent event, Object context) {
         log.info("Key: {}, switch meters unsupported", key);
         this.presentMeters = emptyList();
-        this.isSwitchSupportMeters = false;
+        this.processMeters = false;
         checkAllDataReceived();
     }
 
@@ -187,7 +189,6 @@ public class SwitchValidateFsm
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
 
         log.warn(ERROR_LOG_MESSAGE, key, errorData.getErrorMessage());
-        carrier.endProcessing(key);
         carrier.response(key, errorMessage);
     }
 
@@ -209,7 +210,7 @@ public class SwitchValidateFsm
     protected void validateMeters(SwitchValidateState from, SwitchValidateState to,
                                   SwitchValidateEvent event, Object context) {
         try {
-            if (isSwitchSupportMeters) {
+            if (processMeters) {
                 log.info("Key: {}, validate meters", key);
                 validateMetersResult = validationService.validateMeters(switchId, presentMeters,
                         carrier.getFlowMeterMinBurstSizeInKbits(), carrier.getFlowMeterBurstCoefficient());
@@ -224,13 +225,13 @@ public class SwitchValidateFsm
                             SwitchValidateEvent event, Object context) {
         if (request.isPerformSync()) {
             carrier.runSwitchSync(key, request,
-                    new ValidationResult(flowEntries, validateRulesResult, validateMetersResult));
+                    new ValidationResult(flowEntries, processMeters, validateRulesResult, validateMetersResult));
         } else {
             RulesValidationEntry rulesValidationEntry = new RulesValidationEntry(validateRulesResult.getMissingRules(),
                     validateRulesResult.getProperRules(), validateRulesResult.getExcessRules());
 
             MetersValidationEntry metersValidationEntry = null;
-            if (isSwitchSupportMeters) {
+            if (processMeters) {
                 metersValidationEntry = new MetersValidationEntry(
                         validateMetersResult.getMissingMeters(), validateMetersResult.getMisconfiguredMeters(),
                         validateMetersResult.getProperMeters(), validateMetersResult.getExcessMeters());
@@ -239,16 +240,20 @@ public class SwitchValidateFsm
             SwitchValidationResponse response = new SwitchValidationResponse(
                     rulesValidationEntry, metersValidationEntry);
             InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);
-            carrier.endProcessing(key);
+
+            carrier.cancelTimeoutCallback(key);
             carrier.response(key, message);
         }
     }
 
     protected void finishedWithError(SwitchValidateState from, SwitchValidateState to,
                                      SwitchValidateEvent event, Object context) {
-        ErrorMessage message = (ErrorMessage) context;
+        ErrorMessage sourceError = (ErrorMessage) context;
+        ErrorMessage message = new ErrorMessage(sourceError.getData(), System.currentTimeMillis(), key);
+
         log.error(ERROR_LOG_MESSAGE, key, message.getData().getErrorMessage());
-        carrier.endProcessing(key);
+
+        carrier.cancelTimeoutCallback(key);
         carrier.response(key, message);
     }
 

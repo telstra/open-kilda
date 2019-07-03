@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -18,25 +18,24 @@ package org.openkilda.messaging.command.flow;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.model.SwitchId;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
+import lombok.Builder;
+import lombok.Value;
 
-@Getter
-@EqualsAndHashCode(callSuper = false)
-public class DeleteMeterRequest extends CommandData {
+@Value
+@Builder
+public class RemoveFlowForSwitchManagerRequest extends CommandData {
 
     @JsonProperty("switch_id")
-    private SwitchId switchId;
+    SwitchId switchId;
 
-    @JsonProperty("meter_id")
-    private long meterId;
+    @JsonProperty("flow_command")
+    RemoveFlow flowCommand;
 
-    @JsonCreator
-    public DeleteMeterRequest(@JsonProperty("switch_id") SwitchId switchId,
-                              @JsonProperty("meter_id") long meterId) {
+    public RemoveFlowForSwitchManagerRequest(
+            @JsonProperty("switch_id") SwitchId switchId,
+            @JsonProperty("flow_command") RemoveFlow flowCommand) {
         this.switchId = switchId;
-        this.meterId = meterId;
+        this.flowCommand = flowCommand;
     }
 }

@@ -80,11 +80,11 @@ public class SpeakerRequestBolt extends RequestBolt {
         ErrorData errorData = new ErrorData(ErrorType.NOT_FOUND, errorDetails, errorDetails);
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(),
                 commandMessage.getCorrelationId(), null);
-        Values values = new Values(errorMessage);
+        Values values = new Values(commandMessage.getCorrelationId(), errorMessage);
         if (commandMessage.getData() instanceof ValidateRulesRequest) {
             getOutput().emit(Stream.NORTHBOUND_REPLY, input, values);
         } else if (commandMessage.getData() instanceof DumpRulesForSwitchManagerRequest) {
-            getOutput().emit(Stream.NB_WORKER, input, values);
+            getOutput().emit(Stream.KILDA_SWITCH_MANAGER, input, values);
         } else {
             log.error("Unable to lookup region for message: {}. switch is not tracked.", commandMessage);
         }
@@ -93,8 +93,10 @@ public class SpeakerRequestBolt extends RequestBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         super.declareOutputFields(outputFieldsDeclarer);
-        Fields fields = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
+        Fields fields = new Fields(FieldNameBasedTupleToKafkaMapper.BOLT_KEY,
+                FieldNameBasedTupleToKafkaMapper.BOLT_MESSAGE);
+
         outputFieldsDeclarer.declareStream(Stream.NORTHBOUND_REPLY, fields);
-        outputFieldsDeclarer.declareStream(Stream.NB_WORKER, fields);
+        outputFieldsDeclarer.declareStream(Stream.KILDA_SWITCH_MANAGER, fields);
     }
 }

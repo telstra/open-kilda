@@ -13,9 +13,21 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.rule;
+package org.openkilda.messaging.command.switches;
 
-import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.command.flow.DeleteMeterRequest;
+import org.openkilda.model.SwitchId;
 
-public class BatchInstallResponse extends InfoData {
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Value;
+
+@Value
+public class DeleterMeterForSwitchManagerRequest extends DeleteMeterRequest {
+
+    @JsonCreator
+    public DeleterMeterForSwitchManagerRequest(@JsonProperty("switch_id") SwitchId switchId,
+                                               @JsonProperty("meter_id") Long meterId) {
+        super(switchId, meterId);
+    }
 }

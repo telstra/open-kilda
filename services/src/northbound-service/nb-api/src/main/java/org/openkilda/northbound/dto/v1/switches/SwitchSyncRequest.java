@@ -13,19 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.model;
+package org.openkilda.northbound.dto.v1.switches;
 
-import org.openkilda.messaging.info.rule.FlowEntry;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import lombok.Value;
-
-import java.util.List;
-
-@Value
-public class ValidationResult {
-    List<FlowEntry> flowEntries;
-    boolean processMeters;
-
-    ValidateRulesResult validateRulesResult;
-    ValidateMetersResult validateMetersResult;
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class SwitchSyncRequest {
+    @JsonProperty("remove_excess")
+    private boolean removeExcess;
 }

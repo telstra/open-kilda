@@ -13,19 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.model;
+package org.openkilda.messaging.info.flow;
 
-import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.InfoData;
 
-import lombok.Value;
-
-import java.util.List;
-
-@Value
-public class ValidationResult {
-    List<FlowEntry> flowEntries;
-    boolean processMeters;
-
-    ValidateRulesResult validateRulesResult;
-    ValidateMetersResult validateMetersResult;
+public class FlowRemoveResponse extends InfoData {
 }

@@ -13,23 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager;
+package org.openkilda.wfm.topology.switchmanager.service;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.command.switches.SwitchValidateRequest;
-import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
+import org.openkilda.wfm.error.PipelineException;
 
-public interface SwitchManagerCarrier {
-    void sendCommand(String key, CommandMessage command);
+public interface SpeakerCommandCarrier {
 
-    void response(String key, Message message);
+    void sendCommand(String key, CommandMessage command) throws PipelineException;
 
-    void endProcessing(String key);
-
-    long getFlowMeterMinBurstSizeInKbits();
-
-    double getFlowMeterBurstCoefficient();
-
-    void runSwitchSync(String key, SwitchValidateRequest request, ValidationResult validationResult);
+    void sendResponse(String key, Message response) throws PipelineException;
 }

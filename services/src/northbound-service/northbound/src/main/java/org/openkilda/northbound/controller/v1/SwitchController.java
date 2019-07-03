@@ -39,6 +39,8 @@ import org.openkilda.northbound.dto.v1.switches.PortDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncRequest;
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.service.SwitchService;
@@ -56,6 +58,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -280,6 +283,20 @@ public class SwitchController extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<RulesSyncResult> syncRules(@PathVariable(name = "switch_id") SwitchId switchId) {
         return switchService.syncRules(switchId);
+    }
+
+    /**
+     * Synchronize (install) missing flows that should be on the switch but exist only in neo4j.
+     * Optionally removes excess rules from the switch.
+     *
+     * @return the synchronization result.
+     */
+    @ApiOperation(value = "Synchronize rules on the switch", response = RulesSyncResult.class)
+    @PatchMapping(path = "/{switch_id}/synchronize")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchSyncResult> syncSwitch(@PathVariable(name = "switch_id") SwitchId switchId,
+                                                          @RequestBody SwitchSyncRequest request) {
+        return switchService.syncSwitch(switchId, request.isRemoveExcess());
     }
 
     /**

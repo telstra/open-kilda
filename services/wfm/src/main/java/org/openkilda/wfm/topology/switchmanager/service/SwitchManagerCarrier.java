@@ -15,21 +15,21 @@
 
 package org.openkilda.wfm.topology.switchmanager.service;
 
+import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
-import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 
-public interface SwitchSyncService {
+public interface SwitchManagerCarrier {
+    void sendCommandToSpeaker(String key, CommandData command);
 
-    void handleSwitchSync(String key, SwitchValidateRequest request, ValidationResult validationResult);
+    void response(String key, Message message);
 
-    void handleInstallRulesResponse(String key);
+    void cancelTimeoutCallback(String key);
 
-    void handleRemoveRulesResponse(String key);
+    long getFlowMeterMinBurstSizeInKbits();
 
-    void handleRemoveMetersResponse(String key);
+    double getFlowMeterBurstCoefficient();
 
-    void handleTaskTimeout(String key);
-
-    void handleTaskError(String key, ErrorMessage message);
+    void runSwitchSync(String key, SwitchValidateRequest request, ValidationResult validationResult);
 }

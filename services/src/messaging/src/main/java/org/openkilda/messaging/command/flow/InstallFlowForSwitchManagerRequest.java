@@ -18,26 +18,26 @@ package org.openkilda.messaging.command.flow;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 
-import java.util.List;
-
 @Value
 @Builder
-public class BatchInstallForSwitchManagerRequest extends CommandData {
+public class InstallFlowForSwitchManagerRequest extends CommandData {
 
-    @JsonProperty("switch_id")
-    private SwitchId switchId;
+    @JsonProperty("flow_command")
+    private BaseInstallFlow flowCommand;
 
-    @JsonProperty("flow_commands")
-    private List<BaseInstallFlow> flowCommands;
+    @JsonCreator
+    public InstallFlowForSwitchManagerRequest(@JsonProperty("flow_command") BaseInstallFlow flowCommand) {
+        this.flowCommand = flowCommand;
+    }
 
-    public BatchInstallForSwitchManagerRequest(
-            @JsonProperty("switch_id") SwitchId switchId,
-            @JsonProperty("flow_commands") List<BaseInstallFlow> flowCommands) {
-        this.switchId = switchId;
-        this.flowCommands = flowCommands;
+    @JsonIgnore
+    public SwitchId getSwitchId() {
+        return flowCommand.getSwitchId();
     }
 }

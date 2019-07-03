@@ -13,19 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.model;
+package org.openkilda.northbound.dto.v1.switches;
 
-import org.openkilda.messaging.info.rule.FlowEntry;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import lombok.Value;
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@JsonInclude(Include.NON_NULL)
+public class SwitchSyncResult {
 
-import java.util.List;
+    @JsonProperty("rules")
+    private RulesSyncDto rules;
 
-@Value
-public class ValidationResult {
-    List<FlowEntry> flowEntries;
-    boolean processMeters;
-
-    ValidateRulesResult validateRulesResult;
-    ValidateMetersResult validateMetersResult;
+    @JsonProperty("meters")
+    private MetersSyncDto meters;
 }

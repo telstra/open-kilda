@@ -20,10 +20,10 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.switchmanager.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateState;
+import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
@@ -104,6 +104,7 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
         }
 
         fsm.fire(SwitchValidateEvent.TIMEOUT);
+        process(fsm);
     }
 
     @Override
@@ -114,6 +115,7 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
         }
 
         fsm.fire(SwitchValidateEvent.ERROR, message);
+        process(fsm);
     }
 
     private void logFsmNotFound(String key) {
