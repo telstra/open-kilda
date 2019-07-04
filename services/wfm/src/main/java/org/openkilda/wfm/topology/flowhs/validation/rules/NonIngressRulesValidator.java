@@ -26,11 +26,8 @@ import java.util.Objects;
 @Slf4j
 public class NonIngressRulesValidator extends RulesValidator {
 
-    private final InstallTransitRule expected;
-
     public NonIngressRulesValidator(InstallTransitRule expected, FlowRuleResponse actual) {
         super(expected, actual);
-        this.expected = expected;
     }
 
     @Override

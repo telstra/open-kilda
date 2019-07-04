@@ -20,6 +20,9 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
+import org.openkilda.model.SwitchFeatures;
+import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -32,6 +35,12 @@ import java.util.UUID;
 
 @Slf4j
 public class ValidateIngressRulesAction extends RuleProcessingAction {
+
+    private final SwitchFeaturesRepository switchFeaturesRepository;
+
+    public ValidateIngressRulesAction(PersistenceManager persistenceManager) {
+        this.switchFeaturesRepository = persistenceManager.getRepositoryFactory().createSwitchFeaturesRepository();
+    }
 
     @Override
     protected void perform(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
@@ -46,8 +55,12 @@ public class ValidateIngressRulesAction extends RuleProcessingAction {
         }
 
         if (response.isSuccess()) {
+            SwitchFeatures switchFeatures =  switchFeaturesRepository.findBySwitchId(expected.getSwitchId())
+                    .orElseThrow(() -> new IllegalStateException(format("Failed to find list of features for switch %s",
+                            expected.getSwitchId())));
+
             RulesValidator validator =
-                    new IngressRulesValidator(expected, (FlowRuleResponse) context.getFlowResponse());
+                    new IngressRulesValidator(expected, (FlowRuleResponse) context.getFlowResponse(), switchFeatures);
             if (validator.validate()) {
                 String message = format("Ingress rule %s has been validated successfully on switch %s",
                         expected.getCookie(), expected.getSwitchId());

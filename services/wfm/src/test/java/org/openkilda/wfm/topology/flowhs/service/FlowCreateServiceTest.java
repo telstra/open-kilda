@@ -43,6 +43,7 @@ import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.pce.Path;
@@ -58,6 +59,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.CommandContext;
@@ -129,6 +131,9 @@ public class FlowCreateServiceTest {
     private KildaConfigurationRepository kildaConfigurationRepository;
 
     @Mock
+    private SwitchFeaturesRepository switchFeaturesRepository;
+
+    @Mock
     private FlowResourcesManager flowResourcesManager;
     
     @Mock
@@ -178,6 +183,9 @@ public class FlowCreateServiceTest {
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
 
+        when(switchFeaturesRepository.findBySwitchId(any(SwitchId.class)))
+                .thenReturn(Optional.of(SwitchFeatures.builder().build()));
+        when(repositoryFactory.createSwitchFeaturesRepository()).thenReturn(switchFeaturesRepository);
         target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager);
     }
 
