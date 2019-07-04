@@ -58,10 +58,16 @@ public class IslStatsService {
      * @param destination isl destination endpoint
      */
     public void handleRoundTripLatencyMetric(long timestamp, IslRoundTripLatency data, Endpoint destination) {
+        if (data.getLatency() < 0) {
+            log.warn("Received invalid round trip latency {} for ISL {}_{} ===> {}_{}. Packet Id: {}",
+                    data.getLatency(), data.getSrcSwitchId(), data.getSrcPortNo(),
+                    destination.getDatapath(), destination.getPortNumber(), data.getPacketId());
+            return;
+        }
+
         log.debug("Received round trip latency {} for ISL {}_{} ===> {}_{}. Packet Id: {}",
                 data.getLatency(), data.getSrcSwitchId(), data.getSrcPortNo(),
                 destination.getDatapath(), destination.getPortNumber(), data.getPacketId());
-
 
         IslKey islKey = new IslKey(data, destination);
         roundTripLatencyStorage.put(islKey, new LatencyRecord(data.getLatency(), timestamp));
