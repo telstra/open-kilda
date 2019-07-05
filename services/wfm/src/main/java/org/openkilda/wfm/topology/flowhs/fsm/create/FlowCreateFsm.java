@@ -197,7 +197,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         // rules deletion
         builder.transitions()
                 .from(State.REMOVING_RULES)
-                .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
+                .toAmong(State.REMOVING_RULES, State.REVERTING)
                 .onEach(Event.COMMAND_EXECUTED, Event.ERROR)
                 .perform(new OnReceivedDeleteResponseAction(persistenceManager));
         builder.transition()
