@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
@@ -18,6 +19,7 @@ import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
@@ -30,6 +32,7 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -711,6 +714,35 @@ class FlowCrudSpec extends BaseSpecification {
         flowDescription | bandwidth
         "a metered"     | 1000
         "an unmetered"  | 0
+    }
+
+    @Ignore("https://github.com/telstra/open-kilda/issues/2576")
+    @Tags(VIRTUAL)
+    def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
+        given: "A deactivated switch"
+        def sw = topology.getActiveSwitches().first()
+        def swIsls = topology.getRelatedIsls(sw)
+        lockKeeper.knockoutSwitch(sw)
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
+        }
+
+        when: "Create a flow"
+        def flow = flowHelper.singleSwitchFlow(sw)
+        northbound.addFlow(flow)
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 404
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch $sw.dpId not found"
+
+        and: "Cleanup: Activate the switch and reset costs"
+        lockKeeper.reviveSwitch(sw)
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
+            def links = northbound.getAllLinks()
+            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
+        }
     }
 
     @Shared
