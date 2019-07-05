@@ -15,8 +15,6 @@
 
 package org.openkilda.testing.service.traffexam;
 
-import static java.util.Collections.unmodifiableMap;
-
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen;
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGenConfig;
@@ -61,12 +59,12 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.InputMismatchException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 
@@ -89,11 +87,11 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     @Autowired
     private TopologyDefinition topology;
 
-    private Map<UUID, Host> hostsPool;
+    private ConcurrentHashMap<UUID, Host> hostsPool;
     private Inet4NetworkPool addressPool;
 
-    private Map<UUID, Address> suppliedAddresses = new HashMap<>();
-    private Map<UUID, HostResource> suppliedEndpoints = new HashMap<>();
+    private ConcurrentHashMap<UUID, Address> suppliedAddresses = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<UUID, HostResource> suppliedEndpoints = new ConcurrentHashMap<>();
     private List<HostResource> failedToRelease = new LinkedList<>();
 
     private final RetryPolicy retryPolicy = new RetryPolicy()
@@ -103,7 +101,7 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     @PostConstruct
     void initializePools() {
         baseUrl = labEndpoint + "/api/" + labService.getLab().getLabId() + "/traffgen/";
-        hostsPool = new HashMap<>();
+        hostsPool = new ConcurrentHashMap<>();
 
         for (TraffGen traffGen : topology.getActiveTraffGens()) {
             URI controlEndpoint;
@@ -128,7 +126,6 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
 
             hostsPool.put(id, host);
         }
-        hostsPool = unmodifiableMap(hostsPool);
 
         TraffGenConfig config = topology.getTraffGenConfig();
         Inet4Network network;
@@ -177,7 +174,8 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     }
 
     @Override
-    public ExamResources startExam(Exam exam, boolean udp) throws NoResultsFoundException, OperationalException {
+    public synchronized ExamResources startExam(Exam exam, boolean udp) throws NoResultsFoundException,
+            OperationalException {
         checkHostPresence(exam.getSource());
         checkHostPresence(exam.getDest());
 

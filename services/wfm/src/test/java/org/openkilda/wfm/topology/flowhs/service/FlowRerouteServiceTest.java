@@ -52,6 +52,7 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.pce.Path;
@@ -68,6 +69,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.CommandContext;
@@ -136,6 +138,11 @@ public class FlowRerouteServiceTest {
         SwitchRepository switchRepository = mock(SwitchRepository.class);
         when(switchRepository.reload(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
+
+        SwitchFeaturesRepository featuresRepository = mock(SwitchFeaturesRepository.class);
+        when(featuresRepository.findBySwitchId(any(SwitchId.class)))
+                .thenReturn(Optional.of(SwitchFeatures.builder().build()));
+        when(repositoryFactory.createSwitchFeaturesRepository()).thenReturn(featuresRepository);
 
         when(repositoryFactory.createTransitVlanRepository()).thenReturn(transitVlanRepository);
 

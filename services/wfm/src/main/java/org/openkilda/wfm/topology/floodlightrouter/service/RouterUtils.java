@@ -24,13 +24,14 @@ import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
 import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
 import org.openkilda.messaging.command.discovery.PortsCommandData;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
-import org.openkilda.messaging.command.flow.BatchInstallForSwitchManagerRequest;
-import org.openkilda.messaging.command.flow.BatchInstallRequest;
 import org.openkilda.messaging.command.flow.DeleteMeterRequest;
+import org.openkilda.messaging.command.flow.InstallFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.stats.StatsRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
+import org.openkilda.messaging.command.switches.DeleterMeterForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpMetersRequest;
 import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
@@ -92,8 +93,6 @@ public final class RouterUtils {
                 return ((SwitchRulesInstallRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpRulesRequest) {
                 return ((DumpRulesRequest) commandData).getSwitchId();
-            } else if (commandData instanceof BatchInstallRequest) {
-                return ((BatchInstallRequest) commandData).getSwitchId();
             } else if (commandData instanceof DeleteMeterRequest) {
                 return ((DeleteMeterRequest) commandData).getSwitchId();
             } else if (commandData instanceof PortConfigurationRequest) {
@@ -110,10 +109,14 @@ public final class RouterUtils {
                 return ((MeterModifyCommandRequest) commandData).getFwdSwitchId();
             } else if (commandData instanceof DumpRulesForSwitchManagerRequest) {
                 return ((DumpRulesForSwitchManagerRequest) commandData).getSwitchId();
-            } else if (commandData instanceof BatchInstallForSwitchManagerRequest) {
-                return ((BatchInstallForSwitchManagerRequest) commandData).getSwitchId();
+            } else if (commandData instanceof InstallFlowForSwitchManagerRequest) {
+                return ((InstallFlowForSwitchManagerRequest) commandData).getSwitchId();
+            } else if (commandData instanceof RemoveFlowForSwitchManagerRequest) {
+                return ((RemoveFlowForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof DumpMetersForSwitchManagerRequest) {
                 return ((DumpMetersForSwitchManagerRequest) commandData).getSwitchId();
+            } else if (commandData instanceof DeleterMeterForSwitchManagerRequest) {
+                return ((DeleterMeterForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof SetupBfdSession) {
                 return ((SetupBfdSession) commandData).getBfdSession().getTarget().getDatapath();
             } else if (commandData instanceof RemoveBfdSession) {

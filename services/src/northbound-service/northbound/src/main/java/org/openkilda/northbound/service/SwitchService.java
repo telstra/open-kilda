@@ -23,6 +23,7 @@ import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v1.switches.DeleteMeterResult;
@@ -31,6 +32,7 @@ import org.openkilda.northbound.dto.v1.switches.PortDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 
@@ -118,18 +120,27 @@ public interface SwitchService {
     /**
      * Validate the rules and the meters installed on the switch against the flows in Neo4J.
      *
-     * @param switchId switch to validate rules on.
+     * @param switchId switch to validate.
      * @return the validation details.
      */
     CompletableFuture<SwitchValidationResult> validateSwitch(SwitchId switchId);
 
     /**
-     * Synchronize (install) missing flows that should be on the switch but exist only in Neo4J.
+     * Synchronize (install) missing rules that should be on the switch but exist only in Neo4J.
      *
      * @param switchId switch to synchronize rules on.
      * @return the synchronization result.
      */
     CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId);
+
+    /**
+     * Synchronize (install) missing rules and optionally remove excess rules and meters on the switch.
+     *
+     * @param switchId switch to synchronize.
+     * @param removeExcess remove excess rules and meters flag.
+     * @return the synchronization result.
+     */
+    CompletableFuture<SwitchSyncResult> syncSwitch(SwitchId switchId, boolean removeExcess);
 
     /**
      * Dumps all meters from the switch.
@@ -196,4 +207,13 @@ public interface SwitchService {
      * @return result of the operation wrapped into {@link DeleteSwitchResult}. True means no errors is occurred.
      */
     CompletableFuture<DeleteSwitchResult> deleteSwitch(SwitchId switchId, boolean force);
+
+    /**
+     * Get a list of flows that goes through a particular switch.
+     *
+     * @param switchId the switch id.
+     * @param port the port of switch.
+     * @return list of flows that goes through a particular switch.
+     */
+    CompletableFuture<List<FlowPayload>> getFlowsForSwitch(SwitchId switchId, Integer port);
 }

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 
 import org.openkilda.functionaltests.BaseSpecification
@@ -77,18 +78,22 @@ class DefaultFlowSpec extends BaseSpecification {
         and: "System allows traffic on the vlan flow"
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(vlanFlow, bandwidth)
-        [exam.forward, exam.reverse].each { direction ->
-            def resources = traffExam.startExam(direction)
-            direction.setResources(resources)
-            assert traffExam.waitExam(direction).hasTraffic()
+        withPool {
+            [exam.forward, exam.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
         }
 
         and: "System allows traffic on the default flow"
         def exam2 = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(defaultFlow, 0)
-        [exam2.forward, exam2.reverse].each { direction ->
-            def resources = traffExam.startExam(direction)
-            direction.setResources(resources)
-            assert traffExam.waitExam(direction).hasTraffic()
+        withPool {
+            [exam2.forward, exam2.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
         }
 
         and: "Cleanup: Delete the flows"
@@ -111,10 +116,12 @@ class DefaultFlowSpec extends BaseSpecification {
         then: "System allows tagged traffic on the default flow"
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 0)
-        [exam.forward, exam.reverse].each { direction ->
-            def resources = traffExam.startExam(direction)
-            direction.setResources(resources)
-            assert traffExam.waitExam(direction).hasTraffic()
+        withPool {
+            [exam.forward, exam.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
         }
 
         and: "Cleanup: Delete the flows"

@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.validation.rules;
 
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
+import org.openkilda.model.SwitchFeatures;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,25 +26,28 @@ import java.util.Objects;
 @Slf4j
 public class IngressRulesValidator extends RulesValidator {
 
-    private InstallIngressRule expected;
+    private final SwitchFeatures switchFeatures;
 
-    public IngressRulesValidator(InstallIngressRule expected, FlowRuleResponse actual) {
+    public IngressRulesValidator(InstallIngressRule expected, FlowRuleResponse actual, SwitchFeatures switchFeatures) {
         super(expected, actual);
-        this.expected = expected;
+
+        this.switchFeatures = switchFeatures;
     }
 
     @Override
     public boolean validate() {
         boolean valid = super.validate();
-        if (!Objects.equals(expected.getInputVlanId(), actual.getInVlan())) {
+
+        InstallIngressRule expectedIngress = (InstallIngressRule) expected;
+        if (!Objects.equals(expectedIngress.getInputVlanId(), actual.getInVlan())) {
             log.warn("Input vlan mismatch for the flow {} on the switch {}. Expected {}, actual {}",
-                    expected.getFlowId(), expected.getSwitchId(), expected.getInputVlanId(), actual.getInVlan());
+                    expected.getFlowId(), expected.getSwitchId(), expectedIngress.getInputVlanId(), actual.getInVlan());
             valid = false;
         }
 
-        if (!Objects.equals(expected.getMeterId(), actual.getMeterId())) {
+        if (switchFeatures.isSupportMeters() && !Objects.equals(expectedIngress.getMeterId(), actual.getMeterId())) {
             log.warn("Meter mismatch for the flow {} on the switch {}. Expected {}, actual {}",
-                    expected.getFlowId(), expected.getSwitchId(), expected.getMeterId(), actual.getMeterId());
+                    expected.getFlowId(), expected.getSwitchId(), expectedIngress.getMeterId(), actual.getMeterId());
             valid = false;
         }
 

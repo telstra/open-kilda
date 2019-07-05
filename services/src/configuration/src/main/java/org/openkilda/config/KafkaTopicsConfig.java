@@ -192,6 +192,10 @@ public interface KafkaTopicsConfig {
     @Default("kilda.network.isl.status.priv")
     String getNetworkIslStatusTopic();
 
+    @Key("topo.switch.manager.nb")
+    @Default("kilda.nb.swmanager_request.priv")
+    String getTopoSwitchManagerNbTopic();
+
     @Key("topo.switch.manager")
     @Default("kilda.topo.switch.manager.storm")
     String getTopoSwitchManagerTopic();

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
@@ -713,10 +714,12 @@ class ProtectedPathSpec extends BaseSpecification {
         and: "The flow allows traffic(on the main path)"
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 0)
-        [exam.forward, exam.reverse].each { direction ->
-            def resources = traffExam.startExam(direction)
-            direction.setResources(resources)
-            assert traffExam.waitExam(direction).hasTraffic()
+        withPool {
+            [exam.forward, exam.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
         }
 
         when: "Swap flow paths"
@@ -792,10 +795,12 @@ class ProtectedPathSpec extends BaseSpecification {
         newProtectedSwitches.each { verifySwitchRules(it.dpId) }
 
         and: "The flow allows traffic(on the protected path)"
-        [exam.forward, exam.reverse].each { direction ->
-            def resources = traffExam.startExam(direction)
-            direction.setResources(resources)
-            assert traffExam.waitExam(direction).hasTraffic()
+        withPool {
+            [exam.forward, exam.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
         }
 
         and: "Cleanup: revert system to original state"

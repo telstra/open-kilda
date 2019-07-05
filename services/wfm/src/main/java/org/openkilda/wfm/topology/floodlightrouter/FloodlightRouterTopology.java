@@ -177,6 +177,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                                                    KafkaTopicsConfig topicsConfig) {
         KafkaBolt kildaSwitchManagerKafkaBolt = buildKafkaBolt(topicsConfig.getTopoSwitchManagerTopic());
         builder.setBolt(ComponentType.KILDA_SWITCH_MANAGER_KAFKA_BOLT, kildaSwitchManagerKafkaBolt, parallelism)
+                .shuffleGrouping(ComponentType.SPEAKER_REQUEST_BOLT, Stream.KILDA_SWITCH_MANAGER)
                 .shuffleGrouping(ComponentType.KILDA_SWITCH_MANAGER_REPLY_BOLT, Stream.KILDA_SWITCH_MANAGER);
     }
 
@@ -230,7 +231,6 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
                                                 KafkaTopicsConfig topicsConfig) {
         KafkaBolt kildaNbWorkerKafkaBolt = buildKafkaBolt(topicsConfig.getTopoNbTopic());
         builder.setBolt(ComponentType.KILDA_NB_WORKER_KAFKA_BOLT, kildaNbWorkerKafkaBolt, parallelism)
-                .shuffleGrouping(ComponentType.SPEAKER_REQUEST_BOLT, Stream.NB_WORKER)
                 .shuffleGrouping(ComponentType.KILDA_NB_WORKER_REPLY_BOLT, Stream.NB_WORKER);
     }
 

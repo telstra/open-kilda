@@ -13,18 +13,32 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.switchmanager.command;
+package org.openkilda.northbound.dto.v1.switches;
 
-import org.openkilda.messaging.command.CommandData;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import lombok.Value;
+import java.util.List;
 
-@Value
-public class RemoveKeyRouterBolt extends CommandData {
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class RulesSyncDto extends RulesValidationDto {
 
-    private String key;
+    @JsonProperty("missing")
+    private List<Long> missing;
 
-    public RemoveKeyRouterBolt(String key) {
-        this.key = key;
-    }
+    @JsonProperty("proper")
+    private List<Long> proper;
+
+    @JsonProperty("excess")
+    private List<Long> excess;
+
+    @JsonProperty("installed")
+    private List<Long> installed;
+
+    @JsonProperty("removed")
+    private List<Long> removed;
 }

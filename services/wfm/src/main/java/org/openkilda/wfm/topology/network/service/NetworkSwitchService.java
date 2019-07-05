@@ -149,14 +149,9 @@ public class NetworkSwitchService {
                 event = SwitchFsmEvent.PORT_DOWN;
                 break;
 
-            case OTHER_UPDATE:
-            case CACHED:
-                log.error("Invalid port event {} for {}_{} - incomplete or deprecated",
-                          payload.getState(), payload.getSwitchId(), payload.getPortNo());
-                break;
-
             default:
-                log.info("Ignore port event {}_{} (no need to handle it)", payload.getSwitchId(), payload.getPortNo());
+                log.info("Ignore port event {} for {}_{} (no need to handle it)",
+                        payload.getState(), payload.getSwitchId(), payload.getPortNo());
         }
 
         if (event != null) {

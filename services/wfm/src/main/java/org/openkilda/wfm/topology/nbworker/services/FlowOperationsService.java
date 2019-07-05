@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -34,13 +34,16 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
+import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -54,12 +57,14 @@ public class FlowOperationsService {
 
     private TransactionManager transactionManager;
     private IslRepository islRepository;
+    private SwitchRepository switchRepository;
     private FlowRepository flowRepository;
     private FlowPairRepository flowPairRepository;
     private FlowPathRepository flowPathRepository;
 
     public FlowOperationsService(RepositoryFactory repositoryFactory, TransactionManager transactionManager) {
         this.islRepository = repositoryFactory.createIslRepository();
+        this.switchRepository = repositoryFactory.createSwitchRepository();
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowPairRepository = repositoryFactory.createFlowPairRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
@@ -85,6 +90,35 @@ public class FlowOperationsService {
         }
 
         return flowPathRepository.findWithPathSegment(srcSwitchId, srcPort, dstSwitchId, dstPort);
+    }
+
+    /**
+     * Return all paths for a particular endpoint or for a particular switch if port is null.
+     *
+     * @param switchId switch id.
+     * @param port     port.
+     * @return all paths for a particular endpoint.
+     * @throws SwitchNotFoundException if there is no switch with this switch id.
+     */
+    public Collection<FlowPath> getFlowPathsForEndpoint(SwitchId switchId, Integer port)
+            throws SwitchNotFoundException {
+
+        if (!switchRepository.findById(switchId).isPresent()) {
+            throw new SwitchNotFoundException(switchId);
+        }
+
+        if (port != null) {
+            List<FlowPath> flowPaths = new ArrayList<>(flowPathRepository.findBySegmentEndpoint(switchId, port));
+            flowRepository.findByEndpoint(switchId, port).stream().findAny()
+                    .ifPresent(flow -> flowPaths.add(flow.getForwardPath()));
+            return flowPaths;
+        } else {
+            List<FlowPath> flowPaths = new ArrayList<>(flowPathRepository.findBySegmentSwitch(switchId));
+            flowRepository.findByEndpointSwitch(switchId).stream().findAny()
+                    .ifPresent(flow -> flowPaths.add(flow.getForwardPath()));
+            return flowPaths;
+        }
+
     }
 
     /**

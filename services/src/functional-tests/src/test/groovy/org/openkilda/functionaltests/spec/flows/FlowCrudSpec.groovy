@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -53,6 +54,8 @@ class FlowCrudSpec extends BaseSpecification {
     @IterationTag(tags = [SMOKE], iterationNameRegex = /vlan /)
     def "Valid flow has no rule discrepancies"() {
         given: "A flow"
+        assumeTrue("There should be at least two active traffgens for test execution",
+                topology.activeTraffGens.size() >= 2)
         def traffExam = traffExamProvider.get()
         flowHelper.addFlow(flow)
         def path = PathHelper.convert(northbound.getFlowPath(flow.id))
@@ -71,10 +74,12 @@ class FlowCrudSpec extends BaseSpecification {
         and: "The flow allows traffic (only applicable flows are checked)"
         try {
             def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 0)
-            [exam.forward, exam.reverse].each { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
+            withPool {
+                [exam.forward, exam.reverse].eachParallel { direction ->
+                    def resources = traffExam.startExam(direction)
+                    direction.setResources(resources)
+                    assert traffExam.waitExam(direction).hasTraffic()
+                }
             }
         } catch (FlowNotApplicableException e) {
             //flow is not applicable for traff exam. That's fine, just inform

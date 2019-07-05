@@ -1,12 +1,13 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.rerun.Rerun
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -16,6 +17,7 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Ignore
 import spock.lang.Narrative
 
 import javax.inject.Provider
@@ -138,7 +140,7 @@ class IntentionalRerouteSpec extends BaseSpecification {
         List<List<PathNode>> allPaths = database.getPaths(src.dpId, dst.dpId)*.path
         def longestPath = allPaths.max { it.size() }
         def changedIsls = allPaths.findAll { it != longestPath }
-                .collect { pathHelper.makePathMorePreferable(longestPath, it) }
+                                  .collect { pathHelper.makePathMorePreferable(longestPath, it) }
         //and create the flow that uses the long path
         def flow = flowHelper.randomFlow(src, dst)
         flow.maximumBandwidth = 0
@@ -236,6 +238,49 @@ class IntentionalRerouteSpec extends BaseSpecification {
             database.resetIslBandwidth(it)
             database.resetIslBandwidth(it.reversed)
         }
+    }
+
+    @Ignore("https://github.com/telstra/open-kilda/issues/2563")
+    @Rerun(times = 4) //Race condition is being tested here, so need multiple runs to ensure stability
+    def "Reroute can be simultaneously performed with sync rules requests and not cause any rule discrepancies"() {
+        given: "A flow with reroute potential"
+        def switches = topologyHelper.getNotNeighboringSwitchPair()
+        def flow = flowHelper.randomFlow(switches)
+        flowHelper.addFlow(flow)
+        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
+        def newPath = switches.paths.find { it != currentPath }
+        switches.paths.findAll { it != newPath }.each { pathHelper.makePathMorePreferable(newPath, it) }
+        def relatedSwitches = (pathHelper.getInvolvedSwitches(currentPath) +
+                pathHelper.getInvolvedSwitches(newPath)).unique()
+
+        when: "Flow reroute is simultaneously requested together with sync rules requests for all related switches"
+        withPool {
+            def rerouteTask = { northbound.rerouteFlow(flow.id) }
+            rerouteTask.callAsync()
+            sleep(100) //experimentally find out that this ensures better overlapping of DB operations
+            relatedSwitches.eachParallel { northbound.synchronizeSwitchRules(it.dpId) } //#2563 to fire at this line
+        }
+
+        then: "Flow is Up and path has changed"
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
+            assert pathHelper.convert(northbound.getFlowPath(flow.id)) == newPath
+        }
+
+        and: "Related switches have no rule discrepancies"
+        Wrappers.wait(WAIT_OFFSET) {
+            relatedSwitches.each {
+                def validation = northbound.validateSwitch(it.dpId)
+                switchHelper.verifyRuleSectionsAreEmpty(validation, ["missing", "excess"])
+                switchHelper.verifyMeterSectionsAreEmpty(validation, ["missing", "misconfigured", "excess"])
+            }
+        }
+
+        and: "Flow is healthy"
+        northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
+
+        and: "Cleanup: remove flow and reset costs"
+        flowHelper.deleteFlow(flow.id)
     }
 
     def cleanup() {

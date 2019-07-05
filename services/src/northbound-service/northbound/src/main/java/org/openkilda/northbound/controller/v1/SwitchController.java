@@ -28,6 +28,7 @@ import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.SwitchId;
@@ -38,6 +39,8 @@ import org.openkilda.northbound.dto.v1.switches.PortDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncRequest;
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.service.SwitchService;
@@ -55,6 +58,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -282,6 +286,20 @@ public class SwitchController extends BaseController {
     }
 
     /**
+     * Synchronize (install) missing flows that should be on the switch but exist only in neo4j.
+     * Optionally removes excess rules from the switch.
+     *
+     * @return the synchronization result.
+     */
+    @ApiOperation(value = "Synchronize rules on the switch", response = RulesSyncResult.class)
+    @PatchMapping(path = "/{switch_id}/synchronize")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchSyncResult> syncSwitch(@PathVariable(name = "switch_id") SwitchId switchId,
+                                                          @RequestBody SwitchSyncRequest request) {
+        return switchService.syncSwitch(switchId, request.isRemoveExcess());
+    }
+
+    /**
      * Gets meters from the switch.
      * @param switchId switch dpid.
      * @return list of meters exists on the switch
@@ -390,5 +408,22 @@ public class SwitchController extends BaseController {
                     + "there is no flow with this switch, switch has no ISLs) will be ignored.")
             @RequestParam(name = "force", required = false, defaultValue = "false") boolean force) {
         return switchService.deleteSwitch(switchId, force);
+    }
+
+    /**
+     * Get all flows for a particular switch.
+     *
+     * @param switchId the switch
+     * @param port the port
+     * @return all flows for a particular switch.
+     */
+    @ApiOperation(value = "Get a list of flows that goes through a particular switch, based on arguments.",
+            response = FlowPayload.class, responseContainer = "List")
+    @GetMapping(value = "/{switch-id}/flows", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<List<FlowPayload>> getFlowsForSwitch(@PathVariable(value = "switch-id") SwitchId switchId,
+                                                                  @RequestParam(value = "port", required = false)
+                                                                          Integer port) {
+        return switchService.getFlowsForSwitch(switchId, port);
     }
 }

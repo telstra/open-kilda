@@ -199,7 +199,7 @@ public final class FlowRerouteFsm
                 .onEach(Event.TIMEOUT, Event.ERROR);
 
         builder.internalTransition().within(State.VALIDATING_INGRESS_RULES).on(Event.COMMAND_EXECUTED)
-                .perform(new ValidateIngressRulesAction());
+                .perform(new ValidateIngressRulesAction(persistenceManager));
         builder.transition().from(State.VALIDATING_INGRESS_RULES).to(State.INGRESS_RULES_VALIDATED)
                 .on(Event.RULES_VALIDATED);
         builder.transitions().from(State.VALIDATING_INGRESS_RULES)

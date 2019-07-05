@@ -30,8 +30,8 @@ import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
-import org.openkilda.messaging.command.switches.ValidateRulesRequest;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.FlowEntry;
@@ -42,16 +42,19 @@ import org.openkilda.messaging.info.switches.PortConfigurationResponse;
 import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
+import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
-import org.openkilda.messaging.info.switches.SyncRulesResponse;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
+import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.SwitchMapper;
 import org.openkilda.northbound.dto.v1.switches.DeleteMeterResult;
 import org.openkilda.northbound.dto.v1.switches.DeleteSwitchResult;
@@ -59,6 +62,7 @@ import org.openkilda.northbound.dto.v1.switches.PortDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 import org.openkilda.northbound.messaging.MessagingChannel;
@@ -87,6 +91,9 @@ public class SwitchServiceImpl implements SwitchService {
     @Autowired
     private SwitchMapper switchMapper;
 
+    @Autowired
+    private FlowMapper flowMapper;
+
     @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
     private String floodlightTopic;
 
@@ -96,7 +103,7 @@ public class SwitchServiceImpl implements SwitchService {
     @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
     private String nbworkerTopic;
 
-    @Value("#{kafkaTopicsConfig.getTopoSwitchManagerTopic()}")
+    @Value("#{kafkaTopicsConfig.getTopoSwitchManagerNbTopic()}")
     private String switchManagerTopic;
 
     /**
@@ -211,13 +218,10 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Override
     public CompletableFuture<RulesValidationResult> validateRules(SwitchId switchId) {
-        final String correlationId = RequestCorrelationId.getId();
+        logger.info("Validate rules request for switch {}", switchId);
 
-        CommandMessage validateCommandMessage = new CommandMessage(
-                new ValidateRulesRequest(switchId), System.currentTimeMillis(), correlationId);
-
-        return messagingChannel.sendAndGet(floodlightTopic, validateCommandMessage)
-                .thenApply(SyncRulesResponse.class::cast)
+        return performValidate(
+                SwitchValidateRequest.builder().switchId(switchId).build())
                 .thenApply(switchMapper::toRulesValidationResult);
     }
 
@@ -225,25 +229,46 @@ public class SwitchServiceImpl implements SwitchService {
     public CompletableFuture<SwitchValidationResult> validateSwitch(SwitchId switchId) {
         logger.info("Validate request for switch {}", switchId);
 
-        CommandMessage syncCommandMessage = new CommandMessage(
-                new SwitchValidateRequest(switchId, false), System.currentTimeMillis(), RequestCorrelationId.getId());
-
-        return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
-                .thenApply(SwitchValidationResponse.class::cast)
+        return performValidate(
+                SwitchValidateRequest.builder().switchId(switchId).processMeters(true).build())
                 .thenApply(switchMapper::toSwitchValidationResult);
+    }
+
+    private CompletableFuture<SwitchValidationResponse> performValidate(SwitchValidateRequest request) {
+        CommandMessage validateCommandMessage = new CommandMessage(
+                request,
+                System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGet(switchManagerTopic, validateCommandMessage)
+                .thenApply(SwitchValidationResponse.class::cast);
     }
 
     @Override
     public CompletableFuture<RulesSyncResult> syncRules(SwitchId switchId) {
         logger.info("Sync rules request for switch {}", switchId);
 
-        CommandMessage syncCommandMessage = new CommandMessage(
-                new SwitchValidateRequest(switchId, true), System.currentTimeMillis(),
-                RequestCorrelationId.getId());
-
-        return messagingChannel.sendAndGet(switchManagerTopic, syncCommandMessage)
-                .thenApply(SyncRulesResponse.class::cast)
+        return performSync(
+                SwitchValidateRequest.builder().switchId(switchId).performSync(true).build())
                 .thenApply(switchMapper::toRulesSyncResult);
+    }
+
+    @Override
+    public CompletableFuture<SwitchSyncResult> syncSwitch(SwitchId switchId, boolean removeExcess) {
+        logger.info("Sync request for switch {}. Remove excess {}", switchId, removeExcess);
+
+        return performSync(
+                SwitchValidateRequest.builder().switchId(switchId).processMeters(true).performSync(true)
+                        .removeExcess(removeExcess).build())
+                .thenApply(switchMapper::toSwitchSyncResult);
+    }
+
+    private CompletableFuture<SwitchSyncResponse> performSync(SwitchValidateRequest request) {
+        CommandMessage validateCommandMessage = new CommandMessage(
+                request,
+                System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGet(switchManagerTopic, validateCommandMessage)
+                .thenApply(SwitchSyncResponse.class::cast);
     }
 
     @Override
@@ -361,6 +386,21 @@ public class SwitchServiceImpl implements SwitchService {
         return messagingChannel.sendAndGet(nbworkerTopic, deleteCommand)
                 .thenApply(DeleteSwitchResponse.class::cast)
                 .thenApply(response -> new DeleteSwitchResult(response.isDeleted()));
+    }
+
+    @Override
+    public CompletableFuture<List<FlowPayload>> getFlowsForSwitch(SwitchId switchId, Integer port) {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Get all flows for the switch: {}", switchId);
+        GetFlowsForSwitchRequest data = new GetFlowsForSwitchRequest(switchId, port);
+        CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId);
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
+                .thenApply(response -> response.stream()
+                        .map(FlowResponse.class::cast)
+                        .map(FlowResponse::getPayload)
+                        .map(flowMapper::toFlowOutput)
+                        .collect(Collectors.toList()));
     }
 
     private Boolean toPortAdminDown(PortStatus status) {

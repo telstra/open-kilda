@@ -1,0 +1,78 @@
+@startuml
+title Switch rules and meters sync
+
+actor User
+boundary Northbound as NB
+participant SwitchManager << Hub >>
+participant SpeakerWorker
+participant CommandBuilder
+participant Floodlight as FL
+database DAO
+
+User -> NB : Switch sync rules
+
+activate NB
+NB -> SwitchManager : SwitchValidateRequest\nperformSync=true
+activate SwitchManager
+
+SwitchManager -> SwitchManager : Switch validate
+
+opt Missing rules exists
+    SwitchManager -> CommandBuilder : buildCommandsToCreateMissingRules
+    activate CommandBuilder
+    CommandBuilder -> CommandBuilder : Build commands
+    CommandBuilder -> SwitchManager : Rule installation commands
+    deactivate CommandBuilder
+end
+
+opt Excess rules exists and removeExcess=true
+    SwitchManager -> CommandBuilder : buildCommandsToRemoveExcessRules
+    activate CommandBuilder
+    CommandBuilder -> CommandBuilder : Build commands
+    CommandBuilder -> SwitchManager : Rule remove commands
+    deactivate CommandBuilder
+end
+
+group Sending rules commands
+    opt Missing rules commands exists
+        loop for each missing rule
+            SwitchManager ->> SpeakerWorker : InstallFlowForSwitchManagerRequest
+            SpeakerWorker ->> FL : InstallFlowForSwitchManagerRequest
+
+            FL ->> SpeakerWorker
+            SpeakerWorker ->> SwitchManager
+        end
+    end
+    opt Excess rules commands exists
+        loop for each excess rule
+            SwitchManager ->> SpeakerWorker : RemoveFlowForSwitchManagerRequest
+            SpeakerWorker ->> FL : RemoveFlowForSwitchManagerRequest
+            FL ->> SpeakerWorker
+            SpeakerWorker ->> SwitchManager
+        end
+    end
+
+end
+
+opt processMeters=true, removeExcess=true and Excess meters exists
+    SwitchManager -> SwitchManager : process excess meters id
+end
+
+opt Excess meters commands exists
+    loop for each excess meter
+        SwitchManager ->> SpeakerWorker : DeleterMeterForSwitchManagerRequest
+        SpeakerWorker ->> FL : DeleterMeterForSwitchManagerRequest
+        FL ->> SpeakerWorker
+        SpeakerWorker --> SwitchManager
+    end
+end
+
+SwitchManager -> SwitchManager: make SwitchSyncResponse
+SwitchManager ->> NB: SwitchSyncResponse
+deactivate SwitchManager
+
+NB -> User: SwitchSyncResult
+deactivate NB
+
+@enduml
+
