@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.network.controller.sw;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeatures;
@@ -275,10 +276,18 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
         sw.setStatus(SwitchStatus.ACTIVE);
 
+        persistSwitchFeatures(sw);
         switchRepository.createOrUpdate(sw);
+    }
+
+    private void persistSwitchFeatures(Switch sw) {
         Optional<SwitchFeatures> switchFeaturesResult = switchFeaturesRepository.findBySwitchId(sw.getSwitchId());
-        SwitchFeatures switchFeatures = switchFeaturesResult.orElseGet(() -> SwitchFeatures.builder()
-                .switchObj(sw).supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES).build());
+        SwitchFeatures switchFeatures = switchFeaturesResult.orElseGet(() ->
+                SwitchFeatures.builder()
+                        .switchObj(sw)
+                        .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES)
+                        .supportMeters(features.contains(Feature.METERS))
+                        .build());
         switchFeaturesRepository.createOrUpdate(switchFeatures);
     }
 

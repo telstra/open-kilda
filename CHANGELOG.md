@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.26.0 (04/07/2019)
+
+### Features:
+-  [#2438](https://github.com/telstra/open-kilda/pull/2438) Excess rules and meters removing (Issues: [#2189](https://github.com/telstra/open-kilda/issues/2189) [#2215](https://github.com/telstra/open-kilda/issues/2215) [#2289](https://github.com/telstra/open-kilda/issues/2289)) [**api**][**floodlight**][**northbound**][**storm-topologies**]
+-  [#2536](https://github.com/telstra/open-kilda/pull/2536) Add API to get all flows for a particular switch or endpoint. (Issue: [#2529](https://github.com/telstra/open-kilda/issues/2529)) [**api**][**northbound**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#2569](https://github.com/telstra/open-kilda/pull/2569) Fix flow validation for swap endpoints functionality (for default flows) [**storm-topologies**]
+-  [#2572](https://github.com/telstra/open-kilda/pull/2572) Do not use negative round trip latency for OpenTSDB 
+-  [#2573](https://github.com/telstra/open-kilda/pull/2573) Fix validation of switches that don't support meters (FLOW HS topology) 
+-  [#2577](https://github.com/telstra/open-kilda/pull/2577) Fix fsm flow create 
+-  [#2555](https://github.com/telstra/open-kilda/pull/2555) Fix occasionally failing SwapEndpoint test [**tests**]
+
+### Improvements:
+-  [#2528](https://github.com/telstra/open-kilda/pull/2528) extend FlowDiversitySpec by checking the "diverse_with" field [**tests**]
+-  [#2561](https://github.com/telstra/open-kilda/pull/2561) add extra check to prevent fail on a small env [**tests**]
+-  [#2564](https://github.com/telstra/open-kilda/pull/2564) Add test that reproduces #2563 [**tests**]
+-  [#2535](https://github.com/telstra/open-kilda/pull/2535) [Network topo] Change logging level for port state events. [**storm-topologies**]
+-  [#2506](https://github.com/telstra/open-kilda/pull/2506) Make most traffic examination to run in parallel in both directions [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.25.0...v1.26.0).
+
+### Affected Components:
+nb, flow, nbworker, swmanager, fl, network, router, flow-hs
+
+---
+
 ## v1.25.0 (01/07/2019)
 
 ### Features:

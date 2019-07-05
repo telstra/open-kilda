@@ -27,8 +27,8 @@ import java.util.Objects;
 @AllArgsConstructor
 public class RulesValidator {
 
-    private final InstallFlowRule expected;
-    final FlowRuleResponse actual;
+    protected final InstallFlowRule expected;
+    protected final FlowRuleResponse actual;
 
     /**
      * Verify whether actual and expected rules are the same.
