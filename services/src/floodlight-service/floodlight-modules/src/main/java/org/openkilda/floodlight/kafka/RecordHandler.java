@@ -25,6 +25,7 @@ import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
+import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
@@ -553,6 +554,9 @@ class RecordHandler implements Runnable {
                 // TODO: this isn't installed as well. Refactor this section
                 switchManager.installRoundTripLatencyFlow(dpid);
                 installedRules.add(ROUND_TRIP_LATENCY_RULE_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_UNICAST_VXLAN) {
+                switchManager.installUnicastVerificationRuleVxlan(dpid);
+                installedRules.add(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE);
             } else {
                 switchManager.installDefaultRules(dpid);
                 installedRules.addAll(asList(
@@ -561,7 +565,8 @@ class RecordHandler implements Runnable {
                         VERIFICATION_UNICAST_RULE_COOKIE,
                         DROP_VERIFICATION_LOOP_RULE_COOKIE,
                         CATCH_BFD_RULE_COOKIE,
-                        ROUND_TRIP_LATENCY_RULE_COOKIE
+                        ROUND_TRIP_LATENCY_RULE_COOKIE,
+                        VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
                 ));
             }
 
@@ -623,6 +628,10 @@ class RecordHandler implements Runnable {
                     case REMOVE_ROUND_TRIP_LATENCY:
                         criteria = DeleteRulesCriteria.builder()
                                 .cookie(ROUND_TRIP_LATENCY_RULE_COOKIE).build();
+                        break;
+                    case REMOVE_UNICAST_VXLAN:
+                        criteria = DeleteRulesCriteria.builder()
+                                .cookie(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE).build();
                         break;
                     default:
                         logger.warn("Received unexpected delete switch rule action: {}", deleteAction);

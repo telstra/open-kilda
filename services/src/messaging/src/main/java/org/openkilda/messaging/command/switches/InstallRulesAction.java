@@ -34,6 +34,9 @@ public enum InstallRulesAction {
     // Install Round Trip Latency rule
     INSTALL_ROUND_TRIP_LATENCY,
 
+    // Install Unicast for VXLAN
+    INSTALL_UNICAST_VXLAN,
+
     // Install all default rules (ie a combination of the above)
     INSTALL_DEFAULTS;
 }

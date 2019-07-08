@@ -78,7 +78,7 @@ public class AvailableNetworkFactory {
             if (!reusePathsResources.isEmpty() && !flow.isIgnoreBandwidth()) {
                 // ISLs occupied by the flow (take the bandwidth already occupied by the flow into account).
                 Collection<Isl> flowLinks = islRepository.findActiveAndOccupiedByFlowPathWithAvailableBandwidth(
-                        reusePathsResources, flow.getBandwidth());
+                        reusePathsResources, flow.getBandwidth(), flow.getEncapsulationType());
                 flowLinks.forEach(network::addLink);
             }
         } catch (PersistenceException e) {

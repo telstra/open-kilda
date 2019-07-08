@@ -53,12 +53,14 @@ public interface IslRepository extends Repository<Isl> {
      * bandwidth.
      * <p/>
      * ISLs must have available bandwidth to satisfy the difference between newly requested and already taken by the
-     * same flow.
+     * same flow and support requested transit encapsulation type.
      *
      * @param pathIds           list of the pathId.
      * @param requiredBandwidth required bandwidth amount that should be available on ISLs.
+     * @param flowEncapsulationType required encapsulation support
      */
-    Collection<Isl> findActiveAndOccupiedByFlowPathWithAvailableBandwidth(List<PathId> pathIds, long requiredBandwidth);
+    Collection<Isl> findActiveAndOccupiedByFlowPathWithAvailableBandwidth(List<PathId> pathIds, long requiredBandwidth,
+                                                                          FlowEncapsulationType flowEncapsulationType);
 
     /**
      * Finds all active ISLs.

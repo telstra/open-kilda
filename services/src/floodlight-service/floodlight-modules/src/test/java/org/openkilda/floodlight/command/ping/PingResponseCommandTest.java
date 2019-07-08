@@ -94,7 +94,7 @@ public class PingResponseCommandTest extends PingCommandTest {
         expect(pingService.unwrapData(eq(dpId), anyObject())).andReturn(null);
 
         OfInput input = createMock(OfInput.class);
-        expect(input.packetInCookieMismatchAll(anyObject(), anyObject())).andReturn(false);
+        expect(input.packetInCookieMismatchAll(anyObject(), anyObject(), anyObject())).andReturn(false);
         expect(input.getPacketInPayload()).andReturn(new Ethernet());
         expect(input.getDpId()).andReturn(dpId);
 
