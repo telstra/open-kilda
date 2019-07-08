@@ -827,7 +827,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             MacAddress dstMac = dpIdToMac(sw.getId());
             Builder builder = sw.getOFFactory().buildMatch();
             builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.NO_MASK);
-            builder.setExact(MatchField.UDP_SRC, TransportPort.of(4500));
+            builder.setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC));
             Match match = builder.build();
             OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie, VERIFICATION_RULE_VXLAN_PRIORITY)
                     .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
