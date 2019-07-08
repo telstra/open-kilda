@@ -99,11 +99,71 @@ idle. Step repeats pre-defined number of times"
         topoHelper.purgeTopology(topo)
     }
 
+    def "Create 4094 flows"() {
+        // system allows to create 4094 simple flows or 2047 protected flows
+        def switchesAmount = 7
+        int islsAmount = switchesAmount * 2.5
+        int flowsAmount = 4094
+
+        setup: "Create a topology"
+        def topo = topoHelper.createRandomTopology(switchesAmount, islsAmount)
+        topoHelper.setTopology(topo)
+        flowHelper.setTopology(topo)
+
+        when: "Create 4094 flows"
+        flowsAmount.times {
+            createFlow()
+            def numberOfCreatedFlow = it + 1
+            log.debug("Number of created flow: $numberOfCreatedFlow/$flowsAmount")
+
+            if(it != 0 && it % 500 ==  0) {
+                TimeUnit.SECONDS.sleep(60)
+            }
+        }
+
+        then: "Needed amount of flows are created"
+        northbound.getAllFlows().size() == flowsAmount
+
+        cleanup: "Delete flows and purge topology"
+        flows.each { northbound.deleteFlow(it.id) }
+        topoHelper.purgeTopology(topo)
+    }
+
+    def "Create 2047 protected flows"() {
+        def switchesAmount = 7
+        int islsAmount = switchesAmount * 2.5
+        int flowsAmount = 2047
+
+        setup: "Create a topology"
+        def topo = topoHelper.createRandomTopology(switchesAmount, islsAmount)
+        topoHelper.setTopology(topo)
+        flowHelper.setTopology(topo)
+
+        when: "Try to create 2047 flows"
+        flowsAmount.times {
+            createFlow(true)
+            def numberOfCreatedFlow = it + 1
+            log.debug("Number of created flow: $numberOfCreatedFlow/$flowsAmount")
+
+            if(it != 0 && it % 500 ==  0) {
+                TimeUnit.SECONDS.sleep(60)
+            }
+        }
+
+        then: "Needed amount of flows are created"
+        northbound.getAllFlows().size() == flowsAmount
+
+        cleanup: "Delete flows and purge topology"
+        flows.each { northbound.deleteFlow(it.id) }
+        topoHelper.purgeTopology(topo)
+    }
+
     //TODO(rtretiak): test that continuously add/remove different switches. Ensure no memory leak over time
 
-    def createFlow() {
+    def createFlow(boolean protectedPath = false) {
         Wrappers.silent {
             def flow = flowHelper.randomFlow(*topoHelper.getRandomSwitchPair(), false, flows)
+            flow.allocateProtectedPath = protectedPath
             log.info "creating flow $flow.id"
             northbound.addFlow(flow)
             flows << flow
