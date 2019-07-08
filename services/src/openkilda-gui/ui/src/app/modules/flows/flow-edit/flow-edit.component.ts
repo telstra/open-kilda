@@ -91,7 +91,6 @@ export class FlowEditComponent implements OnInit {
     this.loaderService.show("Loading Flow Detail");
     this.flowService.getFlowDetailById(flowId).subscribe(
       flow => {
-        console.log('flow',flow);
         this.flowDetailData = flow;
         this.flowDetail = {
           flowid: flow.flowid,
@@ -323,9 +322,15 @@ export class FlowEditComponent implements OnInit {
     });
   }
   getflowList(){
+    var ref = this;
     let filtersOptions = {controller:true,_:new Date().getTime()};
       this.flowService.getFlowsList(filtersOptions).subscribe((data : Array<object>) =>{
         this.diverseFlowList = data || [];
+        if(this.diverseFlowList && this.diverseFlowList.length){
+          this.diverseFlowList = this.diverseFlowList.filter(function(d){
+              return d.flowid != ref.flowDetail.flowId;
+          })
+        }
       },error=>{
          this.diverseFlowList = [];  
       });

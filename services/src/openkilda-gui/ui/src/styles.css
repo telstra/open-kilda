@@ -318,7 +318,10 @@ table.dataTable thead i.fa{
   -ms-user-select: none;
 }
 
-.onoffswitch-checkbox {
+
+
+
+.onoffswitch-checkbox,.onoffpathdiverse-checkbox {
   display: none;
 }
 
@@ -370,6 +373,7 @@ table.dataTable thead i.fa{
   text-align: right;
   color: #000;
 }
+
 
 .onoffswitch-switch {
   display: block;
@@ -1135,6 +1139,7 @@ text {
 #topology-hover-txt .form-wrapper,
 #ping-hover-txt .form-wrapper,
 #diversepath-hover-txt .form-wrapper,
+#flowpath-hover-txt .form-wrapper,
 #topology-click-txt .form-wrapper {
   border: none;
 }
@@ -1186,6 +1191,8 @@ text {
 #ping-hover-txt p,
 #diversepath-hover-txt label,
 #diversepath-hover-txt p,
+#flowpath-hover-txt label,
+#flowpath-hover-txt p,
 #topology-click-txt label,
 #topology-click-txt p {
   padding: 0px 15px;
@@ -1202,12 +1209,12 @@ text {
   font-size: 12px;
 }
 
-#ping-hover-txt div.form-wrapper,#diversepath-hover-txt div.form-wrapper{
+#ping-hover-txt div.form-wrapper,#diversepath-hover-txt div.form-wrapper,#flowpath-hover-txt  div.form-wrapper{
   padding: 12px 10px;
   font-size: 12px;
 }
 
-#diversepath-hover-txt {
+#diversepath-hover-txt ,#flowpath-hover-txt{
   background: #262d37;
   position: fixed;
   border-radius: 4px;
@@ -1215,7 +1222,7 @@ text {
   z-index:4;
 }
 
-#diversepath-hover-txt:after {
+#diversepath-hover-txt:after ,#flowpath-hover-txt:after {
 	top: 100%;
 	left: 50%;
 	border: solid transparent;
@@ -1275,16 +1282,15 @@ path.link {
   left: 0px;
   z-index: 3;
 }
-#ForwardPathGraphwrapper,#ReversePathGraphwrapper {
+/* #ForwardPathGraphwrapper,#ReversePathGraphwrapper {
   position: relative;
   width: 100%;
   height: 100%;
-  border:1px solid #ccc;
-}
-#ForwardPathGraphwrapper .path-graph-wrapper ,#ReversePathGraphwrapper .path-graph-wrapper{
+} */
+#ForwardPathGraphwrapper .path-graph-wrapper ,#ReversePathGraphwrapper .path-graph-wrapper , #forwardPathWrapper .path-graph-wrapper,#reversePathWrapper .path-graph-wrapper{
   position: absolute;
   background: #fff;
-  width: 100%;
+  width: 104%;
   height: 100%;
   top: 0px;
   left: 0px;
@@ -2336,6 +2342,28 @@ footer {
 
 /****** side bar css end *****/
 
+#flowpath-hover-txt {
+  background: #262d37;
+  position: fixed;
+  border-radius: 4px;
+  color: #fff;
+  z-index:4;
+}
+
+#flowpath-hover-txt:after {
+	top: 100%;
+	left: 50%;
+	border: solid transparent;
+	content: " ";
+	height: 0;
+	width: 0;
+	position: absolute;
+	pointer-events: none;
+	border-color: rgba(38, 45, 55, 0);
+	border-top-color: #262d37;
+	border-width: 8px;
+  margin-left: -8px;
+}
 /*** path Css **/
 #ForwardRow h3, #ReversePath h3 {
   margin: 0 0 25px;
@@ -2446,14 +2474,12 @@ a.badge.badge-dark.custom-button {
 /** path css end ****/
 
 .rightbar_overlay{
-  position: absolute;
-    top: -1px;
-    right: 0px;
-    background: #fff;
-    border: 1px solid #999;
+    float:right;
     padding: 10px 5px;
 }
 .rightbar_overlay ul{
+  position: absolute;
+  right:0px;
   max-height: 550px;
   overflow-y: scroll;
   overflow: hidden;
@@ -2485,4 +2511,101 @@ a.badge.badge-dark.custom-button {
     padding: 0px 5px 1px 5px;
     margin-right: 5px;
     margin-left: -3px;
+}
+.topology-container{
+  margin-top:5px;
+}
+.flow-path-icons{
+  margin: 6px 10px 0px 5px;
+  float: right;
+  font-size: 25px;
+}
+.flow-path-graph{
+     width: 100%;
+    margin-left: 0px;
+    margin-top:10px;
+}
+a.custom-icon-path.cursor-pointer {
+  padding: 20px;
+  font-size: 15px;
+}
+/** On off path diverse ***/
+
+.onoffpathdiverse {
+  position: relative;
+  width: 75px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+.onoffpathdiverse-label {
+  display: block;
+  overflow: hidden;
+  cursor: pointer;
+  border-radius: 20px;
+  margin: 0;
+}
+.onoffpathdiverse-inner {
+  display: block;
+  width: 200%;
+  margin-left: -100%;
+  -moz-transition: margin 0.3s ease-in 0s;
+  -webkit-transition: margin 0.3s ease-in 0s;
+  -o-transition: margin 0.3s ease-in 0s;
+  transition: margin 0.3s ease-in 0s;
+}
+
+
+.onoffpathdiverse-inner:before,
+.onoffpathdiverse-inner:after {
+  display: block;
+  float: left;
+  width: 50%;
+  height: 22px;
+  padding: 0;
+  line-height: 22px;
+  font-size: 12px;
+  color: white;
+  font-family: Trebuchet, Arial, sans-serif;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+}
+.onoffpathdiverse-inner:before {
+  content: "Diverse";
+  padding-left: 10px;
+  background-color: #00ccbe;
+  color: #ffffff;
+}
+
+.onoffpathdiverse-inner:after {
+  content: "Path";
+  padding-right: 10px;
+  background-color: #b0b0b0;
+  text-align: right;
+  color: #000;
+}
+
+.onoffpathdiverse-switch {
+  display: block;
+  width: 22px;
+  margin: 5px;
+  background: #262d37;
+  border-radius: 20px;
+  position: absolute;
+  top: -5px;
+  bottom: -4px;
+  right: 50px;
+  transition: all 0.3s ease-in 0s;
+  -moz-transition: all 0.3s ease-in 0s;
+  -webkit-transition: all 0.3s ease-in 0s;
+  -o-transition: all 0.3s ease-in 0s;
+}
+
+.onoffpathdiverse-checkbox:checked + .onoffpathdiverse-label .onoffpathdiverse-inner {
+  margin-left: 0;
+}
+
+.onoffpathdiverse-checkbox:checked + .onoffpathdiverse-label .onoffpathdiverse-switch {
+  right: -6px;
 }
