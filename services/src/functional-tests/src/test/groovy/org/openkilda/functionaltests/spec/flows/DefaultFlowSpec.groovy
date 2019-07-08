@@ -3,7 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -18,7 +18,7 @@ import javax.inject.Provider
 @Narrative("""System allows to create default port(vlan=0) and simple flow(vlan=<any number>) on the same port.
 Default flow has lower priority than simple flow.
 Also system allows to pass tagged traffic via default flow.""")
-class DefaultFlowSpec extends BaseSpecification {
+class DefaultFlowSpec extends HealthCheckSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider

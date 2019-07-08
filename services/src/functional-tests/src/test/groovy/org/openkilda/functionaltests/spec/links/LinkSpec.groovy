@@ -7,7 +7,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -25,7 +25,7 @@ import groovy.transform.Memoized
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Unroll
 
-class LinkSpec extends BaseSpecification {
+class LinkSpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Link (not BFD) status is properly changed when link connectivity is broken (not port down)"() {
         given: "A link going through a-switch"

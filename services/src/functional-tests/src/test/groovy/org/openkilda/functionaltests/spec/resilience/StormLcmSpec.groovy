@@ -5,7 +5,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.WfmManipulator
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -29,7 +29,7 @@ verify their consistency after restart.
  * Aborting it in the middle of execution may lead to Kilda malfunction.
  */
 @Tags(VIRTUAL)
-class StormLcmSpec extends BaseSpecification {
+class StormLcmSpec extends HealthCheckSpecification {
     @Shared
     WfmManipulator wfmManipulator
 

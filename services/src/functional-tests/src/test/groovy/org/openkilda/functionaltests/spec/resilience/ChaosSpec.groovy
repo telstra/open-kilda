@@ -4,7 +4,7 @@ import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowPathPayload
@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
 
 @Slf4j
 @Narrative("Test system behavior under different factors or events that randomly appear across the topology")
-class ChaosSpec extends BaseSpecification {
+class ChaosSpec extends HealthCheckSpecification {
 
     @Value('${antiflap.cooldown}')
     int antiflapCooldown

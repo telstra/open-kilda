@@ -79,8 +79,8 @@ public class TopologyDefinition {
     public static TopologyDefinition factory(
             @JsonProperty("switches") List<Switch> switches,
             @JsonProperty("isls") List<Isl> isls,
-            @JsonProperty("traffgens") List<TraffGen> traffGens,
-            @JsonProperty("traffgen_config") TraffGenConfig traffGenConfig) {
+            @JsonProperty("traff_gens") List<TraffGen> traffGens,
+            @JsonProperty("traff_gen_config") TraffGenConfig traffGenConfig) {
 
         Preconditions.checkArgument(
                 switches.size() == switches.stream().map(Switch::getDpId).distinct().count(),
@@ -379,6 +379,7 @@ public class TopologyDefinition {
     /**
      * Get all traffgens that are marked as 'active' in config.
      */
+    @JsonIgnore
     public List<TraffGen> getActiveTraffGens() {
         return traffGens.stream()
                 .filter(TraffGen::isActive)
@@ -394,6 +395,10 @@ public class TopologyDefinition {
         @NonNull
         private String addressPoolBase;
         private int addressPoolPrefixLen;
+
+        public static TraffGenConfig defaultConfig() {
+            return new TraffGenConfig("172.16.80.0", 20);
+        }
 
         @JsonCreator
         public static TraffGenConfig factory(

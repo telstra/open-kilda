@@ -8,7 +8,7 @@ import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -45,7 +45,7 @@ Description of fields:
 - excess - those meters/rules, which are present on a switch, but are NOT present in db
 - proper - meters/rules values are the same on a switch and in db
 """)
-class SwitchValidationSingleSwFlowSpec extends BaseSpecification {
+class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
     String flowTopic
     @Autowired

@@ -3,12 +3,12 @@ package org.openkilda.functionaltests.spec.network
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 
 import org.springframework.web.client.HttpClientErrorException
 
-class PathsSpec extends BaseSpecification {
+class PathsSpec extends HealthCheckSpecification {
 
     @Tags(SMOKE)
     def "Get paths between not neighboring switches"() {

@@ -5,7 +5,7 @@ import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
@@ -40,7 +40,7 @@ Description of fields:
 - proper - meters/rules values are the same on a switch and in db
 """)
 @Tags(SMOKE)
-class SwitchValidationSpec extends BaseSpecification {
+class SwitchValidationSpec extends HealthCheckSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
     String flowTopic
     @Autowired

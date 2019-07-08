@@ -2,14 +2,14 @@ package org.openkilda.functionaltests.spec.grpc
 
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.info.event.SwitchInfoData
 
 import groovy.transform.Memoized
 
 @Tags(HARDWARE)
-class GrpcBaseSpecification extends BaseSpecification {
+class GrpcBaseSpecification extends HealthCheckSpecification {
     @Memoized
     List<SwitchInfoData> getNoviflowSwitches() {
         northbound.activeSwitches.findAll {

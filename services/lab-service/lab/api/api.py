@@ -59,7 +59,8 @@ class Lab:
         self.error = None
 
         self.tgens = {}
-        for tgen_def in lab_def.get('active_traff_gens', []):
+        for tgen_def in [active_tgen for active_tgen in lab_def.get('traff_gens', [])
+                         if active_tgen['status'].lower() == "active"]:
             self.tgens[tgen_def['name']] = urlparse(tgen_def['control_endpoint'])
 
         if lab_id == HW_LAB_ID:
@@ -222,4 +223,5 @@ def main():
             except Exception as ex:
                 logger.exception(ex)
         server_th.terminate()
+
     loop_forever(teardown)

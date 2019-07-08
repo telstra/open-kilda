@@ -5,7 +5,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -15,7 +15,7 @@ import spock.lang.Unroll
 
 import java.util.concurrent.TimeUnit
 
-class SwitchDeleteSpec extends BaseSpecification {
+class SwitchDeleteSpec extends HealthCheckSpecification {
     def "Unable to delete a nonexistent switch"() {
         when: "Try to delete a nonexistent switch"
         northbound.deleteSwitch(NON_EXISTENT_SWITCH_ID, false)

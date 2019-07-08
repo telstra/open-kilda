@@ -7,7 +7,7 @@ import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -24,7 +24,7 @@ import spock.lang.Narrative
 import javax.inject.Provider
 
 @Narrative("Verify that on-demand reroute operations are performed accurately.")
-class IntentionalRerouteV2Spec extends BaseSpecification {
+class IntentionalRerouteV2Spec extends HealthCheckSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider

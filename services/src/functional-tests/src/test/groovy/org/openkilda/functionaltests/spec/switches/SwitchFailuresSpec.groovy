@@ -5,7 +5,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -23,7 +23,7 @@ This spec verifies different situations when Kilda switches suddenly disconnect 
 Note: For now it is only runnable on virtual env due to no ability to disconnect hardware switches
 """)
 @Tags(VIRTUAL)
-class SwitchFailuresSpec extends BaseSpecification {
+class SwitchFailuresSpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "ISL is still able to properly fail even after switches were reconnected"() {
         given: "A flow"

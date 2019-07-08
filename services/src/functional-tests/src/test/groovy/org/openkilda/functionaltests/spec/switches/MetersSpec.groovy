@@ -9,7 +9,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDEN
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static spock.util.matcher.HamcrestSupport.expect
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
@@ -34,7 +34,7 @@ import java.math.RoundingMode
 
 @Narrative("""The test suite checks if traffic meters, including default, are set and deleted in a correct way.
 Note that many tests are bind to meter implementations of certain hardware manufacturers.""")
-class MetersSpec extends BaseSpecification {
+class MetersSpec extends HealthCheckSpecification {
     @Autowired
     SwitchHelper switchHelper
 
