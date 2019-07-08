@@ -785,11 +785,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public List<Long> deleteDefaultRules(DatapathId dpid) throws SwitchOperationException {
         List<Long> deletedRules = deleteRulesWithCookie(dpid, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                 VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
-                ROUND_TRIP_LATENCY_RULE_COOKIE);
+                ROUND_TRIP_LATENCY_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE);
 
         try {
             deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue());
             deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).getValue());
+            deleteMeter(dpid, createMeterIdForDefaultRule(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE).getValue());
         } catch (UnsupportedSwitchOperationException e) {
             logger.info("Skip meters deletion from switch {} due to lack of meters support", dpid);
         }
@@ -827,7 +828,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             MacAddress dstMac = dpIdToMac(sw.getId());
             Builder builder = sw.getOFFactory().buildMatch();
             builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.NO_MASK);
-            builder.setExact(MatchField.UDP_SRC, TransportPort.of(4500));
+            builder.setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC));
             Match match = builder.build();
             OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie, VERIFICATION_RULE_VXLAN_PRIORITY)
                     .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))

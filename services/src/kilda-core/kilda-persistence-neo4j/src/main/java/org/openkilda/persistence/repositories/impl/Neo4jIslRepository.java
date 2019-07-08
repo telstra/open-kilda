@@ -135,21 +135,26 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     }
 
     @Override
-    public Collection<Isl> findActiveAndOccupiedByFlowPathWithAvailableBandwidth(List<PathId> pathIds,
-                                                                                 long requiredBandwidth) {
+    public Collection<Isl> findActiveAndOccupiedByFlowPathWithAvailableBandwidth(
+            List<PathId> pathIds, long requiredBandwidth, FlowEncapsulationType flowEncapsulationType) {
         Map<String, Object> parameters = ImmutableMap.of(
                 "path_ids", pathIds.stream().map(PathId::getId).collect(Collectors.toList()),
                 "requested_bandwidth", requiredBandwidth,
                 "switch_status", switchStatusConverter.toGraphProperty(SwitchStatus.ACTIVE),
-                "isl_status", islStatusConverter.toGraphProperty(IslStatus.ACTIVE));
+                "isl_status", islStatusConverter.toGraphProperty(IslStatus.ACTIVE),
+                "supported_transit_encapsulation",
+                flowEncapsulationTypeConverter.toGraphProperty(flowEncapsulationType));
 
         String query = "MATCH (fp:flow_path)-[:owns]-(ps:path_segment) "
                 + "WHERE fp.path_id IN $path_ids "
-                + "MATCH (src:switch)-[:source]-(ps)-[:destination]-(dst:switch) "
+                + "MATCH (src_features:switch_features)<-[:has]-(src:switch)-[:source]-(ps)-[:destination]-"
+                + "(dst:switch)-[:has]->(dst_features:switch_features) "
                 + "MATCH (src)-[link:isl]->(dst) "
                 + "WHERE src.state = $switch_status AND dst.state = $switch_status AND link.status = $isl_status "
                 + " AND link.src_port = ps.src_port AND link.dst_port = ps.dst_port "
                 + " AND link.available_bandwidth + fp.bandwidth >= $requested_bandwidth "
+                + " AND $supported_transit_encapsulation IN src_features.supported_transit_encapsulation "
+                + " AND $supported_transit_encapsulation IN dst_features.supported_transit_encapsulation "
                 + "RETURN src, link, dst";
 
         return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));

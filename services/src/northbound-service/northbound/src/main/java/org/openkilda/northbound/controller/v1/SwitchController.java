@@ -151,7 +151,7 @@ public class SwitchController extends BaseController {
             @ApiParam(value = "default: IGNORE_DEFAULTS. Can be one of DeleteRulesAction: "
                     + "DROP_ALL,DROP_ALL_ADD_DEFAULTS,IGNORE_DEFAULTS,OVERWRITE_DEFAULTS,"
                     + "REMOVE_DROP,REMOVE_BROADCAST,REMOVE_UNICAST,REMOVE_VERIFICATION_LOOP,REMOVE_BFD_CATCH,"
-                    + "REMOVE_ROUND_TRIP_LATENCY,REMOVE_DEFAULTS,REMOVE_ADD_DEFAULTS",
+                    + "REMOVE_ROUND_TRIP_LATENCY,REMOVE_UNICAST_VXLAN,REMOVE_DEFAULTS,REMOVE_ADD_DEFAULTS",
                     required = false)
             @RequestParam(value = "delete-action", required = false) Optional<DeleteRulesAction> deleteAction,
             @RequestParam(value = "cookie", required = false) Optional<Long> cookie,
@@ -222,7 +222,7 @@ public class SwitchController extends BaseController {
             @PathVariable("switch-id") SwitchId switchId,
             @ApiParam(value = "default: INSTALL_DEFAULTS. Can be one of InstallRulesAction: "
                     + " INSTALL_DROP,INSTALL_BROADCAST,INSTALL_UNICAST,INSTALL_BFD_CATCH,INSTALL_ROUND_TRIP_LATENCY,"
-                    + "INSTALL_DEFAULTS")
+                    + "INSTALL_UNICAST_VXLAN,INSTALL_DEFAULTS")
             @RequestParam(value = "install-action", required = false) Optional<InstallRulesAction> installAction) {
         return switchService.installRules(switchId, installAction.orElse(InstallRulesAction.INSTALL_DEFAULTS));
     }

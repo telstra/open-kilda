@@ -49,6 +49,9 @@ public enum DeleteRulesAction {
     // Remove Round Trip Latency rule
     REMOVE_ROUND_TRIP_LATENCY,
 
+    // Remove unicast verification for VXLAN
+    REMOVE_UNICAST_VXLAN,
+
     // Drop all default rules (ie a combination of the above)
     REMOVE_DEFAULTS,
 
