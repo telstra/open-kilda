@@ -71,22 +71,25 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
      * Verify that current discovered topology matches the TopologyDefinition.
      */
     def verifyTopology(TopologyDefinition topo) {
-        //Switches discovery
-        def switches = northbound.getAllSwitches().findAll { it.switchId in topo.activeSwitches*.dpId }
-        def activeSwitches = switches.findAll { it.state == SwitchChangeType.ACTIVATED }
-        assert switches == activeSwitches
-        assert switches.size() == topo.activeSwitches.size()
+        Wrappers.timedLoop(10) { //system should remain stable for 10s
+            //Switches discovery
+            def switches = northbound.getAllSwitches().findAll { it.switchId in topo.activeSwitches*.dpId }
+            def activeSwitches = switches.findAll { it.state == SwitchChangeType.ACTIVATED }
+            assert switches == activeSwitches
+            assert switches.size() == topo.activeSwitches.size()
 
-        //Isl discovery
-        def isls = northbound.getAllLinks().findAll {
-            it.source.switchId in topo.activeSwitches*.dpId ||
-                    it.destination.switchId in topo.activeSwitches*.dpId
-        }
-        assert isls.size() == topo.isls.size() * 2
-        //TODO(rtretiak): to verify actual src and dst of discovered ISLs
-        isls.each {
-            assert it.state == IslChangeType.DISCOVERED
-            assert it.actualState == IslChangeType.DISCOVERED
+            //Isl discovery
+            def isls = northbound.getAllLinks().findAll {
+                it.source.switchId in topo.activeSwitches*.dpId ||
+                        it.destination.switchId in topo.activeSwitches*.dpId
+            }
+            assert isls.size() == topo.isls.size() * 2
+            //TODO(rtretiak): to verify actual src and dst of discovered ISLs
+            isls.each {
+                assert it.state == IslChangeType.DISCOVERED
+                assert it.actualState == IslChangeType.DISCOVERED
+            }
+            sleep(500)
         }
     }
 

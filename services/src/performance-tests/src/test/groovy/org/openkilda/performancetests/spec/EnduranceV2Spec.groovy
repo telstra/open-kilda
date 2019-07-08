@@ -3,22 +3,26 @@ package org.openkilda.performancetests.spec
 import static groovyx.gpars.GParsPool.withPool
 import static groovyx.gpars.dataflow.Dataflow.task
 import static org.hamcrest.CoreMatchers.equalTo
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.helpers.Dice
 import org.openkilda.functionaltests.helpers.Dice.Face
+import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v1.flows.PingInput
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.performancetests.BaseSpecification
 import org.openkilda.performancetests.helpers.FlowPinger
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.SoftAssertions
 
 import groovy.util.logging.Slf4j
 import org.junit.Assume
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 import spock.lang.Unroll
@@ -27,13 +31,17 @@ import java.util.concurrent.TimeUnit
 
 @Slf4j
 @Narrative("This spec to hold tests that exercise system's ability to continuously survive under certain conditions.")
-class EnduranceSpec extends BaseSpecification {
+class EnduranceV2Spec extends BaseSpecification {
     @Value('${antiflap.min}')
     int antiflapMin
     @Value('${reroute.delay}')
     int rerouteDelay
     def r = new Random()
-    List<FlowPayload> flows = Collections.synchronizedList(new ArrayList<FlowPayload>())
+    List<FlowRequestV2> flows = Collections.synchronizedList(new ArrayList<FlowRequestV2>())
+    @Autowired
+    NorthboundServiceV2 northboundV2
+    @Autowired
+    FlowHelperV2 flowHelperV2
 
     /**
      * Deploy topology and create certain amount of flows in the system. Define amount of events to happen during the
@@ -52,6 +60,7 @@ class EnduranceSpec extends BaseSpecification {
         def topo = topoHelper.createRandomTopology(preset.switchesAmount, preset.islsAmount)
         topoHelper.setTopology(topo)
         flowHelper.setTopology(topo)
+        flowHelperV2.setTopology(topo)
         def dice = new Dice([
                 new Face(chance: 25, event: this.&deleteFlow),
                 new Face(chance: 25, event: { createFlow(true) }),
@@ -64,14 +73,14 @@ class EnduranceSpec extends BaseSpecification {
         preset.flowsToStartWith.times { createFlow() }
         Wrappers.wait(flows.size() * 1.5) {
             flows.each {
-                assert northbound.getFlowStatus(it.id).status == FlowState.UP
-                northbound.validateFlow(it.id).each { direction -> assert direction.asExpected }
+                assert northbound.getFlowStatus(it.flowId).status == FlowState.UP
+                northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
             }
         }
 
         when: "With certain probability one of the following events occurs: flow creation, flow deletion, isl blink, \
 idle, mass manual reroute. Step repeats pre-defined number of times"
-        def pinger = new FlowPinger(northbound, flows.collect { it.id }, rerouteDelay)
+        def pinger = new FlowPinger(northbound, flows.collect { it.flowId }, rerouteDelay)
         pinger.start()
         preset.eventsAmount.times {
             log.debug("running event #$it")
@@ -81,15 +90,15 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
         def pingFailures = pinger.stop()
 
         then: "All flows remain up and valid, with no missing rules on switches"
-        Wrappers.wait(30) {
+        Wrappers.wait(WAIT_OFFSET * 2) {
             northbound.getAllLinks().every { it.state == IslChangeType.DISCOVERED }
         }
-        Wrappers.wait(60 + preset.switchesAmount) {
+        Wrappers.wait(WAIT_OFFSET + preset.switchesAmount) {
             def soft = new SoftAssertions()
             flows.each { flow ->
-                soft.checkSucceeds { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+                soft.checkSucceeds { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
                 soft.checkSucceeds {
-                    northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
+                    northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
                 }
             }
             topo.switches.each { sw ->
@@ -108,7 +117,7 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
 
         cleanup: "delete flows and purge topology"
         pinger && !pinger.isStopped() && pinger.stop()
-        flows.each { northbound.deleteFlow(it.id) }
+        flows.each { northbound.deleteFlow(it.flowId) }
         topo && topoHelper.purgeTopology(topo)
 
         where:
@@ -125,95 +134,33 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
                         name              : "stage",
                         switchesAmount    : 60,
                         islsAmount        : 150,
-                        eventsAmount      : 100,
+                        eventsAmount      : 200,
                         flowsToStartWith  : 350,
                         pauseBetweenEvents: 1, //seconds
                 ]
         ]
     }
 
-    def "Create 4094 flows"() {
-        // system allows to create 4094 simple flows or 2047 protected flows
-        def switchesAmount = 7
-        int islsAmount = switchesAmount * 2.5
-        int flowsAmount = 4094
-
-        setup: "Create a topology"
-        def topo = topoHelper.createRandomTopology(switchesAmount, islsAmount)
-        topoHelper.setTopology(topo)
-        flowHelper.setTopology(topo)
-
-        when: "Create 4094 flows"
-        flowsAmount.times {
-            createFlow(false, false)
-            def numberOfCreatedFlow = it + 1
-            log.debug("Number of created flow: $numberOfCreatedFlow/$flowsAmount")
-
-            if (it != 0 && it % 500 == 0) {
-                TimeUnit.SECONDS.sleep(60)
-            }
-        }
-
-        then: "Needed amount of flows are created"
-        northbound.getAllFlows().size() == flowsAmount
-
-        cleanup: "Delete flows and purge topology"
-        flows.each { northbound.deleteFlow(it.id) }
-        topoHelper.purgeTopology(topo)
-    }
-
-    def "Create 2047 protected flows"() {
-        def switchesAmount = 7
-        int islsAmount = switchesAmount * 2.5
-        int flowsAmount = 2047
-
-        setup: "Create a topology"
-        def topo = topoHelper.createRandomTopology(switchesAmount, islsAmount)
-        topoHelper.setTopology(topo)
-        flowHelper.setTopology(topo)
-
-        when: "Try to create 2047 flows"
-        flowsAmount.times {
-            createFlow(false, true)
-            def numberOfCreatedFlow = it + 1
-            log.debug("Number of created flow: $numberOfCreatedFlow/$flowsAmount")
-
-            if (it != 0 && it % 500 == 0) {
-                TimeUnit.SECONDS.sleep(60)
-            }
-        }
-
-        then: "Needed amount of flows are created"
-        northbound.getAllFlows().size() == flowsAmount
-
-        cleanup: "Delete flows and purge topology"
-        flows.each { northbound.deleteFlow(it.id) }
-        topoHelper.purgeTopology(topo)
-    }
-
     //TODO(rtretiak): test that continuously add/remove different switches. Ensure no memory leak over time
 
-    def createFlow(waitForRules = false, boolean protectedPath = false) {
+    def createFlow(waitForRules = false) {
         Wrappers.silent {
-            def flow = flowHelper.randomFlow(*topoHelper.getRandomSwitchPair(), false, flows)
-            flow.allocateProtectedPath = protectedPath
-            log.info "creating flow $flow.id"
-            waitForRules ? flowHelper.addFlow(flow) : northbound.addFlow(flow)
+            def flow = flowHelperV2.randomFlow(*topoHelper.getRandomSwitchPair(), false, flows)
+            log.info "creating flow $flow.flowId"
+            waitForRules ? flowHelperV2.addFlow(flow) : northboundV2.addFlow(flow)
             flows << flow
             return flow
         }
     }
 
     def deleteFlow() {
-        Wrappers.silent {
-            def flowToDelete = flows.remove(r.nextInt(flows.size()))
-            log.info "deleting flow $flowToDelete.id"
-            task { //delay the actual delete procedure to ensure no pings are in progress for the flow
-                sleep(PingInput.DEFAULT_TIMEOUT)
-                northbound.deleteFlow(flowToDelete.id)
-            }
-            return flowToDelete
+        def flowToDelete = flows.remove(r.nextInt(flows.size()))
+        log.info "deleting flow $flowToDelete.flowId"
+        task { //delay the actual delete procedure to ensure no pings are in progress for the flow
+            sleep(PingInput.DEFAULT_TIMEOUT)
+            Wrappers.silent { northbound.deleteFlow(flowToDelete.flowId) }
         }
+        return flowToDelete
     }
 
     def blinkIsl(List<Isl> isls) {
@@ -225,7 +172,7 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
             log.debug("Decide to sleep for $sleepBeforePortUp seconds before portUp on $isl.srcSwitch.dpId-$isl.srcPort")
             TimeUnit.SECONDS.sleep(sleepBeforePortUp)
             northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        }
+        }.then({ it }, { throw it })
     }
 
     def massReroute(TopologyDefinition topo) {
@@ -240,7 +187,14 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
         Collections.shuffle(flows)
         task {
             withPool {
-                flows[0..flows.size() / 4].eachParallel { flow -> Wrappers.silent { northbound.rerouteFlow(flow.id) } }
+                flows[0..flows.size() / 4].eachParallel { flow ->
+                    Wrappers.silent {
+                        //may fail due to 'in progress' status, just retry
+                        Wrappers.retry(5, 1, {}) {
+                            northboundV2.rerouteFlow(flow.flowId)
+                        }
+                    }
+                }
             }
         }
     }
