@@ -100,14 +100,14 @@ public class CacheService {
 
             carrier.emitCachedData(roundTripLatency, destination);
         } catch (IslNotFoundException e) {
-            log.warn(String.format("Could not update ISL cache: %s", e.getMessage()), e);
+            log.debug(String.format("Could not update ISL cache: %s", e.getMessage()), e);
         } catch (IllegalIslStateException e) {
             log.error(String.format("Could not update ISL cache: %s", e.getMessage()), e);
         }
     }
 
     private Endpoint updateCache(Endpoint source) throws IslNotFoundException, IllegalIslStateException {
-        Isl isl = getActiveIsl(source);
+        Isl isl = getNotMovedIsl(source);
 
         Endpoint destination = Endpoint.of(isl.getDestSwitch().getSwitchId(), isl.getDestPort());
 
@@ -117,28 +117,28 @@ public class CacheService {
         return destination;
     }
 
-    private Isl getActiveIsl(Endpoint source) throws IslNotFoundException, IllegalIslStateException {
-        List<Isl> activeIsls = islRepository.findBySrcEndpoint(source.getDatapath(), source.getPortNumber())
+    private Isl getNotMovedIsl(Endpoint source) throws IslNotFoundException, IllegalIslStateException {
+        List<Isl> notMovedIsls = islRepository.findBySrcEndpoint(source.getDatapath(), source.getPortNumber())
                 .stream()
-                .filter(isl -> isl.getStatus() == IslStatus.ACTIVE)
+                .filter(isl -> isl.getStatus() != IslStatus.MOVED)
                 .collect(Collectors.toList());
 
-        if (activeIsls.isEmpty()) {
-            String message = String.format("There is no active ISLs with src endpoint %s_%d.",
+        if (notMovedIsls.isEmpty()) {
+            String message = String.format("There is no not moved ISLs with src endpoint %s_%d.",
                     source.getDatapath(), source.getPortNumber());
             throw new IslNotFoundException(message);
         }
-        if (activeIsls.size() > 1) {
-            List<String> destinationEndpoints = activeIsls.stream()
+        if (notMovedIsls.size() > 1) {
+            List<String> destinationEndpoints = notMovedIsls.stream()
                     .map(isl -> String.format("%s_%d", isl.getDestSwitch(), isl.getDestPort()))
                     .collect(Collectors.toList());
 
             String message = String.format(
-                    "There is more than one active ISLs with source endpoint %s_%d. Destination endpoints: %s",
+                    "There is more than one not moved ISLs with source endpoint %s_%d. Destination endpoints: %s",
                     source.getDatapath(), source.getPortNumber(), destinationEndpoints);
             throw new IllegalIslStateException(message);
         }
 
-        return activeIsls.get(0);
+        return notMovedIsls.get(0);
     }
 }
