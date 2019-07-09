@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.statistics;
 
+import static java.lang.String.format;
+
 import org.openkilda.floodlight.converter.OfFlowStatsMapper;
 import org.openkilda.floodlight.converter.OfMeterStatsMapper;
 import org.openkilda.floodlight.converter.OfPortStatsMapper;
@@ -38,11 +40,14 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import org.apache.commons.collections4.CollectionUtils;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFMeterStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFPortStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
+import org.projectfloodlight.openflow.protocol.OFTableStatsReply;
+import org.projectfloodlight.openflow.protocol.OFTableStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFGroup;
@@ -56,12 +61,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import javax.annotation.Nullable;
 
 /**
  * This service performs periodic port/flow/meter config statistics collection and pushes it to Kafka.
  */
 public class StatisticsService implements IStatisticsService, IFloodlightModule {
     private static final Logger logger = LoggerFactory.getLogger(StatisticsService.class);
+    private static final Logger tableStatsLogger = LoggerFactory.getLogger(
+            String.format("%s.TABLE", StatisticsService.class.getName()));
     private static final long OFPM_ALL = 0xffffffffL;
 
     private IOFSwitchService switchService;
@@ -115,21 +123,26 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                     try {
                         gatherPortStats(iofSwitch);
                     } catch (Exception e) {
-                        logger.error(String.format("Failed to gather stats for ports on switch %s.",
-                                iofSwitch.getId()), e);
+                        logger.error(format("Failed to gather stats for ports on switch %s.", iofSwitch.getId()), e);
                     }
 
                     try {
                         gatherFlowStats(iofSwitch);
                     } catch (Exception e) {
-                        logger.error(String.format("Failed to gather stats for flows on switch %s.",
-                                iofSwitch.getId()), e);
+                        logger.error(format("Failed to gather stats for flows on switch %s.", iofSwitch.getId()), e);
                     }
+
 
                     try {
                         gatherMeterStats(iofSwitch);
                     } catch (Exception e) {
-                        logger.error(String.format("Failed to gather stats for meters on switch %s.",
+                        logger.error(format("Failed to gather stats for meters on switch %s.", iofSwitch.getId()), e);
+                    }
+
+                    try {
+                        gatherTableStats(iofSwitch);
+                    } catch (Exception e) {
+                        tableStatsLogger.error(format("Failed to gather stats for tables on switch %s.",
                                 iofSwitch.getId()), e);
                     }
                 });
@@ -170,6 +183,52 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                     new RequestCallback<>(data -> OfFlowStatsMapper.INSTANCE.toFlowStatsData(data, switchId),
                             "flow", CorrelationContext.getId()));
         }
+    }
+
+    @NewCorrelationContextRequired
+    private void gatherTableStats(IOFSwitch iofSwitch) {
+        OFFactory factory = iofSwitch.getOFFactory();
+
+        OFTableStatsRequest flowStatsRequest = factory
+                .buildTableStatsRequest()
+                .build();
+
+        tableStatsLogger.trace("Getting flow stats per table for switch={}", iofSwitch.getId());
+
+        Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest),
+                new FutureCallback<List<OFTableStatsReply>>() {
+
+                @Override
+                public void onSuccess(@Nullable List<OFTableStatsReply> result) {
+                    if (CollectionUtils.isEmpty(result)) {
+                        return;
+                    }
+
+                    result.stream()
+                            .filter(reply -> CollectionUtils.isNotEmpty(reply.getEntries()))
+                            .map(OFTableStatsReply::getEntries)
+                            .flatMap(List::stream)
+                            .forEach(entry -> {
+                                if (entry.getLookupCount().equals(entry.getMatchedCount())) {
+                                    tableStatsLogger.debug(
+                                            "Lookup and matched counters are equal ({}) on the switch {} table {}",
+                                            entry.getLookupCount().getValue(), iofSwitch.getId(),
+                                            entry.getTableId().getValue());
+                                } else {
+                                    tableStatsLogger.warn(
+                                            "Lookup {} and matched {} counters are not equal on the switch {} table {}",
+                                            entry.getLookupCount().getValue(), entry.getMatchedCount().getValue(),
+                                            iofSwitch.getId(), entry.getTableId().getValue());
+                                }
+                            });
+                }
+
+                @Override
+                public void onFailure(Throwable t) {
+                    tableStatsLogger.error(format("Failed to read table stats from %s", iofSwitch.getId()), t);
+                }
+            }
+        );
     }
 
     @NewCorrelationContextRequired
