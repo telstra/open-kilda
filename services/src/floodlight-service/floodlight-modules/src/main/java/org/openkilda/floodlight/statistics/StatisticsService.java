@@ -15,9 +15,12 @@
 
 package org.openkilda.floodlight.statistics;
 
+import static java.lang.String.format;
+
 import org.openkilda.floodlight.converter.OfFlowStatsMapper;
 import org.openkilda.floodlight.converter.OfMeterStatsMapper;
 import org.openkilda.floodlight.converter.OfPortStatsMapper;
+import org.openkilda.floodlight.converter.OfTableStatsMapper;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.utils.CorrelationContext;
@@ -26,6 +29,8 @@ import org.openkilda.floodlight.utils.NewCorrelationContextRequired;
 import org.openkilda.messaging.Destination;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.stats.SwitchTableStatsData;
+import org.openkilda.messaging.info.stats.TableStatsEntry;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
@@ -38,11 +43,15 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFMeterStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFPortStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
+import org.projectfloodlight.openflow.protocol.OFTableStatsReply;
+import org.projectfloodlight.openflow.protocol.OFTableStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFVersion;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFGroup;
@@ -56,6 +65,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * This service performs periodic port/flow/meter config statistics collection and pushes it to Kafka.
@@ -115,22 +125,26 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                     try {
                         gatherPortStats(iofSwitch);
                     } catch (Exception e) {
-                        logger.error(String.format("Failed to gather stats for ports on switch %s.",
-                                iofSwitch.getId()), e);
+                        logger.error(format("Failed to gather stats for ports on switch %s.", iofSwitch.getId()), e);
                     }
 
                     try {
                         gatherFlowStats(iofSwitch);
                     } catch (Exception e) {
-                        logger.error(String.format("Failed to gather stats for flows on switch %s.",
-                                iofSwitch.getId()), e);
+                        logger.error(format("Failed to gather stats for flows on switch %s.", iofSwitch.getId()), e);
                     }
+
 
                     try {
                         gatherMeterStats(iofSwitch);
                     } catch (Exception e) {
-                        logger.error(String.format("Failed to gather stats for meters on switch %s.",
-                                iofSwitch.getId()), e);
+                        logger.error(format("Failed to gather stats for meters on switch %s.", iofSwitch.getId()), e);
+                    }
+
+                    try {
+                        gatherTableStats(iofSwitch);
+                    } catch (Exception e) {
+                        logger.error(format("Failed to gather stats for tables on switch %s.", iofSwitch.getId()), e);
                     }
                 });
     }
@@ -138,7 +152,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     @NewCorrelationContextRequired
     private void gatherPortStats(IOFSwitch iofSwitch) {
         OFFactory factory = iofSwitch.getOFFactory();
-        SwitchId switchId = new SwitchId(iofSwitch.getId().toString());
+        SwitchId switchId = new SwitchId(iofSwitch.getId().getLong());
 
         OFPortStatsRequest portStatsRequest = factory
                 .buildPortStatsRequest()
@@ -155,7 +169,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     @NewCorrelationContextRequired
     private void gatherFlowStats(IOFSwitch iofSwitch) {
         OFFactory factory = iofSwitch.getOFFactory();
-        final SwitchId switchId = new SwitchId(iofSwitch.getId().toString());
+        final SwitchId switchId = new SwitchId(iofSwitch.getId().getLong());
 
         OFFlowStatsRequest flowStatsRequest = factory
                 .buildFlowStatsRequest()
@@ -173,9 +187,40 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
     }
 
     @NewCorrelationContextRequired
+    private void gatherTableStats(IOFSwitch iofSwitch) {
+        final SwitchId switchId = new SwitchId(iofSwitch.getId().getLong());
+        OFFactory factory = iofSwitch.getOFFactory();
+
+        OFTableStatsRequest flowStatsRequest = factory
+                .buildTableStatsRequest()
+                .build();
+
+        logger.trace("Getting flow stats per table for switch={}", iofSwitch.getId());
+
+        Function<List<OFTableStatsReply>, InfoData> converter = (response) -> {
+            List<TableStatsEntry> tableEntries = response.stream()
+                    .filter(reply -> CollectionUtils.isNotEmpty(reply.getEntries()))
+                    .map(OFTableStatsReply::getEntries)
+                    .flatMap(List::stream)
+                    .filter(entry -> entry.getActiveCount() != NumberUtils.LONG_ZERO)
+                    .map(OfTableStatsMapper.INSTANCE::toTableStatsEntry)
+                    .collect(Collectors.toList());
+
+            return SwitchTableStatsData.builder()
+                    .switchId(switchId)
+                    .tableStatsEntries(tableEntries)
+                    .build();
+        };
+
+        RequestCallback<OFTableStatsReply> callback = new RequestCallback<>(converter, "table",
+                CorrelationContext.getId());
+        Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest), callback);
+    }
+
+    @NewCorrelationContextRequired
     private void gatherMeterStats(IOFSwitch iofSwitch) {
         OFFactory factory = iofSwitch.getOFFactory();
-        SwitchId switchId = new SwitchId(iofSwitch.getId().toString());
+        SwitchId switchId = new SwitchId(iofSwitch.getId().getLong());
 
         if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
 

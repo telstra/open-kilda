@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,25 +13,22 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.stats;
+package org.openkilda.messaging.info.stats;
 
-/**
- * Represents components used in {@link StatsTopology}.
- */
-public enum StatsComponentType {
-    STATS_OFS_KAFKA_SPOUT,
-    STATS_OFS_BOLT,
-    PORT_STATS_METRIC_GEN,
-    METER_STATS_METRIC_GEN,
-    METER_CFG_STATS_METRIC_GEN,
-    SYSTEM_RULE_STATS_METRIC_GEN,
-    FLOW_STATS_METRIC_GEN,
-    TABLE_STATS_METRIC_GEN,
-    ERROR_BOLT,
-    STATS_CACHE_BOLT,
-    STATS_KILDA_SPEAKER_SPOUT,
-    TICK_BOLT,
-    STATS_REQUESTER_BOLT,
-    STATS_KILDA_SPEAKER_BOLT,
-    STATS_CACHE_FILTER_BOLT
+import org.openkilda.messaging.info.InfoData;
+import org.openkilda.model.SwitchId;
+
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Builder;
+import lombok.Value;
+
+import java.util.List;
+
+@Value
+@Builder
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class SwitchTableStatsData extends InfoData {
+    SwitchId switchId;
+    List<TableStatsEntry> tableStatsEntries;
 }

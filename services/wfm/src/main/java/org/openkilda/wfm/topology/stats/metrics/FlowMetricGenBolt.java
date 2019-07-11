@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.stats.metrics;
 
-import static org.openkilda.messaging.Utils.TIMESTAMP;
 import static org.openkilda.wfm.topology.stats.StatsTopology.STATS_FIELD;
 import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.COOKIE_CACHE_FIELD;
 
@@ -48,7 +47,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         log.debug("dataCache in FlowMetricGenBolt {}", dataCache);
 
         FlowStatsData data = (FlowStatsData) input.getValueByField(STATS_FIELD);
-        long timestamp = input.getLongByField(TIMESTAMP);
+        long timestamp = pullContext(input).getCreateTime();
         SwitchId switchId = data.getSwitchId();
 
         for (FlowStatsEntry entry : data.getStats()) {
