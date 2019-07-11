@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.stats.metrics;
 
-import static org.openkilda.messaging.Utils.TIMESTAMP;
 import static org.openkilda.model.Cookie.createCookieForDefaultRule;
 import static org.openkilda.model.MeterId.isMeterIdOfDefaultRule;
 import static org.openkilda.wfm.topology.stats.StatsTopology.STATS_FIELD;
@@ -53,7 +52,7 @@ public class MeterStatsMetricGenBolt extends MetricGenBolt {
         Map<MeterCacheKey, CacheFlowEntry> meterCache =
                 (Map<MeterCacheKey, CacheFlowEntry>) input.getValueByField(METER_CACHE_FIELD);
 
-        long timestamp = input.getLongByField(TIMESTAMP);
+        long timestamp = getCommandContext().getCreateTime();
 
         SwitchId switchId = data.getSwitchId();
         for (MeterStatsEntry entry : data.getStats()) {

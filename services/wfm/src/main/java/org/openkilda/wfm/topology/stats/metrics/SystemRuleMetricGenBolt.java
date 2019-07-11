@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.stats.metrics;
 
-import static org.openkilda.messaging.Utils.TIMESTAMP;
 import static org.openkilda.wfm.topology.stats.StatsTopology.STATS_FIELD;
 
 import org.openkilda.messaging.info.stats.FlowStatsData;
@@ -40,7 +39,7 @@ public class SystemRuleMetricGenBolt extends MetricGenBolt {
     protected void handleInput(Tuple input) throws Exception {
         FlowStatsData data = (FlowStatsData) input.getValueByField(STATS_FIELD);
         log.debug("Received system rules statistics: {}.", data);
-        long timestamp = input.getLongByField(TIMESTAMP);
+        long timestamp = getCommandContext().getCreateTime();
         SwitchId switchId = data.getSwitchId();
 
         for (FlowStatsEntry entry : data.getStats()) {

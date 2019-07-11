@@ -15,9 +15,7 @@
 
 package org.openkilda.wfm.topology.stats.bolts;
 
-import static org.openkilda.messaging.Utils.TIMESTAMP;
 import static org.openkilda.model.Cookie.isDefaultRule;
-import static org.openkilda.wfm.AbstractBolt.FIELD_ID_CONTEXT;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
@@ -27,16 +25,14 @@ import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.MeterConfigStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.PortStatsData;
-import org.openkilda.wfm.CommandContext;
+import org.openkilda.messaging.info.stats.SwitchTableStatsData;
+import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
 import org.openkilda.wfm.topology.stats.StatsTopology;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.storm.task.OutputCollector;
-import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
-import org.apache.storm.topology.base.BaseRichBolt;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
@@ -45,57 +41,46 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
-public class SpeakerBolt extends BaseRichBolt {
+public class SpeakerBolt extends AbstractBolt {
     private static final Logger logger = LoggerFactory.getLogger(SpeakerBolt.class);
     private static final String PORT_STATS_STREAM = StatsStreamType.PORT_STATS.toString();
     private static final String METER_CFG_STATS_STREAM = StatsStreamType.METER_CONFIG_STATS.toString();
     private static final String CACHE_STREAM = StatsStreamType.CACHE_DATA.toString();
     private static final String SYSTEM_RULES_STATS_STREAM = StatsStreamType.SYSTEM_RULE_STATS.toString();
+    private static final String TABLE_STATS_STREAM = StatsStreamType.TABLE_STATS.toString();
 
-    private transient OutputCollector outputCollector;
-
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public void execute(Tuple tuple) {
+    protected void handleInput(Tuple tuple) throws Exception {
         logger.debug("Ingoing tuple: {}", tuple);
 
-        Message message = null;
-        try {
-            message = (Message) tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
-            if (!(message instanceof InfoMessage)) {
-                return;
-            }
-            CommandContext commandContext = (CommandContext) tuple.getValueByField(FIELD_ID_CONTEXT);
-            InfoMessage infoMessage = (InfoMessage) message;
-            final InfoData data = infoMessage.getData();
-            if (data instanceof PortStatsData) {
-                logger.debug("Port stats message: {}", infoMessage);
-                outputCollector.emit(PORT_STATS_STREAM, tuple, new Values(infoMessage, commandContext));
-            } else if (data instanceof MeterConfigStatsData) {
-                logger.debug("Meter config stats message: {}", infoMessage);
-                outputCollector.emit(METER_CFG_STATS_STREAM, tuple, new Values(infoMessage, commandContext));
-            } else if (data instanceof MeterStatsData) {
-                logger.debug("Meter stats message: {}", infoMessage);
-                outputCollector.emit(CACHE_STREAM, tuple, new Values(data, infoMessage.getTimestamp(), commandContext));
-            } else if (data instanceof FlowStatsData) {
-                logger.debug("Flow stats message: {}", infoMessage);
-                ImmutablePair<FlowStatsData, FlowStatsData> splitData =
-                        splitSystemRuleStatsAndFlowStats((FlowStatsData) data);
+        Message message = pullValue(tuple, MessageTranslator.FIELD_ID_PAYLOAD, Message.class);
+        if (!(message instanceof InfoMessage)) {
+            return;
+        }
+        InfoMessage infoMessage = (InfoMessage) message;
+        final InfoData data = infoMessage.getData();
+        if (data instanceof PortStatsData) {
+            logger.debug("Port stats message: {}", infoMessage);
+            emitWithContext(PORT_STATS_STREAM, tuple, new Values(infoMessage));
+        } else if (data instanceof MeterConfigStatsData) {
+            logger.debug("Meter config stats message: {}", infoMessage);
+            emitWithContext(METER_CFG_STATS_STREAM, tuple, new Values(infoMessage));
+        } else if (data instanceof MeterStatsData) {
+            logger.debug("Meter stats message: {}", infoMessage);
+            emitWithContext(CACHE_STREAM, tuple, new Values(data));
+        } else if (data instanceof FlowStatsData) {
+            logger.debug("Flow stats message: {}", infoMessage);
+            ImmutablePair<FlowStatsData, FlowStatsData> splitData =
+                    splitSystemRuleStatsAndFlowStats((FlowStatsData) data);
 
-                outputCollector.emit(SYSTEM_RULES_STATS_STREAM, tuple,
-                        new Values(splitData.getKey(), infoMessage.getTimestamp(), commandContext));
-                outputCollector.emit(CACHE_STREAM, tuple,
-                        new Values(splitData.getValue(), infoMessage.getTimestamp(), commandContext));
-            }
-        } catch (Exception e) {
-            logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
-        } finally {
-            outputCollector.ack(tuple);
-            logger.debug("Message ack: {}", message);
+            emitWithContext(SYSTEM_RULES_STATS_STREAM, tuple, new Values(splitData.getKey()));
+            emitWithContext(CACHE_STREAM, tuple, new Values(splitData.getValue()));
+        } else if (data instanceof SwitchTableStatsData) {
+            logger.debug("Table stats message: {}", infoMessage);
+            emitWithContext(TABLE_STATS_STREAM, tuple, new Values(data));
+        } else {
+            unhandledInput(tuple);
         }
     }
 
@@ -125,16 +110,9 @@ public class SpeakerBolt extends BaseRichBolt {
         outputFieldsDeclarer.declareStream(PORT_STATS_STREAM, fields);
         outputFieldsDeclarer.declareStream(METER_CFG_STATS_STREAM, fields);
 
-        Fields statsFields = new Fields(StatsTopology.STATS_FIELD, TIMESTAMP, FIELD_ID_CONTEXT);
+        Fields statsFields = new Fields(StatsTopology.STATS_FIELD, FIELD_ID_CONTEXT);
         outputFieldsDeclarer.declareStream(CACHE_STREAM, statsFields);
         outputFieldsDeclarer.declareStream(SYSTEM_RULES_STATS_STREAM, statsFields);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
-        this.outputCollector = outputCollector;
+        outputFieldsDeclarer.declareStream(TABLE_STATS_STREAM, statsFields);
     }
 }
