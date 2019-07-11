@@ -270,7 +270,8 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         Flow flow = buildFlowWithPath(0, 0);
 
         List<Isl> foundIsls = Lists.newArrayList(
-                islRepository.findActiveAndOccupiedByFlowPathWithAvailableBandwidth(flow.getFlowPathIds(), 100));
+                islRepository.findActiveAndOccupiedByFlowPathWithAvailableBandwidth(flow.getFlowPathIds(), 100,
+                        FlowEncapsulationType.TRANSIT_VLAN));
         assertThat(foundIsls, Matchers.hasSize(1));
     }
 
@@ -289,7 +290,8 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         Flow flow = buildFlowWithPath(0, 0);
 
         List<Isl> foundIsls = Lists.newArrayList(
-                islRepository.findActiveAndOccupiedByFlowPathWithAvailableBandwidth(flow.getFlowPathIds(), 100));
+                islRepository.findActiveAndOccupiedByFlowPathWithAvailableBandwidth(flow.getFlowPathIds(), 100,
+                        FlowEncapsulationType.TRANSIT_VLAN));
         assertThat(foundIsls, Matchers.hasSize(0));
     }
 

@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.nbworker.services;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -69,6 +70,7 @@ public class FlowOperationsServiceTest extends Neo4jBasedTest {
                 .destSwitch(switchB)
                 .destPort(2)
                 .destVlan(11)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .buildUnidirectionalFlow();
         flow.setStatus(FlowStatus.UP);
         flowRepository.createOrUpdate(flow.getFlow());

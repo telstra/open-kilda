@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flow.service;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPair;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -56,6 +57,7 @@ public class BaseFlowServiceTest extends Neo4jBasedTest {
         Flow flow = new TestFlowBuilder()
                 .srcSwitch(getOrCreateSwitch(SWITCH_ID_1))
                 .destSwitch(getOrCreateSwitch(SWITCH_ID_2))
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build();
         flowRepository.createOrUpdate(flow);
 

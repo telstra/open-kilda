@@ -57,6 +57,7 @@ import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
 import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_RULE_COOKIE;
+import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID;
 import static org.openkilda.model.MeterId.MIN_SYSTEM_RULE_METER_ID;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
@@ -152,6 +153,8 @@ public class SwitchManagerTest {
     private static final long MAX_CENTEC_SWITCH_BURST_SIZE = 32000L;
     private static final int hugeBandwidth = 400000;
     private static final long unicastMeterId = createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).getValue();
+    private static final long unicastVxlanMeterId =
+            createMeterIdForDefaultRule(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE).getValue();
     private static final long broadcastMeterId =
             createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue();
     private SwitchManager switchManager;
@@ -203,6 +206,7 @@ public class SwitchManagerTest {
         OFFlowMod dropLoop = capture.get(DROP_VERIFICATION_LOOP_RULE_COOKIE).getValue();
         OFFlowMod catchRule = capture.get(CATCH_BFD_RULE_COOKIE).getValue();
         OFFlowMod roundTrip = capture.get(ROUND_TRIP_LATENCY_RULE_COOKIE).getValue();
+        OFFlowMod verificationUnicastVxlan = capture.get(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE).getValue();
 
         assertEquals(scheme.installDropFlowRule(), dropFlow);
         assertEquals(scheme.installVerificationBroadcastRule(), verificationBroadcast);
@@ -210,6 +214,7 @@ public class SwitchManagerTest {
         assertEquals(scheme.installDropLoopRule(defaultDpid), dropLoop);
         assertEquals(scheme.installBfdCatchRule(defaultDpid), catchRule);
         assertEquals(scheme.installRoundTripLatencyRule(defaultDpid), roundTrip);
+        assertEquals(scheme.installUnicastVerificationRuleVxlan(defaultDpid), verificationUnicastVxlan);
     }
 
     private Map<Long, Capture<OFFlowMod>> prepareForDefaultRuleInstall() throws Exception {
@@ -226,11 +231,12 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> captureDropLoop = EasyMock.newCapture();
         Capture<OFFlowMod> captureBfdCatch = EasyMock.newCapture();
         Capture<OFFlowMod> captureRoundTripCatch = EasyMock.newCapture();
+        Capture<OFFlowMod> captureVerificationVxlanUnicast = EasyMock.newCapture();
 
         expect(ofSwitchService.getActiveSwitch(defaultDpid)).andStubReturn(iofSwitch);
 
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
-        expect(iofSwitch.getId()).andReturn(defaultDpid).times(10);
+        expect(iofSwitch.getId()).andReturn(defaultDpid).times(13);
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
         expect(iofSwitch.writeStatsRequest(isA(OFMeterConfigStatsRequest.class))).andStubReturn(ofMeterFuture);
         expect(iofSwitch.writeStatsRequest(isA(OFGroupDescStatsRequest.class))).andStubReturn(ofGroupFuture);
@@ -241,14 +247,17 @@ public class SwitchManagerTest {
         expect(iofSwitch.write(capture(captureBfdCatch))).andReturn(true).times(1);
         expect(iofSwitch.write(capture(captureRoundTripCatch))).andReturn(true).times(1);
 
-        expect(iofSwitch.write(anyObject(OFMeterMod.class))).andReturn(true).times(6);
+
+        expect(iofSwitch.write(anyObject(OFMeterMod.class))).andReturn(true).times(1);
+        expect(iofSwitch.write(capture(captureVerificationVxlanUnicast))).andReturn(true).times(1);
         expect(iofSwitch.writeRequest(anyObject(OFBarrierRequest.class)))
-                .andReturn(Futures.immediateFuture(createMock(OFBarrierReply.class))).times(2);
+                .andReturn(Futures.immediateFuture(createMock(OFBarrierReply.class))).times(3);
 
         expect(ofMeterFuture.get(anyLong(), anyObject())).andStubReturn(Collections.singletonList(meterReply));
         expect(ofGroupFuture.get(anyLong(), anyObject())).andStubReturn(Collections.singletonList(groupReply));
 
-        expect(switchDescription.getManufacturerDescription()).andReturn("").times(8);
+
+        expect(switchDescription.getManufacturerDescription()).andReturn("").times(12);
         expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(
                 Sets.newHashSet(BFD, GROUP_PACKET_OUT_CONTROLLER, NOVIFLOW_COPY_FIELD));
         expectLastCall();
@@ -269,6 +278,7 @@ public class SwitchManagerTest {
                 .put(DROP_VERIFICATION_LOOP_RULE_COOKIE, captureDropLoop)
                 .put(CATCH_BFD_RULE_COOKIE, captureBfdCatch)
                 .put(ROUND_TRIP_LATENCY_RULE_COOKIE, captureRoundTripCatch)
+                .put(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE, captureVerificationVxlanUnicast)
                 .build();
     }
 
@@ -741,10 +751,10 @@ public class SwitchManagerTest {
 
         mockFlowStatsRequest(cookie, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                 VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
-                ROUND_TRIP_LATENCY_RULE_COOKIE);
+                ROUND_TRIP_LATENCY_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE);
 
         Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(6);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(7);
         expect(iofSwitch.write(isA(OFGroupDelete.class))).andReturn(true).once();
 
         mockBarrierRequest();
@@ -758,7 +768,7 @@ public class SwitchManagerTest {
 
         // then
         final List<OFFlowMod> actual = capture.getValues();
-        assertEquals(6, actual.size());
+        assertEquals(7, actual.size());
         assertThat(actual, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_BROADCAST_RULE_COOKIE)))));
@@ -766,9 +776,10 @@ public class SwitchManagerTest {
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_VERIFICATION_LOOP_RULE_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(CATCH_BFD_RULE_COOKIE)))));
         assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(ROUND_TRIP_LATENCY_RULE_COOKIE)))));
+        assertThat(actual, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE)))));
         assertThat(deletedRules, containsInAnyOrder(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                 VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE,
-                ROUND_TRIP_LATENCY_RULE_COOKIE));
+                ROUND_TRIP_LATENCY_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE));
     }
 
     @Test
@@ -781,10 +792,10 @@ public class SwitchManagerTest {
         expect(switchDescription.getManufacturerDescription()).andStubReturn(StringUtils.EMPTY);
 
         mockFlowStatsRequest(cookie, DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
-                VERIFICATION_UNICAST_RULE_COOKIE, CATCH_BFD_RULE_COOKIE);
+                VERIFICATION_UNICAST_RULE_COOKIE, CATCH_BFD_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE);
 
         Capture<OFFlowMod> capture = EasyMock.newCapture(CaptureType.ALL);
-        expect(iofSwitch.write(capture(capture))).andReturn(true).times(9);
+        expect(iofSwitch.write(capture(capture))).andReturn(true).times(11);
         expect(iofSwitch.write(isA(OFGroupDelete.class))).andReturn(true).once();
 
         mockBarrierRequest();
@@ -798,13 +809,13 @@ public class SwitchManagerTest {
 
         // then
         assertThat(deletedRules, containsInAnyOrder(DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
-                VERIFICATION_UNICAST_RULE_COOKIE, CATCH_BFD_RULE_COOKIE));
+                VERIFICATION_UNICAST_RULE_COOKIE, CATCH_BFD_RULE_COOKIE, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE));
 
         final List<OFFlowMod> actual = capture.getValues();
-        assertEquals(9, actual.size());
+        assertEquals(11, actual.size());
 
         // check rules deletion
-        List<OFFlowMod> rulesMod = actual.subList(0, 6);
+        List<OFFlowMod> rulesMod = actual.subList(0, 7);
         assertThat(rulesMod, everyItem(hasProperty("command", equalTo(OFFlowModCommand.DELETE))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_BROADCAST_RULE_COOKIE)))));
@@ -812,13 +823,15 @@ public class SwitchManagerTest {
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(DROP_VERIFICATION_LOOP_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(CATCH_BFD_RULE_COOKIE)))));
         assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(ROUND_TRIP_LATENCY_RULE_COOKIE)))));
+        assertThat(rulesMod, hasItem(hasProperty("cookie", equalTo(U64.of(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE)))));
 
 
         // verify meters deletion
-        List<OFFlowMod> metersMod = actual.subList(rulesMod.size(), rulesMod.size() + 2);
+        List<OFFlowMod> metersMod = actual.subList(rulesMod.size(), rulesMod.size() + 3);
         assertThat(metersMod, everyItem(hasProperty("command", equalTo(OFMeterModCommand.DELETE))));
         assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(broadcastMeterId))));
         assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(unicastMeterId))));
+        assertThat(metersMod, hasItem(hasProperty("meterId", equalTo(unicastVxlanMeterId))));
 
         // verify group deletion
         List<OFFlowMod> groupMod = actual.subList(rulesMod.size() + metersMod.size(), actual.size());
@@ -1300,7 +1313,7 @@ public class SwitchManagerTest {
         expect(iofSwitch.write(capture(capture))).andStubReturn(true);
         expect(featureDetectorService.detectSwitch(iofSwitch))
                 .andReturn(Sets.newHashSet(GROUP_PACKET_OUT_CONTROLLER, NOVIFLOW_COPY_FIELD))
-                .times(3);
+                .times(4);
         mockBarrierRequest();
         mockGetMetersRequest(Lists.newArrayList(unicastMeterId, broadcastMeterId), true, expectedRate);
         mockGetGroupsRequest(Lists.newArrayList(ROUND_TRIP_LATENCY_GROUP_ID));
