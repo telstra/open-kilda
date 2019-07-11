@@ -26,6 +26,7 @@ import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_KILDA_SP
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_KILDA_SPEAKER_SPOUT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_REQUESTER_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.SYSTEM_RULE_STATS_METRIC_GEN;
+import static org.openkilda.wfm.topology.stats.StatsComponentType.TABLE_STATS_METRIC_GEN;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.TICK_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.STATS_REQUEST;
@@ -45,6 +46,7 @@ import org.openkilda.wfm.topology.stats.metrics.MeterConfigMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.MeterStatsMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.PortMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.SystemRuleMetricGenBolt;
+import org.openkilda.wfm.topology.stats.metrics.TableStatsMetricGenBolt;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.spout.KafkaSpout;
@@ -116,6 +118,9 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         builder.setBolt(SYSTEM_RULE_STATS_METRIC_GEN.name(),
                 new SystemRuleMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
                 .fieldsGrouping(statsOfsBolt, StatsStreamType.SYSTEM_RULE_STATS.toString(), statsFields);
+        builder.setBolt(TABLE_STATS_METRIC_GEN.name(),
+                new TableStatsMetricGenBolt(topologyConfig.getMetricPrefix()), parallelism)
+                .fieldsGrouping(statsOfsBolt, StatsStreamType.TABLE_STATS.toString(), statsFields);
 
         logger.debug("starting flow_stats_metric_gen");
         builder.setBolt(FLOW_STATS_METRIC_GEN.name(),
@@ -139,6 +144,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 .shuffleGrouping(METER_STATS_METRIC_GEN.name())
                 .shuffleGrouping(METER_CFG_STATS_METRIC_GEN.name())
                 .shuffleGrouping(FLOW_STATS_METRIC_GEN.name())
+                .shuffleGrouping(TABLE_STATS_METRIC_GEN.name())
                 .shuffleGrouping(SYSTEM_RULE_STATS_METRIC_GEN.name());
 
         return builder.createTopology();
