@@ -27,6 +27,7 @@ import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.MeterConfigStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.PortStatsData;
+import org.openkilda.messaging.info.stats.SwitchTableStatsData;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
 import org.openkilda.wfm.topology.stats.StatsTopology;
@@ -53,6 +54,7 @@ public class SpeakerBolt extends BaseRichBolt {
     private static final String METER_CFG_STATS_STREAM = StatsStreamType.METER_CONFIG_STATS.toString();
     private static final String CACHE_STREAM = StatsStreamType.CACHE_DATA.toString();
     private static final String SYSTEM_RULES_STATS_STREAM = StatsStreamType.SYSTEM_RULE_STATS.toString();
+    private static final String TABLE_STATS_STREAM = StatsStreamType.TABLE_STATS.toString();
 
     private transient OutputCollector outputCollector;
 
@@ -90,6 +92,10 @@ public class SpeakerBolt extends BaseRichBolt {
                         new Values(splitData.getKey(), infoMessage.getTimestamp(), commandContext));
                 outputCollector.emit(CACHE_STREAM, tuple,
                         new Values(splitData.getValue(), infoMessage.getTimestamp(), commandContext));
+            } else if (data instanceof SwitchTableStatsData) {
+                logger.debug("Table stats message: {}", infoMessage);
+                outputCollector.emit(TABLE_STATS_STREAM, tuple,
+                        new Values(data, infoMessage.getTimestamp(), commandContext));
             }
         } catch (Exception e) {
             logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
@@ -128,6 +134,7 @@ public class SpeakerBolt extends BaseRichBolt {
         Fields statsFields = new Fields(StatsTopology.STATS_FIELD, TIMESTAMP, FIELD_ID_CONTEXT);
         outputFieldsDeclarer.declareStream(CACHE_STREAM, statsFields);
         outputFieldsDeclarer.declareStream(SYSTEM_RULES_STATS_STREAM, statsFields);
+        outputFieldsDeclarer.declareStream(TABLE_STATS_STREAM, statsFields);
     }
 
     /**
