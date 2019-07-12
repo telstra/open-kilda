@@ -117,6 +117,15 @@ public class Neo4jFlowPathRepositoryTest extends Neo4jBasedTest {
         assertEquals(foundFlow.getFlowId(), foundForwardPath.getFlow().getFlowId());
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void shouldFailValidationOnCreateFlowPath() {
+        FlowPath path = buildTestFlowPathWithIntermediate(switchC, 100);
+        FlowPath anotherPath = buildTestFlowPathWithIntermediate(switchC, 100);
+        path.getSegments().forEach(segment -> segment.setPath(anotherPath));
+
+        flowPathRepository.createOrUpdate(path);
+    }
+
     @Test
     public void shouldCreateFlowWithPaths() {
         Flow flowWithPaths = buildTestFlowPathPair();
