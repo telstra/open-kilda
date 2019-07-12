@@ -15,13 +15,11 @@
 
 package org.openkilda.messaging.ctrl.state.visitor;
 
-
 import org.openkilda.messaging.ctrl.AbstractDumpState;
 import org.openkilda.messaging.ctrl.CtrlResponse;
 import org.openkilda.messaging.ctrl.DumpStateResponseData;
 import org.openkilda.messaging.ctrl.state.CacheBoltState;
 import org.openkilda.messaging.ctrl.state.CrudBoltState;
-import org.openkilda.messaging.ctrl.state.OFELinkBoltState;
 import org.openkilda.messaging.ctrl.state.ResorceCacheBoltState;
 import org.openkilda.messaging.ctrl.state.TransactionBoltState;
 
@@ -35,7 +33,6 @@ public class DumpStateManager {
 
     private CacheBoltState cacheBoltState;
     private CrudBoltState crudBoltState;
-    private OFELinkBoltState ofeLinkBoltState;
     private TransactionBoltState transactionBoltState;
     private ResorceCacheBoltState resorceCacheBoltState;
 
@@ -71,14 +68,6 @@ public class DumpStateManager {
 
     public void setCrudBoltState(CrudBoltState crudBoltState) {
         this.crudBoltState = crudBoltState;
-    }
-
-    public OFELinkBoltState getOfeLinkBoltState() {
-        return ofeLinkBoltState;
-    }
-
-    public void setOfeLinkBoltState(OFELinkBoltState ofeLinkBoltState) {
-        this.ofeLinkBoltState = ofeLinkBoltState;
     }
 
     public TransactionBoltState getTransactionBoltState() {
