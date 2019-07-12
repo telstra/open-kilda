@@ -19,7 +19,6 @@ import org.openkilda.messaging.command.flow.InstallEgressFlow
 import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.MeterId
@@ -33,7 +32,6 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Unroll
 

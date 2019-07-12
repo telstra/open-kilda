@@ -127,6 +127,8 @@ class SwitchRulesSpec extends HealthCheckSpecification {
                 !sw.noviflow && data.installRulesAction == InstallRulesAction.INSTALL_BFD_CATCH)
         assumeFalse("Unable to run the test because only NoviFlow switches support installation of Round Trip Latency "
                 + "rule", !sw.noviflow && data.installRulesAction == InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY)
+        assumeFalse("Unable to run the test because only NoviFlow switches support installation of Unicast VXLAN rule",
+                !sw.noviflow && data.installRulesAction == InstallRulesAction.INSTALL_UNICAST_VXLAN)
 
         given: "A switch without any rules"
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
@@ -173,6 +175,10 @@ class SwitchRulesSpec extends HealthCheckSpecification {
                         [
                                 installRulesAction: InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY,
                                 cookie            : Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE
+                        ],
+                        [
+                                installRulesAction: InstallRulesAction.INSTALL_UNICAST_VXLAN,
+                                cookie            : Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
                         ]
                 ],
                 uniqueSwitches
