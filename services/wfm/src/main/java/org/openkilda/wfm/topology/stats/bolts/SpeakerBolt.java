@@ -80,7 +80,8 @@ public class SpeakerBolt extends AbstractBolt {
             logger.debug("Table stats message: {}", infoMessage);
             emitWithContext(TABLE_STATS_STREAM, tuple, new Values(data));
         } else {
-            unhandledInput(tuple);
+            //FIXME (ncherevko): we might receive few unexpected messages here, need to fix it and uncomment below line
+            //unhandledInput(tuple);
         }
     }
 
