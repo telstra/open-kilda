@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.27.0 (11/07/2019)
+
+### Features:
+-  [#2592](https://github.com/telstra/open-kilda/pull/2592) Add table stats to opentsdb (#2574) (Issue: [#2574](https://github.com/telstra/open-kilda/issues/2574)) [**floodlight**][**storm-topologies**]
+-  [#2560](https://github.com/telstra/open-kilda/pull/2560) Do not ignore Inactive ISLs in latency Cache (Issue: [#580](https://github.com/telstra/open-kilda/issues/580)) [**storm-topologies**]
+-  [#2539](https://github.com/telstra/open-kilda/pull/2539) add test for checking "get all flows for a switch" [**tests**]
+
+
+### Improvements:
+-  [#2532](https://github.com/telstra/open-kilda/pull/2532) extend ProtectedPathSpec by checking the 'flowStatusDetails' filed [**tests**]
+-  [#2567](https://github.com/telstra/open-kilda/pull/2567) Changed update latency intervals (Issue: [#580](https://github.com/telstra/open-kilda/issues/580)) [**configuration**]
+-  [#2570](https://github.com/telstra/open-kilda/pull/2570) Add special test that generates topo.yaml based on what is discovered [**tests**]
+-  [#2476](https://github.com/telstra/open-kilda/pull/2476) Do not treat all speaker as unavailable on floodlightrouter start (Issue: [#2456](https://github.com/telstra/open-kilda/issues/2456)) [**storm-topologies**]
+-  [#2478](https://github.com/telstra/open-kilda/pull/2478) Shared bolt cappable to produce periodic time tuples [**storm-topologies**]
+-  [#2553](https://github.com/telstra/open-kilda/pull/2553) Fix for vxlan unicast ping rule [**floodlight**][**northbound**]
+-  [#2494](https://github.com/telstra/open-kilda/pull/2494) add tests for creating 2047 and 4094 flows [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.26.0...v1.27.0).
+
+### Affected Components:
+isllatency, fl, router, nb, ping, stats
+
+---
+
 ## v1.26.0 (04/07/2019)
 
 ### Features:
