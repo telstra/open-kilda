@@ -7,7 +7,7 @@ import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -40,7 +40,7 @@ System can start to use protected path in two case:
 A flow has the status degraded in case when the main path is up and the protected path is down.
 
 Main and protected paths can't use the same link.""")
-class ProtectedPathSpec extends BaseSpecification {
+class ProtectedPathSpec extends HealthCheckSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider
@@ -97,17 +97,20 @@ class ProtectedPathSpec extends BaseSpecification {
 
         then: "Flow is created without protected path"
         !northbound.getFlowPath(flow.id).protectedPath
+        def flowInfo = northbound.getFlow(flow.id)
+        !flowInfo.flowStatusDetails
 
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
-        def currentLastUpdate = northbound.getFlow(flow.id).lastUpdated
+        def currentLastUpdate = flowInfo.lastUpdated
         northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
 
         then: "Protected path is enabled"
         def flowPathInfoAfterUpdating = northbound.getFlowPath(flow.id)
         flowPathInfoAfterUpdating.protectedPath
-        def flowInfo = database.getFlow(flow.id)
-        def protectedForwardCookie = flowInfo.protectedForwardPath.cookie.value
-        def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
+        northbound.getFlow(flow.id).flowStatusDetails
+        def flowInfoFromDb = database.getFlow(flow.id)
+        def protectedForwardCookie = flowInfoFromDb.protectedForwardPath.cookie.value
+        def protectedReverseCookie = flowInfoFromDb.protectedReversePath.cookie.value
 
         currentLastUpdate < northbound.getFlow(flow.id).lastUpdated
 
@@ -120,6 +123,7 @@ class ProtectedPathSpec extends BaseSpecification {
 
         then: "Protected path is disabled"
         !northbound.getFlowPath(flow.id).protectedPath
+        !northbound.getFlow(flow.id).flowStatusDetails
 
         and: "Rules for protected path are deleted"
         Wrappers.wait(WAIT_OFFSET) {
@@ -881,12 +885,18 @@ class ProtectedPathSpec extends BaseSpecification {
 
         then: "Flow state is changed to DEGRADED"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED }
+        def flowStatusDetails = northbound.getFlow(flow.id).flowStatusDetails
+        flowStatusDetails.mainFlowPathStatus == "Up"
+        flowStatusDetails.protectedFlowPathStatus == "Down"
 
         when: "Break ISL on the main path (bring port down) for changing the flow state to DOWN"
         northbound.portDown(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
 
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
+        def flowStatusDetails2 = northbound.getFlow(flow.id).flowStatusDetails
+        flowStatusDetails2.mainFlowPathStatus == "Down"
+        flowStatusDetails2.protectedFlowPathStatus == "Down"
 
         when: "Try to swap paths when main/protected paths are not available"
         northbound.swapFlowPath(flow.id)
@@ -901,9 +911,12 @@ class ProtectedPathSpec extends BaseSpecification {
         northbound.portUp(currentIsls[0].srcSwitch.dpId, currentIsls[0].srcPort)
         northbound.portUp(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
 
-        //TODO (andriidovhan) state should change to DEGRADED when pr2430 is merged
+        //TODO (andriidovhan) FlowState should be DEGRADED and mainFlowPathStatus should be "Up" when pr2430 is merged
         then: "Flow state is still DOWN"
         Wrappers.timedLoop(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
+        def flowStatusDetails3 = northbound.getFlow(flow.id).flowStatusDetails
+        flowStatusDetails3.mainFlowPathStatus == "Down"
+        flowStatusDetails3.protectedFlowPathStatus == "Down"
 
         when: "Try to swap paths when the main path is available and the protected path is not available"
         northbound.swapFlowPath(flow.id)

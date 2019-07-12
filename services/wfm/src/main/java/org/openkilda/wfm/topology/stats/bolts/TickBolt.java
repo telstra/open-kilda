@@ -15,10 +15,12 @@
 
 package org.openkilda.wfm.topology.stats.bolts;
 
-import org.openkilda.wfm.share.bolt.AbstractTick;
+import org.openkilda.wfm.share.bolt.MonotonicClock;
 
-public class TickBolt extends AbstractTick {
+public class TickBolt extends MonotonicClock<TickBolt.TickId> {
     public TickBolt(Integer interval) {
-        super(interval);
+        super(new MonotonicClock.ClockConfig<>(), interval);
     }
+
+    enum TickId {}
 }

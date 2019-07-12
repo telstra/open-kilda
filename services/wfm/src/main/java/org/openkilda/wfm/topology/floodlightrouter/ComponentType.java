@@ -68,5 +68,7 @@ public final class ComponentType {
     public static final String FL_STATS_SWITCHES_REPLY_BOLT = "FL_STATS_SWITCHES_REPLY_BOLT";
     public static final String FL_STATS_SWITCHES_KAFKA_BOLT = "FL_STATS_SWITCHES_KAFKA_BOLT";
 
+    public static final String MONOTONIC_TICK = "monotonic.tick";
+
     private ComponentType() {}
 }

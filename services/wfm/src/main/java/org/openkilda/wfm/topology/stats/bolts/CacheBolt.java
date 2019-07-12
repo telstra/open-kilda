@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.stats.bolts;
 
-import static org.openkilda.messaging.Utils.TIMESTAMP;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_CACHE_FILTER_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsComponentType.STATS_OFS_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.FLOW_STATS;
@@ -58,7 +57,7 @@ public class CacheBolt extends AbstractBolt {
     public static final String METER_CACHE_FIELD = "meter_cache";
 
     public static final Fields statsWithCacheFields =
-            new Fields(STATS_FIELD, TIMESTAMP, COOKIE_CACHE_FIELD, METER_CACHE_FIELD, FIELD_ID_CONTEXT);
+            new Fields(STATS_FIELD, COOKIE_CACHE_FIELD, METER_CACHE_FIELD, FIELD_ID_CONTEXT);
     /**
      * The logger.
      */
@@ -159,8 +158,7 @@ public class CacheBolt extends AbstractBolt {
             return;
         }
 
-        Values values = new Values(data, tuple.getLongByField(TIMESTAMP), cookieDataCache, meterDataCache,
-                getCommandContext());
+        Values values = new Values(data, cookieDataCache, meterDataCache, getCommandContext());
         getOutput().emit(streamId, tuple, values);
     }
 

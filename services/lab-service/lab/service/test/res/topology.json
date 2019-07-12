@@ -6,45 +6,7 @@
     "ofsw7", 
     "ofsw8", 
     "ofsw9"
-  ], 
-  "active_traff_gens": [
-    {
-      "active": true, 
-      "control_endpoint": "http://127.0.0.1:4041",
-      "iface_name": "eth0", 
-      "name": "tg1", 
-      "status": "Active", 
-      "switch_connected": "ofsw3", 
-      "switch_port": 10
-    }, 
-    {
-      "active": true, 
-      "control_endpoint": "http://127.0.0.1:4042",
-      "iface_name": "eth0", 
-      "name": "tg2", 
-      "status": "Active", 
-      "switch_connected": "ofsw8", 
-      "switch_port": 10
-    }, 
-    {
-      "active": true, 
-      "control_endpoint": "http://127.0.0.1:4044",
-      "iface_name": "eth0", 
-      "name": "tg4", 
-      "status": "Active", 
-      "switch_connected": "ofsw7", 
-      "switch_port": 10
-    }, 
-    {
-      "active": true, 
-      "control_endpoint": "http://127.0.0.1:4045",
-      "iface_name": "eth0", 
-      "name": "tg5", 
-      "status": "Active", 
-      "switch_connected": "ofsw2", 
-      "switch_port": 10
-    }
-  ], 
+  ],
   "controllers": ["tcp:127.0.0.1:6653","tcp:127.0.0.1:6653"],
   "isls": [
     {

@@ -85,7 +85,7 @@ For example:
   - if it fits under semantics of already existing specification add it there;
   - if it does not fit under semantics of already existing specification create new specification:
     - its name should end with `Spec`, e.g. `SwitchRulesSpec`;
-    - it should inherit from `org.openkilda.functionaltests.BaseSpecification`.
+    - it should inherit from `org.openkilda.functionaltests.HealthCheckSpecification`.
 
 ## Best Practices
 - Don't be too laconic when naming a test. Specify what behavior is being tested instead

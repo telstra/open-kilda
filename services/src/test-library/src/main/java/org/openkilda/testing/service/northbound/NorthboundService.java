@@ -144,6 +144,10 @@ public interface NorthboundService {
 
     PortDescription getPort(SwitchId switchId, Integer portNo);
 
+    List<FlowPayload> getSwitchFlows(SwitchId switchId);
+
+    List<FlowPayload> getSwitchFlows(SwitchId switchId, Integer port);
+
     //links
 
     List<IslInfoData> getAllLinks();

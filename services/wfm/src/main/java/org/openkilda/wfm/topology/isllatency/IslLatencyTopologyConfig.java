@@ -43,12 +43,12 @@ public interface IslLatencyTopologyConfig extends AbstractTopologyConfig {
     String getMetricPrefix();
 
     @Key("latency.update.interval") // how often we send average latency to neo4j in seconds
-    @Default("600")
+    @Default("300")
     @Min(1)
     int getLatencyUpdateInterval();
 
     @Key("latency.update.time.range") // average latency will be calculated for this time range in seconds
-    @Default("300")
+    @Default("600")
     @Min(1)
     int getLatencyUpdateTimeRange();
 

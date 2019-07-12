@@ -9,7 +9,7 @@ import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.testing.Constants.DefaultRule
@@ -21,7 +21,7 @@ import spock.lang.Narrative
 import java.util.concurrent.TimeUnit
 
 @Narrative("Verify scenarios around replugging ISLs between different switches/ports.")
-class IslReplugSpec extends BaseSpecification {
+class IslReplugSpec extends HealthCheckSpecification {
 
     @Value('${opentsdb.metric.prefix}')
     String metricPrefix

@@ -3,7 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
@@ -24,7 +24,7 @@ import spock.lang.Unroll
                  - ingress, transit and egress switches
                  - Single switch, two switch and three+ switch flow spans.
             """)
-class FlowValidationNegativeSpec extends BaseSpecification {
+class FlowValidationNegativeSpec extends HealthCheckSpecification {
 
     @Unroll
     @IterationTag(tags = [SMOKE], iterationNameRegex = /reverse/)

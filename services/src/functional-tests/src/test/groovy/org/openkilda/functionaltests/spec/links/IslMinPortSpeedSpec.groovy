@@ -6,7 +6,7 @@ import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 
@@ -16,7 +16,7 @@ import spock.lang.Narrative
 Sometimes an ISL have different port speed on its edges.
 In that case, we need to set ISL capacity and all bandwidth parameters according to minimal speed value.
 Eg. 10G on one side, and 1G on another side, the ISL should have a 1G capacity.""")
-class IslMinPortSpeedSpec extends BaseSpecification {
+class IslMinPortSpeedSpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "System sets min port speed for isl capacity"() {
         given: "Two ports with different port speed"

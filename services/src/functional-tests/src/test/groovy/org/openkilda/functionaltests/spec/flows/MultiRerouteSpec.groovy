@@ -3,7 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowPayload
@@ -11,7 +11,7 @@ import org.openkilda.messaging.payload.flow.FlowState
 
 import java.util.concurrent.TimeUnit
 
-class MultiRerouteSpec extends BaseSpecification {
+class MultiRerouteSpec extends HealthCheckSpecification {
 
     def "Simultaneous reroute of multiple flows should not oversubscribe any ISLs"() {
         given: "Two flows on the same path, with alt paths available"

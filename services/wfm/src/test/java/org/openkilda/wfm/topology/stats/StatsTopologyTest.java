@@ -39,6 +39,8 @@ import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
+import org.openkilda.messaging.info.stats.SwitchTableStatsData;
+import org.openkilda.messaging.info.stats.TableStatsEntry;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.MeterId;
@@ -60,6 +62,7 @@ import org.openkilda.wfm.share.flow.TestFlowBuilder;
 import org.openkilda.wfm.topology.TestKafkaConsumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
@@ -376,6 +379,42 @@ public class StatsTopologyTest extends AbstractStormTest {
             assertEquals(2, datapoint.getTags().size());
             assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
             assertEquals(Cookie.toString(VERIFICATION_BROADCAST_RULE_COOKIE), datapoint.getTags().get("cookieHex"));
+        });
+    }
+
+    @Test
+    public void tableStatsTest() throws IOException {
+        TableStatsEntry entry = TableStatsEntry.builder()
+                .tableId(1)
+                .activeEntries(100)
+                .lookupCount(2000)
+                .matchedCount(1900)
+                .build();
+        SwitchTableStatsData tableStatsData = SwitchTableStatsData.builder()
+                .switchId(switchId)
+                .tableStatsEntries(ImmutableList.of(entry))
+                .build();
+
+        sendStatsMessage(tableStatsData);
+
+        List<Datapoint> datapoints = pollDatapoints(4);
+
+        Map<String, Datapoint> datapointMap = createDatapointMap(datapoints);
+
+        assertEquals(entry.getActiveEntries(),
+                datapointMap.get(METRIC_PREFIX + "switch.table.active").getValue().intValue());
+        assertEquals(entry.getLookupCount(),
+                datapointMap.get(METRIC_PREFIX + "switch.table.lookup").getValue().longValue());
+        assertEquals(entry.getMatchedCount(),
+                datapointMap.get(METRIC_PREFIX + "switch.table.matched").getValue().longValue());
+        assertEquals(entry.getLookupCount() - entry.getMatchedCount(),
+                datapointMap.get(METRIC_PREFIX + "switch.table.missed").getValue().longValue());
+
+
+        datapoints.forEach(datapoint -> {
+            assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
+            assertEquals(entry.getTableId(), Integer.parseInt(datapoint.getTags().get("tableid")));
+            assertEquals(timestamp, datapoint.getTime().longValue());
         });
     }
 

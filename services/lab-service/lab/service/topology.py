@@ -35,7 +35,7 @@ def resolve_host(uri):
     try:
         ip = socket.gethostbyname(parts[1])
     except socket.gaierror as e:
-        raise Exception("Couldn't resolve host '%s', seems like Floodlight is down" % parts[1]) from e # noqa
+        raise Exception("Couldn't resolve host '%s', seems like Floodlight is down" % parts[1]) from e  # noqa
     return parts[0] + ":" + ip + ":" + parts[2]
 
 
@@ -231,7 +231,8 @@ class Topology:
             else:
                 links.append(Link.create(src, src_port, dst, dst_port, bandwidth))
 
-        for tgen_def in topo_def.get('active_traff_gens', []):
+        for tgen_def in [active_tgen for active_tgen in topo_def.get('traff_gens', [])
+                         if active_tgen['status'].lower() == "active"]:
             tg = Traffgen(tgen_def)
             traffgens.append(tg)
             links.append(tg.make_link())

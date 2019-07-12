@@ -5,7 +5,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -16,7 +16,7 @@ import org.openkilda.model.SwitchId
 import spock.lang.Ignore
 import spock.lang.Unroll
 
-class FlowPriorityRerouteSpec extends BaseSpecification {
+class FlowPriorityRerouteSpec extends HealthCheckSpecification {
     @Unroll
     @IterationTag(tags = [SMOKE], iterationNameRegex = /without protected path/)
     def "System is able to reroute(automatically) flow #info in the correct order based on the priority field"() {

@@ -15,8 +15,14 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
+import org.openkilda.messaging.AliveRequest;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.discovery.NetworkCommandData;
+import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.switches.UnmanagedSwitchNotification;
 import org.openkilda.model.FeatureToggles;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.AbstractBolt;
@@ -57,6 +63,7 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
 
     private transient FeatureTogglesRepository featureTogglesRepository;
     private transient RouterService routerService;
+    private transient CommandContext commandContext;
 
     private Tuple currentTuple;
 
@@ -71,39 +78,25 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
 
     @Override
     protected void doTick(Tuple tuple) {
-        currentTuple = tuple;
-        routerService.doPeriodicProcessing(this);
+        setupTuple(tuple);
 
-        long now = System.currentTimeMillis();
-        if (now >= lastNetworkDumpTimestamp + floodlightDumpInterval) {
-            doNetworkDump();
-            lastNetworkDumpTimestamp = now;
+        try {
+            handleTick();
+        } finally {
+            cleanupTuple();
         }
     }
 
     @Override
     protected void doWork(Tuple input) {
-        String sourceComponent = input.getSourceComponent();
         currentTuple = input;
-        Message message = null;
         try {
-            message = (Message) input.getValueByField(AbstractTopology.MESSAGE_FIELD);
-            CommandContext context = (CommandContext) input.getValueByField(AbstractBolt.FIELD_ID_CONTEXT);
-            switch (sourceComponent) {
-                case ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT:
-                    routerService.processSpeakerDiscoResponse(this, message, context);
-                    break;
-                case ComponentType.SPEAKER_DISCO_KAFKA_SPOUT:
-                    routerService.processDiscoSpeakerRequest(this, message);
-                    break;
-                default:
-                    logger.error("Unknown input stream handled: {}", sourceComponent);
-                    break;
-            }
+            handleInput(input);
         } catch (Exception e) {
-            logger.error("Failed to process message {}", message, e);
+            logger.error("Failed to process tuple {}", input, e);
         } finally {
             outputCollector.ack(input);
+            cleanupTuple();
         }
     }
 
@@ -116,7 +109,7 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
         }
         outputFieldsDeclarer.declareStream(Stream.KILDA_TOPO_DISCO, kafkaFields);
         outputFieldsDeclarer.declareStream(Stream.REGION_NOTIFICATION, new Fields(AbstractTopology.MESSAGE_FIELD,
-                AbstractBolt.FIELD_ID_CONTEXT));
+                                                                                  AbstractBolt.FIELD_ID_CONTEXT));
     }
 
     @Override
@@ -128,7 +121,78 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
         super.prepare(map, topologyContext, outputCollector);
     }
 
+    private void handleTick() {
+        routerService.doPeriodicProcessing(this);
+
+        long now = System.currentTimeMillis();
+        if (now >= lastNetworkDumpTimestamp + floodlightDumpInterval) {
+            doNetworkDump();
+            lastNetworkDumpTimestamp = now;
+        }
+    }
+
+    private void handleInput(Tuple input) {
+        String sourceComponent = input.getSourceComponent();
+        Message message = (Message) input.getValueByField(AbstractTopology.MESSAGE_FIELD);
+
+        // setup correct command context
+        commandContext = new CommandContext(message);
+
+        switch (sourceComponent) {
+            case ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT:
+                routerService.processSpeakerDiscoResponse(this, message);
+                break;
+            case ComponentType.SPEAKER_DISCO_KAFKA_SPOUT:
+                routerService.processDiscoSpeakerRequest(this, message);
+                break;
+            default:
+                logger.error("Unknown input stream handled: {}", sourceComponent);
+                break;
+        }
+    }
+
+    private void setupTuple(Tuple input) {
+        currentTuple = input;
+        commandContext = new CommandContext();
+    }
+
+    private void cleanupTuple() {
+        currentTuple = null;
+        commandContext = null;
+    }
+
     // MessageSender implementation
+
+    @Override
+    public void emitSpeakerAliveRequest(String region) {
+        AliveRequest request = new AliveRequest();
+        CommandMessage message = new CommandMessage(request, System.currentTimeMillis(),
+                                                    commandContext.fork(String.format("alive-request(%s)", region))
+                                                            .getCorrelationId());
+        emitSpeakerMessage(message, region);
+    }
+
+    @Override
+    public void emitSwitchUnmanagedNotification(SwitchId sw) {
+        UnmanagedSwitchNotification notification = new UnmanagedSwitchNotification(sw);
+        InfoMessage message = new InfoMessage(notification, System.currentTimeMillis(),
+                                              commandContext.fork(String.format("unmanaged(%s)", sw.toOtsdFormat()))
+                                                      .getCorrelationId());
+        emitControllerMessage(sw.toString(), message);
+    }
+
+    /**
+     * Send network dump requests for target region.
+     */
+    @Override
+    public void emitNetworkDumpRequest(String region) {
+        String correlationId = commandContext.fork(String.format("network-dump(%s)", region)).toString();
+        CommandMessage command = new CommandMessage(new NetworkCommandData(),
+                                                    System.currentTimeMillis(), correlationId);
+
+        logger.info("Send network dump request (correlation-id: {})", correlationId);
+        emitSpeakerMessage(correlationId, command, region);
+    }
 
     @Override
     public void emitSpeakerMessage(Message message, String region) {
@@ -152,8 +216,8 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
     }
 
     @Override
-    public void emitRegionNotification(SwitchMapping mapping, CommandContext context) {
-        outputCollector.emit(Stream.REGION_NOTIFICATION, currentTuple, new Values(mapping, context));
+    public void emitRegionNotification(SwitchMapping mapping) {
+        outputCollector.emit(Stream.REGION_NOTIFICATION, currentTuple, new Values(mapping, commandContext));
     }
 
     private void send(String key, Message message, String outputStream) {
@@ -162,11 +226,10 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
     }
 
     private String pullKeyFromCurrentTuple() {
-        String key = null;
         if (currentTuple.getFields().contains(AbstractTopology.KEY_FIELD)) {
-            key = currentTuple.getStringByField(AbstractTopology.KEY_FIELD);
+            return currentTuple.getStringByField(AbstractTopology.KEY_FIELD);
         }
-        return key;
+        return null;
     }
 
     private void doNetworkDump() {
@@ -177,7 +240,7 @@ public class DiscoveryBolt extends AbstractTickRichBolt implements MessageSender
 
         logger.debug("Do periodic network dump request");
         for (String region : floodlights) {
-            routerService.sendNetworkRequest(this, region);
+            emitNetworkDumpRequest(region);
         }
     }
 

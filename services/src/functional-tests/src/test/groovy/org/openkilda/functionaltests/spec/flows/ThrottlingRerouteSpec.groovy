@@ -5,7 +5,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -32,7 +32,7 @@ for each flowId).
 """)
 @Slf4j
 @Tags(VIRTUAL) //may be unstable on hardware. not tested
-class ThrottlingRerouteSpec extends BaseSpecification {
+class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
     @Value('${reroute.hardtimeout}')
     int rerouteHardTimeout

@@ -1,18 +1,13 @@
 package org.openkilda.functionaltests
 
 import static org.junit.Assume.assumeTrue
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.exception.IslNotFoundException
 import org.openkilda.functionaltests.extension.fixture.SetupOnce
-import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
+import org.openkilda.functionaltests.extension.spring.PrepareSpringContextDummy
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.TopologyHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
@@ -26,9 +21,10 @@ import org.openkilda.testing.tools.IslUtils
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.test.context.ContextConfiguration
+import spock.lang.Specification
 
 @ContextConfiguration(locations = ["classpath:/spring-context.xml"])
-class BaseSpecification extends SpringSpecification implements SetupOnce {
+class BaseSpecification extends Specification implements SetupOnce {
 
     @Autowired
     TopologyDefinition topology
@@ -107,45 +103,14 @@ class BaseSpecification extends SpringSpecification implements SetupOnce {
         //this can have implementation if required
     }
 
-    @HealthCheck
-    def "Kilda is UP and topology is clean"() {
-        expect: "Kilda's health check request is successful"
-        northbound.getHealthCheck().components["kafka"] == "operational"
 
-        and: "All switches and links are active. No flows and link props are present"
-        def links = northbound.getAllLinks()
-        verifyAll {
-            Wrappers.wait(WAIT_OFFSET) {
-                assert northbound.activeSwitches.size() == topology.activeSwitches.size()
-            }
-            links.findAll { it.state == IslChangeType.FAILED }.empty
-            def topoLinks = topology.islsForActiveSwitches.collectMany { isl ->
-                [islUtils.getIslInfo(links, isl).orElseThrow { new IslNotFoundException(isl.toString()) },
-                 islUtils.getIslInfo(links, isl.reversed).orElseThrow {
-                     new IslNotFoundException(isl.reversed.toString())
-                 }]
-            }
-            def missingLinks = links - topoLinks
-            missingLinks.empty
-            northbound.allFlows.empty
-            northbound.allLinkProps.empty
-        }
-
-        and: "Link bandwidths and speeds are equal. No excess and missing switch rules are present"
-        verifyAll {
-            links.findAll { it.availableBandwidth != it.speed }.empty
-            topology.activeSwitches.each { sw ->
-                def rules = northbound.validateSwitchRules(sw.dpId)
-                assert rules.excessRules.empty, sw
-                assert rules.missingRules.empty, sw
-            }
-
-            topology.activeSwitches.findAll {
-                !it.virtual && it.ofVersion != "OF_12" && !floodlight.getMeters(it.dpId).findAll {
-                    it.key > MAX_SYSTEM_RULE_METER_ID
-                }.isEmpty()
-            }.empty
-        }
+    /**
+     * This is a dummy test which is ran as the first ever test to init Spring context.
+     * @see org.openkilda.functionaltests.extension.spring.SpringContextExtension
+     */
+    @PrepareSpringContextDummy
+    def "Spring context is set UP"() {
+        expect: true
     }
 
     def requireProfiles(String[] profiles) {

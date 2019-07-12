@@ -3,7 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.PortBlinker
@@ -32,7 +32,7 @@ Initially, port is considered 'flapping' if it changes status quicker than once 
 change status from UP to DOWN only after 'antiflap.min' in case of a single-time change of status)
 """)
 @Issue("https://github.com/telstra/open-kilda/issues/1729")
-class PortAntiflapSpec extends BaseSpecification {
+class PortAntiflapSpec extends HealthCheckSpecification {
 
     @Value('${antiflap.min}')
     int antiflapMin

@@ -6,7 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -19,7 +19,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 
-class SwitchMaintenanceSpec extends BaseSpecification {
+class SwitchMaintenanceSpec extends HealthCheckSpecification {
 
     @Value('${isl.cost.when.under.maintenance}')
     int islCostWhenUnderMaintenance

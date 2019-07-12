@@ -4,7 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Message
@@ -22,7 +22,7 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 
 @Slf4j
-class StormHeavyLoadSpec extends BaseSpecification {
+class StormHeavyLoadSpec extends HealthCheckSpecification {
 
     @Value("#{kafkaTopicsConfig.getTopoDiscoTopic()}")
     String topoDiscoTopic
