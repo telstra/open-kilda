@@ -18,6 +18,7 @@ package org.openkilda.floodlight.command.flow;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 
 import org.openkilda.floodlight.command.MessageWriter;
+import org.openkilda.floodlight.command.SessionProxy;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
@@ -60,7 +61,7 @@ public class InstallTransitRuleCommand extends FlowInstallCommand {
     }
 
     @Override
-    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
+    public List<SessionProxy> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
             throws SwitchOperationException {
         OFFactory factory = sw.getOFFactory();
         List<OFAction> actionList = new ArrayList<>();

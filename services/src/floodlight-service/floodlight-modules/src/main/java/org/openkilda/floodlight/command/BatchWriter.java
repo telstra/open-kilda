@@ -19,40 +19,41 @@ import org.openkilda.floodlight.error.SwitchWriteException;
 import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.floodlight.service.session.SessionService;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-@AllArgsConstructor
-@Getter
-@Slf4j
-public class MessageWriter implements SessionProxy {
+public class BatchWriter implements SessionProxy {
+    private final List<OFMessage> batch = new ArrayList<>();
 
-    final OFMessage ofMessage;
+    public BatchWriter(OFMessage... batch) {
+        this.batch.addAll(Arrays.asList(batch));
+    }
 
-    /**
-     * Sends of ofMessage to the switch.
-     * @param sw target switch.
-     * @param sessionService session holder.
-     * @return response.
-     * @throws SwitchWriteException if error occurred.
-     */
+    public BatchWriter(Collection<OFMessage> batch) {
+        this.batch.addAll(batch);
+    }
+
+    @Override
     public CompletableFuture<Optional<OFMessage>> writeTo(IOFSwitch sw, SessionService sessionService)
             throws SwitchWriteException {
+        List<CompletableFuture<Optional<OFMessage>>> requests = new ArrayList<>(batch.size());
         try (Session session = sessionService.open(sw)) {
-            return session.write(ofMessage)
-                    .whenComplete((result, error) -> {
-                        if (error == null) {
-                            log.debug("OF command successfully executed {} on the switch {}", ofMessage, sw.getId());
-                        } else {
-                            log.error("Failed to execute OF command", error);
-                        }
-                    });
+            for (OFMessage payload : batch) {
+                requests.add(session.write(payload));
+            }
         }
+
+        final CompletableFuture<Optional<OFMessage>> lastRequest = requests.isEmpty()
+                ? CompletableFuture.completedFuture(Optional.empty())
+                : requests.get(requests.size() - 1);
+        return CompletableFuture.allOf(requests.toArray(new CompletableFuture[0]))
+                .thenCompose(unneeded -> lastRequest);
     }
 }

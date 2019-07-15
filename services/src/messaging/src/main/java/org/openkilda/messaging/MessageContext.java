@@ -23,6 +23,7 @@ import java.io.Serializable;
 import java.util.UUID;
 
 @Value
+
 public class MessageContext implements Serializable {
 
     @JsonProperty

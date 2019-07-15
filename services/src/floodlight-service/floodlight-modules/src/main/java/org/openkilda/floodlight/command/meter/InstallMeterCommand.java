@@ -21,7 +21,7 @@ import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import org.openkilda.floodlight.FloodlightResponse;
 import org.openkilda.floodlight.command.IdempotentMessageWriter;
 import org.openkilda.floodlight.command.IdempotentMessageWriter.ErrorTypeHelper;
-import org.openkilda.floodlight.command.MessageWriter;
+import org.openkilda.floodlight.command.SessionProxy;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
 import org.openkilda.floodlight.error.SwitchOperationException;
@@ -76,7 +76,7 @@ public class InstallMeterCommand extends MeterCommand {
     }
 
     @Override
-    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
+    public List<SessionProxy> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
             throws SwitchOperationException {
         FeatureDetectorService featureDetectorService = moduleContext.getServiceImpl(FeatureDetectorService.class);
         FloodlightModuleConfigurationProvider provider =

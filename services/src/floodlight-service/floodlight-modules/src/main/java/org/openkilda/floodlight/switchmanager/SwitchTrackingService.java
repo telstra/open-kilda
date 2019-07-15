@@ -44,10 +44,15 @@ import net.floodlightcontroller.core.LogicalOFMessageCategory;
 import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.SwitchDescription;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
+import net.floodlightcontroller.core.internal.TableFeatures;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import org.apache.commons.lang3.StringUtils;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturePropExperimenter;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturePropExperimenterMiss;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TableId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,6 +97,14 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
             switchDiscoveryAction(dpId, SwitchChangeType.ACTIVATED);
         } finally {
             discoveryLock.readLock().unlock();
+        }
+
+        try {
+            IOFSwitch sw = switchManager.lookupSwitch(dpId);
+
+            dumpSwitchDetails(sw);
+        } catch (SwitchNotFoundException e) {
+            logger.error("Lost connection with {} during activation phase", dpId);
         }
     }
 
@@ -264,6 +277,60 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         }
     }
 
+    private void dumpSwitchDetails(IOFSwitch sw) {
+        logSwitch(sw.getId(), String.format("OF version %s", sw.getOFFactory().getVersion()));
+        for (TableId tableId : sw.getTables()) {
+            dumpSwitchTableDetails(sw, tableId);
+        }
+    }
+
+    private void dumpSwitchTableDetails(IOFSwitch sw, TableId tableId) {
+        TableFeatures features = sw.getTableFeatures(tableId);
+        sw.getOFFactory();
+
+        logSwitchTableFeature(sw, tableId, "name", features.getTableName());
+        logSwitchTableFeature(sw, tableId, "max-entries", String.valueOf(features.getMaxEntries()));
+        logSwitchTableFeature(sw, tableId, "matadata-match-bits", features.getMetadataMatch().toString());
+        logSwitchTableFeature(sw, tableId, "metadata-write-bits", features.getMetadataWrite().toString());
+
+        logSwitchTableFeature(sw, tableId, "instructions",
+                              features.getPropInstructions().getInstructionIds());
+        logSwitchTableFeature(sw, tableId, "instruction (missing)s",
+                              features.getPropInstructionsMiss().getInstructionIds());
+
+        logSwitchTableFeature(sw, tableId, "match", features.getPropMatch().getOxmIds());
+
+        logSwitchTableFeature(sw, tableId, "apply-action",
+                              features.getPropApplyActions().getActionIds());
+        logSwitchTableFeature(sw, tableId, "apply-action (missing)",
+                              features.getPropApplyActionsMiss().getActionIds());
+
+        logSwitchTableFeature(sw, tableId, "apply-set-field", features.getPropApplySetField().getOxmIds());
+        logSwitchTableFeature(sw, tableId, "apply-set-field", features.getPropApplySetFieldMiss().getOxmIds());
+
+        logSwitchTableFeature(sw, tableId, "write-action",
+                              features.getPropWriteActions().getActionIds());
+        logSwitchTableFeature(sw, tableId, "write-action (miss)",
+                              features.getPropWriteActionsMiss().getActionIds());
+
+        logSwitchTableFeature(sw, tableId, "write-set-field", features.getPropWriteSetField().getOxmIds());
+        logSwitchTableFeature(sw, tableId, "write-set-field (miss)", features.getPropWriteSetFieldMiss().getOxmIds());
+
+        logSwitchTableFeature(sw, tableId, "next-table", features.getPropNextTables().getNextTableIds());
+        logSwitchTableFeature(sw, tableId, "next-table (miss)", features.getPropNextTablesMiss().getNextTableIds());
+
+        logSwitchTableFeature(sw, tableId, "wildcard", features.getPropWildcards().getOxmIds());
+
+        OFTableFeaturePropExperimenter e = features.getPropExperimenter();
+        logSwitchTableFeature(sw, tableId, "experimenter", String.format(
+                "id=%d, subtype=%d, payload %d bytes",
+                e.getExperimenter(), e.getSubtype(), e.getExperimenterData().length));
+        OFTableFeaturePropExperimenterMiss ee = features.getPropExperimenterMiss();
+        logSwitchTableFeature(sw, tableId, "experimenter (miss)", String.format(
+                "id=%d, subtype=%d, payload %d bytes",
+                ee.getExperimenter(), ee.getSubtype(), ee.getExperimenterData().length));
+    }
+
     private static org.openkilda.messaging.info.event.PortChangeType mapChangeType(PortChangeType type) {
         switch (type) {
             case ADD:
@@ -357,5 +424,21 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
 
     private void logPortEvent(DatapathId dpId, OFPortDesc portDesc, PortChangeType changeType) {
         logger.info("OF port event ({}-{} - {}). PortDesc: {}", dpId, portDesc.getPortNo(), changeType, portDesc);
+    }
+
+    private void logSwitchTableFeature(IOFSwitch sw, TableId tableId, String kind, Iterable<?> nameSequence) {
+        logSwitchTableFeature(sw, tableId, kind, StringUtils.join(nameSequence, ","));
+    }
+
+    private void logSwitchTableFeature(IOFSwitch sw, TableId tableId, String kind, String message) {
+        logSwitchTable(sw.getId(), tableId, String.format("features - %s: %s", kind, message));
+    }
+
+    private void logSwitchTable(DatapathId dpId, TableId tableId, String message) {
+        logSwitch(dpId, String.format("table %s %s", tableId, message));
+    }
+
+    private void logSwitch(DatapathId dpid, String message) {
+        logger.info("switch {} {}", dpid, message);
     }
 }

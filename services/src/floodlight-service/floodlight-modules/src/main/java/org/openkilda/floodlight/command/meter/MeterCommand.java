@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.command.meter;
 
-import org.openkilda.floodlight.command.OfCommand;
+import org.openkilda.floodlight.command.SpeakerCommand;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.messaging.MessageContext;
@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
-abstract class MeterCommand extends OfCommand {
+abstract class MeterCommand extends SpeakerCommand {
 
     MeterId meterId;
 

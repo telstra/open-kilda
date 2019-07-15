@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.command.flow;
 
 import org.openkilda.floodlight.command.MessageWriter;
+import org.openkilda.floodlight.command.SessionProxy;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.OutputVlanType;
@@ -56,7 +57,7 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
     }
 
     @Override
-    public List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
+    public List<SessionProxy> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
         List<OFAction> actionList = new ArrayList<>();
         OFFactory ofFactory = sw.getOFFactory();
 
