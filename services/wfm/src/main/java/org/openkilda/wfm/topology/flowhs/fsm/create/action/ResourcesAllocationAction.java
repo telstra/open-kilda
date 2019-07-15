@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import static java.lang.String.format;
 
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoData;
@@ -56,6 +57,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
+import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
+import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathBuilder;
 
 import lombok.extern.slf4j.Slf4j;
@@ -65,6 +68,7 @@ import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.lang3.StringUtils;
 import org.neo4j.driver.v1.exceptions.TransientException;
 
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -74,8 +78,10 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
     private final FlowResourcesManager resourcesManager;
     private final SwitchRepository switchRepository;
     private final IslRepository islRepository;
-    private final FlowPathBuilder flowPathBuilder;
     private final SwitchPropertiesRepository switchPropertiesRepository;
+
+    private final FlowPathBuilder flowPathBuilder;
+    private final FlowCommandBuilderFactory commandBuilderFactory;
 
     public ResourcesAllocationAction(PathComputer pathComputer, PersistenceManager persistenceManager,
                                      int transactionRetriesLimit, FlowResourcesManager resourcesManager) {
@@ -89,6 +95,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
 
         this.flowPathBuilder = new FlowPathBuilder(switchRepository, switchPropertiesRepository);
+        this.commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
     }
 
     @Override
@@ -106,6 +113,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         try {
             getFlowGroupFromContext(context).ifPresent(flow::setGroupId);
             createFlowWithPaths(stateMachine, flow);
+            createSpeakerRequestFactories(stateMachine, flow);
         } catch (UnroutableFlowException e) {
             throw new FlowProcessingException(ErrorType.NOT_FOUND, getGenericErrorMessage(),
                     "Not enough bandwidth or no path found. " + e.getMessage(), e);
@@ -198,6 +206,26 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
             throw new FlowAlreadyExistException(format("Failed to save flow with id %s", flow.getFlowId()), e);
         }
         log.debug("Resources allocated successfully for the flow {}", flow.getFlowId());
+    }
+
+    private void createSpeakerRequestFactories(FlowCreateFsm stateMachine, Flow flow) {
+        final FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
+        final CommandContext commandContext = stateMachine.getCommandContext();
+
+        List<FlowSegmentRequestFactory> requestFactories;
+
+        // ingress
+        requestFactories = stateMachine.getIngressCommands();
+        requestFactories.addAll(commandBuilder.buildIngressOnly(stateMachine.getCommandContext(), flow));
+
+        // non ingress
+        requestFactories = stateMachine.getNonIngressCommands();
+        requestFactories.addAll(commandBuilder.buildAllExceptIngress(commandContext, flow));
+        if (flow.isAllocateProtectedPath()) {
+            requestFactories.addAll(commandBuilder.buildAllExceptIngress(
+                    commandContext, flow,
+                    flow.getProtectedForwardPath(), flow.getProtectedReversePath()));
+        }
     }
 
     private void allocateMainPath(FlowCreateFsm fsm, Flow flow) throws UnroutableFlowException,

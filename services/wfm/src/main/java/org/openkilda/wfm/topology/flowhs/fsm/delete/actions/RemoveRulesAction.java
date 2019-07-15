@@ -15,8 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
-import org.openkilda.floodlight.flow.request.RemoveRule;
-import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
@@ -32,6 +31,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
+import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,9 +40,6 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
@@ -61,7 +58,7 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
         Set<PathId> pathIds = new HashSet<>(flow.getFlowPathIds());
 
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
-        Collection<RemoveRule> commands = new ArrayList<>();
+        Collection<FlowSegmentRequestFactory> commands = new ArrayList<>();
 
         FlowPath forward = flow.getForwardPath();
         FlowPath reverse = flow.getReversePath();
@@ -70,11 +67,7 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
             pathIds.remove(reverse.getPathId());
 
             stateMachine.getFlowResources().add(buildResources(flow, forward, reverse));
-
-            commands.addAll(commandBuilder.createRemoveNonIngressRules(
-                    stateMachine.getCommandContext(), flow, forward, reverse));
-            commands.addAll(commandBuilder.createRemoveIngressRules(
-                    stateMachine.getCommandContext(), flow, forward, reverse));
+            commands.addAll(commandBuilder.buildAll(stateMachine.getCommandContext(), flow, forward, reverse));
         }
 
         FlowPath protectedForward = flow.getProtectedForwardPath();
@@ -84,8 +77,7 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
             pathIds.remove(protectedReverse.getPathId());
 
             stateMachine.getFlowResources().add(buildResources(flow, protectedForward, protectedReverse));
-
-            commands.addAll(commandBuilder.createRemoveNonIngressRules(
+            commands.addAll(commandBuilder.buildAllExceptIngress(
                     stateMachine.getCommandContext(), flow, protectedForward, protectedReverse));
         }
 
@@ -95,15 +87,13 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                 PathId reversePathId = flow.getOppositePathId(pathId);
                 Optional<FlowPath> path = flow.getPath(pathId);
                 Optional<FlowPath> reversePath = flow.getPath(reversePathId);
-                if (path.isPresent() || reversePath.isPresent()) {
+                if (path.isPresent() && reversePath.isPresent()) {
                     processed.add(pathId);
                     processed.add(reversePathId);
 
                     stateMachine.getFlowResources().add(buildResources(flow, path.get(), reversePath.get()));
 
-                    commands.addAll(commandBuilder.createRemoveNonIngressRules(
-                            stateMachine.getCommandContext(), flow, path.get(), reversePath.get()));
-                    commands.addAll(commandBuilder.createRemoveIngressRules(
+                    commands.addAll(commandBuilder.buildAll(
                             stateMachine.getCommandContext(), flow, path.get(), reversePath.get()));
                 }
             }
@@ -114,14 +104,9 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
             flow.getPath(pathId).ifPresent(path -> log.warn("Failed to remove path {}", path));
         }
 
-        stateMachine.getRemoveCommands().putAll(commands.stream()
-                .collect(Collectors.toMap(RemoveRule::getCommandId, Function.identity())));
-
-        Set<UUID> commandIds = commands.stream()
-                .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
-                .map(SpeakerFlowRequest::getCommandId)
-                .collect(Collectors.toSet());
-        stateMachine.getPendingCommands().addAll(commandIds);
+        SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(
+                stateMachine.getCarrier(), commands, stateMachine.getRemoveCommands());
+        stateMachine.getPendingCommands().addAll(stateMachine.getRemoveCommands().keySet());
 
         stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
     }

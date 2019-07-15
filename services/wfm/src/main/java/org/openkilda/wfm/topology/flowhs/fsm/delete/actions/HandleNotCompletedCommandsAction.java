@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
@@ -35,7 +35,7 @@ public class HandleNotCompletedCommandsAction extends
     public void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
         if (!stateMachine.getPendingCommands().isEmpty() || !stateMachine.getFailedCommands().isEmpty()) {
             for (UUID commandId : stateMachine.getPendingCommands()) {
-                RemoveRule notCompletedCommand = stateMachine.getRemoveCommands().get(commandId);
+                FlowSegmentRequestFactory notCompletedCommand = stateMachine.getRemoveCommands().get(commandId);
                 if (notCompletedCommand != null) {
                     stateMachine.saveErrorToHistory("Command is not finished yet",
                             format("Completing the removal operation although the command may not be finished yet: "

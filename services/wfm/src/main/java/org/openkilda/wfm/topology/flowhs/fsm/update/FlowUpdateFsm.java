@@ -31,8 +31,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.actions.AllocateProtectedRes
 import org.openkilda.wfm.topology.flowhs.fsm.update.actions.CompleteFlowPathInstallationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.actions.CompleteFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.actions.DeallocateResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.update.actions.DumpIngressRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.update.actions.DumpNonIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.update.actions.EmitIngressRulesVerifyRequestsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.update.actions.EmitNonIngressRulesVerifyRequestsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.actions.HandleNotCompletedCommandsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.actions.HandleNotDeallocatedResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.actions.HandleNotRemovedPathsAction;
@@ -184,7 +184,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
 
             builder.transition().from(State.NON_INGRESS_RULES_INSTALLED).to(State.VALIDATING_NON_INGRESS_RULES)
                     .on(Event.NEXT)
-                    .perform(new DumpNonIngressRulesAction());
+                    .perform(new EmitNonIngressRulesVerifyRequestsAction());
             builder.transitions().from(State.NON_INGRESS_RULES_INSTALLED)
                     .toAmong(State.PATHS_SWAP_REVERTED, State.PATHS_SWAP_REVERTED)
                     .onEach(Event.TIMEOUT, Event.ERROR);
@@ -226,7 +226,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                     .perform(new AbandonPendingCommandsAction());
 
             builder.transition().from(State.INGRESS_RULES_INSTALLED).to(State.VALIDATING_INGRESS_RULES).on(Event.NEXT)
-                    .perform(new DumpIngressRulesAction());
+                    .perform(new EmitIngressRulesVerifyRequestsAction());
             builder.transitions().from(State.INGRESS_RULES_INSTALLED)
                     .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
                     .onEach(Event.TIMEOUT, Event.ERROR);

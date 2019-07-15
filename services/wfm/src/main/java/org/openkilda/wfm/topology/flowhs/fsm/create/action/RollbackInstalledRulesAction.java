@@ -15,76 +15,49 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
-import static java.lang.String.format;
-
-import org.openkilda.floodlight.flow.request.RemoveRule;
-import org.openkilda.model.Flow;
+import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm.Builder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
 import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
 public class RollbackInstalledRulesAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
     private final SpeakerCommandFsm.Builder speakerCommandFsmBuilder;
-    private final FlowCommandBuilderFactory commandBuilderFactory;
 
-    public RollbackInstalledRulesAction(SpeakerCommandFsm.Builder fsmBuilder, PersistenceManager persistenceManager,
-                                        FlowResourcesManager resourcesManager) {
+    public RollbackInstalledRulesAction(Builder fsmBuilder, PersistenceManager persistenceManager) {
         super(persistenceManager);
-
         this.speakerCommandFsmBuilder = fsmBuilder;
-        this.commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        Set<RemoveRule> removeCommands = new HashSet<>();
         stateMachine.getPendingCommands().clear();
+        stateMachine.getFailedCommands().clear();
 
-        Flow flow = getFlow(stateMachine.getFlowId());
-        FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
+        Map<UUID, SpeakerCommandObserver> pendingRequests = stateMachine.getPendingCommands();
+        for (FlowSegmentRequestFactory factory : stateMachine.getSentCommands()) {
+            FlowSegmentRequest request = factory.makeRemoveRequest(commandIdGenerator.generate());
 
-        if (!stateMachine.getNonIngressCommands().isEmpty()) {
-            List<RemoveRule> removeNonIngress = commandBuilder.createRemoveNonIngressRules(
-                    stateMachine.getCommandContext(), flow);
-            removeCommands.addAll(removeNonIngress);
-        }
-
-        if (!stateMachine.getIngressCommands().isEmpty()) {
-            List<RemoveRule> removeIngress = commandBuilder.createRemoveIngressRules(
-                    stateMachine.getCommandContext(), flow);
-            removeCommands.addAll(removeIngress);
-        }
-
-        Map<UUID, RemoveRule> commandPerId = new HashMap<>(removeCommands.size());
-        for (RemoveRule command : removeCommands) {
-            commandPerId.put(command.getCommandId(), command);
-
-            SpeakerCommandObserver commandObserver = new SpeakerCommandObserver(speakerCommandFsmBuilder, command);
+            SpeakerCommandObserver commandObserver = new SpeakerCommandObserver(speakerCommandFsmBuilder, request);
             commandObserver.start();
-            stateMachine.getPendingCommands().put(command.getCommandId(), commandObserver);
+
+            // TODO ensure no conflicts
+            pendingRequests.put(request.getCommandId(), commandObserver);
         }
 
-        stateMachine.setRemoveCommands(commandPerId);
-
-        stateMachine.saveActionToHistory(
-                format("Commands to rollback installed rules have been sent. Total amount: %s", removeCommands.size()));
+        stateMachine.saveActionToHistory(String.format(
+                "Commands to rollback installed rules have been sent. Total amount: %s", pendingRequests.size()));
     }
 }

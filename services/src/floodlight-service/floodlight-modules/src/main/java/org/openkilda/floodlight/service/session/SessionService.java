@@ -41,6 +41,10 @@ public class SessionService implements IService, IInputTranslator {
 
     private final Map<DatapathId, SwitchSessions> sessionsByDatapath = new ConcurrentHashMap<>();
 
+    public Session open(IOFSwitch sw) {
+        return open(new MessageContext(), sw);
+    }
+
     /**
      * Create new OF communication session and register it in service.
      */

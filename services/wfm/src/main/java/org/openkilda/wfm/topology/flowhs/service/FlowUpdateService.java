@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
@@ -105,7 +105,7 @@ public class FlowUpdateService {
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(String key, FlowResponse flowResponse) {
+    public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) {
         log.debug("Received flow command response {}", flowResponse);
         FlowUpdateFsm fsm = fsms.get(key);
         if (fsm == null) {
