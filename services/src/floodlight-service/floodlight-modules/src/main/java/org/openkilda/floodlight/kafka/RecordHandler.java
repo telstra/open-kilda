@@ -1138,14 +1138,8 @@ class RecordHandler implements Runnable {
 
     private boolean handleSpeakerCommand() {
         try {
-            SpeakerCommand speakerCommand;
-            try {
-                logger.info("command: {}", record.value());
-                speakerCommand = MAPPER.readValue(record.value(), SpeakerCommand.class);
-            } catch (Exception e) {
-                logger.error("dump json decode error", e);
-                throw e;
-            }
+            logger.info("command: {}", record.value());
+            SpeakerCommand speakerCommand = MAPPER.readValue(record.value(), SpeakerCommand.class);
 
             try (CorrelationContextClosable closable =
                          CorrelationContext.create(speakerCommand.getMessageContext().getCorrelationId())) {

@@ -322,13 +322,18 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         logSwitchTableFeature(sw, tableId, "wildcard", features.getPropWildcards().getOxmIds());
 
         OFTableFeaturePropExperimenter e = features.getPropExperimenter();
-        logSwitchTableFeature(sw, tableId, "experimenter", String.format(
-                "id=%d, subtype=%d, payload %d bytes",
-                e.getExperimenter(), e.getSubtype(), e.getExperimenterData().length));
+        if (e != null) {
+            logSwitchTableFeature(sw, tableId, "experimenter", String.format(
+                    "id=%d, subtype=%d, payload %d bytes",
+                    e.getExperimenter(), e.getSubtype(),
+                    e.getExperimenterData() == null ? 0 : e.getExperimenterData().length));
+        }
         OFTableFeaturePropExperimenterMiss ee = features.getPropExperimenterMiss();
-        logSwitchTableFeature(sw, tableId, "experimenter (miss)", String.format(
-                "id=%d, subtype=%d, payload %d bytes",
-                ee.getExperimenter(), ee.getSubtype(), ee.getExperimenterData().length));
+        if (ee != null) {
+            logSwitchTableFeature(sw, tableId, "experimenter (miss)", String.format(
+                    "id=%d, subtype=%d, payload %d bytes",
+                    ee.getExperimenter(), ee.getSubtype(), ee.getExperimenterData().length));
+        }
     }
 
     private static org.openkilda.messaging.info.event.PortChangeType mapChangeType(PortChangeType type) {

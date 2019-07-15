@@ -22,6 +22,7 @@ import org.openkilda.floodlight.command.flow.InstallEgressRuleCommand;
 import org.openkilda.floodlight.command.flow.InstallIngressRuleCommand;
 import org.openkilda.floodlight.command.flow.InstallOneSwitchRuleCommand;
 import org.openkilda.floodlight.command.flow.InstallTransitRuleCommand;
+import org.openkilda.floodlight.command.poc.MultiTableDefaults;
 import org.openkilda.floodlight.command.poc.NestedVlanExperiment;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.SwitchWriteException;
@@ -61,6 +62,8 @@ import java.util.concurrent.CompletionException;
                 name = "org.openkilda.floodlight.flow.request.RemoveRule"),
         @Type(value = GetRuleCommand.class,
                 name = "org.openkilda.floodlight.flow.request.GetInstalledRule"),
+        @Type(value = MultiTableDefaults.class,
+                name = "org.openkilda.floodlight.poc.MultiTableDefaults"),
         @Type(value = NestedVlanExperiment.class,
                 name = "org.openkilda.floodlight.poc.NestedVlanExperiment")
 })
