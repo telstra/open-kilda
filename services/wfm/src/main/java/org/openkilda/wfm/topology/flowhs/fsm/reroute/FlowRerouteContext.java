@@ -15,16 +15,18 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute;
 
-import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.model.PathId;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowContext;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.Set;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 public class FlowRerouteContext extends FlowContext {
     private String flowId;
     private Set<PathId> pathsToReroute;
@@ -32,8 +34,9 @@ public class FlowRerouteContext extends FlowContext {
     private String rerouteReason;
 
     @Builder
-    public FlowRerouteContext(FlowResponse speakerFlowResponse, String flowId, Set<PathId> pathsToReroute,
-                              boolean forceReroute, String rerouteReason) {
+    public FlowRerouteContext(
+            SpeakerFlowSegmentResponse speakerFlowResponse, String flowId, Set<PathId> pathsToReroute,
+            boolean forceReroute, String rerouteReason) {
         super(speakerFlowResponse);
         this.flowId = flowId;
         this.pathsToReroute = pathsToReroute;

@@ -16,6 +16,9 @@
 package org.openkilda.wfm.topology.flowhs.fsm.reroute;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.error.ErrorData;
+import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.pce.PathComputer;
@@ -32,8 +35,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.AllocateProtectedRe
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.CompleteFlowPathInstallationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.CompleteFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.DeallocateResourcesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.DumpIngressRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.DumpNonIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.EmitIngressRulesVerifyRequestsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.EmitNonIngressRulesVerifyRequestsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.HandleNotCompletedCommandsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.HandleNotDeallocatedResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.HandleNotRemovedPathsAction;
@@ -84,6 +87,22 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     public FlowRerouteFsm(CommandContext commandContext, FlowRerouteHubCarrier carrier, String flowId) {
         super(commandContext, flowId);
         this.carrier = carrier;
+    }
+
+    @Override
+    protected void afterTransitionCausedException(State fromState, State toState, Event event,
+                                                  FlowRerouteContext context) {
+        String errorMessage = getLastException().getMessage();
+        if (fromState == State.INITIALIZED || fromState == State.FLOW_VALIDATED) {
+            ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Could not reroute flow", errorMessage);
+            Message message = new ErrorMessage(error, getCommandContext().getCreateTime(),
+                                               getCommandContext().getCorrelationId());
+            carrier.sendNorthboundResponse(message);
+        }
+
+        fireError(errorMessage);
+
+        super.afterTransitionCausedException(fromState, toState, event, context);
     }
 
     @Override
@@ -190,7 +209,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
             builder.transition().from(State.NON_INGRESS_RULES_INSTALLED).to(State.VALIDATING_NON_INGRESS_RULES)
                     .on(Event.NEXT)
-                    .perform(new DumpNonIngressRulesAction());
+                    .perform(new EmitNonIngressRulesVerifyRequestsAction());
             builder.transitions().from(State.NON_INGRESS_RULES_INSTALLED)
                     .toAmong(State.PATHS_SWAP_REVERTED, State.PATHS_SWAP_REVERTED)
                     .onEach(Event.TIMEOUT, Event.ERROR);
@@ -232,15 +251,15 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                     .perform(new AbandonPendingCommandsAction());
 
             builder.transition().from(State.INGRESS_RULES_INSTALLED).to(State.VALIDATING_INGRESS_RULES).on(Event.NEXT)
-                    .perform(new DumpIngressRulesAction());
+                    .perform(new EmitIngressRulesVerifyRequestsAction());
             builder.transitions().from(State.INGRESS_RULES_INSTALLED)
                     .toAmong(State.REVERTING_PATHS_SWAP, State.REVERTING_PATHS_SWAP)
                     .onEach(Event.TIMEOUT, Event.ERROR);
 
             builder.internalTransition().within(State.VALIDATING_INGRESS_RULES).on(Event.RESPONSE_RECEIVED)
-                    .perform(new ValidateIngressRulesAction(persistenceManager, speakerCommandRetriesLimit));
+                    .perform(new ValidateIngressRulesAction(speakerCommandRetriesLimit));
             builder.internalTransition().within(State.VALIDATING_INGRESS_RULES).on(Event.ERROR_RECEIVED)
-                    .perform(new ValidateIngressRulesAction(persistenceManager, speakerCommandRetriesLimit));
+                    .perform(new ValidateIngressRulesAction(speakerCommandRetriesLimit));
             builder.transition().from(State.VALIDATING_INGRESS_RULES).to(State.INGRESS_RULES_VALIDATED)
                     .on(Event.RULES_VALIDATED);
             builder.transitions().from(State.VALIDATING_INGRESS_RULES)

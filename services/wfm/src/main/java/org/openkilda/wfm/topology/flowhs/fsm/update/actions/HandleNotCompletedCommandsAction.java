@@ -17,8 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.flow.request.InstallIngressRule;
-import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
@@ -35,14 +34,14 @@ public class HandleNotCompletedCommandsAction extends
     @Override
     public void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         for (UUID commandId : stateMachine.getPendingCommands()) {
-            RemoveRule removeCommand = stateMachine.getRemoveCommands().get(commandId);
+            FlowSegmentRequestFactory removeCommand = stateMachine.getRemoveCommands().get(commandId);
             if (removeCommand != null) {
                 stateMachine.saveErrorToHistory("Command is not finished yet",
                         format("Completing the update operation although the remove command may not be "
                                         + "finished yet: commandId %s, switch %s, cookie %s", commandId,
                                 removeCommand.getSwitchId(), removeCommand.getCookie()));
             } else {
-                InstallIngressRule ingressRule = stateMachine.getIngressCommands().get(commandId);
+                FlowSegmentRequestFactory ingressRule = stateMachine.getIngressCommands().get(commandId);
                 stateMachine.saveErrorToHistory("Command is not finished yet",
                         format("Completing the update operation although the install command may not be "
                                         + "finished yet: commandId %s, switch %s, rule %s", commandId,

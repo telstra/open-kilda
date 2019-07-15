@@ -28,10 +28,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
-import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
+import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
-import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -147,11 +147,12 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            deleteService.handleAsyncResponse("test_key", FlowResponse.builder()
+            deleteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                    .messageContext(flowRequest.getMessageContext())
                     .commandId(flowRequest.getCommandId())
-                    .flowId(flowRequest.getFlowId())
+                    .metadata(flowRequest.getMetadata())
                     .switchId(flowRequest.getSwitchId())
                     .success(true)
                     .build());
@@ -179,13 +180,13 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             deleteService.handleAsyncResponse("test_key", FlowErrorResponse.errorBuilder()
                     .errorCode(ErrorCode.UNKNOWN)
                     .description("Switch is unavailable")
                     .commandId(flowRequest.getCommandId())
-                    .flowId(flowRequest.getFlowId())
+                    .metadata(flowRequest.getMetadata())
                     .switchId(flowRequest.getSwitchId())
                     .messageContext(flowRequest.getMessageContext())
                     .build());
@@ -216,13 +217,13 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             deleteService.handleAsyncResponse("test_key", FlowErrorResponse.errorBuilder()
                     .errorCode(ErrorCode.OPERATION_TIMED_OUT)
                     .description("Switch is unavailable")
                     .commandId(flowRequest.getCommandId())
-                    .flowId(flowRequest.getFlowId())
+                    .metadata(flowRequest.getMetadata())
                     .switchId(flowRequest.getSwitchId())
                     .messageContext(flowRequest.getMessageContext())
                     .build());
@@ -278,11 +279,12 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
                 .when(flowPathRepository).delete(MockitoHamcrest.argThat(
                 Matchers.hasProperty("pathId", is(FORWARD_FLOW_PATH))));
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            deleteService.handleAsyncResponse("test_key", FlowResponse.builder()
+            deleteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                    .messageContext(flowRequest.getMessageContext())
                     .commandId(flowRequest.getCommandId())
-                    .flowId(flowRequest.getFlowId())
+                    .metadata(flowRequest.getMetadata())
                     .switchId(flowRequest.getSwitchId())
                     .success(true)
                     .build());
@@ -313,11 +315,12 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
                 Matchers.hasProperty("forward",
                         Matchers.<PathResources>hasProperty("pathId", is(FORWARD_FLOW_PATH)))));
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            deleteService.handleAsyncResponse("test_key", FlowResponse.builder()
+            deleteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                    .messageContext(flowRequest.getMessageContext())
                     .commandId(flowRequest.getCommandId())
-                    .flowId(flowRequest.getFlowId())
+                    .metadata(flowRequest.getMetadata())
                     .switchId(flowRequest.getSwitchId())
                     .success(true)
                     .build());
@@ -350,11 +353,12 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         doThrow(new RuntimeException("A persistence error"))
                 .when(flowRepository).delete(eq(flow));
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            deleteService.handleAsyncResponse("test_key", FlowResponse.builder()
+            deleteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                    .messageContext(flowRequest.getMessageContext())
                     .commandId(flowRequest.getCommandId())
-                    .flowId(flowRequest.getFlowId())
+                    .metadata(flowRequest.getMetadata())
                     .switchId(flowRequest.getSwitchId())
                     .success(true)
                     .build());
@@ -384,11 +388,12 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            deleteService.handleAsyncResponse("test_key", FlowResponse.builder()
+            deleteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                    .messageContext(flowRequest.getMessageContext())
                     .commandId(flowRequest.getCommandId())
-                    .flowId(flowRequest.getFlowId())
+                    .metadata(flowRequest.getMetadata())
                     .switchId(flowRequest.getSwitchId())
                     .success(true)
                     .build());
