@@ -31,13 +31,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 
-import org.openkilda.floodlight.flow.request.GetInstalledRule;
-import org.openkilda.floodlight.flow.request.InstallFlowRule;
-import org.openkilda.floodlight.flow.request.RemoveRule;
-import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
+import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
-import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -48,7 +45,6 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.pce.Path;
@@ -67,7 +63,6 @@ import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
 
-import com.google.common.collect.Sets;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -106,9 +101,6 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         SwitchRepository switchRepository = mock(SwitchRepository.class);
         when(switchRepository.reload(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(switchRepository.findById(any())).thenReturn(
-                Optional.of(Switch.builder().switchId(new SwitchId(1)).features(Sets.newHashSet(SwitchFeature.METERS))
-                        .build()));
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
 
         FeatureTogglesRepository featureTogglesRepository = mock(FeatureTogglesRepository.class);
@@ -217,21 +209,23 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        SpeakerFlowRequest flowRequest;
-        while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof InstallFlowRule) {
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            if (FlowSegmentRequest.isInstallRequest(request)) {
                 rerouteService.handleAsyncResponse("test_key", FlowErrorResponse.errorBuilder()
+                        .messageContext(request.getMessageContext())
                         .errorCode(ErrorCode.UNKNOWN)
                         .description("Switch is unavailable")
-                        .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
-                        .switchId(flowRequest.getSwitchId())
+                        .commandId(request.getCommandId())
+                        .metadata(request.getMetadata())
+                        .switchId(request.getSwitchId())
                         .build());
             } else {
-                rerouteService.handleAsyncResponse("test_key", FlowResponse.builder()
-                        .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
-                        .switchId(flowRequest.getSwitchId())
+                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(request.getMessageContext())
+                        .commandId(request.getCommandId())
+                        .metadata(request.getMetadata())
+                        .switchId(request.getSwitchId())
                         .success(true)
                         .build());
             }
@@ -259,13 +253,14 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         rerouteService.handleTimeout("test_key");
 
-        SpeakerFlowRequest flowRequest;
-        while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof RemoveRule) {
-                rerouteService.handleAsyncResponse("test_key", FlowResponse.builder()
-                        .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
-                        .switchId(flowRequest.getSwitchId())
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            if (FlowSegmentRequest.isRemoveRequest(request)) {
+                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(request.getMessageContext())
+                        .commandId(request.getCommandId())
+                        .metadata(request.getMetadata())
+                        .switchId(request.getSwitchId())
                         .success(true)
                         .build());
             }
@@ -291,22 +286,23 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        SpeakerFlowRequest flowRequest;
-        while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof GetInstalledRule) {
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            if (FlowSegmentRequest.isVerifyRequest(request)) {
                 rerouteService.handleAsyncResponse("test_key", FlowErrorResponse.errorBuilder()
                         .errorCode(ErrorCode.UNKNOWN)
                         .description("Unknown rule")
-                        .messageContext(flowRequest.getMessageContext())
-                        .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
-                        .switchId(flowRequest.getSwitchId())
+                        .messageContext(request.getMessageContext())
+                        .commandId(request.getCommandId())
+                        .metadata(request.getMetadata())
+                        .switchId(request.getSwitchId())
                         .build());
             } else {
-                rerouteService.handleAsyncResponse("test_key", FlowResponse.builder()
-                        .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
-                        .switchId(flowRequest.getSwitchId())
+                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(request.getMessageContext())
+                        .commandId(request.getCommandId())
+                        .metadata(request.getMetadata())
+                        .switchId(request.getSwitchId())
                         .success(true)
                         .build());
             }
@@ -332,15 +328,16 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        SpeakerFlowRequest flowRequest;
-        while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof GetInstalledRule) {
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            if (FlowSegmentRequest.isVerifyRequest(request)) {
                 rerouteService.handleTimeout("test_key");
             } else {
-                rerouteService.handleAsyncResponse("test_key", FlowResponse.builder()
-                        .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
-                        .switchId(flowRequest.getSwitchId())
+                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(request.getMessageContext())
+                        .commandId(request.getCommandId())
+                        .metadata(request.getMetadata())
+                        .switchId(request.getSwitchId())
                         .success(true)
                         .build());
             }
@@ -382,16 +379,16 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         }).when(flowRepository).createOrUpdate(argThat(
                 hasProperty("forwardPathId", equalTo(NEW_FORWARD_FLOW_PATH))));
 
-        SpeakerFlowRequest flowRequest;
-        while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof GetInstalledRule) {
-                rerouteService.handleAsyncResponse("test_key",
-                        buildResponseOnGetInstalled((GetInstalledRule) flowRequest));
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            if (FlowSegmentRequest.isVerifyRequest(request)) {
+                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
             } else {
-                rerouteService.handleAsyncResponse("test_key", FlowResponse.builder()
-                        .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
-                        .switchId(flowRequest.getSwitchId())
+                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(request.getMessageContext())
+                        .commandId(request.getCommandId())
+                        .metadata(request.getMetadata())
+                        .switchId(request.getSwitchId())
                         .success(true)
                         .build());
             }
@@ -425,16 +422,16 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
             throw new RuntimeException("A persistence error");
         }).when(flowPathRepository).updateStatus(eq(NEW_FORWARD_FLOW_PATH), eq(FlowPathStatus.ACTIVE));
 
-        SpeakerFlowRequest flowRequest;
-        while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof GetInstalledRule) {
-                rerouteService.handleAsyncResponse("test_key",
-                        buildResponseOnGetInstalled((GetInstalledRule) flowRequest));
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            if (FlowSegmentRequest.isVerifyRequest(request)) {
+                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
             } else {
-                rerouteService.handleAsyncResponse("test_key", FlowResponse.builder()
-                        .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
-                        .switchId(flowRequest.getSwitchId())
+                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(request.getMessageContext())
+                        .commandId(request.getCommandId())
+                        .metadata(request.getMetadata())
+                        .switchId(request.getSwitchId())
                         .success(true)
                         .build());
             }
@@ -464,16 +461,16 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 .when(flowPathRepository).delete(argThat(
                 hasProperty("pathId", equalTo(OLD_FORWARD_FLOW_PATH))));
 
-        SpeakerFlowRequest flowRequest;
-        while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof GetInstalledRule) {
-                rerouteService.handleAsyncResponse("test_key",
-                        buildResponseOnGetInstalled((GetInstalledRule) flowRequest));
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            if (FlowSegmentRequest.isVerifyRequest(request)) {
+                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
             } else {
-                rerouteService.handleAsyncResponse("test_key", FlowResponse.builder()
-                        .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
-                        .switchId(flowRequest.getSwitchId())
+                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(request.getMessageContext())
+                        .commandId(request.getCommandId())
+                        .metadata(request.getMetadata())
+                        .switchId(request.getSwitchId())
                         .success(true)
                         .build());
             }
@@ -504,16 +501,16 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
                 hasProperty("forward",
                         hasProperty("pathId", equalTo(OLD_FORWARD_FLOW_PATH)))));
 
-        SpeakerFlowRequest flowRequest;
-        while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof GetInstalledRule) {
-                rerouteService.handleAsyncResponse("test_key",
-                        buildResponseOnGetInstalled((GetInstalledRule) flowRequest));
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            if (FlowSegmentRequest.isVerifyRequest(request)) {
+                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
             } else {
-                rerouteService.handleAsyncResponse("test_key", FlowResponse.builder()
-                        .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
-                        .switchId(flowRequest.getSwitchId())
+                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(request.getMessageContext())
+                        .commandId(request.getCommandId())
+                        .metadata(request.getMetadata())
+                        .switchId(request.getSwitchId())
                         .success(true)
                         .build());
             }
@@ -541,16 +538,16 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        SpeakerFlowRequest flowRequest;
-        while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof GetInstalledRule) {
-                rerouteService.handleAsyncResponse("test_key",
-                        buildResponseOnGetInstalled((GetInstalledRule) flowRequest));
+        FlowSegmentRequest request;
+        while ((request = requests.poll()) != null) {
+            if (FlowSegmentRequest.isVerifyRequest(request)) {
+                rerouteService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(request));
             } else {
-                rerouteService.handleAsyncResponse("test_key", FlowResponse.builder()
-                        .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
-                        .switchId(flowRequest.getSwitchId())
+                rerouteService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(request.getMessageContext())
+                        .commandId(request.getCommandId())
+                        .metadata(request.getMetadata())
+                        .switchId(request.getSwitchId())
                         .success(true)
                         .build());
             }

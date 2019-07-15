@@ -74,7 +74,7 @@ public class Session implements AutoCloseable {
     /**
      * Send OF message to the switch and register it in session to trace possible responses.
      */
-    public CompletableFuture<Optional<OFMessage>> write(OFMessage message) throws SwitchWriteException {
+    public CompletableFuture<Optional<OFMessage>> write(OFMessage message) {
         ensureOpen();
 
         CompletableFuture<Optional<OFMessage>> future = prepareRequest(message);
@@ -82,11 +82,9 @@ public class Session implements AutoCloseable {
             actualWrite(message);
         } catch (SwitchWriteException e) {
             future.completeExceptionally(e);
-            throw e;
         } catch (Exception e) {
             SwitchWriteException writeError = new SwitchWriteException(sw.getId(), message, e);
             future.completeExceptionally(writeError);
-            throw e;
         }
 
         return future;
@@ -97,7 +95,7 @@ public class Session implements AutoCloseable {
     }
 
     @Override
-    public void close() throws SwitchWriteException {
+    public void close() {
         if (error) {
             SessionRevertException e = new SessionRevertException(sw.getId());
             incompleteRequestsStream()
@@ -118,7 +116,6 @@ public class Session implements AutoCloseable {
             SessionCloseException closeError = new SessionCloseException(sw.getId());
             incompleteRequestsStream()
                     .forEach(entry -> entry.completeExceptionally(closeError));
-            throw e;
         }
     }
 

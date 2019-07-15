@@ -15,9 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create;
 
-import org.openkilda.floodlight.flow.request.InstallIngressRule;
-import org.openkilda.floodlight.flow.request.InstallTransitRule;
-import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.api.request.FlowSegmentBlankGenericResolver;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -34,21 +32,21 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.CompleteFlowCreateAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.DumpIngressRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.DumpNonIngressRulesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.action.ConsiderIngressRuleValidateResultAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.action.ConsiderNonIngressRuleValidateResultAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.action.EmitIngressRulesVerifyRequestsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.action.EmitNonIngressRulesVerifyRequestsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.FlowValidateAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.HandleNotCreatedFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallNonIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedDeleteResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedInstallResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedVerifyResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.ProcessNotRevertedResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesDeallocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.RollbackInstalledRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.ValidateIngressRuleAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.ValidateNonIngressRuleAction;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 
@@ -77,18 +75,18 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
     private final String flowId;
     private final FlowCreateHubCarrier carrier;
 
+    private Map<UUID, SpeakerCommandObserver> pendingRequests = new HashMap<>();
+    private Set<UUID> failedCommands = new HashSet<>();
+
     private List<FlowResources> flowResources = new ArrayList<>();
     private PathId forwardPathId;
     private PathId reversePathId;
     private PathId protectedForwardPathId;
     private PathId protectedReversePathId;
 
-    private Map<UUID, SpeakerCommandObserver> pendingCommands = new HashMap<>();
-    private Set<UUID> failedCommands = new HashSet<>();
-
-    private Map<UUID, InstallIngressRule> ingressCommands = new HashMap<>();
-    private Map<UUID, InstallTransitRule> nonIngressCommands = new HashMap<>();
-    private Map<UUID, RemoveRule> removeCommands = new HashMap<>();
+    private Map<UUID, FlowSegmentBlankGenericResolver> ingressCommands = new HashMap<>();
+    private Map<UUID, FlowSegmentBlankGenericResolver> nonIngressCommands = new HashMap<>();
+    private Map<UUID, FlowSegmentBlankGenericResolver> removeCommands = new HashMap<>();
 
     // The amount of flow create operation retries left: that means how many retries may be executed.
     // NB: it differs from command execution retries amount.
@@ -102,8 +100,8 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         this.remainRetries = config.getFlowCreationRetriesLimit();
     }
 
-    public boolean isPendingCommand(UUID commandId) {
-        return pendingCommands.containsKey(commandId);
+    public boolean isPendingRequest(UUID commandId) {
+        return pendingRequests.containsKey(commandId);
     }
 
     /**
@@ -289,16 +287,16 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                     .from(State.INSTALLING_NON_INGRESS_RULES)
                     .to(State.VALIDATING_NON_INGRESS_RULES)
                     .on(Event.NEXT)
-                    .perform(new DumpNonIngressRulesAction(commandExecutorFsmBuilder));
+                    .perform(new EmitNonIngressRulesVerifyRequestsAction(commandExecutorFsmBuilder));
 
             builder.internalTransition()
                     .within(State.VALIDATING_NON_INGRESS_RULES)
                     .on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedResponseAction(persistenceManager));
+                    .perform(new OnReceivedVerifyResponseAction(persistenceManager));
             builder.internalTransition()
                     .within(State.VALIDATING_NON_INGRESS_RULES)
                     .on(Event.RULE_RECEIVED)
-                    .perform(new ValidateNonIngressRuleAction(persistenceManager));
+                    .perform(new ConsiderNonIngressRuleValidateResultAction(persistenceManager));
 
             // install and validate ingress rules
             builder.transitions()
@@ -316,16 +314,16 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                     .from(State.INSTALLING_INGRESS_RULES)
                     .to(State.VALIDATING_INGRESS_RULES)
                     .on(Event.NEXT)
-                    .perform(new DumpIngressRulesAction(commandExecutorFsmBuilder));
+                    .perform(new EmitIngressRulesVerifyRequestsAction(commandExecutorFsmBuilder));
 
             builder.internalTransition()
                     .within(State.VALIDATING_INGRESS_RULES)
                     .on(Event.RESPONSE_RECEIVED)
-                    .perform(new OnReceivedResponseAction(persistenceManager));
+                    .perform(new OnReceivedVerifyResponseAction(persistenceManager));
             builder.internalTransition()
                     .within(State.VALIDATING_INGRESS_RULES)
                     .on(Event.RULE_RECEIVED)
-                    .perform(new ValidateIngressRuleAction(persistenceManager));
+                    .perform(new ConsiderIngressRuleValidateResultAction(persistenceManager));
 
             builder.transition()
                     .from(State.VALIDATING_INGRESS_RULES)

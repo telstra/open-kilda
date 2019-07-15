@@ -19,19 +19,24 @@ import static com.fasterxml.jackson.annotation.JsonTypeInfo.As.PROPERTY;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.NonNull;
+import lombok.ToString;
 
 import java.io.Serializable;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = PROPERTY, property = "clazz")
 @Getter
+@ToString
+@EqualsAndHashCode
 public abstract class AbstractMessage implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @JsonProperty("message_context")
-    private MessageContext messageContext;
+    protected MessageContext messageContext;
 
-    public AbstractMessage(MessageContext messageContext) {
+    public AbstractMessage(@NonNull MessageContext messageContext) {
         this.messageContext = messageContext;
     }
 }

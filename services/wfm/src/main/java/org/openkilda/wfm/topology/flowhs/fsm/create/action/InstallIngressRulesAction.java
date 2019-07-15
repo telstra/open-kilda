@@ -15,7 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
-import org.openkilda.floodlight.flow.request.InstallIngressRule;
+import org.openkilda.floodlight.api.request.FlowSegmentBlankGenericResolver;
+import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -32,6 +33,8 @@ import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 public class InstallIngressRulesAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
@@ -51,15 +54,16 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowCreateFs
     protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         Flow flow = getFlow(stateMachine.getFlowId());
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
-        List<InstallIngressRule> commands = commandBuilder.createInstallIngressRules(
+        List<FlowSegmentBlankGenericResolver> requestBlanks = commandBuilder.buildIngressOnly(
                 stateMachine.getCommandContext(), flow);
 
-        commands.forEach(command -> {
-            stateMachine.getIngressCommands().put(command.getCommandId(), command);
-            SpeakerCommandObserver commandObserver = new SpeakerCommandObserver(speakerCommandFsmBuilder, command);
-            commandObserver.start();
-            stateMachine.getPendingCommands().put(command.getCommandId(), commandObserver);
-        });
+        Map<UUID, FlowSegmentBlankGenericResolver> requestsStorage = stateMachine.getIngressCommands();
+        Map<UUID, SpeakerCommandObserver> pendingRequests = stateMachine.getPendingRequests();
+        for (FlowSegmentBlankGenericResolver blank : requestBlanks) {
+            FlowSegmentRequest request = blank.makeInstallRequest();
+            requestsStorage.put(request.getCommandId(), blank);
+            pendingRequests.put(request.getCommandId(), new SpeakerCommandObserver(speakerCommandFsmBuilder, request));
+        }
 
         log.debug("Commands for installing ingress rules have been sent");
         saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),

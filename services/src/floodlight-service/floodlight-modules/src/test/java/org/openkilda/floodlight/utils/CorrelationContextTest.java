@@ -6,8 +6,9 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertThat;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 
-import org.junit.Test;
 import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
+
+import org.junit.Test;
 
 import java.util.UUID;
 
@@ -39,5 +40,4 @@ public class CorrelationContextTest {
         //then
         assertNotEquals(DEFAULT_CORRELATION_ID, correlationId);
     }
-
 }

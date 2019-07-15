@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.service;
 
-import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
+import org.openkilda.floodlight.api.request.SpeakerRequest;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
@@ -50,8 +50,6 @@ import org.openkilda.messaging.floodlight.request.SetupBfdSession;
 import org.openkilda.model.SwitchId;
 
 public final class RouterUtils {
-
-
     private  RouterUtils(){}
 
     /**
@@ -138,8 +136,8 @@ public final class RouterUtils {
      * @return - SwitchId or null
      */
     public static SwitchId lookupSwitchId(AbstractMessage message) {
-        if (message instanceof SpeakerFlowRequest) {
-            return ((SpeakerFlowRequest) message).getSwitchId();
+        if (message instanceof SpeakerRequest) {
+            return ((SpeakerRequest) message).getSwitchId();
         }
         return null;
     }
