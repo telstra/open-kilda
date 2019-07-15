@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
-import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
@@ -43,7 +43,6 @@ public class FlowCreateService {
 
     private final FlowCreateFsm.Factory fsmFactory;
     private final FlowCreateHubCarrier carrier;
-    private final PersistenceManager persistenceManager;
     private final FlowEventRepository flowEventRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
 
@@ -51,7 +50,6 @@ public class FlowCreateService {
                              PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
                              int genericRetriesLimit, int transactionRetriesLimit, int speakerCommandRetriesLimit) {
         this.carrier = carrier;
-        this.persistenceManager = persistenceManager;
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowEventRepository = repositoryFactory.createFlowEventRepository();
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
@@ -80,7 +78,7 @@ public class FlowCreateService {
 
         String eventKey = commandContext.getCorrelationId();
         if (flowEventRepository.existsByTaskId(eventKey)) {
-            log.error("Attempt to reuse key %s, but there's a history record(s) for it.", eventKey);
+            log.error("Attempt to reuse key {}, but there's a history record(s) for it.", eventKey);
             return;
         }
 
@@ -105,7 +103,7 @@ public class FlowCreateService {
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(String key, FlowResponse flowResponse) {
+    public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) {
         log.debug("Received flow command response {}", flowResponse);
         FlowCreateFsm fsm = fsms.get(key);
         if (fsm == null) {

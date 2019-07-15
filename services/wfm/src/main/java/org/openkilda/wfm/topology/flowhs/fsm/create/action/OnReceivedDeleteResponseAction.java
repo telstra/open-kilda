@@ -17,16 +17,12 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.UUID;
 
 @Slf4j
 public class OnReceivedDeleteResponseAction extends OnReceivedInstallResponseAction {
@@ -35,21 +31,13 @@ public class OnReceivedDeleteResponseAction extends OnReceivedInstallResponseAct
     }
 
     @Override
-    void handleResponse(FlowCreateFsm stateMachine, FlowCreateContext context) {
-        FlowResponse response = context.getSpeakerFlowResponse();
-        UUID commandId = response.getCommandId();
-        if (!stateMachine.getRemoveCommands().containsKey(commandId)) {
-            log.info("Failed to find a delete rule command with id {}", commandId);
-            return;
-        }
-
-        RemoveRule rule = stateMachine.getRemoveCommands().get(commandId);
+    protected void handleResponse(FlowCreateFsm stateMachine, SpeakerFlowSegmentResponse response) {
         if (response.isSuccess()) {
             stateMachine.saveActionToHistory("Rule was deleted",
-                    format("The rule was deleted: switch %s, cookie %s", rule.getSwitchId(), rule.getCookie()));
+                    format("The rule was deleted: switch %s, cookie %s", response.getSwitchId(), response.getCookie()));
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) response;
-            stateMachine.getFailedCommands().put(errorResponse.getCommandId(), errorResponse);
+            stateMachine.getFailedCommands().add(errorResponse.getCommandId());
             stateMachine.saveErrorToHistory("Failed to delete rule",
                     format("Failed to delete the rule: commandId %s, switch %s. Error: %s",
                             errorResponse.getCommandId(), errorResponse.getSwitchId(), errorResponse));

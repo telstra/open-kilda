@@ -15,8 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
-import org.openkilda.floodlight.flow.request.RemoveRule;
-import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
@@ -32,15 +31,16 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
+import org.openkilda.wfm.topology.flowhs.utils.SpeakerRemoveSegmentEmitter;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -59,8 +59,13 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
         Flow flow = getFlow(stateMachine.getFlowId());
 
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
-        Collection<RemoveRule> commands = new ArrayList<>();
+        Collection<FlowSegmentRequestFactory> commands = new ArrayList<>();
 
+        Set<PathId> protectedPaths = Arrays.stream(
+                new PathId[]{
+                        flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()})
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
         Set<PathId> processed = new HashSet<>();
         for (FlowPath path : flow.getPaths()) {
             PathId pathId = path.getPathId();
@@ -71,49 +76,35 @@ public class RemoveRulesAction extends FlowProcessingAction<FlowDeleteFsm, State
                     processed.add(oppositePath.getPathId());
                 }
 
-                FlowPath forward = path.isForward() ? path : oppositePath;
-                FlowPath reverse = path.isForward() ? oppositePath : path;
-                if (forward != null) {
-                    stateMachine.getFlowResources().add(buildResources(flow, forward,
-                            reverse != null ? reverse : forward));
-                    if (reverse != null) {
-                        commands.addAll(commandBuilder.createRemoveNonIngressRules(
-                                stateMachine.getCommandContext(), flow, forward, reverse));
-                        if (!forward.getPathId().equals(flow.getProtectedForwardPathId())) {
-                            commands.addAll(commandBuilder.createRemoveIngressRules(
-                                    stateMachine.getCommandContext(), flow, forward, reverse));
-                        }
+                if (oppositePath != null) {
+                    stateMachine.getFlowResources().add(buildResources(flow, path, oppositePath));
+
+                    if (protectedPaths.contains(pathId)) {
+                        commands.addAll(commandBuilder.buildAllExceptIngress(
+                                stateMachine.getCommandContext(), flow, path, oppositePath));
                     } else {
-                        log.warn("No reverse path found for {}, trying to delete as unpaired path",
-                                forward.getPathId());
-                        commands.addAll(commandBuilder.createRemoveNonIngressRules(
-                                stateMachine.getCommandContext(), flow, forward));
-                        if (!forward.getPathId().equals(flow.getProtectedForwardPathId())) {
-                            commands.addAll(commandBuilder.createRemoveIngressRules(
-                                    stateMachine.getCommandContext(), flow, forward));
-                        }
+                        commands.addAll(commandBuilder.buildAll(
+                                stateMachine.getCommandContext(), flow, path, oppositePath));
                     }
                 } else {
-                    log.warn("No forward path found for {}, trying to delete as unpaired path", reverse.getPathId());
-                    stateMachine.getFlowResources().add(buildResources(flow, reverse, reverse));
-                    commands.addAll(commandBuilder.createRemoveNonIngressRules(
-                            stateMachine.getCommandContext(), flow, reverse));
-                    if (!reverse.getPathId().equals(flow.getProtectedReversePathId())) {
-                        commands.addAll(commandBuilder.createRemoveIngressRules(
-                                stateMachine.getCommandContext(), flow, reverse));
+                    log.warn("No opposite path found for {}, trying to delete as unpaired path", pathId);
+
+                    stateMachine.getFlowResources().add(buildResources(flow, path, path));
+
+                    if (protectedPaths.contains(pathId)) {
+                        commands.addAll(commandBuilder.buildAllExceptIngress(
+                                stateMachine.getCommandContext(), flow, path, null));
+                    } else {
+                        commands.addAll(commandBuilder.buildAll(
+                                stateMachine.getCommandContext(), flow, path, null));
                     }
                 }
             }
         }
 
-        stateMachine.getRemoveCommands().putAll(commands.stream()
-                .collect(Collectors.toMap(RemoveRule::getCommandId, Function.identity())));
-
-        Set<UUID> commandIds = commands.stream()
-                .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
-                .map(SpeakerFlowRequest::getCommandId)
-                .collect(Collectors.toSet());
-        stateMachine.getPendingCommands().addAll(commandIds);
+        SpeakerRemoveSegmentEmitter.INSTANCE.emitBatch(
+                stateMachine.getCarrier(), commands, stateMachine.getRemoveCommands());
+        stateMachine.getPendingCommands().addAll(stateMachine.getRemoveCommands().keySet());
 
         stateMachine.saveActionToHistory("Remove commands for rules have been sent");
     }

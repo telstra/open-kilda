@@ -15,8 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
-import org.openkilda.floodlight.flow.request.InstallTransitRule;
-import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
@@ -29,18 +28,16 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
+import org.openkilda.wfm.topology.flowhs.utils.SpeakerInstallSegmentEmitter;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Slf4j
-public class InstallNonIngressRulesAction extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
+public class InstallNonIngressRulesAction
+        extends FlowProcessingAction<FlowUpdateFsm, State, Event, FlowUpdateContext> {
     private final FlowCommandBuilderFactory commandBuilderFactory;
 
     public InstallNonIngressRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
@@ -57,32 +54,27 @@ public class InstallNonIngressRulesAction extends FlowProcessingAction<FlowUpdat
 
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(requestedFlow.getFlowEncapsulationType());
 
-        Collection<InstallTransitRule> commands = new ArrayList<>();
-
+        // primary path
         FlowPath newPrimaryForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
         FlowPath newPrimaryReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
-        commands.addAll(commandBuilder.createInstallNonIngressRules(
+        Collection<FlowSegmentRequestFactory> commands = new ArrayList<>(commandBuilder.buildAllExceptIngress(
                 stateMachine.getCommandContext(), flow, newPrimaryForward, newPrimaryReverse));
 
+        // protected path
         if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
             FlowPath newProtectedForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
             FlowPath newProtectedReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
-            commands.addAll(commandBuilder.createInstallNonIngressRules(
+            commands.addAll(commandBuilder.buildAllExceptIngress(
                     stateMachine.getCommandContext(), flow, newProtectedForward, newProtectedReverse));
         }
 
-        stateMachine.getNonIngressCommands().putAll(commands.stream()
-                .collect(Collectors.toMap(InstallTransitRule::getCommandId, Function.identity())));
-
-        Set<UUID> commandIds = commands.stream()
-                .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
-                .map(SpeakerFlowRequest::getCommandId)
-                .collect(Collectors.toSet());
-        stateMachine.getPendingCommands().addAll(commandIds);
+        // emitting
+        SpeakerInstallSegmentEmitter.INSTANCE.emitBatch(
+                stateMachine.getCarrier(), commands, stateMachine.getNonIngressCommands());
+        stateMachine.getPendingCommands().addAll(stateMachine.getNonIngressCommands().keySet());
 
         if (commands.isEmpty()) {
             stateMachine.saveActionToHistory("No need to install non ingress rules");
-
             stateMachine.fire(Event.RULES_INSTALLED);
         } else {
             stateMachine.saveActionToHistory("Commands for installing non ingress rules have been sent");

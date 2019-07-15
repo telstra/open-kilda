@@ -32,13 +32,10 @@ import static org.mockito.Mockito.when;
 import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 import static org.openkilda.model.SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES;
 
-import org.openkilda.floodlight.flow.request.GetInstalledRule;
-import org.openkilda.floodlight.flow.request.InstallFlowRule;
-import org.openkilda.floodlight.flow.request.RemoveRule;
-import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
+import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
-import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
@@ -272,20 +269,22 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof InstallFlowRule) {
+            if (flowRequest.isInstallRequest()) {
                 updateService.handleAsyncResponse("test_key", FlowErrorResponse.errorBuilder()
+                        .messageContext(flowRequest.getMessageContext())
                         .errorCode(ErrorCode.UNKNOWN)
                         .description("Switch is unavailable")
                         .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
+                        .metadata(flowRequest.getMetadata())
                         .switchId(flowRequest.getSwitchId())
                         .build());
             } else {
-                updateService.handleAsyncResponse("test_key", FlowResponse.builder()
+                updateService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(flowRequest.getMessageContext())
                         .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
+                        .metadata(flowRequest.getMetadata())
                         .switchId(flowRequest.getSwitchId())
                         .success(true)
                         .build());
@@ -327,12 +326,13 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
 
         updateService.handleTimeout("test_key");
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof RemoveRule) {
-                updateService.handleAsyncResponse("test_key", FlowResponse.builder()
+            if (flowRequest.isRemoveRequest()) {
+                updateService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(flowRequest.getMessageContext())
                         .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
+                        .metadata(flowRequest.getMetadata())
                         .switchId(flowRequest.getSwitchId())
                         .success(true)
                         .build());
@@ -372,21 +372,22 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof GetInstalledRule) {
+            if (flowRequest.isVerifyRequest()) {
                 updateService.handleAsyncResponse("test_key", FlowErrorResponse.errorBuilder()
                         .errorCode(ErrorCode.UNKNOWN)
                         .description("Unknown rule")
                         .messageContext(flowRequest.getMessageContext())
                         .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
+                        .metadata(flowRequest.getMetadata())
                         .switchId(flowRequest.getSwitchId())
                         .build());
             } else {
-                updateService.handleAsyncResponse("test_key", FlowResponse.builder()
+                updateService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(flowRequest.getMessageContext())
                         .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
+                        .metadata(flowRequest.getMetadata())
                         .switchId(flowRequest.getSwitchId())
                         .success(true)
                         .build());
@@ -426,14 +427,15 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof GetInstalledRule) {
+            if (flowRequest.isVerifyRequest()) {
                 updateService.handleTimeout("test_key");
             } else {
-                updateService.handleAsyncResponse("test_key", FlowResponse.builder()
+                updateService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(flowRequest.getMessageContext())
                         .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
+                        .metadata(flowRequest.getMetadata())
                         .switchId(flowRequest.getSwitchId())
                         .success(true)
                         .build());
@@ -489,15 +491,15 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         }).when(flowRepository).createOrUpdate(argThat(
                 hasProperty("forwardPathId", equalTo(NEW_FORWARD_FLOW_PATH))));
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof GetInstalledRule) {
-                updateService.handleAsyncResponse("test_key",
-                        buildResponseOnGetInstalled((GetInstalledRule) flowRequest));
+            if (flowRequest.isVerifyRequest()) {
+                updateService.handleAsyncResponse("test_key", buildResponseOnVerifyRequest(flowRequest));
             } else {
-                updateService.handleAsyncResponse("test_key", FlowResponse.builder()
+                updateService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(flowRequest.getMessageContext())
                         .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
+                        .metadata(flowRequest.getMetadata())
                         .switchId(flowRequest.getSwitchId())
                         .success(true)
                         .build());
@@ -545,15 +547,16 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
             throw new RuntimeException("A persistence error");
         }).when(flowPathRepository).updateStatus(eq(NEW_FORWARD_FLOW_PATH), eq(FlowPathStatus.ACTIVE));
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof GetInstalledRule) {
+            if (flowRequest.isVerifyRequest()) {
                 updateService.handleAsyncResponse("test_key",
-                        buildResponseOnGetInstalled((GetInstalledRule) flowRequest));
+                        buildResponseOnVerifyRequest(flowRequest));
             } else {
-                updateService.handleAsyncResponse("test_key", FlowResponse.builder()
+                updateService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(flowRequest.getMessageContext())
                         .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
+                        .metadata(flowRequest.getMetadata())
                         .switchId(flowRequest.getSwitchId())
                         .success(true)
                         .build());
@@ -597,15 +600,16 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
                 .when(flowPathRepository).delete(argThat(
                 hasProperty("pathId", equalTo(OLD_FORWARD_FLOW_PATH))));
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof GetInstalledRule) {
+            if (flowRequest.isVerifyRequest()) {
                 updateService.handleAsyncResponse("test_key",
-                        buildResponseOnGetInstalled((GetInstalledRule) flowRequest));
+                        buildResponseOnVerifyRequest(flowRequest));
             } else {
-                updateService.handleAsyncResponse("test_key", FlowResponse.builder()
+                updateService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(flowRequest.getMessageContext())
                         .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
+                        .metadata(flowRequest.getMetadata())
                         .switchId(flowRequest.getSwitchId())
                         .success(true)
                         .build());
@@ -650,15 +654,16 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
                 hasProperty("forward",
                         hasProperty("pathId", equalTo(OLD_FORWARD_FLOW_PATH)))));
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof GetInstalledRule) {
+            if (flowRequest.isVerifyRequest()) {
                 updateService.handleAsyncResponse("test_key",
-                        buildResponseOnGetInstalled((GetInstalledRule) flowRequest));
+                        buildResponseOnVerifyRequest(flowRequest));
             } else {
-                updateService.handleAsyncResponse("test_key", FlowResponse.builder()
+                updateService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(flowRequest.getMessageContext())
                         .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
+                        .metadata(flowRequest.getMetadata())
                         .switchId(flowRequest.getSwitchId())
                         .success(true)
                         .build());
@@ -700,15 +705,16 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof GetInstalledRule) {
+            if (flowRequest.isVerifyRequest()) {
                 updateService.handleAsyncResponse("test_key",
-                        buildResponseOnGetInstalled((GetInstalledRule) flowRequest));
+                        buildResponseOnVerifyRequest(flowRequest));
             } else {
-                updateService.handleAsyncResponse("test_key", FlowResponse.builder()
+                updateService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(flowRequest.getMessageContext())
                         .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
+                        .metadata(flowRequest.getMetadata())
                         .switchId(flowRequest.getSwitchId())
                         .success(true)
                         .build());
@@ -750,15 +756,16 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        SpeakerFlowRequest flowRequest;
+        FlowSegmentRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
-            if (flowRequest instanceof GetInstalledRule) {
+            if (flowRequest.isVerifyRequest()) {
                 updateService.handleAsyncResponse("test_key",
-                        buildResponseOnGetInstalled((GetInstalledRule) flowRequest));
+                        buildResponseOnVerifyRequest(flowRequest));
             } else {
-                updateService.handleAsyncResponse("test_key", FlowResponse.builder()
+                updateService.handleAsyncResponse("test_key", SpeakerFlowSegmentResponse.builder()
+                        .messageContext(flowRequest.getMessageContext())
                         .commandId(flowRequest.getCommandId())
-                        .flowId(flowRequest.getFlowId())
+                        .metadata(flowRequest.getMetadata())
                         .switchId(flowRequest.getSwitchId())
                         .success(true)
                         .build());

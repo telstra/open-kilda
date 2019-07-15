@@ -17,9 +17,9 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.flow.request.InstallFlowRule;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -41,9 +41,9 @@ public class OnReceivedInstallResponseAction extends
 
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        FlowResponse response = context.getSpeakerFlowResponse();
+        SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
-        InstallFlowRule command = stateMachine.getInstallCommand(commandId);
+        FlowSegmentRequestFactory command = stateMachine.getInstallCommand(commandId);
         if (!stateMachine.getPendingCommands().contains(commandId) || command == null) {
             log.info("Received a response for unexpected command: {}", response);
             return;
@@ -67,7 +67,7 @@ public class OnReceivedInstallResponseAction extends
                                 + "Retrying (attempt %d)",
                         commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse, retries));
 
-                stateMachine.getCarrier().sendSpeakerRequest(command);
+                stateMachine.getCarrier().sendSpeakerRequest(command.makeInstallRequest(commandId));
             } else {
                 stateMachine.getPendingCommands().remove(commandId);
 

@@ -17,10 +17,9 @@ package org.openkilda.wfm.topology.flowhs.fsm.delete.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.floodlight.flow.response.FlowResponse;
-import org.openkilda.model.Cookie;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm;
@@ -41,37 +40,35 @@ public class OnErrorResponseAction extends HistoryRecordingAction<FlowDeleteFsm,
 
     @Override
     protected void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
-        FlowResponse response = context.getSpeakerFlowResponse();
+        SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
         if (response.isSuccess() || !(response instanceof FlowErrorResponse)) {
             throw new IllegalArgumentException(
                     format("Invoked %s for a success response: %s", this.getClass(), response));
         }
 
         UUID failedCommandId = response.getCommandId();
-        RemoveRule failedCommand = stateMachine.getRemoveCommands().get(failedCommandId);
+        FlowSegmentRequestFactory failedCommand = stateMachine.getRemoveCommands().get(failedCommandId);
         if (!stateMachine.getPendingCommands().contains(failedCommandId) || failedCommand == null) {
             log.info("Received a response for unexpected command: {}", response);
             return;
         }
 
         FlowErrorResponse errorResponse = (FlowErrorResponse) response;
-        Cookie cookie = stateMachine.getCookieForCommand(failedCommandId);
-
         int retries = stateMachine.getRetriedCommands().getOrDefault(failedCommandId, 0);
         if (retries < speakerCommandRetriesLimit) {
             stateMachine.getRetriedCommands().put(failedCommandId, ++retries);
 
             stateMachine.saveErrorToHistory("Failed to remove rule", format(
                     "Failed to remove the rule: commandId %s, switch %s, cookie %s. Error %s. Retrying (attempt %d)",
-                    failedCommandId, errorResponse.getSwitchId(), cookie, errorResponse, retries));
+                    failedCommandId, errorResponse.getSwitchId(), response.getCookie(), errorResponse, retries));
 
-            stateMachine.getCarrier().sendSpeakerRequest(failedCommand);
+            stateMachine.getCarrier().sendSpeakerRequest(failedCommand.makeRemoveRequest(failedCommandId));
         } else {
             stateMachine.getPendingCommands().remove(failedCommandId);
 
             stateMachine.saveErrorToHistory("Failed to remove rule",
                     format("Failed to remove the rule: commandId %s, switch %s, cookie %s. Error %s",
-                            failedCommandId, errorResponse.getSwitchId(), cookie, errorResponse));
+                            failedCommandId, errorResponse.getSwitchId(), response.getCookie(), errorResponse));
 
             stateMachine.getFailedCommands().put(failedCommandId, errorResponse);
 
