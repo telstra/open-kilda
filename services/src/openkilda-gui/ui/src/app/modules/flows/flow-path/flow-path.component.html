@@ -1,49 +1,84 @@
 <div class="row">
-  <div id="ForwardRow" class="col-xs-12 col-md-12 col-lg-12">
-    <h3 class="text-center">
-      FORWARD PATH
-      <a class="badge badge-dark custom-button cursor-pointer" (click)="viewPathGraph('forward')">
-        <i class="fa" [ngClass]="{'fa-minus': forwardPathGraph, 'fa-plus': !forwardPathGraph}"> </i>
-      </a>
-    </h3>
-
-    <div  *ngFor="let path of forwardPathData" class="path">
-      <div class="number" ngbTooltip="{{path.switch_name}}">{{path.input_port}}</div>
-      <div class="line"></div>
-      <div class="text cursor-pointer" id="switch-name" (click)="loadSwitchDetail(path.switch_id)">{{path.switch_name}}</div>
-      <div class="line"></div>
-      <div class="number" ngbTooltip="{{path.switch_name}}">{{path.output_port}}</div>
-      <div class="line islPath"  (click)="loadIslDetail('forward')"></div>
-      <div *ngIf="forwardPathData.length > 5" class="vertical-line"></div>
-      <div *ngIf="forwardPathData.length > 5" class="horizontal-line"></div>
-      <div *ngIf="forwardPathData.length > 5" class="vertical-line-2"></div>
-    </div>
-
+   <div id="ForwardRow" class="col-xs-12 col-md-12 col-lg-12"  style="border-top:1px solid #ccc; margin:0;">
+      <label class="response_flow_label" style="margin-left:-15px;">{{forwardLabelText}}</label>
+          <div class="rightbar_overlay"  *ngIf="!forwardPathGraph">
+              <div class="main-list">
+                  <a *ngIf="!showDiverseGroupForward" class="custom-icon-path cursor-pointer" (click)="zoomFn('forward','out')"><i class="fa fa-search-minus"></i></a>
+                  <a *ngIf="!showDiverseGroupForward" class="custom-icon-path cursor-pointer" (click)="zoomFn('forward','in')"><i class="fa fa-search-plus"></i></a>
+                  <a *ngIf="showDiverseGroupForward" class="custom-icon-path cursor-pointer" (click)="zoomFn('forwardDiverse','out')"><i class="fa fa-search-minus"></i></a>
+                  <a *ngIf="showDiverseGroupForward" class="custom-icon-path cursor-pointer" (click)="zoomFn('forwardDiverse','in')"><i class="fa fa-search-plus"></i></a>
+                  <a  *ngIf="showDiverseGroupForward" class= "custom-icon-path cursor-pointer" (click)="showFlowList('forward')" ><i class="fa fa-list" aria-hidden="true"></i></a>
+              </div>
+              <ul *ngIf="showFlowsForward">
+                <li (click)="showCommonSwitch('forward')"> <span class="switch-circle"><i class="switch-image"></i></span>common switch</li>
+                <li (click)="showFlowPath(flow,'forward')" class=""   *ngFor="let flow of pathFlows; let i=index;">
+                  <span [ngStyle]="{'background': colourCodes[i]}"  class="color-pointer">&nbsp;&nbsp;&nbsp;&nbsp;</span>  
+                   {{flow}}      
+                </li>
+              </ul>   
+            </div>
+          <a class="custom-button  flow-path-icons cursor-pointer" [ngClass]= "{'active':showDiverseGroupForward}" (click)="viewPathGraph('forward')" title="Forward Path Graph">
+              <i class="fa fa-bar-chart"> </i>
+            </a>
+          <div *ngIf="hasDiverseGroup" class="pull-right" style="margin:10px;">
+            <div class="onoffpathdiverse">
+              <input type="checkbox"  (change)="toggleDiversePath('forward',$event)" name="path-diverse" class="onoffpathdiverse-checkbox" id="onoffpathdiverse">
+              <label class="onoffpathdiverse-label" for="onoffpathdiverse">
+                <span class="onoffpathdiverse-inner onoffpathdiverse-pathdiverse"></span>
+                <span class="onoffpathdiverse-switch" id="onoffpathdiverse-switch"></span>
+              </label>
+            </div>
+        </div>
+        <div   [hidden]="forwardGraphSvg" id="forwardPathWrapper" class="topology-container" >
+          <div *ngIf="forwardPathLoader" class="path-graph-component-loader"></div>
+          <div class="path-graph-wrapper" [hidden]="!loadforwardPath"></div>
+          <svg   id="svgForwardPath" width="1000" height="450"></svg>
+      </div>
+    <app-flow-path-graph [data]="flowPathData" path-type="forward"  *ngIf="forwardPathGraph"></app-flow-path-graph>
   </div>
 </div>
-<app-flow-path-graph [data]="flowPathData" path-type="forward"  *ngIf="forwardPathGraph"></app-flow-path-graph>
+
 <div class="row">
-
-  <div id="ReversePath" class="col-xs-12 col-md-12 col-lg-12">
-    <h3 class="text-center">
-      REVERSE PATH
-      <a class="badge badge-dark custom-button cursor-pointer" (click)="viewPathGraph('reverse')">
-        <i class="fa" [ngClass]="{'fa-minus': reversePathGraph, 'fa-plus': !reversePathGraph}"> </i>
-      </a>
-    </h3>
-
-    <div  *ngFor="let path of reversePathData" class="path">
-      <div class="number" ngbTooltip="{{path.switch_name}}">{{path.input_port}}</div>
-      <div class="line"></div>
-      <div class="text cursor-pointer"  id="switch-name" (click)="loadSwitchDetail(path.switch_id)">{{path.switch_name}}</div>
-      <div class="line"></div>
-      <div class="number" ngbTooltip="{{path.switch_name}}">{{path.output_port}}</div>
-      <div class="line islPath"  (click)="loadIslDetail('reverse')"></div>
-      <div *ngIf="reversePathData.length > 5" class="vertical-line"></div>
-      <div *ngIf="reversePathData.length > 5" class="horizontal-line"></div>
-      <div *ngIf="reversePathData.length > 5" class="vertical-line-2"></div>
-    </div>
-    
+  <div id="ReversePath" class="col-xs-12 col-md-12 col-lg-12" style="border-top:1px solid #ccc; margin-top:10px;">
+    <label class="response_flow_label" style="margin-left:-15px;">{{reverseLabelText}}</label>
+    <h3 class="text-center"> 
+        <div class="rightbar_overlay" *ngIf="!reversePathGraph">
+            <div class="main-list">
+                <a *ngIf="!showDiverseGroupReverse" class="custom-icon-path cursor-pointer" (click)="zoomFn('reverse','out')"><i class="fa fa-search-minus"></i></a>
+                <a *ngIf="!showDiverseGroupReverse" class="custom-icon-path cursor-pointer" (click)="zoomFn('reverse','in')"><i class="fa fa-search-plus"></i></a>
+                <a *ngIf="showDiverseGroupReverse" class="custom-icon-path cursor-pointer" (click)="zoomFn('reverseDiverse','out')"><i class="fa fa-search-minus"></i></a>
+                <a *ngIf="showDiverseGroupReverse" class="custom-icon-path cursor-pointer" (click)="zoomFn('reverseDiverse','in')"><i class="fa fa-search-plus"></i></a>
+                <a *ngIf="showDiverseGroupReverse" class= "custom-icon-path cursor-pointer" (click)="showFlowList('reverse')"><i class="fa fa-list" aria-hidden="true"></i></a>
+            </div>
+            <ul *ngIf="showFlowsReverse">
+              <li (click)="showCommonSwitch('reverse')"> <span class="switch-circle"><i class="switch-image"></i></span>common switch</li>
+              <li (click)="showFlowPath(flow,'reverse')" class=""*ngFor="let flow of pathFlows; let i=index;">
+                <span [ngStyle]="{'background': colourCodes[i]}"  style="width:5px;height:5px;">&nbsp;&nbsp;</span>  
+                 {{flow}}      
+              </li>
+            </ul>   
+        
+          </div>
+        <a class="custom-button  flow-path-icons cursor-pointer" [ngClass]= "{'active':showDiverseGroupReverse}" (click)="viewPathGraph('reverse')" title="Reverse Path Graph">
+            <i class="fa fa-bar-chart"> </i>
+          </a>
+      <div *ngIf="hasDiverseGroup" class="pull-right" style="margin:10px;">
+          <div class="onoffpathdiverse">
+            <input type="checkbox" (change)="toggleDiversePath('reverse',$event)"  name="path-diverse-reverse" class="onoffpathdiverse-checkbox" id="onoffpathdiversereverse">
+            <label class="onoffpathdiverse-label" for="onoffpathdiversereverse">
+              <span class="onoffpathdiverse-inner onoffpathdiverse-pathdiverse"></span>
+              <span class="onoffpathdiverse-switch" id="onoffpathdiverse-switch"></span>
+            </label>
+          </div>
+      </div>
+      
+  </h3>
+    <div  [hidden]="reverseGraphSvg" id="reversePathWrapper" class="topology-container" >    
+      <div *ngIf="reversePathLoader" class="path-graph-component-loader"></div>
+      <div class="path-graph-wrapper" [hidden]="!loadreversePath"></div>
+      <svg  id="svgReversePath" width="1000" height="450"></svg>
+    </div> 
+   <app-flow-path-graph [data]="flowPathData" path-type="reverse" *ngIf="reversePathGraph"></app-flow-path-graph>
   </div>
 </div>
-<app-flow-path-graph [data]="flowPathData" path-type="reverse" *ngIf="reversePathGraph"></app-flow-path-graph>
+

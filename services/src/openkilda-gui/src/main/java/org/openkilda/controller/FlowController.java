@@ -96,8 +96,9 @@ public class FlowController extends BaseController {
     @RequestMapping(value = "/list", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody List<FlowInfo> getFlows(
-            @RequestParam(name = "status", required = false) List<String> statuses) {
-        return flowService.getAllFlows(statuses);
+            @RequestParam(name = "status", required = false) List<String> statuses,
+            @RequestParam(name = "controller", required = false) boolean controller) {
+        return flowService.getAllFlows(statuses, controller);
     }
 
     /**

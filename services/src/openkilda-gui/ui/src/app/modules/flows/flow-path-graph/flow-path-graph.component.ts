@@ -4,7 +4,6 @@ import { DygraphService } from "../../../common/services/dygraph.service";
 import { FormBuilder, FormGroup } from "@angular/forms";
 import { ToastrService } from "ngx-toastr";
 import { SwitchidmaskPipe } from "../../../common/pipes/switchidmask.pipe";
-import { copyStyles } from "@angular/animations/browser/src/util";
 import { ClipboardService } from "ngx-clipboard";
 declare var moment: any;
 

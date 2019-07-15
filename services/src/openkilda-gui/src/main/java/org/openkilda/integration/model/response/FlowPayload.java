@@ -20,6 +20,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import lombok.Data;
+
 import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
@@ -27,6 +29,7 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({"flowid", "flowpath_forward", "flowpath_reverse"})
 @JsonIgnoreProperties(ignoreUnknown = true)
+@Data
 public class FlowPayload implements Serializable {
 
     private static final long serialVersionUID = -611895293779307399L;
@@ -39,6 +42,15 @@ public class FlowPayload implements Serializable {
     
     @JsonProperty("flowpath_reverse")
     private List<FlowPathNode> reverse;
+    
+    @JsonProperty("protected_path")
+    private FlowProtectedPath protectedPath;
+    
+    @JsonProperty("diverse_group")
+    private FlowDiversePath diversePath;
+    
+    @JsonProperty("diverse_group_protected")
+    private FlowDiversePathProtected diversePathProtected;
     
     @JsonProperty("flowid")
     public String getFlowId() {
