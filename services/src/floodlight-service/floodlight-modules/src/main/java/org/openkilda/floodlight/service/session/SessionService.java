@@ -21,6 +21,7 @@ import org.openkilda.floodlight.model.OfInput;
 import org.openkilda.floodlight.service.IService;
 import org.openkilda.floodlight.service.of.IInputTranslator;
 import org.openkilda.floodlight.service.of.InputService;
+import org.openkilda.messaging.MessageContext;
 
 import com.google.common.annotations.VisibleForTesting;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -43,16 +44,14 @@ public class SessionService implements IService, IInputTranslator {
     /**
      * Create new OF communication session and register it in service.
      */
-    public Session open(IOFSwitch sw) {
-        SwitchSessions group;
-        group = sessionsByDatapath.get(sw.getId());
-
+    public Session open(MessageContext context, IOFSwitch sw) {
+        SwitchSessions group = sessionsByDatapath.get(sw.getId());
         if (group == null) {
             throw new IllegalStateException(String.format(
                     "Switch %s is not registered into %s", sw.getId(), getClass().getName()));
         }
 
-        return group.open(sw);
+        return group.open(sw, context);
     }
 
     @Override

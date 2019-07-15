@@ -16,26 +16,16 @@
 package org.openkilda.floodlight.command;
 
 import org.openkilda.floodlight.error.SwitchWriteException;
-import org.openkilda.floodlight.service.session.Session;
 import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.messaging.MessageContext;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-@AllArgsConstructor
-@Getter
-@Slf4j
-public class MessageWriter implements SessionProxy {
-
-    final OFMessage ofMessage;
-
+public interface SessionProxy {
     /**
      * Sends of ofMessage to the switch.
      * @param sw target switch.
@@ -43,18 +33,8 @@ public class MessageWriter implements SessionProxy {
      * @return response.
      * @throws SwitchWriteException if error occurred.
      */
-    public CompletableFuture<Optional<OFMessage>> writeTo(
-            IOFSwitch sw, SessionService sessionService, MessageContext context)
-            throws SwitchWriteException {
-        try (Session session = sessionService.open(context, sw)) {
-            return session.write(ofMessage)
-                    .whenComplete((result, error) -> {
-                        if (error == null) {
-                            log.debug("OF command successfully executed {} on the switch {}", ofMessage, sw.getId());
-                        } else {
-                            log.error("Failed to execute OF command", error);
-                        }
-                    });
-        }
-    }
+    CompletableFuture<Optional<OFMessage>> writeTo(IOFSwitch sw, SessionService sessionService, MessageContext context)
+            throws SwitchWriteException;
+
+    OFMessage getOfMessage();
 }

@@ -62,12 +62,12 @@ import java.util.concurrent.CompletionException;
                 name = "org.openkilda.floodlight.flow.request.GetInstalledRule")
 })
 @Getter
-public abstract class OfCommand {
+public abstract class SpeakerCommand {
 
     protected final SwitchId switchId;
     protected final MessageContext messageContext;
 
-    public OfCommand(SwitchId switchId, MessageContext messageContext) {
+    public SpeakerCommand(SwitchId switchId, MessageContext messageContext) {
         this.switchId = switchId;
         this.messageContext = messageContext;
     }
@@ -79,13 +79,12 @@ public abstract class OfCommand {
      */
     public CompletableFuture<FloodlightResponse> execute(FloodlightModuleContext moduleContext) {
         ISwitchManager switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
-        SessionService sessionService = moduleContext.getServiceImpl(SessionService.class);
         IOFSwitch sw;
         try {
             DatapathId dpid = DatapathId.of(switchId.toLong());
             sw = switchManager.lookupSwitch(dpid);
 
-            return writeCommands(sw, sessionService, moduleContext)
+            return writeCommands(sw, moduleContext)
                     .handle((result, error) -> {
                         if (error != null) {
                             getLogger().error("Error occurred while processing OF command", error);
@@ -103,14 +102,14 @@ public abstract class OfCommand {
     /**
      * Writes command to a switch.
      */
-    protected CompletableFuture<Optional<OFMessage>> writeCommands(IOFSwitch sw, SessionService sessionService,
-                                                                   FloodlightModuleContext moduleContext)
+    protected CompletableFuture<Optional<OFMessage>> writeCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
             throws SwitchOperationException {
-        CompletableFuture<Optional<OFMessage>> chain = CompletableFuture.completedFuture(null);
-        for (MessageWriter message : getCommands(sw, moduleContext)) {
+        SessionService sessionService = moduleContext.getServiceImpl(SessionService.class);
+        CompletableFuture<Optional<OFMessage>> chain = CompletableFuture.completedFuture(Optional.empty());
+        for (SessionProxy message : getCommands(sw, moduleContext)) {
             chain = chain.thenCompose(res -> {
                 try {
-                    return message.writeTo(sw, sessionService);
+                    return message.writeTo(sw, sessionService, messageContext);
                 } catch (SwitchWriteException e) {
                     throw new CompletionException(e);
                 }
@@ -129,7 +128,7 @@ public abstract class OfCommand {
         throw new IllegalStateException("Received unexpected message from switch while processing command");
     }
 
-    public abstract List<MessageWriter> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
+    public abstract List<SessionProxy> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
             throws SwitchOperationException;
 
     protected final Logger getLogger() {

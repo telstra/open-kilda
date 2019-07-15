@@ -25,6 +25,7 @@ import org.openkilda.floodlight.error.SessionRevertException;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.SwitchWriteException;
 import org.openkilda.floodlight.service.of.InputService;
+import org.openkilda.messaging.MessageContext;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -59,6 +60,7 @@ public class SessionServiceTest extends EasyMockSupport {
     private final FloodlightModuleContext moduleContext = new FloodlightModuleContext();
 
     private final DatapathId dpId = DatapathId.of(0xfffe000000000001L);
+    private final MessageContext context = new MessageContext();
 
     private final Capture<OFMessage> swWriteMessages = EasyMock.newCapture(CaptureType.ALL);
 
@@ -98,7 +100,7 @@ public class SessionServiceTest extends EasyMockSupport {
         CompletableFuture<Optional<OFMessage>> future;
         OFPacketOut pktOut = makePacketOut(sw.getOFFactory(), 1);
 
-        try (Session session = subject.open(sw)) {
+        try (Session session = subject.open(context, sw)) {
             future = session.write(pktOut);
         }
         Assert.assertFalse(future.isDone());
@@ -128,7 +130,7 @@ public class SessionServiceTest extends EasyMockSupport {
 
         CompletableFuture<Optional<OFMessage>> pktOutFuture;
         CompletableFuture<Optional<OFMessage>> barrierFuture;
-        try (Session session = subject.open(sw)) {
+        try (Session session = subject.open(context, sw)) {
             pktOutFuture = session.write(pktOut);
             barrierFuture = session.write(barrier);
         }
@@ -162,7 +164,7 @@ public class SessionServiceTest extends EasyMockSupport {
         OFFactory ofFactory = sw.getOFFactory();
         OFPacketOut pktOut = makePacketOut(ofFactory, 1);
         CompletableFuture<Optional<OFMessage>> future;
-        try (Session session = subject.open(sw)) {
+        try (Session session = subject.open(context, sw)) {
             future = session.write(pktOut);
         }
 
@@ -191,7 +193,7 @@ public class SessionServiceTest extends EasyMockSupport {
         CompletableFuture<Optional<OFMessage>> futureAlpha = null;
         CompletableFuture<Optional<OFMessage>> futureBeta = null;
         try {
-            try (Session session = subject.open(sw)) {
+            try (Session session = subject.open(context, sw)) {
                 futureAlpha = session.write(makePacketOut(ofFactory, 1));
                 futureBeta = session.write(makePacketOut(ofFactory, 2));
             }
@@ -213,7 +215,7 @@ public class SessionServiceTest extends EasyMockSupport {
 
         CompletableFuture<Optional<OFMessage>> future = null;
         try {
-            try (Session session = subject.open(sw)) {
+            try (Session session = subject.open(context, sw)) {
                 future = session.write(makePacketOut(sw.getOFFactory(), 1));
             }
             throw new AssertionError("Expect exception to be thrown");

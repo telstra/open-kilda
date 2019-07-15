@@ -29,7 +29,7 @@ import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
-import org.openkilda.floodlight.command.OfCommand;
+import org.openkilda.floodlight.command.SpeakerCommand;
 import org.openkilda.floodlight.converter.OfFlowStatsMapper;
 import org.openkilda.floodlight.converter.OfMeterConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
@@ -1240,7 +1240,7 @@ class RecordHandler implements Runnable {
     }
 
     private void parseRecord(ConsumerRecord<String, String> record) {
-        if (handleOfCommand()) {
+        if (handleSpeakerCommand()) {
             return;
         }
 
@@ -1273,15 +1273,15 @@ class RecordHandler implements Runnable {
         }
     }
 
-    private boolean handleOfCommand() {
+    private boolean handleSpeakerCommand() {
         try {
-            OfCommand ofCommand = MAPPER.readValue(record.value(), OfCommand.class);
+            SpeakerCommand speakerCommand = MAPPER.readValue(record.value(), SpeakerCommand.class);
 
             try (CorrelationContextClosable closable =
-                         CorrelationContext.create(ofCommand.getMessageContext().getCorrelationId())) {
+                         CorrelationContext.create(speakerCommand.getMessageContext().getCorrelationId())) {
                 KafkaTopicFactory kafkaTopicFactory = new KafkaTopicFactory(context);
 
-                ofCommand.execute(context.getModuleContext())
+                speakerCommand.execute(context.getModuleContext())
                         .whenComplete((response, error) -> {
                             if (error != null) {
                                 logger.error("Error occurred while trying to execute OF command", error.getCause());
