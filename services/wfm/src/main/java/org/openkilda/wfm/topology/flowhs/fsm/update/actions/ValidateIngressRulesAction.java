@@ -17,11 +17,9 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.flow.request.InstallIngressRule;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.floodlight.flow.response.FlowResponse;
-import org.openkilda.floodlight.flow.response.FlowRuleResponse;
-import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
@@ -29,8 +27,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
-import org.openkilda.wfm.topology.flowhs.validation.rules.IngressRulesValidator;
-import org.openkilda.wfm.topology.flowhs.validation.rules.RulesValidator;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -49,9 +45,9 @@ public class ValidateIngressRulesAction extends
 
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        FlowResponse response = context.getSpeakerFlowResponse();
+        SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
-        InstallIngressRule command = stateMachine.getIngressCommands().get(commandId);
+        FlowSegmentRequestFactory command = stateMachine.getIngressCommands().get(commandId);
         if (!stateMachine.getPendingCommands().contains(commandId) || command == null) {
             log.info("Received a response for unexpected command: {}", response);
             return;
@@ -59,29 +55,15 @@ public class ValidateIngressRulesAction extends
 
         if (response.isSuccess()) {
             stateMachine.getPendingCommands().remove(commandId);
-
-            Switch switchObj = switchRepository.findById(command.getSwitchId())
-                    .orElseThrow(() -> new IllegalStateException(format("Failed to find switch %s",
-                            command.getSwitchId())));
-
-            RulesValidator validator = new IngressRulesValidator(command, (FlowRuleResponse) response,
-                    switchObj.getFeatures());
-            if (validator.validate()) {
-                stateMachine.saveActionToHistory("Rule was validated",
-                        format("The ingress rule has been validated successfully: switch %s, cookie %s",
-                                command.getSwitchId(), command.getCookie()));
-            } else {
-                stateMachine.saveErrorToHistory("Rule is missing or invalid",
-                        format("The ingress rule is missing or invalid: switch %s, cookie %s",
-                                command.getSwitchId(), command.getCookie()));
-
-                stateMachine.getFailedValidationResponses().put(commandId, response);
-            }
+            stateMachine.saveActionToHistory("Rule was validated",
+                    format("The ingress rule has been validated successfully: switch %s, cookie %s",
+                            command.getSwitchId(), command.getCookie()));
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) response;
 
             int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
-            if (retries < speakerCommandRetriesLimit) {
+            if (retries < speakerCommandRetriesLimit
+                    && errorResponse.getErrorCode() != FlowErrorResponse.ErrorCode.MISSING_OF_FLOWS) {
                 stateMachine.getRetriedCommands().put(commandId, ++retries);
 
                 stateMachine.saveErrorToHistory("Rule validation failed", format(
@@ -89,7 +71,7 @@ public class ValidateIngressRulesAction extends
                                 + "Retrying (attempt %d)",
                         commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse, retries));
 
-                stateMachine.getCarrier().sendSpeakerRequest(command);
+                stateMachine.getCarrier().sendSpeakerRequest(command.makeInstallRequest(commandId));
             } else {
                 stateMachine.getPendingCommands().remove(commandId);
 

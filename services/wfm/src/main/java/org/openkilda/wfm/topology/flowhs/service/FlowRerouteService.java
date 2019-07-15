@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.model.PathId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
@@ -87,7 +87,7 @@ public class FlowRerouteService {
 
         String eventKey = commandContext.getCorrelationId();
         if (flowEventRepository.existsByTaskId(eventKey)) {
-            log.error("Attempt to reuse key %s, but there's a history record(s) for it.", eventKey);
+            log.error("Attempt to reuse key {}, but there's a history record(s) for it.", eventKey);
             return;
         }
 
@@ -110,7 +110,7 @@ public class FlowRerouteService {
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(String key, FlowResponse flowResponse) {
+    public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse flowResponse) {
         log.debug("Received flow command response {}", flowResponse);
         FlowRerouteFsm fsm = fsms.get(key);
         if (fsm == null) {

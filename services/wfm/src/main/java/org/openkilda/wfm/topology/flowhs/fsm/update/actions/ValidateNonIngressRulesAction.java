@@ -17,17 +17,14 @@ package org.openkilda.wfm.topology.flowhs.fsm.update.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.flow.request.InstallTransitRule;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.floodlight.flow.response.FlowResponse;
-import org.openkilda.floodlight.flow.response.FlowRuleResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
-import org.openkilda.wfm.topology.flowhs.validation.rules.NonIngressRulesValidator;
-import org.openkilda.wfm.topology.flowhs.validation.rules.RulesValidator;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -44,9 +41,9 @@ public class ValidateNonIngressRulesAction extends
 
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        FlowResponse response = context.getSpeakerFlowResponse();
+        SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
-        InstallTransitRule command = stateMachine.getNonIngressCommands().get(commandId);
+        FlowSegmentRequestFactory command = stateMachine.getNonIngressCommands().get(commandId);
         if (!stateMachine.getPendingCommands().contains(commandId) || command == null) {
             log.info("Received a response for unexpected command: {}", response);
             return;
@@ -54,24 +51,15 @@ public class ValidateNonIngressRulesAction extends
 
         if (response.isSuccess()) {
             stateMachine.getPendingCommands().remove(commandId);
-
-            RulesValidator validator = new NonIngressRulesValidator(command, (FlowRuleResponse) response);
-            if (validator.validate()) {
-                stateMachine.saveActionToHistory("Rule was validated",
-                        format("The non ingress rule has been validated successfully: switch %s, cookie %s",
-                                command.getSwitchId(), command.getCookie()));
-            } else {
-                stateMachine.saveErrorToHistory("Rule is missing or invalid",
-                        format("Non ingress rule is missing or invalid: switch %s, cookie %s",
-                                command.getSwitchId(), command.getCookie()));
-
-                stateMachine.getFailedValidationResponses().put(commandId, response);
-            }
+            stateMachine.saveActionToHistory("Rule was validated",
+                    format("The non ingress rule has been validated successfully: switch %s, cookie %s",
+                            command.getSwitchId(), command.getCookie()));
         } else {
             FlowErrorResponse errorResponse = (FlowErrorResponse) response;
 
             int retries = stateMachine.getRetriedCommands().getOrDefault(commandId, 0);
-            if (retries < speakerCommandRetriesLimit) {
+            if (retries < speakerCommandRetriesLimit
+                    && errorResponse.getErrorCode() != FlowErrorResponse.ErrorCode.MISSING_OF_FLOWS) {
                 stateMachine.getRetriedCommands().put(commandId, ++retries);
 
                 stateMachine.saveErrorToHistory("Rule validation failed", format(
@@ -79,7 +67,7 @@ public class ValidateNonIngressRulesAction extends
                                 + "Retrying (attempt %d)",
                         commandId, errorResponse.getSwitchId(), command.getCookie(), errorResponse, retries));
 
-                stateMachine.getCarrier().sendSpeakerRequest(command);
+                stateMachine.getCarrier().sendSpeakerRequest(command.makeVerifyRequest(commandId));
             } else {
                 stateMachine.getPendingCommands().remove(commandId);
 

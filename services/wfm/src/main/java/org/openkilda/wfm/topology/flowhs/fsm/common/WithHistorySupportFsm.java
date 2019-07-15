@@ -20,7 +20,7 @@ import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
-import org.openkilda.wfm.topology.flowhs.service.FlowHistorySupportingCarrier;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
 import org.squirrelframework.foundation.fsm.StateMachine;
 
@@ -37,7 +37,7 @@ public abstract class WithHistorySupportFsm<T extends StateMachine<T, S, E, C>, 
 
     public abstract String getFlowId();
 
-    public abstract FlowHistorySupportingCarrier getCarrier();
+    public abstract FlowGenericCarrier getCarrier();
 
     /**
      * Add a history record on the action.

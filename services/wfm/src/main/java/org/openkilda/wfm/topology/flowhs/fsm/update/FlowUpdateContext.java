@@ -15,19 +15,21 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.update;
 
-import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowContext;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 public class FlowUpdateContext extends FlowContext {
     private RequestedFlow targetFlow;
 
     @Builder
-    public FlowUpdateContext(FlowResponse speakerFlowResponse, RequestedFlow targetFlow) {
+    public FlowUpdateContext(SpeakerFlowSegmentResponse speakerFlowResponse, RequestedFlow targetFlow) {
         super(speakerFlowResponse);
         this.targetFlow = targetFlow;
     }

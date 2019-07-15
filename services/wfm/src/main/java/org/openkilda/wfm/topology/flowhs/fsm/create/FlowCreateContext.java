@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create;
 
-import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowContext;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
@@ -27,7 +27,7 @@ public class FlowCreateContext extends FlowContext {
     private RequestedFlow targetFlow;
 
     @Builder
-    public FlowCreateContext(FlowResponse speakerFlowResponse, RequestedFlow targetFlow) {
+    public FlowCreateContext(SpeakerFlowSegmentResponse speakerFlowResponse, RequestedFlow targetFlow) {
         super(speakerFlowResponse);
         this.targetFlow = targetFlow;
     }

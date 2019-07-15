@@ -63,7 +63,8 @@ public class ValidateFlowAction extends NbTrackableAction<FlowDeleteFsm, State, 
         dashboardLogger.onFlowDelete(flowId);
 
         boolean isOperationAllowed = featureTogglesRepository.find()
-                .map(FeatureToggles::getDeleteFlowEnabled).orElse(Boolean.FALSE);
+                .map(FeatureToggles::getDeleteFlowEnabled)
+                .orElse(FeatureToggles.DEFAULTS.getDeleteFlowEnabled());
         if (!isOperationAllowed) {
             throw new FlowProcessingException(ErrorType.NOT_PERMITTED, getGenericErrorMessage(),
                     "Flow delete feature is disabled");

@@ -15,12 +15,9 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common;
 
-import org.openkilda.floodlight.flow.request.InstallFlowRule;
-import org.openkilda.floodlight.flow.request.InstallIngressRule;
-import org.openkilda.floodlight.flow.request.InstallTransitRule;
-import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestFactory;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.wfm.CommandContext;
@@ -66,11 +63,11 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
     protected final Set<UUID> pendingCommands = new HashSet<>();
     protected final Map<UUID, Integer> retriedCommands = new HashMap<>();
     protected final Map<UUID, FlowErrorResponse> failedCommands = new HashMap<>();
-    protected final Map<UUID, FlowResponse> failedValidationResponses = new HashMap<>();
+    protected final Map<UUID, SpeakerFlowSegmentResponse> failedValidationResponses = new HashMap<>();
 
-    protected final Map<UUID, InstallIngressRule> ingressCommands = new HashMap<>();
-    protected final Map<UUID, InstallTransitRule> nonIngressCommands = new HashMap<>();
-    protected final Map<UUID, RemoveRule> removeCommands = new HashMap<>();
+    protected final Map<UUID, FlowSegmentRequestFactory> ingressCommands = new HashMap<>();
+    protected final Map<UUID, FlowSegmentRequestFactory> nonIngressCommands = new HashMap<>();
+    protected final Map<UUID, FlowSegmentRequestFactory> removeCommands = new HashMap<>();
 
     protected String errorReason;
 
@@ -79,13 +76,12 @@ public abstract class FlowPathSwappingFsm<T extends NbTrackableFsm<T, S, E, C>, 
         this.flowId = flowId;
     }
 
-    public InstallFlowRule getInstallCommand(UUID commandId) {
-        if (nonIngressCommands.containsKey(commandId)) {
-            return nonIngressCommands.get(commandId);
-        } else if (ingressCommands.containsKey(commandId)) {
-            return ingressCommands.get(commandId);
+    public FlowSegmentRequestFactory getInstallCommand(UUID commandId) {
+        FlowSegmentRequestFactory requestFactory = nonIngressCommands.get(commandId);
+        if (requestFactory == null) {
+            requestFactory = ingressCommands.get(commandId);
         }
-        return null;
+        return requestFactory;
     }
 
     public abstract void fireNoPathFound(String errorReason);
