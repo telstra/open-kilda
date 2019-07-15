@@ -30,6 +30,8 @@ import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.WithContextStateMachine;
 import org.openkilda.wfm.topology.flowhs.service.FlowHistorySupportingCarrier;
 
+import com.fasterxml.uuid.Generators;
+import com.fasterxml.uuid.NoArgGenerator;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
@@ -38,6 +40,8 @@ import java.time.Instant;
 @Slf4j
 public abstract class FlowProcessingAction<T extends WithContextStateMachine<T, S, E, C>, S, E, C>
         extends AnonymousAction<T, S, E, C> {
+
+    protected final NoArgGenerator commandIdGenerator = Generators.timeBasedGenerator();
 
     protected final PersistenceManager persistenceManager;
     protected final FlowRepository flowRepository;
@@ -88,6 +92,7 @@ public abstract class FlowProcessingAction<T extends WithContextStateMachine<T, 
 
     protected void saveHistory(T stateMachine, FlowHistorySupportingCarrier carrier, String flowId, String action,
                                String description) {
+        log.debug("History update: {} - {}", action, description != null ? description : "(no description)");
         FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
                 .taskId(stateMachine.getCommandContext().getCorrelationId())
                 .flowHistoryData(FlowHistoryData.builder()

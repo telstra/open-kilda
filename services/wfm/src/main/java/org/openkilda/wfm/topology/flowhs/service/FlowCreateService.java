@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
-import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
@@ -86,8 +86,8 @@ public class FlowCreateService {
      * Handles async response from worker.
      * @param key command identifier.
      */
-    public void handleAsyncResponse(String key, FlowResponse flowResponse) {
-        log.debug("Received response {}", flowResponse);
+    public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse response) {
+        log.debug("Received response {}", response);
         FlowCreateFsm fsm = fsms.get(key);
         if (fsm == null) {
             log.info("Failed to find fsm: received response with key {} for non pending fsm", key);
@@ -95,7 +95,7 @@ public class FlowCreateService {
         }
 
         FlowCreateContext context = FlowCreateContext.builder()
-                .speakerFlowResponse(flowResponse)
+                .speakerFlowResponse(response)
                 .build();
         fsm.fire(Event.RESPONSE_RECEIVED, context);
 

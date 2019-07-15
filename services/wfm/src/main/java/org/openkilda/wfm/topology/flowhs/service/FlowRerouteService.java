@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
-import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.model.PathId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
@@ -87,8 +87,8 @@ public class FlowRerouteService {
      *
      * @param key command identifier.
      */
-    public void handleAsyncResponse(String key, FlowResponse flowResponse) {
-        log.debug("Received command completion message {}", flowResponse);
+    public void handleAsyncResponse(String key, SpeakerFlowSegmentResponse response) {
+        log.debug("Received command completion message {}", response);
         FlowRerouteFsm fsm = fsms.get(key);
         if (fsm == null) {
             log.warn("Failed to find fsm: received response with key {} for non pending fsm", key);
@@ -96,7 +96,7 @@ public class FlowRerouteService {
         }
 
         controllerExecutor.fire(fsm, FlowRerouteFsm.Event.COMMAND_EXECUTED, FlowRerouteContext.builder()
-                .flowResponse(flowResponse)
+                .response(response)
                 .build());
 
         removeIfFinished(fsm, key);

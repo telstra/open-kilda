@@ -20,11 +20,13 @@ import org.openkilda.floodlight.feature.AbstractFeature;
 import org.openkilda.floodlight.feature.BfdFeature;
 import org.openkilda.floodlight.feature.BfdReviewFeature;
 import org.openkilda.floodlight.feature.GroupPacketOutFeature;
+import org.openkilda.floodlight.feature.InaccurateMeterFeature;
 import org.openkilda.floodlight.feature.LimitedBurstSizeFeature;
 import org.openkilda.floodlight.feature.MatchUdpPortFeature;
 import org.openkilda.floodlight.feature.MaxBurstCoefficientLimitationFeature;
 import org.openkilda.floodlight.feature.MeterFeature;
 import org.openkilda.floodlight.feature.MultiTableFeature;
+import org.openkilda.floodlight.feature.NoviExperimenterFeature;
 import org.openkilda.floodlight.feature.NoviFlowCopyFieldFeature;
 import org.openkilda.floodlight.feature.PktpsFlagFeature;
 import org.openkilda.floodlight.feature.ResetCountsFlagFeature;
@@ -66,12 +68,14 @@ public class FeatureDetectorService implements IService {
 
         features = ImmutableList.of(
                 new MeterFeature(config.isOvsMetersEnabled()),
+                new InaccurateMeterFeature(),
                 new BfdFeature(),
                 new BfdReviewFeature(),
                 new GroupPacketOutFeature(),
                 new ResetCountsFlagFeature(),
                 new LimitedBurstSizeFeature(),
                 new NoviFlowCopyFieldFeature(),
+                new NoviExperimenterFeature(),
                 new PktpsFlagFeature(),
                 new MatchUdpPortFeature(),
                 new MaxBurstCoefficientLimitationFeature(),
