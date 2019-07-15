@@ -143,11 +143,10 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
     @Override
     @NewCorrelationContextRequired
     public void switchPortChanged(final DatapathId switchId, final OFPortDesc portDesc, final PortChangeType type) {
-        OFPort port = portDesc.getPortNo();
-        logPortEvent(switchId, port, type);
+        logPortEvent(switchId, portDesc, type);
 
         if (ISwitchManager.isPhysicalPort(portDesc)) {
-            portDiscovery(switchId, port, type);
+            portDiscovery(switchId, portDesc.getPortNo(), type);
         }
     }
 
@@ -356,7 +355,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
         logger.info("OF switch event ({} - {})", dpId, event);
     }
 
-    private void logPortEvent(DatapathId dpId, OFPort port, PortChangeType changeType) {
-        logger.info("OF port event ({}-{} - {})", dpId, port, changeType);
+    private void logPortEvent(DatapathId dpId, OFPortDesc portDesc, PortChangeType changeType) {
+        logger.info("OF port event ({}-{} - {}). PortDesc: {}", dpId, portDesc.getPortNo(), changeType, portDesc);
     }
 }
