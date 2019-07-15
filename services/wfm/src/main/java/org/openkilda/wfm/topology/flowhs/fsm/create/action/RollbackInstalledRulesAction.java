@@ -15,7 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
-import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestProxiedFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -31,11 +32,10 @@ import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -54,35 +54,29 @@ public class RollbackInstalledRulesAction extends FlowProcessingAction<FlowCreat
 
     @Override
     protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        Set<RemoveRule> removeCommands = new HashSet<>();
-        stateMachine.getPendingCommands().clear();
+        stateMachine.getPendingRequests().clear();
 
         Flow flow = getFlow(stateMachine.getFlowId());
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
 
+        final List<FlowSegmentRequestProxiedFactory> removeRequests = new ArrayList<>();
         if (!stateMachine.getNonIngressCommands().isEmpty()) {
-            List<RemoveRule> removeNonIngress = commandBuilder.createRemoveNonIngressRules(
-                    stateMachine.getCommandContext(), flow);
-            removeCommands.addAll(removeNonIngress);
+            removeRequests.addAll(commandBuilder.buildAllExceptIngress(stateMachine.getCommandContext(), flow));
         }
-
         if (!stateMachine.getIngressCommands().isEmpty()) {
-            List<RemoveRule> removeIngress = commandBuilder.createRemoveIngressRules(
-                    stateMachine.getCommandContext(), flow);
-            removeCommands.addAll(removeIngress);
+            removeRequests.addAll(commandBuilder.buildIngressOnly(stateMachine.getCommandContext(), flow));
         }
 
-        Map<UUID, RemoveRule> commandPerId = new HashMap<>(removeCommands.size());
-        for (RemoveRule command : removeCommands) {
-            commandPerId.put(command.getCommandId(), command);
-
-            SpeakerCommandObserver commandObserver = new SpeakerCommandObserver(speakerCommandFsmBuilder, command);
-            commandObserver.start();
-            stateMachine.getPendingCommands().put(command.getCommandId(), commandObserver);
+        Map<UUID, FlowSegmentRequestProxiedFactory> commandPerId = new HashMap<>(removeRequests.size());
+        final Map<UUID, SpeakerCommandObserver> pendingRequests = stateMachine.getPendingRequests();
+        for (FlowSegmentRequestProxiedFactory factory : removeRequests) {
+            FlowSegmentRequest request = factory.makeRemoveRequest(commandIdGenerator.generate());
+            // TODO ensure no conflicts
+            commandPerId.put(request.getCommandId(), factory);
+            pendingRequests.put(request.getCommandId(), new SpeakerCommandObserver(speakerCommandFsmBuilder, request));
         }
 
         stateMachine.setRemoveCommands(commandPerId);
-
-        log.debug("Commands to rollback installed rules have been sent. Total amount: {}", removeCommands.size());
+        log.debug("Commands to rollback installed rules have been sent. Total amount: {}", removeRequests.size());
     }
 }

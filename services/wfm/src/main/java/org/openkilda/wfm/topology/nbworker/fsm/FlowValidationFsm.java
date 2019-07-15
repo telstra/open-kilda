@@ -121,8 +121,9 @@ public class FlowValidationFsm
 
     protected void initialized(FlowValidationState from, FlowValidationState to,
                                FlowValidationEvent event, Object context) {
-        log.info("Key: {}; FSM initialized", key);
         flowId = request.getFlowId();
+        log.info("Key: {}, flow: {}; FSM initialized", key, flowId);
+
         service = new FlowValidationService(persistenceManager, flowResourcesConfig,
                 carrier.getFlowMeterMinBurstSizeInKbits(), carrier.getFlowMeterBurstCoefficient());
     }

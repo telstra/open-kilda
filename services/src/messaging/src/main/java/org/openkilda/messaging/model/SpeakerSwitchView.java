@@ -75,5 +75,4 @@ public class SpeakerSwitchView implements Serializable {
         this.features = ImmutableSet.copyOf(Optional.ofNullable(features).orElse(Collections.emptySet()));
         this.ports = ImmutableList.copyOf(Optional.ofNullable(ports).orElse(Collections.emptyList()));
     }
-
 }

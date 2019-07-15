@@ -15,9 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
-import org.openkilda.floodlight.flow.request.InstallIngressRule;
-import org.openkilda.floodlight.flow.request.RemoveRule;
-import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
+import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.request.factory.FlowSegmentRequestProxiedFactory;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -30,16 +29,16 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
+import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 public class RevertNewRulesAction extends
@@ -62,50 +61,57 @@ public class RevertNewRulesAction extends
                 ? stateMachine.getNewEncapsulationType() : flow.getEncapsulationType();
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(encapsulationType);
 
-        Collection<InstallIngressRule> installCommands = new ArrayList<>();
+        Collection<FlowSegmentRequestProxiedFactory> installRequests = new ArrayList<>();
 
         // Reinstall old ingress rules that may be overridden by new ingress.
         if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
             FlowPath oldForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
             FlowPath oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
-            installCommands.addAll(commandBuilder.createInstallIngressRules(
+            installRequests.addAll(commandBuilder.buildIngressOnly(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }
 
-        stateMachine.setIngressCommands(installCommands.stream()
-                .collect(Collectors.toMap(InstallIngressRule::getCommandId, Function.identity())));
-
-        Collection<RemoveRule> removeCommands = new ArrayList<>();
-
+        Collection<FlowSegmentRequestProxiedFactory> removeRequests = new ArrayList<>();
         if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
-            removeCommands.addAll(commandBuilder.createRemoveNonIngressRules(
-                    stateMachine.getCommandContext(), flow, newForward, newReverse));
-            removeCommands.addAll(commandBuilder.createRemoveIngressRules(
+            removeRequests.addAll(commandBuilder.buildAll(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
         if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
-            removeCommands.addAll(commandBuilder.createRemoveNonIngressRules(
-                    stateMachine.getCommandContext(), flow, newForward, newReverse));
-            removeCommands.addAll(commandBuilder.createRemoveIngressRules(
+            removeRequests.addAll(commandBuilder.buildAll(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
 
-        stateMachine.setRemoveCommands(removeCommands.stream()
-                .collect(Collectors.toMap(RemoveRule::getCommandId, Function.identity())));
+        Map<UUID, FlowSegmentRequestProxiedFactory> installRequestsMap = sendRequests(
+                stateMachine.getCarrier(), installRequests);
+        Map<UUID, FlowSegmentRequestProxiedFactory> removeRequestsMap = sendRequests(
+                stateMachine.getCarrier(), removeRequests);
 
-        Set<UUID> commandIds = Stream.concat(installCommands.stream(), removeCommands.stream())
-                .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
-                .map(SpeakerFlowRequest::getCommandId)
-                .collect(Collectors.toSet());
-        stateMachine.setPendingCommands(commandIds);
+        HashSet<UUID> pendingRequests = new HashSet<>(installRequestsMap.keySet());
+        pendingRequests.addAll(removeRequestsMap.keySet());
+        stateMachine.setPendingCommands(pendingRequests);
+
+        stateMachine.setIngressCommands(installRequestsMap);
+        stateMachine.setRemoveCommands(removeRequestsMap);
 
         log.debug("Commands for removing rules have been sent for the flow {}", stateMachine.getFlowId());
 
         saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
                 "Remove commands for new rules have been sent.");
+    }
+
+    private Map<UUID, FlowSegmentRequestProxiedFactory> sendRequests(
+            FlowRerouteHubCarrier carrier, Collection<FlowSegmentRequestProxiedFactory> factories) {
+        Map<UUID, FlowSegmentRequestProxiedFactory> requestsMap = new HashMap<>();
+        for (FlowSegmentRequestProxiedFactory factory : factories) {
+            FlowSegmentRequest request = factory.makeRemoveRequest(commandIdGenerator.generate());
+            // TODO ensure no conflicts
+            requestsMap.put(request.getCommandId(), factory);
+            carrier.sendSpeakerRequest(request);
+        }
+        return requestsMap;
     }
 }
