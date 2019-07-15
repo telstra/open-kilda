@@ -17,9 +17,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
@@ -37,17 +36,19 @@ public class OnReceivedDeleteResponseAction extends OnReceivedInstallResponseAct
 
     @Override
     void handleResponse(FlowCreateFsm stateMachine, FlowCreateContext context) {
-        FlowResponse response = context.getSpeakerFlowResponse();
+        SpeakerFlowSegmentResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
         if (!stateMachine.getRemoveCommands().containsKey(commandId)) {
             log.info("Failed to find a delete rule command with id {}", commandId);
             return;
         }
 
-        RemoveRule rule = stateMachine.getRemoveCommands().get(commandId);
         if (response.isSuccess()) {
-            log.debug("Received response after deletion {} from the switch {}", rule.getCookie(), rule.getSwitchId());
-            String description = format("Rule %s was deleted from the switch %s", rule.getCookie(), rule.getSwitchId());
+            log.debug(
+                    "Received response after deletion {} from the switch {}",
+                    response.getCookie(), response.getSwitchId());
+            String description = format(
+                    "Rule %s was deleted from the switch %s", response.getCookie(), response.getSwitchId());
 
             saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), "Rule deleted",
                     description);

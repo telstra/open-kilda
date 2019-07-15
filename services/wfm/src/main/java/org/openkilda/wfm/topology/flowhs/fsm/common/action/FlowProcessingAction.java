@@ -88,6 +88,7 @@ public abstract class FlowProcessingAction<T extends WithContextStateMachine<T, 
 
     protected void saveHistory(T stateMachine, FlowHistorySupportingCarrier carrier, String flowId, String action,
                                String description) {
+        log.debug("History update: {} - {}", action, description != null ? description : "(no description)");
         FlowHistoryHolder historyHolder = FlowHistoryHolder.builder()
                 .taskId(stateMachine.getCommandContext().getCorrelationId())
                 .flowHistoryData(FlowHistoryData.builder()

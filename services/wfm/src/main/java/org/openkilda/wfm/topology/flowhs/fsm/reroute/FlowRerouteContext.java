@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute;
 
-import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.model.PathId;
 
 import lombok.Builder;
@@ -30,5 +30,5 @@ public class FlowRerouteContext {
     private Set<PathId> pathsToReroute;
     private boolean forceReroute;
 
-    private FlowResponse flowResponse;
+    private SpeakerFlowSegmentResponse response;
 }

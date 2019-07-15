@@ -18,36 +18,16 @@ package org.openkilda.floodlight.feature;
 import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.SwitchDescription;
 
 import java.util.Optional;
 
-public class NoviFlowCopyFieldFeature extends AbstractFeature {
-
-    public static final String NOVIFLOW_MANUFACTURER_SUFFIX = "noviflow";
-
+// TODO(surabujin) must be replaces with OFTableFeatures check
+public class NoviFlowCopyFieldFeature extends NoviflowSpecificFeature {
     @Override
     public Optional<SwitchFeature> discover(IOFSwitch sw) {
-        Optional<SwitchFeature> empty = Optional.empty();
-
-        SwitchDescription description = sw.getSwitchDescription();
-        if (description == null || description.getSoftwareDescription() == null
-                || description.getHardwareDescription() == null) {
-            return empty;
+        if (isNoviSwitch(sw) && !is100GbHw(sw)) {
+            return Optional.of(SwitchFeature.NOVIFLOW_COPY_FIELD);
         }
-
-        if (E_SWITCH_MANUFACTURER_DESCRIPTION.equalsIgnoreCase(description.getManufacturerDescription())) {
-            return empty;
-        }
-
-        if (E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(description.getHardwareDescription()).matches()) {
-            return empty;
-        }
-
-        if (!description.getManufacturerDescription().toLowerCase().contains(NOVIFLOW_MANUFACTURER_SUFFIX)) {
-            return empty;
-        }
-
-        return Optional.of(SwitchFeature.NOVIFLOW_COPY_FIELD);
+        return Optional.empty();
     }
 }

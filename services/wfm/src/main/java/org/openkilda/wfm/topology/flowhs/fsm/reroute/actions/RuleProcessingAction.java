@@ -17,9 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import static java.lang.String.format;
 
-import org.openkilda.floodlight.flow.request.InstallIngressRule;
-import org.openkilda.floodlight.flow.request.InstallTransitRule;
-import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.api.request.FlowSegmentBlankGenericResolver;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
@@ -51,20 +49,17 @@ public abstract class RuleProcessingAction
                                     FlowRerouteContext context, FlowRerouteFsm stateMachine);
 
     protected long getCookieForCommand(FlowRerouteFsm stateMachine, UUID commandId) {
-        long cookie;
+        FlowSegmentBlankGenericResolver request;
         if (stateMachine.getNonIngressCommands().containsKey(commandId)) {
-            InstallTransitRule installRule = stateMachine.getNonIngressCommands().get(commandId);
-            cookie = installRule.getCookie().getValue();
+            request = stateMachine.getNonIngressCommands().get(commandId);
         } else if (stateMachine.getIngressCommands().containsKey(commandId)) {
-            InstallIngressRule installRule = stateMachine.getIngressCommands().get(commandId);
-            cookie = installRule.getCookie().getValue();
+            request = stateMachine.getIngressCommands().get(commandId);
         } else if (stateMachine.getRemoveCommands().containsKey(commandId)) {
-            RemoveRule removeRule = stateMachine.getRemoveCommands().get(commandId);
-            cookie = removeRule.getCookie().getValue();
+            request = stateMachine.getRemoveCommands().get(commandId);
         } else {
             throw new IllegalStateException(format("Failed to find install/remove rule command with id %s", commandId));
         }
-        return cookie;
+        return request.makeInstallRequest().getCookie().getValue();
     }
 
     protected void sendHistoryUpdate(FlowRerouteFsm stateMachine, String action, String description) {

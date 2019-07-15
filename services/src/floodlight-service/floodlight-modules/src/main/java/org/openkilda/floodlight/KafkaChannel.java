@@ -123,12 +123,16 @@ public class KafkaChannel implements IFloodlightModule {
         return formatTopicWithRegion(topics.getTopoNbRegionTopic());
     }
 
-    public String  getPingTopic() {
+    public String getPingTopic() {
         return formatTopicWithRegion(topics.getPingRegionTopic());
     }
 
     public String getTopoSwitchManagerTopic() {
         return formatTopicWithRegion(topics.getTopoSwitchManagerRegionTopic());
+    }
+
+    public String getSpeakerFlowHsTopic() {
+        return formatTopicWithRegion(topics.getFlowHsSpeakerRegionTopic());
     }
 
     private String formatTopicWithRegion(String topic) {
@@ -137,9 +141,5 @@ public class KafkaChannel implements IFloodlightModule {
             return topic;
         }
         return String.format("%s_%s", topic, region);
-    }
-
-    public String getSpeakerFlowHsTopic() {
-        return formatTopicWithRegion(topics.getFlowHsSpeakerRegionTopic());
     }
 }

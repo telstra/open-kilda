@@ -16,13 +16,14 @@
 package org.openkilda.model;
 
 public enum SwitchFeature {
-    METERS,
+    METERS, INACCURATE_METER,
     BFD,
     BFD_REVIEW,
     GROUP_PACKET_OUT_CONTROLLER,
     RESET_COUNTS_FLAG,
     LIMITED_BURST_SIZE,
     NOVIFLOW_COPY_FIELD,
+    NOVIFLOW_EXPERIMENTER,
     PKTPS_FLAG,
     MATCH_UDP_PORT
 }

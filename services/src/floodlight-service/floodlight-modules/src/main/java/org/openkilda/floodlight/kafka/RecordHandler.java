@@ -30,6 +30,7 @@ import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 import org.openkilda.floodlight.command.Command;
 import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.SpeakerCommand;
+import org.openkilda.floodlight.command.SpeakerCommandReport;
 import org.openkilda.floodlight.converter.OfFlowStatsMapper;
 import org.openkilda.floodlight.converter.OfMeterConverter;
 import org.openkilda.floodlight.converter.OfPortDescConverter;
@@ -52,6 +53,7 @@ import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosa
 import org.openkilda.messaging.AliveRequest;
 import org.openkilda.messaging.AliveResponse;
 import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.discovery.DiscoverIslCommandData;
@@ -115,6 +117,7 @@ import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -1274,28 +1277,23 @@ class RecordHandler implements Runnable {
     }
 
     private boolean handleSpeakerCommand() {
+        SpeakerCommand<SpeakerCommandReport> speakerCommand = null;
         try {
-            SpeakerCommand speakerCommand = MAPPER.readValue(record.value(), SpeakerCommand.class);
-
-            try (CorrelationContextClosable closable =
-                         CorrelationContext.create(speakerCommand.getMessageContext().getCorrelationId())) {
-                KafkaTopicFactory kafkaTopicFactory = new KafkaTopicFactory(context);
-
-                speakerCommand.execute(context.getModuleContext())
-                        .whenComplete((response, error) -> {
-                            if (error != null) {
-                                logger.error("Error occurred while trying to execute OF command", error.getCause());
-                            } else {
-                                getKafkaProducer().sendMessageAndTrack(kafkaTopicFactory.getTopic(response),
-                                        record.key(), response);
-                            }
-                        });
-            }
+            TypeReference<SpeakerCommand<SpeakerCommandReport>> commandType
+                    = new TypeReference<SpeakerCommand<SpeakerCommandReport>>() {};
+            speakerCommand = MAPPER.readValue(record.value(), commandType);
         } catch (JsonMappingException e) {
             logger.trace("Received deprecated command message");
             return false;
         } catch (IOException e) {
             logger.error("Error while parsing record {}", record.value(), e);
+            return false;
+        }
+
+        final MessageContext messageContext = speakerCommand.getMessageContext();
+        try (CorrelationContextClosable closable =
+                     CorrelationContext.create(messageContext.getCorrelationId())) {
+            context.getCommandProcessor().process(speakerCommand, record.key());
         }
         return true;
     }

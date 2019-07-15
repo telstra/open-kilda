@@ -15,7 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
-import org.openkilda.floodlight.flow.request.InstallTransitRule;
+import org.openkilda.floodlight.api.request.FlowSegmentBlankGenericResolver;
+import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
@@ -33,6 +34,8 @@ import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 public class InstallNonIngressRulesAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
@@ -53,27 +56,29 @@ public class InstallNonIngressRulesAction extends FlowProcessingAction<FlowCreat
         CommandContext commandContext = stateMachine.getCommandContext();
         Flow flow = getFlow(stateMachine.getFlowId());
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
-        List<InstallTransitRule> commands =
-                commandBuilder.createInstallNonIngressRules(commandContext, flow);
+        List<FlowSegmentBlankGenericResolver> requestBlanks =
+                commandBuilder.buildAllExceptIngress(commandContext, flow);
         if (flow.isAllocateProtectedPath()) {
-            commands.addAll(commandBuilder.createInstallNonIngressRules(commandContext, flow,
+            requestBlanks.addAll(commandBuilder.buildAllExceptIngress(
+                    commandContext, flow,
                     flow.getProtectedForwardPath(), flow.getProtectedReversePath()));
         }
 
-        if (commands.isEmpty()) {
+        if (requestBlanks.isEmpty()) {
             log.debug("No need to install non ingress rules for one switch flow");
-        } else {
-            commands.forEach(command -> {
-                stateMachine.getNonIngressCommands().put(command.getCommandId(), command);
-                SpeakerCommandObserver commandObserver = new SpeakerCommandObserver(speakerCommandFsmBuilder, command);
-                commandObserver.start();
-                stateMachine.getPendingCommands().put(command.getCommandId(), commandObserver);
-
-            });
-
-            log.debug("Commands for installing non ingress rules have been sent");
-            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
-                    "Install non ingress commands have been sent.");
+            return;
         }
+
+        final Map<UUID, FlowSegmentBlankGenericResolver> requestsStorage = stateMachine.getNonIngressCommands();
+        final Map<UUID, SpeakerCommandObserver> pendingRequests = stateMachine.getPendingRequests();
+        for (FlowSegmentBlankGenericResolver blank : requestBlanks) {
+            FlowSegmentRequest request = blank.makeInstallRequest();
+            requestsStorage.put(request.getCommandId(), blank);
+            pendingRequests.put(request.getCommandId(), new SpeakerCommandObserver(speakerCommandFsmBuilder, request));
+        }
+
+        log.debug("Commands for installing non ingress rules have been sent");
+        saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
+                "Install non ingress commands have been sent.");
     }
 }

@@ -15,77 +15,50 @@
 
 package org.openkilda.floodlight.command.meter;
 
-import org.openkilda.floodlight.command.SpeakerCommand;
+import org.openkilda.floodlight.command.SpeakerCommandReport;
+import org.openkilda.floodlight.command.SpeakerRemoteCommand;
+import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.service.FeatureDetectorService;
+import org.openkilda.floodlight.switchmanager.SwitchManager;
+import org.openkilda.floodlight.switchmanager.SwitchManagerConfig;
 import org.openkilda.messaging.MessageContext;
-import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
-import lombok.AllArgsConstructor;
-import net.floodlightcontroller.core.IOFSwitch;
-import org.projectfloodlight.openflow.protocol.OFMeterConfigStatsReply;
-import org.projectfloodlight.openflow.protocol.OFMeterMod;
-import org.projectfloodlight.openflow.protocol.OFVersion;
-import org.projectfloodlight.openflow.protocol.meterband.OFMeterBand;
-import org.projectfloodlight.openflow.protocol.meterband.OFMeterBandDrop;
+import lombok.AccessLevel;
+import lombok.Getter;
+import net.floodlightcontroller.core.module.FloodlightModuleContext;
 
-import java.util.List;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.UUID;
 
-abstract class MeterCommand extends SpeakerCommand {
+abstract class MeterCommand<T extends SpeakerCommandReport> extends SpeakerRemoteCommand<T> {
+    // operation data
+    @Getter(AccessLevel.PROTECTED)
+    private SwitchManagerConfig switchManagerConfig;
+    @Getter(AccessLevel.PROTECTED)
+    private Set<SwitchFeature> switchFeatures;
 
-    MeterId meterId;
-
-    MeterCommand(SwitchId switchId, MessageContext messageContext, MeterId meterId) {
-        super(switchId, messageContext);
-        this.meterId = meterId;
+    MeterCommand(MessageContext messageContext, SwitchId switchId, UUID commandId) {
+        super(messageContext, switchId, commandId);
     }
 
-    void checkSwitchSupportCommand(IOFSwitch sw, FeatureDetectorService featureDetectorService)
-            throws UnsupportedSwitchOperationException {
-        Set<SwitchFeature> supportedFeatures = featureDetectorService.detectSwitch(sw);
-        if (!supportedFeatures.contains(SwitchFeature.METERS)) {
-            throw new UnsupportedSwitchOperationException(sw.getId(), "Switch doesn't support meters");
-        }
+    @Override
+    protected void setup(FloodlightModuleContext moduleContext) throws Exception {
+        super.setup(moduleContext);
+
+        FloodlightModuleConfigurationProvider provider =
+                FloodlightModuleConfigurationProvider.of(moduleContext, SwitchManager.class);
+        switchManagerConfig = provider.getConfiguration(SwitchManagerConfig.class);
+
+        FeatureDetectorService featuresDetector = moduleContext.getServiceImpl(FeatureDetectorService.class);
+        switchFeatures = featuresDetector.detectSwitch(getSw());
     }
 
-    @AllArgsConstructor
-    final class MeterChecker implements Function<OFMeterConfigStatsReply, Boolean> {
-        private final OFMeterMod expectedMeterConfig;
-
-        @Override
-        public Boolean apply(OFMeterConfigStatsReply meterConfig) {
-            return meterConfig.getEntries()
-                    .stream()
-                    .filter(entry -> entry.getMeterId() == meterId.getValue())
-                    .allMatch(entry -> entry.getFlags().containsAll(expectedMeterConfig.getFlags())
-                            && meterBandsEqual(entry.getEntries()));
-        }
-
-        private boolean meterBandsEqual(List<OFMeterBand> actual) {
-            OFMeterBandDrop expectedDrop = getMeterBands()
-                    .stream()
-                    .filter(OFMeterBandDrop.class::isInstance)
-                    .map(OFMeterBandDrop.class::cast)
-                    .findFirst()
-                    .orElse(null);
-
-            OFMeterBandDrop actualDrop = actual
-                    .stream()
-                    .filter(OFMeterBandDrop.class::isInstance)
-                    .map(OFMeterBandDrop.class::cast)
-                    .findFirst()
-                    .orElse(null);
-
-            return expectedDrop != null && actualDrop != null && expectedDrop.getRate() == actualDrop.getRate();
-        }
-
-        private List<OFMeterBand> getMeterBands() {
-            return expectedMeterConfig.getVersion() == OFVersion.OF_13
-                    ? expectedMeterConfig.getMeters() : expectedMeterConfig.getBands();
+    void ensureSwitchSupportMeters() throws UnsupportedSwitchOperationException {
+        if (!switchFeatures.contains(SwitchFeature.METERS)) {
+            throw new UnsupportedSwitchOperationException(getSw().getId(), "Switch doesn't support meters");
         }
     }
 }

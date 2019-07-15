@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
-import org.openkilda.floodlight.flow.request.InstallIngressRule;
-import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
+import org.openkilda.floodlight.api.request.FlowSegmentBlankGenericResolver;
+import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -34,10 +34,11 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class InstallIngressRulesAction extends
@@ -60,27 +61,27 @@ public class InstallIngressRulesAction extends
                 ? stateMachine.getNewEncapsulationType() : flow.getEncapsulationType();
         FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(encapsulationType);
 
-        Collection<InstallIngressRule> commands = new ArrayList<>();
-
+        Collection<FlowSegmentBlankGenericResolver> requestBlanks = new ArrayList<>();
         if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
-            commands.addAll(commandBuilder.createInstallIngressRules(
+            requestBlanks.addAll(commandBuilder.buildIngressOnly(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
 
         // Installation of ingress rules for protected paths is skipped. These paths are activated on swap.
 
-        stateMachine.setIngressCommands(commands.stream()
-                .collect(Collectors.toMap(InstallIngressRule::getCommandId, Function.identity())));
-
-        Set<UUID> commandIds = commands.stream()
-                .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
-                .map(SpeakerFlowRequest::getCommandId)
-                .collect(Collectors.toSet());
+        Set<UUID> commandIds = new HashSet<>();
+        Map<UUID, FlowSegmentBlankGenericResolver> requestsMap = new HashMap<>();
+        for (FlowSegmentBlankGenericResolver blank : requestBlanks) {
+            FlowSegmentRequest request = blank.makeInstallRequest();
+            stateMachine.getCarrier().sendSpeakerRequest(request);
+            requestsMap.put(request.getCommandId(), blank);
+        }
+        stateMachine.setIngressCommands(requestsMap);
         stateMachine.setPendingCommands(commandIds);
 
-        if (commands.isEmpty()) {
+        if (requestBlanks.isEmpty()) {
             log.debug("No install commands for ingress rules for the flow {}", stateMachine.getFlowId());
 
             saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),

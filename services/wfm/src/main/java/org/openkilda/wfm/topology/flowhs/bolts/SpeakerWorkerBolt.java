@@ -19,8 +19,8 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WO
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_KEY;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
-import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
-import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.floodlight.api.request.FlowSegmentRequest;
+import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
 import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandCarrier;
@@ -52,7 +52,7 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
         this.currentTuple = input;
 
         String key = input.getStringByField(FIELD_ID_KEY);
-        SpeakerFlowRequest command = (SpeakerFlowRequest) input.getValueByField(FIELD_ID_PAYLOAD);
+        FlowSegmentRequest command = (FlowSegmentRequest) input.getValueByField(FIELD_ID_PAYLOAD);
 
         service.sendCommand(key, command);
     }
@@ -62,7 +62,7 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
         this.currentTuple = input;
 
         String key = input.getStringByField(FIELD_ID_KEY);
-        FlowResponse message = (FlowResponse) input.getValueByField(FIELD_ID_PAYLOAD);
+        SpeakerFlowSegmentResponse message = (SpeakerFlowSegmentResponse) input.getValueByField(FIELD_ID_PAYLOAD);
 
         service.handleResponse(key, message);
     }
@@ -90,12 +90,12 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     }
 
     @Override
-    public void sendCommand(String key, SpeakerFlowRequest command) {
+    public void sendCommand(String key, FlowSegmentRequest command) {
         emitWithContext(SPEAKER_WORKER_REQUEST_SENDER.name(), currentTuple, new Values(key, command));
     }
 
     @Override
-    public void sendResponse(String key, FlowResponse response) {
+    public void sendResponse(String key, SpeakerFlowSegmentResponse response) {
         Values values = new Values(key, response, getCommandContext());
         emitResponseToHub(currentTuple, values);
     }

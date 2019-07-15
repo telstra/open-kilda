@@ -15,17 +15,21 @@
 
 package org.openkilda.floodlight.command;
 
-import org.openkilda.floodlight.FloodlightResponse;
-import org.openkilda.floodlight.command.flow.FlowRemoveCommand;
-import org.openkilda.floodlight.command.flow.GetRuleCommand;
-import org.openkilda.floodlight.command.flow.InstallEgressRuleCommand;
-import org.openkilda.floodlight.command.flow.InstallIngressRuleCommand;
-import org.openkilda.floodlight.command.flow.InstallOneSwitchRuleCommand;
-import org.openkilda.floodlight.command.flow.InstallTransitRuleCommand;
-import org.openkilda.floodlight.error.SwitchOperationException;
-import org.openkilda.floodlight.error.SwitchWriteException;
+import org.openkilda.floodlight.command.flow.egress.EgressFlowSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.egress.EgressFlowSegmentRemoveCommand;
+import org.openkilda.floodlight.command.flow.egress.EgressFlowSegmentVerifyCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentRemoveCommand;
+import org.openkilda.floodlight.command.flow.ingress.IngressFlowSegmentVerifyCommand;
+import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowInstallCommand;
+import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowRemoveCommand;
+import org.openkilda.floodlight.command.flow.ingress.OneSwitchFlowVerifyCommand;
+import org.openkilda.floodlight.command.flow.transit.TransitFlowSegmentInstallCommand;
+import org.openkilda.floodlight.command.flow.transit.TransitFlowSegmentRemoveCommand;
+import org.openkilda.floodlight.command.flow.transit.TransitFlowSegmentVerifyCommand;
+import org.openkilda.floodlight.error.SessionErrorResponseException;
+import org.openkilda.floodlight.error.SwitchNotFoundException;
 import org.openkilda.floodlight.service.session.SessionService;
-import org.openkilda.floodlight.switchmanager.ISwitchManager;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
@@ -33,106 +37,164 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NonNull;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.OFSwitchManager;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
+import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
 @JsonTypeInfo(use = Id.NAME, property = "clazz")
 @JsonSubTypes({
-        @Type(value = InstallIngressRuleCommand.class,
-                name = "org.openkilda.floodlight.flow.request.InstallMultiSwitchIngressRule"),
-        @Type(value = InstallOneSwitchRuleCommand.class,
-                name = "org.openkilda.floodlight.flow.request.InstallSingleSwitchIngressRule"),
-        @Type(value = InstallTransitRuleCommand.class,
-                name = "org.openkilda.floodlight.flow.request.InstallTransitRule"),
-        @Type(value = InstallEgressRuleCommand.class,
-                name = "org.openkilda.floodlight.flow.request.InstallEgressRule"),
-        @Type(value = FlowRemoveCommand.class,
-                name = "org.openkilda.floodlight.flow.request.RemoveRule"),
-        @Type(value = GetRuleCommand.class,
-                name = "org.openkilda.floodlight.flow.request.GetInstalledRule")
+        @Type(value = IngressFlowSegmentInstallCommand.class,
+                name = "org.openkilda.floodlight.api.request.IngressFlowSegmentInstallRequest"),
+        @Type(value = IngressFlowSegmentRemoveCommand.class,
+                name = "org.openkilda.floodlight.api.request.IngressFlowSegmentRemoveRequest"),
+        @Type(value = IngressFlowSegmentVerifyCommand.class,
+                name = "org.openkilda.floodlight.api.request.IngressFlowSegmentVerifyRequest"),
+        @Type(value = OneSwitchFlowInstallCommand.class,
+                name = "org.openkilda.floodlight.api.request.OneSwitchFlowInstallRequest"),
+        @Type(value = OneSwitchFlowRemoveCommand.class,
+                name = "org.openkilda.floodlight.api.request.OneSwitchFlowRemoveRequest"),
+        @Type(value = OneSwitchFlowVerifyCommand.class,
+                name = "org.openkilda.floodlight.api.request.OneSwitchFlowVerifyRequest"),
+        @Type(value = TransitFlowSegmentInstallCommand.class,
+                name = "org.openkilda.floodlight.api.request.TransitFlowSegmentInstallRequest"),
+        @Type(value = TransitFlowSegmentRemoveCommand.class,
+                name = "org.openkilda.floodlight.api.request.TransitFlowSegmentRemoveRequest"),
+        @Type(value = TransitFlowSegmentVerifyCommand.class,
+                name = "org.openkilda.floodlight.api.request.TransitFlowSegmentVerifyRequest"),
+        @Type(value = EgressFlowSegmentInstallCommand.class,
+                name = "org.openkilda.floodlight.api.request.EgressFlowSegmentInstallRequest"),
+        @Type(value = EgressFlowSegmentRemoveCommand.class,
+                name = "org.openkilda.floodlight.api.request.EgressFlowSegmentRemoveRequest"),
+        @Type(value = EgressFlowSegmentVerifyCommand.class,
+                name = "org.openkilda.floodlight.api.request.EgressFlowSegmentVerifyRequest")
 })
 @Getter
-public abstract class SpeakerCommand {
+public abstract class SpeakerCommand<T extends SpeakerCommandReport> {
+    protected final Logger log = LoggerFactory.getLogger(getClass());
 
-    protected final SwitchId switchId;
+    // payload
     protected final MessageContext messageContext;
+    protected final SwitchId switchId;
 
-    public SpeakerCommand(SwitchId switchId, MessageContext messageContext) {
-        this.switchId = switchId;
+    // operation data
+    @Getter(AccessLevel.PROTECTED)
+    private SessionService sessionService;
+
+    @Getter(AccessLevel.PROTECTED)
+    private IOFSwitch sw;
+
+    public SpeakerCommand(@NonNull MessageContext messageContext, @NonNull SwitchId switchId) {
         this.messageContext = messageContext;
+        this.switchId = switchId;
     }
 
     /**
-     * Helps to execute OF command and handle successful and error responses.
-     * @param moduleContext floodlight context.
-     * @return response wrapped into completable future.
+     * Schedule command execution, produce future object capable to return command result and/or chain more execution
+     * of other commands.
      */
-    public CompletableFuture<FloodlightResponse> execute(FloodlightModuleContext moduleContext) {
-        ISwitchManager switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
-        IOFSwitch sw;
+    public CompletableFuture<T> execute(SpeakerCommandProcessor commandProcessor) {
+        CompletableFuture<T> future = new CompletableFuture<>();
         try {
-            DatapathId dpid = DatapathId.of(switchId.toLong());
-            sw = switchManager.lookupSwitch(dpid);
-
-            return writeCommands(sw, moduleContext)
-                    .handle((result, error) -> {
-                        if (error != null) {
-                            getLogger().error("Error occurred while processing OF command", error);
-                            return buildError(error);
+            validate();
+            setup(commandProcessor.getModuleContext());
+            makeExecutePlan(commandProcessor)
+                    .whenComplete((result, error) -> {
+                        if (error == null) {
+                            future.complete(result);
                         } else {
-                            return result.isPresent() ? buildResponse(result.get()) : buildResponse();
+                            handleError(future, unwrapError(error));
                         }
                     });
         } catch (Exception e) {
-            getLogger().error("Failed to execute OF command", e);
-            return CompletableFuture.completedFuture(buildError(e));
+            handleError(future, e);
+        }
+        return future;
+    }
+
+    protected abstract CompletableFuture<T> makeExecutePlan(SpeakerCommandProcessor commandProcessor) throws Exception;
+
+    protected abstract T makeReport(Exception error);
+
+    private void handleError(CompletableFuture<T> future, Throwable error) {
+        if (error instanceof Exception) {
+            future.complete(makeReport((Exception) error));
+        } else {
+            future.completeExceptionally(error);
         }
     }
 
-    /**
-     * Writes command to a switch.
-     */
-    protected CompletableFuture<Optional<OFMessage>> writeCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
-            throws SwitchOperationException {
-        SessionService sessionService = moduleContext.getServiceImpl(SessionService.class);
-        CompletableFuture<Optional<OFMessage>> chain = CompletableFuture.completedFuture(Optional.empty());
-        for (SessionProxy message : getCommands(sw, moduleContext)) {
-            chain = chain.thenCompose(res -> {
-                try {
-                    return message.writeTo(sw, sessionService, messageContext);
-                } catch (SwitchWriteException e) {
-                    throw new CompletionException(e);
+    protected void validate() {
+        // do nothing by default, inheritors can perform command fields consistency check here
+    }
+
+    protected void setup(FloodlightModuleContext moduleContext) throws Exception {
+        OFSwitchManager ofSwitchManager = moduleContext.getServiceImpl(OFSwitchManager.class);
+        sessionService = moduleContext.getServiceImpl(SessionService.class);
+
+        DatapathId dpId = DatapathId.of(switchId.toLong());
+        sw = ofSwitchManager.getActiveSwitch(dpId);
+        if (sw == null) {
+            throw new SwitchNotFoundException(dpId);
+        }
+    }
+
+    protected CompletableFuture<Optional<OFMessage>> setupErrorHandler(
+            CompletableFuture<Optional<OFMessage>> future, IOfErrorResponseHandler handler) {
+        CompletableFuture<Optional<OFMessage>> branch = new CompletableFuture<>();
+
+        future.whenComplete((response, error) -> {
+            if (error == null) {
+                branch.complete(response);
+            } else {
+                Throwable actualError = unwrapError(error);
+                if (actualError instanceof SessionErrorResponseException) {
+                    OFErrorMsg errorResponse = ((SessionErrorResponseException) error).getErrorResponse();
+                    propagateFutureResponse(branch, handler.handleOfError(errorResponse));
+                } else {
+                    branch.completeExceptionally(actualError);
                 }
-            });
+            }
+        });
+        return branch;
+    }
+
+    protected <K> void propagateFutureResponse(CompletableFuture<K> outerStream, CompletableFuture<K> nested) {
+        nested.whenComplete((result, error) -> {
+            if (error == null) {
+                outerStream.complete(result);
+            } else {
+                outerStream.completeExceptionally(error);
+            }
+        });
+    }
+
+    protected RuntimeException maskCallbackException(Throwable e) {
+        if (e instanceof CompletionException) {
+            return (CompletionException) e;
         }
-        return chain;
+        return new CompletionException(e);
     }
 
-    protected abstract FloodlightResponse buildError(Throwable error);
+    protected Throwable unwrapError(Throwable error) {
+        if (error == null) {
+            return null;
+        }
 
-    protected FloodlightResponse buildResponse() {
-        throw new IllegalStateException("No response received from the switch while processing command");
+        if (error instanceof CompletionException) {
+            return error.getCause();
+        }
+        return error;
     }
-
-    protected FloodlightResponse buildResponse(OFMessage response) {
-        throw new IllegalStateException("Received unexpected message from switch while processing command");
-    }
-
-    public abstract List<SessionProxy> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
-            throws SwitchOperationException;
-
-    protected final Logger getLogger() {
-        return LoggerFactory.getLogger(this.getClass());
-    }
-
 }
