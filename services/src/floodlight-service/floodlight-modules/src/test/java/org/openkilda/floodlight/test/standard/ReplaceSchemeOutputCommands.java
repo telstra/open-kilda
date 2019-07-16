@@ -16,8 +16,10 @@
 package org.openkilda.floodlight.test.standard;
 
 import static java.util.Collections.singletonList;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.EGRESS_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.INGRESS_TABLE_ID;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.model.FlowEncapsulationType;
@@ -33,6 +35,7 @@ import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.ArrayList;
@@ -46,6 +49,7 @@ public class ReplaceSchemeOutputCommands extends PushSchemeOutputCommands {
                                                int tunnelId, long meterId, long cookie,
                                                FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpid) {
         return ofFactory.buildFlowAdd()
+                .setTableId(TableId.of(INGRESS_TABLE_ID))
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
@@ -69,6 +73,7 @@ public class ReplaceSchemeOutputCommands extends PushSchemeOutputCommands {
                                         FlowEncapsulationType encapsulationType, List<OFAction> actions,
                                         DatapathId ingressSwitchDpid) {
         return ofFactory.buildFlowAdd()
+                .setTableId(TableId.of(EGRESS_TABLE_ID))
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)

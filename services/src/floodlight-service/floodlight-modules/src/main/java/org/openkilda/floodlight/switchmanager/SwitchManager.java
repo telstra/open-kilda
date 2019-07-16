@@ -24,6 +24,7 @@ import static org.openkilda.floodlight.pathverification.PathVerificationService.
 import static org.openkilda.floodlight.pathverification.PathVerificationService.ROUND_TRIP_LATENCY_TIMESTAMP_SIZE;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
+import static org.openkilda.model.Cookie.DEFAULT_RULES_ISL_MASK;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE;
@@ -114,6 +115,7 @@ import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.Match.Builder;
@@ -129,6 +131,7 @@ import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
@@ -171,6 +174,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int DROP_VERIFICATION_LOOP_RULE_PRIORITY = VERIFICATION_RULE_PRIORITY + 1;
     public static final int CATCH_BFD_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
     public static final int ROUND_TRIP_LATENCY_RULE_PRIORITY = DROP_VERIFICATION_LOOP_RULE_PRIORITY + 1;
+    public static final int ISL_RULE_PRIORITY = FlowModUtils.PRIORITY_HIGH + 1;
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
     public static final int DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1;
     public static final int BDF_DEFAULT_PORT = 3784;
@@ -182,6 +186,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int STUB_VXLAN_UDP_SRC = 4500;
     public static final int INTERNAL_ETH_DEST_OFFSET = 400;
     public static final int MAC_ADDRESS_SIZE_IN_BITS = 48;
+
+    public static final int INPUT_TABLE_ID = 0;
+    public static final int INGRESS_TABLE_ID = 1;
+    public static final int EGRESS_TABLE_ID = 2;
+    public static final int TRANSIT_TABLE_ID = 3;
 
 
     // This is invalid VID mask - it cut of highest bit that indicate presence of VLAN tag on package. But valid mask
@@ -368,11 +377,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public void installDefaultRules(final DatapathId dpid) throws SwitchOperationException {
         installDropFlow(dpid);
         installVerificationRule(dpid, true);
+        installUnicastVerificationRuleVxlan(dpid);
         installVerificationRule(dpid, false);
         installDropLoopRule(dpid);
         installBfdCatchFlow(dpid);
         installRoundTripLatencyFlow(dpid);
-        installUnicastVerificationRuleVxlan(dpid);
+        installDefaultIngressRule(dpid);
+        installDefaultRuleForEgressTable(dpid);
+
     }
 
     /**
@@ -407,7 +419,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         int flowPriority = getFlowPriority(inputVlanId);
 
         // build FLOW_MOD command with meter
-        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority)
+        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority,
+                INGRESS_TABLE_ID)
                 .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
                 .setMatch(match);
 
@@ -440,7 +453,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
 
         // build FLOW_MOD command, no meter
-        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY)
+        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY,
+                EGRESS_TABLE_ID)
                 .setMatch(matchFlow(ofFactory, inputPort, transitTunnelId, encapsulationType, ingressSwitchDpId))
                 .setInstructions(ImmutableList.of(actions))
                 .build();
@@ -470,7 +484,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFInstructionApplyActions actions = buildInstructionApplyActions(ofFactory, actionList);
 
         // build FLOW_MOD command, no meter
-        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY)
+        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, FLOW_PRIORITY,
+                TRANSIT_TABLE_ID)
                 .setInstructions(ImmutableList.of(actions))
                 .setMatch(match)
                 .build();
@@ -513,7 +528,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         int flowPriority = getFlowPriority(inputVlanId);
 
         // build FLOW_MOD command with meter
-        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority)
+        OFFlowMod.Builder builder = prepareFlowModBuilder(ofFactory, cookie & FLOW_COOKIE_MASK, flowPriority,
+                INPUT_TABLE_ID)
                 .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
                 .setMatch(match);
 
@@ -523,6 +539,42 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
 
         return pushFlow(sw, flowId, builder.build());
+    }
+
+    @Override
+    public void installIslRules(DatapathId dpid, int port) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(EGRESS_TABLE_ID));
+        Match match = ofFactory.buildMatch().setExact(MatchField.IN_PORT, OFPort.of(port)).build();
+        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, port | DEFAULT_RULES_ISL_MASK, ISL_RULE_PRIORITY,
+                INPUT_TABLE_ID)
+                .setMatch(match)
+                .setInstructions(ImmutableList.of(goToTable)).build();
+        pushFlow(sw, String.format("Default rule for isl on port %d", port), flowMod);
+
+
+    }
+
+    @Override
+    public void installDefaultIngressRule(final DatapathId dpid) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(INGRESS_TABLE_ID));
+        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, 0x8000000000000021L, FLOW_PRIORITY, INPUT_TABLE_ID)
+                .setInstructions(ImmutableList.of(goToTable)).build();
+        pushFlow(sw, "Default rule for ingress traffic", flowMod);
+    }
+
+
+    @Override
+    public void installDefaultRuleForEgressTable(final DatapathId dpid) throws SwitchOperationException {
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+        OFInstructionGotoTable goToTable = ofFactory.instructions().gotoTable(TableId.of(TRANSIT_TABLE_ID));
+        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, 0x8000000000000021L, FLOW_PRIORITY, EGRESS_TABLE_ID)
+                .setInstructions(ImmutableList.of(goToTable)).build();
+        pushFlow(sw, "Default rule for to switch from egress to transit table", flowMod);
     }
 
     /**
@@ -899,15 +951,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         actionList.add(actionSendToController(sw));
 
         actionList.add(actionSetDstMac(sw, dpIdToMac(sw.getId())));
-        OFInstructionApplyActions actions = ofFactory.instructions()
-                .applyActions(actionList).createBuilder().build();
 
         MacAddress dstMac = dpIdToMac(sw.getId());
         Builder builder = sw.getOFFactory().buildMatch();
         builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.NO_MASK);
+        builder.setMasked(MatchField.ETH_SRC, dstMac, MacAddress.NO_MASK);
         builder.setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC));
         Match match = builder.build();
-        return prepareFlowModBuilder(ofFactory, cookie, VERIFICATION_RULE_VXLAN_PRIORITY)
+
+        OFInstructionApplyActions actions = ofFactory.instructions()
+                .applyActions(actionList).createBuilder().build();
+
+        return prepareFlowModBuilder(ofFactory, cookie, VERIFICATION_RULE_VXLAN_PRIORITY, INPUT_TABLE_ID)
                 .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
                 .setMatch(match)
                 .build();
@@ -980,7 +1035,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .applyActions(actionList).createBuilder().build();
 
         Match match = matchVerification(sw, isBroadcast);
-        return prepareFlowModBuilder(ofFactory, cookie, VERIFICATION_RULE_PRIORITY)
+        return prepareFlowModBuilder(ofFactory, cookie, VERIFICATION_RULE_PRIORITY, INPUT_TABLE_ID)
                 .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
                 .setMatch(match)
                 .build();
@@ -1117,7 +1172,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFactory ofFactory = sw.getOFFactory();
 
         Match match = simpleDstMatch(ofFactory, dstMac, dstMask);
-        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie, priority)
+        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie, priority, INPUT_TABLE_ID)
                 .setMatch(match)
                 .build();
         String flowName = "--CustomDropRule--" + dpid.toString();
@@ -1169,7 +1224,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             return null;
         }
 
-        return prepareFlowModBuilder(ofFactory, DROP_RULE_COOKIE, 1)
+        return prepareFlowModBuilder(ofFactory, DROP_RULE_COOKIE, 1, INPUT_TABLE_ID)
                 .build();
     }
 
@@ -1196,7 +1251,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFactory ofFactory = sw.getOFFactory();
 
         Match match = catchRuleMatch(sw.getId(), ofFactory);
-        return prepareFlowModBuilder(ofFactory, CATCH_BFD_RULE_COOKIE, CATCH_BFD_RULE_PRIORITY)
+        return prepareFlowModBuilder(ofFactory, CATCH_BFD_RULE_COOKIE, CATCH_BFD_RULE_PRIORITY, INPUT_TABLE_ID)
                 .setMatch(match)
                 .setActions(ImmutableList.of(
                         ofFactory.actions().buildOutput()
@@ -1230,7 +1285,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 actionAddRxTimestamp(sw, ROUND_TRIP_LATENCY_T1_OFFSET),
                 actionSendToController(sw));
         return prepareFlowModBuilder(
-                ofFactory, ROUND_TRIP_LATENCY_RULE_COOKIE, ROUND_TRIP_LATENCY_RULE_PRIORITY)
+                ofFactory, ROUND_TRIP_LATENCY_RULE_COOKIE, ROUND_TRIP_LATENCY_RULE_PRIORITY, INPUT_TABLE_ID)
                 .setMatch(match)
                 .setActions(actions)
                 .build();
@@ -1280,7 +1335,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         Match match = builder.build();
 
         return prepareFlowModBuilder(ofFactory,
-                DROP_VERIFICATION_LOOP_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_PRIORITY)
+                DROP_VERIFICATION_LOOP_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_PRIORITY, INPUT_TABLE_ID)
                 .setMatch(match)
                 .build();
 
@@ -1708,16 +1763,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * @param ofFactory OF factory for the switch
      * @param cookie cookie for the flow
      * @param priority priority to set on the flow
+     * @param tableId target table id
      * @return {@link OFFlowMod}
      */
-    private OFFlowMod.Builder prepareFlowModBuilder(final OFFactory ofFactory, final long cookie, final int priority) {
+    private OFFlowMod.Builder prepareFlowModBuilder(final OFFactory ofFactory, final long cookie, final int priority,
+                                                    final int tableId) {
         OFFlowMod.Builder fmb = ofFactory.buildFlowAdd();
         fmb.setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT);
         fmb.setHardTimeout(FlowModUtils.INFINITE_TIMEOUT);
         fmb.setBufferId(OFBufferId.NO_BUFFER);
         fmb.setCookie(U64.of(cookie));
         fmb.setPriority(priority);
-
+        fmb.setTableId(TableId.of(tableId));
         return fmb;
     }
 
@@ -1744,6 +1801,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         MacAddress dstMac = isBroadcast ? MacAddress.of(verificationBcastPacketDst) : dpIdToMac(sw.getId());
         Builder builder = sw.getOFFactory().buildMatch();
         builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.NO_MASK);
+        if (!isBroadcast) {
+            builder.setMasked(MatchField.ETH_SRC, dpIdToMac(sw.getId()), MacAddress.NO_MASK);
+        }
         return builder.build();
     }
 

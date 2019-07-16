@@ -33,7 +33,9 @@ public enum ComponentId {
     ISL_HANDLER("isl-handler"),
 
     SPEAKER_ENCODER("speaker.encoder"),
+    SPEAKER_FLOW_ENCODER("speaker.flow.encoder"),
     SPEAKER_OUTPUT("speaker.output"),
+    SPEAKER_FLOW_OUTPUT("speaker.flow.output"),
 
     REROUTE_ENCODER("reroute.encoder"),
     REROUTE_OUTPUT("reroute.output"),

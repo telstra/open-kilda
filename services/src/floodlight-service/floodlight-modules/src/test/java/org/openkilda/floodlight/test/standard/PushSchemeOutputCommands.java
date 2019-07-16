@@ -17,8 +17,10 @@ package org.openkilda.floodlight.test.standard;
 
 import static java.util.Collections.singletonList;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.DEFAULT_FLOW_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.EGRESS_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_MASK;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.INGRESS_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.INTERNAL_ETH_DEST_OFFSET;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.MAC_ADDRESS_SIZE_IN_BITS;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
@@ -40,6 +42,7 @@ import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.Arrays;
@@ -81,6 +84,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
                                                  long meterId, long cookie, FlowEncapsulationType encapsulationType,
                                                  DatapathId ingressSwitchDpId) {
         return ofFactory.buildFlowAdd()
+                .setTableId(TableId.of(INGRESS_TABLE_ID))
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
@@ -106,6 +110,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
     public OFFlowAdd egressPushFlowMod(int inputPort, int outputPort, int tunnelId, int outputVlan, long cookie,
                                        FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpid) {
         return ofFactory.buildFlowAdd()
+                .setTableId(TableId.of(EGRESS_TABLE_ID))
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
@@ -224,6 +229,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
                                    FlowEncapsulationType encapsulationType, OFInstructionApplyActions actions,
                                    DatapathId ingressSwitchDpid) {
         return ofFactory.buildFlowAdd()
+                .setTableId(TableId.of(SwitchManager.EGRESS_TABLE_ID))
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
@@ -239,6 +245,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
     public OFFlowAdd egressNoneFlowMod(int inputPort, int outputPort, int tunnelId, long cookie,
                                        FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpId) {
         return ofFactory.buildFlowAdd()
+                .setTableId(TableId.of(EGRESS_TABLE_ID))
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
@@ -257,6 +264,7 @@ public class PushSchemeOutputCommands implements OutputCommands {
     public OFFlowAdd egressReplaceFlowMod(int inputPort, int outputPort, int inputVlan, int outputVlan, long cookie,
                                           FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpId) {
         return ofFactory.buildFlowAdd()
+                .setTableId(TableId.of(EGRESS_TABLE_ID))
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)

@@ -83,6 +83,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private final BiIslDataHolder<IslEndpointStatus> endpointStatus;
 
     private final DiscoveryFacts discoveryFacts;
+    private boolean emitRerouteOnUp = true;
+
 
     private final NetworkTopologyDashboardLogger logWrapper = new NetworkTopologyDashboardLogger(log);
 
@@ -123,6 +125,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         switch (status) {
             case UP:
                 route = IslFsmEvent._HISTORY_UP;
+                emitRerouteOnUp = false;
                 break;
             case DOWN:
                 route = IslFsmEvent._HISTORY_DOWN;
@@ -178,14 +181,24 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         fire(route, context);
     }
 
+    public void preUpEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
+        log.info("ISL {} become {}", discoveryFacts.getReference(), to);
+        if (event != IslFsmEvent.ISL_RULE_INSTALLED) {
+            sendInstallMultitable(context);
+        } else {
+            fire(IslFsmEvent.ISL_UP, context);
+        }
+    }
+
     public void upEnter(IslFsmState from, IslFsmState to, IslFsmEvent event, IslFsmContext context) {
         log.info("ISL {} become {}", discoveryFacts.getReference(), to);
         logWrapper.onIslUpdateStatus(discoveryFacts.getReference(), to.toString());
         saveAllTransaction();
 
-        if (event != IslFsmEvent._HISTORY_UP) {
+        if (emitRerouteOnUp) {
             // Do not produce reroute during recovery system state from DB
             triggerDownFlowReroute(context);
+            emitRerouteOnUp = true;
         }
     }
 
@@ -223,6 +236,13 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     // -- private/service methods --
+
+    private void sendInstallMultitable(IslFsmContext context) {
+        context.getOutput().islDefaultRulesInstall(discoveryFacts.getReference().getSource(),
+                discoveryFacts.getReference().getDest());
+        context.getOutput().islDefaultRulesInstall(discoveryFacts.getReference().getDest(),
+                discoveryFacts.getReference().getSource());
+    }
 
     private void sendIslStatusUpdateNotification(IslFsmContext context, IslStatus status) {
         IslStatusUpdateNotification trigger = new IslStatusUpdateNotification(
@@ -677,7 +697,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             builder.transition()
                     .from(IslFsmState.INIT).to(IslFsmState.DOWN).on(IslFsmEvent._HISTORY_DOWN);
             builder.transition()
-                    .from(IslFsmState.INIT).to(IslFsmState.UP).on(IslFsmEvent._HISTORY_UP)
+                    .from(IslFsmState.INIT).to(IslFsmState.PRE_UP).on(IslFsmEvent._HISTORY_UP)
                     .callMethod("historyRestoreUp");
             builder.transition()
                     .from(IslFsmState.INIT).to(IslFsmState.MOVED).on(IslFsmEvent._HISTORY_MOVED);
@@ -707,9 +727,22 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             builder.transition()
                     .from(IslFsmState.UP_ATTEMPT).to(IslFsmState.DOWN).on(IslFsmEvent._UP_ATTEMPT_FAIL);
             builder.transition()
-                    .from(IslFsmState.UP_ATTEMPT).to(IslFsmState.UP).on(IslFsmEvent._UP_ATTEMPT_SUCCESS);
+                    .from(IslFsmState.UP_ATTEMPT).to(IslFsmState.PRE_UP).on(IslFsmEvent._UP_ATTEMPT_SUCCESS);
             builder.onEntry(IslFsmState.UP_ATTEMPT)
                     .callMethod("handleUpAttempt");
+
+            // PRE_UP
+            builder.internalTransition()
+                    .within(IslFsmState.PRE_UP).on(IslFsmEvent.ISL_RULE_INSTALLED);
+            builder.transition()
+                    .from(IslFsmState.PRE_UP).to(IslFsmState.DOWN).on(IslFsmEvent.ISL_DOWN);
+            builder.transition()
+                    .from(IslFsmState.PRE_UP).to(IslFsmState.MOVED).on(IslFsmEvent.ISL_MOVE)
+                    .callMethod(updateEndpointStatusMethod);
+            builder.transition()
+                    .from(IslFsmState.PRE_UP).to(IslFsmState.UP).on(IslFsmEvent.ISL_UP);
+            builder.onEntry(IslFsmState.PRE_UP).callMethod("preUpEnter");
+
 
             // UP
             builder.transition()
@@ -782,11 +815,13 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
         HISTORY, _HISTORY_DOWN, _HISTORY_UP, _HISTORY_MOVED,
         ISL_UP, ISL_DOWN, ISL_MOVE,
-        _UP_ATTEMPT_SUCCESS, ISL_REMOVE, _ISL_REMOVE_SUCESS, _UP_ATTEMPT_FAIL
+        _UP_ATTEMPT_SUCCESS, ISL_REMOVE, _ISL_REMOVE_SUCESS, _UP_ATTEMPT_FAIL,
+        ISL_RULE_INSTALLED, ISL_RULE_INSTALL_FAILED
     }
 
     public enum IslFsmState {
         INIT,
+        PRE_UP,
         UP, DOWN,
         MOVED,
 

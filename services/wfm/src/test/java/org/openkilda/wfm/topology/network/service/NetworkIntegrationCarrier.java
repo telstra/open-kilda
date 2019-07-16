@@ -199,4 +199,9 @@ public class NetworkIntegrationCarrier
     public void islStatusUpdateNotification(IslStatusUpdateNotification trigger) {
         // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
     }
+
+    @Override
+    public void islDefaultRulesInstall(Endpoint source, Endpoint destination) {
+        // Real implementation emit event into external component, i.e.it is outside scope of this integration test.
+    }
 }

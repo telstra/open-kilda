@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.network.service;
 
+import org.openkilda.messaging.info.discovery.IslDefaultRuleResult;
 import org.openkilda.messaging.info.event.IslBfdFlagUpdated;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
@@ -118,6 +119,18 @@ public class NetworkIslService {
         } else {
             bfdManager.disable(carrier);
         }
+    }
+
+    /**
+     * Process installed isl rule notification.
+     * @param reference isl reference
+     * @param payload response payload
+     */
+    public void islDefaultRuleInstalled(IslReference reference, IslDefaultRuleResult payload) {
+        log.debug("ISL service received isl rule installed for {} (on {})", reference, reference.getSource());
+        IslFsm islFsm = locateController(reference).fsm;
+        IslFsmContext context = IslFsmContext.builder(carrier, reference.getSource()).build();
+        controllerExecutor.fire(islFsm, IslFsmEvent.ISL_RULE_INSTALLED, context);
     }
 
     /**

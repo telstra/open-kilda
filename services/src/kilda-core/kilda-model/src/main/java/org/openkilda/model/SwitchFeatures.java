@@ -84,15 +84,19 @@ public class SwitchFeatures implements Serializable {
     @Property(name = "support_meters")
     private boolean supportMeters;
 
+    @Property(name = "support_multi_table")
+    private boolean supportMultiTable;
+
     @Builder(toBuilder = true)
     public SwitchFeatures(Switch switchObj, boolean supportBfd, boolean supportVxlanPushPop,
                           boolean supportVxlanVniMatch, Set<FlowEncapsulationType> supportedTransitEncapsulation,
-                          boolean supportMeters) {
+                          boolean supportMeters, boolean supportMultiTable) {
         this.switchObj = switchObj;
         this.supportBfd = supportBfd;
         this.supportVxlanPushPop = supportVxlanPushPop;
         this.supportVxlanVniMatch = supportVxlanVniMatch;
         this.supportedTransitEncapsulation = supportedTransitEncapsulation;
         this.supportMeters = supportMeters;
+        this.supportMultiTable = supportMultiTable;
     }
 }

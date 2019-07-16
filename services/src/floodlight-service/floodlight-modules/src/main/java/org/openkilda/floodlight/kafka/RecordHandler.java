@@ -90,6 +90,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.rule.FlowCommandErrorData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
+import org.openkilda.messaging.info.discovery.IslDefaultRuleResult;
 import org.openkilda.messaging.info.flow.FlowInstallResponse;
 import org.openkilda.messaging.info.flow.FlowRemoveResponse;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
@@ -108,6 +109,7 @@ import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.NetworkEndpoint;
+import org.openkilda.messaging.payload.switches.IslDefaultRule;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
@@ -232,6 +234,8 @@ class RecordHandler implements Runnable {
             doModifyMeterRequest(message);
         } else if (data instanceof AliveRequest) {
             doAliveRequest(message);
+        } else if (data instanceof IslDefaultRule) {
+            installIslRule(message);
         } else {
             logger.error("Unable to handle '{}' request - handler not found.", data);
         }
@@ -252,6 +256,20 @@ class RecordHandler implements Runnable {
         getKafkaProducer().sendMessageAndTrack(context.getKafkaTopoDiscoTopic(),
                 new InfoMessage(new AliveResponse(context.getRegion(), totalFailedAmount), System.currentTimeMillis(),
                         message.getCorrelationId(), context.getRegion()));
+    }
+
+    private void installIslRule(CommandMessage message) {
+        IslDefaultRule rule = (IslDefaultRule) message.getData();
+        try {
+            context.getSwitchManager().installIslRules(DatapathId.of(rule.getSrcSwitch().toLong()), rule.getSrcPort());
+            getKafkaProducer().sendMessageAndTrack(context.getKafkaTopoDiscoTopic(),
+                    new InfoMessage(new IslDefaultRuleResult(rule.getSrcSwitch(), rule.getSrcPort(),
+                            rule.getDstSwitch(), rule.getDstPort(), true),
+                            System.currentTimeMillis(),
+                            message.getCorrelationId(), context.getRegion()));
+        } catch (SwitchOperationException e) {
+            e.printStackTrace();
+        }
     }
 
     private void doDiscoverIslCommand(CommandMessage message) {

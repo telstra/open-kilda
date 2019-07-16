@@ -103,6 +103,23 @@ public interface ISwitchManager extends IFloodlightService {
      */
     void installRoundTripLatencyFlow(final DatapathId dpid) throws SwitchOperationException;
 
+
+    /**
+     * Installs the default rule to route customer traffic into ingress table.
+     *
+     * @param dpid datapathId of switch
+     * @throws SwitchOperationException in case of errors
+     */
+    void installDefaultIngressRule(final DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Installs default rule for the egress table.
+     *
+     * @param dpid datapathId of switch
+     * @throws SwitchOperationException in case of errors
+     */
+    void installDefaultRuleForEgressTable(final DatapathId dpid) throws SwitchOperationException;
+
     /**
      * Installs custom drop rule .. ie cookie, priority, match
      *
@@ -197,6 +214,14 @@ public interface ISwitchManager extends IFloodlightService {
      * @return list of default flows.
      */
     List<OFFlowMod> getExpectedDefaultFlows(DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Install rules for isl in case of multi-table.
+     * @param dpid datapathId of the switch
+     * @param port isl port
+     * @throws SwitchOperationException Switch not found
+     */
+    void installIslRules(final DatapathId dpid, int port) throws SwitchOperationException;
 
     /**
      * Returns list of installed flows.

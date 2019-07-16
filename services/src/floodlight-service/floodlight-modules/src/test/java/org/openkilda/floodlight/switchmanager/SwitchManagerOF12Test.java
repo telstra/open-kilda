@@ -31,6 +31,7 @@ import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
 public class SwitchManagerOF12Test {
@@ -79,6 +80,7 @@ public class SwitchManagerOF12Test {
 
         OFFactory referenceOfFactory = new OFFactoryVer12Mock();
         OFFlowMod expected = referenceOfFactory.buildFlowAdd()
+                .setTableId(TableId.of(SwitchManager.TRANSIT_TABLE_ID))
                 .setCookie(U64.of(commonFlowCookie).applyMask(U64.of(SwitchManager.FLOW_COOKIE_MASK)))
                 .setPriority(FLOW_PRIORITY)
                 .setMatch(referenceOfFactory.buildMatch()

@@ -26,6 +26,7 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_COOKIE_M
 import static org.openkilda.floodlight.switchmanager.SwitchManager.FLOW_PRIORITY;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_RULE_PRIORITY;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.TRANSIT_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.VERIFICATION_RULE_VXLAN_PRIORITY;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFMeterFlags.BURST;
@@ -58,6 +59,7 @@ import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 
@@ -134,6 +136,7 @@ public interface OutputCommands {
     default OFFlowAdd transitFlowMod(int inputPort, int outputPort, int tunnelId, long cookie,
                                      FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpid) {
         return ofFactory.buildFlowAdd()
+                .setTableId(TableId.of(TRANSIT_TABLE_ID))
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)

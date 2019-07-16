@@ -294,6 +294,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                         .switchObj(sw)
                         .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES)
                         .supportMeters(features.contains(Feature.METERS))
+                        .supportMultiTable(true)
                         .build());
         switchFeaturesRepository.createOrUpdate(switchFeatures);
     }

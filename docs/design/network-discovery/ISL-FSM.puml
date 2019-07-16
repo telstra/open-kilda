@@ -23,7 +23,7 @@ title ISL FSM
 
 INIT --> DOWN : isl-up / set endpoint-(A||B)-status = UP\nisl-down / set endpoint-(A||B)-status = DOWN
 INIT --> DOWN : history [history-down]
-INIT --> UP : history [history-up]\n/ apply-history\n/ emit bisl-bfd-enable
+INIT --> PRE_UP : history [history-up]\n/ apply-history\n/ emit bisl-bfd-enable
 INIT --> MOVED : history [history-moved]\nisl-move / set endpoint-(A||B)-status = MOVED
 
 state upAttempt <<choice>>
@@ -37,8 +37,21 @@ DOWN : isl-down / set endpoint-(A||B)-status = DOWN
 DOWN : isl-down / persist DB state
 DOWN -> deleteAttempt : isl-remove
 
-upAttempt --> UP : [endpoint-(A&&B)-status == UP]
+upAttempt --> PRE_UP : [endpoint-(A&&B)-status == UP]
 upAttempt --> DOWN : [else]
+
+state preUpChoice <<choice>>
+
+PRE_UP --> DOWN : isl-down
+PRE_UP : enter / send install isl rules for source endpoint
+PRE_UP : enter / send install isl rules for destination endpoint
+
+PRE_UP --> preUpChoice : isl-rule-installed
+
+preUpChoice --> UP : [both isl rules created]
+preUpChoice --> DOWN: [isl rules installation failed]
+preUpChoice --> PRE_UP: [else]
+
 
 UP --> DOWN : isl-down
 UP --> MOVED : isl-move
