@@ -32,6 +32,7 @@ import org.openkilda.integration.model.response.ConfiguredPort;
 import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
+import org.openkilda.model.LinkMaxBandwidth;
 import org.openkilda.model.LinkParametersDto;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.LinkUnderMaintenanceDto;
@@ -48,10 +49,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.http.HttpResponse;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
@@ -567,6 +566,33 @@ public class SwitchIntegrationService {
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (JsonProcessingException e) {
             LOGGER.error("Error occurred while deleting link", e);
+            throw new IntegrationException(e);
+        }
+        return null;
+    }
+    
+    /**
+     * Updates the isl max bandwidth.
+     *
+     * @return the LinkMaxBandwidth
+     */
+    public LinkMaxBandwidth updateLinkBandwidth(String srcSwitch, String srcPort, String dstSwitch, String dstPort,
+            LinkMaxBandwidth linkMaxBandwidth) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.UPDATE_LINK_BANDWIDTH
+                    .replace("{src_switch}", srcSwitch).replace("{src_port}", srcPort)
+                    .replace("{dst_switch}", dstSwitch).replace("{dst_port}", dstPort), HttpMethod.PATCH, 
+                    objectMapper.writeValueAsString(linkMaxBandwidth), "application/json", 
+                    applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, LinkMaxBandwidth.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while updating link bandwidth", e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Error occurred while updating link bandwidth", e);
             throw new IntegrationException(e);
         }
         return null;
