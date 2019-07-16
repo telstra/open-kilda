@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.switches
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -614,6 +615,56 @@ class FlowRulesSpec extends HealthCheckSpecification {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
         database.resetCosts()
+    }
+
+    @Tags(HARDWARE)
+    def "Able to synchronize rules for a flow with VXLAN encapsulation"() {
+        given: "Two active Noviflow switches"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.src.noviflow && it.dst.noviflow }
+
+        and: "Create a flow with vxlan encapsulation"
+        def flow = flowHelper.randomFlow(switchPair)
+        flowHelper.addFlow(flow)
+
+        and: "Reproduce situation when switches have missing rules by deleting flow rules from them"
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)*.dpId
+        def defaultPlusFlowRulesMap = involvedSwitches.collectEntries { switchId ->
+            [switchId, northbound.getSwitchRules(switchId).flowEntries]
+        }
+
+        involvedSwitches.each { switchId ->
+            northbound.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
+            Wrappers.wait(RULES_DELETION_TIME) {
+                assert northbound.validateSwitchRules(switchId).missingRules.size() == flowRulesCount
+            }
+        }
+
+        when: "Synchronize rules on switches"
+        def synchronizedRulesMap = involvedSwitches.collectEntries { switchId ->
+            [switchId, northbound.synchronizeSwitchRules(switchId)]
+        }
+
+        then: "The corresponding rules are installed on switches"
+        involvedSwitches.each { switchId ->
+            assert synchronizedRulesMap[switchId].installedRules.size() == flowRulesCount
+            Wrappers.wait(RULES_INSTALLATION_TIME) {
+                compareRules(northbound.getSwitchRules(switchId).flowEntries, defaultPlusFlowRulesMap[switchId])
+            }
+        }
+
+        and: "No missing rules were found after rules validation"
+        involvedSwitches.each { switchId ->
+            with(northbound.validateSwitchRules(switchId)) {
+                verifyAll {
+                    properRules.size() == flowRulesCount
+                    missingRules.empty
+                    excessRules.empty
+                }
+            }
+        }
+
+        and: "Cleanup: delete the flow and reset costs"
+        flowHelper.deleteFlow(flow.id)
     }
 
     void compareRules(actualRules, expectedRules) {
