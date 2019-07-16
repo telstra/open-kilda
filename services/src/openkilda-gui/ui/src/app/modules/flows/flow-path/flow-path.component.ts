@@ -104,7 +104,7 @@ export class FlowPathComponent implements OnInit, OnDestroy {
             links.push({flow:flowId,source:d,target:{switch_id:outPort,switch_name:outPort},colourCode:'#00baff',type:'port_isl'});
             if(typeof(self.forwardPathData[j]) !='undefined'){
               var nextSwitchInPort = "sw_"+self.forwardPathData[j].switch_id+"_"+self.forwardPathData[j].input_port;
-              links.push({flow:flowId,source:{switch_id:outPort,switch_name:outPort,out_port:d.output_port},target:{switch_id:nextSwitchInPort,switch_name:nextSwitchInPort,in_port:self.forwardPathData[j].input_port},colourCode:'#CCC',type:'isl'});
+               links.push({flow:flowId,source_detail:{out_port:d.output_port,in_port:d.input_port,id:d.switch_id},target_detail:{out_port:self.forwardPathData[j].output_port,in_port:self.forwardPathData[j].input_port,id:self.forwardPathData[j].switch_id},source:{switch_id:outPort,switch_name:outPort},target:{switch_id:nextSwitchInPort,switch_name:nextSwitchInPort},colourCode:'#CCC',type:'isl'});
             }
         }
     // fetching unique switches in all diverse group
@@ -126,6 +126,7 @@ export class FlowPathComponent implements OnInit, OnDestroy {
       
       this.forwardPathLoader= true;
       this.loadforwardPath = true;
+      
       this.flowpathService.initSimulation(nodes,links,svgElement,"forwardPathWrapper",'forward',positions,'flowpath-hover-txt','forwardpath_flow_value','reversepath_flow_value');
       this.flowpathService.forwardpathLoadedChange.subscribe((value:any)=>{
         this.forwardPathLoader= value;
@@ -151,7 +152,7 @@ export class FlowPathComponent implements OnInit, OnDestroy {
             links.push({flow:flowId,source:d,target:{switch_id:outPort,switch_name:outPort},colourCode:'#00baff',type:'port_isl'});
             if(typeof(self.reversePathData[j]) !='undefined'){
               var nextSwitchInPort = "swr_"+self.reversePathData[j].switch_id+"_"+self.reversePathData[j].input_port;
-              links.push({flow:flowId,source:{switch_id:outPort,switch_name:outPort},target:{switch_id:nextSwitchInPort,switch_name:nextSwitchInPort},colourCode:'#CCC',type:'isl'});
+              links.push({flow:flowId,source_detail:{out_port:d.output_port,in_port:d.input_port,id:d.switch_id},target_detail:{out_port:self.reversePathData[j].output_port,in_port:self.reversePathData[j].input_port,id:self.reversePathData[j].switch_id},source:{switch_id:outPort,switch_name:outPort},target:{switch_id:nextSwitchInPort,switch_name:nextSwitchInPort},colourCode:'#CCC',type:'isl'});
             }
         }
     // fetching unique switches in all diverse group
@@ -200,7 +201,7 @@ export class FlowPathComponent implements OnInit, OnDestroy {
             links.push({flow:i,source:d,target:{switch_id:outPort,switch_name:outPort},colourCode:self.colourCodes[v],type:'port_isl'});
             if(typeof(self.diversePath[i].forward_path[j]) !='undefined'){
               var nextSwitchInPort = "sw_"+self.diversePath[i].forward_path[j].switch_id+"_"+self.diversePath[i].forward_path[j].input_port;
-              links.push({flow:i,source:{switch_id:outPort,switch_name:outPort},target:{switch_id:nextSwitchInPort,switch_name:nextSwitchInPort},colourCode:self.colourCodes[v],type:'isl'});
+              links.push({flow:i,source_detail:{out_port:d.output_port,in_port:d.input_port,id:d.switch_id},target_detail:{out_port:self.diversePath[i].forward_path[j].output_port,in_port:self.diversePath[i].forward_path[j].input_port,id:self.diversePath[i].forward_path[j].switch_id},source:{switch_id:outPort,switch_name:outPort},target:{switch_id:nextSwitchInPort,switch_name:nextSwitchInPort},colourCode:self.colourCodes[v],type:'isl'});
             }
           }
         }
@@ -254,7 +255,7 @@ export class FlowPathComponent implements OnInit, OnDestroy {
             links.push({flow:i,source:d,target:{switch_id:outPort,switch_name:outPort},colourCode:self.colourCodes[v],type:'port_isl'});
             if(typeof(self.diversePath[i].reverse_path[j]) !='undefined'){
               var nextSwitchInPort = "swr_"+self.diversePath[i].reverse_path[j].switch_id+"_"+self.diversePath[i].reverse_path[j].input_port;
-              links.push({flow:i,source:{switch_id:outPort,switch_name:outPort},target:{switch_id:nextSwitchInPort,switch_name:nextSwitchInPort},colourCode:self.colourCodes[v],type:'isl'});
+              links.push({flow:i,sourcce_detail:{out_port:d.output_port,in_port:d.input_port,id:d.switch_id},target_detail:{out_port:self.diversePath[i].reverse_path[j].output_port,in_port:self.diversePath[i].reverse_path[j].input_port,id:self.diversePath[i].reverse_path[j].switch_id},source:{switch_id:outPort,switch_name:outPort},target:{switch_id:nextSwitchInPort,switch_name:nextSwitchInPort},colourCode:self.colourCodes[v],type:'isl'});
             }
           }
         }

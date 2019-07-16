@@ -14,7 +14,7 @@ export class FlowpathService {
   forwardpathLoadedChange: Subject<boolean> = new Subject<boolean>();
   reversepathLoadedChange: Subject<boolean> = new Subject<boolean>();
   diverseGroupCommonSwitch:any = [];
-  diverseGroupCommonSwitchReverse:any = []
+  diverseGroupCommonSwitchReverse:any = [];
   graphOptions = {
     radius: 35,
     text_center: false,
@@ -50,8 +50,7 @@ export class FlowpathService {
       return this.diverseGroupCommonSwitchReverse;
     }
   }
-  loadIslDetail(src_switch,src_port,dst_switch,dst_port){
-  
+  loadIslDetail(src_switch,src_port,dst_switch,dst_port){  
     this.router.navigate(["/isl/switch/isl/"+src_switch+"/"+src_port+"/"+dst_switch+"/"+dst_port]);
    }
   
@@ -192,12 +191,11 @@ export class FlowpathService {
       midY = (bounds.y + height) / 2;
     if (width == 0 || height == 0) return;
     var scale = zoomLevel / Math.max(width / fullWidth, height / fullHeight);
-    if(nodes.length >= 50){
-      var translate = [(fullWidth  - scale * midX), fullHeight  - scale * midY];
+    if(nodes.length >= 70){
+      var translate = [(fullWidth/2  - scale * midX)/scale, (fullHeight/2  - scale * midY)/scale];
     }else{
-      var translate = [(fullWidth   - scale * midX) / 2, fullHeight  - scale * midY];
+      var translate = [(fullWidth / 2   - scale * midX) , (fullHeight/2  - scale * midY) ];
     }
-    
     let newtranformation = d3.zoomIdentity
       .scale(scale)
      .translate(translate[0], translate[1]); 
@@ -207,30 +205,7 @@ export class FlowpathService {
       }else{
         this.reverseLoaderChange();
       }
-    // if(nodes.length >=50){
-    //   let newtranformation = d3.zoomIdentity
-    //   .scale(scale)
-    //  .translate(translate[0], translate[1]); 
-    //   svgElement.transition().duration(300).call(zoom.transform, newtranformation);
-    //   if(type=='forwardDiverse' || type=='forward'){
-    //     this.forwardLoaderChange();
-    //   }else{
-    //     this.reverseLoaderChange();
-    //   }
-    // }else{
-    //   let newtranformation = d3.zoomIdentity
-    //   .scale(scale)
-    //  .translate(translate[0], translate[1]); 
-    //   svgElement.transition().duration(300).call(zoom.transform, newtranformation);
-    //   if(type=='forwardDiverse' || type=='forward'){
-    //     this.forwardLoaderChange();
-    //   }else{
-    //     this.reverseLoaderChange();
-    //   }
-    // }
-    
-  }
-
+    }
 
   zoomFn(direction,svgElement,type){
     
@@ -403,8 +378,14 @@ export class FlowpathService {
         $('#'+type+'_link' + index).removeClass('overlay');
         $("#"+hoverTextID).css("display", "none");
       }).on('click',function(d){
-        console.log(d);
-       // this.loadIslDetail();
+        if(d.type == 'isl'){
+          var src_switch = d.source_detail.id,
+          src_port = d.source_detail.out_port,
+          dst_switch = d.target_detail.id,
+          dst_port = d.target_detail.in_port;
+          ref.loadIslDetail(src_switch,src_port,dst_switch,dst_port);
+        }
+        
       });
       graphLinksData.exit().remove();
      return  graphNewLink.merge(graphLinksData);
