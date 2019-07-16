@@ -354,7 +354,10 @@ public interface ISwitchManager extends IFloodlightService {
                 || p.equals(OFPort.NO_MASK)
                 || p.equals(OFPort.IN_PORT)
                 || p.equals(OFPort.NORMAL)
-                || p.equals(OFPort.TABLE));
+                || p.equals(OFPort.TABLE)
+                || p.equals(OFPort.NOVIFLOW_EXTRA0)
+                || p.equals(OFPort.NOVIFLOW_EXTRA1)
+                || p.equals(OFPort.NOVIFLOW_EXTRA2));
     }
 
     /**
