@@ -29,11 +29,13 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -617,6 +619,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
+    @Ignore("sync is not working yet, fix in pr2591")
     @Tags(HARDWARE)
     def "Able to synchronize rules for a flow with VXLAN encapsulation"() {
         given: "Two active Noviflow switches"
@@ -624,6 +627,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         and: "Create a flow with vxlan encapsulation"
         def flow = flowHelper.randomFlow(switchPair)
+        flow.encapsulationType = FlowEncapsulationType.VXLAN
         flowHelper.addFlow(flow)
 
         and: "Reproduce situation when switches have missing rules by deleting flow rules from them"
@@ -651,6 +655,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
                 compareRules(northbound.getSwitchRules(switchId).flowEntries, defaultPlusFlowRulesMap[switchId])
             }
         }
+        //TODO(andriidovhan) verify that synced rules are indeed vxlan rules when pr2503 is merged
 
         and: "No missing rules were found after rules validation"
         involvedSwitches.each { switchId ->

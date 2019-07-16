@@ -11,6 +11,7 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
@@ -241,39 +242,36 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
     @Ignore
     @Tags(HARDWARE)  // not tested
     def "Intentional flow reroute with VXLAN encapsulation is not causing any packet loss"() {
-        given: "An flow going through a long not preferable path(reroute potential)"
-        def allNoviflowSwitchIds = topology.activeSwitches.findAll { it.noviflow }*.dpId
+        given: "A vxlan flow"
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.findAll {
-            allNoviflowSwitchIds.contains(it.dpId)
-        }*.dpId ?: assumeTrue("Should be at least two active traffgens connected to NoviFlow switches",
-                false)
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.src.noviflow && it.dst.noviflow &&
-            allTraffgenSwitchIds.contains(it.src.dpId) && allTraffgenSwitchIds.contains(it.dst.dpId)
-        } ?: assumeTrue("Unable to find required switches in topology",false)
+            it.noviflow
+        }*.dpId ?: assumeTrue("Should be at least two active traffgens connected to NoviFlow switches", false)
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
+            allTraffgenSwitchIds.contains(swP.src.dpId) && allTraffgenSwitchIds.contains(swP.dst.dpId) &&
+                    swP.paths.findAll { path ->
+                        pathHelper.getInvolvedSwitches(path).find { it.noviflow }
+                    }.size() > 1
+        } ?: assumeTrue("Unable to find required switches/paths in topology",false)
+        def availablePaths = switchPair.paths.findAll { pathHelper.getInvolvedSwitches(it).find { it.noviflow }}
 
-        def availablePaths = switchPair.paths.findAll { path ->
-            pathHelper.getInvolvedSwitches(path)*.dpId.each { swId ->
-                allNoviflowSwitchIds.contains(swId.toString())
-            }
-        }
-
-        assumeTrue("Unable to find required paths between switches", availablePaths.size() >= 2)
         def flow = flowHelper.randomFlow(switchPair)
         flow.maximumBandwidth = 0
         flow.ignoreBandwidth = true
+        flow.encapsulationType = FlowEncapsulationType.VXLAN
         flowHelper.addFlow(flow)
         def altPaths = availablePaths.findAll { it != pathHelper.convert(northbound.getFlowPath(flow.id)) }
         def potentialNewPath = altPaths[0]
-        availablePaths.findAll { it != altPaths }.each { pathHelper.makePathMorePreferable(altPaths[0], it) }
+        availablePaths.findAll { it != potentialNewPath }.each { pathHelper.makePathMorePreferable(potentialNewPath, it) }
 
         when: "Start traffic examination"
         def traffExam = traffExamProvider.get()
         def bw = 100000 // 100 Mbps
         def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, bw)
-        [exam.forward, exam.reverse].each { direction ->
-            def resources = traffExam.startExam(direction, true)
-            direction.setResources(resources)
+        withPool {
+            [exam.forward, exam.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction, true)
+                direction.setResources(resources)
+            }
         }
 
         and: "While traffic flow is active, request a flow reroute"

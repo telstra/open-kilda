@@ -1,12 +1,14 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
@@ -1044,6 +1046,7 @@ switches"() {
     }
 
     @Unroll
+    @Tags(HARDWARE)
     def "Able to swap endpoints (#description) for two vxlan flows with the same source and destination switches"() {
         given: "Two flows with the same source and destination switches"
         flow1.encapsulationType = FlowEncapsulationType.VXLAN

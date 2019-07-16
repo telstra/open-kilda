@@ -26,6 +26,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Unroll
 
 class SwitchSyncSpec extends BaseSpecification {
@@ -216,6 +217,7 @@ class SwitchSyncSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Ignore("sync is not working yet, fix in pr2591")
     @Tags(HARDWARE)
     def "Able to synchronize switch with 'vxlan' rule(install missing rules and meters)"() {
         given: "Two active Noviflow switches"
@@ -223,6 +225,7 @@ class SwitchSyncSpec extends BaseSpecification {
 
         and: "Create a flow with vxlan encapsulation"
         def flow = flowHelper.randomFlow(switchPair)
+        flow.encapsulationType = FlowEncapsulationType.VXLAN
         flowHelper.addFlow(flow)
 
         and: "Reproduce situation when switches have missing rules and meters"
@@ -273,6 +276,8 @@ class SwitchSyncSpec extends BaseSpecification {
                 assert validationResult.meters.missing.size() == 0
             }
         }
+
+        //TODO(andriidovhan) verify that synced rules are indeed vxlan rules when pr2503 is merged
 
         and: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
