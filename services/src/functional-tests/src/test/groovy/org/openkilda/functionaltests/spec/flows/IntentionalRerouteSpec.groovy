@@ -1,12 +1,10 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.extension.rerun.Rerun
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -238,6 +236,64 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
             database.resetIslBandwidth(it)
             database.resetIslBandwidth(it.reversed)
         }
+    }
+
+    @Ignore
+    @Tags(HARDWARE)  // not tested
+    def "Intentional flow reroute with VXLAN encapsulation is not causing any packet loss"() {
+        given: "An flow going through a long not preferable path(reroute potential)"
+        def allNoviflowSwitchIds = topology.activeSwitches.findAll { it.noviflow }*.dpId
+        def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.findAll {
+            allNoviflowSwitchIds.contains(it.dpId)
+        }*.dpId ?: assumeTrue("Should be at least two active traffgens connected to NoviFlow switches",
+                false)
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
+            it.src.noviflow && it.dst.noviflow &&
+            allTraffgenSwitchIds.contains(it.src.dpId) && allTraffgenSwitchIds.contains(it.dst.dpId)
+        } ?: assumeTrue("Unable to find required switches in topology",false)
+
+        def availablePaths = switchPair.paths.findAll { path ->
+            pathHelper.getInvolvedSwitches(path)*.dpId.each { swId ->
+                allNoviflowSwitchIds.contains(swId.toString())
+            }
+        }
+
+        assumeTrue("Unable to find required paths between switches", availablePaths.size() >= 2)
+        def flow = flowHelper.randomFlow(switchPair)
+        flow.maximumBandwidth = 0
+        flow.ignoreBandwidth = true
+        flowHelper.addFlow(flow)
+        def altPaths = availablePaths.findAll { it != pathHelper.convert(northbound.getFlowPath(flow.id)) }
+        def potentialNewPath = altPaths[0]
+        availablePaths.findAll { it != altPaths }.each { pathHelper.makePathMorePreferable(altPaths[0], it) }
+
+        when: "Start traffic examination"
+        def traffExam = traffExamProvider.get()
+        def bw = 100000 // 100 Mbps
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, bw)
+        [exam.forward, exam.reverse].each { direction ->
+            def resources = traffExam.startExam(direction, true)
+            direction.setResources(resources)
+        }
+
+        and: "While traffic flow is active, request a flow reroute"
+        [exam.forward, exam.reverse].each { assert !traffExam.isFinished(it) }
+        def reroute = northbound.rerouteFlow(flow.id)
+
+        then: "Flow is rerouted"
+        reroute.rerouted
+        reroute.path.path == potentialNewPath
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
+
+        and: "Traffic examination result shows acceptable packet loss percentage"
+        def examReports = [exam.forward, exam.reverse].collect { traffExam.waitExam(it) }
+        examReports.each {
+            //Minor packet loss is considered a measurement error and happens regardless of reroute
+            assert it.consumerReport.lostPercent < 1
+        }
+
+        and: "Remove the flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     def cleanup() {
