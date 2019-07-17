@@ -568,7 +568,6 @@ export class FlowpathService {
 
   tick(graphLink,graphNode,linksSourceArr,mLinkNum){
     var ref = this;
-    var lookup = {};
     graphLink.attr("d", d => {
       var islCount = 0;
       var matchedIndex = 1;
@@ -611,10 +610,6 @@ export class FlowpathService {
         dr = dr / (1 + (1 / lTotalLinkNum) * (d.linkindex - 1));
       }
 
-      // generate svg path
-
-      lookup[d.key] = d.flow_count;
-      if (lookup[d.Key] == undefined) {
         if (islCount == 1) {
           return (
             "M" +
@@ -686,79 +681,10 @@ export class FlowpathService {
             );
           }
         }
-      } else {
-        if (d.source_switch == d.target_switch) {
-          // Self edge.
-          if (x1 === x2 && y1 === y2) {
-            // Fiddle with this angle to get loop oriented.
-            xRotation = -45;
-
-            // Needs to be 1.
-            largeArc = 1;
-
-            // Change sweep to change orientation of loop.
-            //sweep = 0;
-
-            // Make drx and dry different to get an ellipse
-            // instead of a circle.
-            drx = 50;
-            dry = 20;
-
-            // For whatever reason the arc collapses to a point if the beginning
-            // and ending points of the arc are the same, so kludge it.
-            x2 = x2 + 1;
-            y2 = y2 + 1;
-          }
-
-          return (
-            "M" +
-            x1 +
-            "," +
-            y1 +
-            "A" +
-            drx +
-            "," +
-            dry +
-            " " +
-            xRotation +
-            "," +
-            largeArc +
-            "," +
-            sweep +
-            " " +
-            x2 +
-            "," +
-            y2
-          );
-        } else {
-          return (
-            "M" +
-            d.source.x +
-            "," +
-            d.source.y +
-            "L" +
-            d.target.x +
-            "," +
-            d.target.y
-          );
-        }
-      }
        
-
-          // return (
-          //   "M" +
-          //   d.source.x +
-          //   "," +
-          //   d.source.y +
-          //   "L" +
-          //   d.target.x +
-          //   "," +
-          //   d.target.y
-          // );
-         
     });
      graphNode.attr("transform", function(d) {
-        if (d.x && d.y) {
+      if (typeof(d.x) !='undefined' && typeof(d.y)!='undefined') {
           return "translate(" + d.x + "," + d.y + ")";
         }
       });
