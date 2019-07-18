@@ -105,6 +105,10 @@ class PathHelper {
         }
         return involvedIsls
     }
+    
+    List<Isl> getInvolvedIsls(FlowPathPayload path) {
+        getInvolvedIsls(convert(path))
+    }
 
     /**
      * Converts FlowPathPayload path representation to a List<PathNode> representation
