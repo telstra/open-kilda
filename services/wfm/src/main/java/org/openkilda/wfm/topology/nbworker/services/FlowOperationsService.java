@@ -38,6 +38,7 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
 
@@ -54,7 +55,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class FlowOperationsService {
-
+    private final FlowOperationsDashboardLogger flowDashboardLogger = new FlowOperationsDashboardLogger(log);
     private TransactionManager transactionManager;
     private IslRepository islRepository;
     private SwitchRepository switchRepository;
@@ -85,6 +86,8 @@ public class FlowOperationsService {
                                                     SwitchId dstSwitchId, Integer dstPort)
             throws IslNotFoundException {
 
+        flowDashboardLogger.onFlowPathsDumpByLink(srcSwitchId, srcPort, dstSwitchId, dstPort);
+
         if (!islRepository.findByEndpoints(srcSwitchId, srcPort, dstSwitchId, dstPort).isPresent()) {
             throw new IslNotFoundException(srcSwitchId, srcPort, dstSwitchId, dstPort);
         }
@@ -102,6 +105,8 @@ public class FlowOperationsService {
      */
     public Collection<FlowPath> getFlowPathsForEndpoint(SwitchId switchId, Integer port)
             throws SwitchNotFoundException {
+
+        flowDashboardLogger.onFlowPathsDumpByEndpoint(switchId, port);
 
         if (!switchRepository.findById(switchId).isPresent()) {
             throw new SwitchNotFoundException(switchId);
@@ -144,6 +149,8 @@ public class FlowOperationsService {
      * @return all flow paths for a switch.
      */
     public Collection<FlowPath> getFlowPathsForSwitch(SwitchId switchId) {
+        flowDashboardLogger.onFlowPathsDumpBySwitch(switchId);
+
         return flowPathRepository.findBySegmentSwitch(switchId);
     }
 
@@ -153,6 +160,8 @@ public class FlowOperationsService {
      * @param flowId the flow to get a path.
      */
     public List<FlowPathDto> getFlowPath(String flowId) throws FlowNotFoundException {
+        flowDashboardLogger.onFlowPathsRead(flowId);
+
         Flow flow = flowRepository.findById(flowId)
                 .orElseThrow(() -> new FlowNotFoundException(flowId));
 
@@ -254,6 +263,8 @@ public class FlowOperationsService {
             if (flow.getPriority() != null) {
                 currentFlow.setPriority(flow.getPriority());
             }
+
+            flowDashboardLogger.onFlowPatchUpdate(currentFlow);
 
             flowRepository.createOrUpdate(currentFlow);
 

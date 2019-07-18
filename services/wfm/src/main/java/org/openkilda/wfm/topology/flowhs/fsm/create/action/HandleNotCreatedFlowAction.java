@@ -20,6 +20,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -33,17 +34,22 @@ public class HandleNotCreatedFlowAction extends AnonymousAction<FlowCreateFsm, S
 
     private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
+    private final FlowOperationsDashboardLogger dashboardLogger;
 
-    public HandleNotCreatedFlowAction(PersistenceManager persistenceManager) {
+    public HandleNotCreatedFlowAction(PersistenceManager persistenceManager,
+                                      FlowOperationsDashboardLogger dashboardLogger) {
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        this.dashboardLogger = dashboardLogger;
     }
 
     @Override
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        log.warn("Failed to create flow {}", stateMachine.getFlowId());
+        String flowId = stateMachine.getFlowId();
+        log.warn("Failed to create flow {}", flowId);
 
-        flowRepository.updateStatus(stateMachine.getFlowId(), FlowStatus.DOWN);
+        dashboardLogger.onFlowStatusUpdate(flowId, FlowStatus.DOWN);
+        flowRepository.updateStatus(flowId, FlowStatus.DOWN);
         flowPathRepository.updateStatus(stateMachine.getForwardPathId(), FlowPathStatus.INACTIVE);
         flowPathRepository.updateStatus(stateMachine.getReversePathId(), FlowPathStatus.INACTIVE);
 

@@ -28,6 +28,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableStateMachine;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -216,12 +217,14 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
             SpeakerCommandFsm.Builder commandExecutorFsmBuilder =
                     SpeakerCommandFsm.getBuilder(carrier, config.getSpeakerCommandRetriesLimit());
 
+            FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
+
             // validate the flow
             builder.transition()
                     .from(State.INITIALIZED)
                     .to(State.FLOW_VALIDATED)
                     .on(Event.NEXT)
-                    .perform(new FlowValidateAction(persistenceManager));
+                    .perform(new FlowValidateAction(persistenceManager, dashboardLogger));
 
             // allocate flow resources
             builder.transition()
@@ -304,7 +307,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                     .from(State.VALIDATING_INGRESS_RULES)
                     .to(State.FINISHED)
                     .on(Event.NEXT)
-                    .perform(new CompleteFlowCreateAction(persistenceManager));
+                    .perform(new CompleteFlowCreateAction(persistenceManager, dashboardLogger));
 
             // error during validation or resource allocation
             builder.transitions()
@@ -386,7 +389,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                     .from(State._FAILED)
                     .toFinal(State.FINISHED_WITH_ERROR)
                     .on(Event.NEXT)
-                    .perform(new HandleNotCreatedFlowAction(persistenceManager));
+                    .perform(new HandleNotCreatedFlowAction(persistenceManager, dashboardLogger));
 
             builder.transition()
                     .from(State._FAILED)

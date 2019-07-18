@@ -22,6 +22,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
@@ -30,6 +31,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
@@ -39,9 +41,15 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class AllocateProtectedResourcesAction extends BaseResourceAllocationAction {
+
+    private final FlowOperationsDashboardLogger dashboardLogger;
+
     public AllocateProtectedResourcesAction(PersistenceManager persistenceManager, PathComputer pathComputer,
-                                            FlowResourcesManager resourcesManager) {
+                                            FlowResourcesManager resourcesManager,
+                                            FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager, pathComputer, resourcesManager);
+
+        this.dashboardLogger = dashboardLogger;
     }
 
     @Override
@@ -85,7 +93,11 @@ public class AllocateProtectedResourcesAction extends BaseResourceAllocationActi
             FlowPath protectedReversePath = flow.getProtectedReversePath();
             flowPathRepository.updateStatus(protectedReversePath.getPathId(), FlowPathStatus.INACTIVE);
 
-            flowRepository.updateStatus(flowId, flow.computeFlowStatus());
+            FlowStatus flowStatus = flow.computeFlowStatus();
+            if (flowStatus != flow.getStatus()) {
+                dashboardLogger.onFlowStatusUpdate(flowId, flowStatus);
+                flowRepository.updateStatus(flowId, flowStatus);
+            }
             stateMachine.setOriginalFlowStatus(null);
         } else {
             boolean newPathFound = isNotSamePath(potentialPath, flow.getProtectedForwardPath(),

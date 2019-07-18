@@ -25,6 +25,7 @@ import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.action.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
@@ -47,8 +48,9 @@ public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, 
     private final FlowValidator flowValidator;
     private final FlowRepository flowRepository;
     private final FeatureTogglesRepository featureTogglesRepository;
+    private final FlowOperationsDashboardLogger dashboardLogger;
 
-    public FlowValidateAction(PersistenceManager persistenceManager) {
+    public FlowValidateAction(PersistenceManager persistenceManager, FlowOperationsDashboardLogger dashboardLogger) {
         FlowRepository flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         IslRepository islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
@@ -56,6 +58,7 @@ public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, 
         this.flowValidator = new FlowValidator(flowRepository, switchRepository, islRepository);
         this.flowRepository = flowRepository;
         this.featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
+        this.dashboardLogger = dashboardLogger;
     }
 
     @Override
@@ -72,6 +75,11 @@ public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, 
         }
 
         RequestedFlow request = context.getTargetFlow();
+        dashboardLogger.onFlowCreate(request.getFlowId(),
+                request.getSrcSwitch(), request.getSrcPort(), request.getSrcVlan(),
+                request.getDestSwitch(), request.getDestPort(), request.getDestVlan(),
+                request.getDiverseFlowId(), request.getBandwidth());
+
         if (flowRepository.exists(request.getFlowId())) {
             log.debug("Cannot create flow: flow id {} already in use", request.getFlowId());
             throw new FlowProcessingException(ErrorType.ALREADY_EXISTS, getGenericErrorMessage(),
