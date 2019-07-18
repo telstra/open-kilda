@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.28.0 (18/07/2019)
+
+### Features:
+-  [#2503](https://github.com/telstra/open-kilda/pull/2503) Fix flow validation in case VxLAN encapsulation. (Issue: [#647](https://github.com/telstra/open-kilda/issues/647)) [**floodlight**][**northbound**]
+
+### Improvements:
+-  [#2594](https://github.com/telstra/open-kilda/pull/2594) add test for a new vxlan default rule/meter [**tests**]
+-  [#2543](https://github.com/telstra/open-kilda/pull/2543) H&S reroute - minimize transaction contention and locks (Issue: [#2497](https://github.com/telstra/open-kilda/issues/2497)) [**storm-topologies**]
+-  [#2579](https://github.com/telstra/open-kilda/pull/2579) add test 'System doesn't allow to create a one-switch flow on a DEACTIVATED switch' (Issue: [#2576](https://github.com/telstra/open-kilda/issues/2576)) [**tests**]
+-  [#2589](https://github.com/telstra/open-kilda/pull/2589) Minor test updates for better stability [**tests**]
+
+### Other changes:
+-  [#2525](https://github.com/telstra/open-kilda/pull/2525) Get rid from event(wfm) topology [**storm-topologies**]
+-  [#2517](https://github.com/telstra/open-kilda/pull/2517) Add logs for port update. [**floodlight**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.27.0...v1.28.0).
+
+### Affected Components:
+flow-hs, flow, reroute, neo4j, nb, nbworker, gui, fl, event
+
+### Upgrade notes:
+If you have an older version of Kilda installed, then you must migrate the data stored in Neo4j
+before you deploy and start this version. You should execute migration scripts before starting of deployment:
+ - [1.8 create-index-on-flow-meter-changelog.xml](https://github.com/telstra/open-kilda/blob/v1.28.0/services/neo4j/migrations/1.8-index-on-flow-meter/1-create-index-on-flow-meter-changelog.xml)
+ - [1.8 migration-changelog.xml](https://github.com/telstra/open-kilda/blob/v1.28.0/services/neo4j/migrations/1.8-index-on-flow-meter/2-migration-changelog.xml)
+
+In case of any issues you are able to rollback 1.8 changes using:
+ - [1.8 rollback-indexes.cql](https://github.com/telstra/open-kilda/blob/v1.28.0/services/neo4j/migrations/1.8-index-on-flow-meter/rollback-indexes.cql)
+ - [1.8 rollback-migration.cql](https://github.com/telstra/open-kilda/blob/v1.28.0/services/neo4j/migrations/1.8-index-on-flow-meter/rollback-migration.cql)
+
+---
+
 ## v1.27.0 (11/07/2019)
 
 ### Features:
@@ -144,8 +176,6 @@ For the complete list of changes, check out [the commit log](https://github.com/
 
 ### Affected Components:
 router, fl, flow, reroute, swmanager, network, nb
-
-### Upgrade notes:
 
 ---
 
