@@ -20,6 +20,7 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
@@ -898,18 +899,20 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         then: "Flow state is changed to DEGRADED"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED }
-        def flowStatusDetails = northbound.getFlow(flow.id).flowStatusDetails
-        flowStatusDetails.mainFlowPathStatus == "Up"
-        flowStatusDetails.protectedFlowPathStatus == "Down"
+        with(northbound.getFlow(flow.id).flowStatusDetails) {
+            mainFlowPathStatus == "Up"
+            protectedFlowPathStatus == "Down"
+        }
 
         when: "Break ISL on the main path (bring port down) for changing the flow state to DOWN"
         northbound.portDown(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
 
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
-        def flowStatusDetails2 = northbound.getFlow(flow.id).flowStatusDetails
-        flowStatusDetails2.mainFlowPathStatus == "Down"
-        flowStatusDetails2.protectedFlowPathStatus == "Down"
+        with(northbound.getFlow(flow.id).flowStatusDetails) {
+            mainFlowPathStatus == "Down"
+            protectedFlowPathStatus == "Down"
+        }
 
         when: "Try to swap paths when main/protected paths are not available"
         northbound.swapFlowPath(flow.id)
@@ -930,11 +933,11 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         // Revise and fix the test appropriately.
         Wrappers.wait(WAIT_OFFSET * 2) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED
+            with(northbound.getFlow(flow.id).flowStatusDetails) {
+                mainFlowPathStatus == "Up"
+                protectedFlowPathStatus == "Down"
+            }
         }
-
-        def flowStatusDetails3 = northbound.getFlow(flow.id).flowStatusDetails
-        flowStatusDetails3.mainFlowPathStatus == "Up"
-        flowStatusDetails3.protectedFlowPathStatus == "Down"
 
         when: "Try to swap paths when the main path is available and the protected path is not available"
         northbound.swapFlowPath(flow.id)
