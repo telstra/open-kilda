@@ -20,6 +20,7 @@ import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -32,8 +33,12 @@ import lombok.extern.slf4j.Slf4j;
 public class OnNoPathFoundAction extends
         FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
-    public OnNoPathFoundAction(PersistenceManager persistenceManager) {
+    private final FlowOperationsDashboardLogger dashboardLogger;
+
+    public OnNoPathFoundAction(PersistenceManager persistenceManager, FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
+
+        this.dashboardLogger = dashboardLogger;
     }
 
     @Override
@@ -42,6 +47,7 @@ public class OnNoPathFoundAction extends
         log.debug("Set the flow status of {} to down.", flowId);
 
         persistenceManager.getTransactionManager().doInTransaction(() -> {
+            dashboardLogger.onFlowStatusUpdate(flowId, FlowStatus.DOWN);
             flowRepository.updateStatus(flowId, FlowStatus.DOWN);
             stateMachine.setOriginalFlowStatus(null);
 

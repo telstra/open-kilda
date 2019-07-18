@@ -22,6 +22,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -36,11 +37,14 @@ public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm
 
     private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
+    private final FlowOperationsDashboardLogger dashboardLogger;
 
-    public CompleteFlowCreateAction(PersistenceManager persistenceManager) {
+    public CompleteFlowCreateAction(PersistenceManager persistenceManager,
+                                    FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        this.dashboardLogger = dashboardLogger;
     }
 
     @Override
@@ -55,6 +59,7 @@ public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm
                 flowPathRepository.updateStatus(stateMachine.getProtectedReversePathId(), FlowPathStatus.ACTIVE);
             }
 
+            dashboardLogger.onFlowStatusUpdate(flowId, FlowStatus.UP);
             flowRepository.updateStatus(flowId, FlowStatus.UP);
             log.info("Flow {} successfully created", stateMachine.getFlowId());
             saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), "Created successfully");

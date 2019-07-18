@@ -33,6 +33,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableStateMachine;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
@@ -127,6 +128,7 @@ public final class FlowRerouteFsm
     public FlowRerouteFsm(CommandContext commandContext, FlowRerouteHubCarrier carrier) {
         super(commandContext);
         this.carrier = carrier;
+
     }
 
     private static StateMachineBuilder<FlowRerouteFsm, State, Event, FlowRerouteContext> builder(
@@ -135,8 +137,10 @@ public final class FlowRerouteFsm
                 StateMachineBuilderFactory.create(FlowRerouteFsm.class, State.class, Event.class,
                         FlowRerouteContext.class, CommandContext.class, FlowRerouteHubCarrier.class);
 
+        FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
+
         builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
-                .perform(new ValidateFlowAction(persistenceManager));
+                .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
         builder.transition().from(State.INITIALIZED).to(State.FINISHED_WITH_ERROR).on(Event.TIMEOUT);
 
         builder.transition().from(State.FLOW_VALIDATED).to(State.PRIMARY_RESOURCES_ALLOCATED).on(Event.NEXT)
@@ -147,7 +151,8 @@ public final class FlowRerouteFsm
 
         builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.PROTECTED_RESOURCES_ALLOCATED)
                 .on(Event.NEXT)
-                .perform(new AllocateProtectedResourcesAction(persistenceManager, pathComputer, resourcesManager));
+                .perform(new AllocateProtectedResourcesAction(persistenceManager, pathComputer, resourcesManager,
+                        dashboardLogger));
         builder.transition().from(State.PRIMARY_RESOURCES_ALLOCATED).to(State.MARKING_FLOW_DOWN)
                 .on(Event.NO_PATH_FOUND);
         builder.transitions().from(State.PRIMARY_RESOURCES_ALLOCATED)
@@ -274,14 +279,14 @@ public final class FlowRerouteFsm
                 .perform(new HandleNotDeallocatedResourcesAction());
 
         builder.transition().from(State.UPDATING_FLOW_STATUS).to(State.FLOW_STATUS_UPDATED).on(Event.NEXT)
-                .perform(new UpdateFlowStatusAction(persistenceManager));
+                .perform(new UpdateFlowStatusAction(persistenceManager, dashboardLogger));
 
         builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED).on(Event.NEXT);
         builder.transition().from(State.FLOW_STATUS_UPDATED).to(State.FINISHED_WITH_ERROR).on(Event.ERROR);
 
         builder.transition().from(State.MARKING_FLOW_DOWN).to(State.REVERTING_ALLOCATED_RESOURCES)
                 .on(Event.NEXT)
-                .perform(new OnNoPathFoundAction(persistenceManager));
+                .perform(new OnNoPathFoundAction(persistenceManager, dashboardLogger));
 
         builder.transition().from(State.REVERTING_PATHS_SWAP).to(State.PATHS_SWAP_REVERTED)
                 .on(Event.NEXT)
