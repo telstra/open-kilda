@@ -127,6 +127,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Rules for protected path are deleted"
         Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
             protectedFlowPath.each { sw ->
                 def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
                     !Cookie.isDefaultRule(it.cookie)
