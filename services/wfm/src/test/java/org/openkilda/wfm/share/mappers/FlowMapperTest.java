@@ -53,7 +53,6 @@ public class FlowMapperTest {
         FlowDto forwardFlow = new FlowDto();
         forwardFlow.setSourceSwitch(SRC_SWITCH_ID);
         forwardFlow.setDestinationSwitch(DST_SWITCH_ID);
-        forwardFlow.setFlowPath(pathInfoData);
         forwardFlow.setFlowId("12");
         forwardFlow.setCookie(11);
         forwardFlow.setSourcePort(113);
@@ -79,7 +78,6 @@ public class FlowMapperTest {
         FlowDto reverseFlow = new FlowDto();
         reverseFlow.setSourceSwitch(forwardFlow.getDestinationSwitch());
         reverseFlow.setDestinationSwitch(SRC_SWITCH_ID);
-        reverseFlow.setFlowPath(reversePathInfoData);
         reverseFlow.setFlowId("12");
         reverseFlow.setCookie(12);
         reverseFlow.setSourcePort(113);

@@ -15,15 +15,15 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
@@ -99,7 +99,7 @@ public class RevertNewRulesAction extends
 
         Set<UUID> commandIds = Stream.concat(installCommands.stream(), removeCommands.stream())
                 .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
-                .map(FlowRequest::getCommandId)
+                .map(SpeakerFlowRequest::getCommandId)
                 .collect(Collectors.toSet());
         stateMachine.setPendingCommands(commandIds);
 

@@ -22,7 +22,7 @@ import org.openkilda.floodlight.flow.response.FlowRuleResponse;
 import org.openkilda.model.SwitchFeatures;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -47,17 +47,17 @@ public class ValidateIngressRuleAction extends FlowProcessingAction<FlowCreateFs
 
     @Override
     protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        UUID commandId = context.getFlowResponse().getCommandId();
+        UUID commandId = context.getSpeakerFlowResponse().getCommandId();
 
         InstallIngressRule expected = stateMachine.getIngressCommands().get(commandId);
         SwitchFeatures switchFeatures =  switchFeaturesRepository.findBySwitchId(expected.getSwitchId())
                 .orElseThrow(() -> new IllegalStateException(format("Failed to find list of features for switch %s",
                         expected.getSwitchId())));
 
-        FlowRuleResponse response = (FlowRuleResponse) context.getFlowResponse();
+        FlowRuleResponse response = (FlowRuleResponse) context.getSpeakerFlowResponse();
         RulesValidator validator = new IngressRulesValidator(expected, response, switchFeatures);
         if (!validator.validate()) {
-            stateMachine.fire(Event.ERROR);
+            stateMachine.getFailedCommands().add(commandId);
         } else {
             saveHistory(stateMachine, expected);
             stateMachine.getPendingCommands().remove(commandId);

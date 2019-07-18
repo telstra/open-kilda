@@ -47,6 +47,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
+import org.openkilda.wfm.error.FlowAlreadyExistException;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;

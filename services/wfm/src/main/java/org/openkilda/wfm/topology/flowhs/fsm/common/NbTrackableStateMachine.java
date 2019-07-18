@@ -13,28 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.service;
+package org.openkilda.wfm.topology.flowhs.fsm.common;
 
-import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
 import org.openkilda.messaging.Message;
+import org.openkilda.wfm.CommandContext;
 
-public interface FlowRerouteHubCarrier extends FlowHistorySupportingCarrier {
-    /**
-     * Sends commands to speaker.
-     *
-     * @param command command to be executed.
-     */
-    void sendSpeakerRequest(SpeakerFlowRequest command);
+import org.squirrelframework.foundation.fsm.StateMachine;
 
-    /**
-     * Sends response to northbound component.
-     */
-    void sendNorthboundResponse(Message message);
+public abstract class NbTrackableStateMachine<T extends StateMachine<T, S, E, C>, S, E, C>
+        extends WithContextStateMachine<T, S, E, C> {
 
-    /**
-     * Cancels timeout callback.
-     *
-     * @param key operation identifier.
-     */
-    void cancelTimeoutCallback(String key);
+    public NbTrackableStateMachine(CommandContext commandContext) {
+        super(commandContext);
+    }
+
+    public abstract void sendResponse(Message message);
 }

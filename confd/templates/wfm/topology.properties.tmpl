@@ -79,3 +79,11 @@ statsrouter.request.interval = 60
 latency.update.interval = {{ getv "/kilda_latency_update_interval" }}
 latency.update.time.range = {{ getv "/kilda_latency_update_time_range" }}
 latency.discovery.interval.multiplier = {{ getv "/kilda_latency_discovery_interval_multiplier" }}
+
+# flow(H&S) topology
+flow.create.hub.timeout.seconds = 30
+flow.create.speaker.timeout.seconds = 10
+flow.create.hub.retries = 5
+flow.create.hub.speaker.command.retries = 3
+flow.reroute.hub.timeout.seconds = 30
+flow.reroute.speaker.timeout.seconds = 10

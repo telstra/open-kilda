@@ -18,11 +18,11 @@ package org.openkilda.wfm.topology.stats.bolts;
 import static org.openkilda.wfm.AbstractBolt.FIELD_ID_CONTEXT;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.request.InstallEgressRule;
 import org.openkilda.floodlight.flow.request.InstallMultiSwitchIngressRule;
 import org.openkilda.floodlight.flow.request.InstallSingleSwitchIngressRule;
 import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.BaseMessage;
 import org.openkilda.messaging.command.CommandData;
@@ -198,7 +198,7 @@ public class CacheFilterBolt extends BaseRichBolt {
                 flowCommand.getCookie());
     }
 
-    private void logMatchedRecord(FlowRequest flowRule, Cookie cookie) {
+    private void logMatchedRecord(SpeakerFlowRequest flowRule, Cookie cookie) {
         logFlowDetails(flowRule.getClass().getCanonicalName(), flowRule.getFlowId(), flowRule.getSwitchId(),
                 cookie.getValue());
     }

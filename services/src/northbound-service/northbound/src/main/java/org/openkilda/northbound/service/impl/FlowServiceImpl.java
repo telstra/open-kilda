@@ -27,8 +27,6 @@ import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.FlowReadRequest;
-import org.openkilda.messaging.command.flow.FlowRequest;
-import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
@@ -278,9 +276,8 @@ public class FlowServiceImpl implements FlowService {
     public CompletableFuture<FlowResponseV2> createFlow(FlowRequestV2 request) {
         logger.info("Processing flow creation: {}", request);
 
-        FlowRequest payload = new FlowRequest(flowMapper.toFlowDto(request), Type.CREATE);
-        CommandMessage command = new CommandMessage(
-                payload, System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
+        CommandMessage command = new CommandMessage(flowMapper.toFlowCreateRequest(request),
+                System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
 
         return messagingChannel.sendAndGet(flowHsTopic, command)
                 .thenApply(FlowResponse.class::cast)

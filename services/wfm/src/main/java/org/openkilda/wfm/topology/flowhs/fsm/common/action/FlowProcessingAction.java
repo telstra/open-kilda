@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm;
+package org.openkilda.wfm.topology.flowhs.fsm.common.action;
 
 import static java.lang.String.format;
 
@@ -27,6 +27,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.fsm.common.WithContextStateMachine;
 import org.openkilda.wfm.topology.flowhs.service.FlowHistorySupportingCarrier;
 
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +36,7 @@ import org.squirrelframework.foundation.fsm.AnonymousAction;
 import java.time.Instant;
 
 @Slf4j
-public abstract class FlowProcessingAction<T extends NbTrackableStateMachine<T, S, E, C>, S, E, C>
+public abstract class FlowProcessingAction<T extends WithContextStateMachine<T, S, E, C>, S, E, C>
         extends AnonymousAction<T, S, E, C> {
 
     protected final PersistenceManager persistenceManager;

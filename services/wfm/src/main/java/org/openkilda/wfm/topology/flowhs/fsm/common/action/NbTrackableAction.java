@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm;
+package org.openkilda.wfm.topology.flowhs.fsm.common.action;
 
 import static java.lang.String.format;
 
@@ -25,6 +25,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableStateMachine;
 import org.openkilda.wfm.topology.flowhs.service.FlowHistorySupportingCarrier;
 
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +45,7 @@ public abstract class NbTrackableAction<T extends NbTrackableStateMachine<T, S, 
             message = perform(from, to, event, context, stateMachine);
         } catch (FlowProcessingException e) {
             String errorMessage = format("%s: %s", e.getErrorMessage(), e.getErrorDescription());
-            log.error(errorMessage, e);
+            log.info(errorMessage);
             message = Optional.of(
                     buildErrorMessage(stateMachine, e.getErrorType(), errorMessage, e.getErrorDescription()));
             stateMachine.fireError();

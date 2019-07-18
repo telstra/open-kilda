@@ -24,7 +24,7 @@ import java.util.UUID;
 
 /**
  * Class that contains command context information.
- * @deprecated {@link org.openkilda.messaging.CommandContext} should be used instead.
+ * @deprecated {@link org.openkilda.messaging.MessageContext} should be used instead.
  */
 @Data
 @Deprecated
