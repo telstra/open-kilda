@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
@@ -17,6 +18,7 @@ import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.model.SwitchId
@@ -49,7 +51,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
     @Autowired
     NorthboundServiceV2 northboundV2
-    
+
     @Autowired
     FlowHelperV2 flowHelperV2
 
@@ -514,6 +516,35 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
         northbound.deleteLink(islUtils.toLinkParameters(newIsl))
         Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
+    }
+
+    @Ignore("https://github.com/telstra/open-kilda/issues/2576")
+    @Tags(VIRTUAL)
+    def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
+        given: "A deactivated switch"
+        def sw = topology.getActiveSwitches().first()
+        def swIsls = topology.getRelatedIsls(sw)
+        lockKeeper.knockoutSwitch(sw)
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
+        }
+
+        when: "Create a flow"
+        def flow = flowHelperV2.singleSwitchFlow(sw)
+        northboundV2.addFlow(flow)
+
+        then: "Human readable error is returned"
+        def exc = thrown(HttpClientErrorException)
+        exc.rawStatusCode == 404
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch $sw.dpId not found"
+
+        and: "Cleanup: Activate the switch and reset costs"
+        lockKeeper.reviveSwitch(sw)
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
+            def links = northbound.getAllLinks()
+            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
+        }
     }
 
     @Shared
