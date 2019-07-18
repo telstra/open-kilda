@@ -15,6 +15,7 @@
 
 package org.openkilda.northbound.service.impl;
 
+import static java.lang.String.format;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.northbound.utils.async.AsyncUtils.collectResponses;
 
@@ -71,12 +72,13 @@ import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.TransitVlan;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.PathMapper;
 import org.openkilda.northbound.dto.BatchResults;
@@ -98,8 +100,10 @@ import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
+import org.openkilda.persistence.repositories.VxlanRepository;
 import org.openkilda.persistence.spi.PersistenceProvider;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,8 +140,14 @@ public class FlowServiceImpl implements FlowService {
      */
     private static final Long IGNORE_COOKIE_FILTER = 0L;
 
-    private FlowRepository flowRepository;
-    private TransitVlanRepository transitVlanRepository;
+    @VisibleForTesting
+    FlowRepository flowRepository;
+
+    @VisibleForTesting
+    TransitVlanRepository transitVlanRepository;
+
+    @VisibleForTesting
+    VxlanRepository vxlanRepository;
 
     /**
      * The kafka topic for the flow topology.
@@ -235,6 +245,7 @@ public class FlowServiceImpl implements FlowService {
                 });
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         transitVlanRepository = persistenceManager.getRepositoryFactory().createTransitVlanRepository();
+        vxlanRepository = persistenceManager.getRepositoryFactory().createVxlanRepository();
     }
 
     /**
@@ -600,6 +611,7 @@ public class FlowServiceImpl implements FlowService {
         private int inPort;
         private int outPort;
         private int inVlan;
+        private int tunnelId;
         private int outVlan;
         private Long meterId;
         private long pktCount;   // only set from switch rules, not flow rules
@@ -618,7 +630,8 @@ public class FlowServiceImpl implements FlowService {
         /**
          * Will convert from the Flow .. FlowPath format to a series of SimpleSwitchRules,
          */
-        private static List<SimpleSwitchRule> convertFlowPath(Flow flow, FlowPath path, TransitVlan transitVlan) {
+        private static List<SimpleSwitchRule> convertFlowPath(Flow flow, FlowPath path,
+                                                              EncapsulationId encapsulationId) {
 
             boolean forward = flow.isForward(path);
             final int inPort = forward ? flow.getSrcPort() : flow.getDestPort();
@@ -655,7 +668,11 @@ public class FlowServiceImpl implements FlowService {
                 } else {
                     // flows with two switches or more will have at least 2 in getPath()
                     rule.outPort = pathSegments.get(0).getSrcPort();
-                    rule.outVlan = transitVlan.getVlan();
+                    if (flow.getEncapsulationType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
+                        rule.outVlan = encapsulationId.getEncapsulationId();
+                    } else if (flow.getEncapsulationType().equals(FlowEncapsulationType.VXLAN)) {
+                        rule.tunnelId = encapsulationId.getEncapsulationId();
+                    }
                 }
 
                 result.add(rule);
@@ -677,7 +694,11 @@ public class FlowServiceImpl implements FlowService {
                     rule.inPort = inSegment.getDestPort();
 
                     rule.cookie = pathCookie;
-                    rule.inVlan = transitVlan.getVlan();
+                    if (flow.getEncapsulationType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
+                        rule.inVlan = encapsulationId.getEncapsulationId();
+                    } else if (flow.getEncapsulationType().equals(FlowEncapsulationType.VXLAN)) {
+                        rule.tunnelId = encapsulationId.getEncapsulationId();
+                    }
                     //TODO: out vlan is not set for transit flows. Is it correct behavior?
                     //rule.outVlan = flow.getTransitVlan();
 
@@ -693,7 +714,11 @@ public class FlowServiceImpl implements FlowService {
                 rule.switchId = path.getDestSwitch().getSwitchId();
                 rule.outPort = outPort;
                 rule.outVlan = outVlan;
-                rule.inVlan = transitVlan.getVlan();
+                if (flow.getEncapsulationType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
+                    rule.inVlan = encapsulationId.getEncapsulationId();
+                } else if (flow.getEncapsulationType().equals(FlowEncapsulationType.VXLAN)) {
+                    rule.tunnelId = encapsulationId.getEncapsulationId();
+                }
                 rule.inPort = pathSegments.get(pathSegments.size() - 1).getDestPort();
                 rule.cookie = pathCookie;
                 result.add(rule);
@@ -719,6 +744,9 @@ public class FlowServiceImpl implements FlowService {
                 rule.cookie = switchRule.getCookie();
                 rule.inPort = NumberUtils.toInt(switchRule.getMatch().getInPort());
                 rule.inVlan = NumberUtils.toInt(switchRule.getMatch().getVlanVid());
+                rule.tunnelId = Optional.ofNullable(switchRule.getMatch().getTunnelId())
+                        .map(Integer::decode)
+                        .orElse(NumberUtils.INTEGER_ZERO);
                 if (switchRule.getInstructions() != null) {
                     // TODO: What is the right way to get OUT VLAN and OUT PORT?  How does it vary?
                     if (switchRule.getInstructions().getApplyActions() != null) {
@@ -730,6 +758,11 @@ public class FlowServiceImpl implements FlowService {
                                 .map(NumberUtils::toInt)
                                 .orElse(NumberUtils.INTEGER_ZERO);
                         rule.outPort = NumberUtils.toInt(applyActions.getFlowOutput());
+                        if (rule.tunnelId == NumberUtils.INTEGER_ZERO) {
+                            rule.tunnelId = Optional.ofNullable(applyActions.getPushVxlan())
+                                    .map(Integer::parseInt)
+                                    .orElse(NumberUtils.INTEGER_ZERO);
+                        }
                     }
 
                     rule.meterId = Optional.ofNullable(switchRule.getInstructions().getGoToMeter())
@@ -746,7 +779,7 @@ public class FlowServiceImpl implements FlowService {
         /**
          * Finds discrepancy between list of expected and actual rules.
          *
-         * @param pktCounts  If we find the rule, add its pktCounts. Otherwise, add -1.
+         * @param pktCounts If we find the rule, add its pktCounts. Otherwise, add -1.
          * @param byteCounts If we find the rule, add its pktCounts. Otherwise, add -1.
          */
         static List<PathDiscrepancyDto> findDiscrepancy(
@@ -784,6 +817,10 @@ public class FlowServiceImpl implements FlowService {
             if (matched.inVlan != expected.inVlan) {
                 result.add(new PathDiscrepancyDto(expected.toString(), "inVlan",
                         String.valueOf(expected.inVlan), String.valueOf(matched.inVlan)));
+            }
+            if (matched.tunnelId != expected.tunnelId) {
+                result.add(new PathDiscrepancyDto(expected.toString(), "tunnelId",
+                        String.valueOf(expected.tunnelId), String.valueOf(matched.tunnelId)));
             }
             // FIXME: let's validate in_port output correctly in case of one-switch-port flow.
             // currently for such flow we get 0 after convertion, but the rule has "output: in_port" value.
@@ -850,7 +887,7 @@ public class FlowServiceImpl implements FlowService {
         Flow flow = flowRepository.findById(flowId)
                 .orElseThrow(() -> new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
                         ErrorType.NOT_FOUND,
-                        String.format("Could not validate flow: Flow %s not found", flowId), "Flow not found"));
+                        format("Could not validate flow: Flow %s not found", flowId), "Flow not found"));
 
         logger.debug("VALIDATE FLOW: Found Flows: {}", flow);
 
@@ -1018,19 +1055,35 @@ public class FlowServiceImpl implements FlowService {
                 .thenApply(FlowHistoryData::getPayload);
     }
 
+    private EncapsulationId getEncapsulationId(FlowPath flowPath, FlowPath oppositePath,
+                                               FlowEncapsulationType encapsulationType) {
+        switch (encapsulationType) {
+            case TRANSIT_VLAN:
+                return transitVlanRepository.findByPathId(flowPath.getPathId(), oppositePath.getPathId())
+                        .stream().findAny().orElse(null);
+            case VXLAN:
+                return vxlanRepository.findByPathId(flowPath.getPathId(), oppositePath.getPathId())
+                        .stream().findAny().orElse(null);
+            default:
+                logger.error("Unexpected value of encapsulation type: {}", encapsulationType);
+                throw new MessageException(ErrorType.DATA_INVALID,
+                        format("Unexpected value of encapsulation type: %s", encapsulationType),
+                        getClass().getName());
+        }
+    }
+
     private FlowValidationResources collectFlowPathValidataionResources(
             Flow flow, FlowPath path, FlowPath oppositePath) {
-        TransitVlan transitVlan = transitVlanRepository.findByPathId(path.getPathId(), oppositePath.getPathId())
-                .stream().findAny().orElse(null);
-        return new FlowValidationResources(flow, path, transitVlan);
+        EncapsulationId encapsulationId = getEncapsulationId(path, oppositePath, flow.getEncapsulationType());
+        return new FlowValidationResources(flow, path, encapsulationId);
     }
 
     private static class FlowValidationResources {
         private final Set<SwitchId> switches = new HashSet<>();
         private final List<List<SimpleSwitchRule>> rules = new ArrayList<>();
 
-        FlowValidationResources(Flow flow, FlowPath path, TransitVlan transitVlan) {
-            rules.add(SimpleSwitchRule.convertFlowPath(flow, path, transitVlan));
+        FlowValidationResources(Flow flow, FlowPath path, EncapsulationId encapsulationId) {
+            rules.add(SimpleSwitchRule.convertFlowPath(flow, path, encapsulationId));
             switches.add(path.getSrcSwitch().getSwitchId());
             switches.add(path.getDestSwitch().getSwitchId());
             path.getSegments()
