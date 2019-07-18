@@ -15,9 +15,13 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
+import static java.lang.String.format;
+
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -30,21 +34,30 @@ import lombok.extern.slf4j.Slf4j;
 public class UpdateFlowStatusAction extends
         FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
-    public UpdateFlowStatusAction(PersistenceManager persistenceManager) {
+    private final FlowOperationsDashboardLogger dashboardLogger;
+
+    public UpdateFlowStatusAction(PersistenceManager persistenceManager,
+                                  FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
+
+        this.dashboardLogger = dashboardLogger;
     }
 
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
-        log.debug("Set the flow status of {} to up / computed one.", flowId);
 
-        persistenceManager.getTransactionManager().doInTransaction(() -> {
+        FlowStatus resultStatus = persistenceManager.getTransactionManager().doInTransaction(() -> {
             Flow flow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
-            flowRepository.updateStatus(flowId, flow.computeFlowStatus());
+            FlowStatus flowStatus = flow.computeFlowStatus();
+            if (flowStatus != flow.getStatus()) {
+                dashboardLogger.onFlowStatusUpdate(flowId, flowStatus);
+                flowRepository.updateStatus(flowId, flowStatus);
+            }
+            return flowStatus;
         });
 
         saveHistory(stateMachine, stateMachine.getCarrier(), flowId,
-                "Set the flow status to up.");
+                format("Set the flow status to %s.", resultStatus));
     }
 }

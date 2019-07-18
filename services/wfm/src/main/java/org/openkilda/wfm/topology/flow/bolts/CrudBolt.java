@@ -615,7 +615,8 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
             saveEvent(Event.UPDATE, flow.getFlowId(), "Flow updating", message.getCorrelationId(), tuple);
 
-            Optional<FlowPair> flowPair = flowService.getFlowPair(flow.getFlowId());
+            //TODO: this is extra fetch of the flow entity, must be moved into the service method.
+            Optional<FlowPair> flowPair = repositoryFactory.createFlowPairRepository().findById(flow.getFlowId());
             if (flowPair.isPresent()) {
                 saveDump(flowPair.get(), DumpType.STATE_BEFORE, message.getCorrelationId(), tuple);
             }
@@ -693,7 +694,8 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
     }
 
     private void handleMeterModeRequest(CommandMessage inMessage, Tuple tuple, final String flowId) {
-        FlowPair flowPair = flowService.getFlowPair(flowId)
+        //TODO: Must be moved into the service method.
+        FlowPair flowPair = repositoryFactory.createFlowPairRepository().findById(flowId)
                 .orElseThrow(() -> new MessageException(inMessage.getCorrelationId(), System.currentTimeMillis(),
                         ErrorType.NOT_FOUND, "Can not get flow", String.format("Flow %s not found", flowId)));
 

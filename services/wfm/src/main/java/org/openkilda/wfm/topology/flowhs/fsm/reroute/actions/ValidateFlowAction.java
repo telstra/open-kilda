@@ -34,6 +34,7 @@ import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
@@ -57,14 +58,16 @@ public class ValidateFlowAction extends
     private final FlowEventRepository flowEventRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
     private final FeatureTogglesRepository featureTogglesRepository;
+    private final FlowOperationsDashboardLogger dashboardLogger;
 
-    public ValidateFlowAction(PersistenceManager persistenceManager) {
+    public ValidateFlowAction(PersistenceManager persistenceManager, FlowOperationsDashboardLogger dashboardLogger) {
         transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowRepository = repositoryFactory.createFlowRepository();
         flowEventRepository = repositoryFactory.createFlowEventRepository();
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
+        this.dashboardLogger = dashboardLogger;
     }
 
     @Override
@@ -84,6 +87,10 @@ public class ValidateFlowAction extends
             return Optional.of(buildErrorMessage(stateMachine, ErrorType.REQUEST_INVALID,
                     getGenericErrorMessage(), errorMessage));
         }
+
+        Set<PathId> pathsToReroute =
+                new HashSet<>(Optional.ofNullable(context.getPathsToReroute()).orElse(emptySet()));
+        dashboardLogger.onFlowPathReroute(flowId, pathsToReroute, context.isForceReroute());
 
         try {
             Flow flow = transactionManager.doInTransaction(() -> {
@@ -111,8 +118,6 @@ public class ValidateFlowAction extends
                         }
                     }));
 
-            Set<PathId> pathsToReroute =
-                    new HashSet<>(Optional.ofNullable(context.getPathsToReroute()).orElse(emptySet()));
             // check whether the primary paths should be rerouted
             // | operator is used intentionally, see validation below.
             boolean reroutePrimary = pathsToReroute.isEmpty() | pathsToReroute.remove(flow.getForwardPathId())

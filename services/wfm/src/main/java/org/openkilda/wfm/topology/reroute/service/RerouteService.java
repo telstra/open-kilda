@@ -28,6 +28,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.reroute.bolts.MessageSender;
 
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +43,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class RerouteService {
-
+    private final FlowOperationsDashboardLogger flowDashboardLogger = new FlowOperationsDashboardLogger(log);
     private FlowRepository flowRepository;
     private FlowPathRepository pathRepository;
 
@@ -92,7 +93,10 @@ public class RerouteService {
                     fp.setStatus(FlowPathStatus.INACTIVE);
                 }
             }
-            flow.setStatus(FlowStatus.DOWN);
+            if (flow.getStatus() != FlowStatus.DOWN) {
+                flowDashboardLogger.onFlowStatusUpdate(flow.getFlowId(), FlowStatus.DOWN);
+                flow.setStatus(FlowStatus.DOWN);
+            }
             flowRepository.createOrUpdate(flow);
         }
     }
@@ -134,7 +138,10 @@ public class RerouteService {
 
                 }
                 if (failedFlowPathsCount == 0) {
-                    flow.setStatus(FlowStatus.UP);
+                    if (flow.getStatus() != FlowStatus.UP) {
+                        flowDashboardLogger.onFlowStatusUpdate(flow.getFlowId(), FlowStatus.UP);
+                        flow.setStatus(FlowStatus.UP);
+                    }
                 }
                 flowRepository.createOrUpdate(flow);
                 log.info("Skipping reroute command for pinned flow {}", flow.getFlowId());
@@ -191,7 +198,6 @@ public class RerouteService {
      * Filters out unique pinned flow from paths.
      *
      * @param paths affected paths
-     * @return
      */
     public Set<Flow> groupAffectedPinnedFlows(Collection<FlowPath> paths) {
         return paths.stream()

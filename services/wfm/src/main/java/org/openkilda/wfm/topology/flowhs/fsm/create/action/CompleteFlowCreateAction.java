@@ -21,6 +21,7 @@ import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
@@ -35,10 +36,13 @@ import java.util.Optional;
 public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
     private final FlowRepository flowRepository;
+    private final FlowOperationsDashboardLogger dashboardLogger;
 
-    public CompleteFlowCreateAction(PersistenceManager persistenceManager) {
+    public CompleteFlowCreateAction(PersistenceManager persistenceManager,
+                                    FlowOperationsDashboardLogger dashboardLogger) {
         super(persistenceManager);
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        this.dashboardLogger = dashboardLogger;
     }
 
     @Override
@@ -52,6 +56,7 @@ public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm
             FlowPath newReverse = flow.getReversePath();
             newReverse.setStatus(FlowPathStatus.ACTIVE);
 
+            dashboardLogger.onFlowStatusUpdate(flowId, FlowStatus.UP);
             flow.setStatus(FlowStatus.UP);
 
             flowRepository.createOrUpdate(flow);

@@ -27,6 +27,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableStateMachine;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
@@ -88,6 +89,8 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                 FlowCreateFsm.class, State.class, Event.class, FlowCreateContext.class,
                 CommandContext.class, FlowCreateHubCarrier.class);
 
+        FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
+
         // validate the flow
         builder.transition()
                 .from(State.INITIALIZED)
@@ -100,7 +103,8 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                 .from(State.FLOW_VALIDATED)
                 .to(State.RESOURCES_ALLOCATED)
                 .on(Event.NEXT)
-                .perform(new ResourcesAllocateAction(pathComputer, persistenceManager, resourcesManager));
+                .perform(new ResourcesAllocateAction(pathComputer, persistenceManager, resourcesManager,
+                        dashboardLogger));
 
         // skip installation on transit and egress rules for one switch flow
         builder.externalTransition()
@@ -156,7 +160,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                 .from(State.VALIDATING_INGRESS_RULES)
                 .to(State.FINISHED)
                 .on(Event.NEXT)
-                .perform(new CompleteFlowCreateAction(persistenceManager));
+                .perform(new CompleteFlowCreateAction(persistenceManager, dashboardLogger));
 
         // error during validation or resource allocation
         builder.transitions()
@@ -204,7 +208,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                 .from(State.REMOVING_RULES)
                 .to(State.FINISHED_WITH_ERROR)
                 .on(Event.NEXT)
-                .perform(new HandleNotCreatedFlowAction(persistenceManager));
+                .perform(new HandleNotCreatedFlowAction(persistenceManager, dashboardLogger));
         builder.transitions()
                 .from(State.REMOVING_RULES)
                 .toAmong(State.NON_DELETED_RULES_STORED, State.NON_DELETED_RULES_STORED)
@@ -231,7 +235,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                 .from(State.RESOURCES_DE_ALLOCATED)
                 .toFinal(State.FINISHED_WITH_ERROR)
                 .on(Event.NEXT)
-                .perform(new HandleNotCreatedFlowAction(persistenceManager));
+                .perform(new HandleNotCreatedFlowAction(persistenceManager, dashboardLogger));
 
         return builder;
     }

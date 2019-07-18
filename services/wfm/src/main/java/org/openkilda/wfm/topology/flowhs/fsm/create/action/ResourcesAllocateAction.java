@@ -49,6 +49,7 @@ import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowEventData.Initiator;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableAction;
@@ -76,9 +77,11 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
     private final SwitchRepository switchRepository;
     private final IslRepository islRepository;
     private final FlowPathRepository flowPathRepository;
+    private final FlowOperationsDashboardLogger dashboardLogger;
 
     public ResourcesAllocateAction(PathComputer pathComputer, PersistenceManager persistenceManager,
-                                   FlowResourcesManager resourcesManager) {
+                                   FlowResourcesManager resourcesManager,
+                                   FlowOperationsDashboardLogger dashboardLogger) {
         this.pathComputer = pathComputer;
         this.transactionManager = persistenceManager.getTransactionManager();
         this.resourcesManager = resourcesManager;
@@ -86,6 +89,7 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        this.dashboardLogger = dashboardLogger;
     }
 
     @Override
@@ -98,6 +102,8 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
         flow.setStatus(FlowStatus.IN_PROGRESS);
         flow.setSrcSwitch(switchRepository.reload(flow.getSrcSwitch()));
         flow.setDestSwitch(switchRepository.reload(flow.getDestSwitch()));
+
+        dashboardLogger.onFlowCreate(flow);
 
         PathPair pathPair = findPath(flow);
 
