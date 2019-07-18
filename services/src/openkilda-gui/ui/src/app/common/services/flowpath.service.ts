@@ -103,7 +103,7 @@ export class FlowpathService {
       var processedlinks = this.processLinks(nodes,links);
       var  zoomLevel = 0.45;     
       svgElement.html(""); 
-      var width = window.innerWidth;
+      var width = $("#"+graphWrapper)[0].clientWidth || window.innerWidth;
       var height = svgElement.attr('height');
       svgElement.style('cursor','move');
       svgElement.attr("width",width);
@@ -346,33 +346,36 @@ export class FlowpathService {
               return d.colourCode;
       }).attr("cursor","pointer")
       .on('mouseover',function(d,index){
-        var element = document.getElementById(type+"_link" + index);
-        var classes = element.getAttribute("class");
-        classes = classes + " overlay";
-        element.setAttribute('class',classes);
-         var rec: any = element.getBoundingClientRect();
-         $('#'+hideValueID).css('display','none');
-          $("#"+hoverTextID).css("display", "block");
-          $('#'+showValueID).html(d.flow);
-          $('#'+showValueID).css('display','block');
+        if(type == 'forwardDiverse' || type =='reverseDiverse' ){
+          var element = document.getElementById(type+"_link" + index);
+          var classes = element.getAttribute("class");
+          classes = classes + " overlay";
+          element.setAttribute('class',classes);
+           var rec: any = element.getBoundingClientRect();
+           $('#'+hideValueID).css('display','none');
+            $("#"+hoverTextID).css("display", "block");
+            $('#'+showValueID).html(d.flow);
+            $('#'+showValueID).css('display','block');
+          
+  
+             $(element).on("mousemove", function(e) {
+              $("#"+hoverTextID).css("top", (e.pageY-50) + "px");
+              $("#"+hoverTextID).css("left", (e.pageX-60) + "px");
+              var bound = ref.horizontallyBound(
+                document.getElementById(graphWrapper),
+                document.getElementById(hoverTextID)
+              );
+  
+              if (bound) {
+                $("#"+hoverTextID).removeClass("left");
+              } else {
+                var left = e.pageX; // subtract width of tooltip box + circle radius
+                $("#"+hoverTextID).css("left", left + "px");
+                $("#"+hoverTextID).addClass("left");
+              }
+            });
+        }
         
-
-           $(element).on("mousemove", function(e) {
-            $("#"+hoverTextID).css("top", (e.pageY-50) + "px");
-            $("#"+hoverTextID).css("left", (e.pageX-60) + "px");
-            var bound = ref.horizontallyBound(
-              document.getElementById(graphWrapper),
-              document.getElementById(hoverTextID)
-            );
-
-            if (bound) {
-              $("#"+hoverTextID).removeClass("left");
-            } else {
-              var left = e.pageX; // subtract width of tooltip box + circle radius
-              $("#"+hoverTextID).css("left", left + "px");
-              $("#"+hoverTextID).addClass("left");
-            }
-          });
       }).on('mouseout',function(d,index){
         var element = document.getElementById("link" + index);
         $('#'+type+'_link' + index).removeClass('overlay');
@@ -580,6 +583,7 @@ export class FlowpathService {
       ) {
         islCount = linksSourceArr[processKey].length;
       }
+      
       if (islCount > 1) {
         linksSourceArr[processKey].map(function(o, i) {
           if (ref.isObjEquivalent(o, d)) {
@@ -588,20 +592,13 @@ export class FlowpathService {
           }
         });
       }
-    
       var x1 = d.source.x,
         y1 = d.source.y,
         x2 = d.target.x,
         y2 = d.target.y,
         dx = x2 - x1,
         dy = y2 - y1,
-        dr = Math.sqrt(dx * dx + dy * dy),
-        // Defaults for normal edge.
-        drx = dr,
-        dry = dr,
-        xRotation = 0, // degrees
-        largeArc = 0, // 1 or 0
-        sweep = 1; // 1 or 0
+        dr = Math.sqrt(dx * dx + dy * dy);
       var lTotalLinkNum =
         mLinkNum[d.source.index + "," + d.target.index] ||
         mLinkNum[d.target.index + "," + d.source.index];
@@ -656,7 +653,7 @@ export class FlowpathService {
               "," +
               d.source.y
             );
-          } else {  
+          } else {   
             return (
               "M" +
               d.source.x +
@@ -666,7 +663,7 @@ export class FlowpathService {
               dr +
               "," +
               dr +
-              " 0 0 0," +
+              " 0 0 1," +
               d.target.x +
               "," +
               d.target.y +
@@ -674,7 +671,7 @@ export class FlowpathService {
               dr +
               "," +
               dr +
-              " 0 0 1," +
+              " 0 0 0," +
               d.source.x +
               "," +
               d.source.y

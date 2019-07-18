@@ -17,12 +17,12 @@
                 </li>
               </ul>   
             </div>
-          <a class="custom-button  flow-path-icons cursor-pointer" [ngClass]= "{'active':showDiverseGroupForward}" (click)="viewPathGraph('forward')" title="Forward Path Graph">
+          <a class="custom-button  flow-path-icons cursor-pointer" [ngClass]= "{'active':forwardPathGraph}" (click)="viewPathGraph('forward')" title="Forward Path Graph">
               <i class="fa fa-bar-chart"> </i>
             </a>
-          <div *ngIf="hasDiverseGroup" class="pull-right" style="margin:10px;">
+          <div *ngIf="hasDiverseGroup && !forwardPathGraph" class="pull-right" style="margin:10px;">
             <div class="onoffpathdiverse">
-              <input type="checkbox"  (change)="toggleDiversePath('forward',$event)" name="path-diverse" class="onoffpathdiverse-checkbox" id="onoffpathdiverse">
+              <input type="checkbox" [(ngModel)]="isDiverseForward"  (change)="toggleDiversePath('forward',$event)" name="path-diverse" class="onoffpathdiverse-checkbox" id="onoffpathdiverse">
               <label class="onoffpathdiverse-label" for="onoffpathdiverse">
                 <span class="onoffpathdiverse-inner onoffpathdiverse-pathdiverse"></span>
                 <span class="onoffpathdiverse-switch" id="onoffpathdiverse-switch"></span>
@@ -41,7 +41,6 @@
 <div class="row">
   <div id="ReversePath" class="col-xs-12 col-md-12 col-lg-12" style="border-top:1px solid #ccc; margin-top:10px;">
     <label class="response_flow_label" style="margin-left:-15px;">{{reverseLabelText}}</label>
-    <h3 class="text-center"> 
         <div class="rightbar_overlay" *ngIf="!reversePathGraph">
             <div class="main-list">
                 <a *ngIf="!showDiverseGroupReverse" class="custom-icon-path cursor-pointer" (click)="zoomFn('reverse','out')"><i class="fa fa-search-minus"></i></a>
@@ -59,20 +58,18 @@
             </ul>   
         
           </div>
-        <a class="custom-button  flow-path-icons cursor-pointer" [ngClass]= "{'active':showDiverseGroupReverse}" (click)="viewPathGraph('reverse')" title="Reverse Path Graph">
+        <a class="custom-button  flow-path-icons cursor-pointer" [ngClass]= "{'active':reversePathGraph}" (click)="viewPathGraph('reverse')" title="Reverse Path Graph">
             <i class="fa fa-bar-chart"> </i>
           </a>
-      <div *ngIf="hasDiverseGroup" class="pull-right" style="margin:10px;">
+      <div *ngIf="hasDiverseGroup && !reversePathGraph" class="pull-right" style="margin:10px;">
           <div class="onoffpathdiverse">
-            <input type="checkbox" (change)="toggleDiversePath('reverse',$event)"  name="path-diverse-reverse" class="onoffpathdiverse-checkbox" id="onoffpathdiversereverse">
+            <input type="checkbox" [(ngModel)]="isDiverseReverse" (change)="toggleDiversePath('reverse',$event)"  name="path-diverse-reverse" class="onoffpathdiverse-checkbox" id="onoffpathdiversereverse">
             <label class="onoffpathdiverse-label" for="onoffpathdiversereverse">
               <span class="onoffpathdiverse-inner onoffpathdiverse-pathdiverse"></span>
               <span class="onoffpathdiverse-switch" id="onoffpathdiverse-switch"></span>
             </label>
           </div>
       </div>
-      
-  </h3>
     <div  [hidden]="reverseGraphSvg" id="reversePathWrapper" class="topology-container" >    
       <div *ngIf="reversePathLoader" class="path-graph-component-loader"></div>
       <div class="path-graph-wrapper" [hidden]="!loadreversePath"></div>

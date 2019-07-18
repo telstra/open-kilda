@@ -1282,17 +1282,13 @@ path.link {
   left: 0px;
   z-index: 3;
 }
-/* #ForwardPathGraphwrapper,#ReversePathGraphwrapper {
-  position: relative;
-  width: 100%;
-  height: 100%;
-} */
-#ForwardPathGraphwrapper .path-graph-wrapper ,#ReversePathGraphwrapper .path-graph-wrapper , #forwardPathWrapper .path-graph-wrapper,#reversePathWrapper .path-graph-wrapper{
+
+#forwardPathWrapper .path-graph-wrapper,#reversePathWrapper .path-graph-wrapper{
   position: absolute;
   background: #fff;
-  width: 104%;
-  height: 100%;
-  top: 0px;
+  width: 100%;
+  height: 95%;
+  top: 35px;
   left: 0px;
   z-index: 3;
 }
@@ -2519,6 +2515,14 @@ a.badge.badge-dark.custom-button {
   margin: 6px 10px 0px 5px;
   float: right;
   font-size: 25px;
+  color:#ccc!important;
+}
+
+.flow-path-icons.active{
+  margin: 6px 10px 0px 5px;
+  float: right;
+  font-size: 25px;
+  color:#262d37!important;
 }
 .flow-path-graph{
      width: 100%;

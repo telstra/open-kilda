@@ -104,7 +104,7 @@ export class FlowPathComponent implements OnInit, OnDestroy {
             links.push({flow:flowId,source:d,target:{switch_id:outPort,switch_name:outPort},colourCode:'#00baff',type:'port_isl'});
             if(typeof(self.forwardPathData[j]) !='undefined'){
               var nextSwitchInPort = "sw_"+self.forwardPathData[j].switch_id+"_"+self.forwardPathData[j].input_port;
-               links.push({flow:flowId,source_detail:{out_port:d.output_port,in_port:d.input_port,id:d.switch_id},target_detail:{out_port:self.forwardPathData[j].output_port,in_port:self.forwardPathData[j].input_port,id:self.forwardPathData[j].switch_id},source:{switch_id:outPort,switch_name:outPort},target:{switch_id:nextSwitchInPort,switch_name:nextSwitchInPort},colourCode:'#CCC',type:'isl'});
+               links.push({flow:flowId,source_detail:{out_port:d.output_port,in_port:d.input_port,id:d.switch_id},target_detail:{out_port:self.forwardPathData[j].output_port,in_port:self.forwardPathData[j].input_port,id:self.forwardPathData[j].switch_id},source:{switch_id:outPort,switch_name:outPort},target:{switch_id:nextSwitchInPort,switch_name:nextSwitchInPort},colourCode:'#00baff',type:'isl'});
             }
         }
     // fetching unique switches in all diverse group
@@ -152,7 +152,7 @@ export class FlowPathComponent implements OnInit, OnDestroy {
             links.push({flow:flowId,source:d,target:{switch_id:outPort,switch_name:outPort},colourCode:'#00baff',type:'port_isl'});
             if(typeof(self.reversePathData[j]) !='undefined'){
               var nextSwitchInPort = "swr_"+self.reversePathData[j].switch_id+"_"+self.reversePathData[j].input_port;
-              links.push({flow:flowId,source_detail:{out_port:d.output_port,in_port:d.input_port,id:d.switch_id},target_detail:{out_port:self.reversePathData[j].output_port,in_port:self.reversePathData[j].input_port,id:self.reversePathData[j].switch_id},source:{switch_id:outPort,switch_name:outPort},target:{switch_id:nextSwitchInPort,switch_name:nextSwitchInPort},colourCode:'#CCC',type:'isl'});
+              links.push({flow:flowId,source_detail:{out_port:d.output_port,in_port:d.input_port,id:d.switch_id},target_detail:{out_port:self.reversePathData[j].output_port,in_port:self.reversePathData[j].input_port,id:self.reversePathData[j].switch_id},source:{switch_id:outPort,switch_name:outPort},target:{switch_id:nextSwitchInPort,switch_name:nextSwitchInPort},colourCode:'#00baff',type:'isl'});
             }
         }
     // fetching unique switches in all diverse group
@@ -319,6 +319,8 @@ export class FlowPathComponent implements OnInit, OnDestroy {
           d3.selectAll(".forwardDiverse_link_"+flowid)
           .transition()
           .style("stroke-width", "2.5");
+          var allLinks = svgElement.selectAll(".link");
+          allLinks.style("stroke-width", "2.5");
           this.flowPathFlagForward[flowid] = false;
         }else{
           if(flows && flows.length){
@@ -332,6 +334,8 @@ export class FlowPathComponent implements OnInit, OnDestroy {
               
             });
           }
+          var allLinks = svgElement.selectAll(".link");
+          allLinks.style("stroke-width", "1");
           var links = svgElement.selectAll(".forwardDiverse_link_"+flowid);
           links.style("stroke-width", "5");
           this.flowPathFlagForward[flowid] = true;
@@ -343,6 +347,8 @@ export class FlowPathComponent implements OnInit, OnDestroy {
         d3.selectAll(".reverseDiverse_link_"+flowid)
         .transition()
         .style("stroke-width", "2.5");
+        var allLinks = svgElement.selectAll(".link");
+          allLinks.style("stroke-width", "2.5");
         this.flowPathFlagReverse[flowid] = false;
       }else{
         if(flows && flows.length){
@@ -356,6 +362,8 @@ export class FlowPathComponent implements OnInit, OnDestroy {
             
           });
         }
+        var allLinks = svgElement.selectAll(".link");
+          allLinks.style("stroke-width", "1");
         var links = svgElement.selectAll(".reverseDiverse_link_"+flowid);
         links.style("stroke-width", "5");
         this.flowPathFlagReverse[flowid] = true;
@@ -526,8 +534,8 @@ export class FlowPathComponent implements OnInit, OnDestroy {
   viewPathGraph(type) {
     
     if (type == "forward") {
+      this.isDiverseForward = false;
       this.forwardLabelText = "FORWARD PATH GRAPH";
-      this.reversePathGraph = false;
       this.forwardPathGraph = this.forwardPathGraph ? false : true;
       this.showForwardPath =  this.forwardPathGraph ? false: true; 
       this.showDiverseGroupForward = this.isDiverseForward;
@@ -536,11 +544,12 @@ export class FlowPathComponent implements OnInit, OnDestroy {
         this.forwardLabelText = "FORWARD DIVERSITY";
       }else if(!this.forwardPathGraph){
         this.forwardLabelText = "FORWARD PATH";
+        this.viewPath('forward');
       }
       
     } else {
+      this.isDiverseReverse = false;
       this.reverseLabelText = "REVERSE PATH GRAPH";
-      this.forwardPathGraph = false;
       this.reversePathGraph = this.reversePathGraph ? false : true;
       this.showReversePath =  this.reversePathGraph ? false: true;   
       this.showDiverseGroupReverse = this.isDiverseReverse;
@@ -549,6 +558,7 @@ export class FlowPathComponent implements OnInit, OnDestroy {
         this.reverseLabelText = "REVERSE DIVERSITY";
       }else if(!this.reversePathGraph){
         this.reverseLabelText = "REVERSE PATH";
+        this.viewPath('reverse');
       }
     }
   }

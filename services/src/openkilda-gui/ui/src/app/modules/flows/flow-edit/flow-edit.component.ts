@@ -328,7 +328,7 @@ export class FlowEditComponent implements OnInit {
         this.diverseFlowList = data || [];
         if(this.diverseFlowList && this.diverseFlowList.length){
           this.diverseFlowList = this.diverseFlowList.filter(function(d){
-              return d.flowid != ref.flowDetail.flowId;
+              return d.flowid != ref.flowDetail.flowid;
           })
         }
       },error=>{
