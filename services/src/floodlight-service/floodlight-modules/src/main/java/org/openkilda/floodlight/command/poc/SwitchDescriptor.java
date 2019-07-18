@@ -31,6 +31,8 @@ class SwitchDescriptor {
     private final TableId tablePreIngress;
     private final TableId tableIngress;
     private final TableId tablePostIngress;
+    private final TableId tableEgress;
+    private final TableId tableTransit;
 
     public SwitchDescriptor(IOFSwitch sw) {
         this.sw = sw;
@@ -40,5 +42,7 @@ class SwitchDescriptor {
         tablePreIngress = tablesIterator.next();
         tableIngress = tablesIterator.next();
         tablePostIngress = tablesIterator.next();
+        tableEgress = tablesIterator.next();
+        tableTransit = tablesIterator.next();
     }
 }

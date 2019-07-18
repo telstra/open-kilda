@@ -24,31 +24,20 @@ import net.floodlightcontroller.util.FlowModUtils;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.U64;
 
-public abstract class NestedVlanExperiment extends SpeakerCommand {
-    protected static final int RULE_PRIORITY = FlowModUtils.PRIORITY_HIGH;
+public abstract class AbstractMultiTableCommand extends SpeakerCommand {
+    protected static final int PRIORITY_FLOW = FlowModUtils.PRIORITY_MED;
+    protected static final int PRIORITY_ISL_EGRESS = FlowModUtils.PRIORITY_HIGH;
+    protected static final int PRIORITY_REINJECT_REDIRECT = FlowModUtils.PRIORITY_HIGH;
+
     protected static final int VLAN_BIT_SIZE = 12;
     protected static final MacAddress LLDP_ETH_DST = MacAddress.of(0x0180c2000000L);
 
-    protected static final U64 COOKIE = U64.of(0x2140002L);
     protected static final U64 METADATA_OUTER_VLAN_MASK = U64.of(0x000fff);
     protected static final U64 METADATA_INNER_VLAN_MASK = U64.of(0xfff000);
     protected static final U64 METADATA_DOUBLE_VLAN_MASK = METADATA_OUTER_VLAN_MASK.or(METADATA_INNER_VLAN_MASK);
 
-    protected final int inPort;
-    protected final int outPort;
-    protected final short outerVlan;
-    protected final short innerVlan;
-    protected final short transitVlan;
-
-    public NestedVlanExperiment(SwitchId switchId,
-                                MessageContext messageContext, int inPort, int outPort,
-                                short outerVlan, short innerVlan, short transitVlan) {
+    public AbstractMultiTableCommand(SwitchId switchId, MessageContext messageContext) {
         super(switchId, messageContext);
-        this.inPort = inPort;
-        this.outPort = outPort;
-        this.outerVlan = outerVlan;
-        this.innerVlan = innerVlan;
-        this.transitVlan = transitVlan;
     }
 
     @Override

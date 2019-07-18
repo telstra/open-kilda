@@ -26,7 +26,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 
 import java.util.List;
 
-public class NestedVlanEgressExperiment extends NestedVlanExperiment {
+public class NestedVlanEgressExperiment extends AbstractFlowCommand {
     public NestedVlanEgressExperiment(SwitchId switchId, MessageContext messageContext, int inPort, int outPort,
                                       short outerVlan,
                                       short innerVlan, short transitVlan) {

@@ -246,7 +246,9 @@ class Topology:
         for link in links:
             link.setup_switch_ports(switches)
 
+        vsctl(['set Open_vSwitch . other_config:vlan-limit=0'])
         cls.batch_switch_cmd(switches)
+        run_cmd('ovs-appctl revalidator/purge')
 
         switches[A_SW_NAME].add_route_flows(a_mappings)
         return cls(switches, links, traffgens)
