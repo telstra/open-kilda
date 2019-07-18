@@ -13,6 +13,7 @@
 #   limitations under the License.
 #
 
+import collections
 import errno
 import json
 import subprocess
@@ -84,16 +85,42 @@ class Abstract(system.NSIPDBMixin, context_module.ContextConsumer):
 
 
 class VLANService(Abstract):
+    def allocate_stack(self, stack):
+        if not stack:
+            raise ValueError('Create request for empty VLAN stack')
+        return self._allocate_stack(self._unify_tag_definition(stack))
+
+    def lookup(self, raw):
+        return super().lookup(self._unify_tag_definition(raw))
+
     def key(self, subject):
-        return subject.tag
+        return self._unify_tag_definition(subject.tag)
+
+    def _allocate_stack(self, stack):
+        if not stack:
+            return
+
+        try:
+            vlan = self.lookup(stack)
+        except exc.ServiceLookupError:
+            parent = self._allocate_stack(stack[:-1])
+            vlan = model.VLAN(stack, parent=parent)
+            vlan = self.create(vlan)
+        return vlan
 
     def _create(self, subject):
-        tag = self.key(subject)
-        ifname = self.make_iface_name(tag)
+        tag_chain = self.key(subject)
+        ifname = self.make_iface_name(tag_chain)
+        tag = tag_chain[-1]
+        if subject.parent:
+            link = self.make_iface_name(subject.parent.tag)
+        else:
+            link = self.get_gw_iface()
+
         ip = self.get_ipdb()
         with ip.create(
                 kind='vlan', ifname=ifname, vlan_id=tag,
-                link=self.get_gw_iface()) as iface:
+                link=link) as iface:
             iface.up()
 
         iface = ip.interfaces[ifname].ro
@@ -109,8 +136,16 @@ class VLANService(Abstract):
             iface.remove()
 
     @staticmethod
-    def make_iface_name(tag):
-        return 'vlan.{}'.format(tag)
+    def _unify_tag_definition(raw):
+        if isinstance(raw, collections.Sequence):
+            vlan_stack = tuple(raw)
+        else:
+            vlan_stack = (raw,)
+        return vlan_stack
+
+    def make_iface_name(self, tag_raw):
+        tag = self._unify_tag_definition(tag_raw)
+        return 'vlan.{}'.format('.'.join(str(x) for x in tag))
 
 
 class IpAddressService(Abstract):

@@ -47,13 +47,7 @@ def address_create():
     address = extract_payload_fields(payload, 'address')[0]
     vlan_tag = payload.pop('vlan', 0)
     if vlan_tag:
-        try:
-            vlan = context.service.vlan.lookup(vlan_tag)
-        except exc.ServiceLookupError:
-            vlan = model.VLAN(vlan_tag)
-            context.service.vlan.create(vlan)
-
-        iface = vlan.iface
+        iface = context.service.vlan.allocate_stack(vlan_tag).iface
     else:
         iface = None
 
