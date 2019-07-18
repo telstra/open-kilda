@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
+import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
@@ -36,7 +37,12 @@ public class HandleNotRemovedRulesAction
         if (!stateMachine.getPendingCommands().isEmpty() || !stateMachine.getErrorResponses().isEmpty()) {
             for (UUID commandId : stateMachine.getPendingCommands()) {
                 RemoveRule nonDeletedRule = stateMachine.getRemoveCommands().get(commandId);
-                log.warn("Failed to remove {} from the switch {}", nonDeletedRule, nonDeletedRule.getSwitchId());
+                if (nonDeletedRule != null) {
+                    log.warn("Failed to remove {} from the switch {}", nonDeletedRule, nonDeletedRule.getSwitchId());
+                } else {
+                    InstallIngressRule ingressRule = stateMachine.getIngressCommands().get(commandId);
+                    log.warn("Failed to reinstall ingress {} on the switch {}", ingressRule, ingressRule.getSwitchId());
+                }
             }
 
             for (UUID commandId : stateMachine.getErrorResponses().keySet()) {

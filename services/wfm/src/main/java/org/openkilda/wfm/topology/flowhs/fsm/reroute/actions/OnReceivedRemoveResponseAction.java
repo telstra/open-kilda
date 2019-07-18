@@ -34,22 +34,25 @@ public class OnReceivedRemoveResponseAction extends RuleProcessingAction {
                            Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         FlowResponse response = context.getFlowResponse();
         UUID commandId = response.getCommandId();
-        stateMachine.getPendingCommands().remove(commandId);
+        if (stateMachine.getPendingCommands().remove(commandId)) {
+            long cookie = getCookieForCommand(stateMachine, commandId);
 
-        long cookie = getCookieForCommand(stateMachine, commandId);
+            if (response.isSuccess()) {
+                String message = format("Rule %s was removed from switch %s", cookie, response.getSwitchId());
+                log.debug(message);
+                sendHistoryUpdate(stateMachine, "Rule deleted", message);
+            } else {
+                FlowErrorResponse errorResponse = (FlowErrorResponse) response;
+                String message = format("Failed to remove rule %s from switch %s: %s. Description: %s",
+                        cookie, errorResponse.getSwitchId(), errorResponse.getErrorCode(),
+                        errorResponse.getDescription());
+                log.warn(message);
+                sendHistoryUpdate(stateMachine, "Failed to remove rule", message);
 
-        if (response.isSuccess()) {
-            String message = format("Rule %s was removed from switch %s", cookie, response.getSwitchId());
-            log.debug(message);
-            sendHistoryUpdate(stateMachine, "Rule deleted", message);
+                stateMachine.getErrorResponses().put(commandId, errorResponse);
+            }
         } else {
-            FlowErrorResponse errorResponse = (FlowErrorResponse) response;
-            String message = format("Failed to remove rule %s from switch %s: %s. Description: %s",
-                    cookie, errorResponse.getSwitchId(), errorResponse.getErrorCode(), errorResponse.getDescription());
-            log.warn(message);
-            sendHistoryUpdate(stateMachine, "Failed to remove rule", message);
-
-            stateMachine.getErrorResponses().put(commandId, errorResponse);
+            log.warn("Received a response for unexpected command: {}", response);
         }
 
         if (stateMachine.getPendingCommands().isEmpty()) {

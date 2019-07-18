@@ -126,7 +126,6 @@ public class CommandBuilderImplTest {
 
         private PathSegment buildSegment(FlowPath path, SwitchId srcSwitchId, SwitchId destSwitchId) {
             return PathSegment.builder()
-                    .path(path)
                     .srcSwitch(Switch.builder().switchId(srcSwitchId).build())
                     .destSwitch(Switch.builder().switchId(destSwitchId).build())
                     .build();

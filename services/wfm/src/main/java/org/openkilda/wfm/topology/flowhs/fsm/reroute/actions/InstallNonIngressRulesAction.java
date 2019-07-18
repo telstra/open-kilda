@@ -20,6 +20,7 @@ import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -43,10 +44,10 @@ public class InstallNonIngressRulesAction extends
 
     private final AbstractFlowCommandFactory commandFactory;
 
-    public InstallNonIngressRulesAction(PersistenceManager persistenceManager) {
+    public InstallNonIngressRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
 
-        this.commandFactory = new AbstractFlowCommandFactory(persistenceManager);
+        commandFactory = new AbstractFlowCommandFactory(persistenceManager);
     }
 
     @Override

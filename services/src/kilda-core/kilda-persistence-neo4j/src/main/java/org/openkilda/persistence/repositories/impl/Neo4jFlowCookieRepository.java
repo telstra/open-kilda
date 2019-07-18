@@ -27,7 +27,6 @@ import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 
@@ -77,8 +76,7 @@ public class Neo4jFlowCookieRepository extends Neo4jGenericRepository<FlowCookie
                 + "ORDER BY cookie "
                 + "LIMIT 1";
 
-        Iterator<Long> results = getSession().query(Long.class, query, parameters).iterator();
-        return results.hasNext() ? Optional.of(results.next()) : Optional.empty();
+        return queryForLong(query, parameters, "cookie");
     }
 
     @Override

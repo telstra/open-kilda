@@ -54,7 +54,7 @@ public class Neo4jFlowMeterRepositoryTest extends Neo4jBasedTest {
     @Test
     public void shouldCreateFlowMeter() {
         FlowMeter meter = FlowMeter.builder()
-                .theSwitch(theSwitch)
+                .switchId(theSwitch.getSwitchId())
                 .meterId(new MeterId(1))
                 .pathId(new PathId(TEST_FLOW_ID + "_path"))
                 .flowId(TEST_FLOW_ID)
@@ -64,14 +64,14 @@ public class Neo4jFlowMeterRepositoryTest extends Neo4jBasedTest {
         Collection<FlowMeter> allMeters = flowMeterRepository.findAll();
         FlowMeter foundMeter = allMeters.iterator().next();
 
-        assertEquals(theSwitch.getSwitchId(), foundMeter.getTheSwitch().getSwitchId());
+        assertEquals(theSwitch.getSwitchId(), foundMeter.getSwitchId());
         assertEquals(TEST_FLOW_ID, foundMeter.getFlowId());
     }
 
     @Test
     public void shouldDeleteFlowMeter() {
         FlowMeter meter = FlowMeter.builder()
-                .theSwitch(theSwitch)
+                .switchId(theSwitch.getSwitchId())
                 .meterId(new MeterId(1))
                 .pathId(new PathId(TEST_FLOW_ID + "_path"))
                 .flowId(TEST_FLOW_ID)
@@ -86,7 +86,7 @@ public class Neo4jFlowMeterRepositoryTest extends Neo4jBasedTest {
     @Test
     public void shouldDeleteFoundFlowMeter() {
         FlowMeter meter = FlowMeter.builder()
-                .theSwitch(theSwitch)
+                .switchId(theSwitch.getSwitchId())
                 .meterId(new MeterId(1))
                 .pathId(new PathId(TEST_FLOW_ID + "_path"))
                 .flowId(TEST_FLOW_ID)

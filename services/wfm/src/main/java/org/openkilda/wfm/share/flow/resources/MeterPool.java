@@ -84,7 +84,7 @@ public class MeterPool {
 
             FlowMeter flowMeter = FlowMeter.builder()
                     .meterId(availableMeterId)
-                    .theSwitch(theSwitch)
+                    .switchId(theSwitch.getSwitchId())
                     .flowId(flowId)
                     .pathId(pathId)
                     .build();
@@ -104,8 +104,6 @@ public class MeterPool {
                     .filter(Optional::isPresent)
                     .map(Optional::get)
                     .collect(toList());
-
-            switchRepository.lockSwitches(meters.stream().map(FlowMeter::getTheSwitch).toArray(Switch[]::new));
 
             meters.forEach(flowMeterRepository::delete);
         });

@@ -119,14 +119,8 @@ public class FlowResourcesManager {
                 .pathId(reversePathId);
 
         if (flow.getBandwidth() > 0L) {
-            switchRepository.lockSwitches(switchRepository.reload(flow.getSrcSwitch()),
-                    switchRepository.reload(flow.getDestSwitch()));
-
-            forward.meterId(meterPool.allocate(
-                    flow.getSrcSwitch().getSwitchId(), flow.getFlowId(), forwardPathId));
-
-            reverse.meterId(meterPool.allocate(
-                    flow.getDestSwitch().getSwitchId(), flow.getFlowId(), reversePathId));
+            forward.meterId(meterPool.allocate(flow.getSrcSwitch(), flow.getFlowId(), forwardPathId));
+            reverse.meterId(meterPool.allocate(flow.getDestSwitch(), flow.getFlowId(), reversePathId));
         }
 
         if (!flow.isOneSwitchFlow()) {
@@ -188,9 +182,10 @@ public class FlowResourcesManager {
         transactionManager.doInTransaction(() -> {
             cookiePool.deallocate(resources.getUnmaskedCookie());
 
+            meterPool.deallocate(resources.getForward().getPathId(), resources.getReverse().getPathId());
+
             Stream.of(resources.getForward(), resources.getReverse())
                     .forEach(path -> {
-                        meterPool.deallocate(path.getPathId());
                         EncapsulationResources encapsulationResources = path.getEncapsulationResources();
                         if (encapsulationResources != null) {
                             getEncapsulationResourcesProvider(encapsulationResources.getEncapsulationType())

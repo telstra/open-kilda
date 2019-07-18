@@ -40,6 +40,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.IllegalIslStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.LinkPropsException;
@@ -323,9 +324,10 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                         flowOperationsService.getFlowPathsForLink(srcSwitch, srcPort, dstSwitch, dstPort)
                 ).forEach((flowId, pathIds) -> {
                     FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds);
+                    CommandContext forkedContext = getCommandContext().fork(flowId);
                     getOutput().emit(
                             flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString(),
-                            getCurrentTuple(), new Values(rerouteRequest, getCorrelationId()));
+                            getCurrentTuple(), new Values(rerouteRequest, forkedContext.getCorrelationId()));
                 });
             }
 

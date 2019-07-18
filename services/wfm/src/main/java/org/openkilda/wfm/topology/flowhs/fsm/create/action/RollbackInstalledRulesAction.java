@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
@@ -39,7 +40,7 @@ public class RollbackInstalledRulesAction extends FlowProcessingAction<FlowCreat
 
     private final TransitVlanCommandFactory flowCommandFactory;
 
-    public RollbackInstalledRulesAction(PersistenceManager persistenceManager) {
+    public RollbackInstalledRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
         this.flowCommandFactory = new TransitVlanCommandFactory(
                 persistenceManager.getRepositoryFactory().createTransitVlanRepository());

@@ -33,6 +33,7 @@ import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.PathSegment;
+import org.openkilda.model.PathSegment.PathSegmentBuilder;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
@@ -487,7 +488,7 @@ public class FlowCommandFactoryTest {
                 .buildUnidirectionalFlow();
 
         flow.getFlowPath().setSegments(pathSegments.stream()
-                .map(builder -> builder.path(flow.getFlowPath()).build())
+                .map(PathSegmentBuilder::build)
                 .collect(Collectors.toList()));
 
         return flow;
@@ -514,7 +515,7 @@ public class FlowCommandFactoryTest {
                 .buildFlowPathsWithEncapsulation();
 
         flowPathsWithEncapsulation.getForwardPath().setSegments(pathSegments.stream()
-                .map(builder -> builder.path(flowPathsWithEncapsulation.getForwardPath()).build())
+                .map(PathSegmentBuilder::build)
                 .collect(Collectors.toList()));
 
         return flowPathsWithEncapsulation;

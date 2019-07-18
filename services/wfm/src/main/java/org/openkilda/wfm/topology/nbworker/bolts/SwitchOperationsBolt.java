@@ -32,6 +32,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.mappers.SwitchMapper;
@@ -127,9 +128,10 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
                     flowOperationsService.getFlowPathsForSwitch(switchId)
             ).forEach((flowId, pathIds) -> {
                 FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds);
+                CommandContext forkedContext = getCommandContext().fork(flowId);
                 getOutput().emit(
                         flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString(),
-                        tuple, new Values(rerouteRequest, getCorrelationId()));
+                        tuple, new Values(rerouteRequest, forkedContext.getCorrelationId()));
             });
         }
 

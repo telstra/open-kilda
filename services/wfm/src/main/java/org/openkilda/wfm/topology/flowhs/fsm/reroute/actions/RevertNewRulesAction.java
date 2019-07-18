@@ -16,10 +16,12 @@
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import org.openkilda.floodlight.flow.request.FlowRequest;
+import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -36,14 +38,15 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
-public class RemoveNewRulesAction extends
+public class RevertNewRulesAction extends
         FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
     private final AbstractFlowCommandFactory commandFactory;
 
-    public RemoveNewRulesAction(PersistenceManager persistenceManager) {
+    public RevertNewRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
 
         this.commandFactory = new AbstractFlowCommandFactory(persistenceManager);
@@ -55,31 +58,44 @@ public class RemoveNewRulesAction extends
         Flow flow = getFlow(stateMachine.getFlowId());
         FlowCommandFactory flowCommandFactory = commandFactory.getFactory(flow.getEncapsulationType());
 
-        Collection<RemoveRule> commands = new ArrayList<>();
+        Collection<InstallIngressRule> installCommands = new ArrayList<>();
+
+        // Reinstall old ingress rules that may be overridden by new ingress.
+        if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
+            FlowPath oldForward = getFlowPath(flow, stateMachine.getOldPrimaryForwardPath());
+            FlowPath oldReverse = getFlowPath(flow, stateMachine.getOldPrimaryReversePath());
+            installCommands.addAll(flowCommandFactory.createInstallIngressRules(
+                    stateMachine.getCommandContext(), flow, oldForward, oldReverse));
+        }
+
+        stateMachine.setIngressCommands(installCommands.stream()
+                .collect(Collectors.toMap(InstallIngressRule::getCommandId, Function.identity())));
+
+        Collection<RemoveRule> removeCommands = new ArrayList<>();
 
         if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
 
-            commands.addAll(flowCommandFactory.createRemoveNonIngressRules(
+            removeCommands.addAll(flowCommandFactory.createRemoveNonIngressRules(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
-            commands.addAll(flowCommandFactory.createRemoveIngressRules(
+            removeCommands.addAll(flowCommandFactory.createRemoveIngressRules(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
         if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
 
-            commands.addAll(flowCommandFactory.createRemoveNonIngressRules(
+            removeCommands.addAll(flowCommandFactory.createRemoveNonIngressRules(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
-            commands.addAll(flowCommandFactory.createRemoveIngressRules(
+            removeCommands.addAll(flowCommandFactory.createRemoveIngressRules(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
 
-        stateMachine.setRemoveCommands(commands.stream()
+        stateMachine.setRemoveCommands(removeCommands.stream()
                 .collect(Collectors.toMap(RemoveRule::getCommandId, Function.identity())));
 
-        Set<UUID> commandIds = commands.stream()
+        Set<UUID> commandIds = Stream.concat(installCommands.stream(), removeCommands.stream())
                 .peek(command -> stateMachine.getCarrier().sendSpeakerRequest(command))
                 .map(FlowRequest::getCommandId)
                 .collect(Collectors.toSet());

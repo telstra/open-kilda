@@ -95,6 +95,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
 
     @Override
     public void onTimeout(String key, Tuple tuple) {
+        currentKey = key;
         service.handleTimeout(key);
     }
 
@@ -121,8 +122,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
 
     @Override
     public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
-        //TODO: fix repeated request processing caused by History bolt
-        // emitWithContext(Stream.HUB_TO_HISTORY_BOLT.name(), tuple, new Values(null, historyHolder));
+        emitWithContext(Stream.HUB_TO_HISTORY_BOLT.name(), getCurrentTuple(), new Values(currentKey, historyHolder));
     }
 
     @Override

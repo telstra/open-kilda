@@ -26,7 +26,6 @@ import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 
@@ -83,8 +82,7 @@ public class Neo4jTransitVlanRepository extends Neo4jGenericRepository<TransitVl
                 + "ORDER BY vlan "
                 + "LIMIT 1";
 
-        Iterator<Integer> results = getSession().query(Integer.class, query, parameters).iterator();
-        return results.hasNext() ? Optional.of(results.next()) : Optional.empty();
+        return queryForLong(query, parameters, "vlan").map(Long::intValue);
     }
 
     @Override

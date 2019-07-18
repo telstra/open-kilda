@@ -20,10 +20,12 @@ import org.openkilda.model.FlowPath;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.ToString;
 
 @AllArgsConstructor
 @Builder(toBuilder = true)
 @Getter
+@ToString
 public class FlowPathPair {
     private final FlowPath forward;
     private final FlowPath reverse;

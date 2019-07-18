@@ -15,7 +15,6 @@
 
 package org.openkilda.model;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static org.neo4j.ogm.annotation.Relationship.INCOMING;
 import static org.neo4j.ogm.annotation.Relationship.OUTGOING;
@@ -41,10 +40,10 @@ import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -52,7 +51,7 @@ import java.util.stream.Collectors;
  */
 @Data
 @NoArgsConstructor
-@EqualsAndHashCode(exclude = {"entityId", "segments"})
+@EqualsAndHashCode(exclude = {"entityId", "segments", "flow"})
 @ToString(exclude = {"flow"})
 @NodeEntity(label = "flow_path")
 public class FlowPath implements Serializable {
@@ -114,7 +113,7 @@ public class FlowPath implements Serializable {
     @Relationship(type = "owns", direction = OUTGOING)
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
-    private List<PathSegment> segments = Collections.emptyList();
+    private List<PathSegment> segments = new ArrayList<>();
 
     @Builder(toBuilder = true)
     public FlowPath(@NonNull PathId pathId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
@@ -134,7 +133,7 @@ public class FlowPath implements Serializable {
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
         this.status = status;
-        setSegments(segments != null ? segments : Collections.emptyList());
+        setSegments(segments != null ? segments : new ArrayList<>());
     }
 
     /**
@@ -152,7 +151,7 @@ public class FlowPath implements Serializable {
                 setStatus(FlowPathStatus.IN_PROGRESS);
                 break;
             default:
-                throw new IllegalArgumentException(format("Unsupported status value: %s", status));
+                throw new IllegalArgumentException(format("Unsupported status value: %s", flowStatus));
         }
     }
 
@@ -173,16 +172,13 @@ public class FlowPath implements Serializable {
      * Set the segments.
      */
     public final void setSegments(List<PathSegment> segments) {
-        segments.forEach(segment -> checkArgument(Objects.equals(segment.getPath(), this),
-                "Segment %s and the path %s don't reference each other, but expected.",
-                segment, this));
-
         for (int idx = 0; idx < segments.size(); idx++) {
             PathSegment segment = segments.get(idx);
             segment.setSeqId(idx);
+            segment.setPath(this);
         }
 
-        this.segments = segments;
+        this.segments = new ArrayList<>(segments);
     }
 
     public boolean isProtected() {
@@ -194,6 +190,7 @@ public class FlowPath implements Serializable {
         if (segments != null) {
             segments = segments.stream()
                     .sorted(Comparator.comparingInt(PathSegment::getSeqId))
+                    .peek(segment -> segment.setPath(this))
                     .collect(Collectors.toList());
         }
     }

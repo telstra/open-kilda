@@ -459,7 +459,6 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
                 .srcSwitch(switchA)
                 .srcPort(1)
                 .destSwitch(switchB)
-                .path(forwardPath)
                 .destPort(2)
                 .build();
         forwardPath.setSegments(Collections.singletonList(forwardSegment));
@@ -484,7 +483,6 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
                 .srcPort(2)
                 .destSwitch(switchA)
                 .destPort(1)
-                .path(reversePath)
                 .build();
         reversePath.setSegments(Collections.singletonList(reverseSegment));
 
