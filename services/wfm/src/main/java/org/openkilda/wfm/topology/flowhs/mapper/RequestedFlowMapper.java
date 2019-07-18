@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.mapper;
 
-import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.model.Flow;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
@@ -39,7 +39,7 @@ public abstract class RequestedFlowMapper {
     @Mapping(source = "destinationPort", target = "destPort")
     @Mapping(source = "destinationVlan", target = "destVlan")
     @Mapping(source = "encapsulationType", target = "flowEncapsulationType")
-    public abstract RequestedFlow toRequestedFlow(FlowDto dto);
+    public abstract RequestedFlow toRequestedFlow(FlowRequest request);
 
     /**
      * Convert {@link Flow} to {@link RequestedFlow}.

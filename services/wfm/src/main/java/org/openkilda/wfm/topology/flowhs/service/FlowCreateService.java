@@ -15,10 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
-import org.openkilda.floodlight.flow.response.FlowErrorResponse;
-import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.floodlight.flow.response.FlowResponse;
-import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
@@ -26,6 +24,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Config;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
@@ -41,41 +40,45 @@ public class FlowCreateService {
 
     private final Map<String, FlowCreateFsm> fsms = new HashMap<>();
 
+    private final FlowCreateFsm.Factory fsmFactory;
     private final FlowCreateHubCarrier carrier;
-    private final PersistenceManager persistenceManager;
-    private final PathComputer pathComputer;
-    private final FlowResourcesManager flowResourcesManager;
     private final KildaConfigurationRepository kildaConfigurationRepository;
 
     public FlowCreateService(FlowCreateHubCarrier carrier, PersistenceManager persistenceManager,
-                             PathComputer pathComputer, FlowResourcesManager flowResourcesManager) {
+                             PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
+                             int genericRetriesLimit, int speakerCommandRetriesLimit) {
         this.carrier = carrier;
-        this.persistenceManager = persistenceManager;
-        this.pathComputer = pathComputer;
-        this.flowResourcesManager = flowResourcesManager;
         this.kildaConfigurationRepository = persistenceManager.getRepositoryFactory()
                 .createKildaConfigurationRepository();
+
+        Config fsmConfig = Config.builder()
+                .flowCreationRetriesLimit(genericRetriesLimit)
+                .speakerCommandRetriesLimit(speakerCommandRetriesLimit)
+                .build();
+        this.fsmFactory =
+                FlowCreateFsm.factory(persistenceManager, carrier, fsmConfig, flowResourcesManager, pathComputer);
     }
 
     /**
      * Handles request for flow creation.
      * @param key command identifier.
-     * @param dto request data.
+     * @param request request data.
      */
-    public void handleRequest(String key, CommandContext commandContext, FlowDto dto, FlowCreateHubCarrier carrier) {
+    public void handleRequest(String key, CommandContext commandContext, FlowRequest request) {
         log.debug("Handling flow create request with key {}", key);
-        FlowCreateFsm fsm = FlowCreateFsm.newInstance(commandContext, carrier, persistenceManager,
-                flowResourcesManager, pathComputer);
+
+        FlowCreateFsm fsm = fsmFactory.produce(request.getFlowId(), commandContext);
         fsms.put(key, fsm);
-        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(dto);
+
+        RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
         if (requestedFlow.getFlowEncapsulationType() == null) {
             requestedFlow.setFlowEncapsulationType(kildaConfigurationRepository.get().getFlowEncapsulationType());
         }
         FlowCreateContext context = FlowCreateContext.builder()
-                .flowDetails(requestedFlow)
+                .targetFlow(requestedFlow)
                 .build();
-        fsm.fire(Event.NEXT, context);
 
+        fsm.start();
         processNext(fsm, context);
         removeIfFinished(fsm, key);
     }
@@ -85,7 +88,7 @@ public class FlowCreateService {
      * @param key command identifier.
      */
     public void handleAsyncResponse(String key, FlowResponse flowResponse) {
-        log.debug("Received command completion message {}", flowResponse);
+        log.debug("Received response {}", flowResponse);
         FlowCreateFsm fsm = fsms.get(key);
         if (fsm == null) {
             log.info("Failed to find fsm: received response with key {} for non pending fsm", key);
@@ -93,19 +96,9 @@ public class FlowCreateService {
         }
 
         FlowCreateContext context = FlowCreateContext.builder()
-                .flowResponse(flowResponse)
+                .speakerFlowResponse(flowResponse)
                 .build();
-
-        if (flowResponse.isSuccess()) {
-            fsm.fire(Event.COMMAND_EXECUTED, context);
-        } else {
-            FlowErrorResponse errorResponse = (FlowErrorResponse) flowResponse;
-            if (errorResponse.getErrorCode() == ErrorCode.OPERATION_TIMED_OUT) {
-                fsm.fire(Event.TIMEOUT);
-            } else {
-                fsm.fire(Event.ERROR, context);
-            }
-        }
+        fsm.fire(Event.RESPONSE_RECEIVED, context);
 
         processNext(fsm, null);
         removeIfFinished(fsm, key);

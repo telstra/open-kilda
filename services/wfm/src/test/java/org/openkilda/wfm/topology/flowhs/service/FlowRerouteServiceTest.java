@@ -30,13 +30,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.request.GetInstalledRule;
 import org.openkilda.floodlight.flow.request.InstallEgressRule;
 import org.openkilda.floodlight.flow.request.InstallFlowRule;
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.floodlight.flow.response.FlowResponse;
@@ -120,7 +120,7 @@ public class FlowRerouteServiceTest {
     @Mock
     private CommandContext commandContext;
 
-    private Queue<FlowRequest> requests = new ArrayDeque<>();
+    private Queue<SpeakerFlowRequest> requests = new ArrayDeque<>();
     private Map<SwitchId, Map<Cookie, InstallFlowRule>> installedRules = new HashMap<>();
 
     @Before
@@ -179,7 +179,7 @@ public class FlowRerouteServiceTest {
         });
 
         doAnswer(invocation -> {
-            FlowRequest request = invocation.getArgument(0);
+            SpeakerFlowRequest request = invocation.getArgument(0);
             requests.offer(request);
 
             if (request instanceof InstallFlowRule) {
@@ -269,7 +269,7 @@ public class FlowRerouteServiceTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof InstallFlowRule) {
                 rerouteService.handleAsyncResponse("test_key", FlowErrorResponse.errorBuilder()
@@ -278,7 +278,6 @@ public class FlowRerouteServiceTest {
                         .commandId(flowRequest.getCommandId())
                         .flowId(flowRequest.getFlowId())
                         .switchId(flowRequest.getSwitchId())
-                        .success(false)
                         .build());
             } else {
                 rerouteService.handleAsyncResponse("test_key", FlowResponse.builder()
@@ -312,7 +311,7 @@ public class FlowRerouteServiceTest {
 
         rerouteService.handleTimeout("test_key");
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof RemoveRule) {
                 rerouteService.handleAsyncResponse("test_key", FlowResponse.builder()
@@ -344,7 +343,7 @@ public class FlowRerouteServiceTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof GetInstalledRule) {
                 rerouteService.handleAsyncResponse("test_key", FlowErrorResponse.errorBuilder()
@@ -385,7 +384,7 @@ public class FlowRerouteServiceTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof GetInstalledRule) {
                 rerouteService.handleTimeout("test_key");
@@ -435,7 +434,7 @@ public class FlowRerouteServiceTest {
         }).when(flowRepository).createOrUpdate(argThat(
                 hasProperty("forwardPathId", equalTo(NEW_FORWARD_FLOW_PATH))));
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof GetInstalledRule) {
                 rerouteService.handleAsyncResponse("test_key",
@@ -478,7 +477,7 @@ public class FlowRerouteServiceTest {
             throw new RuntimeException("A persistence error");
         }).when(flowPathRepository).updateStatus(eq(NEW_FORWARD_FLOW_PATH), eq(FlowPathStatus.ACTIVE));
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof GetInstalledRule) {
                 rerouteService.handleAsyncResponse("test_key",
@@ -517,7 +516,7 @@ public class FlowRerouteServiceTest {
                 .when(flowPathRepository).delete(argThat(
                 hasProperty("pathId", equalTo(OLD_FORWARD_FLOW_PATH))));
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof GetInstalledRule) {
                 rerouteService.handleAsyncResponse("test_key",
@@ -557,7 +556,7 @@ public class FlowRerouteServiceTest {
                 hasProperty("forward",
                         hasProperty("pathId", equalTo(OLD_FORWARD_FLOW_PATH)))));
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof GetInstalledRule) {
                 rerouteService.handleAsyncResponse("test_key",
@@ -594,7 +593,7 @@ public class FlowRerouteServiceTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof GetInstalledRule) {
                 rerouteService.handleAsyncResponse("test_key",
@@ -753,7 +752,6 @@ public class FlowRerouteServiceTest {
                 .orElse(null);
 
         FlowRuleResponse.FlowRuleResponseBuilder builder = FlowRuleResponse.flowRuleResponseBuilder()
-                .success(true)
                 .commandId(request.getCommandId())
                 .flowId(request.getFlowId())
                 .switchId(request.getSwitchId())

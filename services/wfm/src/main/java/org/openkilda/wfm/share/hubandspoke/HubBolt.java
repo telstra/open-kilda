@@ -19,6 +19,7 @@ import static java.util.Objects.requireNonNull;
 
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import org.apache.storm.task.OutputCollector;
@@ -86,6 +87,7 @@ public abstract class HubBolt extends CoordinatedBolt {
 
     @Builder
     @Getter
+    @AllArgsConstructor
     public static class Config implements Serializable {
         private String requestSenderComponent;
 

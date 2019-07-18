@@ -16,12 +16,12 @@
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -35,10 +35,12 @@ import java.util.Optional;
 public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
     private final FlowRepository flowRepository;
+    private final FlowPathRepository flowPathRepository;
 
     public CompleteFlowCreateAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
     }
 
     @Override
@@ -46,15 +48,14 @@ public class CompleteFlowCreateAction extends FlowProcessingAction<FlowCreateFsm
         String flowId = stateMachine.getFlowId();
         Optional<Flow> optionalFlow = flowRepository.findById(flowId);
         if (optionalFlow.isPresent()) {
-            Flow flow = optionalFlow.get();
-            FlowPath newForward = flow.getForwardPath();
-            newForward.setStatus(FlowPathStatus.ACTIVE);
-            FlowPath newReverse = flow.getReversePath();
-            newReverse.setStatus(FlowPathStatus.ACTIVE);
+            flowPathRepository.updateStatus(stateMachine.getForwardPathId(), FlowPathStatus.ACTIVE);
+            flowPathRepository.updateStatus(stateMachine.getReversePathId(), FlowPathStatus.ACTIVE);
+            if (stateMachine.getProtectedForwardPathId() != null && stateMachine.getProtectedReversePathId() != null) {
+                flowPathRepository.updateStatus(stateMachine.getProtectedForwardPathId(), FlowPathStatus.ACTIVE);
+                flowPathRepository.updateStatus(stateMachine.getProtectedReversePathId(), FlowPathStatus.ACTIVE);
+            }
 
-            flow.setStatus(FlowStatus.UP);
-
-            flowRepository.createOrUpdate(flow);
+            flowRepository.updateStatus(flowId, FlowStatus.UP);
             log.info("Flow {} successfully created", stateMachine.getFlowId());
             saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), "Created successfully");
         } else {

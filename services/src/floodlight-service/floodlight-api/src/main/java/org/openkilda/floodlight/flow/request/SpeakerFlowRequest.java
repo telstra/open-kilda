@@ -30,7 +30,7 @@ import java.util.UUID;
 
 @Getter
 @ToString
-public abstract class FlowRequest extends AbstractMessage {
+public abstract class SpeakerFlowRequest extends AbstractMessage {
 
     /**
      * Unique identifier for the command.
@@ -50,7 +50,7 @@ public abstract class FlowRequest extends AbstractMessage {
     @JsonProperty("switch_id")
     final SwitchId switchId;
 
-    public FlowRequest(MessageContext context, UUID commandId, String flowId, SwitchId switchId) {
+    public SpeakerFlowRequest(MessageContext context, UUID commandId, String flowId, SwitchId switchId) {
         super(context);
 
         requireNonNull(commandId, "Message id should be not null");

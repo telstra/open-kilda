@@ -123,7 +123,6 @@ public class GetRuleCommand extends FlowCommand {
                 .outVlan(getOutVlan(applyActions))
                 .ofVersion(message.getVersion().toString())
                 .flowId(flowId)
-                .success(true)
                 .build();
     }
 

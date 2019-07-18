@@ -54,7 +54,7 @@ public class RouterBolt extends AbstractBolt {
             log.debug("Received request {} with key {}", request, key);
             switch (request.getType()) {
                 case CREATE:
-                    emitWithContext(ROUTER_TO_FLOW_CREATE_HUB.name(), input, new Values(key, request.getPayload()));
+                    emitWithContext(ROUTER_TO_FLOW_CREATE_HUB.name(), input, new Values(key, request));
                     break;
                 default:
                     throw new UnsupportedOperationException(format("Flow operation %s is not supported",

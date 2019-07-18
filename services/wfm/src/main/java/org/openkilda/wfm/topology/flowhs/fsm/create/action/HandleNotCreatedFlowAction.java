@@ -15,8 +15,10 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
+import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
@@ -30,21 +32,25 @@ import org.squirrelframework.foundation.fsm.AnonymousAction;
 public class HandleNotCreatedFlowAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
     private final FlowRepository flowRepository;
+    private final FlowPathRepository flowPathRepository;
 
     public HandleNotCreatedFlowAction(PersistenceManager persistenceManager) {
         this.flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
     }
 
     @Override
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
         log.warn("Failed to create flow {}", stateMachine.getFlowId());
 
-        flowRepository.findById(stateMachine.getFlowId()).ifPresent(
-                flow -> {
-                    flow.setStatus(FlowStatus.DOWN);
+        flowRepository.updateStatus(stateMachine.getFlowId(), FlowStatus.DOWN);
+        flowPathRepository.updateStatus(stateMachine.getForwardPathId(), FlowPathStatus.INACTIVE);
+        flowPathRepository.updateStatus(stateMachine.getReversePathId(), FlowPathStatus.INACTIVE);
 
-                    flowRepository.createOrUpdate(flow);
-                });
+        if (stateMachine.getProtectedForwardPathId() != null && stateMachine.getProtectedReversePathId() != null) {
+            flowPathRepository.updateStatus(stateMachine.getProtectedForwardPathId(), FlowPathStatus.INACTIVE);
+            flowPathRepository.updateStatus(stateMachine.getProtectedReversePathId(), FlowPathStatus.INACTIVE);
+        }
 
         stateMachine.fire(Event.NEXT);
     }

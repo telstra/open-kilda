@@ -21,6 +21,7 @@ import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +36,8 @@ public class OnReceivedDeleteResponseAction extends OnReceivedInstallResponseAct
     }
 
     @Override
-    void handleResponse(FlowCreateFsm stateMachine, FlowResponse response) {
+    void handleResponse(FlowCreateFsm stateMachine, FlowCreateContext context) {
+        FlowResponse response = context.getSpeakerFlowResponse();
         UUID commandId = response.getCommandId();
         if (!stateMachine.getRemoveCommands().containsKey(commandId)) {
             log.info("Failed to find a delete rule command with id {}", commandId);

@@ -257,15 +257,14 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
 
     private RemoveRule buildRemoveIngressRule(CommandContext context, FlowPath flowPath, int inputPort, int inputVlanId,
                                               EncapsulationResources encapsulationResources) {
-        PathSegment ingressSegment = flowPath.getSegments().stream()
+        Integer outputPort = flowPath.getSegments().stream()
                 .filter(segment -> segment.getSrcSwitch().equals(flowPath.getSrcSwitch()))
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        format("PathSegment was not found for ingress flow rule, flowId: %s",
-                                flowPath.getFlow().getFlowId())));
+                .map(PathSegment::getSrcPort)
+                .orElse(null);
 
         DeleteRulesCriteria ingressCriteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort,
-                inputVlanId, 0, ingressSegment.getSrcPort(), encapsulationResources.getEncapsulationType(),
+                inputVlanId, 0, outputPort, encapsulationResources.getEncapsulationType(),
                 flowPath.getSrcSwitch().getSwitchId());
         UUID commandId = commandIdGenerator.generate();
         return RemoveRule.builder()
