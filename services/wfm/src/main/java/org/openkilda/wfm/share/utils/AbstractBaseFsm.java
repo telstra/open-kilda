@@ -28,7 +28,7 @@ public abstract class AbstractBaseFsm<T extends StateMachine<T, S, E, C>, S, E, 
     protected transient Logger log = makeLog();
 
     @Override
-    protected void afterTransitionCausedException(Object fromState, Object toState, Object event, Object context) {
+    protected void afterTransitionCausedException(S fromState, S toState, E event, C context) {
         Throwable exception = getLastException().getTargetException();
 
         if (exception == null) {

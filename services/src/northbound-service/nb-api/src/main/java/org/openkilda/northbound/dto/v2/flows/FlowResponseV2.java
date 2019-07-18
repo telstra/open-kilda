@@ -35,6 +35,7 @@ public class FlowResponseV2 {
     private FlowEndpointV2 destination;
     @NonNull
     private String status;
+    private PathStatus statusDetails;
 
     private long maximumBandwidth;
     private boolean ignoreBandwidth;
@@ -42,6 +43,12 @@ public class FlowResponseV2 {
     private String description;
     private Integer maxLatency;
     private Integer priority;
+
+    private String[] diverseWith;
+    private boolean pinned;
+    private boolean allocateProtectedPath;
+    private String encapsulationType;
+
     private String created;
     private String lastUpdated;
 }

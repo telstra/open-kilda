@@ -35,7 +35,7 @@ import java.util.UUID;
 @Getter
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-public class RemoveRule extends FlowRequest {
+public class RemoveRule extends SpeakerFlowRequest {
     @JsonProperty("cookie")
     private Cookie cookie;
 

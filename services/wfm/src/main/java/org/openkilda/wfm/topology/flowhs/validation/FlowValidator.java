@@ -19,12 +19,15 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.Flow;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -37,10 +40,13 @@ public class FlowValidator {
 
     private final FlowRepository flowRepository;
     private final SwitchRepository switchRepository;
+    private final IslRepository islRepository;
 
-    public FlowValidator(FlowRepository flowRepository, SwitchRepository switchRepository) {
+    public FlowValidator(FlowRepository flowRepository, SwitchRepository switchRepository,
+                         IslRepository islRepository) {
         this.flowRepository = flowRepository;
         this.switchRepository = switchRepository;
+        this.islRepository = islRepository;
     }
 
     /**
@@ -50,10 +56,16 @@ public class FlowValidator {
      * @throws InvalidFlowException is thrown if a violation is found.
      */
     public void validate(RequestedFlow flow) throws InvalidFlowException, UnavailableFlowEndpointException {
+        checkFlags(flow);
         checkBandwidth(flow);
+        checkFlowForIslConflicts(flow);
         checkFlowForEndpointConflicts(flow);
         checkOneSwitchFlowHasNoConflicts(flow);
-        checkSwitchesExists(flow);
+        checkSwitchesExistsAndActive(flow);
+
+        if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
+            checkDiverseFlow(flow);
+        }
     }
 
     @VisibleForTesting
@@ -64,6 +76,24 @@ public class FlowValidator {
                             flow.getFlowId(),
                             flow.getBandwidth()),
                     ErrorType.DATA_INVALID);
+        }
+    }
+
+    @VisibleForTesting
+    void checkFlowForIslConflicts(RequestedFlow requestedFlow) throws InvalidFlowException {
+        // Check the source
+        if (!islRepository.findByEndpoint(requestedFlow.getSrcSwitch(),
+                requestedFlow.getSrcPort()).isEmpty()) {
+            String errorMessage = format("The port %d on the switch '%s' is occupied by an ISL.",
+                    requestedFlow.getSrcPort(), requestedFlow.getSrcSwitch());
+            throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
+        }
+
+        // Check the destination
+        if (!islRepository.findByEndpoint(requestedFlow.getDestSwitch(), requestedFlow.getDestPort()).isEmpty()) {
+            String errorMessage = format("The port %d on the switch '%s' is occupied by an ISL.",
+                    requestedFlow.getDestPort(), requestedFlow.getDestSwitch());
+            throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
         }
     }
 
@@ -86,8 +116,7 @@ public class FlowValidator {
                 .filter(flow -> !flowId.equals(flow.getFlowId()))
                 .filter(flow -> (flow.getSrcSwitch().getSwitchId().equals(switchId)
                         && flow.getSrcPort() == portNo
-                        && (flow.getSrcVlan() == vlanId
-                        || flow.getSrcVlan() == 0 || vlanId == 0)))
+                        && (flow.getSrcVlan() == vlanId)))
                 .findAny();
         if (conflictOnSource.isPresent()) {
             Flow existingFlow = conflictOnSource.get();
@@ -109,8 +138,7 @@ public class FlowValidator {
                 .filter(flow -> !flowId.equals(flow.getFlowId()))
                 .filter(flow -> flow.getDestSwitch().getSwitchId().equals(switchId)
                         && flow.getDestPort() == portNo
-                        && (flow.getDestVlan() == vlanId
-                        || flow.getDestVlan() == 0 || vlanId == 0))
+                        && (flow.getDestVlan() == vlanId))
                 .findAny();
         if (conflictOnDest.isPresent()) {
             Flow existingFlow = conflictOnDest.get();
@@ -136,28 +164,34 @@ public class FlowValidator {
      * @throws UnavailableFlowEndpointException if switch not found.
      */
     @VisibleForTesting
-    void checkSwitchesExists(RequestedFlow flow) throws UnavailableFlowEndpointException {
+    void checkSwitchesExistsAndActive(RequestedFlow flow) throws UnavailableFlowEndpointException {
         final SwitchId sourceId = flow.getSrcSwitch();
         final SwitchId destinationId = flow.getDestSwitch();
 
-        boolean source;
-        boolean destination;
+        boolean sourceSwitchAvailable;
+        boolean destinationSwitchAvailable;
 
         if (Objects.equals(sourceId, destinationId)) {
-            source = destination = switchRepository.exists(sourceId);
+            Optional<Switch> sw = switchRepository.findById(sourceId);
+            sourceSwitchAvailable = destinationSwitchAvailable = sw.map(Switch::isActive)
+                    .orElse(false);
         } else {
-            source = switchRepository.exists(sourceId);
-            destination = switchRepository.exists(destinationId);
+            sourceSwitchAvailable = switchRepository.findById(sourceId)
+                    .map(Switch::isActive)
+                    .orElse(false);
+            destinationSwitchAvailable = switchRepository.findById(destinationId)
+                    .map(Switch::isActive)
+                    .orElse(false);
         }
 
-        if (!source && !destination) {
+        if (!sourceSwitchAvailable && !destinationSwitchAvailable) {
             throw new UnavailableFlowEndpointException(
                     String.format("Source switch %s and Destination switch %s are not connected to the controller",
                             sourceId, destinationId));
-        } else if (!source) {
+        } else if (!sourceSwitchAvailable) {
             throw new UnavailableFlowEndpointException(
                     String.format("Source switch %s is not connected to the controller", sourceId));
-        } else if (!destination) {
+        } else if (!destinationSwitchAvailable) {
             throw new UnavailableFlowEndpointException(
                     String.format("Destination switch %s is not connected to the controller", destinationId));
         }
@@ -174,6 +208,37 @@ public class FlowValidator {
 
             throw new InvalidFlowException(
                     "It is not allowed to create one-switch flow for the same ports and vlans", ErrorType.DATA_INVALID);
+        }
+    }
+
+    @VisibleForTesting
+    void checkFlags(RequestedFlow flow) throws InvalidFlowException  {
+        if (flow.isPinned() && flow.isAllocateProtectedPath()) {
+            throw new InvalidFlowException("Flow flags are not valid, unable to process pinned protected flow",
+                    ErrorType.DATA_INVALID);
+        }
+
+        if (flow.isAllocateProtectedPath() && flow.getSrcSwitch().equals(flow.getDestSwitch())) {
+            throw new InvalidFlowException("Couldn't setup protected path for one-switch flow",
+                    ErrorType.PARAMETERS_INVALID);
+        }
+    }
+
+    @VisibleForTesting
+    void checkDiverseFlow(RequestedFlow targetFlow) throws InvalidFlowException {
+        if (targetFlow.getSrcSwitch().equals(targetFlow.getDestSwitch())) {
+            throw new InvalidFlowException("Couldn't add one-switch flow into diverse group",
+                    ErrorType.PARAMETERS_INVALID);
+        }
+
+        Flow diverseFlow = flowRepository.findById(targetFlow.getDiverseFlowId())
+                .orElseThrow(() ->
+                        new InvalidFlowException(format("Failed to find diverse flow id %s",
+                                targetFlow.getDiverseFlowId()), ErrorType.PARAMETERS_INVALID));
+
+        if (diverseFlow.isOneSwitchFlow()) {
+            throw new InvalidFlowException("Couldn't create diverse group with one-switch flow",
+                    ErrorType.PARAMETERS_INVALID);
         }
     }
 }

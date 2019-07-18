@@ -23,9 +23,10 @@ import org.openkilda.model.FeatureToggles;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.action.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -41,8 +42,7 @@ import java.util.Optional;
 
 @Slf4j
 public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-
-    private static final String ERROR = "Could not create flow";
+    private static final String ERROR_MESSAGE = "Could not create flow";
 
     private final FlowValidator flowValidator;
     private final FlowRepository flowRepository;
@@ -51,8 +51,9 @@ public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, 
     public FlowValidateAction(PersistenceManager persistenceManager) {
         FlowRepository flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
+        IslRepository islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
 
-        this.flowValidator = new FlowValidator(flowRepository, switchRepository);
+        this.flowValidator = new FlowValidator(flowRepository, switchRepository, islRepository);
         this.flowRepository = flowRepository;
         this.featureTogglesRepository = persistenceManager.getRepositoryFactory().createFeatureTogglesRepository();
     }
@@ -66,13 +67,14 @@ public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, 
 
         if (!isOperationAllowed) {
             log.warn("Flow create feature is disabled");
-            throw new FlowProcessingException(ErrorType.NOT_ALLOWED, ERROR, "Flow create feature is disabled");
+            throw new FlowProcessingException(ErrorType.NOT_ALLOWED,
+                    getGenericErrorMessage(), "Flow create feature is disabled");
         }
 
-        RequestedFlow request = context.getFlowDetails();
+        RequestedFlow request = context.getTargetFlow();
         if (flowRepository.exists(request.getFlowId())) {
             log.debug("Cannot create flow: flow id {} already in use", request.getFlowId());
-            throw new FlowProcessingException(ErrorType.ALREADY_EXISTS, ERROR,
+            throw new FlowProcessingException(ErrorType.ALREADY_EXISTS, getGenericErrorMessage(),
                     format("Flow %s already exists", request.getFlowId()));
         }
 
@@ -80,14 +82,16 @@ public class FlowValidateAction extends NbTrackableAction<FlowCreateFsm, State, 
             flowValidator.validate(request);
         } catch (InvalidFlowException e) {
             log.debug("Flow validation error: {}", e.getMessage());
-            throw new FlowProcessingException(e.getType(), ERROR, e.getMessage());
+            throw new FlowProcessingException(e.getType(), getGenericErrorMessage(), e.getMessage());
         } catch (UnavailableFlowEndpointException e) {
             log.debug("Flow validation error: {}", e.getMessage());
-            throw new FlowProcessingException(ErrorType.DATA_INVALID, ERROR, e.getMessage());
+            throw new FlowProcessingException(ErrorType.DATA_INVALID, getGenericErrorMessage(), e.getMessage());
         }
-
-        stateMachine.fireNext(context);
-
         return Optional.empty();
+    }
+
+    @Override
+    protected String getGenericErrorMessage() {
+        return ERROR_MESSAGE;
     }
 }

@@ -124,7 +124,6 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
             .meterId(1)
             .transitEncapsulationId(1024)
             .state(FLOW_STATUS)
-            .flowPath(path)
             .build();
 
     @Test
@@ -302,7 +301,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
 
     @Test
     public void flowGetBidirectionalResponseTest() throws IOException, ClassNotFoundException {
-        FlowDto flow = FlowDto.builder().flowPath(path).build();
+        FlowDto flow = FlowDto.builder().build();
         BidirectionalFlowDto bidirectionalFlow = BidirectionalFlowDto.builder().forward(flow).reverse(flow).build();
         FlowReadResponse data = new FlowReadResponse(bidirectionalFlow, Collections.singletonList(FLOW_NAME));
         System.out.println(data);
@@ -321,8 +320,6 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
         System.out.println(resultData);
         assertEquals(data, resultData);
         assertEquals(data.hashCode(), resultData.hashCode());
-        assertEquals(path, resultData.getPayload().getForward().getFlowPath());
-        assertEquals(path, resultData.getPayload().getReverse().getFlowPath());
     }
 
     @Test

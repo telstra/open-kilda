@@ -24,6 +24,7 @@ import org.openkilda.floodlight.command.meter.InstallMeterCommand;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.service.FeatureDetectorService;
+import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.Cookie;
@@ -132,7 +133,8 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
         // build FLOW_MOD command with meter
         OFFlowAdd.Builder builder = prepareFlowModBuilder(ofFactory)
                 .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
-                .setMatch(match);
+                .setMatch(match)
+                .setPriority(inputVlanId == 0 ? SwitchManager.DEFAULT_FLOW_PRIORITY : FLOW_PRIORITY);
 
         if (supportedFeatures.contains(Feature.RESET_COUNTS_FLAG)) {
             builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));

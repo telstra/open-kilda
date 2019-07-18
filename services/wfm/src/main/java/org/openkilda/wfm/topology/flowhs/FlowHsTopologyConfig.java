@@ -37,19 +37,27 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getFlowHsSpeakerTopic();
     }
 
-    @Key("create.hub.timeout.seconds")
+    @Key("flow.create.hub.timeout.seconds")
     @Default("30")
     int getCreateHubTimeoutSeconds();
 
-    @Key("create.speaker.timeout.seconds")
+    @Key("flow.create.speaker.timeout.seconds")
     @Default("10")
     int getCreateSpeakerTimeoutSeconds();
 
-    @Key("reroute.hub.timeout.seconds")
+    @Key("flow.create.hub.retries")
+    @Default("3")
+    int getCreateHubRetries();
+
+    @Key("flow.create.hub.speaker.command.retries")
+    @Default("3")
+    int getCreateHubSpeakerCommandRetries();
+
+    @Key("flow.reroute.hub.timeout.seconds")
     @Default("30")
     int getRerouteHubTimeoutSeconds();
 
-    @Key("reroute.speaker.timeout.seconds")
+    @Key("flow.reroute.speaker.timeout.seconds")
     @Default("10")
     int getRerouteSpeakerTimeoutSeconds();
 }

@@ -13,22 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm.create;
+package org.openkilda.wfm.topology.flowhs.fsm.common;
 
 import org.openkilda.floodlight.flow.response.FlowResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.common.FlowContext;
-import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
-import lombok.Builder;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 @Data
-public class FlowCreateContext extends FlowContext {
-    private RequestedFlow targetFlow;
-
-    @Builder
-    public FlowCreateContext(FlowResponse speakerFlowResponse, RequestedFlow targetFlow) {
-        super(speakerFlowResponse);
-        this.targetFlow = targetFlow;
-    }
+@AllArgsConstructor
+public abstract class FlowContext {
+    private FlowResponse speakerFlowResponse;
 }

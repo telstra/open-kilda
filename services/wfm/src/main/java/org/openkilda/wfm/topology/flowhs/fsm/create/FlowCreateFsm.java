@@ -22,12 +22,14 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.PathId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableStateMachine;
+import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableStateMachine;
+import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.CompleteFlowCreateAction;
@@ -35,26 +37,33 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.action.DumpIngressRulesActio
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.DumpNonIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.FlowValidateAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.HandleNotCreatedFlowAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.HandleNotDeletedRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.InstallNonIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedDeleteResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedInstallResponseAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesAllocateAction;
-import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesDeallocateAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.action.OnReceivedResponseAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.action.ProcessNotRevertedResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesAllocationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.create.action.ResourcesDeallocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.RollbackInstalledRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.ValidateIngressRuleAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.action.ValidateNonIngressRuleAction;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -64,181 +73,61 @@ import java.util.UUID;
 @Slf4j
 public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, State, Event, FlowCreateContext> {
 
-    private String flowId;
-    private FlowCreateHubCarrier carrier;
-    private FlowResources flowResources;
+    private final String flowId;
+    private final FlowCreateHubCarrier carrier;
 
-    private Set<UUID> pendingCommands = new HashSet<>();
+    private Map<UUID, SpeakerCommandObserver> pendingCommands = new HashMap<>();
+    private Set<UUID> failedCommands = new HashSet<>();
+
+    private List<FlowResources> flowResources = new ArrayList<>();
+    private PathId forwardPathId;
+    private PathId reversePathId;
+    private PathId protectedForwardPathId;
+    private PathId protectedReversePathId;
 
     private Map<UUID, InstallIngressRule> ingressCommands = new HashMap<>();
     private Map<UUID, InstallTransitRule> nonIngressCommands = new HashMap<>();
     private Map<UUID, RemoveRule> removeCommands = new HashMap<>();
 
-    private FlowCreateFsm(CommandContext commandContext, FlowCreateHubCarrier carrier) {
+    // The amount of flow create operation retries left: that means how many retries may be executed.
+    // NB: it differs from command execution retries amount.
+    private int remainRetries;
+
+    private FlowCreateFsm(String flowId, CommandContext commandContext, FlowCreateHubCarrier carrier, Config config) {
         super(commandContext);
+        this.flowId = flowId;
         this.carrier = carrier;
+        this.remainRetries = config.getFlowCreationRetriesLimit();
+    }
+
+    public boolean isPendingCommand(UUID commandId) {
+        return pendingCommands.containsKey(commandId);
     }
 
     /**
-     * Returns builder for flow create fsm.
+     * Initiates a retry if limit is not exceeded.
+     * @return true if retry is allowed.
      */
-    private static StateMachineBuilder<FlowCreateFsm, State, Event, FlowCreateContext> builder(
-            PersistenceManager persistenceManager, FlowResourcesManager resourcesManager, PathComputer pathComputer) {
-        StateMachineBuilder<FlowCreateFsm, State, Event, FlowCreateContext> builder = StateMachineBuilderFactory.create(
-                FlowCreateFsm.class, State.class, Event.class, FlowCreateContext.class,
-                CommandContext.class, FlowCreateHubCarrier.class);
+    public boolean retryIfAllowed() {
+        if (remainRetries-- > 0) {
+            log.info("About to retry flow create. Retries left: {}", remainRetries);
+            fire(Event.RETRY);
+            return true;
+        } else {
+            log.debug("Retry of flow creation is not possible: limit is exceeded");
+            fire(Event.ERROR);
+            return false;
+        }
+    }
 
-        // validate the flow
-        builder.transition()
-                .from(State.INITIALIZED)
-                .to(State.FLOW_VALIDATED)
-                .on(Event.NEXT)
-                .perform(new FlowValidateAction(persistenceManager));
-
-        // allocate flow resources
-        builder.transition()
-                .from(State.FLOW_VALIDATED)
-                .to(State.RESOURCES_ALLOCATED)
-                .on(Event.NEXT)
-                .perform(new ResourcesAllocateAction(pathComputer, persistenceManager, resourcesManager));
-
-        // skip installation on transit and egress rules for one switch flow
-        builder.externalTransition()
-                .from(State.RESOURCES_ALLOCATED)
-                .to(State.INSTALLING_INGRESS_RULES)
-                .on(Event.SKIP_NON_INGRESS_RULES_INSTALL)
-                .perform(new InstallIngressRulesAction(persistenceManager, resourcesManager));
-
-        // install and validate transit and egress rules
-        builder.externalTransition()
-                .from(State.RESOURCES_ALLOCATED)
-                .to(State.INSTALLING_NON_INGRESS_RULES)
-                .on(Event.NEXT)
-                .perform(new InstallNonIngressRulesAction(persistenceManager, resourcesManager));
-
-        builder.internalTransition()
-                .within(State.INSTALLING_NON_INGRESS_RULES)
-                .on(Event.COMMAND_EXECUTED)
-                .perform(new OnReceivedInstallResponseAction(persistenceManager));
-
-        builder.transition()
-                .from(State.INSTALLING_NON_INGRESS_RULES)
-                .to(State.VALIDATING_NON_INGRESS_RULES)
-                .on(Event.NEXT)
-                .perform(new DumpNonIngressRulesAction());
-        builder.internalTransition()
-                .within(State.VALIDATING_NON_INGRESS_RULES)
-                .on(Event.COMMAND_EXECUTED)
-                .perform(new ValidateNonIngressRuleAction(persistenceManager));
-
-        // install and validate ingress rules
-        builder.transitions()
-                .from(State.VALIDATING_NON_INGRESS_RULES)
-                .toAmong(State.INSTALLING_INGRESS_RULES)
-                .onEach(Event.NEXT)
-                .perform(new InstallIngressRulesAction(persistenceManager, resourcesManager));
-
-        builder.internalTransition()
-                .within(State.INSTALLING_INGRESS_RULES)
-                .on(Event.COMMAND_EXECUTED)
-                .perform(new OnReceivedInstallResponseAction(persistenceManager));
-        builder.transition()
-                .from(State.INSTALLING_INGRESS_RULES)
-                .to(State.VALIDATING_INGRESS_RULES)
-                .on(Event.NEXT)
-                .perform(new DumpIngressRulesAction(persistenceManager));
-
-        builder.internalTransition()
-                .within(State.VALIDATING_INGRESS_RULES)
-                .on(Event.COMMAND_EXECUTED)
-                .perform(new ValidateIngressRuleAction(persistenceManager));
-        builder.transition()
-                .from(State.VALIDATING_INGRESS_RULES)
-                .to(State.FINISHED)
-                .on(Event.NEXT)
-                .perform(new CompleteFlowCreateAction(persistenceManager));
-
-        // error during validation or resource allocation
-        builder.transitions()
-                .from(State.FLOW_VALIDATED)
-                .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
-                .onEach(Event.TIMEOUT, Event.ERROR);
-
-        builder.transitions()
-                .from(State.RESOURCES_ALLOCATED)
-                .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
-                .onEach(Event.TIMEOUT, Event.ERROR);
-
-        // rollback in case of error
-        builder.transitions()
-                .from(State.INSTALLING_NON_INGRESS_RULES)
-                .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
-                .onEach(Event.TIMEOUT, Event.ERROR)
-                .perform(new RollbackInstalledRulesAction(persistenceManager, resourcesManager));
-
-        builder.transitions()
-                .from(State.VALIDATING_NON_INGRESS_RULES)
-                .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
-                .onEach(Event.TIMEOUT, Event.ERROR)
-                .perform(new RollbackInstalledRulesAction(persistenceManager, resourcesManager));
-
-        builder.transitions()
-                .from(State.INSTALLING_INGRESS_RULES)
-                .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
-                .onEach(Event.TIMEOUT, Event.ERROR)
-                .perform(new RollbackInstalledRulesAction(persistenceManager, resourcesManager));
-
-        builder.transitions()
-                .from(State.VALIDATING_INGRESS_RULES)
-                .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
-                .onEach(Event.TIMEOUT, Event.ERROR)
-                .perform(new RollbackInstalledRulesAction(persistenceManager, resourcesManager));
-
-        // rules deletion
-        builder.transitions()
-                .from(State.REMOVING_RULES)
-                .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
-                .onEach(Event.COMMAND_EXECUTED, Event.ERROR)
-                .perform(new OnReceivedDeleteResponseAction(persistenceManager));
-        builder.transition()
-                .from(State.REMOVING_RULES)
-                .to(State.FINISHED_WITH_ERROR)
-                .on(Event.NEXT)
-                .perform(new HandleNotCreatedFlowAction(persistenceManager));
-        builder.transitions()
-                .from(State.REMOVING_RULES)
-                .toAmong(State.NON_DELETED_RULES_STORED, State.NON_DELETED_RULES_STORED)
-                .onEach(Event.TIMEOUT, Event.ERROR)
-                .perform(new HandleNotDeletedRulesAction());
-
-        builder.transition()
-                .from(State.NON_DELETED_RULES_STORED)
-                .to(State.REVERTING)
-                .on(Event.NEXT);
-
-        builder.transition()
-                .from(State.REVERTING)
-                .to(State.RESOURCES_DE_ALLOCATED)
-                .on(Event.NEXT)
-                .perform(new ResourcesDeallocateAction(resourcesManager, persistenceManager));
-
-        builder.transition()
-                .from(State.RESOURCES_DE_ALLOCATED)
-                .to(State.REVERTING)
-                .on(Event.ERROR);
-
-        builder.transition()
-                .from(State.RESOURCES_DE_ALLOCATED)
-                .toFinal(State.FINISHED_WITH_ERROR)
-                .on(Event.NEXT)
-                .perform(new HandleNotCreatedFlowAction(persistenceManager));
-
-        return builder;
+    protected void retryIfAllowed(State from, State to, Event event, FlowCreateContext context) {
+        retryIfAllowed();
     }
 
     @Override
     protected void afterTransitionCausedException(State fromState, State toState, Event event,
                                                   FlowCreateContext context) {
+        super.afterTransitionCausedException(fromState, toState, event, context);
         if (fromState == State.INITIALIZED || fromState == State.FLOW_VALIDATED) {
             ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Could not create flow",
                     getLastException().getMessage());
@@ -248,7 +137,6 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         }
 
         fireError();
-        super.afterTransitionCausedException(fromState, toState, event, context);
     }
 
     @Override
@@ -266,11 +154,10 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         carrier.sendNorthboundResponse(message);
     }
 
-    public static FlowCreateFsm newInstance(CommandContext commandContext, FlowCreateHubCarrier carrier,
-                                            PersistenceManager persistenceManager, FlowResourcesManager resManager,
-                                            PathComputer pathComputer) {
-        return builder(persistenceManager, resManager, pathComputer)
-                .newStateMachine(State.INITIALIZED, commandContext, carrier);
+    public static FlowCreateFsm.Factory factory(PersistenceManager persistenceManager, FlowCreateHubCarrier carrier,
+                                                Config config, FlowResourcesManager resourcesManager,
+                                                PathComputer pathComputer) {
+        return new Factory(persistenceManager, carrier, config, resourcesManager, pathComputer);
     }
 
     @Getter
@@ -288,7 +175,8 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         VALIDATING_REMOVED_RULES(true),
         REVERTING(false),
         RESOURCES_DE_ALLOCATED(false),
-        NON_DELETED_RULES_STORED(false),
+
+        _FAILED(false),
         FINISHED_WITH_ERROR(true);
 
         boolean blocked;
@@ -300,10 +188,223 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
 
     public enum Event {
         NEXT,
-        COMMAND_EXECUTED,
+        RESPONSE_RECEIVED,
+        RULE_RECEIVED,
         SKIP_NON_INGRESS_RULES_INSTALL,
         TIMEOUT,
         PATH_NOT_FOUND,
+        RETRY,
         ERROR
+    }
+
+    public static class Factory {
+        private final StateMachineBuilder<FlowCreateFsm, State, Event, FlowCreateContext> builder;
+        private final FlowCreateHubCarrier carrier;
+        private final Config config;
+
+        Factory(PersistenceManager persistenceManager, FlowCreateHubCarrier carrier, Config config,
+                       FlowResourcesManager resourcesManager, PathComputer pathComputer) {
+            this.builder = StateMachineBuilderFactory.create(
+                    FlowCreateFsm.class, State.class, Event.class, FlowCreateContext.class,
+                    String.class, CommandContext.class, FlowCreateHubCarrier.class, Config.class);
+            this.carrier = carrier;
+            this.config = config;
+
+            SpeakerCommandFsm.Builder commandExecutorFsmBuilder =
+                    SpeakerCommandFsm.getBuilder(carrier, config.getSpeakerCommandRetriesLimit());
+
+            // validate the flow
+            builder.transition()
+                    .from(State.INITIALIZED)
+                    .to(State.FLOW_VALIDATED)
+                    .on(Event.NEXT)
+                    .perform(new FlowValidateAction(persistenceManager));
+
+            // allocate flow resources
+            builder.transition()
+                    .from(State.FLOW_VALIDATED)
+                    .to(State.RESOURCES_ALLOCATED)
+                    .on(Event.NEXT)
+                    .perform(new ResourcesAllocationAction(pathComputer, persistenceManager, resourcesManager));
+
+            // there is possibility that during resources allocation we have to revalidate flow again.
+            // e.g. if we try to simultaneously create two flows with the same flow id then both threads can go
+            // to resource allocation state at the same time
+            builder.transition()
+                    .from(State.RESOURCES_ALLOCATED)
+                    .to(State.INITIALIZED)
+                    .on(Event.RETRY);
+
+            // skip installation on transit and egress rules for one switch flow
+            builder.externalTransition()
+                    .from(State.RESOURCES_ALLOCATED)
+                    .to(State.INSTALLING_INGRESS_RULES)
+                    .on(Event.SKIP_NON_INGRESS_RULES_INSTALL)
+                    .perform(new InstallIngressRulesAction(commandExecutorFsmBuilder, persistenceManager,
+                            resourcesManager));
+
+            // install and validate transit and egress rules
+            builder.externalTransition()
+                    .from(State.RESOURCES_ALLOCATED)
+                    .to(State.INSTALLING_NON_INGRESS_RULES)
+                    .on(Event.NEXT)
+                    .perform(new InstallNonIngressRulesAction(commandExecutorFsmBuilder, persistenceManager,
+                            resourcesManager));
+
+            builder.internalTransition()
+                    .within(State.INSTALLING_NON_INGRESS_RULES)
+                    .on(Event.RESPONSE_RECEIVED)
+                    .perform(new OnReceivedInstallResponseAction(persistenceManager));
+            builder.transition()
+                    .from(State.INSTALLING_NON_INGRESS_RULES)
+                    .to(State.VALIDATING_NON_INGRESS_RULES)
+                    .on(Event.NEXT)
+                    .perform(new DumpNonIngressRulesAction(commandExecutorFsmBuilder));
+
+            builder.internalTransition()
+                    .within(State.VALIDATING_NON_INGRESS_RULES)
+                    .on(Event.RESPONSE_RECEIVED)
+                    .perform(new OnReceivedResponseAction(persistenceManager));
+            builder.internalTransition()
+                    .within(State.VALIDATING_NON_INGRESS_RULES)
+                    .on(Event.RULE_RECEIVED)
+                    .perform(new ValidateNonIngressRuleAction(persistenceManager));
+
+            // install and validate ingress rules
+            builder.transitions()
+                    .from(State.VALIDATING_NON_INGRESS_RULES)
+                    .toAmong(State.INSTALLING_INGRESS_RULES)
+                    .onEach(Event.NEXT)
+                    .perform(new InstallIngressRulesAction(commandExecutorFsmBuilder, persistenceManager,
+                            resourcesManager));
+
+            builder.internalTransition()
+                    .within(State.INSTALLING_INGRESS_RULES)
+                    .on(Event.RESPONSE_RECEIVED)
+                    .perform(new OnReceivedInstallResponseAction(persistenceManager));
+            builder.transition()
+                    .from(State.INSTALLING_INGRESS_RULES)
+                    .to(State.VALIDATING_INGRESS_RULES)
+                    .on(Event.NEXT)
+                    .perform(new DumpIngressRulesAction(commandExecutorFsmBuilder));
+
+            builder.internalTransition()
+                    .within(State.VALIDATING_INGRESS_RULES)
+                    .on(Event.RESPONSE_RECEIVED)
+                    .perform(new OnReceivedResponseAction(persistenceManager));
+            builder.internalTransition()
+                    .within(State.VALIDATING_INGRESS_RULES)
+                    .on(Event.RULE_RECEIVED)
+                    .perform(new ValidateIngressRuleAction(persistenceManager));
+
+            builder.transition()
+                    .from(State.VALIDATING_INGRESS_RULES)
+                    .to(State.FINISHED)
+                    .on(Event.NEXT)
+                    .perform(new CompleteFlowCreateAction(persistenceManager));
+
+            // error during validation or resource allocation
+            builder.transitions()
+                    .from(State.FLOW_VALIDATED)
+                    .toAmong(State.FINISHED_WITH_ERROR, State.FINISHED_WITH_ERROR)
+                    .onEach(Event.TIMEOUT, Event.ERROR);
+
+            builder.transitions()
+                    .from(State.RESOURCES_ALLOCATED)
+                    .toAmong(State.REVERTING, State.REVERTING)
+                    .onEach(Event.TIMEOUT, Event.ERROR);
+
+            // rollback in case of error
+            builder.transitions()
+                    .from(State.INSTALLING_NON_INGRESS_RULES)
+                    .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
+                    .onEach(Event.TIMEOUT, Event.ERROR)
+                    .perform(new RollbackInstalledRulesAction(commandExecutorFsmBuilder, persistenceManager,
+                            resourcesManager));
+
+            builder.transitions()
+                    .from(State.VALIDATING_NON_INGRESS_RULES)
+                    .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
+                    .onEach(Event.TIMEOUT, Event.ERROR)
+                    .perform(new RollbackInstalledRulesAction(commandExecutorFsmBuilder, persistenceManager,
+                            resourcesManager));
+
+            builder.transitions()
+                    .from(State.INSTALLING_INGRESS_RULES)
+                    .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
+                    .onEach(Event.TIMEOUT, Event.ERROR)
+                    .perform(new RollbackInstalledRulesAction(commandExecutorFsmBuilder, persistenceManager,
+                            resourcesManager));
+
+            builder.transitions()
+                    .from(State.VALIDATING_INGRESS_RULES)
+                    .toAmong(State.REMOVING_RULES, State.REMOVING_RULES)
+                    .onEach(Event.TIMEOUT, Event.ERROR)
+                    .perform(new RollbackInstalledRulesAction(commandExecutorFsmBuilder, persistenceManager,
+                            resourcesManager));
+
+            // rules deletion
+            builder.transitions()
+                    .from(State.REMOVING_RULES)
+                    .toAmong(State.REMOVING_RULES)
+                    .onEach(Event.RESPONSE_RECEIVED)
+                    .perform(new OnReceivedDeleteResponseAction(persistenceManager));
+            builder.transitions()
+                    .from(State.REMOVING_RULES)
+                    .toAmong(State.REVERTING, State.REVERTING)
+                    .onEach(Event.TIMEOUT, Event.ERROR);
+            builder.transition()
+                    .from(State.REMOVING_RULES)
+                    .to(State.REVERTING)
+                    .on(Event.NEXT);
+
+            // resources deallocation
+            builder.transition()
+                    .from(State.REVERTING)
+                    .to(State.RESOURCES_DE_ALLOCATED)
+                    .on(Event.NEXT)
+                    .perform(new ResourcesDeallocationAction(resourcesManager, persistenceManager));
+
+            builder.transition()
+                    .from(State.RESOURCES_DE_ALLOCATED)
+                    .to(State._FAILED)
+                    .on(Event.ERROR)
+                    .perform(new ProcessNotRevertedResourcesAction());
+
+            builder.transition()
+                    .from(State.RESOURCES_DE_ALLOCATED)
+                    .to(State._FAILED)
+                    .on(Event.NEXT);
+
+            builder.onEntry(State._FAILED)
+                    .callMethod("retryIfAllowed");
+
+            builder.transition()
+                    .from(State._FAILED)
+                    .toFinal(State.FINISHED_WITH_ERROR)
+                    .on(Event.ERROR)
+                    .perform(new HandleNotCreatedFlowAction(persistenceManager));
+
+            builder.transition()
+                    .from(State._FAILED)
+                    .to(State.FLOW_VALIDATED)
+                    .on(Event.RETRY);
+
+            builder.defineFinalState(State.FINISHED);
+            builder.defineFinalState(State.FINISHED_WITH_ERROR);
+        }
+
+        public FlowCreateFsm produce(String flowId, CommandContext commandContext) {
+            return builder.newStateMachine(State.INITIALIZED, flowId, commandContext, carrier, config);
+        }
+    }
+
+    @Value
+    @Builder
+    public static class Config implements Serializable {
+        @Builder.Default
+        int flowCreationRetriesLimit = 10;
+        @Builder.Default
+        int speakerCommandRetriesLimit = 3;
     }
 }

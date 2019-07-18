@@ -34,8 +34,15 @@ public class RequestedFlow {
     private int destPort;
     private int destVlan;
 
+    private Integer priority;
+    private boolean pinned;
+    private boolean allocateProtectedPath;
+    private String diverseFlowId;
+
+    private String description;
     private long bandwidth;
     private boolean ignoreBandwidth;
     private boolean periodicPings;
+    private Integer maxLatency;
     private FlowEncapsulationType flowEncapsulationType;
 }

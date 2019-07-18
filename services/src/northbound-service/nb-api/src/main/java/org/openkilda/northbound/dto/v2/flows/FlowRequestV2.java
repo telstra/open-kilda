@@ -20,14 +20,18 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NonNull;
 
 @Data
 @Builder
 @AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class FlowRequestV2 {
+    @NonNull
     private String flowId;
+    @NonNull
     private FlowEndpointV2 source;
+    @NonNull
     private FlowEndpointV2 destination;
 
     private long maximumBandwidth;
@@ -36,4 +40,9 @@ public class FlowRequestV2 {
     private String description;
     private Integer maxLatency;
     private Integer priority;
+
+    private String diverseFlowId;
+    private boolean pinned;
+    private boolean allocateProtectedPath;
+    private String encapsulationType;
 }
