@@ -444,7 +444,6 @@ public class FlowServiceTest {
                 .srcPort(FLOW_A_SEGMENT_A_SRC_PORT)
                 .destSwitch(switchB)
                 .destPort(FLOW_A_SEGMENT_A_DST_PORT)
-                .path(forwardFlowPath)
                 .build();
 
         PathSegment forwardSegmentB = PathSegment.builder()
@@ -452,7 +451,6 @@ public class FlowServiceTest {
                 .srcPort(FLOW_A_SEGMENT_B_SRC_PORT)
                 .destSwitch(switchC)
                 .destPort(FLOW_A_SEGMENT_B_DST_PORT)
-                .path(forwardFlowPath)
                 .build();
         forwardFlowPath.setSegments(Lists.newArrayList(forwardSegmentA, forwardSegmentB));
 
@@ -475,7 +473,6 @@ public class FlowServiceTest {
                 .srcPort(FLOW_A_SEGMENT_A_SRC_PORT_PROTECTED)
                 .destSwitch(switchE)
                 .destPort(FLOW_A_SEGMENT_A_DST_PORT_PROTECTED)
-                .path(forwardProtectedFlowPath)
                 .build();
 
         PathSegment forwardProtectedSegmentB = PathSegment.builder()
@@ -483,7 +480,6 @@ public class FlowServiceTest {
                 .srcPort(FLOW_A_SEGMENT_B_SRC_PORT_PROTECTED)
                 .destSwitch(switchC)
                 .destPort(FLOW_A_SEGMENT_B_DST_PORT_PROTECTED)
-                .path(forwardProtectedFlowPath)
                 .build();
         forwardProtectedFlowPath.setSegments(Lists.newArrayList(forwardProtectedSegmentA, forwardProtectedSegmentB));
 
@@ -505,7 +501,6 @@ public class FlowServiceTest {
                 .srcPort(FLOW_A_SEGMENT_B_DST_PORT)
                 .destSwitch(switchB)
                 .destPort(FLOW_A_SEGMENT_B_SRC_PORT)
-                .path(reverseFlowPath)
                 .build();
 
         PathSegment reverseSegmentB = PathSegment.builder()
@@ -513,7 +508,6 @@ public class FlowServiceTest {
                 .srcPort(FLOW_A_SEGMENT_A_DST_PORT)
                 .destSwitch(switchA)
                 .destPort(FLOW_A_SEGMENT_A_SRC_PORT)
-                .path(reverseFlowPath)
                 .build();
         reverseFlowPath.setSegments(Lists.newArrayList(reverseSegmentA, reverseSegmentB));
 
@@ -535,7 +529,6 @@ public class FlowServiceTest {
                 .srcPort(FLOW_A_SEGMENT_B_DST_PORT_PROTECTED)
                 .destSwitch(switchE)
                 .destPort(FLOW_A_SEGMENT_B_SRC_PORT_PROTECTED)
-                .path(reverseProtectedFlowPath)
                 .build();
 
         PathSegment reverseProtectedSegmentB = PathSegment.builder()
@@ -543,7 +536,6 @@ public class FlowServiceTest {
                 .srcPort(FLOW_A_SEGMENT_A_DST_PORT_PROTECTED)
                 .destSwitch(switchA)
                 .destPort(FLOW_A_SEGMENT_A_SRC_PORT_PROTECTED)
-                .path(reverseProtectedFlowPath)
                 .build();
         reverseProtectedFlowPath.setSegments(Lists.newArrayList(reverseProtectedSegmentA, reverseProtectedSegmentB));
 
