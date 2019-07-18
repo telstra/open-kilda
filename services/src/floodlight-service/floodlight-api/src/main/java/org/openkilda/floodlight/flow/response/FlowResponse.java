@@ -18,7 +18,7 @@ package org.openkilda.floodlight.flow.response;
 import static org.openkilda.messaging.Utils.FLOW_ID;
 
 import org.openkilda.floodlight.FloodlightResponse;
-import org.openkilda.floodlight.flow.request.FlowRequest;
+import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
@@ -63,7 +63,7 @@ public class FlowResponse extends FloodlightResponse {
         this.success = success;
     }
 
-    public FlowResponse(FlowRequest request, boolean success) {
+    public FlowResponse(SpeakerFlowRequest request, boolean success) {
         super(request.getMessageContext());
 
         this.commandId = request.getCommandId();

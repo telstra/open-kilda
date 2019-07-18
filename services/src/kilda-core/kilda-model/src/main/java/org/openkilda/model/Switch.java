@@ -131,4 +131,8 @@ public class Switch implements Serializable {
                 || hardwareDescription != null
                 && E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(hardwareDescription).matches();
     }
+
+    public boolean isActive() {
+        return status == SwitchStatus.ACTIVE;
+    }
 }

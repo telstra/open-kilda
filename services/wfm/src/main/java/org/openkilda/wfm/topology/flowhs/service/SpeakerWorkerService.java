@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
+import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.floodlight.flow.response.FlowResponse;
@@ -30,7 +30,7 @@ import java.util.Map;
 public class SpeakerWorkerService {
     private final SpeakerCommandCarrier carrier;
 
-    private final Map<String, FlowRequest> keyToRequest = new HashMap<>();
+    private final Map<String, SpeakerFlowRequest> keyToRequest = new HashMap<>();
 
     public SpeakerWorkerService(SpeakerCommandCarrier carrier) {
         this.carrier = carrier;
@@ -41,7 +41,7 @@ public class SpeakerWorkerService {
      * @param key unique operation's key.
      * @param command command to be executed.
      */
-    public void sendCommand(String key, FlowRequest command) throws PipelineException {
+    public void sendCommand(String key, SpeakerFlowRequest command) throws PipelineException {
         log.debug("Got a request from hub bolt {}", command);
         keyToRequest.put(key, command);
         carrier.sendCommand(key, command);
@@ -55,7 +55,7 @@ public class SpeakerWorkerService {
     public void handleResponse(String key, FlowResponse response)
             throws PipelineException {
         log.debug("Got a response from speaker {}", response);
-        FlowRequest pendingRequest = keyToRequest.remove(key);
+        SpeakerFlowRequest pendingRequest = keyToRequest.remove(key);
         if (pendingRequest != null) {
             if (pendingRequest.getCommandId().equals(response.getCommandId())) {
                 carrier.sendResponse(key, response);
@@ -70,7 +70,7 @@ public class SpeakerWorkerService {
      * @param key operation identifier.
      */
     public void handleTimeout(String key) throws PipelineException {
-        FlowRequest failedRequest = keyToRequest.remove(key);
+        SpeakerFlowRequest failedRequest = keyToRequest.remove(key);
 
         FlowResponse response = FlowErrorResponse.errorBuilder()
                 .flowId(failedRequest.getFlowId())

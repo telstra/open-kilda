@@ -16,10 +16,10 @@
 package org.openkilda.wfm.topology.flowhs.bolts;
 
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_REQUEST_SENDER;
+import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_KEY;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
-import static org.openkilda.wfm.topology.utils.MessageTranslator.KEY_FIELD;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
+import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
@@ -51,8 +51,8 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     protected void onHubRequest(Tuple input) throws PipelineException {
         this.currentTuple = input;
 
-        String key = input.getStringByField(KEY_FIELD);
-        FlowRequest command = (FlowRequest) input.getValueByField(FIELD_ID_PAYLOAD);
+        String key = input.getStringByField(FIELD_ID_KEY);
+        SpeakerFlowRequest command = (SpeakerFlowRequest) input.getValueByField(FIELD_ID_PAYLOAD);
 
         service.sendCommand(key, command);
     }
@@ -61,7 +61,7 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     protected void onAsyncResponse(Tuple input) throws PipelineException {
         this.currentTuple = input;
 
-        String key = input.getStringByField(KEY_FIELD);
+        String key = input.getStringByField(FIELD_ID_KEY);
         FlowResponse message = (FlowResponse) input.getValueByField(FIELD_ID_PAYLOAD);
 
         service.handleResponse(key, message);
@@ -75,6 +75,14 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     }
 
     @Override
+    protected void unhandledInput(Tuple input) {
+        if (log.isTraceEnabled()) {
+            log.trace("Received a response from {} for non-pending task {}: {}", input.getSourceComponent(),
+                    input.getStringByField(FIELD_ID_KEY), input.getValueByField(FIELD_ID_PAYLOAD));
+        }
+    }
+
+    @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
 
@@ -82,7 +90,7 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     }
 
     @Override
-    public void sendCommand(String key, FlowRequest command) {
+    public void sendCommand(String key, SpeakerFlowRequest command) {
         emitWithContext(SPEAKER_WORKER_REQUEST_SENDER.name(), currentTuple, new Values(key, command));
     }
 

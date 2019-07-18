@@ -116,13 +116,13 @@ public class TestMessageMock implements MessagingChannel {
             .flowId(FLOW_ID).bandwidth(10000).description(FLOW_ID)
             .sourceSwitch(SWITCH_ID).destinationSwitch(SWITCH_ID)
             .sourcePort(1).destinationPort(1).sourceVlan(1).destinationVlan(1).meterId(1)
-            .flowPath(path).state(FlowState.UP)
+            .state(FlowState.UP)
             .build();
     static final FlowDto secondFlowModel = FlowDto.builder()
             .flowId(SECOND_FLOW_ID).bandwidth(20000).description(SECOND_FLOW_ID)
             .sourceSwitch(SECOND_SWITCH_ID).sourcePort(2).sourceVlan(2)
             .destinationSwitch(SECOND_SWITCH_ID).destinationPort(2).destinationVlan(2)
-            .flowPath(path).state(FlowState.UP)
+            .state(FlowState.UP)
             .build();
 
     private static final FlowResponse flowResponse = new FlowResponse(flowModel);

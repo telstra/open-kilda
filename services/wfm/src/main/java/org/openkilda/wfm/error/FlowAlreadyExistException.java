@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,15 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.service;
+package org.openkilda.wfm.error;
 
-import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
-import org.openkilda.floodlight.flow.response.FlowResponse;
-import org.openkilda.wfm.error.PipelineException;
+/**
+ * {@code FlowAlreadyExistException} indicates that a flow already exist.
+ */
+public class FlowAlreadyExistException extends Exception {
 
-public interface SpeakerCommandCarrier {
+    public FlowAlreadyExistException(String flowId) {
+        super(String.format("Flow %s already exists", flowId));
+    }
 
-    void sendCommand(String key, SpeakerFlowRequest command) throws PipelineException;
-
-    void sendResponse(String key, FlowResponse response) throws PipelineException;
+    public FlowAlreadyExistException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

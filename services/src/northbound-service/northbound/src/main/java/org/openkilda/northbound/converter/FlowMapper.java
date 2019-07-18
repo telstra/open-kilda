@@ -15,6 +15,8 @@
 
 package org.openkilda.northbound.converter;
 
+import org.openkilda.messaging.command.flow.FlowRequest;
+import org.openkilda.messaging.command.flow.FlowRequest.Type;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
@@ -104,7 +106,11 @@ public interface FlowMapper {
     @Mapping(target = "sourceVlan", expression = "java(request.getSource().getVlanId())")
     @Mapping(target = "destinationVlan", expression = "java(request.getDestination().getVlanId())")
     @Mapping(target = "bandwidth", source = "maximumBandwidth")
-    FlowDto toFlowDto(FlowRequestV2 request);
+    FlowRequest toFlowRequest(FlowRequestV2 request);
+
+    default FlowRequest toFlowCreateRequest(FlowRequestV2 source) {
+        return toFlowRequest(source).toBuilder().type(Type.CREATE).build();
+    }
 
     PingOutput toPingOutput(FlowPingResponse response);
 

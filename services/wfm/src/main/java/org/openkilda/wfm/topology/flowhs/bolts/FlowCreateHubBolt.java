@@ -20,10 +20,10 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_NB_
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SPEAKER_WORKER;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
+import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
@@ -40,12 +40,15 @@ import org.openkilda.wfm.topology.flowhs.service.FlowCreateHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateService;
 import org.openkilda.wfm.topology.utils.MessageTranslator;
 
+import lombok.Builder;
+import lombok.Getter;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
 
+    private final FlowCreateConfig config;
     private final PersistenceManager persistenceManager;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
@@ -53,16 +56,11 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     private transient FlowCreateService service;
     private String currentKey;
 
-    public FlowCreateHubBolt(String routerBoltId, String workerBoltId, int timeoutMs, boolean autoAck,
-                             PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig,
-                             FlowResourcesConfig flowResourcesConfig) {
-        super(HubBolt.Config.builder()
-                .requestSenderComponent(routerBoltId)
-                .workerComponent(workerBoltId)
-                .timeoutMs(timeoutMs)
-                .autoAck(autoAck)
-                .build());
+    public FlowCreateHubBolt(FlowCreateConfig config, PersistenceManager persistenceManager,
+                             PathComputerConfig pathComputerConfig, FlowResourcesConfig flowResourcesConfig) {
+        super(config);
 
+        this.config = config;
         this.persistenceManager = persistenceManager;
         this.pathComputerConfig = pathComputerConfig;
         this.flowResourcesConfig = flowResourcesConfig;
@@ -76,14 +74,15 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
         PathComputer pathComputer =
                 new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
 
-        service = new FlowCreateService(this, persistenceManager, pathComputer, resourcesManager);
+        service = new FlowCreateService(this, persistenceManager, pathComputer, resourcesManager,
+                config.getFlowCreationRetriesLimit(), config.getSpeakerCommandRetriesLimit());
     }
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
         currentKey = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
-        FlowDto payload = (FlowDto) input.getValueByField(FIELD_ID_PAYLOAD);
-        service.handleRequest(currentKey, pullContext(input), payload, this);
+        FlowRequest payload = (FlowRequest) input.getValueByField(FIELD_ID_PAYLOAD);
+        service.handleRequest(currentKey, pullContext(input), payload);
     }
 
     @Override
@@ -100,7 +99,7 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     }
 
     @Override
-    public void sendSpeakerRequest(FlowRequest command) {
+    public void sendSpeakerRequest(SpeakerFlowRequest command) {
         String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
 
         Values values = new Values(commandKey, command);
@@ -114,7 +113,7 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
 
     @Override
     public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
-        //emitWithContext(Stream.HUB_TO_HISTORY_BOLT.name(), tuple, new Values(null, historyHolder));
+        emitWithContext(Stream.HUB_TO_HISTORY_BOLT.name(), getCurrentTuple(), new Values(currentKey, historyHolder));
     }
 
     @Override
@@ -129,5 +128,19 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
         declarer.declareStream(HUB_TO_SPEAKER_WORKER.name(), MessageTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), MessageTranslator.STREAM_FIELDS);
         declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), MessageTranslator.STREAM_FIELDS);
+    }
+
+    @Getter
+    public static class FlowCreateConfig extends Config {
+        private int flowCreationRetriesLimit;
+        private int speakerCommandRetriesLimit;
+
+        @Builder(builderMethodName = "flowCreateBuilder", builderClassName = "flowCreateBuild")
+        public FlowCreateConfig(String requestSenderComponent, String workerComponent, int timeoutMs, boolean autoAck,
+                                int flowCreationRetriesLimit, int speakerCommandRetriesLimit) {
+            super(requestSenderComponent, workerComponent, timeoutMs, autoAck);
+            this.flowCreationRetriesLimit = flowCreationRetriesLimit;
+            this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+        }
     }
 }

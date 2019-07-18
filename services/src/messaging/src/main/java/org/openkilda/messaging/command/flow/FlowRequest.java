@@ -15,27 +15,54 @@
 
 package org.openkilda.messaging.command.flow;
 
-import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.command.CommandData;
-import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Builder;
+import lombok.NonNull;
 import lombok.Value;
 
 @Value
+@JsonNaming(value = SnakeCaseStrategy.class)
+@Builder(toBuilder = true)
 public class FlowRequest extends CommandData {
 
-    @JsonProperty(Utils.PAYLOAD)
-    private FlowDto payload;
+    @NonNull
+    String flowId;
 
-    @JsonProperty("type")
-    private Type type;
+    @JsonProperty("src_switch")
+    SwitchId sourceSwitch;
 
-    public FlowRequest(@JsonProperty(Utils.PAYLOAD) FlowDto payload,
-                       @JsonProperty("type") Type type) {
-        this.payload = payload;
-        this.type = type;
-    }
+    @JsonProperty("dst_switch")
+    SwitchId destinationSwitch;
+
+    @JsonProperty("src_port")
+    int sourcePort;
+
+    @JsonProperty("dst_port")
+    int destinationPort;
+
+    @JsonProperty("src_vlan")
+    int sourceVlan;
+
+    @JsonProperty("dst_vlan")
+    int destinationVlan;
+
+    long bandwidth;
+    boolean ignoreBandwidth;
+    boolean periodicPings;
+    boolean allocateProtectedPath;
+    String description;
+    int transitEncapsulationId;
+    Integer maxLatency;
+    Integer priority;
+    boolean pinned;
+    String diverseFlowId;
+    String encapsulationType;
+    Type type;
 
     public enum Type {
         CREATE,

@@ -55,6 +55,7 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.error.FlowAlreadyExistException;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;

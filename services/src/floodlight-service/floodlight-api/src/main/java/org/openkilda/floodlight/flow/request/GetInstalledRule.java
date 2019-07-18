@@ -31,7 +31,7 @@ import java.util.UUID;
 
 @Getter
 @ToString(callSuper = true)
-public class GetInstalledRule extends FlowRequest {
+public class GetInstalledRule extends SpeakerFlowRequest {
 
     private Cookie cookie;
 

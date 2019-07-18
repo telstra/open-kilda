@@ -30,17 +30,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.request.GetInstalledRule;
-import org.openkilda.floodlight.flow.request.InstallEgressRule;
 import org.openkilda.floodlight.flow.request.InstallFlowRule;
-import org.openkilda.floodlight.flow.request.InstallIngressRule;
-import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.floodlight.flow.request.RemoveRule;
+import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse;
 import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.floodlight.flow.response.FlowResponse;
-import org.openkilda.floodlight.flow.response.FlowRuleResponse;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -56,17 +52,10 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
-import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
-import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.TransactionCallback;
-import org.openkilda.persistence.TransactionCallbackWithoutResult;
-import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
-import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
@@ -75,28 +64,20 @@ import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
-import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
 
-import lombok.SneakyThrows;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.util.ArrayDeque;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Queue;
 
 @RunWith(MockitoJUnitRunner.class)
-public class FlowRerouteServiceTest {
+public class FlowRerouteServiceTest extends AbstractFlowTest {
     private static final String FLOW_ID = "TEST_FLOW";
     private static final SwitchId SWITCH_1 = new SwitchId(1);
     private static final SwitchId SWITCH_2 = new SwitchId(2);
@@ -106,22 +87,9 @@ public class FlowRerouteServiceTest {
     private static final PathId NEW_REVERSE_FLOW_PATH = new PathId(FLOW_ID + "_reverse_new");
 
     @Mock
-    private PersistenceManager persistenceManager;
-    @Mock
-    private FlowRepository flowRepository;
-    @Mock
-    private FlowPathRepository flowPathRepository;
-    @Mock
-    private PathComputer pathComputer;
-    @Mock
-    private FlowResourcesManager flowResourcesManager;
-    @Mock
     private FlowRerouteHubCarrier carrier;
     @Mock
     private CommandContext commandContext;
-
-    private Queue<FlowRequest> requests = new ArrayDeque<>();
-    private Map<SwitchId, Map<Cookie, InstallFlowRule>> installedRules = new HashMap<>();
 
     @Before
     public void setUp() {
@@ -152,44 +120,8 @@ public class FlowRerouteServiceTest {
         when(repositoryFactory.createFlowEventRepository()).thenReturn(flowEventRepository);
 
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
-        when(persistenceManager.getTransactionManager()).thenReturn(new TransactionManager() {
-            @SneakyThrows
-            @Override
-            public <T, E extends Throwable> T doInTransaction(TransactionCallback<T, E> action) throws E {
-                return action.doInTransaction();
-            }
 
-            @Override
-            public <T, E extends Throwable> T doInTransaction(RetryPolicy retryPolicy, TransactionCallback<T, E> action)
-                    throws E {
-                return Failsafe.with(retryPolicy).get(action::doInTransaction);
-            }
-
-            @SneakyThrows
-            @Override
-            public <E extends Throwable> void doInTransaction(TransactionCallbackWithoutResult<E> action) throws E {
-                action.doInTransaction();
-            }
-
-            @Override
-            public <E extends Throwable> void doInTransaction(RetryPolicy retryPolicy,
-                                                              TransactionCallbackWithoutResult<E> action) throws E {
-                Failsafe.with(retryPolicy).run(action::doInTransaction);
-            }
-        });
-
-        doAnswer(invocation -> {
-            FlowRequest request = invocation.getArgument(0);
-            requests.offer(request);
-
-            if (request instanceof InstallFlowRule) {
-                Map<Cookie, InstallFlowRule> switchRules =
-                        installedRules.getOrDefault(request.getSwitchId(), new HashMap<>());
-                switchRules.put(((InstallFlowRule) request).getCookie(), ((InstallFlowRule) request));
-                installedRules.put(request.getSwitchId(), switchRules);
-            }
-            return request;
-        }).when(carrier).sendSpeakerRequest(any());
+        doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any());
     }
 
     @Test
@@ -269,7 +201,7 @@ public class FlowRerouteServiceTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof InstallFlowRule) {
                 rerouteService.handleAsyncResponse("test_key", FlowErrorResponse.errorBuilder()
@@ -278,7 +210,6 @@ public class FlowRerouteServiceTest {
                         .commandId(flowRequest.getCommandId())
                         .flowId(flowRequest.getFlowId())
                         .switchId(flowRequest.getSwitchId())
-                        .success(false)
                         .build());
             } else {
                 rerouteService.handleAsyncResponse("test_key", FlowResponse.builder()
@@ -312,7 +243,7 @@ public class FlowRerouteServiceTest {
 
         rerouteService.handleTimeout("test_key");
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof RemoveRule) {
                 rerouteService.handleAsyncResponse("test_key", FlowResponse.builder()
@@ -344,7 +275,7 @@ public class FlowRerouteServiceTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof GetInstalledRule) {
                 rerouteService.handleAsyncResponse("test_key", FlowErrorResponse.errorBuilder()
@@ -385,7 +316,7 @@ public class FlowRerouteServiceTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof GetInstalledRule) {
                 rerouteService.handleTimeout("test_key");
@@ -435,7 +366,7 @@ public class FlowRerouteServiceTest {
         }).when(flowRepository).createOrUpdate(argThat(
                 hasProperty("forwardPathId", equalTo(NEW_FORWARD_FLOW_PATH))));
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof GetInstalledRule) {
                 rerouteService.handleAsyncResponse("test_key",
@@ -478,7 +409,7 @@ public class FlowRerouteServiceTest {
             throw new RuntimeException("A persistence error");
         }).when(flowPathRepository).updateStatus(eq(NEW_FORWARD_FLOW_PATH), eq(FlowPathStatus.ACTIVE));
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof GetInstalledRule) {
                 rerouteService.handleAsyncResponse("test_key",
@@ -517,7 +448,7 @@ public class FlowRerouteServiceTest {
                 .when(flowPathRepository).delete(argThat(
                 hasProperty("pathId", equalTo(OLD_FORWARD_FLOW_PATH))));
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof GetInstalledRule) {
                 rerouteService.handleAsyncResponse("test_key",
@@ -557,7 +488,7 @@ public class FlowRerouteServiceTest {
                 hasProperty("forward",
                         hasProperty("pathId", equalTo(OLD_FORWARD_FLOW_PATH)))));
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof GetInstalledRule) {
                 rerouteService.handleAsyncResponse("test_key",
@@ -594,7 +525,7 @@ public class FlowRerouteServiceTest {
         assertEquals(FlowStatus.IN_PROGRESS, flow.getStatus());
         verify(carrier, times(1)).sendNorthboundResponse(any());
 
-        FlowRequest flowRequest;
+        SpeakerFlowRequest flowRequest;
         while ((flowRequest = requests.poll()) != null) {
             if (flowRequest instanceof GetInstalledRule) {
                 rerouteService.handleAsyncResponse("test_key",
@@ -743,35 +674,5 @@ public class FlowRerouteServiceTest {
                         .build()));
 
         return flowResources;
-    }
-
-    private FlowResponse buildResponseOnGetInstalled(GetInstalledRule request) {
-        Cookie cookie = request.getCookie();
-
-        InstallFlowRule rule = Optional.ofNullable(installedRules.get(request.getSwitchId()))
-                .map(switchRules -> switchRules.get(cookie))
-                .orElse(null);
-
-        FlowRuleResponse.FlowRuleResponseBuilder builder = FlowRuleResponse.flowRuleResponseBuilder()
-                .success(true)
-                .commandId(request.getCommandId())
-                .flowId(request.getFlowId())
-                .switchId(request.getSwitchId())
-                .cookie(rule.getCookie())
-                .inPort(rule.getInputPort())
-                .outPort(rule.getOutputPort());
-        if (rule instanceof InstallEgressRule) {
-            builder.inVlan(((InstallEgressRule) rule).getTransitEncapsulationId());
-            builder.outVlan(((InstallEgressRule) rule).getOutputVlanId());
-        } else if (rule instanceof InstallTransitRule) {
-            builder.inVlan(((InstallTransitRule) rule).getTransitEncapsulationId());
-            builder.outVlan(((InstallTransitRule) rule).getTransitEncapsulationId());
-        } else if (rule instanceof InstallIngressRule) {
-            InstallIngressRule ingressRule = (InstallIngressRule) rule;
-            builder.inVlan(ingressRule.getInputVlanId())
-                    .meterId(ingressRule.getMeterId());
-        }
-
-        return builder.build();
     }
 }

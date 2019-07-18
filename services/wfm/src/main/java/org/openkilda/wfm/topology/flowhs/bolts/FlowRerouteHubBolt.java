@@ -20,7 +20,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_NB_
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.HUB_TO_SPEAKER_WORKER;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
+import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
 import org.openkilda.floodlight.flow.response.FlowResponse;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
@@ -109,7 +109,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     }
 
     @Override
-    public void sendSpeakerRequest(FlowRequest command) {
+    public void sendSpeakerRequest(SpeakerFlowRequest command) {
         String commandKey = KeyProvider.joinKeys(command.getCommandId().toString(), currentKey);
         Values values = new Values(commandKey, command);
         emitWithContext(HUB_TO_SPEAKER_WORKER.name(), getCurrentTuple(), values);

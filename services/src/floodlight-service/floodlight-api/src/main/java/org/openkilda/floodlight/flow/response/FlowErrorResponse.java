@@ -42,14 +42,13 @@ public class FlowErrorResponse extends FlowResponse {
 
     @JsonCreator
     @Builder(builderMethodName = "errorBuilder")
-    public FlowErrorResponse(@JsonProperty("success") boolean success,
-                             @JsonProperty("error_code") ErrorCode errorCode,
+    public FlowErrorResponse(@JsonProperty("error_code") ErrorCode errorCode,
                              @JsonProperty("description") String description,
                              @JsonProperty("command_context") MessageContext messageContext,
                              @JsonProperty("command_id") UUID commandId,
                              @JsonProperty(FLOW_ID) String flowId,
                              @JsonProperty("switch_id") SwitchId switchId) {
-        super(success, messageContext, commandId, flowId, switchId);
+        super(false, messageContext, commandId, flowId, switchId);
 
         this.description = description;
         this.errorCode = errorCode;

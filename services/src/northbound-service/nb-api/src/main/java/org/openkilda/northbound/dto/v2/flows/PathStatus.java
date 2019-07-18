@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,18 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flow.service;
+package org.openkilda.northbound.dto.v2.flows;
 
-/**
- * {@code FlowAlreadyExistException} indicates that a flow already exist.
- */
-public class FlowAlreadyExistException extends Exception {
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
 
-    public FlowAlreadyExistException(String flowId) {
-        super(String.format("Flow %s already exists", flowId));
-    }
-
-    public FlowAlreadyExistException(String message, Throwable cause) {
-        super(message, cause);
-    }
+@Data
+@Builder
+@AllArgsConstructor
+@JsonNaming(value = SnakeCaseStrategy.class)
+public class PathStatus {
+    private String mainPath;
+    private String protectedPath;
 }

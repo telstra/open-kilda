@@ -60,6 +60,8 @@ import java.util.UUID;
 @Getter
 public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
 
+    private static final int DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1;
+
     private final Long bandwidth;
     private final Integer inputVlanId;
     private final OutputVlanType outputVlanType;
@@ -132,7 +134,8 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
         // build FLOW_MOD command with meter
         OFFlowAdd.Builder builder = prepareFlowModBuilder(ofFactory)
                 .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
-                .setMatch(match);
+                .setMatch(match)
+                .setPriority(inputVlanId == 0 ? DEFAULT_FLOW_PRIORITY : FLOW_PRIORITY);
 
         if (supportedFeatures.contains(Feature.RESET_COUNTS_FLAG)) {
             builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
