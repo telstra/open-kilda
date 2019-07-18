@@ -16,7 +16,6 @@
 package org.openkilda.messaging.model;
 
 import org.openkilda.messaging.Utils;
-import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -59,7 +58,7 @@ public class FlowDto implements Serializable {
     @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth;
 
-    @JsonProperty("periodic-pings")
+    @JsonProperty("periodic_pings")
     private boolean periodicPings;
 
     @JsonProperty("allocate_protected_path")
@@ -135,13 +134,6 @@ public class FlowDto implements Serializable {
     private int transitEncapsulationId;
 
     /**
-     * Flow switch path.
-     */
-    @JsonProperty(Utils.FLOW_PATH)
-    private PathInfoData flowPath;
-    // TODO: why is PathInfoData an event, vs a model (ie package name)?
-
-    /**
      * Flow state.
      */
     @JsonProperty("state")
@@ -185,7 +177,6 @@ public class FlowDto implements Serializable {
      * @param destinationVlan   destination vlan id
      * @param meterId           meter id
      * @param transitEncapsulationId       transit vlan id
-     * @param flowPath          flow switch path
      * @param state             flow state
      * @param maxLatency        max latency
      * @param priority          flow priority
@@ -211,7 +202,6 @@ public class FlowDto implements Serializable {
                    @JsonProperty("dst_vlan") final int destinationVlan,
                    @JsonProperty("meter_id") final Integer meterId,
                    @JsonProperty("transit_encapsulation_id") final int transitEncapsulationId,
-                   @JsonProperty(Utils.FLOW_PATH) final PathInfoData flowPath,
                    @JsonProperty("state") FlowState state,
                    @JsonProperty("status_details") FlowStatusDetails flowStatusDetails,
                    @JsonProperty("max_latency") Integer maxLatency,
@@ -235,7 +225,6 @@ public class FlowDto implements Serializable {
         this.destinationVlan = destinationVlan;
         this.transitEncapsulationId = transitEncapsulationId;
         this.meterId = meterId;
-        this.flowPath = flowPath;
         this.state = state;
         this.flowStatusDetails = flowStatusDetails;
         this.maxLatency = maxLatency;
@@ -279,7 +268,7 @@ public class FlowDto implements Serializable {
                 destinationPort,
                 sourceVlan,
                 destinationVlan,
-                null, 0, null, null, null, null, null, pinned, null);
+                null, 0, null, null, null, null, pinned, null);
     }
 
     public FlowDto(FlowPayload input) {
@@ -297,7 +286,7 @@ public class FlowDto implements Serializable {
                 input.getDestination().getPortNumber(),
                 input.getSource().getVlanId(),
                 input.getDestination().getVlanId(),
-                null, 0, null, null, null,
+                null, 0, null, null,
                 input.getMaxLatency(),
                 input.getPriority(),
                 input.isPinned(),
@@ -353,17 +342,6 @@ public class FlowDto implements Serializable {
             isMatch = (cookie & 0x0080000000000000L) != 0;
         }
         return isMatch;
-    }
-
-    /**
-     * Checks if flow path contains specified switch.
-     *
-     * @param switchId switch id
-     * @return true if flow path contains specified switch
-     */
-    public boolean containsSwitchInPath(SwitchId switchId) {
-        return flowPath.getPath().stream()
-                .anyMatch(node -> node.getSwitchId().equals(switchId));
     }
 
     /**

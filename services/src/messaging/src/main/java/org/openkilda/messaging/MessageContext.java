@@ -51,4 +51,13 @@ public class MessageContext implements Serializable {
         this.correlationId = correlationId;
         this.createTime = createTime;
     }
+
+    /**
+     * Create new {@link MessageContext} object using data from current one. Produced object receive extended/nested
+     * correlation ID i.e. it contain original correlation ID plus part passed in argument.
+     */
+    public MessageContext fork(String correlationIdExtension) {
+        return new MessageContext(correlationId + " : " + correlationIdExtension);
+    }
+
 }

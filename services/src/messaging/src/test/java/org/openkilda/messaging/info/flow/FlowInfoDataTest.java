@@ -17,7 +17,6 @@ package org.openkilda.messaging.info.flow;
 
 import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
@@ -58,7 +57,6 @@ public class FlowInfoDataTest implements StringSerializer {
                 .meterId(1)
                 .transitEncapsulationId(1024)
                 .state(FlowState.IN_PROGRESS)
-                .flowPath(new PathInfoData(20, forwardPath))
                 .build();
         FlowDto reverseFlowThread = forwardFlowThread.toBuilder()
                 .sourceSwitch(forwardFlowThread.getDestinationSwitch())
@@ -67,7 +65,6 @@ public class FlowInfoDataTest implements StringSerializer {
                 .destinationSwitch(forwardFlowThread.getSourceSwitch())
                 .destinationPort(forwardFlowThread.getSourcePort())
                 .destinationVlan(forwardFlowThread.getSourceVlan())
-                .flowPath(new PathInfoData(20, reversePath))
                 .build();
 
         FlowInfoData origin = new FlowInfoData(

@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 
-import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -24,18 +23,11 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
 
-import java.util.UUID;
-
 @Slf4j
-public class HandleNotDeletedRulesAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
-
+public class ProcessNotRevertedResourcesAction extends AnonymousAction<FlowCreateFsm, State, Event, FlowCreateContext> {
     @Override
     public void execute(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        if (!stateMachine.getPendingCommands().isEmpty()) {
-            for (UUID commandId : stateMachine.getPendingCommands()) {
-                RemoveRule nonDeletedRule = stateMachine.getRemoveCommands().get(commandId);
-                log.warn("Failed to delete {} from the switch", nonDeletedRule);
-            }
-        }
+        stateMachine.getFlowResources().forEach(resource ->
+                log.warn("Failed to revert flow resources for flow {}: {}", stateMachine.getFlowId(), resource));
     }
 }

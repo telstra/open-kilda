@@ -29,7 +29,7 @@ import java.util.UUID;
 @Getter
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-public class InstallFlowRule extends FlowRequest {
+public class InstallFlowRule extends SpeakerFlowRequest {
 
     /**
      * Cookie allocated for flow.

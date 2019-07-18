@@ -441,10 +441,6 @@ public class FlowTopologyTest extends AbstractStormTest {
         InfoMessage infoMessage = objectMapper.readValue(record.value(), InfoMessage.class);
         FlowReadResponse infoData = (FlowReadResponse) infoMessage.getData();
         assertNotNull(infoData);
-
-        BidirectionalFlowDto flowPayload = infoData.getPayload();
-        assertEquals(2, flowPayload.getForward().getFlowPath().getPath().size());
-        assertEquals(2, flowPayload.getReverse().getFlowPath().getPath().size());
     }
 
     @Test
@@ -465,7 +461,6 @@ public class FlowTopologyTest extends AbstractStormTest {
 
         FlowDto flow = createFlow(flowId);
         flow.setCookie(1);
-        flow.setFlowPath(new PathInfoData(0L, Collections.emptyList()));
         flow.setMeterId(1);
         flow.setTransitEncapsulationId(2);
         flow.setState(FlowState.IN_PROGRESS);

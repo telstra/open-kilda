@@ -59,8 +59,7 @@ public class FlowRuleResponse extends FlowResponse {
 
     @JsonCreator
     @Builder(builderMethodName = "flowRuleResponseBuilder")
-    public FlowRuleResponse(@JsonProperty("success") boolean success,
-                            @JsonProperty("command_context") MessageContext messageContext,
+    public FlowRuleResponse(@JsonProperty("command_context") MessageContext messageContext,
                             @JsonProperty("command_id") UUID commandId,
                             @JsonProperty(FLOW_ID) String flowId,
                             @JsonProperty("switch_id") SwitchId switchId,
@@ -71,7 +70,7 @@ public class FlowRuleResponse extends FlowResponse {
                             @JsonProperty("out_vlan") Integer outVlan,
                             @JsonProperty("meter_id") MeterId meterId,
                             @JsonProperty("OF_version") String ofVersion) {
-        super(success, messageContext, commandId, flowId, switchId);
+        super(true, messageContext, commandId, flowId, switchId);
 
         this.cookie = cookie;
         this.inPort = inPort;

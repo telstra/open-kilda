@@ -44,10 +44,11 @@ import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
-import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.action.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathBuilder;
 
 import lombok.SneakyThrows;
@@ -64,7 +65,7 @@ import java.util.stream.Stream;
  */
 @Slf4j
 abstract class BaseResourceAllocationAction extends
-        NbTrackableAction<FlowRerouteFsm, FlowRerouteFsm.State, Event, FlowRerouteContext> {
+        NbTrackableAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
     private static final int MAX_TRANSACTION_RETRY_COUNT = 3;
 
     protected final TransactionManager transactionManager;
