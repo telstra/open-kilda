@@ -139,7 +139,7 @@ class MetersSpec extends HealthCheckSpecification {
         expect: "Only the default meters should be present on each switch"
         switches.each { sw ->
             def meters = northbound.getAllMeters(sw.dpId)
-            assert meters.meterEntries.size() == 2
+            assert meters.meterEntries.size() == 3
             assert meters.meterEntries.every(defaultMeters)
             meters.meterEntries.each { assert it.rate == DISCO_PKT_RATE }
             meters.meterEntries.each { assert it.burstSize == switchHelper.getExpectedBurst(sw.dpId, DISCO_PKT_RATE) }
