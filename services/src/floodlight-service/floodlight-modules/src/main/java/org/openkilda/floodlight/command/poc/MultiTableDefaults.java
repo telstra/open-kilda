@@ -19,7 +19,6 @@ import org.openkilda.floodlight.FloodlightResponse;
 import org.openkilda.floodlight.command.BatchWriter;
 import org.openkilda.floodlight.command.SessionProxy;
 import org.openkilda.floodlight.command.SpeakerCommand;
-import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
@@ -42,6 +41,11 @@ public class MultiTableDefaults extends SpeakerCommand {
     public MultiTableDefaults(@JsonProperty("switch_id") SwitchId switchId,
                               @JsonProperty("message_context") MessageContext messageContext) {
         super(switchId, messageContext);
+    }
+
+    @Override
+    protected FloodlightResponse buildResponse() {
+        return new FloodlightResponse(messageContext);
     }
 
     @Override

@@ -23,7 +23,8 @@ import org.openkilda.floodlight.command.flow.InstallIngressRuleCommand;
 import org.openkilda.floodlight.command.flow.InstallOneSwitchRuleCommand;
 import org.openkilda.floodlight.command.flow.InstallTransitRuleCommand;
 import org.openkilda.floodlight.command.poc.MultiTableDefaults;
-import org.openkilda.floodlight.command.poc.NestedVlanExperiment;
+import org.openkilda.floodlight.command.poc.NestedVlanEgressExperiment;
+import org.openkilda.floodlight.command.poc.NestedVlanIngressExperiment;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.SwitchWriteException;
 import org.openkilda.floodlight.service.session.SessionService;
@@ -64,8 +65,10 @@ import java.util.concurrent.CompletionException;
                 name = "org.openkilda.floodlight.flow.request.GetInstalledRule"),
         @Type(value = MultiTableDefaults.class,
                 name = "org.openkilda.floodlight.poc.MultiTableDefaults"),
-        @Type(value = NestedVlanExperiment.class,
-                name = "org.openkilda.floodlight.poc.NestedVlanExperiment")
+        @Type(value = NestedVlanIngressExperiment.class,
+                name = "org.openkilda.floodlight.poc.NestedVlanIngressExperiment"),
+        @Type(value = NestedVlanEgressExperiment.class,
+                name = "org.openkilda.floodlight.poc.NestedVlanEgressExperiment")
 })
 @Getter
 public abstract class SpeakerCommand {
