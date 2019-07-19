@@ -197,24 +197,26 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
 
         logger.trace("Getting flow stats per table for switch={}", iofSwitch.getId());
 
-        Function<List<OFTableStatsReply>, InfoData> converter = (response) -> {
-            List<TableStatsEntry> tableEntries = response.stream()
-                    .filter(reply -> CollectionUtils.isNotEmpty(reply.getEntries()))
-                    .map(OFTableStatsReply::getEntries)
-                    .flatMap(List::stream)
-                    .filter(entry -> entry.getActiveCount() != NumberUtils.LONG_ZERO)
-                    .map(OfTableStatsMapper.INSTANCE::toTableStatsEntry)
-                    .collect(Collectors.toList());
+        if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
+            Function<List<OFTableStatsReply>, InfoData> converter = (response) -> {
+                List<TableStatsEntry> tableEntries = response.stream()
+                        .filter(reply -> CollectionUtils.isNotEmpty(reply.getEntries()))
+                        .map(OFTableStatsReply::getEntries)
+                        .flatMap(List::stream)
+                        .filter(entry -> entry.getActiveCount() != NumberUtils.LONG_ZERO)
+                        .map(OfTableStatsMapper.INSTANCE::toTableStatsEntry)
+                        .collect(Collectors.toList());
 
-            return SwitchTableStatsData.builder()
-                    .switchId(switchId)
-                    .tableStatsEntries(tableEntries)
-                    .build();
-        };
+                return SwitchTableStatsData.builder()
+                        .switchId(switchId)
+                        .tableStatsEntries(tableEntries)
+                        .build();
+            };
 
-        RequestCallback<OFTableStatsReply> callback = new RequestCallback<>(converter, "table",
-                CorrelationContext.getId());
-        Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest), callback);
+            RequestCallback<OFTableStatsReply> callback = new RequestCallback<>(converter, "table",
+                    CorrelationContext.getId());
+            Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest), callback);
+        }
     }
 
     @NewCorrelationContextRequired
