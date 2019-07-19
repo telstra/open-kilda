@@ -59,4 +59,34 @@ public class LockKeeperVirtualImpl extends LockKeeperServiceImpl {
         restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/set-controller", HttpMethod.POST,
                 new HttpEntity<>(new SwitchModify(sw.getName(), controller), buildJsonHeaders()), String.class);
     }
+
+    @Override
+    public void blockAccessToIp(String ipAddress) {
+        throw new UnsupportedOperationException(
+                "blockAccessToIp method is not available on virtual env");
+    }
+
+    @Override
+    public void unblockAccessToIp(String ipAddress) {
+        throw new UnsupportedOperationException(
+                "unblockAccessToIp method is not available on virtual env");
+    }
+
+    @Override
+    public void blockAccessToPort(Integer port) {
+        throw new UnsupportedOperationException(
+                "blockAccessToPort method is not available on virtual env");
+    }
+
+    @Override
+    public void unblockAccessToPort(Integer port) {
+        throw new UnsupportedOperationException(
+                "unblockAccessToPort method is not available on virtual env");
+    }
+
+    @Override
+    public void allowAccessToEverything() {
+        throw new UnsupportedOperationException(
+                "allowAccessToEverything method is not available on virtual env");
+    }
 }

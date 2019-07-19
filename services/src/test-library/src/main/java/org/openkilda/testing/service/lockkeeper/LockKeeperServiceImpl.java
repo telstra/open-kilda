@@ -130,6 +130,41 @@ public class LockKeeperServiceImpl implements LockKeeperService {
                 "setController method is not available on hardware env");
     }
 
+    @Override
+    public void blockAccessToIp(String ipAddress) {
+        log.debug("Block floodlight access to {}", ipAddress);
+        restTemplate.exchange(labService.getLab().getLabId() + "/block-access", HttpMethod.POST,
+                new HttpEntity<>(ipAddress, buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void unblockAccessToIp(String ipAddress) {
+        log.debug("Unblock floodlight access to {}", ipAddress);
+        restTemplate.exchange(labService.getLab().getLabId() + "/unblock-access", HttpMethod.POST,
+                new HttpEntity<>(ipAddress, buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void blockAccessToPort(Integer port) {
+        log.debug("Block floodlight access to {}", port);
+        restTemplate.exchange(labService.getLab().getLabId() + "/block-access", HttpMethod.POST,
+                new HttpEntity<>(port, buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void unblockAccessToPort(Integer port) {
+        log.debug("Unblock floodlight access to {}", port);
+        restTemplate.exchange(labService.getLab().getLabId() + "/unblock-access", HttpMethod.POST,
+                new HttpEntity<>(port, buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void allowAccessToEverything() {
+        log.debug("Allow floodlight access to evrything by flushing INPUT/OUTPUT chains");
+        restTemplate.exchange(labService.getLab().getLabId() + "/allow-access-to-everything", HttpMethod.POST,
+                new HttpEntity(buildJsonHeaders()), String.class);
+    }
+
     HttpHeaders buildJsonHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);

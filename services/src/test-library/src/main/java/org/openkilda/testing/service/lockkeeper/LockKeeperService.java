@@ -46,4 +46,14 @@ public interface LockKeeperService {
     void reviveSwitch(Switch sw);
 
     void setController(Switch sw, String controller);
+
+    void blockAccessToIp(String ipAddress);
+
+    void unblockAccessToIp(String ipAddress);
+
+    void blockAccessToPort(Integer port);
+
+    void unblockAccessToPort(Integer ipAddress);
+
+    void allowAccessToEverything();
 }
