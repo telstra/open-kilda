@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { ToastrService } from "ngx-toastr";
 import { SwitchService } from "../../../common/services/switch.service";
 import { SwitchidmaskPipe } from "../../../common/pipes/switchidmask.pipe";
+import { AlertifyService } from "../../../common/services/alertify.service";
 import { LoaderService } from "../../../common/services/loader.service";
 import { NgbModal, NgbActiveModal } from "@ng-bootstrap/ng-bootstrap";
 import { OtpComponent } from "../../../common/components/otp/otp.component"
@@ -34,7 +35,6 @@ export class FlowEditComponent implements OnInit {
   flowDetailData  = {}
   flowDetail: any;
   vlanPorts: Array<any>;
-  diverseFlowList:any=[];
   storeLinkSetting = false;
 
   constructor(
@@ -45,6 +45,7 @@ export class FlowEditComponent implements OnInit {
     private toaster: ToastrService,
     private switchService: SwitchService,
     private switchIdMaskPipe: SwitchidmaskPipe,
+    private alertifyService: AlertifyService,
     private loaderService: LoaderService,
     private modalService: NgbModal,
     private _location:Location,
@@ -69,15 +70,14 @@ export class FlowEditComponent implements OnInit {
       source_vlan: ["0"],
       target_switch: [null, Validators.required],
       target_port: [null, Validators.required],
-      target_vlan: ["0"],
-      diverse_flowid:[null]
+      target_vlan: ["0"]
     });
 
     this.vlanPorts = Array.from({ length: 4095 }, (v, k) => {
       return { label: (k).toString(), value: (k).toString() };
     });
-    let flowId: string = this.route.snapshot.paramMap.get("id");
-    this.getFlowDetail(flowId);
+
+    this.getSwitchList();
   }
 
   ngAfterViewInit() {}
@@ -101,14 +101,11 @@ export class FlowEditComponent implements OnInit {
           source_vlan: flow.src_vlan.toString(),
           target_switch: flow.target_switch,
           target_port: flow.dst_port.toString(),
-          target_vlan: flow.dst_vlan.toString(),
-          diverse_flowid:flow['diverse-flowid'] || null,
+          target_vlan: flow.dst_vlan.toString()
         };
         this.flowId = flow.flowid;
         this.flowEditForm.setValue(this.flowDetail);
 
-        this.getflowList();
-        this.getSwitchList();
         this.getPorts("source_switch" , true);
         this.getPorts("target_switch", true);
       },
@@ -133,7 +130,8 @@ export class FlowEditComponent implements OnInit {
         ref.targetSwitches = ref.switches;
         ref.sourceSwitches = ref.switches;
 
-        
+        let flowId: string = this.route.snapshot.paramMap.get("id");
+        this.getFlowDetail(flowId);
       },
       error => {
         var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']: 'Unable to fetch switch list';
@@ -238,8 +236,7 @@ export class FlowEditComponent implements OnInit {
       flowid: this.flowEditForm.controls["flowid"].value,
       "maximum-bandwidth": this.flowEditForm.controls["maximum_bandwidth"]
         .value,
-      description: this.flowEditForm.controls["description"].value,
-      "diverse-flowid":this.flowEditForm.controls["diverse_flowid"].value,
+      description: this.flowEditForm.controls["description"].value
     };
 
     const modalRef = this.modalService.open(ModalconfirmationComponent);
@@ -321,20 +318,7 @@ export class FlowEditComponent implements OnInit {
       }
     });
   }
-  getflowList(){
-    var ref = this;
-    let filtersOptions = {controller:true,_:new Date().getTime()};
-      this.flowService.getFlowsList(filtersOptions).subscribe((data : Array<object>) =>{
-        this.diverseFlowList = data || [];
-        if(this.diverseFlowList && this.diverseFlowList.length){
-          this.diverseFlowList = this.diverseFlowList.filter(function(d){
-              return d.flowid != ref.flowDetail.flowId;
-          })
-        }
-      },error=>{
-         this.diverseFlowList = [];  
-      });
-}
+
   goToBack(){
     this._location.back();
   }

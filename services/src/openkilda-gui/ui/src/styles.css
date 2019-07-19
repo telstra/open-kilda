@@ -318,10 +318,7 @@ table.dataTable thead i.fa{
   -ms-user-select: none;
 }
 
-
-
-
-.onoffswitch-checkbox,.onoffpathdiverse-checkbox {
+.onoffswitch-checkbox {
   display: none;
 }
 
@@ -373,7 +370,6 @@ table.dataTable thead i.fa{
   text-align: right;
   color: #000;
 }
-
 
 .onoffswitch-switch {
   display: block;
@@ -1138,8 +1134,6 @@ text {
 }
 #topology-hover-txt .form-wrapper,
 #ping-hover-txt .form-wrapper,
-#diversepath-hover-txt .form-wrapper,
-#flowpath-hover-txt .form-wrapper,
 #topology-click-txt .form-wrapper {
   border: none;
 }
@@ -1170,7 +1164,7 @@ text {
 
 #topology-hover-txt.left:after,
 #ping-hover-txt.left:after,
-#topology-click-txt.left:after {
+#topology-click-txt.after {
   border-color: rgba(255, 255, 255, 0);
   border-left-color: #fff;
   border-width: 10px;
@@ -1189,10 +1183,6 @@ text {
 #topology-hover-txt p,
 #ping-hover-txt label,
 #ping-hover-txt p,
-#diversepath-hover-txt label,
-#diversepath-hover-txt p,
-#flowpath-hover-txt label,
-#flowpath-hover-txt p,
 #topology-click-txt label,
 #topology-click-txt p {
   padding: 0px 15px;
@@ -1209,32 +1199,9 @@ text {
   font-size: 12px;
 }
 
-#ping-hover-txt div.form-wrapper,#diversepath-hover-txt div.form-wrapper,#flowpath-hover-txt  div.form-wrapper{
+#ping-hover-txt div.form-wrapper{
   padding: 12px 10px;
   font-size: 12px;
-}
-
-#diversepath-hover-txt ,#flowpath-hover-txt{
-  background: #262d37;
-  position: fixed;
-  border-radius: 4px;
-  color: #fff;
-  z-index:4;
-}
-
-#diversepath-hover-txt:after ,#flowpath-hover-txt:after {
-	top: 100%;
-	left: 50%;
-	border: solid transparent;
-	content: " ";
-	height: 0;
-	width: 0;
-	position: absolute;
-	pointer-events: none;
-	border-color: rgba(38, 45, 55, 0);
-	border-top-color: #262d37;
-	border-width: 8px;
-	margin-left: -8px;
 }
 
 path.link {
@@ -1279,20 +1246,6 @@ path.link {
   width: 100%;
   height: 100%;
   top:50px;
-  left: 0px;
-  z-index: 3;
-}
-/* #ForwardPathGraphwrapper,#ReversePathGraphwrapper {
-  position: relative;
-  width: 100%;
-  height: 100%;
-} */
-#ForwardPathGraphwrapper .path-graph-wrapper ,#ReversePathGraphwrapper .path-graph-wrapper , #forwardPathWrapper .path-graph-wrapper,#reversePathWrapper .path-graph-wrapper{
-  position: absolute;
-  background: #fff;
-  width: 104%;
-  height: 100%;
-  top: 0px;
   left: 0px;
   z-index: 3;
 }
@@ -1785,22 +1738,6 @@ table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTa
   animation: spin 2s linear infinite;
   margin: auto;
   z-index: 1;
-}
-
-
-.path-graph-component-loader {
-  position: absolute;
-  border: 7px solid #bfbdbd;
-  border-radius: 50%;
-  border-top: 7px solid #3498db;
-  width: 35px;
-  height: 35px;
-  top: calc(50% - 75px);
-  left: calc(50% - 80px);
-  -webkit-animation: spin 2s linear infinite;
-  animation: spin 2s linear infinite;
-  margin: auto;
-  z-index: 5;
 }
 
 .btn-no-radius {
@@ -2341,271 +2278,3 @@ footer {
 }
 
 /****** side bar css end *****/
-
-#flowpath-hover-txt {
-  background: #262d37;
-  position: fixed;
-  border-radius: 4px;
-  color: #fff;
-  z-index:4;
-}
-
-#flowpath-hover-txt:after {
-	top: 100%;
-	left: 50%;
-	border: solid transparent;
-	content: " ";
-	height: 0;
-	width: 0;
-	position: absolute;
-	pointer-events: none;
-	border-color: rgba(38, 45, 55, 0);
-	border-top-color: #262d37;
-	border-width: 8px;
-  margin-left: -8px;
-}
-/*** path Css **/
-#ForwardRow h3, #ReversePath h3 {
-  margin: 0 0 25px;
-  font-weight: 700;
-  font-size: 13px;
-}
-
-.path {
-  float: left;
-  margin-bottom:60px;
-}
-
-
-#ForwardRow h3, #ReversePath h3 {
-  margin: 0 0 25px;
-  font-weight: 700;
-}
-
-#ForwardRow {
-
-margin-top:15px;
-position: relative;
-}
-
-#ReversePath {
-margin-top:22px;
-position: relative;
-}
-
-.path .number {
-  float: left;
-  width: 26px;
-  height: 26px;
-  border: 2px solid #ccc;
-  border-radius: 50%;
-  text-align: center;
-  line-height: 25px;
-  font-weight: 700;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.path .line {
-  width: 10px;
-  float: left;
-  height: 2px;
-  background: #ccc;
-  margin-top: 12px;
-}
-
-.path .text {
-  float: left;
-  width: auto;
-  background: #262d37;
-  padding: 7px 5px;
-  color: #fff;
-  border-radius: 20px;
-  font-size: 12px;
-}
-.vertical-line{
-      border-left: 2px solid #ccc;
-      height: 44px;
-      width: 10px;
-      float: right;
-      top: 12px;
-      position: relative;
-}
-.line.islPath.connecting_isl {
-  width: 200px!important;
-}
-.vertical-line-2 {
-  float: left;
-  position: absolute;
-  width: 2px;
-  height: 50px;
-  left: 25px;
-  top: 95px;
-  border-left: 2px solid #ccc;
-}
-.horizontal-line {
-  position: absolute;
-  width: calc(100% - 120px);
-  height: 2px;
-  background: #ccc;
-  right: 95px;
-  top: 96px;
-}
-a.badge.badge-dark.custom-button {
-  padding: 5px 7px;
-  background: grey;
-  border-radius: 10px;
-  color: #fff;
-}
-
-.path:last-child .line:nth-child(6){
-  display: none;
-}
-.islPath{
-  cursor:pointer;
-  width:50px!important;
-}
-.islPath:hover {
-  background: #00baff!important;
-  height:4px!important;
- 
-}
-
-/** path css end ****/
-
-.rightbar_overlay{
-    float:right;
-    padding: 10px 5px;
-}
-.rightbar_overlay ul{
-  position: absolute;
-  right:0px;
-  max-height: 550px;
-  overflow-y: scroll;
-  overflow: hidden;
-}
-.rightbar_overlay ul li{
-  padding: 5px;
-  border: 1px solid #ccc;
-  margin: 4px 0px;
-  cursor: pointer;
-  font-size: 10px;
-}
-.color-pointer{
-  width: 15px;
-  height: 4px;
-  float: left;
-  margin-top: 3px;
-  margin-right: 5px
-}
-.switch-image{
-  background: url(assets/images/switch.png) no-repeat 0 0;
-  background-size: 15px auto;
-  display: inline-block;
-  width: 15px;
-  height: 5px;
-}
-.switch-circle{
-  border-radius: 20px;
-    border: 1px solid #ccc;
-    padding: 0px 5px 1px 5px;
-    margin-right: 5px;
-    margin-left: -3px;
-}
-.topology-container{
-  margin-top:5px;
-}
-.flow-path-icons{
-  margin: 6px 10px 0px 5px;
-  float: right;
-  font-size: 25px;
-}
-.flow-path-graph{
-     width: 100%;
-    margin-left: 0px;
-    margin-top:10px;
-}
-a.custom-icon-path.cursor-pointer {
-  padding: 20px;
-  font-size: 15px;
-}
-/** On off path diverse ***/
-
-.onoffpathdiverse {
-  position: relative;
-  width: 75px;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
-.onoffpathdiverse-label {
-  display: block;
-  overflow: hidden;
-  cursor: pointer;
-  border-radius: 20px;
-  margin: 0;
-}
-.onoffpathdiverse-inner {
-  display: block;
-  width: 200%;
-  margin-left: -100%;
-  -moz-transition: margin 0.3s ease-in 0s;
-  -webkit-transition: margin 0.3s ease-in 0s;
-  -o-transition: margin 0.3s ease-in 0s;
-  transition: margin 0.3s ease-in 0s;
-}
-
-
-.onoffpathdiverse-inner:before,
-.onoffpathdiverse-inner:after {
-  display: block;
-  float: left;
-  width: 50%;
-  height: 22px;
-  padding: 0;
-  line-height: 22px;
-  font-size: 12px;
-  color: white;
-  font-family: Trebuchet, Arial, sans-serif;
-  -moz-box-sizing: border-box;
-  -webkit-box-sizing: border-box;
-  box-sizing: border-box;
-}
-.onoffpathdiverse-inner:before {
-  content: "Diverse";
-  padding-left: 10px;
-  background-color: #00ccbe;
-  color: #ffffff;
-}
-
-.onoffpathdiverse-inner:after {
-  content: "Path";
-  padding-right: 10px;
-  background-color: #b0b0b0;
-  text-align: right;
-  color: #000;
-}
-
-.onoffpathdiverse-switch {
-  display: block;
-  width: 22px;
-  margin: 5px;
-  background: #262d37;
-  border-radius: 20px;
-  position: absolute;
-  top: -5px;
-  bottom: -4px;
-  right: 50px;
-  transition: all 0.3s ease-in 0s;
-  -moz-transition: all 0.3s ease-in 0s;
-  -webkit-transition: all 0.3s ease-in 0s;
-  -o-transition: all 0.3s ease-in 0s;
-}
-
-.onoffpathdiverse-checkbox:checked + .onoffpathdiverse-label .onoffpathdiverse-inner {
-  margin-left: 0;
-}
-
-.onoffpathdiverse-checkbox:checked + .onoffpathdiverse-label .onoffpathdiverse-switch {
-  right: -6px;
-}
