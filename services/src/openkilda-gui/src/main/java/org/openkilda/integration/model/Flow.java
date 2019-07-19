@@ -49,9 +49,6 @@ public class Flow {
     
     @JsonProperty("timeout")
     private int timeout;
-    
-    @JsonProperty("diverse-flowid")
-    private String diverseFlowId;
 
     public String getId() {
         return id;

@@ -92,7 +92,7 @@ public class FlowService {
      *
      * @return SwitchRelationData
      */
-    public List<FlowInfo> getAllFlows(List<String> statuses, boolean controller) {
+    public List<FlowInfo> getAllFlows(List<String> statuses) {
         List<FlowInfo> flows = new ArrayList<FlowInfo>();
         if (!CollectionUtil.isEmpty(statuses)) {
             statuses = statuses.stream().map((status) -> status.toLowerCase()).collect(Collectors.toList());
@@ -103,23 +103,22 @@ public class FlowService {
                 flows = new ArrayList<FlowInfo>();
             }
         }
-        if (!controller) {
-            if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
-                try {
-                    List<InventoryFlow> inventoryFlows = new ArrayList<InventoryFlow>();
-                    String status = "";
-                    for (String statusObj : statuses) {
-                        if (StringUtil.isNullOrEmpty(status)) {
-                            status += statusObj;
-                        } else {
-                            status += "," + statusObj;
-                        }
+
+        if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
+            try {
+                List<InventoryFlow> inventoryFlows = new ArrayList<InventoryFlow>();
+                String status = "";
+                for (String statusObj : statuses) {
+                    if (StringUtil.isNullOrEmpty(status)) {
+                        status += statusObj;
+                    } else {
+                        status += "," + statusObj;
                     }
-                    inventoryFlows = flowStoreService.getFlowsWithParams(status);
-                    processInventoryFlow(flows, inventoryFlows);
-                } catch (Exception ex) {
-                    LOGGER.error("Error occurred while retrieving flows from store", ex);
                 }
+                inventoryFlows = flowStoreService.getFlowsWithParams(status);
+                processInventoryFlow(flows, inventoryFlows);
+            } catch (Exception ex) {
+                LOGGER.error("Error occurred while retrieving flows from store", ex);
             }
         }
         return flows;
