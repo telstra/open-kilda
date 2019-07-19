@@ -40,18 +40,25 @@ public class FlowApplyActions implements Serializable {
     private String meter;
     @JsonProperty("push_vxlan")
     private String pushVxlan;
+    @JsonProperty("group")
+    private String group;
+    @JsonProperty("set_copy_field")
+    private FlowCopyFieldAction copyFieldAction;
 
     @JsonCreator
     public FlowApplyActions(
             @JsonProperty("output") String flowOutput, @JsonProperty("set_field") FlowSetFieldAction fieldAction,
             @JsonProperty("push_vlan") String pushVlan, @JsonProperty("POP_VLAN") String popVlan,
-            @JsonProperty("meter") String meter, @JsonProperty("push_vxlan") String pushVxlan) {
+            @JsonProperty("meter") String meter, @JsonProperty("push_vxlan") String pushVxlan,
+            @JsonProperty("group") String group, @JsonProperty("copy_field") FlowCopyFieldAction copyFieldAction) {
         this.flowOutput = flowOutput;
         this.fieldAction = fieldAction;
         this.pushVlan = pushVlan;
         this.popVlan = popVlan;
         this.meter = meter;
         this.pushVxlan = pushVxlan;
+        this.group = group;
+        this.copyFieldAction = copyFieldAction;
     }
 
 }

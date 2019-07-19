@@ -236,7 +236,7 @@ public class SwitchManagerTest {
         expect(ofSwitchService.getActiveSwitch(defaultDpid)).andStubReturn(iofSwitch);
 
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
-        expect(iofSwitch.getId()).andReturn(defaultDpid).times(13);
+        expect(iofSwitch.getId()).andReturn(defaultDpid).times(15);
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
         expect(iofSwitch.writeStatsRequest(isA(OFMeterConfigStatsRequest.class))).andStubReturn(ofMeterFuture);
         expect(iofSwitch.writeStatsRequest(isA(OFGroupDescStatsRequest.class))).andStubReturn(ofGroupFuture);

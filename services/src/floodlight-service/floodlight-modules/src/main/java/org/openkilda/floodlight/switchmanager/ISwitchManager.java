@@ -24,6 +24,7 @@ import org.openkilda.model.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -190,6 +191,14 @@ public interface ISwitchManager extends IFloodlightService {
                                                       final int inputPort, final int outputPort, int inputVlanId,
                                                       int outputVlanId, final OutputVlanType outputVlanType,
                                                       final long meterId) throws SwitchOperationException;
+
+    /**
+     * Returns list of default flows that must be installed on a switch.
+     *
+     * @param dpid switch id.
+     * @return list of default flows.
+     */
+    List<OFFlowMod> getExpectedDefaultFlows(DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Returns list of installed flows.

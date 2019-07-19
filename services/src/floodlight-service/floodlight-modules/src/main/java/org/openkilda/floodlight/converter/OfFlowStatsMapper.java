@@ -18,6 +18,7 @@ package org.openkilda.floodlight.converter;
 import static java.util.stream.Collectors.toList;
 
 import org.openkilda.messaging.info.rule.FlowApplyActions;
+import org.openkilda.messaging.info.rule.FlowCopyFieldAction;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowMatchField;
@@ -30,12 +31,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 import org.projectfloodlight.openflow.protocol.OFActionType;
+import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsReply;
 import org.projectfloodlight.openflow.protocol.OFInstructionType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActionGroup;
 import org.projectfloodlight.openflow.protocol.action.OFActionMeter;
+import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowCopyField;
 import org.projectfloodlight.openflow.protocol.action.OFActionNoviflowPushVxlanTunnel;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.action.OFActionPushVlan;
@@ -83,6 +87,27 @@ public abstract class OfFlowStatsMapper {
                 .priority(entry.getPriority())
                 .byteCount(entry.getByteCount().getValue())
                 .packetCount(entry.getPacketCount().getValue())
+                .flags(entry.getFlags().stream()
+                        .map(OFFlowModFlags::name)
+                        .toArray(String[]::new))
+                .cookie(entry.getCookie().getValue())
+                .tableId(entry.getTableId().getValue())
+                .match(toFlowMatchField(entry.getMatch()))
+                .instructions(toFlowInstructions(entry.getInstructions()))
+                .build();
+    }
+
+    /**
+     * Convert {@link OFFlowMod} to format that kilda supports {@link FlowEntry}.
+     * @param entry flow stats to be converted.
+     * @return result of transformation {@link FlowEntry}.
+     */
+    public FlowEntry toFlowEntry(final OFFlowMod entry) {
+        return FlowEntry.builder()
+                .version(entry.getVersion().toString())
+                .hardTimeout(entry.getHardTimeout())
+                .idleTimeout(entry.getIdleTimeout())
+                .priority(entry.getPriority())
                 .flags(entry.getFlags().stream()
                         .map(OFFlowModFlags::name)
                         .toArray(String[]::new))
@@ -179,9 +204,15 @@ public abstract class OfFlowStatsMapper {
                 .pushVxlan(experimenterActions.stream()
                         .filter(ofAction -> ofAction instanceof OFActionNoviflowPushVxlanTunnel)
                         .map(action -> String.valueOf(((OFActionNoviflowPushVxlanTunnel) action).getVni()))
-                        .findFirst().orElse(null)
-
-                )
+                        .findFirst().orElse(null))
+                .group(Optional.ofNullable(actions.get(OFActionType.GROUP))
+                        .map(action -> String.valueOf(((OFActionGroup) action).getGroup()))
+                        .orElse(null))
+                .copyFieldAction(experimenterActions.stream()
+                        .filter(ofAction -> ofAction instanceof OFActionNoviflowCopyField)
+                        .findAny()
+                        .map(this::toFlowSetCopyFieldAction)
+                        .orElse(null))
                 .build();
     }
 
@@ -200,6 +231,23 @@ public abstract class OfFlowStatsMapper {
         return FlowSetFieldAction.builder()
                 .fieldName(setFieldAction.getMatchField().getName())
                 .fieldValue(value)
+                .build();
+    }
+
+    /**
+     * Convert {@link OFAction} to {@link FlowCopyFieldAction}.
+     * @param action action to be converted.
+     * @return result of transformation to {@link FlowCopyFieldAction}.
+     */
+    public FlowCopyFieldAction toFlowSetCopyFieldAction(OFAction action) {
+        OFActionNoviflowCopyField setCopyFieldAction = (OFActionNoviflowCopyField) action;
+
+        return FlowCopyFieldAction.builder()
+                .bits(String.valueOf(setCopyFieldAction.getNBits()))
+                .srcOffset(String.valueOf(setCopyFieldAction.getSrcOffset()))
+                .dstOffset(String.valueOf(setCopyFieldAction.getDstOffset()))
+                .srcOxm(String.valueOf(setCopyFieldAction.getOxmSrcHeader()))
+                .dstOxm(String.valueOf(setCopyFieldAction.getOxmDstHeader()))
                 .build();
     }
 
