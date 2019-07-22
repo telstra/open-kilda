@@ -55,5 +55,5 @@ public interface LockKeeperService {
 
     void unblockAccessToPort(Integer ipAddress);
 
-    void allowAccessToEverything();
+    void removeAccessRestrictions();
 }

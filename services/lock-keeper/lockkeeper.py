@@ -28,8 +28,9 @@ def execute_remote_commands(commands):
 
 
 def execute_command_in_container(commands, container_name=FL_CONTAINER_NAME):
+    container = docker.from_env().containers.get(container_name)
     for command in commands:
-        docker.from_env().containers.get(container_name).exec_run(command)
+        container.exec_run(command)
     return True
 
 
@@ -139,12 +140,15 @@ def block_access():
     if 'ip' in body:
         commands.append('iptables -I INPUT -s {} -j DROP'.format(body['ip']))
         commands.append('iptables -I OUTPUT -s {} -j DROP'.format(body['ip']))
-    else:
+        execute_command_in_container(commands)
+        return jsonify({'blocked_ip': body['ip']})
+    elif 'port' in body:
         commands.append('iptables -I INPUT -p tcp --source-port {} -j DROP'.format(body['port']))
         commands.append('iptables -I OUTPUT -p tcp --destination-port {} -j DROP'.format(body['port']))
-
-    execute_command_in_container(commands)
-    return jsonify({'status': 'ok'})
+        execute_command_in_container(commands)
+        return jsonify({'blocked_port': body['port']})
+    else:
+        return jsonify({'status': 'Oops, available params: ip or port'})
 
 
 @app.route('/unblock-access', methods=['POST'])
@@ -154,15 +158,18 @@ def unblock_access():
     if 'ip' in body:
         commands.append('iptables -D INPUT -s {} -j DROP'.format(body['ip']))
         commands.append('iptables -D OUTPUT -s {} -j DROP'.format(body['ip']))
-    else:
+        execute_command_in_container(commands)
+        return jsonify({'unblocked_ip': body['ip']})
+    elif 'port' in body:
         commands.append('iptables -D INPUT -p tcp --source-port {} -j DROP'.format(body['port']))
         commands.append('iptables -D OUTPUT -p tcp --destination-port {} -j DROP'.format(body['port']))
+        execute_command_in_container(commands)
+        return jsonify({'unblocked_port': body['port']})
+    else:
+        return jsonify({'status': 'Oops, available params: ip or port'})
 
-    execute_command_in_container(commands)
-    return jsonify({'status': 'ok'})
 
-
-@app.route('/allow-access-to-everything', methods=['POST'])
-def allow_access_to_everything():
+@app.route('/remove-access-restrictions', methods=['POST'])
+def remove_access_restrictions():
     execute_command_in_container(['iptables -F INPUT', 'iptables -F OUTPUT'])
-    return jsonify({'status': 'ok'})
+    return jsonify({'status': 'All iptables rules in INPUT/OUTPUT chains were removed'})

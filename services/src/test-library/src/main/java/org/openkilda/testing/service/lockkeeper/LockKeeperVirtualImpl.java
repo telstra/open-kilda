@@ -85,7 +85,7 @@ public class LockKeeperVirtualImpl extends LockKeeperServiceImpl {
     }
 
     @Override
-    public void allowAccessToEverything() {
+    public void removeAccessRestrictions() {
         throw new UnsupportedOperationException(
                 "allowAccessToEverything method is not available on virtual env");
     }

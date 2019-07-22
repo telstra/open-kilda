@@ -159,9 +159,9 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     }
 
     @Override
-    public void allowAccessToEverything() {
+    public void removeAccessRestrictions() {
         log.debug("Allow floodlight access to evrything by flushing INPUT/OUTPUT chains");
-        restTemplate.exchange(labService.getLab().getLabId() + "/allow-access-to-everything", HttpMethod.POST,
+        restTemplate.exchange(labService.getLab().getLabId() + "/remove-access-restrictions", HttpMethod.POST,
                 new HttpEntity(buildJsonHeaders()), String.class);
     }
 
