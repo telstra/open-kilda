@@ -18,7 +18,6 @@ package org.openkilda.floodlight.command.poc;
 import org.openkilda.floodlight.FloodlightResponse;
 import org.openkilda.floodlight.command.BatchWriter;
 import org.openkilda.floodlight.command.SessionProxy;
-import org.openkilda.floodlight.command.SpeakerCommand;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
@@ -30,22 +29,19 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.List;
 
-public class MultiTableDefaults extends SpeakerCommand {
+public class MultiTableDefaults extends AbstractMultiTableCommand {
     private static final U64 COOKIE = U64.of(0x2140001L);
 
     @JsonCreator
     public MultiTableDefaults(@JsonProperty("switch_id") SwitchId switchId,
                               @JsonProperty("message_context") MessageContext messageContext) {
         super(switchId, messageContext);
-    }
-
-    @Override
-    protected FloodlightResponse buildResponse() {
-        return new FloodlightResponse(messageContext);
     }
 
     @Override
@@ -61,7 +57,9 @@ public class MultiTableDefaults extends SpeakerCommand {
                 makeDispatchMissing(of, swDesc),
                 makePreIngressMissing(of, swDesc),
                 makeIngressMissing(of, swDesc),
-                makePostIngressMissing(of, swDesc)));
+                makePostIngressMissing(of, swDesc),
+                makeReinjectRedirect(of, swDesc),
+                makeDropReinject(of, swDesc)));
     }
 
     private OFMessage makeDispatchMissing(OFFactory of, SwitchDescriptor swDesc) {
@@ -93,6 +91,35 @@ public class MultiTableDefaults extends SpeakerCommand {
     private OFMessage makePostIngressMissing(OFFactory of, SwitchDescriptor swDesc) {
         return makeDropAllMissing(of)
                 .setTableId(swDesc.getTablePostIngress())
+                .build();
+    }
+
+    private OFMessage makeReinjectRedirect(OFFactory of, SwitchDescriptor swDesc) {
+        return of.buildFlowAdd()
+                .setTableId(swDesc.getTableDispatch())
+                .setPriority(PRIORITY_REINJECT + 100)
+                .setCookie(COOKIE)
+                .setMatch(of.buildMatch()
+                                  .setMasked(MatchField.METADATA,
+                                             OFMetadata.of(METADATA_SEEN_MARK), OFMetadata.of(METADATA_SEEN_MARK))
+                                  .build())
+                .setInstructions(ImmutableList.of(
+                        of.instructions().writeMetadata(METADATA_REINJECT_MARK, METADATA_REINJECT_MARK),
+                        of.instructions().gotoTable(swDesc.getTablePostIngress())))
+                .build();
+    }
+
+    private OFMessage makeDropReinject(OFFactory of, SwitchDescriptor swDesc) {
+        return of.buildFlowAdd()
+                .setTableId(swDesc.getTablePostIngress())
+                .setPriority(PRIORITY_REINJECT - 10)
+                .setCookie(COOKIE)
+                .setMatch(of.buildMatch()
+                                  .setMasked(MatchField.METADATA,
+                                             OFMetadata.of(METADATA_REINJECT_MARK),
+                                             OFMetadata.of(METADATA_REINJECT_MARK))
+                                  .build())
+                .setInstructions(ImmutableList.of(of.instructions().clearActions()))
                 .build();
     }
 

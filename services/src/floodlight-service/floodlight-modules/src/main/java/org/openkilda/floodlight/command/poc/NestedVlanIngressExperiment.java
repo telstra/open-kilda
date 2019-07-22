@@ -32,7 +32,6 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFMetadata;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
@@ -44,7 +43,6 @@ import java.util.List;
 @Slf4j
 public class NestedVlanIngressExperiment extends AbstractFlowCommand {
     protected static final U64 COOKIE = U64.of(0x2140003L);
-    protected static final U64 METADATA_REINJECT_MARK = U64.of(0x10_0000_0000L);
 
     @JsonCreator
     public NestedVlanIngressExperiment(@JsonProperty("message_context") MessageContext messageContext,
@@ -80,9 +78,8 @@ public class NestedVlanIngressExperiment extends AbstractFlowCommand {
             rules.add(makeIngressDefaultPortRule(of, swDesc));
         }
 
-        rules.add(makeReinjectRedirect(of, swDesc));
-        rules.add(makeLldpReinject(of, swDesc));
-        rules.add(makeLldpCatch(of, swDesc));
+        rules.add(makeArpReinject(of, swDesc));
+        rules.add(makeArpCatch(of, swDesc));
 
         return ImmutableList.of(
                 new BatchWriter(rules.toArray(new OFMessage[0])));
@@ -99,7 +96,8 @@ public class NestedVlanIngressExperiment extends AbstractFlowCommand {
                                   .build())
                 .setInstructions(ImmutableList.of(
                         of.instructions().applyActions(ImmutableList.of(of.actions().popVlan())),
-                        of.instructions().writeMetadata(U64.of(outerVlan), METADATA_OUTER_VLAN_MASK),
+                        of.instructions().writeMetadata(U64.of(outerVlan).or(METADATA_SEEN_MARK),
+                                                        METADATA_OUTER_VLAN_MASK.or(METADATA_SEEN_MARK)),
                         of.instructions().gotoTable(swDesc.getTableIngress())))
                 .build();
     }
@@ -120,7 +118,8 @@ public class NestedVlanIngressExperiment extends AbstractFlowCommand {
                 .setInstructions(ImmutableList.of(
                         of.instructions().applyActions(ImmutableList.of(of.actions().popVlan())),
                         of.instructions().writeActions(forwardActions(of)),
-                        of.instructions().writeMetadata(U64.of(innerVlan << VLAN_BIT_SIZE), METADATA_INNER_VLAN_MASK),
+                        of.instructions().writeMetadata(U64.of(innerVlan << VLAN_BIT_SIZE).or(METADATA_SEEN_MARK),
+                                                        METADATA_INNER_VLAN_MASK.or(METADATA_SEEN_MARK)),
                         of.instructions().gotoTable(swDesc.getTablePostIngress())))
                 .build();
     }
@@ -133,8 +132,8 @@ public class NestedVlanIngressExperiment extends AbstractFlowCommand {
                 .setMatch(of.buildMatch()
                                   .setExact(MatchField.IN_PORT, OFPort.of(inPort))
                                   .setMasked(MatchField.METADATA,
-                                             OFMetadata.of(U64.of(outerVlan)),
-                                             OFMetadata.of(METADATA_OUTER_VLAN_MASK))
+                                             OFMetadata.of(U64.of(outerVlan).or(METADATA_SEEN_MARK)),
+                                             OFMetadata.of(METADATA_OUTER_VLAN_MASK.or(METADATA_SEEN_MARK)))
                                   .build())
                 // TODO - meter
                 .setInstructions(ImmutableList.of(
@@ -156,31 +155,13 @@ public class NestedVlanIngressExperiment extends AbstractFlowCommand {
                         of.instructions().applyActions(ImmutableList.of(
                                 of.actions().buildOutput().setPort(OFPort.of(outPort)).build())),
                         of.instructions().writeActions(forwardActions(of)),
-                        of.instructions().writeMetadata(U64.ZERO, METADATA_DOUBLE_VLAN_MASK),
+                        of.instructions().writeMetadata(METADATA_SEEN_MARK,
+                                                        METADATA_DOUBLE_VLAN_MASK.or(METADATA_SEEN_MARK)),
                         of.instructions().gotoTable(swDesc.getTablePostIngress())))
                 .build();
     }
 
-    private OFMessage makeReinjectRedirect(OFFactory of, SwitchDescriptor swDesc) {
-        final U64 flatVlans = inputVlanFlatView();
-        return of.buildFlowAdd()
-                .setTableId(swDesc.getTablePreIngress())
-                .setPriority(PRIORITY_REINJECT_REDIRECT)
-                .setCookie(COOKIE)
-                .setMatch(of.buildMatch()
-                                  .setExact(MatchField.ETH_TYPE, EthType.PBB)
-                                  .setExact(MatchField.ETH_DST, MacAddress.of(swDesc.getSw().getId()))
-                                  .setExact(MatchField.ETH_SRC, MacAddress.of(flatVlans.getValue()))
-                                  .build())
-                .setInstructions(ImmutableList.of(
-                        of.instructions().applyActions(ImmutableList.of(of.actions().popPbb())),
-                        of.instructions().writeMetadata(flatVlans.or(METADATA_REINJECT_MARK),
-                                                        METADATA_DOUBLE_VLAN_MASK.or(METADATA_REINJECT_MARK)),
-                        of.instructions().gotoTable(swDesc.getTablePostIngress())))
-                .build();
-    }
-
-    private OFMessage makeLldpReinject(OFFactory of, SwitchDescriptor swDesc) {
+    private OFMessage makeArpReinject(OFFactory of, SwitchDescriptor swDesc) {
         return of.buildFlowAdd()
                 .setTableId(swDesc.getTablePostIngress())
                 .setPriority(PRIORITY_FLOW)
@@ -190,23 +171,18 @@ public class NestedVlanIngressExperiment extends AbstractFlowCommand {
                                   .setMasked(MatchField.METADATA,
                                              OFMetadata.of(inputVlanFlatView()),
                                              OFMetadata.of(METADATA_DOUBLE_VLAN_MASK.or(METADATA_REINJECT_MARK)))
-                                  .setExact(MatchField.ETH_TYPE, EthType.LLDP)
-                                  .setExact(MatchField.ETH_DST, LLDP_ETH_DST)
+                                  .setExact(MatchField.ETH_TYPE, EthType.ARP)
                                   .build())
                 .setInstructions(ImmutableList.of(
                         of.instructions().applyActions(ImmutableList.of(
-                                of.actions().pushPbb(EthType.PBB),
-                                of.actions().setField(of.oxms().ethDst(MacAddress.of(swDesc.getSw().getId()))),
-                                of.actions().setField(of.oxms().ethSrc(MacAddress.of(inputVlanFlatView().getValue()))),
-                                of.actions().buildOutput().setPort(OFPort.TABLE).build(),
-                                of.actions().popPbb()))))
+                                of.actions().buildOutput().setPort(OFPort.TABLE).build()))))
                 .build();
     }
 
-    private OFMessage makeLldpCatch(OFFactory of, SwitchDescriptor swDesc) {
+    private OFMessage makeArpCatch(OFFactory of, SwitchDescriptor swDesc) {
         return of.buildFlowAdd()
                 .setTableId(swDesc.getTablePostIngress())
-                .setPriority(PRIORITY_REINJECT_REDIRECT)
+                .setPriority(PRIORITY_REINJECT)
                 .setCookie(COOKIE)
                 .setMatch(
                         of.buildMatch()

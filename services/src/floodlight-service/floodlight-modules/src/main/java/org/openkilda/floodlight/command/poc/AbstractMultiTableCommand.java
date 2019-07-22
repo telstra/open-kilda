@@ -27,7 +27,7 @@ import org.projectfloodlight.openflow.types.U64;
 public abstract class AbstractMultiTableCommand extends SpeakerCommand {
     protected static final int PRIORITY_FLOW = FlowModUtils.PRIORITY_MED;
     protected static final int PRIORITY_ISL_EGRESS = FlowModUtils.PRIORITY_HIGH;
-    protected static final int PRIORITY_REINJECT_REDIRECT = FlowModUtils.PRIORITY_HIGH;
+    protected static final int PRIORITY_REINJECT = FlowModUtils.PRIORITY_HIGH;
 
     protected static final int VLAN_BIT_SIZE = 12;
     protected static final MacAddress LLDP_ETH_DST = MacAddress.of(0x0180c2000000L);
@@ -35,6 +35,9 @@ public abstract class AbstractMultiTableCommand extends SpeakerCommand {
     protected static final U64 METADATA_OUTER_VLAN_MASK = U64.of(0x000fff);
     protected static final U64 METADATA_INNER_VLAN_MASK = U64.of(0xfff000);
     protected static final U64 METADATA_DOUBLE_VLAN_MASK = METADATA_OUTER_VLAN_MASK.or(METADATA_INNER_VLAN_MASK);
+
+    protected static final U64 METADATA_SEEN_MARK = U64.of(0x20_0000_0000L);
+    protected static final U64 METADATA_REINJECT_MARK = U64.of(0x10_0000_0000L);
 
     public AbstractMultiTableCommand(SwitchId switchId, MessageContext messageContext) {
         super(switchId, messageContext);
