@@ -58,8 +58,8 @@ public class MultiTableDefaults extends AbstractMultiTableCommand {
                 makePreIngressMissing(of, swDesc),
                 makeIngressMissing(of, swDesc),
                 makePostIngressMissing(of, swDesc),
-                makeReinjectRedirect(of, swDesc),
-                makeDropReinject(of, swDesc)));
+                makeAppCopyDispatch(of, swDesc),
+                makeAppCopyDrop(of, swDesc)));
     }
 
     private OFMessage makeDispatchMissing(OFFactory of, SwitchDescriptor swDesc) {
@@ -73,18 +73,18 @@ public class MultiTableDefaults extends AbstractMultiTableCommand {
     }
 
     private OFMessage makePreIngressMissing(OFFactory of, SwitchDescriptor swDesc) {
-        return of.buildFlowAdd()
+        return makeDropAllMissing(of)
                 .setTableId(swDesc.getTablePreIngress())
-                .setPriority(0)
-                .setCookie(COOKIE)
-                .setInstructions(ImmutableList.of(
-                        of.instructions().gotoTable(swDesc.getTableIngress())))
                 .build();
     }
 
     private OFMessage makeIngressMissing(OFFactory of, SwitchDescriptor swDesc) {
-        return makeDropAllMissing(of)
+        return of.buildFlowAdd()
                 .setTableId(swDesc.getTableIngress())
+                .setPriority(0)
+                .setCookie(COOKIE)
+                .setInstructions(ImmutableList.of(
+                        of.instructions().gotoTable(swDesc.getTablePostIngress())))
                 .build();
     }
 
@@ -94,32 +94,32 @@ public class MultiTableDefaults extends AbstractMultiTableCommand {
                 .build();
     }
 
-    private OFMessage makeReinjectRedirect(OFFactory of, SwitchDescriptor swDesc) {
+    private OFMessage makeAppCopyDispatch(OFFactory of, SwitchDescriptor swDesc) {
         return of.buildFlowAdd()
                 .setTableId(swDesc.getTableDispatch())
                 .setPriority(PRIORITY_REINJECT + 100)
                 .setCookie(COOKIE)
                 .setMatch(of.buildMatch()
                                   .setMasked(MatchField.METADATA,
-                                             OFMetadata.of(METADATA_SEEN_MARK), OFMetadata.of(METADATA_SEEN_MARK))
+                                             OFMetadata.of(METADATA_FLOW_MATCH_MARK),
+                                             OFMetadata.of(METADATA_FLOW_MATCH_MARK))
                                   .build())
                 .setInstructions(ImmutableList.of(
-                        of.instructions().writeMetadata(METADATA_REINJECT_MARK, METADATA_REINJECT_MARK),
-                        of.instructions().gotoTable(swDesc.getTablePostIngress())))
+                        of.instructions().writeMetadata(METADATA_APP_COPY_MARK, METADATA_APP_COPY_MARK),
+                        of.instructions().gotoTable(swDesc.getTableIngress())))
                 .build();
     }
 
-    private OFMessage makeDropReinject(OFFactory of, SwitchDescriptor swDesc) {
+    private OFMessage makeAppCopyDrop(OFFactory of, SwitchDescriptor swDesc) {
         return of.buildFlowAdd()
-                .setTableId(swDesc.getTablePostIngress())
+                .setTableId(swDesc.getTableIngress())
                 .setPriority(PRIORITY_REINJECT - 10)
                 .setCookie(COOKIE)
                 .setMatch(of.buildMatch()
                                   .setMasked(MatchField.METADATA,
-                                             OFMetadata.of(METADATA_REINJECT_MARK),
-                                             OFMetadata.of(METADATA_REINJECT_MARK))
+                                             OFMetadata.of(METADATA_APP_COPY_MARK),
+                                             OFMetadata.of(METADATA_APP_COPY_MARK))
                                   .build())
-                .setInstructions(ImmutableList.of(of.instructions().clearActions()))
                 .build();
     }
 

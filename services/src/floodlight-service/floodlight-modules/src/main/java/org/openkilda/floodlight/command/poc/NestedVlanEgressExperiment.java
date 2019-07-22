@@ -18,7 +18,6 @@ package org.openkilda.floodlight.command.poc;
 import org.openkilda.floodlight.FloodlightResponse;
 import org.openkilda.floodlight.command.BatchWriter;
 import org.openkilda.floodlight.command.SessionProxy;
-import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
@@ -33,22 +32,20 @@ import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
-import org.projectfloodlight.openflow.types.U64;
 
 import java.util.List;
 
 public class NestedVlanEgressExperiment extends AbstractFlowCommand {
-    protected static final U64 COOKIE = U64.of(0x2140004L);
-
     @JsonCreator
     public NestedVlanEgressExperiment(@JsonProperty("message_context") MessageContext messageContext,
+                                      @JsonProperty("cookie") long cookie,
                                       @JsonProperty("switch_id") SwitchId switchId,
                                       @JsonProperty("in_port") int inPort,
                                       @JsonProperty("out_port") int outPort,
                                       @JsonProperty("outer_vlan") short outerVlan,
                                       @JsonProperty("inner_vlan") short innerVlan,
                                       @JsonProperty("transit_vlan") short transitVlan) {
-        super(switchId, messageContext, inPort, outPort, outerVlan, innerVlan, transitVlan);
+        super(messageContext, cookie, switchId, inPort, outPort, outerVlan, innerVlan, transitVlan);
     }
 
     @Override
@@ -57,8 +54,7 @@ public class NestedVlanEgressExperiment extends AbstractFlowCommand {
     }
 
     @Override
-    public List<SessionProxy> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
-            throws SwitchOperationException {
+    public List<SessionProxy> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
         OFFactory of = sw.getOFFactory();
         SwitchDescriptor swDesc = new SwitchDescriptor(sw);
         return ImmutableList.of(new BatchWriter(makeFlowEgressRoute(of, swDesc)));
@@ -68,7 +64,7 @@ public class NestedVlanEgressExperiment extends AbstractFlowCommand {
         return of.buildFlowAdd()
                 .setTableId(swDesc.getTableEgress())
                 .setPriority(PRIORITY_FLOW)
-                .setCookie(COOKIE)
+                .setCookie(cookie)
                 .setMatch(of.buildMatch()
                                   .setExact(MatchField.IN_PORT, OFPort.of(inPort))
                                   .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(transitVlan))

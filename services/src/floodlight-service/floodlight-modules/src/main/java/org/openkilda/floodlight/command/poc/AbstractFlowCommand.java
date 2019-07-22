@@ -18,16 +18,21 @@ package org.openkilda.floodlight.command.poc;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.SwitchId;
 
+import org.projectfloodlight.openflow.types.U64;
+
 public abstract class AbstractFlowCommand extends AbstractMultiTableCommand {
+    protected final U64 cookie;
+
     protected final int inPort;
     protected final int outPort;
     protected final short outerVlan;
     protected final short innerVlan;
     protected final short transitVlan;
 
-    public AbstractFlowCommand(SwitchId switchId, MessageContext messageContext,
+    public AbstractFlowCommand(MessageContext messageContext, long cookie, SwitchId switchId,
                                int inPort, int outPort, short outerVlan, short innerVlan, short transitVlan) {
         super(switchId, messageContext);
+        this.cookie = U64.of(cookie);
         this.inPort = inPort;
         this.outPort = outPort;
         this.outerVlan = outerVlan;

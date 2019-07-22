@@ -29,15 +29,14 @@ public abstract class AbstractMultiTableCommand extends SpeakerCommand {
     protected static final int PRIORITY_ISL_EGRESS = FlowModUtils.PRIORITY_HIGH;
     protected static final int PRIORITY_REINJECT = FlowModUtils.PRIORITY_HIGH;
 
-    protected static final int VLAN_BIT_SIZE = 12;
     protected static final MacAddress LLDP_ETH_DST = MacAddress.of(0x0180c2000000L);
 
-    protected static final U64 METADATA_OUTER_VLAN_MASK = U64.of(0x000fff);
-    protected static final U64 METADATA_INNER_VLAN_MASK = U64.of(0xfff000);
-    protected static final U64 METADATA_DOUBLE_VLAN_MASK = METADATA_OUTER_VLAN_MASK.or(METADATA_INNER_VLAN_MASK);
+    protected static final U64 METADATA_FLOW_MATCH_MASK = U64.of(0x0_ffff_ffffL);
+    protected static final U64 METADATA_VLAN_MASK = U64.of(0x0fffL);
 
-    protected static final U64 METADATA_SEEN_MARK = U64.of(0x20_0000_0000L);
-    protected static final U64 METADATA_REINJECT_MARK = U64.of(0x10_0000_0000L);
+    protected static final U64 METADATA_FLOW_MATCH_MARK = U64.of(0x1_0000_0000_0000L);
+    protected static final U64 METADATA_APP_COPY_MARK = U64.of(0x2_0000_0000_0000L);
+    protected static final U64 METADATA_OUTER_VLAN_MARK = U64.of(0x4_0000_0000_0000L);
 
     public AbstractMultiTableCommand(SwitchId switchId, MessageContext messageContext) {
         super(switchId, messageContext);

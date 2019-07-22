@@ -29,7 +29,6 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.OFMetadata;
@@ -42,17 +41,16 @@ import java.util.List;
 
 @Slf4j
 public class NestedVlanIngressExperiment extends AbstractFlowCommand {
-    protected static final U64 COOKIE = U64.of(0x2140003L);
-
     @JsonCreator
     public NestedVlanIngressExperiment(@JsonProperty("message_context") MessageContext messageContext,
+                                       @JsonProperty("cookie") long cookie,
                                        @JsonProperty("switch_id") SwitchId switchId,
                                        @JsonProperty("in_port") int inPort,
                                        @JsonProperty("out_port") int outPort,
                                        @JsonProperty("outer_vlan") short outerVlan,
                                        @JsonProperty("inner_vlan") short innerVlan,
                                        @JsonProperty("transit_vlan") short transitVlan) {
-        super(switchId, messageContext, inPort, outPort, outerVlan, innerVlan, transitVlan);
+        super(messageContext, cookie, switchId, inPort, outPort, outerVlan, innerVlan, transitVlan);
     }
 
     @Override
@@ -68,128 +66,107 @@ public class NestedVlanIngressExperiment extends AbstractFlowCommand {
 
         List<OFMessage> rules = new ArrayList<>();
         if (0 < outerVlan) {
-            rules.add(makePreIngressVlanRule(of, swDesc));
+            rules.add(makeOuterVlanRule(of, swDesc));
             if (0 < innerVlan) {
-                rules.add(makeIngressInnerVlanRule(of, swDesc));
-            } else {
-                rules.add(makeIngressOuterVlanRule(of, swDesc));
+                rules.add(makeInnerVlanRule(of, swDesc));
             }
         } else {
-            rules.add(makeIngressDefaultPortRule(of, swDesc));
+            rules.add(makeDefaultPortRule(of, swDesc));
         }
 
         rules.add(makeArpReinject(of, swDesc));
-        rules.add(makeArpCatch(of, swDesc));
+        rules.add(makeAppCopyCatch(of, swDesc));
+        rules.add(makeIngressForwarding(of, swDesc));
 
         return ImmutableList.of(
                 new BatchWriter(rules.toArray(new OFMessage[0])));
     }
 
-    private OFMessage makePreIngressVlanRule(OFFactory of, SwitchDescriptor swDesc) {
+    private OFMessage makeOuterVlanRule(OFFactory of, SwitchDescriptor swDesc) {
         return of.buildFlowAdd()
                 .setTableId(swDesc.getTablePreIngress())
                 .setPriority(PRIORITY_FLOW)
-                .setCookie(COOKIE)
+                .setCookie(cookie)
                 .setMatch(of.buildMatch()
                                   .setExact(MatchField.IN_PORT, OFPort.of(inPort))
                                   .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(outerVlan))
                                   .build())
                 .setInstructions(ImmutableList.of(
                         of.instructions().applyActions(ImmutableList.of(of.actions().popVlan())),
-                        of.instructions().writeMetadata(U64.of(outerVlan).or(METADATA_SEEN_MARK),
-                                                        METADATA_OUTER_VLAN_MASK.or(METADATA_SEEN_MARK)),
+                        of.instructions().writeActions(ImmutableList.of(
+                                of.actions().buildOutput().setPort(OFPort.TABLE).build())),
+                        of.instructions().writeMetadata(METADATA_OUTER_VLAN_MARK.or(U64.of(outerVlan)),
+                                                        METADATA_OUTER_VLAN_MARK.or(METADATA_VLAN_MASK))))
+                .build();
+    }
+
+    private OFMessage makeInnerVlanRule(OFFactory of, SwitchDescriptor swDesc) {
+        return of.buildFlowAdd()
+                .setTableId(swDesc.getTablePreIngress())
+                .setPriority(PRIORITY_FLOW + 10)
+                .setCookie(cookie)
+                .setMatch(of.buildMatch()
+                                  .setExact(MatchField.IN_PORT, OFPort.of(inPort))
+                                  .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(innerVlan))
+                                  .setMasked(MatchField.METADATA,
+                                             OFMetadata.of(METADATA_OUTER_VLAN_MARK.or(U64.of(outerVlan))),
+                                             OFMetadata.of(METADATA_OUTER_VLAN_MARK.or(METADATA_VLAN_MASK)))
+                                  .build())
+                .setInstructions(ImmutableList.of(
+                        of.instructions().applyActions(ImmutableList.of(of.actions().popVlan())),
+                        of.instructions().writeMetadata(METADATA_FLOW_MATCH_MARK.or(cookie),
+                                                        METADATA_FLOW_MATCH_MARK.or(METADATA_FLOW_MATCH_MASK)),
                         of.instructions().gotoTable(swDesc.getTableIngress())))
                 .build();
     }
 
-    private OFMessage makeIngressInnerVlanRule(OFFactory of, SwitchDescriptor swDesc) {
+    private OFMessage makeDefaultPortRule(OFFactory of, SwitchDescriptor swDesc) {
         return of.buildFlowAdd()
-                .setTableId(swDesc.getTableIngress())
-                .setPriority(PRIORITY_FLOW + 1)
-                .setCookie(COOKIE)
-                .setMatch(of.buildMatch()
-                                  .setExact(MatchField.IN_PORT, OFPort.of(inPort))
-                                  .setMasked(MatchField.METADATA,
-                                             OFMetadata.of(U64.of(outerVlan)),
-                                             OFMetadata.of(METADATA_OUTER_VLAN_MASK))
-                                  .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(innerVlan))
-                                  .build())
-                // TODO - meter
-                .setInstructions(ImmutableList.of(
-                        of.instructions().applyActions(ImmutableList.of(of.actions().popVlan())),
-                        of.instructions().writeActions(forwardActions(of)),
-                        of.instructions().writeMetadata(U64.of(innerVlan << VLAN_BIT_SIZE).or(METADATA_SEEN_MARK),
-                                                        METADATA_INNER_VLAN_MASK.or(METADATA_SEEN_MARK)),
-                        of.instructions().gotoTable(swDesc.getTablePostIngress())))
-                .build();
-    }
-
-    private OFMessage makeIngressOuterVlanRule(OFFactory of, SwitchDescriptor swDesc) {
-        return of.buildFlowAdd()
-                .setTableId(swDesc.getTableIngress())
-                .setPriority(PRIORITY_FLOW)
-                .setCookie(COOKIE)
-                .setMatch(of.buildMatch()
-                                  .setExact(MatchField.IN_PORT, OFPort.of(inPort))
-                                  .setMasked(MatchField.METADATA,
-                                             OFMetadata.of(U64.of(outerVlan).or(METADATA_SEEN_MARK)),
-                                             OFMetadata.of(METADATA_OUTER_VLAN_MASK.or(METADATA_SEEN_MARK)))
-                                  .build())
-                // TODO - meter
-                .setInstructions(ImmutableList.of(
-                        of.instructions().writeActions(forwardActions(of)),
-                        of.instructions().gotoTable(swDesc.getTablePostIngress())))
-                .build();
-    }
-
-    private OFMessage makeIngressDefaultPortRule(OFFactory of, SwitchDescriptor swDesc) {
-        return of.buildFlowAdd()
-                .setTableId(swDesc.getTableIngress())
-                .setPriority(PRIORITY_FLOW - 1)
-                .setCookie(COOKIE)
+                .setTableId(swDesc.getTablePreIngress())
+                .setPriority(PRIORITY_FLOW - 10)
+                .setCookie(cookie)
                 .setMatch(of.buildMatch()
                                   .setExact(MatchField.IN_PORT, OFPort.of(inPort))
                                   .build())
-                // TODO - meter
                 .setInstructions(ImmutableList.of(
-                        of.instructions().applyActions(ImmutableList.of(
-                                of.actions().buildOutput().setPort(OFPort.of(outPort)).build())),
-                        of.instructions().writeActions(forwardActions(of)),
-                        of.instructions().writeMetadata(METADATA_SEEN_MARK,
-                                                        METADATA_DOUBLE_VLAN_MASK.or(METADATA_SEEN_MARK)),
-                        of.instructions().gotoTable(swDesc.getTablePostIngress())))
+                        of.instructions().writeMetadata(METADATA_FLOW_MATCH_MARK.or(cookie),
+                                                        METADATA_FLOW_MATCH_MARK.or(METADATA_FLOW_MATCH_MASK)),
+                        of.instructions().gotoTable(swDesc.getTableIngress())))
                 .build();
     }
 
     private OFMessage makeArpReinject(OFFactory of, SwitchDescriptor swDesc) {
         return of.buildFlowAdd()
-                .setTableId(swDesc.getTablePostIngress())
+                .setTableId(swDesc.getTableIngress())
                 .setPriority(PRIORITY_FLOW)
-                .setCookie(COOKIE)
+                .setCookie(cookie)
                 .setMatch(of.buildMatch()
-                                  .setExact(MatchField.IN_PORT, OFPort.of(inPort))
                                   .setMasked(MatchField.METADATA,
-                                             OFMetadata.of(inputVlanFlatView()),
-                                             OFMetadata.of(METADATA_DOUBLE_VLAN_MASK.or(METADATA_REINJECT_MARK)))
+                                             OFMetadata.of(METADATA_FLOW_MATCH_MARK.or(cookie)),
+                                             OFMetadata.of(METADATA_FLOW_MATCH_MARK.or(METADATA_FLOW_MATCH_MASK)))
                                   .setExact(MatchField.ETH_TYPE, EthType.ARP)
                                   .build())
                 .setInstructions(ImmutableList.of(
                         of.instructions().applyActions(ImmutableList.of(
-                                of.actions().buildOutput().setPort(OFPort.TABLE).build()))))
+                                of.actions().buildOutput().setPort(OFPort.TABLE).build())),
+                        of.instructions().gotoTable(swDesc.getTablePostIngress())))
                 .build();
     }
 
-    private OFMessage makeArpCatch(OFFactory of, SwitchDescriptor swDesc) {
+    private OFMessage makeAppCopyCatch(OFFactory of, SwitchDescriptor swDesc) {
         return of.buildFlowAdd()
-                .setTableId(swDesc.getTablePostIngress())
+                .setTableId(swDesc.getTableIngress())
                 .setPriority(PRIORITY_REINJECT)
-                .setCookie(COOKIE)
+                .setCookie(cookie)
                 .setMatch(
                         of.buildMatch()
-                                .setExact(MatchField.IN_PORT, OFPort.of(inPort))
                                 .setMasked(MatchField.METADATA,
-                                           OFMetadata.of(inputVlanFlatView().or(METADATA_REINJECT_MARK)),
-                                           OFMetadata.of(METADATA_DOUBLE_VLAN_MASK.or(METADATA_REINJECT_MARK)))
+                                           OFMetadata.of(METADATA_FLOW_MATCH_MARK
+                                                                 .or(METADATA_APP_COPY_MARK)
+                                                                 .or(cookie)),
+                                           OFMetadata.of(METADATA_FLOW_MATCH_MARK
+                                                                 .or(METADATA_APP_COPY_MARK)
+                                                                 .or(METADATA_FLOW_MATCH_MASK)))
                                 .build())
                 // TODO - meter
                 .setInstructions(ImmutableList.of(
@@ -198,14 +175,24 @@ public class NestedVlanIngressExperiment extends AbstractFlowCommand {
                 .build();
     }
 
-    private List<OFAction> forwardActions(OFFactory of) {
-        return ImmutableList.of(
-                of.actions().pushVlan(EthType.VLAN_FRAME),
-                of.actions().setField(of.oxms().vlanVid(OFVlanVidMatch.ofVlan(transitVlan))),
-                of.actions().buildOutput().setPort(OFPort.of(outPort)).build());
-    }
-
-    private U64 inputVlanFlatView() {
-        return U64.of(innerVlan << VLAN_BIT_SIZE | outerVlan);
+    private OFMessage makeIngressForwarding(OFFactory of, SwitchDescriptor swDesc) {
+        return of.buildFlowAdd()
+                .setTableId(swDesc.getTablePostIngress())
+                .setPriority(PRIORITY_FLOW)
+                .setCookie(cookie)
+                .setMatch(of.buildMatch()
+                                  .setMasked(MatchField.METADATA,
+                                             OFMetadata.of(METADATA_FLOW_MATCH_MARK.or(cookie)),
+                                             OFMetadata.of(METADATA_FLOW_MATCH_MARK.or(METADATA_FLOW_MATCH_MASK)))
+                                  .build())
+                .setInstructions(ImmutableList.of(
+                        of.instructions().applyActions(ImmutableList.of(
+                                of.actions().pushVlan(EthType.VLAN_FRAME),
+                                of.actions().setField(of.oxms().vlanVid(OFVlanVidMatch.ofVlan(transitVlan))),
+                                of.actions().buildOutput().setPort(OFPort.of(outPort)).build()))))/*,
+                        // (FIXME) We should use write-action here... but it do not work, at least on OVS.
+                        of.instructions().writeActions(ImmutableList.of(
+                                of.actions().buildOutput().setPort(OFPort.of(outPort)).build()))))*/
+                .build();
     }
 }
