@@ -47,13 +47,9 @@ public interface LockKeeperService {
 
     void setController(Switch sw, String controller);
 
-    void blockAccessToIp(String ipAddress);
+    void blockFloodlightAccessToPort(Integer port);
 
-    void unblockAccessToIp(String ipAddress);
+    void unblockFloodlightAccessToPort(Integer port);
 
-    void blockAccessToPort(Integer port);
-
-    void unblockAccessToPort(Integer ipAddress);
-
-    void removeAccessRestrictions();
+    void removeFloodlightAccessRestrictions();
 }

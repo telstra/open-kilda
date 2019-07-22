@@ -61,32 +61,20 @@ public class LockKeeperVirtualImpl extends LockKeeperServiceImpl {
     }
 
     @Override
-    public void blockAccessToIp(String ipAddress) {
+    public void blockFloodlightAccessToPort(Integer port) {
         throw new UnsupportedOperationException(
-                "blockAccessToIp method is not available on virtual env");
+                "blockFloodlightAccessToPort method is not available on virtual env");
     }
 
     @Override
-    public void unblockAccessToIp(String ipAddress) {
+    public void unblockFloodlightAccessToPort(Integer port) {
         throw new UnsupportedOperationException(
-                "unblockAccessToIp method is not available on virtual env");
+                "unblockFloodlightAccessToPort method is not available on virtual env");
     }
 
     @Override
-    public void blockAccessToPort(Integer port) {
+    public void removeFloodlightAccessRestrictions() {
         throw new UnsupportedOperationException(
-                "blockAccessToPort method is not available on virtual env");
-    }
-
-    @Override
-    public void unblockAccessToPort(Integer port) {
-        throw new UnsupportedOperationException(
-                "unblockAccessToPort method is not available on virtual env");
-    }
-
-    @Override
-    public void removeAccessRestrictions() {
-        throw new UnsupportedOperationException(
-                "allowAccessToEverything method is not available on virtual env");
+                "removeFloodlightAccessRestrictions method is not available on virtual env");
     }
 }

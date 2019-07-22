@@ -31,7 +31,6 @@ def execute_command_in_container(commands, container_name=FL_CONTAINER_NAME):
     container = docker.from_env().containers.get(container_name)
     for command in commands:
         container.exec_run(command)
-    return True
 
 
 def execute_remote_command(command):
@@ -133,8 +132,8 @@ def fl_restart():
     return jsonify({'status': 'ok'})
 
 
-@app.route('/block-access', methods=['POST'])
-def block_access():
+@app.route('/block-floodlight-access', methods=['POST'])
+def block_floodlight_access():
     body = request.get_json()
     commands = []
     if 'ip' in body:
@@ -151,8 +150,8 @@ def block_access():
         return jsonify({'status': 'Oops, available params: ip or port'})
 
 
-@app.route('/unblock-access', methods=['POST'])
-def unblock_access():
+@app.route('/unblock-floodlight-access', methods=['POST'])
+def unblock_floodlight_access():
     body = request.get_json()
     commands = []
     if 'ip' in body:
@@ -169,7 +168,7 @@ def unblock_access():
         return jsonify({'status': 'Oops, available params: ip or port'})
 
 
-@app.route('/remove-access-restrictions', methods=['POST'])
-def remove_access_restrictions():
+@app.route('/remove-floodlight-access-restrictions', methods=['POST'])
+def remove_floodlight_access_restrictions():
     execute_command_in_container(['iptables -F INPUT', 'iptables -F OUTPUT'])
     return jsonify({'status': 'All iptables rules in INPUT/OUTPUT chains were removed'})
