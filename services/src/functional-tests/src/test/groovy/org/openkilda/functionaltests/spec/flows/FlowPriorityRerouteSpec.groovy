@@ -17,6 +17,9 @@ import spock.lang.Ignore
 import spock.lang.Unroll
 
 class FlowPriorityRerouteSpec extends HealthCheckSpecification {
+    //TODO: new H&S reroute consists of multiple steps and can't guarantee that the last step is performed in the same
+    // order as the first ones. Revise and fix the test appropriately.
+    @Ignore
     @Unroll
     @IterationTag(tags = [SMOKE], iterationNameRegex = /without protected path/)
     def "System is able to reroute(automatically) flow #info in the correct order based on the priority field"() {

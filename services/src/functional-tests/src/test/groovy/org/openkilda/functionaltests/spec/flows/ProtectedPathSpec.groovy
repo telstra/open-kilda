@@ -20,6 +20,7 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
@@ -127,6 +128,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Rules for protected path are deleted"
         Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
             protectedFlowPath.each { sw ->
                 def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
                     !Cookie.isDefaultRule(it.cookie)
@@ -217,7 +219,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         then: "Flow is switched to protected path"
-        Wrappers.wait(WAIT_OFFSET) {
+        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
+        // Revise and fix the test appropriately.
+        Wrappers.wait(WAIT_OFFSET * 2) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
             def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.id)
 
@@ -332,7 +336,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         then: "Flow is switched to protected path"
-        Wrappers.wait(WAIT_OFFSET) {
+        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
+        // Revise and fix the test appropriately.
+        Wrappers.wait(WAIT_OFFSET * 2) {
             def newPathInfo = northbound.getFlowPath(flow.id)
             def newCurrentPath = pathHelper.convert(newPathInfo)
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
@@ -522,7 +528,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         then: "Protected path is recalculated"
         def newProtectedPath
-        Wrappers.wait(WAIT_OFFSET) {
+        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
+        // Revise and fix the test appropriately.
+        Wrappers.wait(WAIT_OFFSET * 2) {
             newProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
             assert newProtectedPath != currentProtectedPath
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
@@ -532,14 +540,20 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         currentPath == pathHelper.convert(northbound.getFlowPath(flow.id))
 
         and: "Bandwidth is reserved for new protected path on involved ISLs"
-        def newProtectedIsls = pathHelper.getInvolvedIsls(newProtectedPath)
-        def allLinks = northbound.getAllLinks()
-        def newProtectedIslsInfo = newProtectedIsls.collect { islUtils.getIslInfo(allLinks, it).get() }
 
-        allIsls.each { isl ->
-            newProtectedIslsInfo.each { protectedIsl ->
-                if (isl.id == protectedIsl.id) {
-                    assert isl.availableBandwidth - protectedIsl.availableBandwidth == flow.maximumBandwidth
+        def allLinks
+        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
+        // Revise and fix the test appropriately.
+        Wrappers.wait(WAIT_OFFSET * 2) {
+            def newProtectedIsls = pathHelper.getInvolvedIsls(newProtectedPath)
+            allLinks = northbound.getAllLinks()
+            def newProtectedIslsInfo = newProtectedIsls.collect { islUtils.getIslInfo(allLinks, it).get() }
+
+            allIsls.each { isl ->
+                newProtectedIslsInfo.each { protectedIsl ->
+                    if (isl.id == protectedIsl.id) {
+                        assert isl.availableBandwidth - protectedIsl.availableBandwidth == flow.maximumBandwidth
+                    }
                 }
             }
         }
@@ -885,18 +899,20 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         then: "Flow state is changed to DEGRADED"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED }
-        def flowStatusDetails = northbound.getFlow(flow.id).flowStatusDetails
-        flowStatusDetails.mainFlowPathStatus == "Up"
-        flowStatusDetails.protectedFlowPathStatus == "Down"
+        with(northbound.getFlow(flow.id).flowStatusDetails) {
+            mainFlowPathStatus == "Up"
+            protectedFlowPathStatus == "Down"
+        }
 
         when: "Break ISL on the main path (bring port down) for changing the flow state to DOWN"
         northbound.portDown(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
 
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
-        def flowStatusDetails2 = northbound.getFlow(flow.id).flowStatusDetails
-        flowStatusDetails2.mainFlowPathStatus == "Down"
-        flowStatusDetails2.protectedFlowPathStatus == "Down"
+        with(northbound.getFlow(flow.id).flowStatusDetails) {
+            mainFlowPathStatus == "Down"
+            protectedFlowPathStatus == "Down"
+        }
 
         when: "Try to swap paths when main/protected paths are not available"
         northbound.swapFlowPath(flow.id)
@@ -912,11 +928,16 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         northbound.portUp(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
 
         //TODO (andriidovhan) FlowState should be DEGRADED and mainFlowPathStatus should be "Up" when pr2430 is merged
-        then: "Flow state is still DOWN"
-        Wrappers.timedLoop(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
-        def flowStatusDetails3 = northbound.getFlow(flow.id).flowStatusDetails
-        flowStatusDetails3.mainFlowPathStatus == "Down"
-        flowStatusDetails3.protectedFlowPathStatus == "Down"
+        then: "Flow state is still DEGRADED"
+        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
+        // Revise and fix the test appropriately.
+        Wrappers.wait(WAIT_OFFSET * 2) {
+            assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED
+            with(northbound.getFlow(flow.id).flowStatusDetails) {
+                mainFlowPathStatus == "Up"
+                protectedFlowPathStatus == "Down"
+            }
+        }
 
         when: "Try to swap paths when the main path is available and the protected path is not available"
         northbound.swapFlowPath(flow.id)

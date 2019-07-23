@@ -23,6 +23,8 @@ import java.util.Collection;
 import java.util.Optional;
 
 public interface FlowEventRepository extends Repository<FlowEvent> {
+    boolean existsByTaskId(String taskId);
+
     Optional<FlowEvent> findByTaskId(String taskId);
 
     Collection<FlowEvent> findByFlowIdAndTimeFrame(String flowId, Instant timeFrom, Instant timeTo);

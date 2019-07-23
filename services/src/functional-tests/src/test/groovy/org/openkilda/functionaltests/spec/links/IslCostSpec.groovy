@@ -2,12 +2,15 @@ package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.SwitchChangeType
 
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Unroll
@@ -156,6 +159,39 @@ class IslCostSpec extends HealthCheckSpecification {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
+        }
+    }
+
+    @Tags(VIRTUAL)
+    def "ISL cost is NOT increased due to deactivating/activating switch"() {
+        given: "A switch"
+        def sw = topology.getActiveSwitches().first()
+
+        and: "Cost of related ISLs"
+        def swIsls = topology.getRelatedIsls(sw)
+        def swIslsCostMap = swIsls.collectEntries { isl ->
+            [isl, islUtils.getIslInfo(isl).get().cost]
+        }
+
+        when: "Deactivate the switch"
+        lockKeeper.knockoutSwitch(sw)
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
+            def links = northbound.getAllLinks()
+            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.FAILED }
+        }
+
+        and: "Activate the switch"
+        lockKeeper.reviveSwitch(sw)
+        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
+            def links = northbound.getAllLinks()
+            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
+        }
+
+        then: "ISL cost is not increased"
+        swIsls.each { isl ->
+            assert islUtils.getIslInfo(isl).get().cost == swIslsCostMap[isl]
         }
     }
 }

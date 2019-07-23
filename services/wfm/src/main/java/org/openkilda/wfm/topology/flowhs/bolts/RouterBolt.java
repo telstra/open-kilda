@@ -32,8 +32,6 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-import java.util.UUID;
-
 @Slf4j
 public class RouterBolt extends AbstractBolt {
 
@@ -41,7 +39,11 @@ public class RouterBolt extends AbstractBolt {
     protected void handleInput(Tuple input) {
         String key = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
         if (StringUtils.isBlank(key)) {
-            key = UUID.randomUUID().toString();
+            //TODO: the key must be unique, but the correlationId comes in from outside and we can't guarantee that.
+            //IMPORTANT: Storm may initiate reprocessing of the same tuple (e.g. in the case of timeout) and
+            // cause creating multiple FSMs for the same tuple. This must be avoided.
+            // As for now tuples are routed by the key field, and services can check FSM uniqueness.
+            key = getCommandContext().getCorrelationId();
         }
 
         CommandMessage message = (CommandMessage) input.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
@@ -59,6 +61,9 @@ public class RouterBolt extends AbstractBolt {
                             request.getType()));
             }
         } else if (data instanceof FlowRerouteRequest) {
+            FlowRerouteRequest rerouteRequest = (FlowRerouteRequest) data;
+            log.debug("Received a reroute request {}/{} with key {}. MessageId {}", rerouteRequest.getFlowId(),
+                    rerouteRequest.getPathIds(), key, input.getMessageId());
             emitWithContext(ROUTER_TO_FLOW_REROUTE_HUB.name(), input, new Values(key, data));
         } else {
             unhandledInput(input);

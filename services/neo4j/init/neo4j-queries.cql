@@ -30,3 +30,4 @@ CREATE CONSTRAINT ON (`vxlan`:`vxlan`) ASSERT `vxlan`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`vxlan`:`vxlan`) ASSERT `vxlan`.`vni` IS UNIQUE;
 CREATE CONSTRAINT ON (`switch_features`:`switch_features`) ASSERT `switch_features`.`entityId` IS UNIQUE;
 CREATE INDEX ON :`vxlan`(`path_id`);
+CREATE INDEX ON :`flow_meter` (`switch_id`);

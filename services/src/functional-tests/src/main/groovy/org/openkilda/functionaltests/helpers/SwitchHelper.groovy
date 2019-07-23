@@ -50,7 +50,8 @@ class SwitchHelper {
         if (sw.noviflow) {
             return [Cookie.DROP_RULE_COOKIE, Cookie.VERIFICATION_BROADCAST_RULE_COOKIE,
                     Cookie.VERIFICATION_UNICAST_RULE_COOKIE, Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE,
-                    Cookie.CATCH_BFD_RULE_COOKIE, Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE]
+                    Cookie.CATCH_BFD_RULE_COOKIE, Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE,
+                    Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE]
         } else if (sw.ofVersion == "OF_12") {
             return [Cookie.VERIFICATION_BROADCAST_RULE_COOKIE]
         } else {

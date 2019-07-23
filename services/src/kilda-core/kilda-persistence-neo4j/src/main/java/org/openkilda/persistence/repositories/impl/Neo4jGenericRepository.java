@@ -21,23 +21,33 @@ import static org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository.
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.ConstraintViolationException;
+import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceException;
+import org.openkilda.persistence.RecoverablePersistenceException;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.Repository;
 
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
 import org.neo4j.driver.v1.exceptions.ClientException;
+import org.neo4j.driver.v1.exceptions.TransientException;
 import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.cypher.Filters;
+import org.neo4j.ogm.cypher.query.SortOrder;
 import org.neo4j.ogm.exception.core.MappingException;
 import org.neo4j.ogm.session.Session;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Base Neo4j OGM implementation of {@link Repository}.
@@ -45,6 +55,8 @@ import java.util.TreeMap;
  */
 @Slf4j
 abstract class Neo4jGenericRepository<T> implements Repository<T> {
+    protected static final Filters EMPTY_FILTERS = new Filters();
+
     private static final String SRC_SWITCH_FIELD = "srcSwitch";
     private static final String DEST_SWITCH_FIELD = "destSwitch";
 
@@ -58,7 +70,7 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
 
     @Override
     public Collection<T> findAll() {
-        return getSession().loadAll(getEntityType(), getDepthLoadEntity());
+        return loadAll(EMPTY_FILTERS, getDefaultFetchStrategy());
     }
 
     @Override
@@ -67,26 +79,43 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
             getSession().save(entity, getDepthCreateUpdateEntity());
         } catch (ClientException ex) {
             if (ex.code().endsWith("ConstraintValidationFailed")) {
-                throw new ConstraintViolationException(ex.getMessage(), ex);
+                throw new ConstraintViolationException("Unable to create/update " + getEntityType(), ex);
             } else {
                 throw ex;
             }
         } catch (MappingException ex) {
             log.error("OGM mapping exception", ex.getCause());
-            throw ex;
+            throw new PersistenceException("Unable to create/update " + getEntityType(), ex);
+        } catch (TransientException ex) {
+            throw new RecoverablePersistenceException("Unable to create/update " + getEntityType(), ex);
         }
     }
 
     @Override
     public void delete(T entity) {
-        getSession().delete(requireManagedEntity(entity));
+        try {
+            getSession().delete(requireManagedEntity(entity));
+        } catch (TransientException ex) {
+            throw new RecoverablePersistenceException("Unable to delete " + getEntityType(), ex);
+        }
     }
 
     protected abstract Class<T> getEntityType();
 
-    protected int getDepthLoadEntity() {
+    protected FetchStrategy getDefaultFetchStrategy() {
         // the default depth for loading an entity.
-        return 1;
+        return FetchStrategy.DIRECT_RELATIONS;
+    }
+
+    protected int getDepthLoadEntity(FetchStrategy fetchStrategy) {
+        switch (fetchStrategy) {
+            case DIRECT_RELATIONS:
+                return 1;
+            case NO_RELATIONS:
+                return 0;
+            default:
+                throw new IllegalArgumentException("Unsupported fetch strategy " + fetchStrategy);
+        }
     }
 
     protected int getDepthCreateUpdateEntity() {
@@ -99,20 +128,36 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
     }
 
     protected Collection<T> loadAll(Filter filter) {
+        return loadAll(filter, getDefaultFetchStrategy());
+    }
+
+    protected Collection<T> loadAll(Filter filter, FetchStrategy fetchStrategy) {
+        return loadAll(new Filters(filter), fetchStrategy);
+    }
+
+    protected Collection<T> loadAll(Filter filter, SortOrder sortOrder, FetchStrategy fetchStrategy) {
         try {
-            return getSession().loadAll(getEntityType(), filter, getDepthLoadEntity());
+            return getSession().loadAll(getEntityType(), filter, sortOrder, getDepthLoadEntity(fetchStrategy));
         } catch (MappingException ex) {
             log.error("OGM mapping exception", ex.getCause());
-            throw ex;
+            throw new PersistenceException("Unable to load " + getEntityType(), ex);
+        } catch (TransientException ex) {
+            throw new RecoverablePersistenceException("Unable to load " + getEntityType(), ex);
         }
     }
 
     protected Collection<T> loadAll(Filters filters) {
+        return loadAll(filters, getDefaultFetchStrategy());
+    }
+
+    protected Collection<T> loadAll(Filters filters, FetchStrategy fetchStrategy) {
         try {
-            return getSession().loadAll(getEntityType(), filters, getDepthLoadEntity());
+            return getSession().loadAll(getEntityType(), filters, getDepthLoadEntity(fetchStrategy));
         } catch (MappingException ex) {
             log.error("OGM mapping exception", ex.getCause());
-            throw ex;
+            throw new PersistenceException("Unable to load " + getEntityType(), ex);
+        } catch (TransientException ex) {
+            throw new RecoverablePersistenceException("Unable to load " + getEntityType(), ex);
         }
     }
 
@@ -137,22 +182,43 @@ abstract class Neo4jGenericRepository<T> implements Repository<T> {
         return entity;
     }
 
-    protected void lockSwitches(Switch... switches) {
+    protected void lockSwitches(SwitchId... switches) {
+        lockSwitches(Arrays.stream(switches));
+    }
+
+    protected void lockSwitches(Stream<SwitchId> switches) {
         // Lock switches in ascending order of switchId.
-        Arrays.stream(switches).map(this::requireManagedEntity)
-                .<Map<SwitchId, Switch>>collect(TreeMap::new, (m, e) -> m.put(e.getSwitchId(), e), Map::putAll)
+        switches.<Map<SwitchId, SwitchId>>collect(TreeMap::new, (m, e) -> m.put(e, e), Map::putAll)
                 .values()
                 .forEach(this::lockSwitch);
     }
 
-    private void lockSwitch(Switch sw) {
-        Map<String, Object> parameters = ImmutableMap.of("name", sw.getSwitchId().toString());
-        Long updatedEntityId = getSession().queryForObject(Long.class,
+    private void lockSwitch(SwitchId switchId) {
+        Map<String, Object> parameters = ImmutableMap.of("name", switchId.toString());
+        Optional<Long> updatedEntityId = queryForLong(
                 "MATCH (sw:switch {name: $name}) "
                         + "SET sw.tx_override_workaround='dummy' "
-                        + "RETURN id(sw)", parameters);
-        if (updatedEntityId == null) {
-            throw new PersistenceException(format("Switch not found to be locked: %s", sw.getSwitchId()));
+                        + "RETURN id(sw) as id", parameters, "id");
+        if (!updatedEntityId.isPresent()) {
+            throw new PersistenceException(format("Switch not found to be locked: %s", switchId));
         }
+    }
+
+    protected Optional<Long> queryForLong(String cypher, Map<String, ?> parameters, String resultKey) {
+        Iterator<Map<String, Object>> results = getSession().query(cypher, parameters).iterator();
+        return results.hasNext()
+                ? Optional.of(Long.parseLong(results.next().get(resultKey).toString())) : Optional.empty();
+    }
+
+    protected List<Long> queryForLongs(String cypher, Map<String, ?> parameters, String resultKey) {
+        return StreamSupport.stream(getSession().query(cypher, parameters).spliterator(), false)
+                .map(result -> Long.parseLong(result.get(resultKey).toString()))
+                .collect(Collectors.toList());
+    }
+
+    protected List<String> queryForStrings(String cypher, Map<String, ?> parameters, String resultKey) {
+        return StreamSupport.stream(getSession().query(cypher, parameters).spliterator(), false)
+                .map(result -> result.get(resultKey).toString())
+                .collect(Collectors.toList());
     }
 }

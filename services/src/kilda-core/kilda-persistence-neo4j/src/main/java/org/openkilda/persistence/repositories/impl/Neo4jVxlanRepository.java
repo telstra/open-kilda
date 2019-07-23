@@ -25,7 +25,6 @@ import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 
@@ -75,8 +74,7 @@ public class Neo4jVxlanRepository extends Neo4jGenericRepository<Vxlan> implemen
                 + "ORDER BY vni "
                 + "LIMIT 1";
 
-        Iterator<Integer> results = getSession().query(Integer.class, query, parameters).iterator();
-        return results.hasNext() ? Optional.of(results.next()) : Optional.empty();
+        return queryForLong(query, parameters, "vni").map(Long::intValue);
     }
 
     @Override

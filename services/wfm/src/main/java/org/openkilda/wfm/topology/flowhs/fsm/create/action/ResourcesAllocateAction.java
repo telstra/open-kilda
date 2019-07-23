@@ -168,7 +168,6 @@ public class ResourcesAllocateAction extends NbTrackableAction<FlowCreateFsm, St
 
         result.setSegments(path.getSegments().stream()
                 .map(segment -> PathSegment.builder()
-                        .path(result)
                         .srcSwitch(switchRepository.reload(Switch.builder()
                                 .switchId(segment.getSrcSwitchId()).build()))
                         .srcPort(segment.getSrcPort())

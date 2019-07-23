@@ -53,9 +53,7 @@ neo4j.uri = bolt://neo4j.pendev:7687
 neo4j.user = neo4j
 neo4j.password = temppass
 
-filter.directory =
 logger.level = INFO
-logger.watermark =
 
 #######
 # Discovery
@@ -67,12 +65,9 @@ logger.watermark =
 #   message from speaker it will be marked as unavailable
 # - discovery.keep.removed.isl - how long should we store/remember in minutes isl endpoints.
 #   it is mainly used for defining whether isl is moved or not
-discovery.interval = 2
-discovery.timeout = 9
-discovery.limit = -1
-discovery.speaker-failure-timeout = 5
-discovery.dump-request-timeout-seconds=60
-discovery.keep.removed.isl = 60
+discovery.interval = 3
+discovery.packet.ttl = 5
+discovery.timeout = 15
 
 # all following ping intervals are in seconds
 #flow.ping.scale-factor = 2

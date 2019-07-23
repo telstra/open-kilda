@@ -43,6 +43,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.Optional;
 
 public class FlowPathBuilderTest {
     private FlowPathBuilder builder;
@@ -51,6 +52,8 @@ public class FlowPathBuilderTest {
     public void setUp() {
         SwitchRepository switchRepository = mock(SwitchRepository.class);
         when(switchRepository.reload(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(switchRepository.findById(any())).thenAnswer(invocation ->
+                Optional.of(Switch.builder().switchId(invocation.getArgument(0)).build()));
         builder = new FlowPathBuilder(switchRepository);
     }
 
@@ -129,7 +132,6 @@ public class FlowPathBuilderTest {
                 .pathId(new PathId("test_path_id"))
                 .build();
         flowPath.setSegments(Collections.singletonList(PathSegment.builder()
-                .path(flowPath)
                 .srcSwitch(switch1)
                 .srcPort(1)
                 .destSwitch(switch2)
@@ -166,7 +168,6 @@ public class FlowPathBuilderTest {
                 .pathId(new PathId("test_path_id"))
                 .build();
         flowPath.setSegments(Collections.singletonList(PathSegment.builder()
-                .path(flowPath)
                 .srcSwitch(switch1)
                 .srcPort(2)
                 .destSwitch(switch2)
@@ -212,13 +213,11 @@ public class FlowPathBuilderTest {
                 .build();
 
         flowPath.setSegments(asList(PathSegment.builder()
-                .path(flowPath)
                 .srcSwitch(switch1)
                 .srcPort(1)
                 .destSwitch(switch3)
                 .destPort(2)
                 .build(), PathSegment.builder()
-                .path(flowPath)
                 .srcSwitch(switch3)
                 .srcPort(1)
                 .destSwitch(switch2)
@@ -238,7 +237,11 @@ public class FlowPathBuilderTest {
                 .segments(Collections.emptyList())
                 .build();
 
-        Flow flow = mock(Flow.class);
+        Flow flow = Flow.builder()
+                .flowId("test_flow")
+                .srcSwitch(Switch.builder().switchId(switchId).build())
+                .destSwitch(Switch.builder().switchId(switchId).build())
+                .build();
         PathId pathId = new PathId("test_path_id");
         MeterId meterId = new MeterId(MeterId.MIN_FLOW_METER_ID);
         PathResources pathResources = PathResources.builder()
@@ -271,7 +274,11 @@ public class FlowPathBuilderTest {
                         .build()))
                 .build();
 
-        Flow flow = mock(Flow.class);
+        Flow flow = Flow.builder()
+                .flowId("test_flow")
+                .srcSwitch(Switch.builder().switchId(switchId1).build())
+                .destSwitch(Switch.builder().switchId(switchId2).build())
+                .build();
         PathId pathId = new PathId("test_path_id");
         MeterId meterId = new MeterId(MeterId.MIN_FLOW_METER_ID);
         PathResources pathResources = PathResources.builder()
@@ -312,7 +319,11 @@ public class FlowPathBuilderTest {
                         .build()))
                 .build();
 
-        Flow flow = mock(Flow.class);
+        Flow flow = Flow.builder()
+                .flowId("test_flow")
+                .srcSwitch(Switch.builder().switchId(switchId1).build())
+                .destSwitch(Switch.builder().switchId(switchId2).build())
+                .build();
         PathId pathId = new PathId("test_path_id");
         MeterId meterId = new MeterId(MeterId.MIN_FLOW_METER_ID);
         PathResources pathResources = PathResources.builder()

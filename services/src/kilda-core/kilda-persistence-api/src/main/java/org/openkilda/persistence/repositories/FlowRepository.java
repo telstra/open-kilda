@@ -16,7 +16,9 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.FetchStrategy;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -35,6 +37,8 @@ public interface FlowRepository extends Repository<Flow> {
 
     Optional<Flow> findById(String flowId);
 
+    Optional<Flow> findById(String flowId, FetchStrategy fetchStrategy);
+
     Collection<Flow> findByGroupId(String flowGroupId);
 
     Collection<String> findFlowsIdByGroupId(String flowGroupId);
@@ -48,4 +52,6 @@ public interface FlowRepository extends Repository<Flow> {
     Collection<Flow> findDownFlows();
 
     Optional<String> getOrCreateFlowGroupId(String flowId);
+
+    void updateStatus(String flowId, FlowStatus flowStatus);
 }

@@ -34,22 +34,26 @@ public class OnReceivedInstallResponseAction extends RuleProcessingAction {
                            FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         FlowResponse response = context.getFlowResponse();
         UUID commandId = response.getCommandId();
-        stateMachine.getPendingCommands().remove(commandId);
+        if (stateMachine.getPendingCommands().remove(commandId)) {
+            long cookie = getCookieForCommand(stateMachine, commandId);
 
-        long cookie = getCookieForCommand(stateMachine, commandId);
+            if (response.isSuccess()) {
+                String message = format("Rule %s was installed successfully on switch %s", cookie,
+                        response.getSwitchId());
+                log.debug(message);
+                sendHistoryUpdate(stateMachine, "Rule installed", message);
+            } else {
+                FlowErrorResponse errorResponse = (FlowErrorResponse) response;
+                String message = format("Failed to install rule %s on switch %s: %s. Description: %s",
+                        cookie, errorResponse.getSwitchId(), errorResponse.getErrorCode(),
+                        errorResponse.getDescription());
+                log.warn(message);
+                sendHistoryUpdate(stateMachine, "Rule not installed", message);
 
-        if (response.isSuccess()) {
-            String message = format("Rule %s was installed successfully on switch %s", cookie, response.getSwitchId());
-            log.debug(message);
-            sendHistoryUpdate(stateMachine, "Rule installed", message);
+                stateMachine.getErrorResponses().put(commandId, errorResponse);
+            }
         } else {
-            FlowErrorResponse errorResponse = (FlowErrorResponse) response;
-            String message = format("Failed to install rule %s on switch %s: %s. Description: %s",
-                    cookie, errorResponse.getSwitchId(), errorResponse.getErrorCode(), errorResponse.getDescription());
-            log.warn(message);
-            sendHistoryUpdate(stateMachine, "Rule not installed", message);
-
-            stateMachine.getErrorResponses().put(commandId, errorResponse);
+            log.warn("Received a response for unexpected command: {}", response);
         }
 
         if (stateMachine.getPendingCommands().isEmpty()) {

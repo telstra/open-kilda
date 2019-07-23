@@ -135,7 +135,7 @@ public class NetworkSwitchServiceTest {
             return null;
         }).when(transactionManager).doInTransaction(Mockito.any(TransactionCallbackWithoutResult.class));
 
-        reset(switchRepository);
+        reset(switchRepository, switchFeaturesRepository);
 
         reset(repositoryFactory);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);

@@ -36,6 +36,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
@@ -145,9 +146,10 @@ public class FlowOperationsBolt extends PersistenceOperationsBolt {
         flowOperationsService.groupFlowIdWithPathIdsForRerouting(paths)
                 .forEach((flowId, pathIds) -> {
                     FlowRerouteRequest rerouteRequest = new FlowRerouteRequest(flowId, false, pathIds);
+                    CommandContext forkedContext = getCommandContext().fork(flowId);
                     getOutput().emit(
                             flowsRerouteViaFlowHs ? StreamType.FLOWHS.toString() : StreamType.REROUTE.toString(),
-                            tuple, new Values(rerouteRequest, message.getCorrelationId()));
+                            tuple, new Values(rerouteRequest, forkedContext.getCorrelationId()));
                 });
 
         List<String> flowIds = paths.stream()

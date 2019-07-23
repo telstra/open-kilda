@@ -119,7 +119,7 @@ public class OfFlowStatsMapperTest {
 
         FlowSetFieldAction flowSetFieldAction = new FlowSetFieldAction("eth_type", ethType.toString());
         FlowApplyActions applyActions = new FlowApplyActions(
-                port.toString(), flowSetFieldAction, ethType.toString(), null, null);
+                port.toString(), flowSetFieldAction, ethType.toString(), null, null, null);
         FlowInstructions instructions = new FlowInstructions(applyActions, null, meterId);
         assertEquals(instructions, entry.getInstructions());
     }

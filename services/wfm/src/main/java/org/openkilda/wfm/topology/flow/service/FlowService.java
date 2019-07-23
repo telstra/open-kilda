@@ -47,6 +47,7 @@ import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -638,7 +639,7 @@ public class FlowService extends BaseFlowService {
                     flowPathRepository.createOrUpdate(currentForwardPath);
                     flowPathRepository.createOrUpdate(currentReversePath);
 
-                    flow.setStatus(computeFlowStatus(flow));
+                    flow.setStatus(flow.computeFlowStatus());
                     flowRepository.createOrUpdate(flow);
 
                     toRemoveBuilder.protectedForwardPath(null).protectedReversePath(null);
@@ -736,11 +737,7 @@ public class FlowService extends BaseFlowService {
      */
     public void updateFlowStatus(String flowId, FlowStatus status, Set<PathId> pathIdSet) {
         transactionManager.doInTransaction(() -> {
-            flowRepository.findById(flowId)
-                    .ifPresent(flow -> {
-                        flow.setStatus(status);
-                        flowRepository.createOrUpdate(flow);
-                    });
+            flowRepository.updateStatus(flowId, status);
 
             Stream<FlowPath> pathsStream = flowPathRepository.findByFlowId(flowId).stream();
             if (!pathIdSet.isEmpty()) {
@@ -748,7 +745,7 @@ public class FlowService extends BaseFlowService {
             }
             pathsStream.forEach(path -> {
                 path.setStatusLikeFlow(status);
-                flowPathRepository.createOrUpdate(path);
+                flowPathRepository.updateStatus(path.getPathId(), path.getStatus());
             });
         });
     }
@@ -765,51 +762,27 @@ public class FlowService extends BaseFlowService {
 
     public void updateFlowPathStatus(String flowId, PathId pathId, FlowPathStatus flowPathStatus) {
         transactionManager.doInTransaction(() -> {
-            FlowPath flowPath = flowPathRepository.findById(pathId)
+            FlowPath flowPath = flowPathRepository.findById(pathId, FetchStrategy.NO_RELATIONS)
                     .orElseThrow(() -> new FlowNotFoundException(flowId, format("Flow path %s not found.", pathId)));
 
             if (flowPathStatus != flowPath.getStatus()) {
                 flowPath.setStatus(flowPathStatus);
-                flowPathRepository.createOrUpdate(flowPath);
+                flowPathRepository.updateStatus(flowPath.getPathId(), flowPathStatus);
             }
         });
 
         transactionManager.doInTransaction(() -> {
             Flow flow = flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
-            FlowStatus flowStatus = computeFlowStatus(flow);
+            FlowStatus flowStatus = flow.computeFlowStatus();
 
             if (flowStatus != flow.getStatus()) {
                 log.debug("Set flow {} status to {}", flowId, flowStatus);
 
                 flow.setStatus(flowStatus);
-                flowRepository.createOrUpdate(flow);
+                flowRepository.updateStatus(flow.getFlowId(), flowStatus);
             }
         });
-    }
-
-    private FlowStatus computeFlowStatus(Flow flow) {
-        FlowPathStatus mainFlowPrioritizedPathsStatus = flow.getMainFlowPrioritizedPathsStatus();
-        FlowPathStatus protectedFlowPrioritizedPathsStatus = flow.getProtectedFlowPrioritizedPathsStatus();
-
-        // Calculate the combined flow status.
-        if (protectedFlowPrioritizedPathsStatus != null
-                && protectedFlowPrioritizedPathsStatus != FlowPathStatus.ACTIVE
-                && mainFlowPrioritizedPathsStatus == FlowPathStatus.ACTIVE) {
-            return FlowStatus.DEGRADED;
-        } else {
-            switch (mainFlowPrioritizedPathsStatus) {
-                case ACTIVE:
-                    return FlowStatus.UP;
-                case INACTIVE:
-                    return FlowStatus.DOWN;
-                case IN_PROGRESS:
-                    return FlowStatus.IN_PROGRESS;
-                default:
-                    throw new IllegalArgumentException(
-                            format("Unsupported flow path status %s", mainFlowPrioritizedPathsStatus));
-            }
-        }
     }
 
     /**
@@ -905,7 +878,6 @@ public class FlowService extends BaseFlowService {
 
         List<PathSegment> segments = path.getSegments().stream()
                 .map(segment -> PathSegment.builder()
-                        .path(flowPath)
                         .srcSwitch(switchRepository.reload(Switch.builder()
                                 .switchId(segment.getSrcSwitchId()).build()))
                         .srcPort(segment.getSrcPort())

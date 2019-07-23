@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
+import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -65,10 +66,18 @@ public abstract class FlowProcessingAction<T extends NbTrackableStateMachine<T, 
                 .orElseThrow(() -> new FlowProcessingException(format("Flow %s not found", flowId)));
     }
 
+    protected Flow getFlow(String flowId, FetchStrategy fetchStrategy) {
+        return flowRepository.findById(flowId, fetchStrategy)
+                .orElseThrow(() -> new FlowProcessingException(format("Flow %s not found", flowId)));
+    }
+
     protected FlowPath getFlowPath(Flow flow, PathId pathId) {
-        return flow.getPaths().stream()
-                .filter(path -> path.getPathId().equals(pathId))
-                .findAny()
+        return flow.getPath(pathId)
+                .orElseThrow(() -> new FlowProcessingException(format("Flow path %s not found", pathId)));
+    }
+
+    protected FlowPath getFlowPath(PathId pathId) {
+        return flowPathRepository.findById(pathId)
                 .orElseThrow(() -> new FlowProcessingException(format("Flow path %s not found", pathId)));
     }
 

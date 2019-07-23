@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.create.action;
 import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
@@ -38,7 +39,7 @@ public class InstallIngressRulesAction extends FlowProcessingAction<FlowCreateFs
 
     private final TransitVlanCommandFactory flowCommandFactory;
 
-    public InstallIngressRulesAction(PersistenceManager persistenceManager) {
+    public InstallIngressRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
         this.flowCommandFactory = new TransitVlanCommandFactory(
                 persistenceManager.getRepositoryFactory().createTransitVlanRepository());

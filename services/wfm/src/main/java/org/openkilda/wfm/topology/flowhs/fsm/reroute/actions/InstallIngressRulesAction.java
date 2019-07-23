@@ -20,6 +20,7 @@ import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
@@ -43,10 +44,10 @@ public class InstallIngressRulesAction extends
 
     private final AbstractFlowCommandFactory commandFactory;
 
-    public InstallIngressRulesAction(PersistenceManager persistenceManager) {
+    public InstallIngressRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
 
-        this.commandFactory = new AbstractFlowCommandFactory(persistenceManager);
+        commandFactory = new AbstractFlowCommandFactory(persistenceManager);
     }
 
     @Override
@@ -63,12 +64,8 @@ public class InstallIngressRulesAction extends
             commands.addAll(flowCommandFactory.createInstallIngressRules(
                     stateMachine.getCommandContext(), flow, newForward, newReverse));
         }
-        if (stateMachine.getNewProtectedForwardPath() != null && stateMachine.getNewProtectedReversePath() != null) {
-            FlowPath newForward = getFlowPath(flow, stateMachine.getNewProtectedForwardPath());
-            FlowPath newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
-            commands.addAll(flowCommandFactory.createInstallIngressRules(
-                    stateMachine.getCommandContext(), flow, newForward, newReverse));
-        }
+
+        // Installation of ingress rules for protected paths is skipped. These paths are activated on swap.
 
         stateMachine.setIngressCommands(commands.stream()
                 .collect(Collectors.toMap(InstallIngressRule::getCommandId, Function.identity())));
@@ -79,9 +76,18 @@ public class InstallIngressRulesAction extends
                 .collect(Collectors.toSet());
         stateMachine.setPendingCommands(commandIds);
 
-        log.debug("Commands for installing ingress rules have been sent for the flow {}", stateMachine.getFlowId());
+        if (commands.isEmpty()) {
+            log.debug("No install commands for ingress rules for the flow {}", stateMachine.getFlowId());
 
-        saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
-                "Install ingress commands have been sent.");
+            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
+                    "No install commands for ingress rules.");
+
+            stateMachine.fire(Event.INGRESS_IS_SKIPPED);
+        } else {
+            log.debug("Commands for installing ingress rules have been sent for the flow {}", stateMachine.getFlowId());
+
+            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
+                    "Install ingress commands have been sent.");
+        }
     }
 }
