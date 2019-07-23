@@ -52,4 +52,8 @@ public interface LockKeeperService {
     void unblockFloodlightAccessToPort(Integer port);
 
     void removeFloodlightAccessRestrictions();
+
+    void knockoutFloodlight();
+
+    void reviveFloodlight();
 }
