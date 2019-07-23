@@ -188,11 +188,11 @@ public class NestedVlanIngressExperiment extends AbstractFlowCommand {
                 .setInstructions(ImmutableList.of(
                         of.instructions().applyActions(ImmutableList.of(
                                 of.actions().pushVlan(EthType.VLAN_FRAME),
-                                of.actions().setField(of.oxms().vlanVid(OFVlanVidMatch.ofVlan(transitVlan))),
-                                of.actions().buildOutput().setPort(OFPort.of(outPort)).build()))))/*,
+                                of.actions().setField(of.oxms().vlanVid(OFVlanVidMatch.ofVlan(transitVlan)))/*,
+                                of.actions().buildOutput().setPort(OFPort.of(outPort)).build()*/)),
                         // (FIXME) We should use write-action here... but it do not work, at least on OVS.
                         of.instructions().writeActions(ImmutableList.of(
-                                of.actions().buildOutput().setPort(OFPort.of(outPort)).build()))))*/
+                                of.actions().buildOutput().setPort(OFPort.of(outPort)).build()))))
                 .build();
     }
 }
