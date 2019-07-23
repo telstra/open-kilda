@@ -30,6 +30,9 @@ public class RulesValidationEntry implements Serializable {
     @JsonProperty("missing")
     private List<Long> missing;
 
+    @JsonProperty("misconfigured")
+    private List<Long> misconfigured;
+
     @JsonProperty("proper")
     private List<Long> proper;
 
@@ -38,9 +41,11 @@ public class RulesValidationEntry implements Serializable {
 
     @JsonCreator
     public RulesValidationEntry(@JsonProperty("missing") List<Long> missing,
+                                @JsonProperty("misconfigured") List<Long> misconfigured,
                                 @JsonProperty("proper") List<Long> proper,
                                 @JsonProperty("excess") List<Long> excess) {
         this.missing = missing;
+        this.misconfigured = misconfigured;
         this.proper = proper;
         this.excess = excess;
     }

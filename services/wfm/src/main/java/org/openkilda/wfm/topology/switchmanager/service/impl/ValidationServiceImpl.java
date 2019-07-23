@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import org.openkilda.messaging.info.meter.MeterEntry;
+import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.model.Cookie;
@@ -51,7 +52,8 @@ public class ValidationServiceImpl implements ValidationService {
     }
 
     @Override
-    public ValidateRulesResult validateRules(SwitchId switchId, Set<Long> presentCookies) {
+    public ValidateRulesResult validateRules(SwitchId switchId, List<FlowEntry> presentRules,
+                                             List<FlowEntry> expectedDefaultRules) {
         log.debug("Validating rules on switch {}", switchId);
 
         Set<Long> expectedCookies = flowPathRepository.findBySegmentDestSwitch(switchId).stream()
@@ -64,14 +66,16 @@ public class ValidationServiceImpl implements ValidationService {
                 .map(Cookie::getValue)
                 .forEach(expectedCookies::add);
 
-        presentCookies.removeIf(Cookie::isDefaultRule);
-
-        return makeRulesResponse(expectedCookies, presentCookies, switchId);
+        return makeRulesResponse(expectedCookies, presentRules, expectedDefaultRules, switchId);
     }
 
-    private ValidateRulesResult makeRulesResponse(Set<Long> expectedCookies,
-                                                  Set<Long> presentCookies,
-                                                  SwitchId switchId) {
+    private ValidateRulesResult makeRulesResponse(Set<Long> expectedCookies, List<FlowEntry> presentRules,
+                                                  List<FlowEntry> expectedDefaultRules, SwitchId switchId) {
+        Set<Long> presentCookies = presentRules.stream()
+                .map(FlowEntry::getCookie)
+                .filter(cookie -> !Cookie.isDefaultRule(cookie))
+                .collect(Collectors.toSet());
+
         Set<Long> missingRules = new HashSet<>(expectedCookies);
         missingRules.removeAll(presentCookies);
         if (!missingRules.isEmpty() && log.isErrorEnabled()) {
@@ -89,11 +93,54 @@ public class ValidationServiceImpl implements ValidationService {
                     cookiesIntoLogRepresentation(excessRules));
         }
 
+        Set<Long> misconfiguredRules = new HashSet<>();
+
+        validateDefaultRules(presentRules, expectedDefaultRules, missingRules, properRules, excessRules,
+                misconfiguredRules);
+
         return new ValidateRulesResult(
                 ImmutableList.copyOf(missingRules),
                 ImmutableList.copyOf(properRules),
-                ImmutableList.copyOf(excessRules)
-        );
+                ImmutableList.copyOf(excessRules),
+                ImmutableList.copyOf(misconfiguredRules));
+    }
+
+    private void validateDefaultRules(List<FlowEntry> presentRules, List<FlowEntry> expectedDefaultRules,
+                                      Set<Long> missingRules, Set<Long> properRules, Set<Long> excessRules,
+                                      Set<Long> misconfiguredRules) {
+        List<FlowEntry> presentDefaultRules = presentRules.stream()
+                .filter(rule -> Cookie.isDefaultRule(rule.getCookie()))
+                .collect(Collectors.toList());
+
+        expectedDefaultRules.forEach(expectedDefaultRule -> {
+            List<FlowEntry> defaultRule = presentDefaultRules.stream()
+                    .filter(rule -> rule.getCookie() == expectedDefaultRule.getCookie())
+                    .collect(Collectors.toList());
+
+            if (defaultRule.isEmpty()) {
+                missingRules.add(expectedDefaultRule.getCookie());
+            } else {
+                if (defaultRule.contains(expectedDefaultRule)) {
+                    properRules.add(expectedDefaultRule.getCookie());
+                } else {
+                    misconfiguredRules.add(expectedDefaultRule.getCookie());
+                }
+
+                if (defaultRule.size() > 1) {
+                    excessRules.add(expectedDefaultRule.getCookie());
+                }
+            }
+        });
+
+        presentDefaultRules.forEach(presentDefaultRule -> {
+            List<FlowEntry> defaultRule = expectedDefaultRules.stream()
+                    .filter(rule -> rule.getCookie() == presentDefaultRule.getCookie())
+                    .collect(Collectors.toList());
+
+            if (defaultRule.isEmpty()) {
+                excessRules.add(presentDefaultRule.getCookie());
+            }
+        });
     }
 
     private static String cookiesIntoLogRepresentation(Collection<Long> rules) {

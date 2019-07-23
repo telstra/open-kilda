@@ -27,4 +27,6 @@ public class ValidateRulesResult {
     private List<Long> properRules;
 
     private List<Long> excessRules;
+
+    private List<Long> misconfiguredRules;
 }

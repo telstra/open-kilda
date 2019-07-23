@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.switchmanager.fsm;
 
 import static java.util.Collections.emptyList;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.ERROR;
+import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.EXPECTED_DEFAULT_RULES_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.METERS_RECEIVED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.METERS_UNSUPPORTED;
 import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.SwitchValidateEvent.NEXT;
@@ -31,6 +32,7 @@ import static org.openkilda.wfm.topology.switchmanager.fsm.SwitchValidateFsm.Swi
 
 import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -56,8 +58,6 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class SwitchValidateFsm
@@ -74,6 +74,7 @@ public class SwitchValidateFsm
     private SwitchId switchId;
     private boolean processMeters;
     private List<FlowEntry> flowEntries;
+    private List<FlowEntry> expectedDefaultFlowEntries;
     private List<MeterEntry> presentMeters;
     private ValidateRulesResult validateRulesResult;
     private ValidateMetersResult validateMetersResult;
@@ -109,6 +110,8 @@ public class SwitchValidateFsm
                 .callMethod("receiveData");
         builder.internalTransition().within(RECEIVE_DATA).on(RULES_RECEIVED).callMethod("rulesReceived");
         builder.internalTransition().within(RECEIVE_DATA).on(METERS_RECEIVED).callMethod("metersReceived");
+        builder.internalTransition().within(RECEIVE_DATA).on(EXPECTED_DEFAULT_RULES_RECEIVED)
+                .callMethod("expectedDefaultRulesReceived");
         builder.internalTransition().within(RECEIVE_DATA).on(METERS_UNSUPPORTED)
                 .callMethod("metersUnsupported");
 
@@ -146,6 +149,7 @@ public class SwitchValidateFsm
         log.info("Key: {}, sending requests to get switch rules and meters", key);
 
         carrier.sendCommandToSpeaker(key, new DumpRulesForSwitchManagerRequest(switchId));
+        carrier.sendCommandToSpeaker(key, new GetExpectedDefaultRulesRequest(switchId));
 
         if (processMeters) {
             carrier.sendCommandToSpeaker(key, new DumpMetersForSwitchManagerRequest(switchId));
@@ -158,6 +162,13 @@ public class SwitchValidateFsm
                                  SwitchValidateEvent event, Object context) {
         log.info("Key: {}, switch rules received", key);
         this.flowEntries = (List<FlowEntry>) context;
+        checkAllDataReceived();
+    }
+
+    protected void expectedDefaultRulesReceived(SwitchValidateState from, SwitchValidateState to,
+                                                SwitchValidateEvent event, Object context) {
+        log.info("Key: {}, switch expected default rules received", key);
+        this.expectedDefaultFlowEntries = (List<FlowEntry>) context;
         checkAllDataReceived();
     }
 
@@ -177,7 +188,7 @@ public class SwitchValidateFsm
     }
 
     private void checkAllDataReceived() {
-        if (flowEntries != null && presentMeters != null) {
+        if (flowEntries != null && presentMeters != null && expectedDefaultFlowEntries != null) {
             fire(NEXT);
         }
     }
@@ -196,12 +207,7 @@ public class SwitchValidateFsm
                                  SwitchValidateEvent event, Object context) {
         log.info("Key: {}, validate rules", key);
         try {
-            Set<Long> presentCookies = flowEntries.stream()
-                    .map(FlowEntry::getCookie)
-                    .collect(Collectors.toSet());
-
-            validateRulesResult = validationService.validateRules(switchId, presentCookies);
-
+            validateRulesResult = validationService.validateRules(switchId, flowEntries, expectedDefaultFlowEntries);
         } catch (Exception e) {
             sendException(e);
         }
@@ -227,7 +233,8 @@ public class SwitchValidateFsm
             carrier.runSwitchSync(key, request,
                     new ValidationResult(flowEntries, processMeters, validateRulesResult, validateMetersResult));
         } else {
-            RulesValidationEntry rulesValidationEntry = new RulesValidationEntry(validateRulesResult.getMissingRules(),
+            RulesValidationEntry rulesValidationEntry = new RulesValidationEntry(
+                    validateRulesResult.getMissingRules(), validateRulesResult.getMisconfiguredRules(),
                     validateRulesResult.getProperRules(), validateRulesResult.getExcessRules());
 
             MetersValidationEntry metersValidationEntry = null;
@@ -277,6 +284,7 @@ public class SwitchValidateFsm
         NEXT,
         RULES_RECEIVED,
         METERS_RECEIVED,
+        EXPECTED_DEFAULT_RULES_RECEIVED,
         METERS_UNSUPPORTED,
         TIMEOUT,
         ERROR

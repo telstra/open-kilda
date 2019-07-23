@@ -90,6 +90,7 @@ public class SwitchSyncServiceImplTest {
 
     private List<Long> missingRules;
     private List<Long> excessRules;
+    private List<Long> misconfiguredRules;
     private List<MeterInfoEntry> excessMeters;
 
     @Before
@@ -118,6 +119,7 @@ public class SwitchSyncServiceImplTest {
 
         missingRules = singletonList(flowEntry.getCookie());
         excessRules = emptyList();
+        misconfiguredRules = emptyList();
         excessMeters = emptyList();
     }
 
@@ -320,7 +322,8 @@ public class SwitchSyncServiceImplTest {
     private ValidationResult makeValidationResult() {
         return new ValidationResult(singletonList(flowEntry),
                 true,
-                new ValidateRulesResult(missingRules, singletonList(flowEntry.getCookie()), excessRules),
+                new ValidateRulesResult(missingRules, singletonList(flowEntry.getCookie()), excessRules,
+                        misconfiguredRules),
                 new ValidateMetersResult(emptyList(), emptyList(), emptyList(), excessMeters));
     }
 
