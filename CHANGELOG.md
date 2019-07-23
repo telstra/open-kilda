@@ -1,18 +1,25 @@
 # Changelog
 
-## v1.28.0 (18/07/2019)
+## v1.28.0 (23/07/2019)
 
 ### Features:
 -  [#2503](https://github.com/telstra/open-kilda/pull/2503) Fix flow validation in case VxLAN encapsulation. (Issue: [#647](https://github.com/telstra/open-kilda/issues/647)) [**floodlight**][**northbound**]
 
+### Bug Fixes:
+-  [#2603](https://github.com/telstra/open-kilda/pull/2603) Fix flow status of degraded flows w/ or w/o h&s flag [**tests**]
+-  [#2607](https://github.com/telstra/open-kilda/pull/2607) Disable dumping table stats from OF 1.2 (Issue: [#2600](https://github.com/telstra/open-kilda/issues/2600)) [**floodlight**]
+
 ### Improvements:
 -  [#2594](https://github.com/telstra/open-kilda/pull/2594) add test for a new vxlan default rule/meter [**tests**]
+-  [#2571](https://github.com/telstra/open-kilda/pull/2571) Update SwapEndpointSpec with new tests and minor refactoring [**tests**]
 -  [#2543](https://github.com/telstra/open-kilda/pull/2543) H&S reroute - minimize transaction contention and locks (Issue: [#2497](https://github.com/telstra/open-kilda/issues/2497)) [**storm-topologies**]
 -  [#2579](https://github.com/telstra/open-kilda/pull/2579) add test 'System doesn't allow to create a one-switch flow on a DEACTIVATED switch' (Issue: [#2576](https://github.com/telstra/open-kilda/issues/2576)) [**tests**]
 -  [#2589](https://github.com/telstra/open-kilda/pull/2589) Minor test updates for better stability [**tests**]
 
 ### Other changes:
 -  [#2525](https://github.com/telstra/open-kilda/pull/2525) Get rid from event(wfm) topology [**storm-topologies**]
+-  [#2184](https://github.com/telstra/open-kilda/pull/2184) Design for round trip latency (Issue: [#580](https://github.com/telstra/open-kilda/issues/580)) [**docs**]
+-  [#2509](https://github.com/telstra/open-kilda/pull/2509) Configurable ping design (Issue: [#2542](https://github.com/telstra/open-kilda/issues/2542)) 
 -  [#2517](https://github.com/telstra/open-kilda/pull/2517) Add logs for port update. [**floodlight**]
 
 For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.27.0...v1.28.0).
