@@ -20,9 +20,13 @@ import org.openkilda.messaging.model.SpeakerSwitchView;
 import net.floodlightcontroller.core.IOFSwitch;
 
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 public abstract class AbstractFeature {
     protected static final String MANUFACTURER_NICIRA = "Nicira, Inc.";
+    protected static final String E_SWITCH_MANUFACTURER_DESCRIPTION = "E";
+    protected static final Pattern E_SWITCH_HARDWARE_DESCRIPTION_REGEX = Pattern.compile("^WB5\\d{3}-E$");
+    protected static final String CENTEC_MANUFACTURED = "Centec";
 
     public abstract Optional<SpeakerSwitchView.Feature> discover(IOFSwitch sw);
 }

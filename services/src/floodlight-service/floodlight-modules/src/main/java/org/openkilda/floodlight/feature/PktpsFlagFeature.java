@@ -15,22 +15,38 @@
 
 package org.openkilda.floodlight.feature;
 
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.RESET_COUNTS_FLAG;
+import static org.apache.commons.lang3.StringUtils.containsIgnoreCase;
 
 import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 
 import net.floodlightcontroller.core.IOFSwitch;
-import org.apache.commons.lang3.StringUtils;
+import net.floodlightcontroller.core.SwitchDescription;
 
 import java.util.Optional;
 
-public class ResetCountsFlagFeature extends AbstractFeature {
+public class PktpsFlagFeature extends AbstractFeature {
+
     @Override
     public Optional<Feature> discover(IOFSwitch sw) {
-        if (StringUtils.contains(sw.getSwitchDescription().getManufacturerDescription(), CENTEC_MANUFACTURED)) {
-            return Optional.empty();
-        } else {
-            return Optional.of(RESET_COUNTS_FLAG);
+        Optional<Feature> empty = Optional.empty();
+        SwitchDescription description = sw.getSwitchDescription();
+
+        if (description.getHardwareDescription() == null) {
+            return empty;
         }
+
+        if (containsIgnoreCase(description.getManufacturerDescription(), CENTEC_MANUFACTURED)) {
+            return empty;
+        }
+
+        if (E_SWITCH_MANUFACTURER_DESCRIPTION.equalsIgnoreCase(description.getManufacturerDescription())) {
+            return empty;
+        }
+
+        if (E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(description.getHardwareDescription()).matches()) {
+            return empty;
+        }
+
+        return Optional.of(Feature.PKTPS_FLAG);
     }
 }

@@ -30,6 +30,7 @@ import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.pathverification.IPathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationService;
 import org.openkilda.floodlight.pathverification.PathVerificationServiceConfig;
+import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 import org.openkilda.floodlight.switchmanager.ISwitchManager;
@@ -115,6 +116,9 @@ public class ReplaceInstallFlowTest {
         expect(pathVerificationService.getConfig()).andReturn(config).anyTimes();
         replay(pathVerificationService);
 
+        FeatureDetectorService featureDetectorService = new FeatureDetectorService();
+        featureDetectorService.setup(context);
+
         ofSwitchService = createMock(IOFSwitchService.class);
 
         context.addService(IOFSwitchService.class, ofSwitchService);
@@ -123,6 +127,7 @@ public class ReplaceInstallFlowTest {
         context.addService(IKafkaProducerService.class, createMock(IKafkaProducerService.class));
         context.addService(IPathVerificationService.class, pathVerificationService);
         context.addService(ISwitchManager.class, switchManager);
+        context.addService(FeatureDetectorService.class, featureDetectorService);
 
         switchManager.init(context);
 

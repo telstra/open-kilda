@@ -82,6 +82,7 @@ public class SpeakerSwitchView implements Serializable {
         GROUP_PACKET_OUT_CONTROLLER,
         RESET_COUNTS_FLAG,
         LIMITED_BURST_SIZE,
-        NOVIFLOW_COPY_FIELD
+        NOVIFLOW_COPY_FIELD,
+        PKTPS_FLAG
     }
 }

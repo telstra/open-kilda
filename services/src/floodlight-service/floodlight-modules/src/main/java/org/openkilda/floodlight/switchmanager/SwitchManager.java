@@ -79,7 +79,6 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.util.FlowModUtils;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
@@ -412,7 +411,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setMatch(match);
 
         // centec switches don't support RESET_COUNTS flag
-        if (!isCentecSwitch(sw)) {
+        if (featureDetectorService.detectSwitch(sw).contains(Feature.RESET_COUNTS_FLAG)) {
             builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
         }
         return pushFlow(sw, "--InstallIngressFlow--", builder.build());
@@ -518,7 +517,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setMatch(match);
 
         // centec switches don't support RESET_COUNTS flag
-        if (!isCentecSwitch(sw)) {
+        if (featureDetectorService.detectSwitch(sw).contains(Feature.RESET_COUNTS_FLAG)) {
             builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
         }
 
@@ -1175,20 +1174,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         }
     }
 
-    // FIXME: centec switches can't recognize PKTPS flag for meters.
-    // Need to simplify detection if the switch don't support PKTPS flag.
-    private boolean isSwitchSupportsPktpsFlag(IOFSwitch sw) {
-        return !(isCentecSwitch(sw) || isESwitch(sw));
-    }
-
-    private boolean isESwitch(IOFSwitch sw) {
-        return StringUtils.equalsIgnoreCase(sw.getSwitchDescription().getManufacturerDescription(), "E");
-    }
-
-    private boolean isCentecSwitch(IOFSwitch sw) {
-        return StringUtils.contains(sw.getSwitchDescription().getManufacturerDescription(), "Centec");
-    }
-
     private void installMeter(IOFSwitch sw, Set<OFMeterFlags> flags, long bandwidth, long burstSize, long meterId)
             throws OfInstallException {
         logger.info("Installing meter {} on switch {} with bandwidth {}", meterId, sw.getId(), bandwidth);
@@ -1763,7 +1748,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             long burstSize;
             Set<OFMeterFlags> flags;
 
-            if (isSwitchSupportsPktpsFlag(sw)) {
+            if (featureDetectorService.detectSwitch(sw).contains(Feature.PKTPS_FLAG)) {
                 flags = ImmutableSet.of(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
                 // With PKTPS flag rate and burst size is in packets
                 rate = ratePkts;
