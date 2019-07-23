@@ -27,7 +27,7 @@ import java.util.Optional;
 public class ResetCountsFlagFeature extends AbstractFeature {
     @Override
     public Optional<Feature> discover(IOFSwitch sw) {
-        if (StringUtils.contains(sw.getSwitchDescription().getManufacturerDescription(), "Centec")) {
+        if (StringUtils.contains(sw.getSwitchDescription().getManufacturerDescription(), CENTEC_MANUFACTURED)) {
             return Optional.empty();
         } else {
             return Optional.of(RESET_COUNTS_FLAG);
