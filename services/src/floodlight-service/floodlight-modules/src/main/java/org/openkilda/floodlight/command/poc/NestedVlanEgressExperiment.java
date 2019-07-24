@@ -28,11 +28,13 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class NestedVlanEgressExperiment extends AbstractFlowCommand {
@@ -70,12 +72,24 @@ public class NestedVlanEgressExperiment extends AbstractFlowCommand {
                                   .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(transitVlan))
                                   .build())
                 .setInstructions(ImmutableList.of(
-                        of.instructions().applyActions(ImmutableList.of(
-                                of.actions().setField(of.oxms().vlanVid(OFVlanVidMatch.ofVlan(innerVlan))),
-                                of.actions().pushVlan(EthType.VLAN_FRAME),
-                                of.actions().setField(of.oxms().vlanVid(OFVlanVidMatch.ofVlan(outerVlan))))),
+                        of.instructions().applyActions(applyTransitDecode(of)),
                         of.instructions().writeActions(ImmutableList.of(
                                 of.actions().buildOutput().setPort(OFPort.of(outPort)).build()))))
                 .build();
+    }
+
+    private List<OFAction> applyTransitDecode(OFFactory of) {
+        List<OFAction> actions = new ArrayList<>();
+        if (0 < innerVlan) {
+            actions.add(of.actions().setField(of.oxms().vlanVid(OFVlanVidMatch.ofVlan(innerVlan))));
+            actions.add(of.actions().pushVlan(EthType.VLAN_FRAME));
+            actions.add(of.actions().setField(of.oxms().vlanVid(OFVlanVidMatch.ofVlan(outerVlan))));
+        } else if (0 < outerVlan) {
+            actions.add(of.actions().setField(of.oxms().vlanVid(OFVlanVidMatch.ofVlan(outerVlan))));
+        } else {
+            actions.add(of.actions().popVlan());
+        }
+
+        return actions;
     }
 }

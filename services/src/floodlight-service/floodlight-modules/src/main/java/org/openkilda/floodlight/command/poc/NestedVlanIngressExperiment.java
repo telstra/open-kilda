@@ -66,9 +66,11 @@ public class NestedVlanIngressExperiment extends AbstractFlowCommand {
 
         List<OFMessage> rules = new ArrayList<>();
         if (0 < outerVlan) {
-            rules.add(makeOuterVlanRule(of, swDesc));
             if (0 < innerVlan) {
+                rules.add(makeOuterVlanRule(of, swDesc));
                 rules.add(makeInnerVlanRule(of, swDesc));
+            } else {
+                rules.add(makeOuterOnlyVlanRule(of, swDesc));
             }
         } else {
             rules.add(makeDefaultPortRule(of, swDesc));
@@ -80,6 +82,23 @@ public class NestedVlanIngressExperiment extends AbstractFlowCommand {
 
         return ImmutableList.of(
                 new BatchWriter(rules.toArray(new OFMessage[0])));
+    }
+
+    private OFMessage makeOuterOnlyVlanRule(OFFactory of, SwitchDescriptor swDesc) {
+        return of.buildFlowAdd()
+                .setTableId(swDesc.getTablePreIngress())
+                .setPriority(PRIORITY_FLOW)
+                .setCookie(cookie)
+                .setMatch(of.buildMatch()
+                                  .setExact(MatchField.IN_PORT, OFPort.of(inPort))
+                                  .setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(outerVlan))
+                                  .build())
+                .setInstructions(ImmutableList.of(
+                        of.instructions().applyActions(ImmutableList.of(of.actions().popVlan())),
+                        of.instructions().writeMetadata(METADATA_FLOW_MATCH_MARK.or(cookie),
+                                                        METADATA_FLOW_MATCH_MARK.or(METADATA_FLOW_MATCH_MASK)),
+                        of.instructions().gotoTable(swDesc.getTableIngress())))
+                .build();
     }
 
     private OFMessage makeOuterVlanRule(OFFactory of, SwitchDescriptor swDesc) {
