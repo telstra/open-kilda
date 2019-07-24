@@ -300,7 +300,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         UnidirectionalFlow flow = createFlow(switchId, flowId);
         sendInstallOneSwitchFlowCommand(flow);
 
-        FlowStatsEntry flowStats = new FlowStatsEntry((short) 1, cookie, 150L, 300L);
+        FlowStatsEntry flowStats = new FlowStatsEntry((short) 1, cookie, 150L, 300L, 10, 10);
 
         sendStatsMessage(new FlowStatsData(switchId, Collections.singletonList(flowStats)));
 
@@ -340,6 +340,8 @@ public class StatsTopologyTest extends AbstractStormTest {
                     assertEquals(String.valueOf(flowStats.getTableId()), datapoint.getTags().get("tableid"));
                     assertEquals(String.valueOf(cookie), datapoint.getTags().get("cookie"));
                     assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
+                    assertEquals(10, datapoint.getTags().get("outPort"));
+                    assertEquals(10, datapoint.getTags().get("inPort"));
                     break;
                 case METRIC_PREFIX + "flow.ingress.packets":
                 case METRIC_PREFIX + "flow.ingress.bytes":
@@ -359,7 +361,8 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     @Test
     public void systemRulesStatsTest() throws Exception {
-        FlowStatsEntry systemRuleStats = new FlowStatsEntry((short) 1, VERIFICATION_BROADCAST_RULE_COOKIE, 100L, 200L);
+        FlowStatsEntry systemRuleStats = new FlowStatsEntry((short) 1, VERIFICATION_BROADCAST_RULE_COOKIE, 100L, 200L,
+                10, 10);
 
         sendStatsMessage(new FlowStatsData(switchId, Collections.singletonList(systemRuleStats)));
 
@@ -379,6 +382,8 @@ public class StatsTopologyTest extends AbstractStormTest {
             assertEquals(2, datapoint.getTags().size());
             assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
             assertEquals(Cookie.toString(VERIFICATION_BROADCAST_RULE_COOKIE), datapoint.getTags().get("cookieHex"));
+            assertEquals(10, datapoint.getTags().get("outPort"));
+            assertEquals(10, datapoint.getTags().get("inPort"));
         });
     }
 

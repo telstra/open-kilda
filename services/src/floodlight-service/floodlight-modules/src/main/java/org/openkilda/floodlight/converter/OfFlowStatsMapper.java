@@ -281,10 +281,42 @@ public abstract class OfFlowStatsMapper {
             return new FlowStatsEntry(entry.getTableId().getValue(),
                     entry.getCookie().getValue(),
                     entry.getPacketCount().getValue(),
-                    entry.getByteCount().getValue());
+                    entry.getByteCount().getValue(),
+                    locateInPort(entry.getMatch()),
+                    locateOutPort(entry.getInstructions()));
         } catch (NullPointerException | UnsupportedOperationException | IllegalArgumentException e) {
             log.error(String.format("Could not convert OFFlowStatsEntry object %s", entry), e);
             return null;
         }
+    }
+
+    private int locateInPort(Match match) {
+        if (match != null && match.get(MatchField.IN_PORT) != null) {
+            return match.get(MatchField.IN_PORT).getPortNumber();
+        }
+        return 0;
+    }
+
+    private int locateOutPort(List<OFInstruction> instructions) {
+        if (instructions == null) {
+            return 0;
+        }
+        Optional<OFInstructionApplyActions> applyActions = instructions.stream()
+                                                                   .filter(x -> x instanceof OFInstructionApplyActions)
+                                                                   .map(OFInstructionApplyActions.class::cast)
+                                                                   .findAny();
+        if (!applyActions.isPresent()) {
+            return 0;
+        }
+
+        Optional<OFActionOutput> outputAction = applyActions.get().getActions()
+                .stream()
+                    .filter(x -> x instanceof OFActionOutput)
+                    .map(OFActionOutput.class::cast)
+                    .findAny();
+        if (outputAction.isPresent()) {
+            return outputAction.get().getPort().getPortNumber();
+        }
+        return 0;
     }
 }
