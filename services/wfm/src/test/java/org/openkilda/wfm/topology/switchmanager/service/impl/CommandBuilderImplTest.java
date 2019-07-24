@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.command.flow.BaseInstallFlow;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
@@ -31,6 +32,7 @@ import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -42,6 +44,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.switchmanager.service.CommandBuilder;
 
 import org.junit.Test;
@@ -51,6 +54,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.UUID;
 
 public class CommandBuilderImplTest {
@@ -61,7 +65,14 @@ public class CommandBuilderImplTest {
 
     @Test
     public void testCommandBuilder() {
-        CommandBuilder commandBuilder = new CommandBuilderImpl(persistenceManager().build());
+        Properties configProps = new Properties();
+        configProps.setProperty("flow.meter-id.max", "40");
+        configProps.setProperty("flow.vlan.max", "50");
+
+        PropertiesBasedConfigurationProvider configurationProvider =
+                new PropertiesBasedConfigurationProvider(configProps);
+        FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        CommandBuilder commandBuilder = new CommandBuilderImpl(persistenceManager().build(), flowResourcesConfig);
         List<BaseInstallFlow> response = commandBuilder
                 .buildCommandsToSyncMissingRules(SWITCH_ID_B, Arrays.asList(1L, 2L, 3L, 4L));
         assertEquals(4, response.size());
@@ -92,6 +103,7 @@ public class CommandBuilderImplTest {
                     .flowId(flowId)
                     .srcSwitch(forward ? srcSwitch : destSwitch)
                     .destSwitch(forward ? destSwitch : srcSwitch)
+                    .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                     .build();
 
             FlowPath flowPath = FlowPath.builder()

@@ -38,6 +38,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.UnidirectionalFlow;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
+import org.openkilda.wfm.share.flow.service.FlowCommandFactory;
 import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
 
 import org.junit.Before;
