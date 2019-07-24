@@ -18,6 +18,7 @@ package org.openkilda.floodlight.converter;
 import static org.junit.Assert.assertEquals;
 
 import org.openkilda.messaging.info.rule.FlowApplyActions;
+import org.openkilda.messaging.info.rule.FlowCopyFieldAction;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowSetFieldAction;
@@ -38,6 +39,7 @@ import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
@@ -71,6 +73,12 @@ public class OfFlowStatsMapperTest {
     public static final IpProtocol ipProto = IpProtocol.UDP;
     public static final EthType ethType = EthType.IPv4;
     public static final OFFlowModFlags flag = OFFlowModFlags.SEND_FLOW_REM;
+    public static final OFGroup group = OFGroup.of(18);
+    public static final int bits = 19;
+    public static final int srcOffset = 20;
+    public static final int dstOffset = 21;
+    public static final long oxmSrcHeader = 22;
+    public static final long oxmDstHeader = 23;
 
     @Test
     public void testToFlowStatsData() {
@@ -118,8 +126,15 @@ public class OfFlowStatsMapperTest {
         assertEquals(udpDst.toString(), entry.getMatch().getUdpDst());
 
         FlowSetFieldAction flowSetFieldAction = new FlowSetFieldAction("eth_type", ethType.toString());
-        FlowApplyActions applyActions = new FlowApplyActions(
-                port.toString(), flowSetFieldAction, ethType.toString(), null, null, null);
+        FlowCopyFieldAction flowCopyFieldAction = FlowCopyFieldAction.builder()
+                .bits(String.valueOf(bits))
+                .srcOffset(String.valueOf(srcOffset))
+                .dstOffset(String.valueOf(dstOffset))
+                .srcOxm(String.valueOf(oxmSrcHeader))
+                .dstOxm(String.valueOf(oxmDstHeader))
+                .build();
+        FlowApplyActions applyActions = new FlowApplyActions(port.toString(), flowSetFieldAction, ethType.toString(),
+                null, null, null, group.toString(), flowCopyFieldAction);
         FlowInstructions instructions = new FlowInstructions(applyActions, null, meterId);
         assertEquals(instructions, entry.getInstructions());
     }
@@ -159,6 +174,14 @@ public class OfFlowStatsMapperTest {
         actions.add(factory.actions().pushVlan(ethType));
         actions.add(factory.actions().output(port, 0));
         actions.add(factory.actions().setField(factory.oxms().ethType(ethType)));
+        actions.add(factory.actions().group(group));
+        actions.add(factory.actions().buildNoviflowCopyField()
+                .setNBits(bits)
+                .setSrcOffset(srcOffset)
+                .setDstOffset(dstOffset)
+                .setOxmSrcHeader(oxmSrcHeader)
+                .setOxmDstHeader(oxmDstHeader)
+                .build());
 
         List<OFInstruction> instructions = new ArrayList<>();
 

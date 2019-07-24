@@ -529,6 +529,70 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
+    public List<OFFlowMod> getExpectedDefaultFlows(DatapathId dpid) throws SwitchOperationException {
+        List<OFFlowMod> flows = new ArrayList<>();
+        IOFSwitch sw = lookupSwitch(dpid);
+        OFFactory ofFactory = sw.getOFFactory();
+
+        Optional.ofNullable(buildDropFlow(sw)).ifPresent(flows::add);
+
+        ArrayList<OFAction> actionListBroadcastRule = prepareActionListForBroadcastRule(sw);
+        OFInstructionMeter meterBroadcastRule = buildMeterInstructionForBroadcastRule(sw, actionListBroadcastRule);
+        Optional.ofNullable(buildVerificationRule(sw, true, ofFactory, VERIFICATION_BROADCAST_RULE_COOKIE,
+                meterBroadcastRule, actionListBroadcastRule)).ifPresent(flows::add);
+
+        ArrayList<OFAction> actionListUnicastRule = prepareActionListForUnicastRule(sw);
+        OFInstructionMeter meterUnicastRule = buildMeterInstructionForUnicastRule(sw, actionListUnicastRule);
+        Optional.ofNullable(buildVerificationRule(sw, false, ofFactory, VERIFICATION_UNICAST_RULE_COOKIE,
+                meterUnicastRule, actionListUnicastRule)).ifPresent(flows::add);
+
+        Optional.ofNullable(buildDropLoopRule(sw)).ifPresent(flows::add);
+        Optional.ofNullable(buildBfdCatchFlow(sw)).ifPresent(flows::add);
+        Optional.ofNullable(buildRoundTripLatencyFlow(sw)).ifPresent(flows::add);
+
+        ArrayList<OFAction> actionListUnicastVxlanRule = new ArrayList<>();
+        OFInstructionMeter meter = buildMeterInstructionForUnicastVxlanRule(sw, actionListUnicastVxlanRule);
+        Optional.ofNullable(buildUnicastVerificationRuleVxlan(sw, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE,
+                meter, actionListUnicastVxlanRule)).ifPresent(flows::add);
+
+        return flows;
+    }
+
+    private ArrayList<OFAction> prepareActionListForBroadcastRule(IOFSwitch sw) {
+        ArrayList<OFAction> actionList = new ArrayList<>();
+        if (featureDetectorService.detectSwitch(sw).contains(Feature.GROUP_PACKET_OUT_CONTROLLER)) {
+            actionList.add(sw.getOFFactory().actions().group(OFGroup.of(ROUND_TRIP_LATENCY_GROUP_ID)));
+        } else {
+            addStandardDiscoveryActions(sw, actionList);
+        }
+        return actionList;
+    }
+
+    private OFInstructionMeter buildMeterInstructionForBroadcastRule(IOFSwitch sw, ArrayList<OFAction> actionList) {
+        return buildMeterInstruction(createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue(),
+                sw, sw.getOFFactory(), actionList);
+    }
+
+    private ArrayList<OFAction> prepareActionListForUnicastRule(IOFSwitch sw) {
+        ArrayList<OFAction> actionList = new ArrayList<>();
+        addStandardDiscoveryActions(sw, actionList);
+        return actionList;
+    }
+
+    private OFInstructionMeter buildMeterInstructionForUnicastRule(IOFSwitch sw, ArrayList<OFAction> actionList) {
+        return buildMeterInstruction(createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).getValue(),
+                sw, sw.getOFFactory(), actionList);
+    }
+
+    private OFInstructionMeter buildMeterInstructionForUnicastVxlanRule(IOFSwitch sw, ArrayList<OFAction> actionList) {
+        return buildMeterInstruction(createMeterIdForDefaultRule(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE).getValue(),
+                sw, sw.getOFFactory(), actionList);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public List<OFFlowStatsEntry> dumpFlowTable(final DatapathId dpid) throws SwitchNotFoundException {
         List<OFFlowStatsEntry> entries = new ArrayList<>();
         IOFSwitch sw = lookupSwitch(dpid);
@@ -807,37 +871,50 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     @Override
     public void installUnicastVerificationRuleVxlan(final DatapathId dpid) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
-        // NOTE(tdurakov): reusing copy field feature here, since only switches with it supports pop/push vxlan's
-        // should be replaced with fair feature detection based on ActionId's during handshake
-        if (!featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
+
+        ArrayList<OFAction> actionList = new ArrayList<>();
+        long cookie = VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
+        long meterId = createMeterIdForDefaultRule(cookie).getValue();
+        long meterRate = config.getUnicastRateLimit();
+        OFInstructionMeter meter = installMeterForDefaultRule(sw, meterId, meterRate, actionList);
+
+        OFFlowMod flowMod = buildUnicastVerificationRuleVxlan(sw, cookie, meter, actionList);
+
+        if (flowMod == null) {
             logger.debug("Skip installation of unicast verification vxlan rule for switch {}", dpid);
         } else {
-            OFFactory ofFactory = sw.getOFFactory();
-            ArrayList<OFAction> actionList = new ArrayList<>();
-            actionList.add(ofFactory.actions().noviflowPopVxlanTunnel());
-            actionList.add(actionSendToController(sw));
-
-            actionList.add(actionSetDstMac(sw, dpIdToMac(sw.getId())));
-            long cookie = VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
-            long meterId = createMeterIdForDefaultRule(cookie).getValue();
-            long meterRate = config.getUnicastRateLimit();
-            OFInstructionMeter meter = installMeterForDefaultRule(sw, meterId, meterRate, actionList);
-            OFInstructionApplyActions actions = ofFactory.instructions()
-                    .applyActions(actionList).createBuilder().build();
-
-            MacAddress dstMac = dpIdToMac(sw.getId());
-            Builder builder = sw.getOFFactory().buildMatch();
-            builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.NO_MASK);
-            builder.setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC));
-            Match match = builder.build();
-            OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie, VERIFICATION_RULE_VXLAN_PRIORITY)
-                    .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
-                    .setMatch(match)
-                    .build();
             String flowname = "Unicast Vxlan";
             flowname += "--VerificationFlowVxlan--" + dpid.toString();
             pushFlow(sw, flowname, flowMod);
         }
+    }
+
+    private OFFlowMod buildUnicastVerificationRuleVxlan(IOFSwitch sw, long cookie, OFInstructionMeter meter,
+                                                        ArrayList<OFAction> actionList) {
+        // NOTE(tdurakov): reusing copy field feature here, since only switches with it supports pop/push vxlan's
+        // should be replaced with fair feature detection based on ActionId's during handshake
+        if (!featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
+            return null;
+        }
+
+        OFFactory ofFactory = sw.getOFFactory();
+        actionList.add(ofFactory.actions().noviflowPopVxlanTunnel());
+        actionList.add(actionSendToController(sw));
+
+        actionList.add(actionSetDstMac(sw, dpIdToMac(sw.getId())));
+        OFInstructionApplyActions actions = ofFactory.instructions()
+                .applyActions(actionList).createBuilder().build();
+
+        MacAddress dstMac = dpIdToMac(sw.getId());
+        Builder builder = sw.getOFFactory().buildMatch();
+        builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.NO_MASK);
+        builder.setExact(MatchField.UDP_SRC, TransportPort.of(STUB_VXLAN_UDP_SRC));
+        Match match = builder.build();
+        return prepareFlowModBuilder(ofFactory, cookie, VERIFICATION_RULE_VXLAN_PRIORITY)
+                .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
+                .setMatch(match)
+                .build();
+
     }
 
     /**
@@ -847,19 +924,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public void installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
             throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
-        OFFactory ofFactory = sw.getOFFactory();
-
-        // Don't install the unicast for OpenFlow 1.2 doesn't work properly
-        if (!isBroadcast) {
-            if (ofFactory.getVersion().compareTo(OF_12) > 0) {
-                logger.debug("Installing unicast verification match for {}", dpid);
-            } else {
-                logger.debug("Not installing unicast verification match for {}", dpid);
-                return;
-            }
-        }
 
         ArrayList<OFAction> actionList = new ArrayList<>();
+        long cookie = isBroadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
+        long meterId = createMeterIdForDefaultRule(cookie).getValue();
+        long meterRate = isBroadcast ? config.getBroadcastRateLimit() : config.getUnicastRateLimit();
+        OFInstructionMeter meter = installMeterForDefaultRule(sw, meterId, meterRate, actionList);
+
+        OFFactory ofFactory = sw.getOFFactory();
 
         if (isBroadcast && featureDetectorService.detectSwitch(sw).contains(Feature.GROUP_PACKET_OUT_CONTROLLER)) {
             logger.debug("Installing round trip latency group actions on switch {}", dpid);
@@ -874,29 +946,47 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                         + "Standard discovery actions will be installed instead. Error: %s", dpid, e.getMessage());
                 logger.warn(message, e);
 
-                actionList.add(actionSetDstMac(sw, dpIdToMac(sw.getId())));
-                actionList.add(actionSendToController(sw));
+                addStandardDiscoveryActions(sw, actionList);
             }
         } else {
-            actionList.add(actionSendToController(sw));
-            actionList.add(actionSetDstMac(sw, dpIdToMac(sw.getId())));
+            addStandardDiscoveryActions(sw, actionList);
         }
 
-        long cookie = isBroadcast ? VERIFICATION_BROADCAST_RULE_COOKIE : VERIFICATION_UNICAST_RULE_COOKIE;
-        long meterId = createMeterIdForDefaultRule(cookie).getValue();
-        long meterRate = isBroadcast ? config.getBroadcastRateLimit() : config.getUnicastRateLimit();
-        OFInstructionMeter meter = installMeterForDefaultRule(sw, meterId, meterRate, actionList);
+        OFFlowMod flowMod = buildVerificationRule(sw, isBroadcast, ofFactory, cookie, meter, actionList);
+
+        if (flowMod == null) {
+            logger.debug("Not installing unicast verification match for {}", dpid);
+        } else {
+            if (!isBroadcast) {
+                logger.debug("Installing unicast verification match for {}", dpid);
+            }
+
+            String flowName = (isBroadcast) ? "Broadcast" : "Unicast";
+            flowName += "--VerificationFlow--" + dpid.toString();
+            pushFlow(sw, flowName, flowMod);
+        }
+    }
+
+    private void addStandardDiscoveryActions(IOFSwitch sw, ArrayList<OFAction> actionList) {
+        actionList.add(actionSendToController(sw));
+        actionList.add(actionSetDstMac(sw, dpIdToMac(sw.getId())));
+    }
+
+    private OFFlowMod buildVerificationRule(IOFSwitch sw, boolean isBroadcast, OFFactory ofFactory, long cookie,
+                                            OFInstructionMeter meter, ArrayList<OFAction> actionList) {
+
+        if (!isBroadcast && ofFactory.getVersion().compareTo(OF_12) <= 0) {
+            return null;
+        }
+
         OFInstructionApplyActions actions = ofFactory.instructions()
                 .applyActions(actionList).createBuilder().build();
 
         Match match = matchVerification(sw, isBroadcast);
-        OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, cookie, VERIFICATION_RULE_PRIORITY)
+        return prepareFlowModBuilder(ofFactory, cookie, VERIFICATION_RULE_PRIORITY)
                 .setInstructions(meter != null ? ImmutableList.of(meter, actions) : ImmutableList.of(actions))
                 .setMatch(match)
                 .build();
-        String flowname = (isBroadcast) ? "Broadcast" : "Unicast";
-        flowname += "--VerificationFlow--" + dpid.toString();
-        pushFlow(sw, flowname, flowMod);
     }
 
     private OFGroup installRoundTripLatencyGroup(IOFSwitch sw) throws OfInstallException {
@@ -1063,63 +1153,91 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public void installDropFlow(final DatapathId dpid) throws SwitchOperationException {
         // TODO: leverage installDropFlowCustom
         IOFSwitch sw = lookupSwitch(dpid);
-        OFFactory ofFactory = sw.getOFFactory();
 
-        if (ofFactory.getVersion() == OF_12) {
+        OFFlowMod flowMod = buildDropFlow(sw);
+
+        if (flowMod == null) {
             logger.debug("Skip installation of drop flow for switch {}", dpid);
         } else {
             logger.debug("Installing drop flow for switch {}", dpid);
-            OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, DROP_RULE_COOKIE, 1)
-                    .build();
             String flowName = "--DropRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
         }
+    }
+
+    private OFFlowMod buildDropFlow(IOFSwitch sw) {
+        OFFactory ofFactory = sw.getOFFactory();
+
+        if (ofFactory.getVersion() == OF_12) {
+            return null;
+        }
+
+        return prepareFlowModBuilder(ofFactory, DROP_RULE_COOKIE, 1)
+                .build();
     }
 
     @Override
     public void installBfdCatchFlow(DatapathId dpid) throws SwitchOperationException {
 
         IOFSwitch sw = lookupSwitch(dpid);
-        Set<Feature> features = featureDetectorService.detectSwitch(sw);
-        if (!features.contains(Feature.BFD)) {
+
+        OFFlowMod flowMod = buildBfdCatchFlow(sw);
+        if (flowMod == null) {
             logger.debug("Skip installation of universal BFD catch flow for switch {}", dpid);
         } else {
-            OFFactory ofFactory = sw.getOFFactory();
-
-            Match match = catchRuleMatch(dpid, ofFactory);
-            OFFlowMod flowMod = prepareFlowModBuilder(ofFactory, CATCH_BFD_RULE_COOKIE, CATCH_BFD_RULE_PRIORITY)
-                    .setMatch(match)
-                    .setActions(ImmutableList.of(
-                            ofFactory.actions().buildOutput()
-                                    .setPort(OFPort.LOCAL)
-                                    .build()))
-                    .build();
             String flowName = "--CatchBfdRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
         }
+    }
 
+    private OFFlowMod buildBfdCatchFlow(IOFSwitch sw) {
+        Set<Feature> features = featureDetectorService.detectSwitch(sw);
+        if (!features.contains(Feature.BFD)) {
+            return null;
+        }
+
+        OFFactory ofFactory = sw.getOFFactory();
+
+        Match match = catchRuleMatch(sw.getId(), ofFactory);
+        return prepareFlowModBuilder(ofFactory, CATCH_BFD_RULE_COOKIE, CATCH_BFD_RULE_PRIORITY)
+                .setMatch(match)
+                .setActions(ImmutableList.of(
+                        ofFactory.actions().buildOutput()
+                                .setPort(OFPort.LOCAL)
+                                .build()))
+                .build();
     }
 
     @Override
     public void installRoundTripLatencyFlow(DatapathId dpid) throws SwitchOperationException {
         logger.info("Installing round trip default rule on {}", dpid);
         IOFSwitch sw = lookupSwitch(dpid);
-        if (!featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
+
+        OFFlowMod flowMod = buildRoundTripLatencyFlow(sw);
+        if (flowMod == null) {
             logger.debug("Skip installation of round-trip latency rule for switch {}", dpid);
         } else {
-            OFFactory ofFactory = sw.getOFFactory();
-            Match match = roundTripLatencyRuleMatch(dpid, ofFactory);
-            List<OFAction> actions = ImmutableList.of(
-                    actionAddRxTimestamp(sw, ROUND_TRIP_LATENCY_T1_OFFSET),
-                    actionSendToController(sw));
-            OFFlowMod flowMod = prepareFlowModBuilder(
-                    ofFactory, ROUND_TRIP_LATENCY_RULE_COOKIE, ROUND_TRIP_LATENCY_RULE_PRIORITY)
-                    .setMatch(match)
-                    .setActions(actions)
-                    .build();
             String flowName = "--RoundTripLatencyRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
         }
+    }
+
+    private OFFlowMod buildRoundTripLatencyFlow(IOFSwitch sw) {
+        if (!featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
+            return null;
+        }
+
+        OFFactory ofFactory = sw.getOFFactory();
+        Match match = roundTripLatencyRuleMatch(sw.getId(), ofFactory);
+        List<OFAction> actions = ImmutableList.of(
+                actionAddRxTimestamp(sw, ROUND_TRIP_LATENCY_T1_OFFSET),
+                actionSendToController(sw));
+        return prepareFlowModBuilder(
+                ofFactory, ROUND_TRIP_LATENCY_RULE_COOKIE, ROUND_TRIP_LATENCY_RULE_PRIORITY)
+                .setMatch(match)
+                .setActions(actions)
+                .build();
+
     }
 
     private Match catchRuleMatch(DatapathId dpid, OFFactory ofFactory) {
@@ -1143,23 +1261,32 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     void installDropLoopRule(DatapathId dpid) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
-        OFFactory ofFactory = sw.getOFFactory();
 
-        if (ofFactory.getVersion() == OF_12) {
+        OFFlowMod flowMod = buildDropLoopRule(sw);
+        if (flowMod == null) {
             logger.debug("Skip installation of drop loop rule for switch {}", dpid);
         } else {
-            Builder builder = ofFactory.buildMatch();
-            builder.setExact(MatchField.ETH_DST, MacAddress.of(verificationBcastPacketDst));
-            builder.setExact(MatchField.ETH_SRC, dpIdToMac(sw.getId()));
-            Match match = builder.build();
-
-            OFFlowMod flowMod = prepareFlowModBuilder(ofFactory,
-                    DROP_VERIFICATION_LOOP_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_PRIORITY)
-                    .setMatch(match)
-                    .build();
             String flowName = "--DropLoopRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
         }
+    }
+
+    private OFFlowMod buildDropLoopRule(IOFSwitch sw) {
+        OFFactory ofFactory = sw.getOFFactory();
+        if (ofFactory.getVersion() == OF_12) {
+            return null;
+        }
+
+        Builder builder = ofFactory.buildMatch();
+        builder.setExact(MatchField.ETH_DST, MacAddress.of(verificationBcastPacketDst));
+        builder.setExact(MatchField.ETH_SRC, dpIdToMac(sw.getId()));
+        Match match = builder.build();
+
+        return prepareFlowModBuilder(ofFactory,
+                DROP_VERIFICATION_LOOP_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_PRIORITY)
+                .setMatch(match)
+                .build();
+
     }
 
     private void verifySwitchSupportsMeters(IOFSwitch sw) throws UnsupportedSwitchOperationException {
