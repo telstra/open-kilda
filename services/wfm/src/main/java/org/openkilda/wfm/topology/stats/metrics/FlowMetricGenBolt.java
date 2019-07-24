@@ -94,6 +94,8 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         tags.put("switchid", switchId.toOtsdFormat());
         tags.put("cookie", String.valueOf(entry.getCookie()));
         tags.put("tableid", String.valueOf(entry.getTableId()));
+        tags.put("outPort", String.valueOf(entry.getOutPort()));
+        tags.put("inPort", String.valueOf(entry.getInPort()));
         tags.put("flowid", flowId);
         tags.put("direction", FlowDirectionHelper.findDirection(entry.getCookie()).name().toLowerCase());
 

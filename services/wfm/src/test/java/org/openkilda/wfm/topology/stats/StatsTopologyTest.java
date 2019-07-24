@@ -300,7 +300,7 @@ public class StatsTopologyTest extends AbstractStormTest {
         UnidirectionalFlow flow = createFlow(switchId, flowId);
         sendInstallOneSwitchFlowCommand(flow);
 
-        FlowStatsEntry flowStats = new FlowStatsEntry((short) 1, cookie, 150L, 300L);
+        FlowStatsEntry flowStats = new FlowStatsEntry((short) 1, cookie, 150L, 300L, 10, 10);
 
         sendStatsMessage(new FlowStatsData(switchId, Collections.singletonList(flowStats)));
 
@@ -334,12 +334,14 @@ public class StatsTopologyTest extends AbstractStormTest {
                 case METRIC_PREFIX + "flow.raw.packets":
                 case METRIC_PREFIX + "flow.raw.bytes":
                 case METRIC_PREFIX + "flow.raw.bits":
-                    assertEquals(5, datapoint.getTags().size());
+                    assertEquals(7, datapoint.getTags().size());
                     assertEquals(flowId, datapoint.getTags().get("flowid"));
                     assertEquals("forward", datapoint.getTags().get("direction"));
                     assertEquals(String.valueOf(flowStats.getTableId()), datapoint.getTags().get("tableid"));
                     assertEquals(String.valueOf(cookie), datapoint.getTags().get("cookie"));
                     assertEquals(switchId.toOtsdFormat(), datapoint.getTags().get("switchid"));
+                    assertEquals("10", datapoint.getTags().get("outPort"));
+                    assertEquals("10", datapoint.getTags().get("inPort"));
                     break;
                 case METRIC_PREFIX + "flow.ingress.packets":
                 case METRIC_PREFIX + "flow.ingress.bytes":
@@ -359,7 +361,8 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     @Test
     public void systemRulesStatsTest() throws Exception {
-        FlowStatsEntry systemRuleStats = new FlowStatsEntry((short) 1, VERIFICATION_BROADCAST_RULE_COOKIE, 100L, 200L);
+        FlowStatsEntry systemRuleStats = new FlowStatsEntry((short) 1, VERIFICATION_BROADCAST_RULE_COOKIE, 100L, 200L,
+                10, 10);
 
         sendStatsMessage(new FlowStatsData(switchId, Collections.singletonList(systemRuleStats)));
 
