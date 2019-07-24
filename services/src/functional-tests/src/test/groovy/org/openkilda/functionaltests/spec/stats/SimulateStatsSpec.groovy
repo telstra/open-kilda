@@ -62,7 +62,8 @@ class SimulateStatsSpec extends HealthCheckSpecification {
             2. Our default Long implementation in Java backend is also capable of only 2^63
             3. Even for 2^63 we get overflowed 'negative' values when converting bytes to bits (doing bytesx8)
              */
-            new FlowStatsEntry(0, it.cookie, NOVI_MAX_PACKET_COUNT, NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE)
+            new FlowStatsEntry(0, it.cookie, NOVI_MAX_PACKET_COUNT, NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE, 10,
+            10)
         })
         producer.send(new ProducerRecord(statsTopic, sw.dpId.toString(), buildMessage(data).toJson()))
         producer.flush()
