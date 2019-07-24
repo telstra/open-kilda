@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.model.Cookie
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -520,9 +521,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             switches.each {
                 def rules = northbound.validateSwitchRules(it.dpId)
-                assert rules.excessRules.empty
-                assert rules.missingRules.empty
-                assert rules.properRules.empty
+                assert rules.excessRules.empty, it
+                assert rules.missingRules.empty, it
+                assert rules.properRules.findAll { !Cookie.isDefaultRule(it) }.empty, it
             }
         }
     }

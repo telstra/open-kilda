@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static org.junit.Assume.assumeFalse
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -40,7 +39,7 @@ import spock.lang.Unroll
 
 @Narrative("""Verify how Kilda behaves with switch rules (either flow rules or default rules) under different 
 circumstances: e.g. persisting rules on newly connected switch, installing default rules on new switch etc.""")
-class SwitchRulesSpec extends HealthCheckSpecification {
+class FlowRulesSpec extends HealthCheckSpecification {
     @Shared
     Switch srcSwitch, dstSwitch
     @Shared
@@ -54,35 +53,6 @@ class SwitchRulesSpec extends HealthCheckSpecification {
         (srcSwitch, dstSwitch) = topology.getActiveSwitches()[0..1]
         srcSwDefaultRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries
         dstSwDefaultRules = northbound.getSwitchRules(dstSwitch.dpId).flowEntries
-    }
-
-    @Unroll("Default rules are installed on an #sw.ofVersion switch(#sw.dpId)")
-    @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
-    def "Default rules are installed on switches"() {
-        expect: "Default rules are installed on the switch"
-        def cookies = northbound.getSwitchRules(sw.dpId).flowEntries*.cookie
-        cookies.sort() == sw.defaultCookies.sort()
-
-        where:
-        sw << uniqueSwitches
-    }
-
-    @Tags([VIRTUAL, SMOKE])
-    def "Default rules are installed when a new switch is connected"() {
-        given: "A switch with no rules installed and not connected to the controller"
-        northbound.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.DROP_ALL)
-        Wrappers.wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(srcSwitch.dpId).flowEntries.isEmpty() }
-
-        lockKeeper.knockoutSwitch(srcSwitch)
-        Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northbound.getActiveSwitches()*.switchId) }
-
-        when: "Connect the switch to the controller"
-        lockKeeper.reviveSwitch(srcSwitch)
-        Wrappers.wait(WAIT_OFFSET) { assert srcSwitch.dpId in northbound.getActiveSwitches()*.switchId }
-
-        then: "Default rules are installed on the switch"
-        def cookies = northbound.getSwitchRules(srcSwitch.dpId).flowEntries*.cookie
-        cookies.sort() == srcSwitch.defaultCookies.sort()
     }
 
     @Tags([VIRTUAL, SMOKE])
@@ -116,97 +86,6 @@ class SwitchRulesSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_DELETION_TIME) {
             assert northbound.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwitch.defaultCookies.size()
         }
-    }
-
-    @Unroll
-    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    def "Able to install default rule on an #sw.ofVersion switch(#sw.dpId, install-action=#data.installRulesAction)"() {
-        assumeFalse("Unable to run the test because an OF_12 switch has one broadcast rule as the default",
-                sw.ofVersion == "OF_12" && data.installRulesAction != InstallRulesAction.INSTALL_BROADCAST)
-        assumeFalse("Unable to run the test because only NoviFlow switches support installation of BFD catch rule",
-                !sw.noviflow && data.installRulesAction == InstallRulesAction.INSTALL_BFD_CATCH)
-        assumeFalse("Unable to run the test because only NoviFlow switches support installation of Round Trip Latency "
-                + "rule", !sw.noviflow && data.installRulesAction == InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY)
-        assumeFalse("Unable to run the test because only NoviFlow switches support installation of Unicast VXLAN rule",
-                !sw.noviflow && data.installRulesAction == InstallRulesAction.INSTALL_UNICAST_VXLAN)
-
-        given: "A switch without any rules"
-        def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
-
-        northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
-        Wrappers.wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(sw.dpId).flowEntries.empty }
-
-        when: "Install rules on the switch"
-        def installedRules = northbound.installSwitchRules(sw.dpId, data.installRulesAction)
-
-        then: "The corresponding rules are really installed"
-        installedRules.size() == 1
-
-        def expectedRules = defaultRules.findAll { it.cookie == data.cookie }
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            compareRules(northbound.getSwitchRules(sw.dpId).flowEntries, expectedRules)
-        }
-
-        and: "Install missing default rules"
-        northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert northbound.getSwitchRules(sw.dpId).flowEntries.size() == defaultRules.size()
-        }
-
-        where:
-        [data, sw] << [
-                [
-                        [
-                                installRulesAction: InstallRulesAction.INSTALL_DROP,
-                                cookie            : Cookie.DROP_RULE_COOKIE
-                        ],
-                        [
-                                installRulesAction: InstallRulesAction.INSTALL_BROADCAST,
-                                cookie            : Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
-                        ],
-                        [
-                                installRulesAction: InstallRulesAction.INSTALL_UNICAST,
-                                cookie            : Cookie.VERIFICATION_UNICAST_RULE_COOKIE
-                        ],
-                        [
-                                installRulesAction: InstallRulesAction.INSTALL_BFD_CATCH,
-                                cookie            : Cookie.CATCH_BFD_RULE_COOKIE
-                        ],
-                        [
-                                installRulesAction: InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY,
-                                cookie            : Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE
-                        ],
-                        [
-                                installRulesAction: InstallRulesAction.INSTALL_UNICAST_VXLAN,
-                                cookie            : Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
-                        ]
-                ],
-                uniqueSwitches
-        ].combinations()
-    }
-
-    @Unroll
-    @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
-    def "Able to install default rules on an #sw.ofVersion switch(#sw.dpId, install-action=INSTALL_DEFAULTS)"() {
-        given: "A switch without any rules"
-        def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
-
-        northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
-        Wrappers.wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(sw.dpId).flowEntries.empty }
-
-        when: "Install rules on the switch"
-        def installedRules = northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
-
-        then: "The corresponding rules are really installed"
-        // TODO(ylobankov): For now BFD catch rule is returned in the list of installed rules even though the switch
-        // doesn't have BFD support. Uncomment the check when the issue is resolved.
-        //installedRules.size() == defaultRules.size()
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            compareRules(northbound.getSwitchRules(sw.dpId).flowEntries, defaultRules)
-        }
-
-        where:
-        sw << uniqueSwitches
     }
 
     @Unroll
@@ -296,7 +175,7 @@ class SwitchRulesSpec extends HealthCheckSpecification {
         then: "Rules are stored in the 'proper' section"
         commonNodeIds.each { switchId ->
             def rules = northbound.validateSwitchRules(switchId)
-            assert rules.properRules.size() == amountOfRules(switchId)
+            assert rules.properRules.findAll { !Cookie.isDefaultRule(it) }.size() == amountOfRules(switchId)
             assert rules.missingRules.empty
             assert rules.excessRules.empty
         }
@@ -306,7 +185,7 @@ class SwitchRulesSpec extends HealthCheckSpecification {
         }
         uniqueNodes.each { sw ->
             def rules = northbound.validateSwitchRules(sw.switchId)
-            assert rules.properRules.size() == 2
+            assert rules.properRules.findAll { !Cookie.isDefaultRule(it) }.size() == 2
             assert rules.missingRules.empty
             assert rules.excessRules.empty
         } || true
@@ -326,7 +205,7 @@ class SwitchRulesSpec extends HealthCheckSpecification {
 
         then: "Deleted rule is moved to the 'missing' section on the srcSwitch"
         def srcSwitchValidateRules = northbound.validateSwitchRules(commonNodeIds[0])
-        srcSwitchValidateRules.properRules.size() == 2
+        srcSwitchValidateRules.properRules.findAll { !Cookie.isDefaultRule(it) }.size() == 2
         srcSwitchValidateRules.missingRules.size() == 1
         srcSwitchValidateRules.missingRules == [ruleToDelete]
         srcSwitchValidateRules.excessRules.empty
@@ -334,13 +213,13 @@ class SwitchRulesSpec extends HealthCheckSpecification {
         and: "Rest switches are not affected by deleting the rule on the srcSwitch"
         commonNodeIds[1..-1].each { switchId ->
             def rules = northbound.validateSwitchRules(switchId)
-            assert rules.properRules.size() == amountOfRules(switchId)
+            assert rules.properRules.findAll { !Cookie.isDefaultRule(it) }.size() == amountOfRules(switchId)
             assert rules.missingRules.empty
             assert rules.excessRules.empty
         }
         uniqueNodes.each { sw ->
             def rules = northbound.validateSwitchRules(sw.switchId)
-            assert rules.properRules.size() == 2
+            assert rules.properRules.findAll { !Cookie.isDefaultRule(it) }.size() == 2
             assert rules.missingRules.empty
             assert rules.excessRules.empty
         } || true
@@ -348,55 +227,7 @@ class SwitchRulesSpec extends HealthCheckSpecification {
         and: "Cleanup: delete the flow"
         flowHelper.deleteFlow(flow.id)
     }
-
-    @Unroll
-    @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
-    def "Able to delete default rule from an #sw.ofVersion switch (#sw.dpId, delete-action=#data.deleteRulesAction)"() {
-        assumeFalse("Unable to run the test because an OF_12 switch has one broadcast rule as the default",
-                sw.ofVersion == "OF_12" && data.cookie != Cookie.VERIFICATION_BROADCAST_RULE_COOKIE)
-
-        when: "Delete rules from the switch"
-        def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
-        def deletedRules = northbound.deleteSwitchRules(sw.dpId, data.deleteRulesAction)
-
-        then: "The corresponding rules are really deleted"
-        deletedRules.size() == 1
-        Wrappers.wait(RULES_DELETION_TIME) {
-            def actualRules = northbound.getSwitchRules(sw.dpId).flowEntries
-            assert actualRules.findAll { it.cookie in deletedRules }.empty
-            compareRules(actualRules, defaultRules.findAll { it.cookie != data.cookie })
-        }
-
-        and: "Install default rules back"
-        northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert northbound.getSwitchRules(sw.dpId).flowEntries.size() == defaultRules.size()
-        }
-
-        where:
-        [data, sw] << [
-                [
-                        [// Drop just the default / base drop rule
-                         deleteRulesAction: DeleteRulesAction.REMOVE_DROP,
-                         cookie           : Cookie.DROP_RULE_COOKIE
-                        ],
-                        [// Drop just the verification (broadcast) rule only
-                         deleteRulesAction: DeleteRulesAction.REMOVE_BROADCAST,
-                         cookie           : Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
-                        ],
-                        [// Drop just the verification (unicast) rule only
-                         deleteRulesAction: DeleteRulesAction.REMOVE_UNICAST,
-                         cookie           : Cookie.VERIFICATION_UNICAST_RULE_COOKIE
-                        ],
-                        [// Remove the verification loop drop rule only
-                         deleteRulesAction: DeleteRulesAction.REMOVE_VERIFICATION_LOOP,
-                         cookie           : Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE
-                        ]
-                ],
-                uniqueSwitches
-        ].combinations()
-    }
-
+    
     @Unroll("Able to delete switch rules by #data.description")
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Able to delete switch rules by cookie/priority"() {
@@ -627,7 +458,7 @@ class SwitchRulesSpec extends HealthCheckSpecification {
         involvedSwitches.each { switchId ->
             with(northbound.validateSwitchRules(switchId)) {
                 verifyAll {
-                    properRules.size() == flowRulesCount
+                    properRules.findAll { !Cookie.isDefaultRule(it) }.size() == flowRulesCount
                     missingRules.empty
                     excessRules.empty
                 }
@@ -701,21 +532,21 @@ class SwitchRulesSpec extends HealthCheckSpecification {
             def response = northbound.synchronizeSwitchRules(it)
             assert response.missingRules.size() == amountOfRules(it)
             assert response.installedRules.sort() == response.missingRules.sort()
-            assert response.properRules.empty
+            assert response.properRules.findAll { !Cookie.isDefaultRule(it) }.empty
             assert response.excessRules.empty
         }
         uniqueNodes.each {
             def response = northbound.synchronizeSwitchRules(it.switchId)
             assert response.missingRules.size() == 2
             assert response.installedRules.sort() == response.missingRules.sort()
-            assert response.properRules.empty
+            assert response.properRules.findAll { !Cookie.isDefaultRule(it) }.empty, it
             assert response.excessRules.empty
         }
 
         then: "No missing rules were found after rules synchronization"
         commonNodeIds.each { switchId ->
             verifyAll(northbound.validateSwitchRules(switchId)) {
-                properRules.size() == amountOfRules(switchId)
+                properRules.findAll { !Cookie.isDefaultRule(it) }.size() == amountOfRules(switchId)
                 missingRules.empty
                 excessRules.empty
             }
@@ -723,7 +554,7 @@ class SwitchRulesSpec extends HealthCheckSpecification {
 
         uniqueNodes.each {
             verifyAll(northbound.validateSwitchRules(it.switchId)) {
-                properRules.size() == 2
+                properRules.findAll { !Cookie.isDefaultRule(it) }.size() == 2
                 missingRules.empty
                 excessRules.empty
             }
@@ -791,12 +622,6 @@ class SwitchRulesSpec extends HealthCheckSpecification {
                 .ignoring("packetCount")
                 .ignoring("durationNanoSeconds")
                 .ignoring("durationSeconds"))
-    }
-
-    List<Switch> getUniqueSwitches() {
-        def nbSwitches = northbound.getAllSwitches()
-        topology.getActiveSwitches()
-                .unique { sw -> [nbSwitches.find { it.switchId == sw.dpId }.description, sw.ofVersion].sort() }
     }
 
     FlowPayload buildFlow() {

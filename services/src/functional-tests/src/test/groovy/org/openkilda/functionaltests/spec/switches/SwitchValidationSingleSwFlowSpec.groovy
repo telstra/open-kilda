@@ -256,7 +256,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         then: "Rules and meters are created"
         def swValidateInfo = northbound.validateSwitch(sw.dpId)
         swValidateInfo.meters.proper.meterId.size() == 2
-        swValidateInfo.rules.proper.size() == 2
+        swValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
 
         when: "Update meterId for created flow directly via db"
         MeterId newMeterId = new MeterId(100)
@@ -437,7 +437,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def response = northbound.validateSwitch(sw.dpId)
 
         then: "Response without meter section is returned"
-        response.rules.proper.empty
+        response.rules.proper.findAll { !Cookie.isDefaultRule(it) }.empty
         response.rules.missing.empty
         response.rules.excess.empty
         !response.meters
