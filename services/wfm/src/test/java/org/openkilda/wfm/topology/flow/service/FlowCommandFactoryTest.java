@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
 
 public class FlowCommandFactoryTest {
     private static final String TEST_FLOW = "test-flow";
-    private static final long TEST_COOKIE = Cookie.FORWARD_FLOW_COOKIE_MASK | 1;
+    private static final long TEST_COOKIE = Cookie.buildForwardCookie(1).getValue();
     private static final int METER_ID = 42;
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId SWITCH_ID_2 = new SwitchId("00:00:00:00:00:00:00:02");

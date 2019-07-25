@@ -188,7 +188,7 @@ public class CommandBuilderImplTest {
 
     @Test
     public void shouldBuildRemoveFlowWithoutMeterFromFlowEntryWithTransitVlanEncapsulation() {
-        Long cookie = Cookie.FORWARD_FLOW_COOKIE_MASK | 1;
+        Long cookie = Cookie.buildForwardCookie(1).getValue();
         String inPort = "1";
         String inVlan = "10";
         String outPort = "2";
@@ -206,7 +206,7 @@ public class CommandBuilderImplTest {
 
     @Test
     public void shouldBuildRemoveFlowWithoutMeterFromFlowEntryWithStringOutPort() {
-        Long cookie = Cookie.FORWARD_FLOW_COOKIE_MASK | 1;
+        Long cookie = Cookie.buildForwardCookie(1).getValue();
         String inPort = "1";
         String inVlan = "10";
         String outPort = "in_port";
@@ -224,7 +224,7 @@ public class CommandBuilderImplTest {
 
     @Test
     public void shouldBuildRemoveFlowWithoutMeterFromFlowEntryWithVxlanEncapsulationIngress() {
-        Long cookie = Cookie.FORWARD_FLOW_COOKIE_MASK | 1;
+        Long cookie = Cookie.buildForwardCookie(1).getValue();
         String inPort = "1";
         String outPort = "2";
         String tunnelId = "10";
@@ -242,7 +242,7 @@ public class CommandBuilderImplTest {
 
     @Test
     public void shouldBuildRemoveFlowWithoutMeterFromFlowEntryWithVxlanEncapsulationTransitAndEgress() {
-        Long cookie = Cookie.FORWARD_FLOW_COOKIE_MASK | 1;
+        Long cookie = Cookie.buildForwardCookie(1).getValue();
         String inPort = "1";
         String outPort = "2";
         String tunnelId = "10";
