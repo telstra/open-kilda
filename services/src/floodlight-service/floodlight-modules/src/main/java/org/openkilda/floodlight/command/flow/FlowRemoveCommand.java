@@ -81,8 +81,10 @@ public class FlowRemoveCommand extends FlowCommand {
     }
 
     @Override
-    protected CompletableFuture<Optional<OFMessage>> writeCommands(IOFSwitch sw, SessionService sessionService,
+    protected CompletableFuture<Optional<OFMessage>> writeCommands(IOFSwitch sw,
                                                                    FloodlightModuleContext moduleContext) {
+        SessionService sessionService = moduleContext.getServiceImpl(SessionService.class);
+
         CompletableFuture<List<OFFlowStatsEntry>> entriesBeforeDeletion = dumpFlowTable(sw);
         CompletableFuture<List<OFFlowStatsEntry>> entriesAfterDeletion = entriesBeforeDeletion
                 .thenCompose(ignored -> removeRules(sw, sessionService, moduleContext))
@@ -119,7 +121,7 @@ public class FlowRemoveCommand extends FlowCommand {
     private CompletableFuture<Optional<OFMessage>> removeRules(IOFSwitch sw, SessionService sessionService,
                                                                FloodlightModuleContext moduleContext) {
         try {
-            return super.writeCommands(sw, sessionService, moduleContext);
+            return super.writeCommands(sw, moduleContext);
         } catch (SwitchOperationException e) {
             throw new CompletionException(e);
         }

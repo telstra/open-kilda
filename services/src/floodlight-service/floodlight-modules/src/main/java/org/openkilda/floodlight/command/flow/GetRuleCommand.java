@@ -21,7 +21,6 @@ import org.openkilda.floodlight.FloodlightResponse;
 import org.openkilda.floodlight.command.MessageWriter;
 import org.openkilda.floodlight.command.SessionProxy;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
-import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.floodlight.utils.CompletableFutureAdapter;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
@@ -68,7 +67,7 @@ public class GetRuleCommand extends FlowCommand {
     }
 
     @Override
-    protected CompletableFuture<Optional<OFMessage>> writeCommands(IOFSwitch sw, SessionService sessionService,
+    protected CompletableFuture<Optional<OFMessage>> writeCommands(IOFSwitch sw,
                                                                    FloodlightModuleContext moduleContext) {
         getLogger().debug("Getting rule with cookie {} from the switch {}", cookie, switchId);
         return new CompletableFutureAdapter<>(sw.writeRequest(buildCommand(sw)))

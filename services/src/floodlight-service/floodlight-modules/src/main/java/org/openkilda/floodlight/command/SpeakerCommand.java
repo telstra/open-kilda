@@ -91,13 +91,12 @@ public abstract class SpeakerCommand {
      */
     public CompletableFuture<FloodlightResponse> execute(FloodlightModuleContext moduleContext) {
         ISwitchManager switchManager = moduleContext.getServiceImpl(ISwitchManager.class);
-        SessionService sessionService = moduleContext.getServiceImpl(SessionService.class);
         IOFSwitch sw;
         try {
             DatapathId dpid = DatapathId.of(switchId.toLong());
             sw = switchManager.lookupSwitch(dpid);
 
-            return writeCommands(sw, sessionService, moduleContext)
+            return writeCommands(sw, moduleContext)
                     .handle((result, error) -> {
                         if (error != null) {
                             getLogger().error("Error occurred while processing OF command", error);
@@ -115,9 +114,9 @@ public abstract class SpeakerCommand {
     /**
      * Writes command to a switch.
      */
-    protected CompletableFuture<Optional<OFMessage>> writeCommands(IOFSwitch sw, SessionService sessionService,
-                                                                   FloodlightModuleContext moduleContext)
+    protected CompletableFuture<Optional<OFMessage>> writeCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
             throws SwitchOperationException {
+        SessionService sessionService = moduleContext.getServiceImpl(SessionService.class);
         CompletableFuture<Optional<OFMessage>> chain = CompletableFuture.completedFuture(Optional.empty());
         for (SessionProxy message : getCommands(sw, moduleContext)) {
             chain = chain.thenCompose(res -> {
