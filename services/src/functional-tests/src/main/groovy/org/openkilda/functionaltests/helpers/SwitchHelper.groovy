@@ -45,6 +45,11 @@ class SwitchHelper {
         northbound.getSwitch(sw.dpId).description
     }
 
+    @Memoized
+    static String getHardware(Switch sw) {
+        northbound.getSwitch(sw.dpId).switchView.description.hardware
+    }
+
     static List<Long> getDefaultCookies(Switch sw) {
         if (sw.noviflow) {
             return [Cookie.DROP_RULE_COOKIE, Cookie.VERIFICATION_BROADCAST_RULE_COOKIE,
@@ -64,7 +69,11 @@ class SwitchHelper {
     }
 
     static boolean isNoviflow(Switch sw) {
-        sw.description.toLowerCase().contains("noviflow")
+        sw.description.toLowerCase().contains("noviflow") && !isWb5164(sw)
+    }
+
+    static boolean isWb5164(Switch sw) {
+        getHardware(sw) =~ "WB5164"
     }
 
     static boolean isVirtual(Switch sw) {
@@ -92,7 +101,8 @@ class SwitchHelper {
      */
     def getExpectedBurst(SwitchId sw, long rate) {
         def descr = getDescription(sw).toLowerCase()
-        if (descr.contains("noviflow")) {
+        def hardware = northbound.getSwitch(sw).switchView.description.hardware =~ "WB5164"
+        if (descr.contains("noviflow") || hardware) {
             return (rate * NOVIFLOW_BURST_COEFFICIENT - 1).setScale(0, RoundingMode.CEILING)
         } else if (descr.contains("centec")) {
             def burst = (rate * burstCoefficient).toBigDecimal().setScale(0, RoundingMode.FLOOR)
