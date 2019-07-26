@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import org.openkilda.floodlight.flow.request.FlowRequest;
 import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -26,8 +27,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.AbstractFlowCommandFactory;
-import org.openkilda.wfm.topology.flowhs.service.FlowCommandFactory;
+import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
+import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -42,17 +43,20 @@ import java.util.stream.Collectors;
 public class RemoveOldRulesAction extends
         FlowProcessingAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
-    private final AbstractFlowCommandFactory commandFactory;
+    private final FlowCommandBuilderFactory commandBuilderFactory;
 
     public RemoveOldRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
         super(persistenceManager);
 
-        this.commandFactory = new AbstractFlowCommandFactory(persistenceManager);
+        commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
     }
 
     @Override
     protected void perform(FlowRerouteFsm.State from, FlowRerouteFsm.State to,
                            FlowRerouteFsm.Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
+        FlowEncapsulationType encapsulationType = stateMachine.getOriginalEncapsulationType();
+        FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(encapsulationType);
+
         Collection<RemoveRule> commands = new ArrayList<>();
 
         if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
@@ -60,10 +64,9 @@ public class RemoveOldRulesAction extends
             FlowPath oldReverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
 
             Flow flow = oldForward.getFlow();
-            FlowCommandFactory flowCommandFactory = commandFactory.getFactory(flow.getEncapsulationType());
-            commands.addAll(flowCommandFactory.createRemoveNonIngressRules(
+            commands.addAll(commandBuilder.createRemoveNonIngressRules(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
-            commands.addAll(flowCommandFactory.createRemoveIngressRules(
+            commands.addAll(commandBuilder.createRemoveIngressRules(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }
 
@@ -72,10 +75,9 @@ public class RemoveOldRulesAction extends
             FlowPath oldReverse = getFlowPath(stateMachine.getOldProtectedReversePath());
 
             Flow flow = oldForward.getFlow();
-            FlowCommandFactory flowCommandFactory = commandFactory.getFactory(flow.getEncapsulationType());
-            commands.addAll(flowCommandFactory.createRemoveNonIngressRules(
+            commands.addAll(commandBuilder.createRemoveNonIngressRules(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
-            commands.addAll(flowCommandFactory.createRemoveIngressRules(
+            commands.addAll(commandBuilder.createRemoveIngressRules(
                     stateMachine.getCommandContext(), flow, oldForward, oldReverse));
         }
 

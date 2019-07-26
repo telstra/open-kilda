@@ -19,6 +19,7 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
@@ -38,10 +39,16 @@ import java.util.UUID;
 public class InstallMultiSwitchIngressRule extends InstallIngressRule {
 
     /**
-     * The transit vlan id value.
+     * The transit encapsulation id value.
      */
-    @JsonProperty("transit_vlan_id")
-    private final Integer transitVlanId;
+    @JsonProperty("transit_encapsulation_id")
+    protected Integer transitEncapsulationId;
+
+    /**
+     * The transit encapsulation type.
+     */
+    @JsonProperty("transit_encapsulation_type")
+    protected FlowEncapsulationType transitEncapsulationType;
 
     @JsonCreator
     @Builder
@@ -56,9 +63,12 @@ public class InstallMultiSwitchIngressRule extends InstallIngressRule {
                                          @JsonProperty("bandwidth") Long bandwidth,
                                          @JsonProperty("output_vlan_type") OutputVlanType outputVlanType,
                                          @JsonProperty("input_vlan_id") Integer inputVlanId,
-                                         @JsonProperty("transit_vlan_id") Integer transitVlanId) {
+                                         @JsonProperty("transit_encapsulation_id") Integer transitEncapsulationId,
+                                         @JsonProperty("transit_encapsulation_type")
+                                                 FlowEncapsulationType transitEncapsulationType) {
         super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort, meterId, bandwidth,
                 outputVlanType, inputVlanId);
-        this.transitVlanId = transitVlanId;
+        this.transitEncapsulationId = transitEncapsulationId;
+        this.transitEncapsulationType = transitEncapsulationType;
     }
 }
