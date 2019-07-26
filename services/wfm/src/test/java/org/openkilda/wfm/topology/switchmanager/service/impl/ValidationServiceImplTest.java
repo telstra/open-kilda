@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -25,6 +26,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.info.meter.MeterEntry;
+import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -41,7 +43,6 @@ import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -58,7 +59,7 @@ public class ValidationServiceImplTest {
     @Test
     public void validateRulesEmpty() {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
-        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, new HashSet<>());
+        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, emptyList(), emptyList());
         assertTrue(response.getMissingRules().isEmpty());
         assertTrue(response.getProperRules().isEmpty());
         assertTrue(response.getExcessRules().isEmpty());
@@ -68,7 +69,9 @@ public class ValidationServiceImplTest {
     public void validateRulesSimpleSegmentCookies() {
         ValidationService validationService =
                 new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L, 3L).build());
-        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, Sets.newHashSet(1L, 2L));
+        List<FlowEntry> flowEntries =
+                Lists.newArrayList(FlowEntry.builder().cookie(1L).build(), FlowEntry.builder().cookie(2L).build());
+        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
         assertEquals(ImmutableList.of(3L), response.getMissingRules());
         assertEquals(ImmutableList.of(2L), response.getProperRules());
         assertEquals(ImmutableList.of(1L), response.getExcessRules());
@@ -78,20 +81,34 @@ public class ValidationServiceImplTest {
     public void validateRulesSegmentAndIngressCookies() {
         ValidationService validationService =
                 new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L).withIngressCookies(1L).build());
-        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, Sets.newHashSet(1L, 2L));
+        List<FlowEntry> flowEntries =
+                Lists.newArrayList(FlowEntry.builder().cookie(1L).build(), FlowEntry.builder().cookie(2L).build());
+        ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
         assertTrue(response.getMissingRules().isEmpty());
         assertEquals(ImmutableSet.of(1L, 2L), new HashSet<>(response.getProperRules()));
         assertTrue(response.getExcessRules().isEmpty());
     }
 
     @Test
-    public void validateRulesIgnoreDefaultRules() {
+    public void validateDefaultRules() {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        List<FlowEntry> flowEntries =
+                Lists.newArrayList(FlowEntry.builder().cookie(0x8000000000000001L).priority(1).byteCount(123).build(),
+                        FlowEntry.builder().cookie(0x8000000000000001L).priority(2).build(),
+                        FlowEntry.builder().cookie(0x8000000000000002L).priority(1).build(),
+                        FlowEntry.builder().cookie(0x8000000000000002L).priority(2).build(),
+                        FlowEntry.builder().cookie(0x8000000000000004L).priority(1).build());
+        List<FlowEntry> expectedDefaultFlowEntries =
+                Lists.newArrayList(FlowEntry.builder().cookie(0x8000000000000001L).priority(1).byteCount(321).build(),
+                        FlowEntry.builder().cookie(0x8000000000000002L).priority(3).build(),
+                        FlowEntry.builder().cookie(0x8000000000000003L).priority(1).build());
         ValidateRulesResult response =
-                validationService.validateRules(SWITCH_ID_A, Sets.newHashSet(0x8000000000000002L));
-        assertTrue(response.getMissingRules().isEmpty());
-        assertTrue(response.getProperRules().isEmpty());
-        assertTrue(response.getExcessRules().isEmpty());
+                validationService.validateRules(SWITCH_ID_A, flowEntries, expectedDefaultFlowEntries);
+        assertEquals(ImmutableSet.of(0x8000000000000001L), new HashSet<>(response.getProperRules()));
+        assertEquals(ImmutableSet.of(0x8000000000000002L), new HashSet<>(response.getMisconfiguredRules()));
+        assertEquals(ImmutableSet.of(0x8000000000000003L), new HashSet<>(response.getMissingRules()));
+        assertEquals(ImmutableSet.of(0x8000000000000001L, 0x8000000000000002L, 0x8000000000000004L),
+                new HashSet<>(response.getExcessRules()));
     }
 
     @Test

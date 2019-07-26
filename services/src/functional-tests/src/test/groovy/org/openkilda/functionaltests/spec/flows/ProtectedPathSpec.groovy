@@ -772,7 +772,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
             [switchPair.src.dpId, switchPair.dst.dpId].each { switchId ->
                 def switchValidateInfo = northbound.validateSwitch(switchId)
                 assert switchValidateInfo.meters.proper.size() == 1
-                assert switchValidateInfo.rules.proper.size() == 3
+                assert switchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 3
                 switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
                 switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
             }
@@ -786,12 +786,12 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                         switchId in currentPath*.switchId) ? 4 : 2
                 if (northbound.getSwitch(switchId).description.contains("OF_12")) {
                     def switchValidateInfo = northbound.validateSwitchRules(switchId)
-                    assert switchValidateInfo.properRules.size() == amountOfRules
+                    assert switchValidateInfo.properRules.findAll { !Cookie.isDefaultRule(it) }.size() == amountOfRules
                     assert switchValidateInfo.missingRules.size() == 0
                     assert switchValidateInfo.excessRules.size() == 0
                 } else {
                     def switchValidateInfo = northbound.validateSwitch(switchId)
-                    assert switchValidateInfo.rules.proper.size() == amountOfRules
+                    assert switchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == amountOfRules
                     switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
                     switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo)
                 }

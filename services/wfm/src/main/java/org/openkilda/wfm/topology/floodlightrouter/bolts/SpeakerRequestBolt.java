@@ -17,7 +17,9 @@ package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.switches.DumpMetersForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
+import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
 import org.openkilda.messaging.command.switches.ValidateRulesRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -83,7 +85,9 @@ public class SpeakerRequestBolt extends RequestBolt {
         Values values = new Values(commandMessage.getCorrelationId(), errorMessage);
         if (commandMessage.getData() instanceof ValidateRulesRequest) {
             getOutput().emit(Stream.NORTHBOUND_REPLY, input, values);
-        } else if (commandMessage.getData() instanceof DumpRulesForSwitchManagerRequest) {
+        } else if (commandMessage.getData() instanceof DumpRulesForSwitchManagerRequest
+                || commandMessage.getData() instanceof DumpMetersForSwitchManagerRequest
+                || commandMessage.getData() instanceof GetExpectedDefaultRulesRequest) {
             getOutput().emit(Stream.KILDA_SWITCH_MANAGER, input, values);
         } else {
             log.error("Unable to lookup region for message: {}. switch is not tracked.", commandMessage);

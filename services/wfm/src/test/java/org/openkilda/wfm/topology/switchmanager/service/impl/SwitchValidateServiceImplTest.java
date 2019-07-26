@@ -38,6 +38,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.model.SwitchId;
@@ -93,8 +94,9 @@ public class SwitchValidateServiceImplTest {
         flowEntry = new FlowEntry(-1L, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
         meterEntry = new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
 
-        when(validationService.validateRules(any(), any()))
-                .thenReturn(new ValidateRulesResult(singletonList(flowEntry.getCookie()), emptyList(), emptyList()));
+        when(validationService.validateRules(any(), any(), any()))
+                .thenReturn(new ValidateRulesResult(singletonList(flowEntry.getCookie()), emptyList(), emptyList(),
+                        emptyList()));
         when(validationService.validateMeters(any(), any(), anyLong(), anyDouble()))
                 .thenReturn(new ValidateMetersResult(emptyList(), emptyList(), emptyList(), emptyList()));
     }
@@ -164,10 +166,12 @@ public class SwitchValidateServiceImplTest {
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).build();
 
         service.handleSwitchValidateRequest(KEY, request);
-        verify(carrier).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
+        verify(carrier, times(2)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
 
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
-        verify(validationService).validateRules(eq(SWITCH_ID), any());
+        service.handleExpectedDefaultFlowEntriesResponse(KEY,
+                new SwitchExpectedDefaultFlowEntries(SWITCH_ID, emptyList()));
+        verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
@@ -185,9 +189,11 @@ public class SwitchValidateServiceImplTest {
     public void validationSuccessWithUnsupportedMeters() {
         handleRequestAndInitDataReceive();
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
+        service.handleExpectedDefaultFlowEntriesResponse(KEY,
+                new SwitchExpectedDefaultFlowEntries(SWITCH_ID, emptyList()));
         service.handleMetersUnsupportedResponse(KEY);
 
-        verify(validationService).validateRules(eq(SWITCH_ID), any());
+        verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
 
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
@@ -243,18 +249,20 @@ public class SwitchValidateServiceImplTest {
     private void handleRequestAndInitDataReceive() {
         service.handleSwitchValidateRequest(KEY, request);
 
-        verify(carrier, times(2)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
+        verify(carrier, times(3)).sendCommandToSpeaker(eq(KEY), any(CommandData.class));
         verifyNoMoreInteractions(carrier);
     }
 
     private void handleDataReceiveAndValidate() {
         service.handleFlowEntriesResponse(KEY, new SwitchFlowEntries(SWITCH_ID, singletonList(flowEntry)));
+        service.handleExpectedDefaultFlowEntriesResponse(KEY,
+                new SwitchExpectedDefaultFlowEntries(SWITCH_ID, emptyList()));
         service.handleMeterEntriesResponse(KEY, new SwitchMeterEntries(SWITCH_ID, singletonList(meterEntry)));
 
         verify(carrier).getFlowMeterBurstCoefficient();
         verify(carrier).getFlowMeterMinBurstSizeInKbits();
 
-        verify(validationService).validateRules(eq(SWITCH_ID), any());
+        verify(validationService).validateRules(eq(SWITCH_ID), any(), any());
         verify(validationService).validateMeters(eq(SWITCH_ID), any(), anyLong(), anyDouble());
     }
 
