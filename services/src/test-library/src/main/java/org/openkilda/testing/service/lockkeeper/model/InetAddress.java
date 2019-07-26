@@ -15,13 +15,17 @@
 
 package org.openkilda.testing.service.lockkeeper.model;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import lombok.Value;
 
 @Value
 public class InetAddress {
 
+    @JsonInclude(Include.NON_NULL)
     String ip;
 
+    @JsonInclude(Include.NON_NULL)
     Integer port;
 
     public InetAddress(String ip) {

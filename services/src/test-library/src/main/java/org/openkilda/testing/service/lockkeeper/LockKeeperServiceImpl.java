@@ -24,6 +24,7 @@ import org.openkilda.testing.service.northbound.NorthboundService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -52,6 +53,9 @@ public class LockKeeperServiceImpl implements LockKeeperService {
 
     @Autowired
     NorthboundService northbound;
+
+    @Value("#{'${kafka.bootstrap.server}'.split(':')}")
+    private List<String> kafkaBootstrapServer;
 
     @Autowired
     @Qualifier("lockKeeperRestTemplate")
@@ -158,6 +162,18 @@ public class LockKeeperServiceImpl implements LockKeeperService {
         log.debug("Allow floodlight access to everything by flushing iptables rules(INPUT/OUTPUT chains)");
         restTemplate.exchange(labService.getLab().getLabId() + "/remove-floodlight-access-restrictions",
                 HttpMethod.POST, new HttpEntity(buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void knockoutFloodlight() {
+        log.debug("Knock out Floodlight service");
+        blockFloodlightAccessToPort(Integer.valueOf(kafkaBootstrapServer.get(2)));
+    }
+
+    @Override
+    public void reviveFloodlight() {
+        log.debug("Revive Floodlight service");
+        unblockFloodlightAccessToPort(Integer.valueOf(kafkaBootstrapServer.get(2)));
     }
 
     HttpHeaders buildJsonHeaders() {
