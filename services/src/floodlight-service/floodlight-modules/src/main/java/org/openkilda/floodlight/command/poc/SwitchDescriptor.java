@@ -15,15 +15,15 @@
 
 package org.openkilda.floodlight.command.poc;
 
-import lombok.Getter;
-import lombok.ToString;
+import lombok.Value;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.projectfloodlight.openflow.types.TableId;
 
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 
-@Getter
-@ToString
+@Value
 class SwitchDescriptor {
     private final IOFSwitch sw;
 
@@ -34,15 +34,28 @@ class SwitchDescriptor {
     private final TableId tableEgress;
     private final TableId tableTransit;
 
+    private final Set<TableId> allUsedTables = new HashSet<>();
+
     public SwitchDescriptor(IOFSwitch sw) {
         this.sw = sw;
 
         Iterator<TableId> tablesIterator = sw.getTables().iterator();
         tableDispatch = tablesIterator.next();
+        allUsedTables.add(tableDispatch);
+
         tablePreIngress = tablesIterator.next();
+        allUsedTables.add(tablePreIngress);
+
         tableIngress = tablesIterator.next();
+        allUsedTables.add(tableIngress);
+
         tablePostIngress = tablesIterator.next();
+        allUsedTables.add(tablePostIngress);
+
         tableEgress = tablesIterator.next();
+        allUsedTables.add(tableEgress);
+
         tableTransit = tablesIterator.next();
+        allUsedTables.add(tableTransit);
     }
 }

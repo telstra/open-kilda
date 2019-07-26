@@ -19,8 +19,12 @@ import org.openkilda.floodlight.FloodlightResponse;
 import org.openkilda.floodlight.command.SessionProxy;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.utils.CompletableFutureAdapter;
+import org.openkilda.floodlight.utils.SwitchPipelineAdapter;
+import org.openkilda.messaging.MessageContext;
+import org.openkilda.model.SwitchId;
 
-import com.google.common.collect.ImmutableList;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.TableFeatures;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -28,8 +32,9 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFTableFeatureProp;
 import org.projectfloodlight.openflow.protocol.OFTableFeatures;
-import org.projectfloodlight.openflow.protocol.OFTableFeaturesStatsRequest;
-import org.projectfloodlight.openflow.protocol.OFTableStatsReply;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturesCommand;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturesStatsReply;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U32;
 
 import java.util.ArrayList;
@@ -40,66 +45,67 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 public class PreparePipeline extends AbstractMultiTableCommand {
+    @JsonCreator
+    public PreparePipeline(@JsonProperty("message_context") MessageContext messageContext,
+                           @JsonProperty("switch_id") SwitchId switchId) {
+        super(switchId, messageContext);
+    }
+
     @Override
     protected CompletableFuture<Optional<OFMessage>> writeCommands(IOFSwitch sw, FloodlightModuleContext moduleContext)
             throws SwitchOperationException {
         OFFactory of = sw.getOFFactory();
         SwitchDescriptor swDesc = new SwitchDescriptor(sw);
+        List<OFTableFeatures> tableFeatures = new ArrayList<>(sw.getNumTables());
 
-        TableFeatures current = sw.getTableFeatures(swDesc.getTableDispatch());
+        Set<TableId> allUsedTables = swDesc.getAllUsedTables();
+        for (TableId tableId : sw.getTables()) {
+            if (allUsedTables.contains(tableId)) {
+                makeTableFeaturesUpdate(of, sw.getTableFeatures(tableId))
+                        .ifPresent(tableFeatures::add);
+            }
+        }
 
+        return new CompletableFutureAdapter<>(
+                sw.writeRequest(of.buildTableFeaturesStatsRequest().setEntries(tableFeatures)
+                                        .build()))
+                .thenApply(response -> handleResponse(sw, response));
+    }
+
+    private Optional<OFMessage> handleResponse(IOFSwitch sw, OFTableFeaturesStatsReply reply) {
+        new SwitchPipelineAdapter(sw).dumpPipeline(reply);
+        return Optional.of(reply);
+    }
+
+    private Optional<OFTableFeatures> makeTableFeaturesUpdate(OFFactory of, TableFeatures current) {
         List<OFTableFeatureProp> update = new ArrayList<>();
         makeMatchProp(of, current)
                 .ifPresent(update::add);
 
-        if (!update.isEmpty()) {
-
+        if (update.isEmpty()) {
+            return Optional.empty();
         }
-        new CompletableFutureAdapter<OFTableStatsReply>(sw.writeRequest(of.buildTableStatsRequest().build()))
-        .thenAccept(features -> handleFEaturesResponse(features));
 
-
-
-        TableFeatures current = swDesc.getSw().getTableFeatures(swDesc.getTableDispatch());
-
-        current.createBuilder();
-        OFTableFeaturesStatsRequest featuresRequest = of.buildTableFeaturesStatsRequest()
-                .setEntries(ImmutableList.of(
-                        of.buildTableFeatures()
-                                .
-                                .build()))
-                .build();
-
-        OFTableFeatures.Builder features = of.buildTableFeatures();
-
-        Optional<OFTableFeatures> update = makeTableFeaturesUpdate(of, sw.getTableFeatures(swDesc.getTableDispatch()));
-
-        Set<U32> requiredOxms = makeOxmsRequirement(of);
+        return Optional.of(makeTableFeaturesBuilder(of, current)
+                                   .setCommand(OFTableFeaturesCommand.MODIFY)
+                                   .setProperties(update)
+                                   .build());
     }
 
-    private void makeTableFeatureUpdate(IOFSwitch sw, OFTableStatsReply features) {
-    }
-
-    @Override
-    protected FloodlightResponse buildError(Throwable error) {
-        return null;
-    }
-
-    @Override
-    public List<SessionProxy> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
-        // Don't used due to custom {@link org.openkilda.floodlight.command.poc.PreparePipeline.writeCommands}
-        // implementation.
-        return null;
-    }
-
-    private OFTableFeatures.Builder cloneTableFeatures(OFFactory of, TableFeatures current) {
-
+    private OFTableFeatures.Builder makeTableFeaturesBuilder(OFFactory of, TableFeatures current) {
+        return of.buildTableFeatures()
+                .setConfig(current.getConfig())
+                .setMaxEntries(current.getMaxEntries())
+                .setMetadataMatch(current.getMetadataMatch())
+                .setMetadataWrite(current.getMetadataWrite())
+                .setTableId(current.getTableId())
+                .setName(current.getTableName());
     }
 
     private Optional<OFTableFeatureProp> makeMatchProp(OFFactory of, TableFeatures current) {
         List<U32> matchUpdate = new ArrayList<>();
         Set<U32> matchCheck = new HashSet<>(current.getPropMatch().getOxmIds());
-        for (U32 oxmId : makeOxmsRequirement(of)) {
+        for (U32 oxmId : makeOxmsRequirement(of, current.getTableId())) {
             if (matchCheck.add(oxmId)) {
                 matchUpdate.add(oxmId);
             }
@@ -116,12 +122,24 @@ public class PreparePipeline extends AbstractMultiTableCommand {
                 .build());
     }
 
-    private Set<U32> makeOxmsRequirement(OFFactory of) {
+    private Set<U32> makeOxmsRequirement(OFFactory of, TableId tableId) {
         Set<U32> required = new HashSet<>();
 
         required.add(U32.of(of.oxms().buildMetadata().getTypeLen()));
         required.add(U32.of(of.oxms().buildMetadataMasked().getTypeLen()));
 
         return required;
+    }
+
+    @Override
+    protected FloodlightResponse buildError(Throwable error) {
+        return null;
+    }
+
+    @Override
+    public List<SessionProxy> getCommands(IOFSwitch sw, FloodlightModuleContext moduleContext) {
+        // Don't used due to custom {@link org.openkilda.floodlight.command.poc.PreparePipeline.writeCommands}
+        // implementation.
+        return null;
     }
 }
