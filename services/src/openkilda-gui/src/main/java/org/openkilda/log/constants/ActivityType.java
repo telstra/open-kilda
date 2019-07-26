@@ -56,7 +56,8 @@ public enum ActivityType {
     FLOW_PING(35L),
     SWITCH_MAINTENANCE(36L),
     ISL_MAINTENANCE(37L),
-    DELETE_ISL(38L);
+    DELETE_ISL(38L),
+    UPDATE_ISL_BANDWIDTH(39L);
 
     private Long id;
     private ActivityTypeEntity activityTypeEntity;

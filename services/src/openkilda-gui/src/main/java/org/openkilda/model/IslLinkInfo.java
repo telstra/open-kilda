@@ -82,6 +82,7 @@ public class IslLinkInfo implements Serializable {
     
     private boolean isUnidirectional;
 
+    @JsonProperty("cost")
     private String cost;
 
     @JsonProperty("affected")

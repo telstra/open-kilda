@@ -149,6 +149,9 @@ public abstract class IConstants {
         public static final String UPDATE_LINK_UNDER_MAINTENANCE = GET_LINKS + "/under-maintenance";
         public static final String UPDATE_LINK_MAINTENANCE = GET_LINKS + "/under-maintenance";
         public static final String DELETE_LINK = GET_LINKS;
+        public static final String UPDATE_LINK_BANDWIDTH = GET_LINKS 
+                + "/bandwidth?src_switch={src_switch}&src_port={src_port}&"
+                + "dst_switch={dst_switch}&dst_port={dst_port}";
     }
     
     public final class OpenTsDbUrl {
@@ -254,6 +257,8 @@ public abstract class IConstants {
         
         public static final String ISL_DELETE_LINK = "isl_delete_link";
         
+        public static final String ISL_UPDATE_BANDWIDTH = "isl_update_bandwidth";
+        
     }
 
     public final class Settings {
@@ -329,7 +334,7 @@ public abstract class IConstants {
 
         FLOW_TABLEID("Flow_tableid", "flow.tableid"),
 
-        ISL_LATENCY("Isl_latency", "isl.rtt"),
+        ISL_LATENCY("Isl_latency", "isl.latency"),
 
         SWITCH_COLLISIONS("Switch_collisions", "switch.collisions"),    
 
