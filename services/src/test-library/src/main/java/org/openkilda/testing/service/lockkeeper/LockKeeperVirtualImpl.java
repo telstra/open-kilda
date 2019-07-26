@@ -41,8 +41,6 @@ public class LockKeeperVirtualImpl extends LockKeeperServiceImpl {
     private List<String> managementControllers;
     @Value("#{'${floodlight.controllers.stat}'.split(',')}")
     private List<String> statControllers;
-    @Value("#{'${kafka.bootstrap.server}'.split(':')}")
-    private List<String> kafkaBootstrapServer;
 
     @Override
     public void knockoutSwitch(Switch sw) {
@@ -82,17 +80,5 @@ public class LockKeeperVirtualImpl extends LockKeeperServiceImpl {
         log.debug("Allow floodlight access to everything by flushing iptables rules(INPUT/OUTPUT chains)");
         restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/remove-floodlight-access-restrictions",
                 HttpMethod.POST, new HttpEntity(buildJsonHeaders()), String.class);
-    }
-
-    @Override
-    public void knockoutFloodlight() {
-        log.debug("Knock out Floodlight service");
-        blockFloodlightAccessToPort(Integer.valueOf(kafkaBootstrapServer.get(2)));
-    }
-
-    @Override
-    public void reviveFloodlight() {
-        log.debug("Revive Floodlight service");
-        unblockFloodlightAccessToPort(Integer.valueOf(kafkaBootstrapServer.get(2)));
     }
 }

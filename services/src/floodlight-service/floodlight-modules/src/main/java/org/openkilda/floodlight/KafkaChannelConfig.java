@@ -38,15 +38,8 @@ public interface KafkaChannelConfig extends KafkaConsumerGroupConfig {
     @Min(1)
     float getHeartBeatInterval();
 
-    @Key("testing-mode")
-    String getTestingMode();
-
     @Key("floodlight-region")
     String getFloodlightRegion();
-
-    default boolean isTestingMode() {
-        return "YES".equals(getTestingMode());
-    }
 
     /**
      * Returns Kafka properties built with the configuration data for Consumer.
