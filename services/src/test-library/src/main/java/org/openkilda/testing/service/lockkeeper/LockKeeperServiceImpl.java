@@ -54,8 +54,8 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     @Autowired
     NorthboundService northbound;
 
-    @Value("#{'${kafka.bootstrap.server}'.split(':')}")
-    private List<String> kafkaBootstrapServer;
+    @Value("${kafka.bootstrap.server}")
+    private String kafkaBootstrapServer;
 
     @Autowired
     @Qualifier("lockKeeperRestTemplate")
@@ -167,18 +167,23 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     @Override
     public void knockoutFloodlight() {
         log.debug("Knock out Floodlight service");
-        blockFloodlightAccessToPort(Integer.valueOf(kafkaBootstrapServer.get(2)));
+        blockFloodlightAccessToPort(getPort(kafkaBootstrapServer));
     }
 
     @Override
     public void reviveFloodlight() {
         log.debug("Revive Floodlight service");
-        unblockFloodlightAccessToPort(Integer.valueOf(kafkaBootstrapServer.get(2)));
+        unblockFloodlightAccessToPort(getPort(kafkaBootstrapServer));
     }
 
     HttpHeaders buildJsonHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
         return headers;
+    }
+
+    private Integer getPort(String uri) {
+        String[] parts = uri.split(":");
+        return Integer.valueOf(parts[parts.length - 1]);
     }
 }

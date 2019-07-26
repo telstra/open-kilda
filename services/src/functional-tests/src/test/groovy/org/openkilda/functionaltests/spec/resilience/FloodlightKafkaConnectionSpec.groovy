@@ -4,32 +4,22 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.ctrl.KafkaBreakTarget
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.testing.service.kafka.KafkaBreaker
 
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
 
 import java.util.concurrent.TimeUnit
 
 class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
-    @Autowired
-    KafkaBreaker kafkaBreaker
-
     @Value('${floodlight.alive.timeout}')
     int floodlightAliveTimeout
 
     @Value('${floodlight.alive.interval}')
     int floodlightAliveInterval
-    
-    def region = 1
 
     def "System survives temporary connection outage between Floodlight and Kafka"() {
         when: "Controller loses connection to Kafka"
-        kafkaBreaker.shutoff(KafkaBreakTarget.FLOODLIGHT_PRODUCER, region)
-        kafkaBreaker.shutoff(KafkaBreakTarget.FLOODLIGHT_CONSUMER, region)
+        lockKeeper.knockoutFloodlight()
 
         then: "Right before controller alive timeout switches are still active and links are discovered"
         double interval = floodlightAliveTimeout * 0.4
@@ -39,19 +29,18 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
             sleep(500)
         }
 
-        and: "After controller alive timeout switches become inactive and links are discovered"
+        and: "After controller alive timeout switches become inactive but links are still discovered"
         Wrappers.wait(interval + WAIT_OFFSET) { assert northbound.activeSwitches.size() == 0 }
         northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
 
         when: "System remains in this state for discovery timeout for ISLs"
         TimeUnit.SECONDS.sleep(discoveryTimeout + 1)
 
-        then: "All links are discovered"
+        then: "All links are still discovered"
         northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
 
         when: "Controller restores connection to Kafka"
-        kafkaBreaker.restore(KafkaBreakTarget.FLOODLIGHT_PRODUCER, region)
-        kafkaBreaker.restore(KafkaBreakTarget.FLOODLIGHT_CONSUMER, region)
+        lockKeeper.reviveFloodlight()
 
         then: "All links are discovered and switches become active"
         northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
@@ -67,11 +56,10 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
-    @Ignore("Due to defect https://github.com/telstra/open-kilda/issues/2214")
     def "System can detect switch changes if they happen while Floodlight was disconnected after it reconnects"() {
         when: "Controller loses connection to kafka"
-        kafkaBreaker.shutoff(KafkaBreakTarget.FLOODLIGHT_PRODUCER, region)
-        kafkaBreaker.shutoff(KafkaBreakTarget.FLOODLIGHT_CONSUMER, region)
+        lockKeeper.knockoutFloodlight()
+        Wrappers.wait(floodlightAliveTimeout + WAIT_OFFSET) { assert northbound.activeSwitches.size() == 0 }
 
         and: "Switch port for certain ISL goes down"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
@@ -79,8 +67,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         lockKeeper.portsDown([isl.aswitch.inPort])
 
         and: "Controller restores connection to kafka"
-        kafkaBreaker.restore(KafkaBreakTarget.FLOODLIGHT_PRODUCER, region)
-        kafkaBreaker.restore(KafkaBreakTarget.FLOODLIGHT_CONSUMER, region)
+        lockKeeper.reviveFloodlight()
 
         then: "System detects that certain port has been brought down and fails the related link"
         Wrappers.wait(WAIT_OFFSET) {

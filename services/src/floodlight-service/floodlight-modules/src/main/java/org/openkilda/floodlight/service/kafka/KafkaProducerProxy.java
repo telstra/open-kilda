@@ -77,12 +77,7 @@ public class KafkaProducerProxy implements IKafkaProducerService {
 
     @Override
     public void setup(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
-        if (!owner.getConfig().isTestingMode()) {
-            target = new KafkaProducerService();
-        } else {
-            target = new TestAwareKafkaProducerService();
-        }
-
+        target = new KafkaProducerService();
         target.setup(moduleContext);
     }
 }
