@@ -15,6 +15,9 @@
 
 package org.openkilda.floodlight.command.flow;
 
+import static org.openkilda.floodlight.switchmanager.SwitchManager.convertDpIdToMac;
+import static org.openkilda.messaging.Utils.ETH_TYPE;
+
 import org.openkilda.floodlight.command.MessageWriter;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
@@ -30,6 +33,8 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.MacAddress;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -52,9 +57,10 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
                                     @JsonProperty("output_vlan_id") Integer outputVlanId,
                                     @JsonProperty("transit_encapsulation_id") Integer transitEncapsulationId,
                                     @JsonProperty("transit_encapsulation_type")
-                                            FlowEncapsulationType transitEncapsulationType) {
+                                            FlowEncapsulationType transitEncapsulationType,
+                                    @JsonProperty("ingress_switch_id") SwitchId ingressSwitchId) {
         super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort,
-                transitEncapsulationId, transitEncapsulationType);
+                transitEncapsulationId, transitEncapsulationType, ingressSwitchId);
         this.outputVlanType = outputVlanType;
         this.outputVlanId = outputVlanId;
     }
@@ -65,7 +71,7 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
         OFFactory ofFactory = sw.getOFFactory();
 
         // output action based on encap scheme
-        actionList.add(getOutputAction(ofFactory));
+        actionList.addAll(getOutputAction(ofFactory));
 
         // transmit packet from outgoing port
         actionList.add(setOutputPort(ofFactory));
@@ -74,15 +80,45 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
         OFInstructionApplyActions actions = applyActions(ofFactory, actionList);
 
         // build FLOW_MOD command, no meter
+        MacAddress srcMac = convertDpIdToMac(DatapathId.of(ingressSwitchId.toLong()));
+
         OFFlowMod flowMod = prepareFlowModBuilder(ofFactory)
-                .setMatch(matchFlow(inputPort, transitEncapsulationId, ofFactory))
+                .setMatch(matchFlow(inputPort, transitEncapsulationId, transitEncapsulationType, srcMac, ofFactory))
                 .setInstructions(ImmutableList.of(actions))
                 .build();
 
         return Collections.singletonList(new MessageWriter(flowMod));
     }
 
-    private OFAction getOutputAction(OFFactory ofFactory) {
+    private List<OFAction> getOutputAction(OFFactory ofFactory) {
+        switch (transitEncapsulationType) {
+            case TRANSIT_VLAN:
+                return Collections.singletonList(getOutputActionVlan(ofFactory));
+            case VXLAN:
+                return getOutputActionsForVxlan(ofFactory);
+            default:
+                throw new UnsupportedOperationException(
+                        String.format("Unknown encapsulation type: %s", transitEncapsulationType));
+
+        }
+
+    }
+
+    private List<OFAction> getOutputActionsForVxlan(OFFactory ofFactory) {
+        List<OFAction> actionList = new ArrayList<>(2);
+        actionList.add(ofFactory.actions().noviflowPopVxlanTunnel());
+        if (outputVlanType == OutputVlanType.PUSH) {
+            actionList.add(actionPushVlan(ofFactory, ETH_TYPE));
+            actionList.add(actionReplaceVlan(ofFactory, outputVlanId));
+        } else if (outputVlanType == OutputVlanType.REPLACE) {
+            actionList.add(actionReplaceVlan(ofFactory, outputVlanId));
+        } else if (outputVlanType == OutputVlanType.POP) {
+            actionList.add(actionPopVlan(ofFactory));
+        }
+        return actionList;
+    }
+
+    private OFAction getOutputActionVlan(OFFactory ofFactory) {
         OFAction action;
 
         switch (outputVlanType) {

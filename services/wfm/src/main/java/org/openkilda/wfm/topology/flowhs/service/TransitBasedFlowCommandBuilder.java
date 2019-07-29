@@ -233,7 +233,9 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
 
         return new InstallTransitRule(messageContext, commandId, flowPath.getFlow().getFlowId(), flowPath.getCookie(),
                 switchId, inputPort, outputPort,
-                encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType());
+                encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
+                flowPath.getSrcSwitch().getSwitchId()
+                );
     }
 
     private InstallEgressRule buildInstallEgressRule(CommandContext context, FlowPath flowPath,
@@ -252,6 +254,7 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
                 .outputPort(outputPort)
                 .outputVlanId(destVlan)
                 .outputVlanType(getOutputVlanType(srcVlan, destVlan))
+                .ingressSwitchId(flowPath.getSrcSwitch().getSwitchId())
                 .build();
     }
 

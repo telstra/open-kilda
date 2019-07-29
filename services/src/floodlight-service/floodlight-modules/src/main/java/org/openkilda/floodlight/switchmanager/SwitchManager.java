@@ -1729,6 +1729,10 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      */
     @Override
     public MacAddress dpIdToMac(DatapathId dpId) {
+        return convertDpIdToMac(dpId);
+    }
+
+    public static MacAddress convertDpIdToMac(DatapathId dpId) {
         return MacAddress.of(Arrays.copyOfRange(dpId.getBytes(), 2, 8));
     }
 
