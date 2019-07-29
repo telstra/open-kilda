@@ -114,66 +114,62 @@ class MetersSpec extends HealthCheckSpecification {
      * Default meters should be set in PKTPS by default in Kilda, but Centec switches only allow KBPS flag.
      * System should recalculate the PKTPS value to KBPS on Centec switches.
      */
+    @Unroll
     @Tags(HARDWARE)
-    def "Default meters should express bandwidth in kbps re-calculated from pktps on Centec switches"() {
-        setup: "Collect all Centec switches"
-        def switches = getCentecSwitches()
-        assumeTrue("Unable to find Centec switches in topology", switches as boolean)
-
-        expect: "Only the default meters should be present on each switch"
-        switches.each { sw ->
-            def meters = northbound.getAllMeters(sw.dpId)
-            assert meters.meterEntries.size() == 2
-            assert meters.meterEntries.each {
-                assert it.rate == Math.max((long) (DISCO_PKT_RATE * DISCO_PKT_SIZE / 1024L), MIN_RATE_KBPS)
-            }
-            //unable to use #getExpectedBurst. For Centects there's special burst due to KBPS
-            assert meters.meterEntries.every { it.burstSize == (long) ((DISCO_PKT_BURST * DISCO_PKT_SIZE) / 1024) }
-            assert meters.meterEntries.every(defaultMeters)
-            assert meters.meterEntries.every { ["KBPS", "BURST", "STATS"].containsAll(it.flags) }
-            assert meters.meterEntries.every { it.flags.size() == 3 }
+    def "Default meters should express bandwidth in kbps re-calculated from pktps on Centec switch(#sw.dpId)"() {
+        expect: "Only the default meters should be present on the switch"
+        def meters = northbound.getAllMeters(sw.dpId)
+        assert meters.meterEntries.size() == 2
+        assert meters.meterEntries.each {
+            assert it.rate == Math.max((long) (DISCO_PKT_RATE * DISCO_PKT_SIZE / 1024L), MIN_RATE_KBPS)
         }
+        //unable to use #getExpectedBurst. For Centects there's special burst due to KBPS
+        assert meters.meterEntries.every { it.burstSize == (long) ((DISCO_PKT_BURST * DISCO_PKT_SIZE) / 1024) }
+        assert meters.meterEntries.every(defaultMeters)
+        assert meters.meterEntries.every { ["KBPS", "BURST", "STATS"].containsAll(it.flags) }
+        assert meters.meterEntries.every { it.flags.size() == 3 }
+
+        where:
+        sw << (getCentecSwitches().unique { it.description }
+                ?: assumeTrue("Unable to find Centec switches in topology", false))
     }
 
+    @Unroll
     @Tags([HARDWARE, SMOKE_SWITCHES])
-    def "Default meters should express bandwidth in pktps on Noviflow switches"() {
+    def "Default meters should express bandwidth in pktps on Noviflow switch(#sw.dpId)"() {
         //TODO: Research how to calculate burstSize on OpenVSwitch in this case
         // now burstSize is equal to 4096, rate == 200
+        expect: "Only the default meters should be present on the switch"
+        def meters = northbound.getAllMeters(sw.dpId)
+        assert meters.meterEntries.size() == 3
+        assert meters.meterEntries.every(defaultMeters)
+        meters.meterEntries.each { assert it.rate == DISCO_PKT_RATE }
+        meters.meterEntries.each { assert it.burstSize == switchHelper.getExpectedBurst(sw.dpId, DISCO_PKT_RATE) }
+        meters.meterEntries.each { assert ["PKTPS", "BURST", "STATS"].containsAll(it.flags) }
+        meters.meterEntries.each { assert it.flags.size() == 3 }
 
-        given: "All Openflow 1.3 compatible Noviflow switches"
-        def switches = getNoviflowSwitches()
-        assumeTrue("Unable to find required switches in topology", switches as boolean)
-
-        expect: "Only the default meters should be present on each switch"
-        switches.each { sw ->
-            def meters = northbound.getAllMeters(sw.dpId)
-            assert meters.meterEntries.size() == 3
-            assert meters.meterEntries.every(defaultMeters)
-            meters.meterEntries.each { assert it.rate == DISCO_PKT_RATE }
-            meters.meterEntries.each { assert it.burstSize == switchHelper.getExpectedBurst(sw.dpId, DISCO_PKT_RATE) }
-            meters.meterEntries.each { assert ["PKTPS", "BURST", "STATS"].containsAll(it.flags) }
-            meters.meterEntries.each { assert it.flags.size() == 3 }
-        }
+        where:
+        sw << (getNoviflowSwitches().unique { it.description }
+                ?: assumeTrue("Unable to find Noviflow switch in topology", false))
     }
 
+    @Unroll
     @Tags(HARDWARE)
-    def "Default meters should express bandwidth in kbps on Noviflow Wb5164 switches"() {
-        setup: "Collect all Noviflow Wb5164 switches"
-        def switches = getNoviflowWb5164()
-        assumeTrue("Unable to find Noviflow Wb5164 switches in topology", switches as boolean)
+    def "Default meters should express bandwidth in kbps on Noviflow Wb5164 switch(#sw.dpId)"() {
+        expect: "Only the default meters should be present on the switch"
+        def meters = northbound.getAllMeters(sw.dpId)
+        assert meters.meterEntries.size() == 3
+        assert meters.meterEntries.every(defaultMeters)
+        meters.meterEntries.each { assert it.rate == MIN_RATE_KBPS }
+        //TODO(andriidovhan) fix calculations of burst size on Noviflow Wb5164 switches for default meters
+        // here we can't use the getExpectedBurst method
+        meters.meterEntries.every { assert it.burstSize == 999L }
+        meters.meterEntries.every { assert ["KBPS", "BURST", "STATS"].containsAll(it.flags) }
+        meters.meterEntries.every { assert it.flags.size() == 3 }
 
-        expect: "Only the default meters should be present on each switch"
-        switches.each { sw ->
-            def meters = northbound.getAllMeters(sw.dpId)
-            assert meters.meterEntries.size() == 3
-            assert meters.meterEntries.every(defaultMeters)
-            meters.meterEntries.each { assert it.rate == MIN_RATE_KBPS }
-            //TODO(andriidovhan) fix calculations of burst size on Noviflow Wb5164 switches for default meters
-            // here we can't use the getExpectedBurst method
-            meters.meterEntries.every { assert it.burstSize == 999L }
-            meters.meterEntries.every { assert ["KBPS", "BURST", "STATS"].containsAll(it.flags) }
-            meters.meterEntries.every { assert it.flags.size() == 3 }
-        }
+        where:
+        sw << (getNoviflowWb5164().unique { it.description } ?:
+                assumeTrue("Unable to find Noviflow Wb5164 switches in topology", false))
     }
 
     @Unroll
@@ -323,23 +319,23 @@ meters in flow rules at all (#data.flowType flow)"() {
                 [
                         flowType  : "Noviflow-Noviflow",
                         switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            !it.src.centec && it.src.ofVersion == "OF_13" &&
-                                    !it.dst.centec && it.dst.ofVersion == "OF_13" && hasOf13Path(it)
+                            it.src.noviflow && it.src.ofVersion == "OF_13" &&
+                                    it.dst.noviflow && it.dst.ofVersion == "OF_13" && hasOf13Path(it)
                         }
                 ],
                 //TODO(rtretiak): unlock above iterations by introducing a more clever cost manipulation
                 [
                         flowType  : "Centec-Noviflow",
                         switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            ((it.src.centec && !it.dst.centec && it.dst.ofVersion == "OF_13") ||
-                                    (!it.src.centec && it.src.ofVersion == "OF_13" && it.dst.centec)) &&
+                            ((it.src.centec && it.dst.noviflow && it.dst.ofVersion == "OF_13") ||
+                                    (it.src.noviflow && it.src.ofVersion == "OF_13" && it.dst.centec)) &&
                                     hasOf13Path(it)
                         }
                 ],
                 [
                         flowType  : "Noviflow_Wb5164-Noviflow_Wb5164",
                         switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            it.src.isWb5164() && it.dst.isWb5164() && hasOf13Path(it)
+                            it.src.wb5164 && it.dst.wb5164 && hasOf13Path(it)
                         }
                 ],
                 [
@@ -684,10 +680,12 @@ meters in flow rules at all (#data.flowType flow)"() {
     }
 
     void verifyBurstSizeOnWb5164(Long expected, Long actual) {
+        //...ValidationServiceImpl.E_SWITCH_METER_RATE_EQUALS_DELTA_COEFFICIENT = 0.01
         assert Math.abs(expected - actual) <= expected * 0.01
     }
 
     void verifyRateSizeOnWb5164(Long expectedRate, Long actualRate) {
+        //...ValidationServiceImpl.E_SWITCH_METER_BURST_SIZE_EQUALS_DELTA_COEFFICIENT = 0.01
         assert Math.abs(expectedRate - actualRate) <= expectedRate * 0.01
     }
 }
