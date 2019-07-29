@@ -101,8 +101,8 @@ class SwitchHelper {
      */
     def getExpectedBurst(SwitchId sw, long rate) {
         def descr = getDescription(sw).toLowerCase()
-        def hardware = northbound.getSwitch(sw).switchView.description.hardware =~ "WB5164"
-        if (descr.contains("noviflow") || hardware) {
+        def wb5164 = northbound.getSwitch(sw).switchView.description.hardware =~ "WB5164"
+        if (descr.contains("noviflow") || wb5164) {
             return (rate * NOVIFLOW_BURST_COEFFICIENT - 1).setScale(0, RoundingMode.CEILING)
         } else if (descr.contains("centec")) {
             def burst = (rate * burstCoefficient).toBigDecimal().setScale(0, RoundingMode.FLOOR)
