@@ -22,7 +22,6 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
@@ -48,7 +47,7 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowUpdateFsm, Sta
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         persistenceManager.getTransactionManager().doInTransaction(() -> {
-            Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
+            Flow flow = getFlow(stateMachine.getFlowId());
 
             FlowPath oldPrimaryForward = getFlowPath(flow, flow.getForwardPathId());
             stateMachine.setOldPrimaryForwardPath(oldPrimaryForward.getPathId());
@@ -66,9 +65,9 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowUpdateFsm, Sta
             stateMachine.getOldResources().add(oldPrimaryResources);
 
             PathId newPrimaryForward = stateMachine.getNewPrimaryForwardPath();
-            flow.setForwardPath(newPrimaryForward);
+            flow.setForwardPathId(newPrimaryForward);
             PathId newPrimaryReverse = stateMachine.getNewPrimaryReversePath();
-            flow.setReversePath(newPrimaryReverse);
+            flow.setReversePathId(newPrimaryReverse);
 
             log.debug("Swapping the primary paths {}/{} with {}/{}",
                     oldPrimaryForward.getPathId(), oldPrimaryReverse.getPathId(),
@@ -101,8 +100,8 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowUpdateFsm, Sta
             PathId newProtectedForward = stateMachine.getNewProtectedForwardPath();
             PathId newProtectedReverse = stateMachine.getNewProtectedReversePath();
             if (newProtectedForward != null && newProtectedReverse != null) {
-                flow.setProtectedForwardPath(newProtectedForward);
-                flow.setProtectedReversePath(newProtectedReverse);
+                flow.setProtectedForwardPathId(newProtectedForward);
+                flow.setProtectedReversePathId(newProtectedReverse);
 
                 log.debug("Swapping the protected paths {}/{} with {}/{}",
                         flow.getProtectedForwardPathId(), flow.getProtectedReversePathId(),
@@ -110,8 +109,6 @@ public class SwapFlowPathsAction extends FlowProcessingAction<FlowUpdateFsm, Sta
 
                 saveHistory(stateMachine, flow.getFlowId(), newProtectedForward, newProtectedReverse);
             }
-
-            flowRepository.createOrUpdate(flow);
         });
     }
 

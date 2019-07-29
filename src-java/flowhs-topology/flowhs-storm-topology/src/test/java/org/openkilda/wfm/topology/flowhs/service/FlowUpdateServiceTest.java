@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.service;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -43,11 +44,9 @@ import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 
-import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -82,7 +81,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     @Test
     public void shouldFailUpdateFlowIfNoPathAvailable() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), any()))
+        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), anyCollection()))
                 .thenThrow(new UnroutableFlowException(injectedErrorMessage));
 
         FlowRequest request = makeRequest()
@@ -99,7 +98,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     @Test
     public void shouldFailRerouteFlowIfRecoverableException() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), any()))
+        when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), anyCollection()))
                 .thenThrow(new RecoverableException(injectedErrorMessage));
 
         FlowRequest request = makeRequest()
@@ -162,7 +161,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
 
         FlowPathRepository repository = setupFlowPathRepositorySpy();
         doThrow(new RuntimeException(injectedErrorMessage))
-                .when(repository).createOrUpdate(any(FlowPath.class));
+                .when(repository).add(any(FlowPath.class));
 
         FlowRequest request = makeRequest()
                 .flowId(origin.getFlowId())
@@ -341,11 +340,10 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
                 .flowId(origin.getFlowId())
                 .build();
 
-        FlowRepository repository = setupFlowRepositorySpy();
+        FlowPathRepository flowPathRepository = setupFlowPathRepositorySpy();
         doThrow(new RuntimeException(injectedErrorMessage))
-                .when(repository)
-                .createOrUpdate(argThat(hasProperty(
-                        "forwardPathId", Matchers.not(equalTo(origin.getForwardPathId())))));
+                .when(flowPathRepository).updateStatus(eq(origin.getForwardPathId()),
+                eq(FlowPathStatus.IN_PROGRESS));
 
         FlowUpdateService service = makeService();
         service.handleRequest(dummyRequestKey, commandContext, request);
@@ -430,7 +428,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
         FlowPathRepository repository = setupFlowPathRepositorySpy();
         doThrow(new RuntimeException(injectedErrorMessage))
                 .when(repository)
-                .delete(argThat(hasProperty("pathId", equalTo(origin.getForwardPathId()))));
+                .remove(argThat(hasProperty("pathId", equalTo(origin.getForwardPathId()))));
 
         FlowUpdateService service = makeService();
         service.handleRequest(dummyRequestKey, commandContext, request);
@@ -503,7 +501,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
     public void shouldSuccessfullyUpdateFlow() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
         origin.setStatus(FlowStatus.DOWN); // TODO(surabujin): why for we forcing initial DOWN state here?
-        flushFlowChanges(origin);
 
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -518,7 +515,6 @@ public class FlowUpdateServiceTest extends AbstractFlowTest {
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         Flow origin = makeFlow();
         origin.setStatus(FlowStatus.DOWN); // TODO(surabujin): why for we forcing initial DOWN state here?
-        flushFlowChanges(origin);
 
         preparePathComputation(origin.getFlowId(), make2SwitchesPathPair());  // same path to current one
 

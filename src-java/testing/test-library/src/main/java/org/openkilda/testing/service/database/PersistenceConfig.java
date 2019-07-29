@@ -41,7 +41,7 @@ public class PersistenceConfig {
         PropertiesBasedConfigurationProvider configurationProvider =
                 new PropertiesBasedConfigurationProvider(configProps);
 
-        return PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
+        return PersistenceProvider.getInstance().getPersistenceManager(configurationProvider);
     }
 
     @Bean

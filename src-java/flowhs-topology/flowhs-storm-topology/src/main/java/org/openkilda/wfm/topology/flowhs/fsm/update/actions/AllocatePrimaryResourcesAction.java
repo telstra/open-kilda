@@ -58,7 +58,7 @@ public class AllocatePrimaryResourcesAction extends
         Flow flow = getFlow(flowId);
 
         log.debug("Finding a new primary path for flow {}", flowId);
-        final PathPair potentialPath = pathComputer.getPath(flow, flow.getFlowPathIds());
+        final PathPair potentialPath = pathComputer.getPath(flow, flow.getPathIds());
 
         log.debug("Allocating resources for a new primary path of flow {}", flowId);
         FlowResources flowResources = resourcesManager.allocateFlowResources(flow);

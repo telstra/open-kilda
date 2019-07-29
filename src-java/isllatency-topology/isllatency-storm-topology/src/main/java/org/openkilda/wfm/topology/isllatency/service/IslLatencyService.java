@@ -276,7 +276,6 @@ public class IslLatencyService {
             Isl isl = islRepository.findByEndpoints(srcSwitchId, srcPort, dstSwitchId, dstPort)
                     .orElseThrow(() -> new IslNotFoundException(srcSwitchId, srcPort, dstSwitchId, dstPort));
             isl.setLatency(latency);
-            islRepository.createOrUpdate(isl);
         });
     }
 }

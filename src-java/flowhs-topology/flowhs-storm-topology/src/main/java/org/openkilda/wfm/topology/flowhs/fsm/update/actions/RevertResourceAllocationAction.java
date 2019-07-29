@@ -19,7 +19,6 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -52,7 +51,7 @@ public class RevertResourceAllocationAction extends
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         persistenceManager.getTransactionManager().doInTransaction(() -> {
-            Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
+            Flow flow = getFlow(stateMachine.getFlowId());
 
             FlowResources newPrimaryResources = stateMachine.getNewPrimaryResources();
             if (newPrimaryResources != null) {

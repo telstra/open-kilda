@@ -26,7 +26,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.RetryPolicy;
-import org.neo4j.driver.v1.exceptions.ClientException;
 
 @Slf4j
 public class RemoveFlowAction extends FlowProcessingAction<FlowDeleteFsm, State, Event, FlowDeleteContext> {
@@ -41,13 +40,12 @@ public class RemoveFlowAction extends FlowProcessingAction<FlowDeleteFsm, State,
     protected void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
         RetryPolicy retryPolicy = new RetryPolicy()
                 .retryOn(RecoverablePersistenceException.class)
-                .retryOn(ClientException.class)
                 .withMaxRetries(transactionRetriesLimit);
 
         persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> {
             Flow flow = getFlow(stateMachine.getFlowId());
             log.debug("Removing the flow {}", flow);
-            flowRepository.delete(flow);
+            flowRepository.remove(flow);
 
             stateMachine.saveActionToHistory("Flow was removed",
                     String.format("The flow %s was removed", stateMachine.getFlowId()));

@@ -197,21 +197,19 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
         FlowPath newReversePath = flowPathBuilder.buildFlowPath(flow, flowResources.getReverse(),
                 pathPair.getReverse(), Cookie.buildReverseCookie(cookie));
         newReversePath.setStatus(FlowPathStatus.IN_PROGRESS);
-        FlowPathPair newFlowPaths = FlowPathPair.builder().forward(newForwardPath).reverse(newReversePath).build();
+        log.debug("Persisting the paths {}/{}", newForwardPath, newReversePath);
 
-        log.debug("Persisting the paths {}", newFlowPaths);
-
-        persistenceManager.getTransactionManager().doInTransaction(() -> {
+        return persistenceManager.getTransactionManager().doInTransaction(() -> {
             flowPathRepository.lockInvolvedSwitches(newForwardPath, newReversePath);
-
-            flowPathRepository.createOrUpdate(newForwardPath);
-            flowPathRepository.createOrUpdate(newReversePath);
+            flowPathRepository.add(newForwardPath);
+            flowPathRepository.add(newReversePath);
+            flow.addPaths(newForwardPath, newReversePath);
 
             updateIslsForFlowPath(newForwardPath, pathsToReuseBandwidth.getForward());
             updateIslsForFlowPath(newReversePath, pathsToReuseBandwidth.getReverse());
-        });
 
-        return newFlowPaths;
+            return FlowPathPair.builder().forward(newForwardPath).reverse(newReversePath).build();
+        });
     }
 
     private void updateIslsForFlowPath(FlowPath flowPath, FlowPath pathToReuseBandwidth)
@@ -231,8 +229,8 @@ public abstract class BaseResourceAllocationAction<T extends FlowPathSwappingFsm
                 }
             }
 
-            updateAvailableBandwidth(pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort(),
-                    pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort(),
+            updateAvailableBandwidth(pathSegment.getSrcSwitchId(), pathSegment.getSrcPort(),
+                    pathSegment.getDestSwitchId(), pathSegment.getDestPort(),
                     allowedOverprovisionedBandwidth);
         }
     }

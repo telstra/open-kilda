@@ -98,7 +98,8 @@ public class FlowUpdateService {
 
         RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
         if (requestedFlow.getFlowEncapsulationType() == null) {
-            requestedFlow.setFlowEncapsulationType(kildaConfigurationRepository.get().getFlowEncapsulationType());
+            requestedFlow.setFlowEncapsulationType(
+                    kildaConfigurationRepository.getOrDefault().getFlowEncapsulationType());
         }
         FlowUpdateContext context = FlowUpdateContext.builder()
                 .targetFlow(requestedFlow)

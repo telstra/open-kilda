@@ -87,10 +87,12 @@ public class FlowCreateService {
 
         RequestedFlow requestedFlow = RequestedFlowMapper.INSTANCE.toRequestedFlow(request);
         if (requestedFlow.getFlowEncapsulationType() == null) {
-            requestedFlow.setFlowEncapsulationType(kildaConfigurationRepository.get().getFlowEncapsulationType());
+            requestedFlow.setFlowEncapsulationType(
+                    kildaConfigurationRepository.getOrDefault().getFlowEncapsulationType());
         }
         if (requestedFlow.getPathComputationStrategy() == null) {
-            requestedFlow.setPathComputationStrategy(kildaConfigurationRepository.get().getPathComputationStrategy());
+            requestedFlow.setPathComputationStrategy(
+                    kildaConfigurationRepository.getOrDefault().getPathComputationStrategy());
         }
         FlowCreateContext context = FlowCreateContext.builder()
                 .targetFlow(requestedFlow)

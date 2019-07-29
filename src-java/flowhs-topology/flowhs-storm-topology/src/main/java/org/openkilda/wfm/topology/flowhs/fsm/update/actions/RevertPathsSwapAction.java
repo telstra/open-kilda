@@ -21,7 +21,6 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
@@ -44,7 +43,7 @@ public class RevertPathsSwapAction extends FlowProcessingAction<FlowUpdateFsm, S
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         persistenceManager.getTransactionManager().doInTransaction(() -> {
-            Flow flow = getFlow(stateMachine.getFlowId(), FetchStrategy.DIRECT_RELATIONS);
+            Flow flow = getFlow(stateMachine.getFlowId());
 
             if (stateMachine.getOldPrimaryForwardPath() != null && stateMachine.getOldPrimaryReversePath() != null) {
                 FlowPath oldForward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
@@ -63,8 +62,8 @@ public class RevertPathsSwapAction extends FlowProcessingAction<FlowUpdateFsm, S
                         flow.getForwardPath().getPathId(), flow.getReversePath().getPathId(),
                         oldForward.getPathId(), oldReverse.getPathId());
 
-                flow.setForwardPath(oldForward.getPathId());
-                flow.setReversePath(oldReverse.getPathId());
+                flow.setForwardPathId(oldForward.getPathId());
+                flow.setReversePathId(oldReverse.getPathId());
 
                 saveHistory(stateMachine, flow.getFlowId(), oldForward.getPathId(), oldReverse.getPathId());
             }
@@ -87,13 +86,11 @@ public class RevertPathsSwapAction extends FlowProcessingAction<FlowUpdateFsm, S
                         flow.getProtectedForwardPath().getPathId(), flow.getProtectedReversePath().getPathId(),
                         oldForward.getPathId(), oldReverse.getPathId());
 
-                flow.setProtectedForwardPath(oldForward.getPathId());
-                flow.setProtectedReversePath(oldReverse.getPathId());
+                flow.setProtectedForwardPathId(oldForward.getPathId());
+                flow.setProtectedReversePathId(oldReverse.getPathId());
 
                 saveHistory(stateMachine, flow.getFlowId(), oldForward.getPathId(), oldReverse.getPathId());
             }
-
-            flowRepository.createOrUpdate(flow);
         });
     }
 

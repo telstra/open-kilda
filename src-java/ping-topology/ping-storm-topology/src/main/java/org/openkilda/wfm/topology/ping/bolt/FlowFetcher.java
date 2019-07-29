@@ -21,6 +21,7 @@ import org.openkilda.messaging.command.flow.PeriodicPingCommand;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.context.PersistenceContextRequired;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
@@ -175,6 +176,7 @@ public class FlowFetcher extends Abstract {
     }
 
     @Override
+    @PersistenceContextRequired(requiresNew = true)
     public void init() {
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         try {

@@ -326,8 +326,6 @@ public class FlowOperationsService {
 
             flowDashboardLogger.onFlowPatchUpdate(currentFlow);
 
-            flowRepository.createOrUpdate(currentFlow);
-
             return Optional.of(result.updatedFlow(currentFlow).build());
 
         }).orElseThrow(() -> new FlowNotFoundException(flow.getFlowId()));

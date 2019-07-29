@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
-import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingAction;
@@ -49,7 +48,7 @@ public class OnNoPathFoundAction extends FlowProcessingAction<FlowRerouteFsm, St
             stateMachine.setOriginalFlowStatus(null);
             stateMachine.setNewFlowStatus(FlowStatus.DOWN);
 
-            Flow flow = getFlow(flowId, FetchStrategy.NO_RELATIONS);
+            Flow flow = getFlow(flowId);
             if (stateMachine.isReroutePrimary() && stateMachine.getNewPrimaryForwardPath() == null
                     && stateMachine.getNewPrimaryReversePath() == null) {
                 if (flow.getForwardPathId() == null && flow.getReversePathId() == null) {

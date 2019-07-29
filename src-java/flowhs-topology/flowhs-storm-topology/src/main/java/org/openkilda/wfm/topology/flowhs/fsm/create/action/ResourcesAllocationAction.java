@@ -35,6 +35,7 @@ import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.ConstraintViolationException;
+import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
@@ -66,7 +67,6 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
 import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.lang3.StringUtils;
-import org.neo4j.driver.v1.exceptions.TransientException;
 
 import java.util.List;
 import java.util.Optional;
@@ -180,11 +180,12 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
             Failsafe.with(new RetryPolicy()
                     .retryOn(RecoverableException.class)
                     .retryOn(ResourceAllocationException.class)
-                    .retryOn(TransientException.class)
+                    .retryOn(PersistenceException.class)
                     .withMaxRetries(transactionRetriesLimit))
                     .onRetry(e -> log.warn("Retrying transaction for resource allocation finished with exception", e))
                     .onRetriesExceeded(e -> log.warn("TX retry attempts exceed with error", e))
                     .run(() -> persistenceManager.getTransactionManager().doInTransaction(() -> {
+                        flowRepository.add(flow);
                         allocateMainPath(fsm, flow);
                         if (flow.isAllocateProtectedPath()) {
                             allocateProtectedPath(fsm, flow);
@@ -236,15 +237,16 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         FlowPath forward = flowPathBuilder.buildFlowPath(flow, flowResources.getForward(),
                 pathPair.getForward(), Cookie.buildForwardCookie(cookie));
         forward.setStatus(FlowPathStatus.IN_PROGRESS);
+        flowPathRepository.add(forward);
         flow.setForwardPath(forward);
 
         FlowPath reverse = flowPathBuilder.buildFlowPath(flow, flowResources.getReverse(),
                 pathPair.getReverse(), Cookie.buildReverseCookie(cookie));
         reverse.setStatus(FlowPathStatus.IN_PROGRESS);
+        flowPathRepository.add(reverse);
         flow.setReversePath(reverse);
 
         flowPathRepository.lockInvolvedSwitches(forward, reverse);
-        flowRepository.createOrUpdate(flow);
 
         updateIslsForFlowPath(forward);
         updateIslsForFlowPath(reverse);
@@ -277,6 +279,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         FlowPath forward = flowPathBuilder.buildFlowPath(flow, flowResources.getForward(),
                 protectedPath.getForward(), forwardCookie);
         forward.setStatus(FlowPathStatus.IN_PROGRESS);
+        flowPathRepository.add(forward);
         flow.setProtectedForwardPath(forward);
         fsm.setProtectedForwardPathId(forward.getPathId());
 
@@ -284,11 +287,11 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         FlowPath reverse = flowPathBuilder.buildFlowPath(flow, flowResources.getReverse(),
                 protectedPath.getReverse(), reverseCookie);
         reverse.setStatus(FlowPathStatus.IN_PROGRESS);
+        flowPathRepository.add(reverse);
         flow.setProtectedReversePath(reverse);
         fsm.setProtectedReversePathId(reverse.getPathId());
 
         flowPathRepository.lockInvolvedSwitches(forward, reverse);
-        flowRepository.createOrUpdate(flow);
 
         updateIslsForFlowPath(forward);
         updateIslsForFlowPath(reverse);
@@ -299,8 +302,8 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         path.getSegments().forEach(pathSegment -> {
             log.debug("Updating ISL for the path segment: {}", pathSegment);
 
-            updateAvailableBandwidth(pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort(),
-                    pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort());
+            updateAvailableBandwidth(pathSegment.getSrcSwitchId(), pathSegment.getSrcPort(),
+                    pathSegment.getDestSwitchId(), pathSegment.getDestPort());
         });
     }
 
@@ -311,7 +314,6 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
         Optional<Isl> matchedIsl = islRepository.findByEndpoints(srcSwitch, srcPort, dstSwitch, dstPort);
         matchedIsl.ifPresent(isl -> {
             isl.setAvailableBandwidth(isl.getMaxBandwidth() - usedBandwidth);
-            islRepository.createOrUpdate(isl);
         });
     }
 

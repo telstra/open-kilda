@@ -49,7 +49,7 @@ import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
-import org.openkilda.persistence.FetchStrategy;
+import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -89,10 +89,7 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
 import net.jodah.failsafe.RetryPolicy;
 import net.jodah.failsafe.SyncFailsafe;
-import org.neo4j.driver.v1.exceptions.ClientException;
-import org.neo4j.driver.v1.exceptions.TransientException;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -172,7 +169,7 @@ public class FlowService extends BaseFlowService {
             result = (FlowPathsWithEncapsulation) getFailsafe().get(
                     () -> transactionManager.doInTransaction(() -> {
                         Optional<SwitchProperties> srcSwitchProperties = switchPropertiesRepository.findBySwitchId(
-                                flow.getSrcSwitch().getSwitchId());
+                                flow.getSrcSwitchId());
                         boolean srcWithMultiTable = false;
                         boolean srcWithSwitchLldp = false;
                         boolean srcWithSwitchArp = false;
@@ -182,10 +179,13 @@ public class FlowService extends BaseFlowService {
                             srcWithSwitchArp = srcSwitchProperties.get().isSwitchArp();
                         }
                         flow.setSrcWithMultiTable(srcWithMultiTable);
-                        flow.getDetectConnectedDevices().setSrcSwitchLldp(srcWithSwitchLldp);
-                        flow.getDetectConnectedDevices().setSrcSwitchArp(srcWithSwitchArp);
+
+                        DetectConnectedDevices.DetectConnectedDevicesBuilder detectConnectedDevices
+                                = flow.getDetectConnectedDevices().toBuilder();
+                        detectConnectedDevices.srcSwitchLldp(srcWithSwitchLldp);
+                        detectConnectedDevices.srcSwitchArp(srcWithSwitchArp);
                         Optional<SwitchProperties> destSwitchProperties = switchPropertiesRepository.findBySwitchId(
-                                flow.getDestSwitch().getSwitchId());
+                                flow.getDestSwitchId());
                         boolean destWithMultiTable = false;
                         boolean destWithSwitchLldp = false;
                         boolean destWithSwitchArp = false;
@@ -195,8 +195,9 @@ public class FlowService extends BaseFlowService {
                             destWithSwitchArp = destSwitchProperties.get().isSwitchArp();
                         }
                         flow.setDestWithMultiTable(destWithMultiTable);
-                        flow.getDetectConnectedDevices().setDstSwitchLldp(destWithSwitchLldp);
-                        flow.getDetectConnectedDevices().setDstSwitchArp(destWithSwitchArp);
+                        detectConnectedDevices.dstSwitchLldp(destWithSwitchLldp);
+                        detectConnectedDevices.dstSwitchArp(destWithSwitchArp);
+                        flow.setDetectConnectedDevices(detectConnectedDevices.build());
 
                         // TODO: the strategy is defined either per flow or system-wide.
                         PathComputer pathComputer = pathComputerFactory.getPathComputer();
@@ -204,27 +205,25 @@ public class FlowService extends BaseFlowService {
 
                         FlowResources flowResources = flowResourcesManager.allocateFlowResources(flow);
 
-                        Instant timestamp = Instant.now();
                         // Build and store the flow with a path pair, use allocated resources for paths.
                         FlowPathPair flowPathPair =
-                                buildFlowPathPair(flow, pathPair, flowResources, FlowPathStatus.IN_PROGRESS, timestamp);
+                                buildFlowPathPair(flow, pathPair, flowResources, FlowPathStatus.IN_PROGRESS);
 
-                        Flow flowWithPaths = buildFlowWithPaths(flow, flowPathPair, FlowStatus.IN_PROGRESS, timestamp);
-                        flowWithPaths.setTimeCreate(timestamp);
+                        Flow flowWithPaths = buildFlowWithPaths(flow, flowPathPair, FlowStatus.IN_PROGRESS);
 
                         log.info("Creating the flow: {}", flowWithPaths);
 
                         flowPathRepository.lockInvolvedSwitches(flowPathPair.getForward(), flowPathPair.getReverse());
 
                         // Store the flow and both paths
-                        flowRepository.createOrUpdate(flowWithPaths);
+                        flowRepository.add(flowWithPaths);
 
                         updateIslsForFlowPath(flowPathPair.getForward());
                         updateIslsForFlowPath(flowPathPair.getReverse());
 
                         FlowResources protectedFlowResources = null;
                         if (flowWithPaths.isAllocateProtectedPath()) {
-                            protectedFlowResources = createProtectedPath(flowWithPaths, timestamp);
+                            protectedFlowResources = createProtectedPath(flowWithPaths);
                         }
 
                         return buildFlowPathsWithEncapsulation(flowWithPaths, flowResources, protectedFlowResources);
@@ -243,7 +242,7 @@ public class FlowService extends BaseFlowService {
     }
 
     @VisibleForTesting
-    FlowResources createProtectedPath(Flow flow, Instant timestamp)
+    FlowResources createProtectedPath(Flow flow)
             throws RecoverableException, UnroutableFlowException, FlowNotFoundException, ResourceAllocationException,
             FlowValidationException {
         if (flow.isOneSwitchFlow()) {
@@ -261,14 +260,15 @@ public class FlowService extends BaseFlowService {
 
         FlowResources flowResources = flowResourcesManager.allocateFlowResources(flow);
         FlowPathPair pathPair =
-                buildFlowPathPair(flow, protectedPathPair, flowResources, FlowPathStatus.IN_PROGRESS, timestamp);
+                buildFlowPathPair(flow, protectedPathPair, flowResources, FlowPathStatus.IN_PROGRESS);
 
         checkProtectedPathsDontOverlapsWithPrimary(flow, pathPair);
 
+        flowPathRepository.add(pathPair.getForward());
+        flowPathRepository.add(pathPair.getReverse());
+
         flow.setProtectedForwardPath(pathPair.getForward());
         flow.setProtectedReversePath(pathPair.getReverse());
-
-        flowRepository.createOrUpdate(flow);
 
         updateIslsForFlowPath(flow.getProtectedForwardPath());
         updateIslsForFlowPath(flow.getProtectedReversePath());
@@ -297,11 +297,9 @@ public class FlowService extends BaseFlowService {
         // Store the flow, use allocated resources for paths.
 
         FlowPathsWithEncapsulation result = transactionManager.doInTransaction(() -> {
-            Instant timestamp = Instant.now();
-            FlowPathPair flowPathPair = buildFlowPathPair(flow, flowResources, timestamp);
+            FlowPathPair flowPathPair = buildFlowPathPair(flow, flowResources);
 
-            Flow flowWithPaths = buildFlowWithPaths(flow, flowPathPair, flow.getStatus(), timestamp);
-            flowWithPaths.setTimeCreate(timestamp);
+            Flow flowWithPaths = buildFlowWithPaths(flow, flowPathPair, flow.getStatus());
 
             log.info("Saving (pushing) the flow: {}", flowWithPaths);
 
@@ -310,7 +308,7 @@ public class FlowService extends BaseFlowService {
             //TODO(siakovenko): flow needs to be validated (existence of switches, same end-points, etc.)
 
             // Store the flow and both paths
-            flowRepository.createOrUpdate(flowWithPaths);
+            flowRepository.add(flowWithPaths);
 
             updateIslsForFlowPath(flowWithPaths.getForwardPath());
             updateIslsForFlowPath(flowWithPaths.getReversePath());
@@ -339,7 +337,7 @@ public class FlowService extends BaseFlowService {
         RetryPolicy retryPolicy = new RetryPolicy()
                 .retryOn(RecoverableException.class)
                 .retryOn(ResourceNotAvailableException.class)
-                .retryOn(TransientException.class)
+                .retryOn(PersistenceException.class)
                 .withDelay(RETRY_DELAY, TimeUnit.MILLISECONDS)
                 .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT);
 
@@ -348,6 +346,8 @@ public class FlowService extends BaseFlowService {
             result = transactionManager.doInTransaction(retryPolicy, () -> {
                 FlowPathsWithEncapsulation flowPathsWithEncapsulation = getFlowPathPairWithEncapsulation(flowId)
                         .orElseThrow(() -> new FlowNotFoundException(flowId));
+                final FlowPathsWithEncapsulation flowBefore
+                        = new FlowPathsWithEncapsulation(flowPathsWithEncapsulation);
 
                 Flow flow = flowPathsWithEncapsulation.getFlow();
 
@@ -355,14 +355,14 @@ public class FlowService extends BaseFlowService {
 
                 flowPathRepository.lockInvolvedSwitches(flow.getPaths().toArray(new FlowPath[0]));
 
-                switchConnectedDeviceRepository.findByFlowId(flowId).forEach(switchConnectedDeviceRepository::delete);
+                switchConnectedDeviceRepository.findByFlowId(flowId).forEach(switchConnectedDeviceRepository::remove);
 
                 // Remove flow and all associated paths
-                flowRepository.delete(flow);
+                flowRepository.remove(flow);
 
                 flow.getPaths().forEach(this::updateIslsForFlowPath);
 
-                return flowPathsWithEncapsulation;
+                return flowBefore;
             });
         } catch (FailsafeException e) {
             if (e.getCause() instanceof FlowNotFoundException) {
@@ -425,13 +425,14 @@ public class FlowService extends BaseFlowService {
                                                                  Flow updatingFlow, FlowCommandSender sender)
             throws ResourceAllocationException, UnroutableFlowException, RecoverableException, FlowNotFoundException,
             FlowValidationException {
+        final FlowPathsWithEncapsulation flowBefore = new FlowPathsWithEncapsulation(currentFlow);
 
         UpdatedFlowPathsWithEncapsulation result = null;
         try {
             result = (UpdatedFlowPathsWithEncapsulation) getFailsafe().get(
                     () -> transactionManager.doInTransaction(() -> {
                         Optional<SwitchProperties> srcSwitchProperties = switchPropertiesRepository.findBySwitchId(
-                                updatingFlow.getSrcSwitch().getSwitchId());
+                                updatingFlow.getSrcSwitchId());
                         boolean srcWithMultiTable = false;
                         boolean srcWithSwitchLldp = false;
                         boolean srcWithSwitchArp = false;
@@ -441,10 +442,12 @@ public class FlowService extends BaseFlowService {
                             srcWithSwitchArp = srcSwitchProperties.get().isSwitchArp();
                         }
                         updatingFlow.setSrcWithMultiTable(srcWithMultiTable);
-                        updatingFlow.getDetectConnectedDevices().setSrcSwitchLldp(srcWithSwitchLldp);
-                        updatingFlow.getDetectConnectedDevices().setSrcSwitchArp(srcWithSwitchArp);
+                        DetectConnectedDevices.DetectConnectedDevicesBuilder detectConnectedDevices
+                                = updatingFlow.getDetectConnectedDevices().toBuilder();
+                        detectConnectedDevices.srcSwitchLldp(srcWithSwitchLldp);
+                        detectConnectedDevices.srcSwitchArp(srcWithSwitchArp);
                         Optional<SwitchProperties> destSwitchProperties = switchPropertiesRepository.findBySwitchId(
-                                updatingFlow.getDestSwitch().getSwitchId());
+                                updatingFlow.getDestSwitchId());
                         boolean destWithMultiTable = false;
                         boolean destWithSwitchLldp = false;
                         boolean destWithSwitchArp = false;
@@ -454,24 +457,23 @@ public class FlowService extends BaseFlowService {
                             destWithSwitchArp = destSwitchProperties.get().isSwitchArp();
                         }
                         updatingFlow.setDestWithMultiTable(destWithMultiTable);
-                        updatingFlow.getDetectConnectedDevices().setDstSwitchLldp(destWithSwitchLldp);
-                        updatingFlow.getDetectConnectedDevices().setDstSwitchArp(destWithSwitchArp);
+                        detectConnectedDevices.dstSwitchLldp(destWithSwitchLldp);
+                        detectConnectedDevices.dstSwitchArp(destWithSwitchArp);
                         PathComputer pathComputer = pathComputerFactory.getPathComputer();
                         PathPair newPathPair = pathComputer.getPath(updatingFlow,
-                                currentFlow.getFlow().getFlowPathIds());
+                                currentFlow.getFlow().getPathIds());
+                        updatingFlow.setDetectConnectedDevices(detectConnectedDevices.build());
 
                         log.info("Updating the flow with {} and path: {}", updatingFlow, newPathPair);
 
                         FlowResources flowResources = flowResourcesManager.allocateFlowResources(updatingFlow);
 
                         // Recreate the flow, use allocated resources for new paths.
-                        Instant timestamp = Instant.now();
                         FlowPathPair newFlowPathPair =
-                                buildFlowPathPair(updatingFlow, newPathPair, flowResources, FlowPathStatus.IN_PROGRESS,
-                                        timestamp);
+                                buildFlowPathPair(updatingFlow, newPathPair, flowResources, FlowPathStatus.IN_PROGRESS);
 
                         Flow newFlowWithPaths =
-                                buildFlowWithPaths(updatingFlow, newFlowPathPair, FlowStatus.IN_PROGRESS, timestamp);
+                                buildFlowWithPaths(updatingFlow, newFlowPathPair, FlowStatus.IN_PROGRESS);
 
                         FlowPath currentForwardPath = currentFlow.getForwardPath();
                         FlowPath currentReversePath = currentFlow.getReversePath();
@@ -481,7 +483,7 @@ public class FlowService extends BaseFlowService {
                         flowPathRepository.lockInvolvedSwitches(currentForwardPath, currentReversePath,
                                 newForwardPath, newReversePath);
 
-                        flowRepository.delete(currentFlow.getFlow());
+                        flowRepository.remove(currentFlow.getFlow());
 
                         updateIslsForFlowPath(currentForwardPath);
                         updateIslsForFlowPath(currentReversePath);
@@ -492,17 +494,17 @@ public class FlowService extends BaseFlowService {
                             updateIslsForFlowPath(currentFlow.getProtectedReversePath());
                         }
 
-                        flowRepository.createOrUpdate(newFlowWithPaths);
+                        flowRepository.add(newFlowWithPaths);
 
                         updateIslsForFlowPath(newForwardPath);
                         updateIslsForFlowPath(newReversePath);
 
                         FlowResources protectedResources = null;
                         if (newFlowWithPaths.isAllocateProtectedPath()) {
-                            protectedResources = createProtectedPath(newFlowWithPaths, timestamp);
+                            protectedResources = createProtectedPath(newFlowWithPaths);
                         }
 
-                        return new UpdatedFlowPathsWithEncapsulation(currentFlow,
+                        return new UpdatedFlowPathsWithEncapsulation(flowBefore,
                                 buildFlowPathsWithEncapsulation(newFlowWithPaths, flowResources, protectedResources));
                     }));
         } catch (FailsafeException e) {
@@ -517,7 +519,7 @@ public class FlowService extends BaseFlowService {
         commandGroups.addAll(createDeallocateResourcesGroups(result.getOldFlowPair()));
 
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
-        sender.sendFlowCommands(currentFlow.getFlow().getFlowId(),
+        sender.sendFlowCommands(flowBefore.getFlow().getFlowId(),
                 commandGroups,
                 createFlowPathStatusRequests(result, FlowPathStatus.ACTIVE),
                 createFlowPathStatusRequests(result, FlowPathStatus.INACTIVE));
@@ -602,14 +604,15 @@ public class FlowService extends BaseFlowService {
             throws FlowNotFoundException, RecoverableException, UnroutableFlowException, ResourceAllocationException {
         FlowPathsWithEncapsulation currentFlow =
                 getFlowPathPairWithEncapsulation(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
+        FlowPathsWithEncapsulation flowBefore = new FlowPathsWithEncapsulation(currentFlow);
 
         Flow flow = currentFlow.getFlow();
-        Flow initialFlow = flow.toBuilder().build();
 
         featureTogglesRepository.find().ifPresent(featureToggles ->
                 Optional.ofNullable(featureToggles.getFlowsRerouteUsingDefaultEncapType()).ifPresent(toggle -> {
                     if (toggle) {
-                        flow.setEncapsulationType(kildaConfigurationRepository.get().getFlowEncapsulationType());
+                        flow.setEncapsulationType(
+                                kildaConfigurationRepository.getOrDefault().getFlowEncapsulationType());
                     }
                 }));
 
@@ -621,8 +624,7 @@ public class FlowService extends BaseFlowService {
         }
 
         FlowPathsWithEncapsulationBuilder toCreateBuilder = FlowPathsWithEncapsulation.builder();
-        FlowPathsWithEncapsulationBuilder toRemoveBuilder = currentFlow.toBuilder().flow(initialFlow);
-        Instant timestamp = Instant.now();
+        FlowPathsWithEncapsulationBuilder toRemoveBuilder = flowBefore.toBuilder();
 
         boolean reroutePrimary = pathIds.isEmpty() || pathIds.contains(flow.getForwardPathId())
                 || pathIds.contains(flow.getReversePathId()) || pathComputationStrategyChanged;
@@ -636,7 +638,7 @@ public class FlowService extends BaseFlowService {
             log.warn("Origin flow {} path: {}", flowId, flow.getForwardPath());
 
             PathComputer pathComputer = pathComputerFactory.getPathComputer();
-            PathPair pathPair = pathComputer.getPath(flow, flow.getFlowPathIds());
+            PathPair pathPair = pathComputer.getPath(flow, flow.getPathIds());
 
             log.warn("Potential New Path for flow {} with LEFT path: {}, RIGHT path: {}",
                     flowId, pathPair.getForward(), pathPair.getReverse());
@@ -654,15 +656,12 @@ public class FlowService extends BaseFlowService {
                 dashboardLogger.onFailedFlowReroute(flowId,
                         format("Reroute %s is unsuccessful: can't find new path(s).", flowId));
                 toRemoveBuilder.forwardPath(null).reversePath(null);
-                if (pathComputationStrategyChanged) {
-                    flowRepository.createOrUpdate(flow);
-                }
             } else {
                 FlowResources flowResources = flowResourcesManager.allocateFlowResources(flow);
 
                 // Recreate the flow, use allocated resources for new paths.
                 FlowPathPair newFlowPathPair =
-                        buildFlowPathPair(flow, pathPair, flowResources, FlowPathStatus.IN_PROGRESS, timestamp);
+                        buildFlowPathPair(flow, pathPair, flowResources, FlowPathStatus.IN_PROGRESS);
 
                 final FlowPath currentForwardPath = flow.getForwardPath();
                 final FlowPath currentReversePath = flow.getReversePath();
@@ -674,7 +673,7 @@ public class FlowService extends BaseFlowService {
                 FlowPath newReversePath = newFlowPathPair.getReverse();
                 createPaths(newForwardPath, newReversePath);
                 Optional<SwitchProperties> srcSwitchProperties = switchPropertiesRepository.findBySwitchId(
-                        flow.getSrcSwitch().getSwitchId());
+                        flow.getSrcSwitchId());
                 boolean srcWithMultiTable = false;
                 boolean srcWithLldp = false;
                 boolean srcWithArp = false;
@@ -685,16 +684,18 @@ public class FlowService extends BaseFlowService {
                 }
 
                 flow.setSrcWithMultiTable(srcWithMultiTable);
-                flow.getDetectConnectedDevices().setSrcSwitchLldp(srcWithLldp);
-                flow.getDetectConnectedDevices().setSrcSwitchArp(srcWithArp);
+                DetectConnectedDevices.DetectConnectedDevicesBuilder detectConnectedDevices
+                        = flow.getDetectConnectedDevices().toBuilder();
+                detectConnectedDevices.srcSwitchLldp(srcWithLldp);
+                detectConnectedDevices.srcSwitchArp(srcWithArp);
 
                 if (flow.isOneSwitchFlow()) {
                     flow.setDestWithMultiTable(srcWithMultiTable);
-                    flow.getDetectConnectedDevices().setDstLldp(srcWithLldp);
-                    flow.getDetectConnectedDevices().setDstArp(srcWithArp);
+                    detectConnectedDevices.dstLldp(srcWithLldp);
+                    detectConnectedDevices.dstArp(srcWithArp);
                 } else {
                     Optional<SwitchProperties> dstSwitchProperties = switchPropertiesRepository.findBySwitchId(
-                            flow.getDestSwitch().getSwitchId());
+                            flow.getDestSwitchId());
                     boolean dstWithMultiTable = false;
                     boolean dstWithLldp = false;
                     boolean dstWithArp = false;
@@ -704,17 +705,14 @@ public class FlowService extends BaseFlowService {
                         dstWithArp = dstSwitchProperties.get().isSwitchArp();
                     }
                     flow.setDestWithMultiTable(dstWithMultiTable);
-                    flow.getDetectConnectedDevices().setDstSwitchLldp(dstWithLldp);
-                    flow.getDetectConnectedDevices().setDstSwitchArp(dstWithArp);
+                    detectConnectedDevices.dstSwitchLldp(dstWithLldp);
+                    detectConnectedDevices.dstSwitchArp(dstWithArp);
                 }
-
-
+                flow.setDetectConnectedDevices(detectConnectedDevices.build());
 
                 flow.setStatus(FlowStatus.IN_PROGRESS);
-                flow.setTimeModify(timestamp);
                 flow.setForwardPath(newFlowPathPair.getForward());
                 flow.setReversePath(newFlowPathPair.getReverse());
-                flowRepository.createOrUpdate(flow);
 
                 toCreateBuilder.forwardPath(newForwardPath)
                         .reversePath(newReversePath)
@@ -749,9 +747,7 @@ public class FlowService extends BaseFlowService {
             } else {
                 // Create new flow paths, without resources
                 FlowPathPair newFlowPathPair =
-                        buildFlowPathPair(flow, pathPair, FlowPathStatus.IN_PROGRESS, timestamp);
-
-                flow.setTimeModify(timestamp);
+                        buildFlowPathPair(flow, pathPair, FlowPathStatus.IN_PROGRESS);
 
                 if (isProtectedPathsDontOverlapsWithPrimary(flow, newFlowPathPair)) {
 
@@ -770,7 +766,6 @@ public class FlowService extends BaseFlowService {
                     flow.setStatus(FlowStatus.IN_PROGRESS);
                     flow.setProtectedForwardPath(newFlowPathPair.getForward());
                     flow.setProtectedReversePath(newFlowPathPair.getReverse());
-                    flowRepository.createOrUpdate(flow);
 
                     toCreateBuilder.protectedForwardPath(newForwardPath)
                             .protectedReversePath(newReversePath)
@@ -784,11 +779,7 @@ public class FlowService extends BaseFlowService {
                     currentForwardPath.setStatus(FlowPathStatus.INACTIVE);
                     currentReversePath.setStatus(FlowPathStatus.INACTIVE);
 
-                    flowPathRepository.createOrUpdate(currentForwardPath);
-                    flowPathRepository.createOrUpdate(currentReversePath);
-
                     flow.setStatus(flow.computeFlowStatus());
-                    flowRepository.createOrUpdate(flow);
 
                     toRemoveBuilder.protectedForwardPath(null).protectedReversePath(null);
                 }
@@ -800,7 +791,7 @@ public class FlowService extends BaseFlowService {
         FlowPathsWithEncapsulation updatedFlow =
                 getFlowPathPairWithEncapsulation(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
-        return new RerouteResult(currentFlow.toBuilder().flow(initialFlow).build(), updatedFlow,
+        return new RerouteResult(currentFlow.toBuilder().flow(flowBefore.getFlow()).build(), updatedFlow,
                 toCreateBuilder.flow(flow).build(), toRemoveBuilder.build());
     }
 
@@ -841,7 +832,6 @@ public class FlowService extends BaseFlowService {
             log.info("Swapping path with id {} in flow {}", pathId, flow);
 
             flow.setStatus(FlowStatus.IN_PROGRESS);
-            flow.setTimeModify(Instant.now());
 
             FlowPath oldPrimaryForward = flow.getForwardPath();
             FlowPath oldPrimaryReverse = flow.getReversePath();
@@ -849,8 +839,6 @@ public class FlowService extends BaseFlowService {
             flow.setReversePath(flow.getProtectedReversePath());
             flow.setProtectedForwardPath(oldPrimaryForward);
             flow.setProtectedReversePath(oldPrimaryReverse);
-
-            flowRepository.createOrUpdate(flow);
 
             return currentFlow;
         });
@@ -914,7 +902,7 @@ public class FlowService extends BaseFlowService {
 
     public void updateFlowPathStatus(String flowId, PathId pathId, FlowPathStatus flowPathStatus) {
         transactionManager.doInTransaction(() -> {
-            FlowPath flowPath = flowPathRepository.findById(pathId, FetchStrategy.NO_RELATIONS)
+            FlowPath flowPath = flowPathRepository.findById(pathId)
                     .orElseThrow(() -> new FlowNotFoundException(flowId, format("Flow path %s not found.", pathId)));
 
             if (flowPathStatus != flowPath.getStatus()) {
@@ -972,47 +960,37 @@ public class FlowService extends BaseFlowService {
         );
     }
 
-    private FlowPathPair buildFlowPathPair(Flow flow, FlowResources flowResources, Instant timeCreate) {
+    private FlowPathPair buildFlowPathPair(Flow flow, FlowResources flowResources) {
         FlowPathStatus pathStatus = flow.getStatus() == FlowStatus.IN_PROGRESS
                 ? FlowPathStatus.IN_PROGRESS : FlowPathStatus.ACTIVE;
 
-        FlowPath forwardPath = flow.getForwardPath().toBuilder()
-                .srcSwitch(switchRepository.reload(flow.getForwardPath().getSrcSwitch()))
-                .destSwitch(switchRepository.reload(flow.getForwardPath().getDestSwitch()))
-                .status(pathStatus)
-                .timeCreate(timeCreate)
-                .build();
-        FlowPath reversePath = flow.getReversePath().toBuilder()
-                .srcSwitch(switchRepository.reload(flow.getReversePath().getSrcSwitch()))
-                .destSwitch(switchRepository.reload(flow.getReversePath().getDestSwitch()))
-                .status(pathStatus)
-                .timeCreate(timeCreate)
-                .build();
+        FlowPath forwardPath = new FlowPath(flow.getForwardPath(), flow);
+        forwardPath.setSrcSwitch(switchRepository.reload(flow.getForwardPath().getSrcSwitch()));
+        forwardPath.setDestSwitch(switchRepository.reload(flow.getForwardPath().getDestSwitch()));
+        forwardPath.setStatus(pathStatus);
 
-        FlowPathPair pathPair = FlowPathPair.builder()
-                .forward(forwardPath)
-                .reverse(reversePath)
-                .build();
+        FlowPath reversePath = new FlowPath(flow.getReversePath(), flow);
+        reversePath.setSrcSwitch(switchRepository.reload(flow.getReversePath().getSrcSwitch()));
+        reversePath.setDestSwitch(switchRepository.reload(flow.getReversePath().getDestSwitch()));
+        reversePath.setStatus(pathStatus);
+
+        FlowPathPair pathPair = FlowPathPair.builder().forward(forwardPath).reverse(reversePath).build();
         setResourcesInPaths(pathPair, flowResources);
         return pathPair;
     }
 
     private FlowPathPair buildFlowPathPair(Flow flow, PathPair pathPair, FlowResources flowResources,
-                                           FlowPathStatus pathStatus, Instant timeCreate) {
-        FlowPathPair flowPathPair = buildFlowPathPair(flow, pathPair, pathStatus, timeCreate);
+                                           FlowPathStatus pathStatus) {
+        FlowPathPair flowPathPair = buildFlowPathPair(flow, pathPair, pathStatus);
         setResourcesInPaths(flowPathPair, flowResources);
         return flowPathPair;
     }
 
-    private FlowPathPair buildFlowPathPair(Flow flow, PathPair pathPair, FlowPathStatus pathStatus,
-                                           Instant timeCreate) {
-        FlowPath forwardPath = buildFlowPath(flow, pathPair.getForward(), pathStatus, timeCreate);
-        FlowPath reversePath = buildFlowPath(flow, pathPair.getReverse(), pathStatus, timeCreate);
+    private FlowPathPair buildFlowPathPair(Flow flow, PathPair pathPair, FlowPathStatus pathStatus) {
+        FlowPath forwardPath = buildFlowPath(flow, pathPair.getForward(), pathStatus);
+        FlowPath reversePath = buildFlowPath(flow, pathPair.getReverse(), pathStatus);
 
-        return FlowPathPair.builder()
-                .forward(forwardPath)
-                .reverse(reversePath)
-                .build();
+        return FlowPathPair.builder().forward(forwardPath).reverse(reversePath).build();
     }
 
     private void setResourcesInPaths(FlowPathPair pathPair, FlowResources flowResources) {
@@ -1031,11 +1009,10 @@ public class FlowService extends BaseFlowService {
         }
     }
 
-    private FlowPath buildFlowPath(Flow flow, Path path, FlowPathStatus pathStatus, Instant timeCreate) {
+    private FlowPath buildFlowPath(Flow flow, Path path, FlowPathStatus pathStatus) {
         PathId pathId = new PathId(UUID.randomUUID().toString());
 
         FlowPath flowPath = FlowPath.builder()
-                .flow(flow)
                 .pathId(pathId)
                 .bandwidth(flow.getBandwidth())
                 .ignoreBandwidth(flow.isIgnoreBandwidth())
@@ -1044,11 +1021,10 @@ public class FlowService extends BaseFlowService {
                 .destSwitch(switchRepository.reload(Switch.builder()
                         .switchId(path.getDestSwitchId()).build()))
                 .status(pathStatus)
-                .timeCreate(timeCreate)
                 .build();
 
         List<PathSegment> segments = path.getSegments().stream()
-                .map(segment -> buildPathSegment(segment))
+                .map(this::buildPathSegment)
                 .collect(Collectors.toList());
         flowPath.setSegments(segments);
 
@@ -1082,22 +1058,18 @@ public class FlowService extends BaseFlowService {
 
     }
 
-    private Flow buildFlowWithPaths(Flow flow, FlowPathPair flowPathPair, FlowStatus status, Instant timeModify) {
-        Flow copied = flow.toBuilder()
-                .srcSwitch(switchRepository.reload(flow.getSrcSwitch()))
-                .destSwitch(switchRepository.reload(flow.getDestSwitch()))
-                .encapsulationType(flow.getEncapsulationType())
-                .pathComputationStrategy(flow.getPathComputationStrategy())
-                .timeModify(timeModify)
-                .status(status)
-                .build();
+    private Flow buildFlowWithPaths(Flow flow, FlowPathPair flowPathPair, FlowStatus status) {
+        Flow copied = new Flow(flow);
+        copied.setSrcSwitch(switchRepository.reload(flow.getSrcSwitch()));
+        copied.setDestSwitch(switchRepository.reload(flow.getDestSwitch()));
+        copied.setEncapsulationType(flow.getEncapsulationType());
+        copied.setPathComputationStrategy(flow.getPathComputationStrategy());
+        copied.setStatus(status);
 
         FlowPath forward = flowPathPair.getForward();
-        forward.setFlow(copied);
         copied.setForwardPath(forward);
 
         FlowPath reverse = flowPathPair.getReverse();
-        reverse.setFlow(copied);
         copied.setReversePath(reverse);
         return copied;
     }
@@ -1107,8 +1079,8 @@ public class FlowService extends BaseFlowService {
             return false;
         }
 
-        if (!path.getSrcSwitchId().equals(flowPath.getSrcSwitch().getSwitchId())
-                || !path.getDestSwitchId().equals(flowPath.getDestSwitch().getSwitchId())
+        if (!path.getSrcSwitchId().equals(flowPath.getSrcSwitchId())
+                || !path.getDestSwitchId().equals(flowPath.getDestSwitchId())
                 || path.getSegments().size() != flowPath.getSegments().size()) {
             return false;
         }
@@ -1118,8 +1090,8 @@ public class FlowService extends BaseFlowService {
         while (pathIt.hasNext() && flowPathIt.hasNext()) {
             Path.Segment pathSegment = pathIt.next();
             PathSegment flowSegment = flowPathIt.next();
-            if (!pathSegment.getSrcSwitchId().equals(flowSegment.getSrcSwitch().getSwitchId())
-                    || !pathSegment.getDestSwitchId().equals(flowSegment.getDestSwitch().getSwitchId())
+            if (!pathSegment.getSrcSwitchId().equals(flowSegment.getSrcSwitchId())
+                    || !pathSegment.getDestSwitchId().equals(flowSegment.getDestSwitchId())
                     || pathSegment.getSrcPort() != flowSegment.getSrcPort()
                     || pathSegment.getDestPort() != flowSegment.getDestPort()) {
                 return false;
@@ -1133,8 +1105,8 @@ public class FlowService extends BaseFlowService {
         path.getSegments().forEach(pathSegment -> {
             log.debug("Updating ISL for the path segment: {}", pathSegment);
 
-            updateIslAvailableBandwidth(pathSegment.getSrcSwitch().getSwitchId(), pathSegment.getSrcPort(),
-                    pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort());
+            updateIslAvailableBandwidth(pathSegment.getSrcSwitchId(), pathSegment.getSrcPort(),
+                    pathSegment.getDestSwitchId(), pathSegment.getDestPort());
         });
     }
 
@@ -1145,8 +1117,6 @@ public class FlowService extends BaseFlowService {
         islRepository.findByEndpoints(srcSwitchId, srcPort, dstSwitchId, dstPort)
                 .ifPresent(isl -> {
                     isl.setAvailableBandwidth(isl.getMaxBandwidth() - usedBandwidth);
-
-                    islRepository.createOrUpdate(isl);
                 });
     }
 
@@ -1293,13 +1263,9 @@ public class FlowService extends BaseFlowService {
         List<CommandGroup> commandGroups = new ArrayList<>();
 
         if (pathsToRemove.getForwardPath() != null) {
-            // NOTE: replacing flow object in flow path to deal with old data here
-            pathsToRemove.getForwardPath().setFlow(pathsToRemove.getFlow());
             commandGroups.addAll(createRemoveRulesGroups(pathsToRemove.getForward(), true));
         }
         if (pathsToRemove.getReversePath() != null) {
-            // NOTE: replacing flow object in flow path to deal with old data here
-            pathsToRemove.getReversePath().setFlow(pathsToRemove.getFlow());
             commandGroups.addAll(createRemoveRulesGroups(pathsToRemove.getReverse(), true));
         }
 
@@ -1329,7 +1295,7 @@ public class FlowService extends BaseFlowService {
     }
 
     private CommandGroup createRemoveIngressRules(FlowPath flowPath) {
-        SwitchId ingressSwitchId = flowPath.getSrcSwitch().getSwitchId();
+        SwitchId ingressSwitchId = flowPath.getSrcSwitchId();
         int ingressPort;
         if (flowPath.isForward()) {
             ingressPort = flowPath.getFlow().getSrcPort();
@@ -1352,20 +1318,20 @@ public class FlowService extends BaseFlowService {
 
     private boolean isLldpEnabledOnFlowEndpoint(Flow flow, SwitchId switchId, int port) {
         DetectConnectedDevices detect = flow.getDetectConnectedDevices();
-        return (flow.getSrcSwitch().getSwitchId().equals(switchId)
+        return (flow.getSrcSwitchId().equals(switchId)
                 && flow.getSrcPort() == port
                 && (detect.isSrcLldp() || detect.isSrcSwitchLldp()))
-                || (flow.getDestSwitch().getSwitchId().equals(switchId)
+                || (flow.getDestSwitchId().equals(switchId)
                 && flow.getDestPort() == port
                 && (detect.isDstLldp() || detect.isDstSwitchLldp()));
     }
 
     private boolean isArpEnabledOnFlowEndpoint(Flow flow, SwitchId switchId, int port) {
         DetectConnectedDevices detect = flow.getDetectConnectedDevices();
-        return (flow.getSrcSwitch().getSwitchId().equals(switchId)
+        return (flow.getSrcSwitchId().equals(switchId)
                 && flow.getSrcPort() == port
                 && (detect.isSrcArp() || detect.isSrcSwitchArp()))
-                || (flow.getDestSwitch().getSwitchId().equals(switchId)
+                || (flow.getDestSwitchId().equals(switchId)
                 && flow.getDestPort() == port
                 && (detect.isDstArp() || detect.isDstSwitchArp()));
     }
@@ -1436,7 +1402,7 @@ public class FlowService extends BaseFlowService {
 
     private SyncFailsafe getReadOperationFailsafe() {
         return Failsafe.with(new RetryPolicy()
-                .retryOn(ClientException.class)
+                .retryOn(PersistenceException.class)
                 .withDelay(RETRY_DELAY, TimeUnit.MILLISECONDS)
                 .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT))
                 .onRetry(e -> log.warn("Retrying transaction finished with exception", e))
@@ -1447,7 +1413,7 @@ public class FlowService extends BaseFlowService {
         return Failsafe.with(new RetryPolicy()
                 .retryOn(RecoverableException.class)
                 .retryOn(ResourceAllocationException.class)
-                .retryOn(TransientException.class)
+                .retryOn(PersistenceException.class)
                 .withDelay(RETRY_DELAY, TimeUnit.MILLISECONDS)
                 .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT))
                 .onRetry(e -> log.warn("Retrying transaction finished with exception", e))
@@ -1498,40 +1464,33 @@ public class FlowService extends BaseFlowService {
             UnroutableFlowException {
         dashboardLogger.onFlowEndpointSwap(firstFlow, secondFlow);
 
-        String firstFlowId = firstFlow.getFlowId();
-        String secondFlowId = secondFlow.getFlowId();
+        flowValidator.validateFowSwap(firstFlow, secondFlow);
 
+        String firstFlowId = firstFlow.getFlowId();
         FlowPathsWithEncapsulation currentFirstFlow =
                 getFlowPathPairWithEncapsulation(firstFlowId).orElseThrow(() ->
                         new FlowNotFoundException(firstFlowId));
+        Flow existingFirstFlow = new Flow(currentFirstFlow.getFlow());
+        existingFirstFlow.setSrcSwitch(Switch.builder().switchId(firstFlow.getSrcSwitchId()).build());
+        existingFirstFlow.setSrcPort(firstFlow.getSrcPort());
+        existingFirstFlow.setSrcVlan(firstFlow.getSrcVlan());
+        existingFirstFlow.setDestSwitch(Switch.builder().switchId(firstFlow.getDestSwitchId()).build());
+        existingFirstFlow.setDestPort(firstFlow.getDestPort());
+        existingFirstFlow.setDestVlan(firstFlow.getDestVlan());
+        existingFirstFlow.setEncapsulationType(existingFirstFlow.getEncapsulationType());
+
+        String secondFlowId = secondFlow.getFlowId();
         FlowPathsWithEncapsulation currentSecondFlow =
                 getFlowPathPairWithEncapsulation(secondFlowId).orElseThrow(() ->
                         new FlowNotFoundException(secondFlowId));
-
-        Flow existingFirstFlow = currentFirstFlow.getFlow();
-        Flow existingSecondFlow = currentSecondFlow.getFlow();
-
-        flowValidator.validateFowSwap(firstFlow, secondFlow);
-
-        existingFirstFlow = existingFirstFlow.toBuilder()
-                .srcSwitch(Switch.builder().switchId(firstFlow.getSrcSwitch().getSwitchId()).build())
-                .srcPort(firstFlow.getSrcPort())
-                .srcVlan(firstFlow.getSrcVlan())
-                .destSwitch(Switch.builder().switchId(firstFlow.getDestSwitch().getSwitchId()).build())
-                .destPort(firstFlow.getDestPort())
-                .destVlan(firstFlow.getDestVlan())
-                .encapsulationType(existingFirstFlow.getEncapsulationType())
-                .build();
-
-        existingSecondFlow = existingSecondFlow.toBuilder()
-                .srcSwitch(Switch.builder().switchId(secondFlow.getSrcSwitch().getSwitchId()).build())
-                .srcPort(secondFlow.getSrcPort())
-                .srcVlan(secondFlow.getSrcVlan())
-                .destSwitch(Switch.builder().switchId(secondFlow.getDestSwitch().getSwitchId()).build())
-                .destPort(secondFlow.getDestPort())
-                .destVlan(secondFlow.getDestVlan())
-                .encapsulationType(existingSecondFlow.getEncapsulationType())
-                .build();
+        Flow existingSecondFlow = new Flow(currentSecondFlow.getFlow());
+        existingSecondFlow.setSrcSwitch(Switch.builder().switchId(secondFlow.getSrcSwitchId()).build());
+        existingSecondFlow.setSrcPort(secondFlow.getSrcPort());
+        existingSecondFlow.setSrcVlan(secondFlow.getSrcVlan());
+        existingSecondFlow.setDestSwitch(Switch.builder().switchId(secondFlow.getDestSwitchId()).build());
+        existingSecondFlow.setDestPort(secondFlow.getDestPort());
+        existingSecondFlow.setDestVlan(secondFlow.getDestVlan());
+        existingSecondFlow.setEncapsulationType(existingSecondFlow.getEncapsulationType());
 
         return swapFlows(currentFirstFlow, existingFirstFlow, currentSecondFlow, existingSecondFlow, sender);
     }
@@ -1563,11 +1522,10 @@ public class FlowService extends BaseFlowService {
         FlowResources flowResources = flowResourcesManager.allocateFlowResources(updatingFlow);
 
         // Recreate the flow, use allocated resources for new paths.
-        Instant timestamp = Instant.now();
         FlowPathPair newFlowPathPair = buildFlowPathPair(updatingFlow, newPathPair, flowResources,
-                FlowPathStatus.IN_PROGRESS, timestamp);
+                FlowPathStatus.IN_PROGRESS);
 
-        Flow newFlowWithPaths = buildFlowWithPaths(updatingFlow, newFlowPathPair, FlowStatus.IN_PROGRESS, timestamp);
+        Flow newFlowWithPaths = buildFlowWithPaths(updatingFlow, newFlowPathPair, FlowStatus.IN_PROGRESS);
 
         FlowPath currentForwardPath = currentFlow.getForwardPath();
         FlowPath currentReversePath = currentFlow.getReversePath();
@@ -1576,7 +1534,7 @@ public class FlowService extends BaseFlowService {
 
         flowPathRepository.lockInvolvedSwitches(currentForwardPath, currentReversePath, newForwardPath, newReversePath);
 
-        flowRepository.delete(currentFlow.getFlow());
+        flowRepository.remove(currentFlow.getFlow());
 
         updateIslsForFlowPath(currentForwardPath);
         updateIslsForFlowPath(currentReversePath);
@@ -1587,14 +1545,14 @@ public class FlowService extends BaseFlowService {
             updateIslsForFlowPath(currentFlow.getProtectedReversePath());
         }
 
-        flowRepository.createOrUpdate(newFlowWithPaths);
+        flowRepository.add(newFlowWithPaths);
 
         updateIslsForFlowPath(newForwardPath);
         updateIslsForFlowPath(newReversePath);
 
         FlowResources protectedResources = null;
         if (newFlowWithPaths.isAllocateProtectedPath()) {
-            protectedResources = createProtectedPath(newFlowWithPaths, timestamp);
+            protectedResources = createProtectedPath(newFlowWithPaths);
         }
 
         return new UpdatedFlowPathsWithEncapsulation(currentFlow,
@@ -1602,13 +1560,13 @@ public class FlowService extends BaseFlowService {
     }
 
     private List<Flow> swapFlows(FlowPathsWithEncapsulation currentFirstFlow,
-                                     Flow updatingFirstFlow,
-                                     FlowPathsWithEncapsulation currentSecondFlow,
-                                     Flow updatingSecondFlow, FlowCommandSender sender)
+                                 Flow updatingFirstFlow,
+                                 FlowPathsWithEncapsulation currentSecondFlow,
+                                 Flow updatingSecondFlow, FlowCommandSender sender)
             throws ResourceAllocationException, FlowValidationException, UnroutableFlowException,
             FlowNotFoundException {
-        List<PathId> flowsPath = new ArrayList<>(currentFirstFlow.getFlow().getFlowPathIds());
-        flowsPath.addAll(currentSecondFlow.getFlow().getFlowPathIds());
+        List<PathId> flowsPath = new ArrayList<>(currentFirstFlow.getFlow().getPathIds());
+        flowsPath.addAll(currentSecondFlow.getFlow().getPathIds());
         List<UpdatedFlowPathsWithEncapsulation> flows = null;
         try {
             flows = (List<UpdatedFlowPathsWithEncapsulation>) getFailsafe().get(
@@ -1649,16 +1607,16 @@ public class FlowService extends BaseFlowService {
 
     private void createPaths(FlowPath forward, FlowPath reverse) {
         flowPathRepository.lockInvolvedSwitches(forward, reverse);
-        flowPathRepository.createOrUpdate(forward);
-        flowPathRepository.createOrUpdate(reverse);
+        flowPathRepository.add(forward);
+        flowPathRepository.add(reverse);
         updateIslsForFlowPath(forward);
         updateIslsForFlowPath(reverse);
     }
 
     private void deletePaths(FlowPath forward, FlowPath reverse) {
         flowPathRepository.lockInvolvedSwitches(forward, reverse);
-        flowPathRepository.delete(forward);
-        flowPathRepository.delete(reverse);
+        flowPathRepository.remove(forward);
+        flowPathRepository.remove(reverse);
         updateIslsForFlowPath(forward);
         updateIslsForFlowPath(reverse);
     }

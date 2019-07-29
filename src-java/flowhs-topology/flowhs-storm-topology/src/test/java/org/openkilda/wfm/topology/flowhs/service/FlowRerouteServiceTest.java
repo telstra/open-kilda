@@ -53,12 +53,10 @@ import org.openkilda.pce.PathPair;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.topology.flowhs.model.FlowRerouteFact;
 
-import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -162,7 +160,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         FlowPathRepository repository = setupFlowPathRepositorySpy();
         doThrow(new RuntimeException(injectedErrorMessage))
                 .when(repository)
-                .createOrUpdate(any(FlowPath.class));
+                .add(any(FlowPath.class));
 
         FlowRerouteFact request = new FlowRerouteFact(
                 dummyRequestKey, commandContext, origin.getFlowId(), null, false, false, null);
@@ -328,10 +326,10 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         Flow origin = makeFlow();
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
-        FlowRepository repository = setupFlowRepositorySpy();
+        FlowPathRepository flowPathRepository = setupFlowPathRepositorySpy();
         doThrow(new RuntimeException(injectedErrorMessage))
-                .when(repository).createOrUpdate(
-                argThat(hasProperty("forwardPathId", Matchers.not(equalTo(origin.getForwardPathId())))));
+                .when(flowPathRepository).updateStatus(eq(origin.getForwardPathId()),
+                eq(FlowPathStatus.IN_PROGRESS));
 
         FlowRerouteService service = makeService();
         service.handleRequest(new FlowRerouteFact(
@@ -398,7 +396,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         FlowPathRepository repository = setupFlowPathRepositorySpy();
         doThrow(new RuntimeException(injectedErrorMessage))
                 .when(repository)
-                .delete(argThat(hasProperty("pathId", equalTo(origin.getForwardPathId()))));
+                .remove(argThat(hasProperty("pathId", equalTo(origin.getForwardPathId()))));
 
         FlowRerouteService service = makeService();
         service.handleRequest(new FlowRerouteFact(
@@ -451,7 +449,6 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldSuccessfullyRerouteFlow() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
         origin.setStatus(FlowStatus.DOWN);
-        flushFlowChanges(origin);
 
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
@@ -480,7 +477,6 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldSuccessfullyHandleOverlappingRequests() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
         origin.setStatus(FlowStatus.DOWN);
-        flushFlowChanges(origin);
 
         when(pathComputer.getPath(makeFlowArgumentMatch(origin.getFlowId()), any()))
                 .thenReturn(make2SwitchAltPathPair())
@@ -559,9 +555,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     @Test
     public void shouldProcessRerouteForValidRequest() throws RecoverableException, UnroutableFlowException {
         Flow origin = makeFlow();
-        origin.setTargetPathComputationStrategy(PathComputationStrategy.LATENCY);
-        FlowRepository flowRepository = setupFlowRepositorySpy();
-        flowRepository.createOrUpdate(origin);
+        setupFlowRepositorySpy().findById(origin.getFlowId())
+                .ifPresent(foundPath -> foundPath.setTargetPathComputationStrategy(PathComputationStrategy.LATENCY));
         preparePathComputation(origin.getFlowId(), make3SwitchesPathPair());
 
         FlowRerouteService service = makeService();
@@ -609,7 +604,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         assertFalse(forwardSegments.isEmpty());
         PathSegment firstSegment = forwardSegments.get(0);
 
-        return new IslEndpoint(firstSegment.getSrcSwitch().getSwitchId(), firstSegment.getSrcPort());
+        return new IslEndpoint(firstSegment.getSrcSwitchId(), firstSegment.getSrcPort());
     }
 
     private void preparePathComputation(String flowId, Throwable error)

@@ -79,8 +79,8 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
     @Test
     public void shouldFailDeleteFlowOnLockedFlow() {
         Flow flow = makeFlow();
-        flow.setStatus(FlowStatus.IN_PROGRESS);
-        flushFlowChanges(flow);
+        setupFlowRepositorySpy().findById(flow.getFlowId())
+                .ifPresent(foundFlow -> foundFlow.setStatus(FlowStatus.IN_PROGRESS));
 
         makeService().handleRequest(dummyRequestKey, commandContext, flow.getFlowId());
 
@@ -187,7 +187,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         FlowPathRepository repository = setupFlowPathRepositorySpy();
         doThrow(new RuntimeException(injectedErrorMessage))
                 .when(repository)
-                .delete(MockitoHamcrest.argThat(
+                .remove(MockitoHamcrest.argThat(
                         Matchers.hasProperty("pathId", is(forwardPath.getPathId()))));
 
         FlowDeleteService service = makeService();
@@ -233,7 +233,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest {
         FlowRepository repository = setupFlowRepositorySpy();
         doThrow(new RuntimeException(injectedErrorMessage))
                 .when(repository)
-                .delete(MockitoHamcrest.argThat(
+                .remove(MockitoHamcrest.argThat(
                         Matchers.hasProperty("flowId", is(target.getFlowId()))));
 
         FlowDeleteService service = makeService();

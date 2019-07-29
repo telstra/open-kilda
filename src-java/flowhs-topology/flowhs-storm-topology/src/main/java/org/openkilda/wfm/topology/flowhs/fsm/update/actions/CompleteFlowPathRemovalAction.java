@@ -28,7 +28,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.RetryPolicy;
-import org.neo4j.driver.v1.exceptions.ClientException;
 
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -47,7 +46,6 @@ public class CompleteFlowPathRemovalAction extends
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
         RetryPolicy retryPolicy = new RetryPolicy()
                 .retryOn(RecoverablePersistenceException.class)
-                .retryOn(ClientException.class)
                 .withMaxRetries(transactionRetriesLimit);
 
         persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> removeFlowPaths(stateMachine));

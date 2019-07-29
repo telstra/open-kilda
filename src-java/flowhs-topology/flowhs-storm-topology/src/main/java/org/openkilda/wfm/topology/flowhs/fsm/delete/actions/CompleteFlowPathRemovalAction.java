@@ -29,7 +29,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.RetryPolicy;
-import org.neo4j.driver.v1.exceptions.ClientException;
 
 import java.util.HashSet;
 import java.util.Objects;
@@ -49,7 +48,6 @@ public class CompleteFlowPathRemovalAction extends
     protected void perform(State from, State to, Event event, FlowDeleteContext context, FlowDeleteFsm stateMachine) {
         RetryPolicy retryPolicy = new RetryPolicy()
                 .retryOn(RecoverablePersistenceException.class)
-                .retryOn(ClientException.class)
                 .withMaxRetries(transactionRetriesLimit);
 
         persistenceManager.getTransactionManager().doInTransaction(retryPolicy, () -> removeFlowPaths(stateMachine));
@@ -78,7 +76,7 @@ public class CompleteFlowPathRemovalAction extends
                     saveRemovalActionWithDumpToHistory(stateMachine, flow, pathsToDelete);
                 } else {
                     log.debug("Removing the flow path {}", pathId);
-                    flowPathRepository.delete(path);
+                    flowPathRepository.remove(path);
                     updateIslsForFlowPath(path);
                     // TODO: History dumps require paired paths, fix it to support any (without opposite one).
                     FlowPathPair pathsToDelete = FlowPathPair.builder().forward(path).reverse(path).build();

@@ -47,11 +47,6 @@ subprojects {
                     strictly '1.5.1'
                 }
             }
-            implementation 'org.neo4j:neo4j-ogm-core:3.1.3'
-            implementation 'org.neo4j:neo4j-ogm-bolt-driver:3.1.3'
-            testImplementation 'org.neo4j:neo4j-ogm-test:3.1.16'
-            testImplementation 'org.neo4j:neo4j:3.3.3'
-            testImplementation 'org.neo4j:neo4j-bolt:3.3.3'
 
             implementation 'com.google.guava:guava:20.0'
             implementation 'net.jodah:failsafe:1.0.5'
