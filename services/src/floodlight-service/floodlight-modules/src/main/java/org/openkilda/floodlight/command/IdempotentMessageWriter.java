@@ -20,6 +20,7 @@ import org.openkilda.floodlight.error.SessionErrorResponseException;
 import org.openkilda.floodlight.error.SwitchWriteException;
 import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.floodlight.utils.CompletableFutureAdapter;
+import org.openkilda.messaging.MessageContext;
 
 import lombok.Builder;
 import lombok.NonNull;
@@ -42,16 +43,20 @@ import java.util.function.Function;
 @Slf4j
 public class IdempotentMessageWriter<T extends OFStatsReply> extends MessageWriter {
 
+    private final MessageContext context;
     private final OFRequest<T> readRequest;
     private final Function<T, Boolean> ofEntryChecker;
     private final ErrorTypeHelper errorTypeHelper;
 
     @Builder
-    public IdempotentMessageWriter(@NonNull OFMessage message,
+    public IdempotentMessageWriter(
+            @NonNull MessageContext context,
+            @NonNull OFMessage message,
                                    @NonNull OFRequest<T> readRequest,
                                    @NonNull Function<T, Boolean> ofEntryChecker,
                                    @NonNull ErrorTypeHelper errorTypeHelper) {
         super(message);
+        this.context = context;
         this.readRequest = readRequest;
         this.ofEntryChecker = ofEntryChecker;
         this.errorTypeHelper = errorTypeHelper;
@@ -82,7 +87,7 @@ public class IdempotentMessageWriter<T extends OFStatsReply> extends MessageWrit
     }
 
     private CompletableFuture<Optional<OFMessage>> checkConflict(IOFSwitch sw) {
-        CompletableFuture<T> loadStatsStage = new CompletableFutureAdapter<>(sw.writeRequest(readRequest));
+        CompletableFuture<T> loadStatsStage = new CompletableFutureAdapter<>(context, sw.writeRequest(readRequest));
 
         return loadStatsStage.thenApply(entries -> {
             if (ofEntryChecker.apply(entries)) {

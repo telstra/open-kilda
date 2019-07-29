@@ -26,7 +26,7 @@ import org.openkilda.floodlight.command.poc.MultiTableDefaults;
 import org.openkilda.floodlight.command.poc.MultiTableMarkEndpointAsIsl;
 import org.openkilda.floodlight.command.poc.NestedVlanEgressExperiment;
 import org.openkilda.floodlight.command.poc.NestedVlanIngressExperiment;
-import org.openkilda.floodlight.command.poc.PreparePipeline;
+import org.openkilda.floodlight.command.poc.SetupPipeline;
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.SwitchWriteException;
 import org.openkilda.floodlight.service.session.SessionService;
@@ -73,8 +73,8 @@ import java.util.concurrent.CompletionException;
                 name = "org.openkilda.floodlight.poc.NestedVlanIngressExperiment"),
         @Type(value = NestedVlanEgressExperiment.class,
                 name = "org.openkilda.floodlight.poc.NestedVlanEgressExperiment"),
-        @Type(value = PreparePipeline.class,
-                name = "org.openkilda.floodlight.command.poc.PreparePipeline")
+        @Type(value = SetupPipeline.class,
+                name = "org.openkilda.floodlight.poc.SetupPipeline")
 })
 @Getter
 public abstract class SpeakerCommand {

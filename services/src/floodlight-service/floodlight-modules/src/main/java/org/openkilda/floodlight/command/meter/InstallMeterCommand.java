@@ -86,6 +86,7 @@ public class InstallMeterCommand extends MeterCommand {
         OFMeterMod meterInstallCommand = buildMeter(switchManagerConfig, featureDetectorService, sw);
 
         return Collections.singletonList(IdempotentMessageWriter.<OFMeterConfigStatsReply>builder()
+                .context(messageContext)
                 .message(meterInstallCommand)
                 .readRequest(getMeterRequest(sw.getOFFactory()))
                 .ofEntryChecker(new MeterChecker(meterInstallCommand))

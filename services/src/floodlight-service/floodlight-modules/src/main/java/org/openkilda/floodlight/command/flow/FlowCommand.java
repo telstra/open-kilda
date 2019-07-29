@@ -119,7 +119,7 @@ public abstract class FlowCommand extends SpeakerCommand {
                 .build();
 
         CompletableFuture<List<OFFlowStatsReply>> dumpFlowStatsStage =
-                new CompletableFutureAdapter<>(sw.writeStatsRequest(flowRequest));
+                new CompletableFutureAdapter<>(messageContext, sw.writeStatsRequest(flowRequest));
         return dumpFlowStatsStage.thenApply(values ->
                 values.stream()
                         .map(OFFlowStatsReply::getEntries)

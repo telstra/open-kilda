@@ -19,16 +19,36 @@ import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.TableFeatures;
 import org.apache.commons.lang3.StringUtils;
+import org.projectfloodlight.openflow.protocol.OFTableFeatureProp;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropExperimenter;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropExperimenterMiss;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturePropType;
+import org.projectfloodlight.openflow.protocol.OFTableFeaturePropWildcards;
 import org.projectfloodlight.openflow.protocol.OFTableFeatures;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturesStatsReply;
+import org.projectfloodlight.openflow.protocol.ver13.OFTableFeaturePropTypeSerializerVer13;
+import org.projectfloodlight.openflow.protocol.ver14.OFTableFeaturePropTypeSerializerVer14;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.TableId;
 
 @Slf4j
 public class SwitchPipelineAdapter {
     private final IOFSwitch sw;
+
+    /**
+     * Extract "normalized" table feature property type.
+     */
+    public static OFTableFeaturePropType getTableFeaturePropType(OFTableFeatureProp p) {
+        switch (p.getVersion()) {
+            case OF_13:
+                return OFTableFeaturePropTypeSerializerVer13.ofWireValue((short) p.getType());
+            case OF_14:
+                return OFTableFeaturePropTypeSerializerVer14.ofWireValue((short) p.getType());
+            default:
+                throw new IllegalArgumentException(
+                        "OFVersion " + p.getVersion().toString() + " does not support OFTableFeature messages.");
+        }
+    }
 
     public SwitchPipelineAdapter(IOFSwitch sw) {
         this.sw = sw;
@@ -92,7 +112,10 @@ public class SwitchPipelineAdapter {
         logSwitchTableFeature(tableId, "next-table", features.getPropNextTables().getNextTableIds());
         logSwitchTableFeature(tableId, "next-table (miss)", features.getPropNextTablesMiss().getNextTableIds());
 
-        logSwitchTableFeature(tableId, "wildcard", features.getPropWildcards().getOxmIds());
+        OFTableFeaturePropWildcards wildcards = features.getPropWildcards();
+        if (wildcards != null) {
+            logSwitchTableFeature(tableId, "wildcard", wildcards.getOxmIds());
+        }
 
         OFTableFeaturePropExperimenter e = features.getPropExperimenter();
         if (e != null) {

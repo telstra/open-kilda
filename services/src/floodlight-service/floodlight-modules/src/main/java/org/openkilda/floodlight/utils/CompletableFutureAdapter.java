@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.utils;
 
+import org.openkilda.messaging.MessageContext;
+
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -23,21 +25,26 @@ import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
 
 public class CompletableFutureAdapter<T> extends CompletableFuture<T> {
-
     private final ListenableFuture<T> listenableFuture;
 
-    public CompletableFutureAdapter(ListenableFuture<T> listenableFuture) {
+    public CompletableFutureAdapter(MessageContext context, ListenableFuture<T> listenableFuture) {
         this.listenableFuture = listenableFuture;
 
         Futures.addCallback(listenableFuture, new FutureCallback<T>() {
             @Override
             public void onSuccess(@Nullable T result) {
-                complete(result);
+                try (CorrelationContext.CorrelationContextClosable closable = CorrelationContext.create(
+                        context.getCorrelationId())) {
+                    complete(result);
+                }
             }
 
             @Override
             public void onFailure(Throwable t) {
-                completeExceptionally(t);
+                try (CorrelationContext.CorrelationContextClosable closable = CorrelationContext.create(
+                        context.getCorrelationId())) {
+                    completeExceptionally(t);
+                }
             }
         });
     }
