@@ -36,14 +36,24 @@ public class FlowStatsEntry implements Serializable {
     @JsonProperty
     private long byteCount;
 
+    @JsonProperty
+    private int inPort;
+
+    @JsonProperty
+    private int outPort;
+
     public FlowStatsEntry(@JsonProperty("tableId") int tableId,
                           @JsonProperty("cookie") long cookie,
                           @JsonProperty("packetCount") long packetCount,
-                          @JsonProperty("byteCount") long byteCount) {
+                          @JsonProperty("byteCount") long byteCount,
+                          @JsonProperty("inPort") int inPort,
+                          @JsonProperty("outPort") int outPort) {
         this.tableId = tableId;
         this.cookie = cookie;
         this.packetCount = packetCount;
         this.byteCount = byteCount;
+        this.inPort = inPort;
+        this.outPort = outPort;
     }
 
     public int getTableId() {
@@ -60,5 +70,13 @@ public class FlowStatsEntry implements Serializable {
 
     public long getByteCount() {
         return byteCount;
+    }
+
+    public int getInPort() {
+        return inPort;
+    }
+
+    public int getOutPort() {
+        return outPort;
     }
 }
