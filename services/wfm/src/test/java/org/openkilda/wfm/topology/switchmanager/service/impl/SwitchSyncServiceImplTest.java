@@ -126,7 +126,8 @@ public class SwitchSyncServiceImplTest {
 
         InstallIngressFlow installingRule = new InstallIngressFlow(UUID.randomUUID(), FLOW_ID, flowEntry.getCookie(),
                 SWITCH_ID, 1, 2, 50, 60,
-                FlowEncapsulationType.TRANSIT_VLAN, OutputVlanType.POP, 10L, 100L, INGRESS_SWITCH_ID);
+                FlowEncapsulationType.TRANSIT_VLAN, OutputVlanType.POP, 10L, 100L, INGRESS_SWITCH_ID,
+                false);
         when(commandBuilder.buildCommandsToSyncMissingRules(eq(SWITCH_ID), any()))
                 .thenReturn(singletonList(installingRule));
 
@@ -280,7 +281,7 @@ public class SwitchSyncServiceImplTest {
                 new MeterInfoEntry(EXCESS_COOKIE, EXCESS_COOKIE, FLOW_ID, 0L, 0L, new String[]{}, null, null));
 
         RemoveFlow removeFlow = new RemoveFlow(UUID.randomUUID(),
-                FLOW_ID, EXCESS_COOKIE, SWITCH_ID, EXCESS_COOKIE, null);
+                FLOW_ID, EXCESS_COOKIE, SWITCH_ID, EXCESS_COOKIE, null, false);
         when(commandBuilder.buildCommandsToRemoveExcessRules(eq(SWITCH_ID), any(), any()))
                 .thenReturn(singletonList(removeFlow));
 

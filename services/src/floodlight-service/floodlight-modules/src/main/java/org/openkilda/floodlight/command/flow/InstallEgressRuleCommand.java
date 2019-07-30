@@ -58,9 +58,10 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
                                     @JsonProperty("transit_encapsulation_id") Integer transitEncapsulationId,
                                     @JsonProperty("transit_encapsulation_type")
                                             FlowEncapsulationType transitEncapsulationType,
-                                    @JsonProperty("ingress_switch_id") SwitchId ingressSwitchId) {
+                                    @JsonProperty("ingress_switch_id") SwitchId ingressSwitchId,
+                                    @JsonProperty("multi_table") boolean multiTable) {
         super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort,
-                transitEncapsulationId, transitEncapsulationType, ingressSwitchId);
+                transitEncapsulationId, transitEncapsulationType, ingressSwitchId, multiTable);
         this.outputVlanType = outputVlanType;
         this.outputVlanId = outputVlanId;
     }
