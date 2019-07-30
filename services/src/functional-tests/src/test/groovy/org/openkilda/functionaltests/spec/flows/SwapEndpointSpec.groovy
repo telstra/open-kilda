@@ -113,7 +113,7 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                     def flow1 = getFlowHelper().randomFlow(switchPair)
                     def flow2 = getFlowHelper().randomFlow(switchPair, false, [flow1])
                     flow1.destination.portNumber = getFreePort(switchPair.dst, [switchPair.src])
-                    flow2.source.portNumber = getFreePort(switchPair.src, [switchPair.dst])
+                    flow2.source.portNumber = getFreePort(switchPair.src, [switchPair.dst], [flow1.destination.portNumber])
                     flow2.source.vlanId = flow1.source.vlanId
                     it.flows = [flow1, flow2]
                     it.firstSwap = new SwapFlowPayload(flow1.id,
@@ -163,8 +163,8 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                     def flow2 = getFlowHelper().randomFlow(switchPair, false, [flow1])
                     flow1.source.portNumber = getFreePort(switchPair.src, [switchPair.dst])
                     flow1.destination.portNumber = getFreePort(switchPair.dst, [switchPair.src])
-                    flow2.source.portNumber = getFreePort(switchPair.src, [switchPair.dst])
-                    flow2.destination.portNumber = getFreePort(switchPair.dst, [switchPair.src])
+                    flow2.source.portNumber = getFreePort(switchPair.src, [switchPair.dst], [flow1.source.portNumber])
+                    flow2.destination.portNumber = getFreePort(switchPair.dst, [switchPair.src], [flow1.destination.portNumber])
                     flow1.source.vlanId = getFreeVlan(flow2.destination.datapath, [flow2])
                     flow2.destination.vlanId = getFreeVlan(flow1.destination.datapath, [flow1])
                     it.flows = [flow1, flow2]
@@ -1110,9 +1110,9 @@ switches"() {
      * @param switches list of switches where resulting port should not be an ISL-busy port
      * @return portnumber which is not an ISL-port on any of the switches
      */
-    Integer getFreePort(Switch target, List<Switch> switches) {
+    Integer getFreePort(Switch target, List<Switch> switches, List<Integer> excludePorts = []) {
         pickRandom(topology.getAllowedPortsForSwitch(target) -
-                switches.collectMany { topology.getBusyPortsForSwitch(it) })
+                switches.collectMany { topology.getBusyPortsForSwitch(it) } - excludePorts)
     }
 
     /**
