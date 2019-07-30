@@ -234,7 +234,7 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
         return new InstallTransitRule(messageContext, commandId, flowPath.getFlow().getFlowId(), flowPath.getCookie(),
                 switchId, inputPort, outputPort,
                 encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
-                flowPath.getSrcSwitch().getSwitchId()
+                flowPath.getSrcSwitch().getSwitchId(), false
                 );
     }
 

@@ -206,7 +206,7 @@ public class FlowCommandFactory {
                 flowPath.getCookie().getValue(), switchId, inputPortNo, outPort,
                 encapsulationResources.getTransitEncapsulationId(),
                 encapsulationResources.getEncapsulationType(), outVlan, getOutputVlanType(flow, flowPath),
-                flowPath.getSrcSwitch().getSwitchId());
+                flowPath.getSrcSwitch().getSwitchId(), false);
     }
 
     private RemoveFlow buildRemoveEgressFlow(Flow flow, FlowPath flowPath, int inputPortNo,
@@ -240,7 +240,7 @@ public class FlowCommandFactory {
         return new InstallTransitFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(),
                 flowPath.getCookie().getValue(), switchId, inputPortNo, outputPortNo,
                 encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
-                flowPath.getSrcSwitch().getSwitchId());
+                flowPath.getSrcSwitch().getSwitchId(), false);
     }
 
     private RemoveFlow buildRemoveTransitFlow(FlowPath flowPath, SwitchId switchId,
@@ -276,7 +276,7 @@ public class FlowCommandFactory {
                 flowPath.getCookie().getValue(), switchId, inPort,
                 outputPortNo, inVlan, encapsulationResources.getTransitEncapsulationId(),
                 encapsulationResources.getEncapsulationType(), getOutputVlanType(flow, flowPath),
-                flow.getBandwidth(), meterId, flowPath.getSrcSwitch().getSwitchId());
+                flow.getBandwidth(), meterId, flowPath.getSrcSwitch().getSwitchId(), false);
     }
 
     private RemoveFlow buildRemoveIngressFlow(Flow flow, FlowPath flowPath, Integer outputPortNo) {
@@ -312,7 +312,7 @@ public class FlowCommandFactory {
         return new InstallOneSwitchFlow(transactionIdGenerator.generate(),
                 flow.getFlowId(), flowPath.getCookie().getValue(), switchId, inPort,
                 outPort, inVlan, outVlan,
-                getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId);
+                getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId, false);
     }
 
     private OutputVlanType getOutputVlanType(Flow flow, FlowPath flowPath) {

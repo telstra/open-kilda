@@ -29,7 +29,7 @@ import java.util.UUID;
 
 public class BaseInstallFlowTest {
     private static BaseInstallFlow flow = new BaseInstallFlow(UUID.randomUUID(), flowName, 0L, switchId,
-            inputPort, outputPort);
+            inputPort, outputPort, false);
 
     @Test
     public void getFlowName() {

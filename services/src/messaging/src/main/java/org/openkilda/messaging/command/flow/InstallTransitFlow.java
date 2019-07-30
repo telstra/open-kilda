@@ -70,6 +70,7 @@ public class InstallTransitFlow extends BaseInstallFlow {
     @JsonProperty("ingress_switch_id")
     protected SwitchId ingressSwitchId;
 
+
     /**
      * Instance constructor.
      *
@@ -82,6 +83,7 @@ public class InstallTransitFlow extends BaseInstallFlow {
      * @param transitEncapsulationId transit encapsulation id value
      * @param transitEncapsulationType transit encapsulation type
      * @param ingressSwitchId id of the ingress switch
+     * @param multiTable    multitable flag
      * @throws IllegalArgumentException if any of parameters parameters is null
      */
     @JsonCreator
@@ -94,8 +96,9 @@ public class InstallTransitFlow extends BaseInstallFlow {
                               @JsonProperty("transit_encapsulation_id") final Integer transitEncapsulationId,
                               @JsonProperty("transit_encapsulation_type") final FlowEncapsulationType
                                           transitEncapsulationType,
-                              @JsonProperty("ingress_switch_id") final SwitchId ingressSwitchId) {
-        super(transactionId, id, cookie, switchId, inputPort, outputPort);
+                              @JsonProperty("ingress_switch_id") final SwitchId ingressSwitchId,
+                              @JsonProperty("multi_table") final boolean multiTable) {
+        super(transactionId, id, cookie, switchId, inputPort, outputPort, multiTable);
         setTransitEncapsulationType(transitEncapsulationType);
         setTransitEncapsulationId(transitEncapsulationId);
         setIngressSwitchId(ingressSwitchId);

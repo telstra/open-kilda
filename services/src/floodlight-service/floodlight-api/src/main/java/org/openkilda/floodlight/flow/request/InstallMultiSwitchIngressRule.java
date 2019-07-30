@@ -65,9 +65,10 @@ public class InstallMultiSwitchIngressRule extends InstallIngressRule {
                                          @JsonProperty("input_vlan_id") Integer inputVlanId,
                                          @JsonProperty("transit_encapsulation_id") Integer transitEncapsulationId,
                                          @JsonProperty("transit_encapsulation_type")
-                                                 FlowEncapsulationType transitEncapsulationType) {
+                                                 FlowEncapsulationType transitEncapsulationType,
+                                         @JsonProperty("multi_table") boolean multiTable) {
         super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort, meterId, bandwidth,
-                outputVlanType, inputVlanId);
+                outputVlanType, inputVlanId, multiTable);
         this.transitEncapsulationId = transitEncapsulationId;
         this.transitEncapsulationType = transitEncapsulationType;
     }

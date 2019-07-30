@@ -47,8 +47,9 @@ public class InstallIngressRule extends InstallMeteredRule {
 
     public InstallIngressRule(MessageContext messageContext, UUID commandId, String flowId, Cookie cookie,
                               SwitchId switchId, Integer inputPort, Integer outputPort, MeterId meterId, Long bandwidth,
-                              OutputVlanType outputVlanType, Integer inputVlanId) {
-        super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort, meterId, bandwidth);
+                              OutputVlanType outputVlanType, Integer inputVlanId, boolean multiTable) {
+        super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort, meterId, bandwidth,
+                multiTable);
 
         this.inputVlanId = inputVlanId;
         this.outputVlanType = outputVlanType;

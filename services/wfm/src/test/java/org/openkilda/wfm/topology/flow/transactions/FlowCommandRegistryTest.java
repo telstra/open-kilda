@@ -52,7 +52,7 @@ public class FlowCommandRegistryTest {
     private static final UUID FAKE_BATCH_ID = UUID.randomUUID();
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final BaseInstallFlow FLOW_COMMAND_1 =
-            new BaseInstallFlow(UUID.randomUUID(), TEST_FLOW, 0L, SWITCH_ID_1, 1, 1);
+            new BaseInstallFlow(UUID.randomUUID(), TEST_FLOW, 0L, SWITCH_ID_1, 1, 1, false);
     private static final RemoveFlow FLOW_COMMAND_2 =
             new RemoveFlow(UUID.randomUUID(), TEST_FLOW, 0L, SWITCH_ID_1, null, null);
     private static final CommandData NON_FLOW_COMMAND =

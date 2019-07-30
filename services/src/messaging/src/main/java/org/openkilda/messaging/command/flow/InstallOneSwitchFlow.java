@@ -102,6 +102,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
      * @param outputVlanType output vlan tag action
      * @param bandwidth flow bandwidth
      * @param meterId source meter id
+     * @param multiTable multitable flag
      * @throws IllegalArgumentException if any of arguments is null
      */
     @JsonCreator
@@ -115,8 +116,9 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                                 @JsonProperty("output_vlan_id") final Integer outputVlanId,
                                 @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                                 @JsonProperty("bandwidth") final Long bandwidth,
-                                @JsonProperty("meter_id") final Long meterId) {
-        super(transactionId, id, cookie, switchId, inputPort, outputPort);
+                                @JsonProperty("meter_id") final Long meterId,
+                                @JsonProperty("multi_table") final boolean multiTable) {
+        super(transactionId, id, cookie, switchId, inputPort, outputPort, multiTable);
         setInputVlanId(inputVlanId);
         setOutputVlanId(outputVlanId);
         setOutputVlanType(outputVlanType);

@@ -37,7 +37,7 @@ import java.util.UUID;
 public class InstallEgressFlowTest {
     private InstallEgressFlow flow = new InstallEgressFlow(UUID.randomUUID(), flowName, 0L, switchId, inputPort,
             outputPort, transitEncapsulationId, transitEncapsulationType, outputVlanId, outputVlanType,
-            ingresSwitchId);
+            ingresSwitchId, false);
 
     @Test
     public void toStringTest() {
