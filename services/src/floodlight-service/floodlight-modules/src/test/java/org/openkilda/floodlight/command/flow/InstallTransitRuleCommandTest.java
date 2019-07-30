@@ -83,7 +83,8 @@ public class InstallTransitRuleCommandTest {
                 outPort,
                 transitEncapsulationId,
                 TRANSIT_VLAN,
-                SWITCH_ID);
+                SWITCH_ID,
+                false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
         assertEquals(scheme.transitFlowMod(inPort, outPort, transitEncapsulationId, cookie,
@@ -106,7 +107,8 @@ public class InstallTransitRuleCommandTest {
                 outPort,
                 transitEncapsulationId,
                 VXLAN,
-                SWITCH_ID);
+                SWITCH_ID,
+                false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
         assertEquals(scheme.transitFlowMod(inPort, outPort, transitEncapsulationId, cookie,

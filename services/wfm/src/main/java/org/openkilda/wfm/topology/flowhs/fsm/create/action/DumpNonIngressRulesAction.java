@@ -46,7 +46,7 @@ public class DumpNonIngressRulesAction extends AnonymousAction<FlowCreateFsm, St
         List<GetInstalledRule> dumpFlowRules = stateMachine.getNonIngressCommands().values()
                 .stream()
                 .map(command -> new GetInstalledRule(command.getMessageContext(), command.getCommandId(),
-                        command.getFlowId(), command.getSwitchId(), command.getCookie()))
+                        command.getFlowId(), command.getSwitchId(), command.getCookie(), false))
                 .collect(Collectors.toList());
 
         dumpFlowRules.forEach(command -> {

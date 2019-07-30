@@ -62,8 +62,9 @@ public class GetRuleCommand extends FlowCommand {
                           @JsonProperty("flowid") String flowId,
                           @JsonProperty("message_context") MessageContext messageContext,
                           @JsonProperty("cookie") Cookie cookie,
-                          @JsonProperty("switch_id") SwitchId switchId) {
-        super(commandId, flowId, messageContext, cookie, switchId);
+                          @JsonProperty("switch_id") SwitchId switchId,
+                          @JsonProperty("multi_table") boolean multiTable) {
+        super(commandId, flowId, messageContext, cookie, switchId, multiTable);
     }
 
     @Override

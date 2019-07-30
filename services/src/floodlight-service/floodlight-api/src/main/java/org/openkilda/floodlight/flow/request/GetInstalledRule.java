@@ -41,8 +41,9 @@ public class GetInstalledRule extends SpeakerFlowRequest {
                             @JsonProperty("command_id") UUID commandId,
                             @JsonProperty(FLOW_ID) String flowId,
                             @JsonProperty("switch_id") SwitchId switchId,
-                            @JsonProperty("cookie") Cookie cookie) {
-        super(messageContext, commandId, flowId, switchId);
+                            @JsonProperty("cookie") Cookie cookie,
+                            @JsonProperty("multi_table") boolean multiTable) {
+        super(messageContext, commandId, flowId, switchId, multiTable);
 
         this.cookie = cookie;
     }

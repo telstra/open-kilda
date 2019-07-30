@@ -40,7 +40,7 @@ public class DumpIngressRulesAction extends
 
         Collection<GetInstalledRule> dumpFlowRules = stateMachine.getIngressCommands().values().stream()
                 .map(command -> new GetInstalledRule(command.getMessageContext(), command.getCommandId(),
-                        command.getFlowId(), command.getSwitchId(), command.getCookie()))
+                        command.getFlowId(), command.getSwitchId(), command.getCookie(), false))
                 .collect(Collectors.toList());
 
         dumpFlowRules.forEach(command -> stateMachine.getCarrier().sendSpeakerRequest(command));

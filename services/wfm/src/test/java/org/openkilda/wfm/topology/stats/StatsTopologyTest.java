@@ -467,7 +467,8 @@ public class StatsTopologyTest extends AbstractStormTest {
                 flow.getDestVlan(),
                 OutputVlanType.PUSH,
                 flow.getBandwidth(),
-                flow.getMeterId().longValue());
+                flow.getMeterId().longValue(),
+                false);
         sendFlowCommand(installOneSwitchFlow);
     }
 

@@ -50,9 +50,10 @@ public class InstallOneSwitchRuleCommand extends InstallIngressRuleCommand {
                                        @JsonProperty("input_vlan_id") Integer inputVlanId,
                                        @JsonProperty("output_vlan_type") OutputVlanType outputVlanType,
                                        @JsonProperty("meter_id") MeterId meterId,
-                                       @JsonProperty("output_vlan_id") Integer outputVlanId) {
+                                       @JsonProperty("output_vlan_id") Integer outputVlanId,
+                                       @JsonProperty("multi_table") boolean multiTable) {
         super(commandId, flowid, messageContext, cookie, switchId, inputPort, outputPort, bandwidth,
-                inputVlanId, outputVlanType, meterId, null, null);
+                inputVlanId, outputVlanType, meterId, null, null, multiTable);
         this.outputVlanId = outputVlanId;
     }
 

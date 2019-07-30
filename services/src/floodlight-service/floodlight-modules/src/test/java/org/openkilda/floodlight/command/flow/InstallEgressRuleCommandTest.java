@@ -86,7 +86,7 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 TRANSIT_VLAN,
-                SWITCH_ID);
+                SWITCH_ID, false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
         assertEquals(scheme.egressReplaceFlowMod(inPort, outPort, transitEncapsulationId, outVlan, cookie,
@@ -111,7 +111,7 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 TRANSIT_VLAN,
-                SWITCH_ID);
+                SWITCH_ID, false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
         assertEquals(scheme.egressPopFlowMod(inPort, outPort, transitEncapsulationId, cookie,
@@ -136,7 +136,7 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 TRANSIT_VLAN,
-                SWITCH_ID);
+                SWITCH_ID, false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
         assertEquals(scheme.egressPushFlowMod(inPort, outPort, transitEncapsulationId, outVlan, cookie,
@@ -161,7 +161,7 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 TRANSIT_VLAN,
-                SWITCH_ID);
+                SWITCH_ID, false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
         assertEquals(scheme.egressNoneFlowMod(inPort, outPort, transitEncapsulationId, cookie,
@@ -187,7 +187,7 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 VXLAN,
-                SWITCH_ID);
+                SWITCH_ID, false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
         assertEquals(scheme.egressReplaceFlowMod(inPort, outPort, transitEncapsulationId, outVlan, cookie,
@@ -212,7 +212,7 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 VXLAN,
-                SWITCH_ID);
+                SWITCH_ID, false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
         assertEquals(scheme.egressPopFlowMod(inPort, outPort, transitEncapsulationId, cookie,
@@ -237,7 +237,7 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 VXLAN,
-                SWITCH_ID);
+                SWITCH_ID, false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
         assertEquals(scheme.egressPushFlowMod(inPort, outPort, transitEncapsulationId, outVlan, cookie,
@@ -262,7 +262,7 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 VXLAN,
-                SWITCH_ID);
+                SWITCH_ID, false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
         assertEquals(scheme.egressNoneFlowMod(inPort, outPort, transitEncapsulationId, cookie,

@@ -129,7 +129,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     public void serializeInstallEgressFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallEgressFlow data = new InstallEgressFlow(TRANSACTION_ID, FLOW_NAME, COOKIE,
                 SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_ENCAPSULATION_ID, TRANSIT_ENCAPSULATION_TYPE,
-                OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, INGRESS_SWITCH_ID);
+                OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, INGRESS_SWITCH_ID, false);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -151,7 +151,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     public void serializeInstallIngressFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallIngressFlow data = new InstallIngressFlow(TRANSACTION_ID, FLOW_NAME, COOKIE, SWITCH_ID,
                 INPUT_PORT, OUTPUT_PORT, INPUT_VLAN_ID, TRANSIT_ENCAPSULATION_ID, TRANSIT_ENCAPSULATION_TYPE,
-                OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID, INGRESS_SWITCH_ID);
+                OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID, INGRESS_SWITCH_ID, false);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -173,7 +173,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     public void serializeInstallTransitFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallTransitFlow data = new InstallTransitFlow(TRANSACTION_ID, FLOW_NAME, COOKIE,
                 SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_ENCAPSULATION_ID, TRANSIT_ENCAPSULATION_TYPE,
-                INGRESS_SWITCH_ID);
+                INGRESS_SWITCH_ID, false);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -194,7 +194,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void serializeInstallOneSwitchFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallOneSwitchFlow data = new InstallOneSwitchFlow(TRANSACTION_ID, FLOW_NAME, COOKIE, SWITCH_ID, INPUT_PORT,
-                OUTPUT_PORT, INPUT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID);
+                OUTPUT_PORT, INPUT_VLAN_ID, OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID, false);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
