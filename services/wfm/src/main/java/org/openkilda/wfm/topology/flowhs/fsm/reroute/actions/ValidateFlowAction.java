@@ -35,9 +35,11 @@ import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.action.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowHistorySupportingCarrier;
 
 import lombok.extern.slf4j.Slf4j;
@@ -50,7 +52,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class ValidateFlowAction extends
-        NbTrackableAction<FlowRerouteFsm, FlowRerouteFsm.State, FlowRerouteFsm.Event, FlowRerouteContext> {
+        NbTrackableAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
     private final TransactionManager transactionManager;
     private final FlowRepository flowRepository;

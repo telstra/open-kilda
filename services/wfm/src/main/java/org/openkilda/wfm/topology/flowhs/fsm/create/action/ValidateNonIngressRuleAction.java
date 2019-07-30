@@ -20,13 +20,12 @@ import static java.lang.String.format;
 import org.openkilda.floodlight.flow.request.InstallTransitRule;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.validation.rules.NonIngressRulesValidator;
-import org.openkilda.wfm.topology.flowhs.validation.rules.RulesValidator;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,13 +40,12 @@ public class ValidateNonIngressRuleAction extends FlowProcessingAction<FlowCreat
 
     @Override
     protected void perform(State from, State to, Event event, FlowCreateContext context, FlowCreateFsm stateMachine) {
-        UUID commandId = context.getFlowResponse().getCommandId();
+        UUID commandId = context.getSpeakerFlowResponse().getCommandId();
 
         InstallTransitRule expected = stateMachine.getNonIngressCommands().get(commandId);
-
-        RulesValidator validator = new NonIngressRulesValidator(expected, (FlowRuleResponse) context.getFlowResponse());
-        if (!validator.validate()) {
-            stateMachine.fire(Event.ERROR);
+        FlowRuleResponse actual = (FlowRuleResponse) context.getSpeakerFlowResponse();
+        if (!new NonIngressRulesValidator(expected, actual).validate()) {
+            stateMachine.getFailedCommands().add(commandId);
         } else {
             saveHistory(stateMachine, expected);
             stateMachine.getPendingCommands().remove(commandId);

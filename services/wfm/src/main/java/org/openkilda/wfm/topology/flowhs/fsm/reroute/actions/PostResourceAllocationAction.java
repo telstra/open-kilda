@@ -31,7 +31,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.action.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;

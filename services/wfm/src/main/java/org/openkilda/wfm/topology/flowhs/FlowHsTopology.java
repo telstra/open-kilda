@@ -33,6 +33,7 @@ import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt.Config;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowCreateHubBolt;
+import org.openkilda.wfm.topology.flowhs.bolts.FlowCreateHubBolt.FlowCreateConfig;
 import org.openkilda.wfm.topology.flowhs.bolts.FlowRerouteHubBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.RouterBolt;
 import org.openkilda.wfm.topology.flowhs.bolts.SpeakerWorkerBolt;
@@ -94,11 +95,20 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
     private void flowCreateHub(TopologyBuilder topologyBuilder, PersistenceManager persistenceManager) {
         int hubTimeout = (int) TimeUnit.SECONDS.toMillis(topologyConfig.getCreateHubTimeoutSeconds());
+
+        FlowCreateConfig config =  FlowCreateConfig.flowCreateBuilder()
+                .flowCreationRetriesLimit(topologyConfig.getCreateHubRetries())
+                .speakerCommandRetriesLimit(topologyConfig.getCreateHubSpeakerCommandRetries())
+                .autoAck(true)
+                .timeoutMs(hubTimeout)
+                .requestSenderComponent(ComponentId.FLOW_ROUTER_BOLT.name())
+                .workerComponent(ComponentId.FLOW_CREATE_SPEAKER_WORKER.name())
+                .build();
+
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
-        FlowCreateHubBolt hubBolt = new FlowCreateHubBolt(ComponentId.FLOW_ROUTER_BOLT.name(),
-                ComponentId.FLOW_CREATE_SPEAKER_WORKER.name(), hubTimeout, true,
-                persistenceManager, pathComputerConfig, flowResourcesConfig);
+        FlowCreateHubBolt hubBolt =
+                new FlowCreateHubBolt(config, persistenceManager, pathComputerConfig, flowResourcesConfig);
         topologyBuilder.setBolt(ComponentId.FLOW_CREATE_HUB.name(), hubBolt, parallelism)
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_FLOW_CREATE_HUB.name(), FIELDS_KEY)
                 .directGrouping(ComponentId.FLOW_CREATE_SPEAKER_WORKER.name(),

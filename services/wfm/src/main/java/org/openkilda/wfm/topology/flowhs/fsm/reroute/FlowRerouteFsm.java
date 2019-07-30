@@ -33,7 +33,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableStateMachine;
+import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableStateMachine;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.AllocatePrimaryResourcesAction;
@@ -324,7 +324,7 @@ public final class FlowRerouteFsm
     protected void afterTransitionCausedException(State fromState, State toState,
                                                   Event event, FlowRerouteContext context) {
         if (fromState == State.INITIALIZED || fromState == State.FLOW_VALIDATED) {
-            ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Could not create flow",
+            ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Could not reroute flow",
                     getLastException().getMessage());
             Message message = new ErrorMessage(error, getCommandContext().getCreateTime(),
                     getCommandContext().getCorrelationId());

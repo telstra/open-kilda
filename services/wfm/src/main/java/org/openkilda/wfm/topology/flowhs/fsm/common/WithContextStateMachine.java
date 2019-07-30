@@ -13,29 +13,26 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.fsm;
+package org.openkilda.wfm.topology.flowhs.fsm.common;
 
-import org.openkilda.messaging.Message;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 
 import lombok.Getter;
 import org.squirrelframework.foundation.fsm.StateMachine;
-import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
 @Getter
-public abstract class NbTrackableStateMachine<T extends StateMachine<T, S, E, C>, S, E, C>
-        extends AbstractStateMachine<T, S, E, C> {
+public abstract class WithContextStateMachine<T extends StateMachine<T, S, E, C>, S, E, C>
+        extends AbstractBaseFsm<T, S, E, C> {
 
     private final CommandContext commandContext;
 
-    public NbTrackableStateMachine(CommandContext commandContext) {
+    public WithContextStateMachine(CommandContext commandContext) {
         this.commandContext = commandContext;
     }
 
     public abstract void fireNext(C context);
 
     public abstract void fireError();
-
-    public abstract void sendResponse(Message message);
 
 }
