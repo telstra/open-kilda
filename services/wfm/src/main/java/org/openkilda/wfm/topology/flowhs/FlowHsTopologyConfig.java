@@ -49,7 +49,7 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Default("3")
     int getCreateHubRetries();
 
-    @Key("flow.create.hub.speaker.command.retries")
+    @Key("flow.create.speaker.command.retries")
     @Default("3")
     int getCreateHubSpeakerCommandRetries();
 
