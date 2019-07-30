@@ -40,6 +40,8 @@ import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.Neo4jBasedTest;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Before;
@@ -49,19 +51,21 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
-public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
+public class TransitBasedFlowCommandBuilderTest extends Neo4jBasedTest {
     private static final CommandContext COMMAND_CONTEXT = new CommandContext();
     private static final SwitchId SWITCH_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId SWITCH_2 = new SwitchId("00:00:00:00:00:00:00:02");
     private static final SwitchId SWITCH_3 = new SwitchId("00:00:00:00:00:00:00:03");
     private static final Random UNSEED_RANDOM = new Random();
 
-    private TransitVlanCommandFactory target;
+    private TransitBasedFlowCommandBuilder target;
     private TransitVlanRepository vlanRepository;
 
     @Before
     public void setUp() {
-        target = new TransitVlanCommandFactory(persistenceManager.getRepositoryFactory().createTransitVlanRepository());
+        FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager,
+                configurationProvider.getConfiguration(FlowResourcesConfig.class));
+        target = new TransitBasedFlowCommandBuilder(resourcesManager, FlowEncapsulationType.TRANSIT_VLAN);
         vlanRepository = persistenceManager.getRepositoryFactory().createTransitVlanRepository();
     }
 
@@ -89,7 +93,7 @@ public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
         TransitVlan forwardVlan = vlanRepository.findByPathId(flow.getForwardPathId(), flow.getReversePathId())
                 .stream().findAny()
                 .orElseThrow(() -> new IllegalStateException("Vlan should be present"));
-        assertEquals(forwardVlan.getVlan(), (int) installEgressRule.getTransitVlanId());
+        assertEquals(forwardVlan.getVlan(), (int) installEgressRule.getTransitEncapsulationId());
         assertEquals(flow.getDestVlan(), (int) installEgressRule.getOutputVlanId());
         assertEquals(OutputVlanType.NONE, installEgressRule.getOutputVlanType());
         assertEquals(flow.getDestPort(), (int) installEgressRule.getOutputPort());
@@ -121,7 +125,7 @@ public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
         TransitVlan forwardVlan = vlanRepository.findByPathId(flow.getForwardPathId(), flow.getReversePathId())
                 .stream().findAny()
                 .orElseThrow(() -> new IllegalStateException("Vlan should be present"));
-        assertEquals(forwardVlan.getVlan(), (int) forwardEgressRule.getTransitVlanId());
+        assertEquals(forwardVlan.getVlan(), (int) forwardEgressRule.getTransitEncapsulationId());
         assertEquals(flow.getDestVlan(), (int) forwardEgressRule.getOutputVlanId());
         assertEquals(OutputVlanType.POP, forwardEgressRule.getOutputVlanType());
 
@@ -136,7 +140,7 @@ public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
         TransitVlan reverseVlan = vlanRepository.findByPathId(flow.getReversePathId(), flow.getForwardPathId())
                 .stream().findAny()
                 .orElseThrow(() -> new IllegalStateException("Vlan should be present"));
-        assertEquals(reverseVlan.getVlan(), (int) reverseEgressRule.getTransitVlanId());
+        assertEquals(reverseVlan.getVlan(), (int) reverseEgressRule.getTransitEncapsulationId());
         assertEquals(flow.getSrcVlan(), (int) reverseEgressRule.getOutputVlanId());
         assertEquals(OutputVlanType.PUSH, reverseEgressRule.getOutputVlanType());
     }
@@ -168,7 +172,7 @@ public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
         TransitVlan forwardVlan = vlanRepository.findByPathId(flow.getForwardPathId(), flow.getReversePathId())
                 .stream().findAny()
                 .orElseThrow(() -> new IllegalStateException("Vlan should be present"));
-        assertEquals(forwardVlan.getVlan(), (int) srcSwitchRule.getTransitVlanId());
+        assertEquals(forwardVlan.getVlan(), (int) srcSwitchRule.getTransitEncapsulationId());
         assertEquals(flow.getDestVlan(), (int) srcSwitchRule.getOutputVlanId());
         assertEquals(OutputVlanType.REPLACE, srcSwitchRule.getOutputVlanType());
     }
@@ -200,7 +204,7 @@ public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
         TransitVlan forwardVlan = vlanRepository.findByPathId(flow.getForwardPathId(), flow.getReversePathId())
                 .stream().findAny()
                 .orElseThrow(() -> new IllegalStateException("Vlan should be present"));
-        assertEquals(forwardVlan.getVlan(), (int) commandForTransitSwitch.getTransitVlanId());
+        assertEquals(forwardVlan.getVlan(), (int) commandForTransitSwitch.getTransitEncapsulationId());
 
         InstallTransitRule commandForDestSwitch = commands.get(1);
         assertThat("Should be command for egress rule", commandForDestSwitch, instanceOf(InstallEgressRule.class));
@@ -211,7 +215,7 @@ public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
         assertEquals(flow.getForwardPath().getSegments().get(1).getDestPort(), (int) egressRule.getInputPort());
         assertEquals(flow.getDestPort(), (int) egressRule.getOutputPort());
         assertEquals(flow.getForwardPath().getCookie(), egressRule.getCookie());
-        assertEquals(forwardVlan.getVlan(), (int) egressRule.getTransitVlanId());
+        assertEquals(forwardVlan.getVlan(), (int) egressRule.getTransitEncapsulationId());
         assertEquals(flow.getDestVlan(), (int) egressRule.getOutputVlanId());
         assertEquals(OutputVlanType.REPLACE, egressRule.getOutputVlanType());
     }
@@ -239,7 +243,7 @@ public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
         TransitVlan forwardVlan = vlanRepository.findByPathId(flow.getForwardPathId(), flow.getReversePathId())
                 .stream().findAny()
                 .orElseThrow(() -> new IllegalStateException("Vlan should be present"));
-        assertEquals(forwardVlan.getVlan(), (int) sourceSwitchRule.getTransitVlanId());
+        assertEquals(forwardVlan.getVlan(), (int) sourceSwitchRule.getTransitEncapsulationId());
         assertEquals(0, (long) sourceSwitchRule.getBandwidth());
         assertNull(sourceSwitchRule.getMeterId());
 
@@ -251,7 +255,7 @@ public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
         TransitVlan reverseVlan = vlanRepository.findByPathId(flow.getReversePathId(), flow.getForwardPathId())
                 .stream().findAny()
                 .orElseThrow(() -> new IllegalStateException("Vlan should be present"));
-        assertEquals(reverseVlan.getVlan(), (int) destSwitchRule.getTransitVlanId());
+        assertEquals(reverseVlan.getVlan(), (int) destSwitchRule.getTransitEncapsulationId());
         assertEquals(0, (long) destSwitchRule.getBandwidth());
         assertNull(destSwitchRule.getMeterId());
     }
@@ -278,7 +282,7 @@ public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
         TransitVlan forwardVlan = vlanRepository.findByPathId(flow.getForwardPathId(), flow.getReversePathId())
                 .stream().findAny()
                 .orElseThrow(() -> new IllegalStateException("Vlan should be present"));
-        assertEquals(forwardVlan.getVlan(), (int) sourceSwitchRule.getTransitVlanId());
+        assertEquals(forwardVlan.getVlan(), (int) sourceSwitchRule.getTransitEncapsulationId());
         assertEquals(flow.getBandwidth(), (long) sourceSwitchRule.getBandwidth());
         assertEquals(flow.getForwardPath().getMeterId(), sourceSwitchRule.getMeterId());
 
@@ -290,7 +294,7 @@ public class TransitVlanCommandFactoryTest extends Neo4jBasedTest {
         TransitVlan reverseVlan = vlanRepository.findByPathId(flow.getReversePathId(), flow.getForwardPathId())
                 .stream().findAny()
                 .orElseThrow(() -> new IllegalStateException("Vlan should be present"));
-        assertEquals(reverseVlan.getVlan(), (int) destSwitchRule.getTransitVlanId());
+        assertEquals(reverseVlan.getVlan(), (int) destSwitchRule.getTransitEncapsulationId());
         assertEquals(flow.getBandwidth(), (long) destSwitchRule.getBandwidth());
         assertEquals(flow.getReversePath().getMeterId(), destSwitchRule.getMeterId());
     }

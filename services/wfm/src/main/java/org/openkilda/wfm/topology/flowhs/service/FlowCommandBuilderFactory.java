@@ -16,14 +16,13 @@
 package org.openkilda.wfm.topology.flowhs.service;
 
 import org.openkilda.model.FlowEncapsulationType;
-import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.TransitVlanRepository;
+import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 
-public class AbstractFlowCommandFactory {
-    private final TransitVlanRepository transitVlanRepository;
+public class FlowCommandBuilderFactory {
+    private final FlowResourcesManager resourcesManager;
 
-    public AbstractFlowCommandFactory(PersistenceManager persistenceManager) {
-        this.transitVlanRepository = persistenceManager.getRepositoryFactory().createTransitVlanRepository();
+    public FlowCommandBuilderFactory(FlowResourcesManager resourcesManager) {
+        this.resourcesManager = resourcesManager;
     }
 
     /**
@@ -32,10 +31,11 @@ public class AbstractFlowCommandFactory {
      * @param encapsulationType flow encapsulation type.
      * @return command factory.
      */
-    public FlowCommandFactory getFactory(FlowEncapsulationType encapsulationType) {
+    public FlowCommandBuilder getBuilder(FlowEncapsulationType encapsulationType) {
         switch (encapsulationType) {
             case TRANSIT_VLAN:
-                return new TransitVlanCommandFactory(transitVlanRepository);
+            case VXLAN:
+                return new TransitBasedFlowCommandBuilder(resourcesManager, encapsulationType);
             default:
                 throw new UnsupportedOperationException(
                         String.format("Encapsulation type %s is not supported", encapsulationType));
