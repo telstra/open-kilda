@@ -24,7 +24,6 @@ import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
-import groovy.transform.Memoized
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
@@ -584,16 +583,6 @@ class SwitchValidationSpec extends HealthCheckSpecification {
 
         cleanup:
         producer && producer.close()
-    }
-
-    @Memoized
-    List<Switch> getNonCentecSwitches() {
-        topology.activeSwitches.findAll { !it.centec && it.ofVersion == "OF_13" }
-    }
-
-    @Memoized
-    List<Switch> getCentecSwitches() {
-        topology.getActiveSwitches().findAll { it.centec }
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {
