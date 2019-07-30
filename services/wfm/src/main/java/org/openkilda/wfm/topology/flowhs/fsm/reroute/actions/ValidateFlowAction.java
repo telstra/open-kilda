@@ -26,7 +26,9 @@ import org.openkilda.model.PathId;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
@@ -53,12 +55,16 @@ public class ValidateFlowAction extends
     private final TransactionManager transactionManager;
     private final FlowRepository flowRepository;
     private final FlowEventRepository flowEventRepository;
+    private final KildaConfigurationRepository kildaConfigurationRepository;
+    private final FeatureTogglesRepository featureTogglesRepository;
 
     public ValidateFlowAction(PersistenceManager persistenceManager) {
         transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowRepository = repositoryFactory.createFlowRepository();
         flowEventRepository = repositoryFactory.createFlowEventRepository();
+        kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
+        featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }
 
     @Override
@@ -90,11 +96,20 @@ public class ValidateFlowAction extends
                 }
 
                 stateMachine.setOriginalFlowStatus(foundFlow.getStatus());
+                stateMachine.setOriginalEncapsulationType(foundFlow.getEncapsulationType());
                 stateMachine.setRecreateIfSamePath(!foundFlow.isActive() || context.isForceReroute());
 
                 flowRepository.updateStatus(foundFlow.getFlowId(), FlowStatus.IN_PROGRESS);
                 return foundFlow;
             });
+
+            featureTogglesRepository.find().ifPresent(featureToggles ->
+                    Optional.ofNullable(featureToggles.getFlowsRerouteUsingDefaultEncapType()).ifPresent(toggle -> {
+                        if (toggle) {
+                            stateMachine.setNewEncapsulationType(
+                                    kildaConfigurationRepository.get().getFlowEncapsulationType());
+                        }
+                    }));
 
             Set<PathId> pathsToReroute =
                     new HashSet<>(Optional.ofNullable(context.getPathsToReroute()).orElse(emptySet()));

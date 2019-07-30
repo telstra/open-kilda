@@ -62,6 +62,11 @@ public class AllocateProtectedResourcesAction extends BaseResourceAllocationActi
         FlowPath primaryReversePath = flow.getPath(stateMachine.getNewPrimaryReversePath())
                 .orElse(flow.getReversePath());
 
+        if (stateMachine.getNewEncapsulationType() != null) {
+            // This is for PCE to use proper (updated) encapsulation type.
+            flow.setEncapsulationType(stateMachine.getNewEncapsulationType());
+        }
+
         log.debug("Finding a new protected path for flow {}", flowId);
         PathPair potentialPath = pathComputer.getPath(flow,
                 asList(flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()));

@@ -23,6 +23,7 @@ import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Meter;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -43,7 +44,9 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class ValidationServiceImpl implements ValidationService {
-    private static final int METER_BURST_SIZE_EQUALS_EPS = 1;
+    private static final int METER_BURST_SIZE_EQUALS_DELTA = 1;
+    private static final double E_SWITCH_METER_RATE_EQUALS_DELTA_COEFFICIENT = 0.01;
+    private static final double E_SWITCH_METER_BURST_SIZE_EQUALS_DELTA_COEFFICIENT = 0.01;
 
     private FlowPathRepository flowPathRepository;
 
@@ -168,6 +171,10 @@ public class ValidationServiceImpl implements ValidationService {
                 .collect(Collectors.toList());
 
         for (FlowPath path : paths) {
+            Switch sw = path.getSrcSwitch();
+            boolean isESwitch =
+                    Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
+
             long calculatedBurstSize = Meter.calculateBurstSize(path.getBandwidth(), flowMeterMinBurstSizeInKbits,
                     flowMeterBurstCoefficient, path.getSrcSwitch().getDescription());
 
@@ -177,13 +184,14 @@ public class ValidationServiceImpl implements ValidationService {
 
             for (MeterEntry meter : presentMeters) {
                 if (meter.getMeterId() == path.getMeterId().getValue()) {
-                    if (meter.getRate() == path.getBandwidth()
-                            && equalsBurstSize(meter.getBurstSize(), calculatedBurstSize)
+                    if (equalsRate(meter.getRate(), path.getBandwidth(), isESwitch)
+                            && equalsBurstSize(meter.getBurstSize(), calculatedBurstSize, isESwitch)
                             && Arrays.equals(meter.getFlags(), Meter.getMeterFlags())) {
 
                         properMeters.add(makeProperMeterEntry(path, meter));
                     } else {
-                        misconfiguredMeters.add(makeMisconfiguredMeterEntry(path, meter, calculatedBurstSize));
+                        misconfiguredMeters.add(
+                                makeMisconfiguredMeterEntry(path, meter, calculatedBurstSize, isESwitch));
                     }
                 }
             }
@@ -234,17 +242,18 @@ public class ValidationServiceImpl implements ValidationService {
                 .build();
     }
 
-    private MeterInfoEntry makeMisconfiguredMeterEntry(FlowPath path, MeterEntry meter, long burstSIze) {
+    private MeterInfoEntry makeMisconfiguredMeterEntry(FlowPath path, MeterEntry meter, long burstSize,
+                                                       boolean isESwitch) {
         MeterMisconfiguredInfoEntry actual = new MeterMisconfiguredInfoEntry();
         MeterMisconfiguredInfoEntry expected = new MeterMisconfiguredInfoEntry();
 
-        if (meter.getRate() != path.getBandwidth()) {
+        if (!equalsRate(meter.getRate(), path.getBandwidth(), isESwitch)) {
             actual.setRate(meter.getRate());
             expected.setRate(path.getBandwidth());
         }
-        if (!equalsBurstSize(meter.getBurstSize(), burstSIze)) {
+        if (!equalsBurstSize(meter.getBurstSize(), burstSize, isESwitch)) {
             actual.setBurstSize(meter.getBurstSize());
-            expected.setBurstSize(burstSIze);
+            expected.setBurstSize(burstSize);
         }
         if (!Arrays.equals(meter.getFlags(), Meter.getMeterFlags())) {
             actual.setFlags(meter.getFlags());
@@ -263,7 +272,23 @@ public class ValidationServiceImpl implements ValidationService {
                 .build();
     }
 
-    private boolean equalsBurstSize(long actual, long expected) {
-        return Math.abs(actual - expected) <= METER_BURST_SIZE_EQUALS_EPS;
+    private boolean equalsRate(long actual, long expected, boolean isESwitch) {
+        // E-switches have a bug when installing the rate and burst size.
+        // Such switch sets the rate different from the rate that was sent to it.
+        // Therefore, we compare actual and expected values ​​using the delta coefficient.
+        if (isESwitch) {
+            return Math.abs(actual - expected) <= expected * E_SWITCH_METER_RATE_EQUALS_DELTA_COEFFICIENT;
+        }
+        return actual == expected;
+    }
+
+    private boolean equalsBurstSize(long actual, long expected, boolean isESwitch) {
+        // E-switches have a bug when installing the rate and burst size.
+        // Such switch sets the burst size different from the burst size that was sent to it.
+        // Therefore, we compare actual and expected values ​​using the delta coefficient.
+        if (isESwitch) {
+            return Math.abs(actual - expected) <= expected * E_SWITCH_METER_BURST_SIZE_EQUALS_DELTA_COEFFICIENT;
+        }
+        return Math.abs(actual - expected) <= METER_BURST_SIZE_EQUALS_DELTA;
     }
 }

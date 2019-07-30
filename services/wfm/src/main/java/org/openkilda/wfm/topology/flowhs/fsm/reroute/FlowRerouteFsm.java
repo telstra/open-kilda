@@ -24,6 +24,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
@@ -94,7 +95,9 @@ public final class FlowRerouteFsm
     private boolean rerouteProtected;
 
     private FlowStatus originalFlowStatus;
+    private FlowEncapsulationType originalEncapsulationType;
 
+    private FlowEncapsulationType newEncapsulationType;
     private Collection<FlowResources> newResources;
     private PathId newPrimaryForwardPath;
     private PathId newPrimaryReversePath;
