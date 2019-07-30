@@ -81,7 +81,7 @@ public class ValidationServiceTest {
     private SwitchFlowEntries generateSwitchFlowEntries(long... cookies) {
         List<FlowEntry> flowEntryList = new ArrayList<>(cookies.length);
         for (long cookie : cookies) {
-            flowEntryList.add(new FlowEntry(cookie, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null));
+            flowEntryList.add(new FlowEntry(cookie, null, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null));
         }
         return new SwitchFlowEntries(new SwitchId("00:10"), flowEntryList);
     }

@@ -120,7 +120,7 @@ public class SwitchSyncServiceImplTest {
         service.commandBuilder = commandBuilder;
 
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).build();
-        flowEntry = new FlowEntry(-1L, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
+        flowEntry = new FlowEntry(-1L, null, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
 
         InstallIngressFlow installingRule = new InstallIngressFlow(UUID.randomUUID(), FLOW_ID, flowEntry.getCookie(),
                 SWITCH_ID, 1, 2, 50, 60,

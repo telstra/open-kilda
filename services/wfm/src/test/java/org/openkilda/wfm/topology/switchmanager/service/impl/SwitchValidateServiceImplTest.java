@@ -91,7 +91,7 @@ public class SwitchValidateServiceImplTest {
         service.validationService = validationService;
 
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).processMeters(true).build();
-        flowEntry = new FlowEntry(-1L, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
+        flowEntry = new FlowEntry(-1L, null, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
         meterEntry = new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"});
 
         when(validationService.validateRules(any(), any(), any()))

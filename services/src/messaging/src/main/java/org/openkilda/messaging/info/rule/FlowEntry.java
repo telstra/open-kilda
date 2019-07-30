@@ -33,6 +33,8 @@ public class FlowEntry implements Serializable {
 
     @JsonProperty("cookie")
     private long cookie;
+    @JsonProperty("cookie-hex")
+    private String cookieHex;
     @JsonProperty("duration-sec")
     private long durationSeconds;
     @JsonProperty("duration-nsec")
@@ -60,7 +62,8 @@ public class FlowEntry implements Serializable {
 
     @JsonCreator
     public FlowEntry(
-            @JsonProperty("cookie") long cookie, @JsonProperty("duration-sec") long durationSeconds,
+            @JsonProperty("cookie") long cookie, @JsonProperty("cookie-hex") String cookieHex,
+            @JsonProperty("duration-sec") long durationSeconds,
             @JsonProperty("duration-nsec") long durationNanoSeconds, @JsonProperty("table-id") long tableId,
             @JsonProperty("packet-count") long packetCount, @JsonProperty("version") String version,
             @JsonProperty("priority") int priority, @JsonProperty("idle-timeout") long idleTimeout,
@@ -68,6 +71,7 @@ public class FlowEntry implements Serializable {
             @JsonProperty("match") FlowMatchField match, @JsonProperty("instructions") FlowInstructions instructions,
             @JsonProperty("flags") String[] flags) {
         this.cookie = cookie;
+        this.cookieHex = cookieHex;
         this.durationSeconds = durationSeconds;
         this.durationNanoSeconds = durationNanoSeconds;
         this.tableId = tableId;
