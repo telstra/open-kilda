@@ -24,6 +24,7 @@ import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -43,6 +44,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+@Slf4j
 public class SetupPipeline extends AbstractMultiTableCommand {
     @JsonCreator
     public SetupPipeline(@JsonProperty("message_context") MessageContext messageContext,
@@ -56,34 +58,36 @@ public class SetupPipeline extends AbstractMultiTableCommand {
         OFFactory of = sw.getOFFactory();
         SwitchDescriptor swDesc = new SwitchDescriptor(sw);
         return new CompletableFutureAdapter<>(messageContext,
-                                              sw.writeRequest(of.buildTableFeaturesStatsRequest().build()))
+                                              sw.writeStatsRequest(of.buildTableFeaturesStatsRequest().build()))
                 .thenCompose(current -> makePipelineRequest(sw, swDesc, current))
                 .thenApply(response -> handlePipelineResponse(sw, response));
     }
 
-    private CompletableFuture<OFTableFeaturesStatsReply> makePipelineRequest(IOFSwitch sw, SwitchDescriptor swDesc,
-                                                                     OFTableFeaturesStatsReply current) {
+    private CompletableFuture<List<OFTableFeaturesStatsReply>> makePipelineRequest(
+            IOFSwitch sw, SwitchDescriptor swDesc, List<OFTableFeaturesStatsReply> featureResponses) {
         OFFactory of = sw.getOFFactory();
         List<OFTableFeatures> tableFeatures = new ArrayList<>();
 
         Set<TableId> allUsedTables = swDesc.getAllUsedTables();
-        for (OFTableFeatures entry : current.getEntries()) {
-            if (allUsedTables.contains(entry.getTableId())) {
-                tableFeatures.add(makeTableFeaturesUpdate(of, entry));
-            } else {
-                tableFeatures.add(entry);
+        for (OFTableFeaturesStatsReply current : featureResponses) {
+            for (OFTableFeatures entry : current.getEntries()) {
+                if (allUsedTables.contains(entry.getTableId())) {
+                    tableFeatures.add(makeTableFeaturesUpdate(of, entry));
+                } else {
+                    tableFeatures.add(entry);
+                }
             }
         }
 
         OFTableFeaturesStatsRequest request = of.buildTableFeaturesStatsRequest()
                 .setEntries(tableFeatures)
                 .build();
-        return new CompletableFutureAdapter<>(messageContext, sw.writeRequest(request));
+        return new CompletableFutureAdapter<>(messageContext, sw.writeStatsRequest(request));
     }
 
-    private Optional<OFMessage> handlePipelineResponse(IOFSwitch sw, OFTableFeaturesStatsReply reply) {
-        new SwitchPipelineAdapter(sw).dumpPipeline(reply);
-        return Optional.of(reply);
+    private Optional<OFMessage> handlePipelineResponse(IOFSwitch sw, List<OFTableFeaturesStatsReply> featureResponses) {
+        // new SwitchPipelineAdapter(sw).dumpPipeline(reply);
+        return Optional.empty();
     }
 
     private OFTableFeatures makeTableFeaturesUpdate(OFFactory of, OFTableFeatures current) {
@@ -127,6 +131,7 @@ public class SetupPipeline extends AbstractMultiTableCommand {
         }
 
         matchUpdate.addAll(current.getOxmIds());
+        log.info("alter match list for table {}: {}", tableId, matchUpdate);
         return current.createBuilder()
                 .setOxmIds(matchUpdate)
                 .build();
@@ -136,10 +141,15 @@ public class SetupPipeline extends AbstractMultiTableCommand {
         Set<U32> required = new HashSet<>();
 
         if (! TableId.of(0).equals(tableId)) {
-            required.add(U32.of(of.oxms().buildMetadata().getTypeLen()));
-            required.add(U32.of(of.oxms().buildMetadataMasked().getTypeLen()));
+            // required.add(formatOxmId(of.oxms().buildMetadata().getTypeLen()));
+            required.add(formatOxmId(of.oxms().buildMetadataMasked().getTypeLen()));
         }
         return required;
+    }
+
+    private static U32 formatOxmId(long typeLen) {
+        return U32.of(typeLen)
+                .applyMask(U32.of(0xffffff00));
     }
 
     @Override
