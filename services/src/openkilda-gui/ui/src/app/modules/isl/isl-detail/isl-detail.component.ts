@@ -46,7 +46,7 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
     dataSet:any;
     available_bandwidth:string = '';
     default_max_bandwidth='';
-    max_bandwidth = '';
+    max_bandwidth :any = '';
     detailDataObservable : any;
     src_switch_name: string;
     dst_switch_name: string;	
@@ -71,6 +71,7 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
     autoReloadTimerId = null;
     islForm: FormGroup;
     showCostEditing: boolean = false;
+    showBandwidthEditing : boolean = false;
     currentGraphName : string = "ISL Latency Graph";
     dateMessage:string;
      clipBoardItems = {
@@ -174,6 +175,7 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
             this.detailDataObservable = data;
               this.islForm = this.islFormBuiler.group({
               cost: [this.detailDataObservable.cost, Validators.min(0)],
+              max_bandwidth:[this.max_bandwidth,Validators.min(0)]
             });
           }
           else{
@@ -185,6 +187,7 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
     
                 this.islForm = this.islFormBuiler.group({
             cost: [this.detailDataObservable.cost, Validators.min(0)],
+            max_bandwidth:[this.max_bandwidth,Validators.min(0)]
             });
           }
          },error=>{
@@ -682,6 +685,46 @@ get f() {
              this.detailDataObservable.props.cost
             );
   }
+  editMaxbandwidth(){
+    this.showBandwidthEditing = true;
+    this.islForm.controls["max_bandwidth"].setValue(this.convertInMB(this.max_bandwidth));
+  }
+  saveEditedBandwidth(){
+    if (this.islForm.invalid) {
+      this.toastr.error("Please enter valid value for Max. Bandwidth.");
+      return;
+    }
+
+    const modalRef = this.modalService.open(ModalconfirmationComponent);
+    modalRef.componentInstance.title = "Confirmation";
+    modalRef.componentInstance.content = 'Are you sure you want to change the Max Bandwidth?';
+
+    modalRef.result.then((response) => {
+      if(response && response == true){
+        this.loaderService.show("Updating ISL max bandwidth");
+        let costValue = this.convertToByteFromMB(this.islForm.value.max_bandwidth);
+        var data = {max_bandwidth:costValue};
+        this.islListService.updateIslBandWidth(data,this.src_switch, this.src_port, this.dst_switch, this.dst_port).subscribe((response: any) => {
+          this.loaderService.hide();
+          this.toastr.success("ISL Bandwidth updated successfully!",'Success');
+          this.showBandwidthEditing = false;
+          this.max_bandwidth = costValue;
+          this.islForm.controls["max_bandwidth"].setValue(costValue);
+        },error => {
+          this.showBandwidthEditing = false;
+          if(error.status == '500'){
+            this.toastr.error(error.error['error-message'],'Error! ');
+          }else{
+            this.toastr.error("Error in updating ISL Bandwidth!",'Error');
+          }
+        })
+      }
+    });
+  }
+
+  cancelEditedBandwidth(){
+    this.showBandwidthEditing = false;
+  }
 
   saveEditedCost(){
     if (this.islForm.invalid) {
@@ -814,8 +857,13 @@ get f() {
     if (value === "" || value == undefined) {
       return "-";
     } else {
-      return (value / 1000)+" Mbps";
+      return (value / 1000);
     }
+  }
+
+  convertToByteFromMB(value){
+    value = parseInt(value);
+    return (value * 1000);
   }
   ngOnDestroy(){
     if (this.autoReloadTimerId) {

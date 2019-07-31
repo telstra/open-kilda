@@ -25,6 +25,7 @@ import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
+import org.openkilda.model.LinkMaxBandwidth;
 import org.openkilda.model.LinkParametersDto;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.LinkUnderMaintenanceDto;
@@ -44,7 +45,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
 import org.usermanagement.exception.RequestValidationException;
 import org.usermanagement.util.MessageUtils;
 
@@ -187,6 +187,28 @@ public class SwitchController {
                     value = "dst_switch", required = true) final String dstSwitch, @RequestParam(
                     value = "dst_port", required = true) final String dstPort) {
         return serviceSwitch.getLinkProps(srcSwitch, srcPort, dstSwitch, dstPort);
+    }
+    
+    /**
+     * Updates the link max bandwidth.
+     *
+     * @param srcSwitch the src switch
+     * @param srcPort the src port
+     * @param dstSwitch the dst switch
+     * @param dstPort the dst port
+     * @return the link max bandwidth
+     */
+    @RequestMapping(path = "/link/bandwidth", method = RequestMethod.PATCH)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = {IConstants.Permission.ISL_UPDATE_BANDWIDTH})
+    public @ResponseBody LinkMaxBandwidth updateMaxBandwidth(
+            @RequestParam(value = "src_switch", required = true) final String srcSwitch,
+            @RequestParam(value = "src_port", required = true) final String srcPort, @RequestParam(
+                    value = "dst_switch", required = true) final String dstSwitch, @RequestParam(
+                    value = "dst_port", required = true) final String dstPort, 
+                    @RequestBody LinkMaxBandwidth linkMaxBandwidth) {
+        activityLogger.log(ActivityType.UPDATE_ISL_BANDWIDTH, linkMaxBandwidth.toString());
+        return serviceSwitch.updateLinkBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, linkMaxBandwidth);
     }
 
     /**
