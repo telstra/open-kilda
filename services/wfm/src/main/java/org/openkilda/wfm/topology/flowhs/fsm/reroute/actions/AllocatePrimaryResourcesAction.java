@@ -54,6 +54,11 @@ public class AllocatePrimaryResourcesAction extends BaseResourceAllocationAction
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         "Could not create a new path", format("Flow %s not found", flowId)));
 
+        if (stateMachine.getNewEncapsulationType() != null) {
+            // This is for PCE to use proper (updated) encapsulation type.
+            flow.setEncapsulationType(stateMachine.getNewEncapsulationType());
+        }
+
         log.debug("Finding a new primary path for flow {}", flowId);
         PathPair potentialPath = pathComputer.getPath(flow, flow.getFlowPathIds());
         boolean newPathFound = isNotSamePath(potentialPath, flow.getForwardPath(), flow.getReversePath());

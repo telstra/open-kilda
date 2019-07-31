@@ -16,6 +16,7 @@
 package org.openkilda.testing.service.lockkeeper;
 
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
+import org.openkilda.testing.service.lockkeeper.model.InetAddress;
 import org.openkilda.testing.service.lockkeeper.model.SwitchModify;
 
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,8 @@ public class LockKeeperVirtualImpl extends LockKeeperServiceImpl {
     private List<String> managementControllers;
     @Value("#{'${floodlight.controllers.stat}'.split(',')}")
     private List<String> statControllers;
+    @Value("#{'${kafka.bootstrap.server}'.split(':')}")
+    private List<String> kafkaBootstrapServer;
 
     @Override
     public void knockoutSwitch(Switch sw) {
@@ -58,5 +61,38 @@ public class LockKeeperVirtualImpl extends LockKeeperServiceImpl {
         log.debug("Set '{}' controller on the '{}' switch", controller, sw.getName());
         restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/set-controller", HttpMethod.POST,
                 new HttpEntity<>(new SwitchModify(sw.getName(), controller), buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void blockFloodlightAccessToPort(Integer port) {
+        log.debug("Block floodlight access to {} by adding iptables rules", port);
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/block-floodlight-access", HttpMethod.POST,
+                new HttpEntity<>(new InetAddress(port), buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void unblockFloodlightAccessToPort(Integer port) {
+        log.debug("Unblock floodlight access to {} by removing iptables rules", port);
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/unblock-floodlight-access",
+                HttpMethod.POST, new HttpEntity<>(new InetAddress(port), buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void removeFloodlightAccessRestrictions() {
+        log.debug("Allow floodlight access to everything by flushing iptables rules(INPUT/OUTPUT chains)");
+        restTemplate.exchange(labService.getLab().getLabId() + "/lock-keeper/remove-floodlight-access-restrictions",
+                HttpMethod.POST, new HttpEntity(buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void knockoutFloodlight() {
+        log.debug("Knock out Floodlight service");
+        blockFloodlightAccessToPort(Integer.valueOf(kafkaBootstrapServer.get(2)));
+    }
+
+    @Override
+    public void reviveFloodlight() {
+        log.debug("Revive Floodlight service");
+        unblockFloodlightAccessToPort(Integer.valueOf(kafkaBootstrapServer.get(2)));
     }
 }

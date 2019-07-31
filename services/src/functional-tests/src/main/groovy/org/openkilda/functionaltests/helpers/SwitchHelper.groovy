@@ -34,8 +34,7 @@ class SwitchHelper {
 
     @Value('${burst.coefficient}')
     double burstCoefficient
-
-
+    
     @Autowired
     SwitchHelper(NorthboundService northbound) {
         this.northbound = northbound
@@ -116,10 +115,14 @@ class SwitchHelper {
         }
     }
 
+    /**
+     * Verifies that specified sections in the validation response are empty.
+     * NOTE: will filter out default rules
+     */
     static void verifyRuleSectionsAreEmpty(SwitchValidationResult switchValidateInfo,
                                            List<String> sections = ["missing", "proper", "excess"]) {
         sections.each {
-            assert switchValidateInfo.rules."$it".empty
+            assert switchValidateInfo.rules."$it".findAll { !Cookie.isDefaultRule(it) }.empty
         }
     }
 }

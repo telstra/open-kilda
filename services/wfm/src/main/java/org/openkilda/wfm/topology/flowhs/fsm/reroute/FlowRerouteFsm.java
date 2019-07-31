@@ -24,6 +24,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathId;
@@ -32,7 +33,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableStateMachine;
+import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableStateMachine;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.AllocatePrimaryResourcesAction;
@@ -94,7 +95,9 @@ public final class FlowRerouteFsm
     private boolean rerouteProtected;
 
     private FlowStatus originalFlowStatus;
+    private FlowEncapsulationType originalEncapsulationType;
 
+    private FlowEncapsulationType newEncapsulationType;
     private Collection<FlowResources> newResources;
     private PathId newPrimaryForwardPath;
     private PathId newPrimaryReversePath;
@@ -321,7 +324,7 @@ public final class FlowRerouteFsm
     protected void afterTransitionCausedException(State fromState, State toState,
                                                   Event event, FlowRerouteContext context) {
         if (fromState == State.INITIALIZED || fromState == State.FLOW_VALIDATED) {
-            ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Could not create flow",
+            ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Could not reroute flow",
                     getLastException().getMessage());
             Message message = new ErrorMessage(error, getCommandContext().getCreateTime(),
                     getCommandContext().getCorrelationId());

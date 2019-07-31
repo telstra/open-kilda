@@ -32,9 +32,19 @@ public class NoviFlowCopyFieldFeature extends AbstractFeature {
         Optional<SpeakerSwitchView.Feature> empty = Optional.empty();
 
         SwitchDescription description = sw.getSwitchDescription();
-        if (description == null || description.getSoftwareDescription() == null) {
+        if (description == null || description.getSoftwareDescription() == null
+                || description.getHardwareDescription() == null) {
             return empty;
         }
+
+        if (E_SWITCH_MANUFACTURER_DESCRIPTION.equalsIgnoreCase(description.getManufacturerDescription())) {
+            return empty;
+        }
+
+        if (E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(description.getHardwareDescription()).matches()) {
+            return empty;
+        }
+
         if (!description.getManufacturerDescription().toLowerCase().contains(NOVIFLOW_MANUFACTURER_SUFFIX)) {
             return empty;
         }

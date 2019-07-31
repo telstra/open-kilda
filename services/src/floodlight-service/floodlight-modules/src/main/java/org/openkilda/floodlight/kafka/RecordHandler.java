@@ -78,6 +78,7 @@ import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
+import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
 import org.openkilda.messaging.command.switches.InstallRulesAction;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
@@ -96,6 +97,7 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
 import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.rule.SwitchExpectedDefaultFlowEntries;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.info.stats.PortStatusData;
 import org.openkilda.messaging.info.stats.SwitchPortStatusData;
@@ -114,6 +116,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -201,6 +204,8 @@ class RecordHandler implements Runnable {
             doConnectMode(message);
         } else if (data instanceof ValidateRulesRequest) {
             doValidateRulesRequest(message);
+        } else if (data instanceof GetExpectedDefaultRulesRequest) {
+            doGetExpectedDefaultRulesRequest(message);
         } else if (data instanceof DumpRulesRequest) {
             doDumpRulesRequest(message);
         } else if (data instanceof DumpRulesForSwitchManagerRequest) {
@@ -701,6 +706,40 @@ class RecordHandler implements Runnable {
 
     }
 
+    private void doGetExpectedDefaultRulesRequest(CommandMessage message) {
+        IKafkaProducerService producerService = getKafkaProducer();
+        String replyToTopic = context.getKafkaSwitchManagerTopic();
+
+        SwitchId switchId = ((GetExpectedDefaultRulesRequest) message.getData()).getSwitchId();
+
+        try {
+            logger.debug("Loading expected default rules for switch {}", switchId);
+
+            List<OFFlowMod> defaultRules =
+                    context.getSwitchManager().getExpectedDefaultFlows(DatapathId.of(switchId.toLong()));
+            List<FlowEntry> flows = defaultRules.stream()
+                    .map(OfFlowStatsMapper.INSTANCE::toFlowEntry)
+                    .collect(Collectors.toList());
+
+            SwitchExpectedDefaultFlowEntries response = SwitchExpectedDefaultFlowEntries.builder()
+                    .switchId(switchId)
+                    .flowEntries(flows)
+                    .build();
+            InfoMessage infoMessage = new InfoMessage(response, message.getTimestamp(), message.getCorrelationId());
+            producerService.sendMessageAndTrack(replyToTopic, message.getCorrelationId(), infoMessage);
+        } catch (SwitchOperationException e) {
+            logger.error("Getting of expected default rules for switch '{}' was unsuccessful: {}",
+                    switchId, e.getMessage());
+            anError(ErrorType.NOT_FOUND)
+                    .withMessage(e.getMessage())
+                    .withDescription("The switch was not found when requesting get expected default rules.")
+                    .withCorrelationId(message.getCorrelationId())
+                    .withTopic(replyToTopic)
+                    .sendVia(producerService);
+        }
+
+    }
+
     private void doDumpRulesRequest(final CommandMessage message) {
         processDumpRulesRequest(((DumpRulesRequest) message.getData()).getSwitchId(),
                 context.getKafkaNorthboundTopic(), message.getCorrelationId(), message.getTimestamp());
@@ -925,7 +964,7 @@ class RecordHandler implements Runnable {
         List<OFPortDesc> ofPortsDescriptions =
                 context.getSwitchManager().dumpPortsDescription(DatapathId.of(switchId.toLong()));
         List<PortDescription> portsDescriptions = ofPortsDescriptions.stream()
-                .map(OfPortDescConverter::toPortDescription)
+                .map(OfPortDescConverter.INSTANCE::toPortDescription)
                 .collect(Collectors.toList());
 
         return SwitchPortsDescription.builder()

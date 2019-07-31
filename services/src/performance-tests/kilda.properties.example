@@ -5,47 +5,45 @@ northbound.password=kilda
 floodlight.endpoint=http://localhost:8081
 floodlight.username=kilda
 floodlight.password=kilda
+floodlight.controller.uri=tcp:kilda:6653
 floodlight.controllers.management=tcp:floodlight_one.pendev:6653
 floodlight.controllers.stat=tcp:floodlight_second.pendev:6653
 floodlight.regions=1
 
+grpc.endpoint=http://localhost:8091
+grpc.username=kilda
+grpc.password=kilda
+grpc.remote.log.server.ip=1.1.1.1
+grpc.remote.log.server.port=321
+
+elasticsearch.endpoint = http://localhost:9200
+elasticsearch.username = kilda
+elasticsearch.password = kilda
+
+kafka.bootstrap.server = kafka.pendev:9092
+kafka.topic.topo.disco=kilda.topo.disco
+
+lockkeeper.endpoint=http://localhost:5001
 neo.uri=bolt://localhost:7687
 neo.user=
 neo.password=
-
-elasticsearch.endpoint=http://localhost:9200
-elasticsearch.username=kilda
-elasticsearch.password=kilda
-
-kafka.bootstrap.server=kafka.pendev:9092
-kafka.topic.topo.disco=kilda.topo.disco.storm
-
 lab-api.endpoint=http://localhost:8288
-lockkeeper.endpoint=http://localhost:5001
 
 opentsdb.endpoint=http://localhost:4242
 opentsdb.metric.prefix=kilda.
 
 spring.profiles.active=virtual
+mode.topology.single=true
 
 reroute.delay=3
 reroute.hardtimeout=15
-
 discovery.interval=3
-discovery.timeout=15
-
+discovery.timeout = 15
 antiflap.min=1
 antiflap.warmup=5
 antiflap.cooldown=5
-
-isl.cost.when.port.down=10000
-isl.cost.when.under.maintenance=10000
-
 burst.coefficient=1.05
-
+isl.cost.when.under.maintenance=10000
+isl.cost.when.port.down=10000
 bfd.offset=200
-
-env.hardware.cleanup=false
-
-diversity.isl.weight=1000
-diversity.switch.weight=100
+use.hs=true

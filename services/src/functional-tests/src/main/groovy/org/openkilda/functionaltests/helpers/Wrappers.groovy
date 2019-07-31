@@ -17,23 +17,23 @@ class Wrappers {
      * @param handler exception handler (receives exception on each failure)
      * @param body operation to wrap around
      * @return result of the body execution
-     * @throws MultipleFailureException if closure fails to execute in given amount of tries.
+     * @throws Throwable if closure fails to execute in given amount of tries throw last caught throwable.
      */
     def static retry(int times = 5, double retryInterval = 2, Closure handler = { e -> log.debug("retry failed", e) },
                      Closure body) {
         int retries = 0
 
-        List<Throwable> ex = []
+        Throwable thrown = null
         while (retries++ < times) {
             try {
                 return body.call()
             } catch (Throwable t) {
-                ex.add(t)
+                thrown = t
                 handler.call(t)
                 sleep(retryInterval * 1000 as long)
             }
         }
-        throw new MultipleFailureException(ex)
+        throw thrown
     }
 
     /**

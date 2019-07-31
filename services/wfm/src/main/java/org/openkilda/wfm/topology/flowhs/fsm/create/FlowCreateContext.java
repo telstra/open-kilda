@@ -16,16 +16,19 @@
 package org.openkilda.wfm.topology.flowhs.fsm.create;
 
 import org.openkilda.floodlight.flow.response.FlowResponse;
+import org.openkilda.wfm.topology.flowhs.fsm.common.FlowContext;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import lombok.Builder;
 import lombok.Data;
 
 @Data
-@Builder
-public class FlowCreateContext {
+public class FlowCreateContext extends FlowContext {
+    private RequestedFlow targetFlow;
 
-    private RequestedFlow flowDetails;
-    private FlowResponse flowResponse;
-
+    @Builder
+    public FlowCreateContext(FlowResponse speakerFlowResponse, RequestedFlow targetFlow) {
+        super(speakerFlowResponse);
+        this.targetFlow = targetFlow;
+    }
 }

@@ -11,7 +11,7 @@ app = Flask(__name__)
 HOST = os.environ.get("LOCK_KEEPER_HOST")
 USER = os.environ.get("LOCK_KEEPER_USER")
 SECRET = os.environ.get("LOCK_KEEPER_SECRET")
-FL_CONTAINER_NAME = "floodlight"
+FL_CONTAINER_NAME = "floodlight_mgmt_1"
 PORT = 22
 
 
@@ -25,6 +25,12 @@ def execute_remote_commands(commands):
         data.append((stdout.read() + stderr.read()).decode('utf-8'))
     client.close()
     return data
+
+
+def execute_command_in_container(commands, container_name=FL_CONTAINER_NAME):
+    container = docker.from_env().containers.get(container_name)
+    for command in commands:
+        container.exec_run(command)
 
 
 def execute_remote_command(command):
@@ -124,3 +130,45 @@ def fl_start():
 def fl_restart():
     docker.from_env().containers.get(FL_CONTAINER_NAME).restart()
     return jsonify({'status': 'ok'})
+
+
+@app.route('/block-floodlight-access', methods=['POST'])
+def block_floodlight_access():
+    body = request.get_json()
+    commands = []
+    if 'ip' in body:
+        commands.append('iptables -I INPUT -s {} -j DROP'.format(body['ip']))
+        commands.append('iptables -I OUTPUT -s {} -j DROP'.format(body['ip']))
+        execute_command_in_container(commands)
+        return jsonify({'blocked_ip': body['ip']})
+    elif 'port' in body:
+        commands.append('iptables -I INPUT -p tcp --source-port {} -j DROP'.format(body['port']))
+        commands.append('iptables -I OUTPUT -p tcp --destination-port {} -j DROP'.format(body['port']))
+        execute_command_in_container(commands)
+        return jsonify({'blocked_port': body['port']})
+    else:
+        return jsonify({'status': 'Oops, available params: ip or port'})
+
+
+@app.route('/unblock-floodlight-access', methods=['POST'])
+def unblock_floodlight_access():
+    body = request.get_json()
+    commands = []
+    if 'ip' in body:
+        commands.append('iptables -D INPUT -s {} -j DROP'.format(body['ip']))
+        commands.append('iptables -D OUTPUT -s {} -j DROP'.format(body['ip']))
+        execute_command_in_container(commands)
+        return jsonify({'unblocked_ip': body['ip']})
+    elif 'port' in body:
+        commands.append('iptables -D INPUT -p tcp --source-port {} -j DROP'.format(body['port']))
+        commands.append('iptables -D OUTPUT -p tcp --destination-port {} -j DROP'.format(body['port']))
+        execute_command_in_container(commands)
+        return jsonify({'unblocked_port': body['port']})
+    else:
+        return jsonify({'status': 'Oops, available params: ip or port'})
+
+
+@app.route('/remove-floodlight-access-restrictions', methods=['POST'])
+def remove_floodlight_access_restrictions():
+    execute_command_in_container(['iptables -F INPUT', 'iptables -F OUTPUT'])
+    return jsonify({'status': 'All iptables rules in INPUT/OUTPUT chains were removed'})

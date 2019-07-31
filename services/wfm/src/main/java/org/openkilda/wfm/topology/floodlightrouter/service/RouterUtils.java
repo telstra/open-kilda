@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.service;
 
-import org.openkilda.floodlight.flow.request.FlowRequest;
+import org.openkilda.floodlight.flow.request.SpeakerFlowRequest;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
@@ -38,6 +38,7 @@ import org.openkilda.messaging.command.switches.DumpPortDescriptionRequest;
 import org.openkilda.messaging.command.switches.DumpRulesForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.DumpRulesRequest;
 import org.openkilda.messaging.command.switches.DumpSwitchPortsDescriptionRequest;
+import org.openkilda.messaging.command.switches.GetExpectedDefaultRulesRequest;
 import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
@@ -109,6 +110,8 @@ public final class RouterUtils {
                 return ((MeterModifyCommandRequest) commandData).getFwdSwitchId();
             } else if (commandData instanceof DumpRulesForSwitchManagerRequest) {
                 return ((DumpRulesForSwitchManagerRequest) commandData).getSwitchId();
+            } else if (commandData instanceof GetExpectedDefaultRulesRequest) {
+                return ((GetExpectedDefaultRulesRequest) commandData).getSwitchId();
             } else if (commandData instanceof InstallFlowForSwitchManagerRequest) {
                 return ((InstallFlowForSwitchManagerRequest) commandData).getSwitchId();
             } else if (commandData instanceof RemoveFlowForSwitchManagerRequest) {
@@ -132,8 +135,8 @@ public final class RouterUtils {
      * @return - SwitchId or null
      */
     public static SwitchId lookupSwitchId(AbstractMessage message) {
-        if (message instanceof FlowRequest) {
-            return ((FlowRequest) message).getSwitchId();
+        if (message instanceof SpeakerFlowRequest) {
+            return ((SpeakerFlowRequest) message).getSwitchId();
         }
         return null;
     }

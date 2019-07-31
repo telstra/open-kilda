@@ -87,7 +87,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         }
 
         and: "System allows traffic on the default flow"
-        def exam2 = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(defaultFlow, 0)
+        def exam2 = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(defaultFlow, 1000)
         withPool {
             [exam2.forward, exam2.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
@@ -115,7 +115,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
 
         then: "System allows tagged traffic on the default flow"
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 0)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 1000)
         withPool {
             [exam.forward, exam.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
@@ -149,7 +149,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
 
         then: "System doesn't allow to send traffic in these directions"
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 0)
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 1000)
         [exam.forward, exam.reverse].each { direction ->
             def resources = traffExam.startExam(direction)
             direction.setResources(resources)

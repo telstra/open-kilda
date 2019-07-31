@@ -19,7 +19,7 @@ from docker import DockerClient
 import logging
 
 
-FL_CONTAINER_NAME = "floodlight"
+FL_CONTAINER_NAME = "floodlight_one"
 DUMMY_CONTROLLER = "tcp:192.0.2.0:6666"
 logger = logging.getLogger()
 docker = DockerClient(base_url='unix://var/run/docker.sock')
@@ -42,6 +42,12 @@ def parse_dump_flows(raw):
     return [{'in_port': int_from_str_by_pattern(x, 'in_port='),
              'out_port': int_from_str_by_pattern(x, 'actions=output:')}
             for x in data]
+
+
+def execute_command_in_container(commands, container_name=FL_CONTAINER_NAME):
+    c = docker.from_env().containers.get(container_name)
+    for command in commands:
+        c.exec_run(command)
 
 
 @app.route('/flows', methods=['GET'])
@@ -117,6 +123,48 @@ def set_controller():
     controller = body['controller']
     switches[sw].set_controller(controller)
     return jsonify({'status': 'ok'})
+
+
+@app.route('/block-floodlight-access', methods=['POST'])
+def block_floodlight_access():
+    body = request.get_json()
+    commands = []
+    if 'ip' in body:
+        commands.append('iptables -I INPUT -s {} -j DROP'.format(body['ip']))
+        commands.append('iptables -I OUTPUT -s {} -j DROP'.format(body['ip']))
+        execute_command_in_container(commands)
+        return jsonify({'blocked_ip': body['ip']})
+    elif 'port' in body:
+        commands.append('iptables -I INPUT -p tcp --source-port {} -j DROP'.format(body['port']))
+        commands.append('iptables -I OUTPUT -p tcp --destination-port {} -j DROP'.format(body['port']))
+        execute_command_in_container(commands)
+        return jsonify({'blocked_port': body['port']})
+    else:
+        return jsonify({'status': 'Oops, available params: ip or port'})
+
+
+@app.route('/unblock-floodlight-access', methods=['POST'])
+def unblock_floodlight_access():
+    body = request.get_json()
+    commands = []
+    if 'ip' in body:
+        commands.append('iptables -D INPUT -s {} -j DROP'.format(body['ip']))
+        commands.append('iptables -D OUTPUT -s {} -j DROP'.format(body['ip']))
+        execute_command_in_container(commands)
+        return jsonify({'unblocked_ip': body['ip']})
+    elif 'port' in body:
+        commands.append('iptables -D INPUT -p tcp --source-port {} -j DROP'.format(body['port']))
+        commands.append('iptables -D OUTPUT -p tcp --destination-port {} -j DROP'.format(body['port']))
+        execute_command_in_container(commands)
+        return jsonify({'unblocked_port': body['port']})
+    else:
+        return jsonify({'status': 'Oops, available params: ip or port'})
+
+
+@app.route('/remove-floodlight-access-restrictions', methods=['POST'])
+def remove_floodlight_access_restrictions():
+    execute_command_in_container(['iptables -F INPUT', 'iptables -F OUTPUT'])
+    return jsonify({'status': 'All iptables rules in INPUT/OUTPUT chains were removed'})
 
 
 def init_app(_switches):

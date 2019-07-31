@@ -46,6 +46,8 @@ public class Switch implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private static final Pattern NOVIFLOW_SOFTWARE_REGEX = Pattern.compile("(.*)NW\\d{3}\\.\\d+\\.\\d+(.*)");
+    private static final Pattern E_SWITCH_HARDWARE_DESCRIPTION_REGEX = Pattern.compile("^WB5\\d{3}-E$");
+    private static final String E_SWITCH_MANUFACTURER_DESCRIPTION = "E";
 
     // Hidden as needed for OGM only.
     @Id
@@ -107,11 +109,30 @@ public class Switch implements Serializable {
         this.timeModify = timeModify;
     }
 
+    /**
+     * Checks Centec switch by the manufacturer description.
+     */
     public static boolean isCentecSwitch(String manufacturerDescription) {
         return StringUtils.contains(manufacturerDescription.toLowerCase(), "centec");
     }
 
+    /**
+     * Checks Noviflow switch by the software description.
+     */
     public static boolean isNoviflowSwitch(String softwareDescription) {
         return NOVIFLOW_SOFTWARE_REGEX.matcher(softwareDescription).matches();
+    }
+
+    /**
+     * Checks Noviflow E switch by the manufacturer and hardware description.
+     */
+    public static boolean isNoviflowESwitch(String manufacturerDescription, String hardwareDescription) {
+        return E_SWITCH_MANUFACTURER_DESCRIPTION.equalsIgnoreCase(manufacturerDescription)
+                || hardwareDescription != null
+                && E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(hardwareDescription).matches();
+    }
+
+    public boolean isActive() {
+        return status == SwitchStatus.ACTIVE;
     }
 }

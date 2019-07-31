@@ -222,8 +222,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         def srcSwitchValidateInfo = northbound.validateSwitch(srcSwitch.dpId)
         srcSwitchValidateInfo.rules.missing.size() == 1
         srcSwitchValidateInfo.rules.missing == srcSwitchCreatedCookies
-        srcSwitchValidateInfo.rules.proper.size() == 1
-        srcSwitchValidateInfo.rules.proper == dstSwitchCreatedCookies
+        srcSwitchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) } == dstSwitchCreatedCookies
 
         srcSwitchValidateInfo.meters.missing.meterId.size() == 1
         srcSwitchValidateInfo.meters.missing*.meterId == srcSwitchCreatedMeterIds
@@ -245,7 +244,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         and: "Meters info/rules are NOT moved into the 'missing' section on the dstSwitch"
         def createdCookies = srcSwitchCreatedCookies + dstSwitchCreatedCookies
         def dstSwitchValidateInfo = northbound.validateSwitch(dstSwitch.dpId)
-        dstSwitchValidateInfo.rules.proper.size() == 2
+        dstSwitchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
         dstSwitchValidateInfo.rules.proper.containsAll(createdCookies)
 
         dstSwitchValidateInfo.meters.proper.meterId.size() == 1
@@ -381,7 +380,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         switchHelper.verifyMeterSectionsAreEmpty(intermediateSwitchValidateInfo)
 
         and: "Rules are stored in the 'proper' section on the transit switch"
-        intermediateSwitchValidateInfo.rules.proper.size() == 2
+        intermediateSwitchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
         switchHelper.verifyRuleSectionsAreEmpty(intermediateSwitchValidateInfo, ["missing", "excess"])
 
         when: "Delete the flow"
@@ -435,7 +434,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         transitSwitches.each { switchId ->
             def transitSwitchValidateInfo = northbound.validateSwitch(switchId)
             assert transitSwitchValidateInfo.rules.proper.containsAll(createdCookies)
-            assert transitSwitchValidateInfo.rules.proper.size() == 2
+            assert transitSwitchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
             switchHelper.verifyRuleSectionsAreEmpty(transitSwitchValidateInfo, ["missing", "excess"])
         }
 
@@ -532,7 +531,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
             involvedSwitches.findAll { !it.description.contains("OF_12") }.each { switchId ->
                 def involvedSwitchValidateInfo = northbound.validateSwitch(switchId)
                 assert involvedSwitchValidateInfo.rules.proper.containsAll(createdCookies)
-                assert involvedSwitchValidateInfo.rules.proper.size() == 2
+                assert involvedSwitchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 2
                 switchHelper.verifyRuleSectionsAreEmpty(involvedSwitchValidateInfo, ["missing"])
 
                 assert involvedSwitchValidateInfo.rules.excess.size() == 1

@@ -16,15 +16,16 @@
 package org.openkilda.wfm.topology.switchmanager.service;
 
 import org.openkilda.messaging.info.meter.MeterEntry;
+import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 
 import java.util.List;
-import java.util.Set;
 
 public interface ValidationService {
-    ValidateRulesResult validateRules(SwitchId switchId, Set<Long> presentCookies);
+    ValidateRulesResult validateRules(SwitchId switchId, List<FlowEntry> presentRules,
+                                      List<FlowEntry> expectedDefaultRules);
 
     ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
                                         long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient);

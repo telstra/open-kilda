@@ -46,4 +46,14 @@ public interface LockKeeperService {
     void reviveSwitch(Switch sw);
 
     void setController(Switch sw, String controller);
+
+    void blockFloodlightAccessToPort(Integer port);
+
+    void unblockFloodlightAccessToPort(Integer port);
+
+    void removeFloodlightAccessRestrictions();
+
+    void knockoutFloodlight();
+
+    void reviveFloodlight();
 }

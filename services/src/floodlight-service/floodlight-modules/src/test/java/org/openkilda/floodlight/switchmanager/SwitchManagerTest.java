@@ -50,7 +50,11 @@ import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LA
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
 import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.BFD;
 import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.GROUP_PACKET_OUT_CONTROLLER;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.LIMITED_BURST_SIZE;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.METERS;
 import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.NOVIFLOW_COPY_FIELD;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.PKTPS_FLAG;
+import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.RESET_COUNTS_FLAG;
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
@@ -72,6 +76,7 @@ import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.test.standard.OutputCommands;
 import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
@@ -236,7 +241,7 @@ public class SwitchManagerTest {
         expect(ofSwitchService.getActiveSwitch(defaultDpid)).andStubReturn(iofSwitch);
 
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
-        expect(iofSwitch.getId()).andReturn(defaultDpid).times(13);
+        expect(iofSwitch.getId()).andReturn(defaultDpid).times(15);
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
         expect(iofSwitch.writeStatsRequest(isA(OFMeterConfigStatsRequest.class))).andStubReturn(ofMeterFuture);
         expect(iofSwitch.writeStatsRequest(isA(OFGroupDescStatsRequest.class))).andStubReturn(ofGroupFuture);
@@ -1168,13 +1173,14 @@ public class SwitchManagerTest {
         expect(iofSwitch.getId()).andStubReturn(dpid);
         // define that switch is Centec
         expect(switchDescription.getManufacturerDescription()).andStubReturn("Centec Inc.");
+        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(Sets.newHashSet(METERS));
         mockGetMetersRequest(Collections.emptyList(), true, 0);
         mockBarrierRequest();
 
         Capture<OFMeterMod> capture = EasyMock.newCapture(CaptureType.ALL);
         expect(iofSwitch.write(capture(capture))).andReturn(true).times(1);
 
-        replay(ofSwitchService, iofSwitch, switchDescription);
+        replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
 
         // when
         switchManager.installMeterForDefaultRule(iofSwitch, unicastMeterId, 100L, new ArrayList<>());
@@ -1204,13 +1210,14 @@ public class SwitchManagerTest {
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
         expect(iofSwitch.getId()).andStubReturn(dpid);
         expect(switchDescription.getManufacturerDescription()).andStubReturn(StringUtils.EMPTY);
+        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(Sets.newHashSet(PKTPS_FLAG));
         mockGetMetersRequest(Collections.emptyList(), true, 0);
         mockBarrierRequest();
 
         Capture<OFMeterMod> capture = EasyMock.newCapture(CaptureType.ALL);
         expect(iofSwitch.write(capture(capture))).andReturn(true).times(1);
 
-        replay(ofSwitchService, iofSwitch, switchDescription);
+        replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
 
         // when
         switchManager.installMeterForDefaultRule(iofSwitch, unicastMeterId, expectedRate, new ArrayList<>());
@@ -1240,13 +1247,14 @@ public class SwitchManagerTest {
         expect(iofSwitch.getId()).andStubReturn(dpid);
         // define that switch is Centec
         expect(switchDescription.getManufacturerDescription()).andStubReturn("Centec Inc.");
+        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(Sets.newHashSet(METERS));
         mockBarrierRequest();
         mockGetMetersRequest(Lists.newArrayList(unicastMeterId), false, expectedRate);
 
         Capture<OFMeterMod> capture = EasyMock.newCapture(CaptureType.ALL);
         expect(iofSwitch.write(capture(capture))).andReturn(true).times(2);
 
-        replay(ofSwitchService, iofSwitch, switchDescription);
+        replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
 
         // when
         switchManager.installMeterForDefaultRule(iofSwitch, unicastMeterId, expectedRate, new ArrayList<>());
@@ -1276,13 +1284,14 @@ public class SwitchManagerTest {
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
         expect(iofSwitch.getId()).andStubReturn(dpid);
         expect(switchDescription.getManufacturerDescription()).andStubReturn(StringUtils.EMPTY);
+        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(Sets.newHashSet(PKTPS_FLAG));
         Capture<OFMeterMod> capture = EasyMock.newCapture(CaptureType.ALL);
         // 1 meter deletion + 1 meters installation
         expect(iofSwitch.write(capture(capture))).andReturn(true).times(2);
 
         mockBarrierRequest();
         mockGetMetersRequest(Lists.newArrayList(unicastMeter), true, originRate);
-        replay(ofSwitchService, iofSwitch, switchDescription);
+        replay(ofSwitchService, iofSwitch, switchDescription, featureDetectorService);
 
         switchManager.installMeterForDefaultRule(iofSwitch, unicastMeter, updatedRate, new ArrayList<>());
 
@@ -1312,8 +1321,8 @@ public class SwitchManagerTest {
         Capture<OFFlowMod> capture = EasyMock.newCapture();
         expect(iofSwitch.write(capture(capture))).andStubReturn(true);
         expect(featureDetectorService.detectSwitch(iofSwitch))
-                .andReturn(Sets.newHashSet(GROUP_PACKET_OUT_CONTROLLER, NOVIFLOW_COPY_FIELD))
-                .times(4);
+                .andReturn(Sets.newHashSet(GROUP_PACKET_OUT_CONTROLLER, NOVIFLOW_COPY_FIELD, PKTPS_FLAG))
+                .times(7);
         mockBarrierRequest();
         mockGetMetersRequest(Lists.newArrayList(unicastMeterId, broadcastMeterId), true, expectedRate);
         mockGetGroupsRequest(Lists.newArrayList(ROUND_TRIP_LATENCY_GROUP_ID));
@@ -1397,6 +1406,14 @@ public class SwitchManagerTest {
     private Capture<OFFlowMod> prepareForInstallTest(boolean isCentecSwitch) {
         Capture<OFFlowMod> capture = EasyMock.newCapture();
 
+        Set<Feature> features;
+        if (isCentecSwitch) {
+            features = Sets.newHashSet(METERS, LIMITED_BURST_SIZE);
+        } else {
+            features = Sets.newHashSet(BFD, GROUP_PACKET_OUT_CONTROLLER, NOVIFLOW_COPY_FIELD, RESET_COUNTS_FLAG);
+        }
+        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(features);
+
         expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
@@ -1408,6 +1425,7 @@ public class SwitchManagerTest {
         replay(ofSwitchService);
         replay(iofSwitch);
         replay(switchDescription);
+        replay(featureDetectorService);
 
         return capture;
     }

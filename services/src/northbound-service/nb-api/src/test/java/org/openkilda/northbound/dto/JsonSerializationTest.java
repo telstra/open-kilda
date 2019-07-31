@@ -143,7 +143,8 @@ public class JsonSerializationTest {
 
     @Test
     public void switchValidateResultTest() throws IOException {
-        RulesValidationDto rules = new RulesValidationDto(singletonList(0L), singletonList(1L), singletonList(2L));
+        RulesValidationDto rules = new RulesValidationDto(singletonList(0L), singletonList(1L),
+                singletonList(2L), singletonList(3L));
         MetersValidationDto meters = new MetersValidationDto(emptyList(), emptyList(), emptyList(), emptyList());
         SwitchValidationResult dto = new SwitchValidationResult(rules, meters);
         assertEquals(dto, pass(dto, SwitchValidationResult.class));

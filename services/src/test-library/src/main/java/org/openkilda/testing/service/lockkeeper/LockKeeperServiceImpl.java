@@ -18,10 +18,13 @@ package org.openkilda.testing.service.lockkeeper;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.labservice.LabService;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
+import org.openkilda.testing.service.lockkeeper.model.InetAddress;
+import org.openkilda.testing.service.northbound.NorthboundService;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -47,6 +50,12 @@ public class LockKeeperServiceImpl implements LockKeeperService {
 
     @Autowired
     LabService labService;
+
+    @Autowired
+    NorthboundService northbound;
+
+    @Value("#{'${kafka.bootstrap.server}'.split(':')}")
+    private List<String> kafkaBootstrapServer;
 
     @Autowired
     @Qualifier("lockKeeperRestTemplate")
@@ -114,20 +123,57 @@ public class LockKeeperServiceImpl implements LockKeeperService {
 
     @Override
     public void knockoutSwitch(Switch sw) {
-        throw new UnsupportedOperationException(
-                "knockoutSwitch operation for a-switch is not available on hardware env");
+        log.debug("Block Floodlight access to switch '{}' by adding iptables rules", sw.getName());
+        String swIp = northbound.getSwitch(sw.getDpId()).getAddress();
+        restTemplate.exchange(labService.getLab().getLabId() + "/block-floodlight-access", HttpMethod.POST,
+                new HttpEntity<>(new InetAddress(swIp), buildJsonHeaders()), String.class);
     }
 
     @Override
     public void reviveSwitch(Switch sw) {
-        throw new UnsupportedOperationException(
-                "reviveSwitch operation for a-switch is not available on hardware env");
+        log.debug("Unblock Floodlight access to switch '{}' by removing iptables rules", sw.getName());
+        String swIp = northbound.getSwitch(sw.getDpId()).getAddress();
+        restTemplate.exchange(labService.getLab().getLabId() + "/unblock-floodlight-access", HttpMethod.POST,
+                new HttpEntity<>(new InetAddress(swIp), buildJsonHeaders()), String.class);
     }
 
     @Override
     public void setController(Switch sw, String controller) {
         throw new UnsupportedOperationException(
                 "setController method is not available on hardware env");
+    }
+
+    @Override
+    public void blockFloodlightAccessToPort(Integer port) {
+        log.debug("Block floodlight access to {} by adding iptables rules", port);
+        restTemplate.exchange(labService.getLab().getLabId() + "/block-floodlight-access", HttpMethod.POST,
+                new HttpEntity<>(new InetAddress(port), buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void unblockFloodlightAccessToPort(Integer port) {
+        log.debug("Unblock floodlight access to {} by removing iptables rules", port);
+        restTemplate.exchange(labService.getLab().getLabId() + "/unblock-floodlight-access", HttpMethod.POST,
+                new HttpEntity<>(new InetAddress(port), buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void removeFloodlightAccessRestrictions() {
+        log.debug("Allow floodlight access to everything by flushing iptables rules(INPUT/OUTPUT chains)");
+        restTemplate.exchange(labService.getLab().getLabId() + "/remove-floodlight-access-restrictions",
+                HttpMethod.POST, new HttpEntity(buildJsonHeaders()), String.class);
+    }
+
+    @Override
+    public void knockoutFloodlight() {
+        log.debug("Knock out Floodlight service");
+        blockFloodlightAccessToPort(Integer.valueOf(kafkaBootstrapServer.get(2)));
+    }
+
+    @Override
+    public void reviveFloodlight() {
+        log.debug("Revive Floodlight service");
+        unblockFloodlightAccessToPort(Integer.valueOf(kafkaBootstrapServer.get(2)));
     }
 
     HttpHeaders buildJsonHeaders() {

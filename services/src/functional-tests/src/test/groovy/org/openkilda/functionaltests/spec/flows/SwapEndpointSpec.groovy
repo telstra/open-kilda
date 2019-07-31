@@ -113,7 +113,7 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                     def flow1 = getFlowHelper().randomFlow(switchPair)
                     def flow2 = getFlowHelper().randomFlow(switchPair, false, [flow1])
                     flow1.destination.portNumber = getFreePort(switchPair.dst, [switchPair.src])
-                    flow2.source.portNumber = getFreePort(switchPair.src, [switchPair.dst])
+                    flow2.source.portNumber = getFreePort(switchPair.src, [switchPair.dst], [flow1.destination.portNumber])
                     flow2.source.vlanId = flow1.source.vlanId
                     it.flows = [flow1, flow2]
                     it.firstSwap = new SwapFlowPayload(flow1.id,
@@ -163,8 +163,8 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                     def flow2 = getFlowHelper().randomFlow(switchPair, false, [flow1])
                     flow1.source.portNumber = getFreePort(switchPair.src, [switchPair.dst])
                     flow1.destination.portNumber = getFreePort(switchPair.dst, [switchPair.src])
-                    flow2.source.portNumber = getFreePort(switchPair.src, [switchPair.dst])
-                    flow2.destination.portNumber = getFreePort(switchPair.dst, [switchPair.src])
+                    flow2.source.portNumber = getFreePort(switchPair.src, [switchPair.dst], [flow1.source.portNumber])
+                    flow2.destination.portNumber = getFreePort(switchPair.dst, [switchPair.src], [flow1.destination.portNumber])
                     flow1.source.vlanId = getFreeVlan(flow2.destination.datapath, [flow2])
                     flow2.destination.vlanId = getFreeVlan(flow1.destination.datapath, [flow1])
                     it.flows = [flow1, flow2]
@@ -979,14 +979,19 @@ switches"() {
         def tgSwitches = topology.getActiveTraffGens()*.getSwitchConnected()
         assumeTrue("Not enough traffgen switches found", tgSwitches.size() > 1)
 
-        def flow1SwitchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            !(it.src in tgSwitches) && it.dst in tgSwitches
+        SwitchPair flow2SwitchPair = null
+        SwitchPair flow1SwitchPair = topologyHelper.getAllNeighboringSwitchPairs().find { firstPair ->
+            def firstOk = !(firstPair.src in tgSwitches) && firstPair.dst in tgSwitches
+            flow2SwitchPair = topologyHelper.getAllNeighboringSwitchPairs().find { secondPair ->
+                !(secondPair.src in [firstPair.src, firstPair.dst]) &&
+                        !(secondPair.dst in [firstPair.src, firstPair.dst]) &&
+                        secondPair.src in tgSwitches && !(secondPair.dst in tgSwitches)
+            }
+            firstOk && flow2SwitchPair
         }
-        def flow2SwitchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            !(it.src in [flow1SwitchPair.src, flow1SwitchPair.dst]) &&
-                    !(it.dst in [flow1SwitchPair.src, flow1SwitchPair.dst]) &&
-                    it.src in tgSwitches && !(it.dst in tgSwitches)
-        }
+        assumeTrue("Required switch pairs not found in given topology",
+                flow1SwitchPair.asBoolean() && flow2SwitchPair.asBoolean())
+
         def flow1 = flowHelper.randomFlow(flow1SwitchPair)
         def flow2 = flowHelper.randomFlow(flow2SwitchPair)
 
@@ -1105,9 +1110,9 @@ switches"() {
      * @param switches list of switches where resulting port should not be an ISL-busy port
      * @return portnumber which is not an ISL-port on any of the switches
      */
-    Integer getFreePort(Switch target, List<Switch> switches) {
+    Integer getFreePort(Switch target, List<Switch> switches, List<Integer> excludePorts = []) {
         pickRandom(topology.getAllowedPortsForSwitch(target) -
-                switches.collectMany { topology.getBusyPortsForSwitch(it) })
+                switches.collectMany { topology.getBusyPortsForSwitch(it) } - excludePorts)
     }
 
     /**

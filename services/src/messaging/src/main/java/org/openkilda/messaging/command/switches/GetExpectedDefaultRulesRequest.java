@@ -13,18 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flow.service;
+package org.openkilda.messaging.command.switches;
 
-/**
- * {@code FlowAlreadyExistException} indicates that a flow already exist.
- */
-public class FlowAlreadyExistException extends Exception {
+import org.openkilda.messaging.command.CommandData;
+import org.openkilda.model.SwitchId;
 
-    public FlowAlreadyExistException(String flowId) {
-        super(String.format("Flow %s already exists", flowId));
-    }
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
+import lombok.Value;
 
-    public FlowAlreadyExistException(String message, Throwable cause) {
-        super(message, cause);
+@Value
+@Builder
+public class GetExpectedDefaultRulesRequest extends CommandData {
+
+    @JsonProperty("switch_id")
+    private SwitchId switchId;
+
+    public GetExpectedDefaultRulesRequest(@JsonProperty("switch_id") SwitchId switchId) {
+        this.switchId = switchId;
     }
 }

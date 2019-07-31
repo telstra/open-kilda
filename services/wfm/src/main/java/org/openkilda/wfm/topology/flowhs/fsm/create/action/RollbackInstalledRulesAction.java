@@ -19,12 +19,15 @@ import org.openkilda.floodlight.flow.request.RemoveRule;
 import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.topology.flowhs.fsm.FlowProcessingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.TransitVlanCommandFactory;
+import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
+import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
+import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandObserver;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,12 +41,15 @@ import java.util.UUID;
 @Slf4j
 public class RollbackInstalledRulesAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
-    private final TransitVlanCommandFactory flowCommandFactory;
+    private final SpeakerCommandFsm.Builder speakerCommandFsmBuilder;
+    private final FlowCommandBuilderFactory commandBuilderFactory;
 
-    public RollbackInstalledRulesAction(PersistenceManager persistenceManager, FlowResourcesManager resourcesManager) {
+    public RollbackInstalledRulesAction(SpeakerCommandFsm.Builder fsmBuilder, PersistenceManager persistenceManager,
+                                        FlowResourcesManager resourcesManager) {
         super(persistenceManager);
-        this.flowCommandFactory = new TransitVlanCommandFactory(
-                persistenceManager.getRepositoryFactory().createTransitVlanRepository());
+
+        this.speakerCommandFsmBuilder = fsmBuilder;
+        this.commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
     }
 
     @Override
@@ -52,15 +58,16 @@ public class RollbackInstalledRulesAction extends FlowProcessingAction<FlowCreat
         stateMachine.getPendingCommands().clear();
 
         Flow flow = getFlow(stateMachine.getFlowId());
+        FlowCommandBuilder commandBuilder = commandBuilderFactory.getBuilder(flow.getEncapsulationType());
 
         if (!stateMachine.getNonIngressCommands().isEmpty()) {
-            List<RemoveRule> removeNonIngress = flowCommandFactory.createRemoveNonIngressRules(
+            List<RemoveRule> removeNonIngress = commandBuilder.createRemoveNonIngressRules(
                     stateMachine.getCommandContext(), flow);
             removeCommands.addAll(removeNonIngress);
         }
 
         if (!stateMachine.getIngressCommands().isEmpty()) {
-            List<RemoveRule> removeIngress = flowCommandFactory.createRemoveIngressRules(
+            List<RemoveRule> removeIngress = commandBuilder.createRemoveIngressRules(
                     stateMachine.getCommandContext(), flow);
             removeCommands.addAll(removeIngress);
         }
@@ -68,8 +75,10 @@ public class RollbackInstalledRulesAction extends FlowProcessingAction<FlowCreat
         Map<UUID, RemoveRule> commandPerId = new HashMap<>(removeCommands.size());
         for (RemoveRule command : removeCommands) {
             commandPerId.put(command.getCommandId(), command);
-            stateMachine.getCarrier().sendSpeakerRequest(command);
-            stateMachine.getPendingCommands().add(command.getCommandId());
+
+            SpeakerCommandObserver commandObserver = new SpeakerCommandObserver(speakerCommandFsmBuilder, command);
+            commandObserver.start();
+            stateMachine.getPendingCommands().put(command.getCommandId(), commandObserver);
         }
 
         stateMachine.setRemoveCommands(commandPerId);

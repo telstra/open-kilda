@@ -26,16 +26,20 @@ import org.openkilda.model.PathId;
 import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.fsm.NbTrackableAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.action.NbTrackableAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowHistorySupportingCarrier;
 
 import lombok.extern.slf4j.Slf4j;
@@ -48,17 +52,21 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class ValidateFlowAction extends
-        NbTrackableAction<FlowRerouteFsm, FlowRerouteFsm.State, FlowRerouteFsm.Event, FlowRerouteContext> {
+        NbTrackableAction<FlowRerouteFsm, State, Event, FlowRerouteContext> {
 
     private final TransactionManager transactionManager;
     private final FlowRepository flowRepository;
     private final FlowEventRepository flowEventRepository;
+    private final KildaConfigurationRepository kildaConfigurationRepository;
+    private final FeatureTogglesRepository featureTogglesRepository;
 
     public ValidateFlowAction(PersistenceManager persistenceManager) {
         transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowRepository = repositoryFactory.createFlowRepository();
         flowEventRepository = repositoryFactory.createFlowEventRepository();
+        kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
+        featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
     }
 
     @Override
@@ -90,11 +98,20 @@ public class ValidateFlowAction extends
                 }
 
                 stateMachine.setOriginalFlowStatus(foundFlow.getStatus());
+                stateMachine.setOriginalEncapsulationType(foundFlow.getEncapsulationType());
                 stateMachine.setRecreateIfSamePath(!foundFlow.isActive() || context.isForceReroute());
 
                 flowRepository.updateStatus(foundFlow.getFlowId(), FlowStatus.IN_PROGRESS);
                 return foundFlow;
             });
+
+            featureTogglesRepository.find().ifPresent(featureToggles ->
+                    Optional.ofNullable(featureToggles.getFlowsRerouteUsingDefaultEncapType()).ifPresent(toggle -> {
+                        if (toggle) {
+                            stateMachine.setNewEncapsulationType(
+                                    kildaConfigurationRepository.get().getFlowEncapsulationType());
+                        }
+                    }));
 
             Set<PathId> pathsToReroute =
                     new HashSet<>(Optional.ofNullable(context.getPathsToReroute()).orElse(emptySet()));

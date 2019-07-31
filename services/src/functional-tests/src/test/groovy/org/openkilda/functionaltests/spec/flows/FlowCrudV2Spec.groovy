@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.model.Cookie
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
@@ -84,7 +85,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         and: "The flow allows traffic (only applicable flows are checked)"
         try {
-            def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 0)
+            def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 1000)
             withPool {
                 [exam.forward, exam.reverse].eachParallel { direction ->
                     def resources = traffExam.startExam(direction)
@@ -421,9 +422,9 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             switches.each {
                 def rules = northbound.validateSwitchRules(it.dpId)
-                assert rules.excessRules.empty
-                assert rules.missingRules.empty
-                assert rules.properRules.empty
+                assert rules.excessRules.empty, it
+                assert rules.missingRules.empty, it
+                assert rules.properRules.findAll { !Cookie.isDefaultRule(it) }.empty, it
             }
         }
     }
@@ -706,50 +707,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                         makeFlowsConflicting: { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict ->
                             flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
                             flowToConflict.destination.vlanId = dominantFlow.destination.vlanId
-                        },
-                        getError            : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
-                                                String operation = "create" ->
-                            errorMessage(operation, dominantFlow, "destination", flowToConflict, "destination")
-                        }
-                ],
-                [
-                        conflict            : "no vlan vs vlan on the same port on src switch",
-                        makeFlowsConflicting: { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict ->
-                            flowToConflict.source.portNumber = dominantFlow.source.portNumber
-                            flowToConflict.source.vlanId = 0
-                        },
-                        getError            : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
-                                                String operation = "create" ->
-                            errorMessage(operation, dominantFlow, "source", flowToConflict, "source")
-                        }
-                ],
-                [
-                        conflict            : "no vlan vs vlan on the same port on dst switch",
-                        makeFlowsConflicting: { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict ->
-                            flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
-                            flowToConflict.destination.vlanId = 0
-                        },
-                        getError            : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
-                                                String operation = "create" ->
-                            errorMessage(operation, dominantFlow, "destination", flowToConflict, "destination")
-                        }
-                ],
-                [
-                        conflict            : "vlan vs no vlan on the same port on src switch",
-                        makeFlowsConflicting: { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict ->
-                            flowToConflict.source.portNumber = dominantFlow.source.portNumber
-                            dominantFlow.source.vlanId = 0
-                        },
-                        getError            : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
-                                                String operation = "create" ->
-                            errorMessage(operation, dominantFlow, "source", flowToConflict, "source")
-                        }
-                ],
-                [
-                        conflict            : "vlan vs no vlan on the same port on dst switch",
-                        makeFlowsConflicting: { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict ->
-                            flowToConflict.destination.portNumber = dominantFlow.destination.portNumber
-                            dominantFlow.destination.vlanId = 0
                         },
                         getError            : { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict,
                                                 String operation = "create" ->
