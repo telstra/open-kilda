@@ -224,7 +224,7 @@ class SwitchSyncSpec extends BaseSpecification {
         when: "Synchronize rules on the switch"
         northbound.synchronizeSwitchRules(sw.dpId)
 
-        then: "Missing rules are not synchronized"
+        then: "Missing default rules are not synchronized"
         with(northbound.validateSwitchRules(sw.dpId)) {
             properRules.empty
             excessRules.empty
