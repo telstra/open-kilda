@@ -24,11 +24,14 @@ import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFStatsRequestFlags;
 import org.projectfloodlight.openflow.protocol.OFTableFeatureProp;
 import org.projectfloodlight.openflow.protocol.OFTableFeaturePropMatch;
 import org.projectfloodlight.openflow.protocol.OFTableFeatures;
@@ -38,7 +41,9 @@ import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U32;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -79,10 +84,28 @@ public class SetupPipeline extends AbstractMultiTableCommand {
             }
         }
 
-        OFTableFeaturesStatsRequest request = of.buildTableFeaturesStatsRequest()
-                .setEntries(tableFeatures)
-                .build();
-        return new CompletableFutureAdapter<>(messageContext, sw.writeStatsRequest(request));
+        CompletableFuture<List<OFTableFeaturesStatsReply>> pipelineUpdate = CompletableFuture.completedFuture(
+                featureResponses);
+
+        final long xid = of.buildTableFeaturesStatsRequest()
+                .setEntries(Collections.emptyList())
+                .build()
+                .getXid();
+        Iterator<OFTableFeatures> iter = tableFeatures.iterator();
+        while (iter.hasNext()) {
+            OFTableFeatures entry = iter.next();
+            OFTableFeaturesStatsRequest.Builder request = of.buildTableFeaturesStatsRequest()
+                    .setXid(xid)
+                    .setEntries(ImmutableList.of(entry));
+            if (iter.hasNext()) {
+                request.setFlags(ImmutableSet.of(OFStatsRequestFlags.REQ_MORE));
+                sw.write(request.build());
+            } else {
+                pipelineUpdate = new CompletableFutureAdapter<>(messageContext, sw.writeStatsRequest(request.build()));
+            }
+        }
+
+        return pipelineUpdate;
     }
 
     private Optional<OFMessage> handlePipelineResponse(IOFSwitch sw, List<OFTableFeaturesStatsReply> featureResponses) {
@@ -148,8 +171,9 @@ public class SetupPipeline extends AbstractMultiTableCommand {
     }
 
     private static U32 formatOxmId(long typeLen) {
-        return U32.of(typeLen)
-                .applyMask(U32.of(0xffffff00));
+        U32 oxmId = U32.of(typeLen);
+        // oxmId = oxmId.applyMask(U32.of(0xffffff00));
+        return oxmId;
     }
 
     @Override
