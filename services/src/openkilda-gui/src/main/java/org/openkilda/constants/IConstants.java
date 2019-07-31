@@ -259,6 +259,12 @@ public abstract class IConstants {
         
         public static final String ISL_UPDATE_BANDWIDTH = "isl_update_bandwidth";
         
+        public static final String FW_FLOW_INVENTORY = "fw_flow_inventory";
+        
+        public static final String FW_FLOW_CONTRACT = "fw_flow_contract";
+        
+        public static final String SW_SWITCH_INVENTORY = "sw_switch_inventory";
+        
     }
 
     public final class Settings {
@@ -334,7 +340,7 @@ public abstract class IConstants {
 
         FLOW_TABLEID("Flow_tableid", "flow.tableid"),
 
-        ISL_LATENCY("Isl_latency", "isl.latency"),
+        ISL_LATENCY("Isl_latency", "isl.rtt"),
 
         SWITCH_COLLISIONS("Switch_collisions", "switch.collisions"),    
 
