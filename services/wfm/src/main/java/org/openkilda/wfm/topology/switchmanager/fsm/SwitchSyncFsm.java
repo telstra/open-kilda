@@ -45,6 +45,7 @@ import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MetersSyncEntry;
 import org.openkilda.messaging.info.switches.RulesSyncEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent;
@@ -59,6 +60,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -75,6 +77,8 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     private final CommandBuilder commandBuilder;
     private SwitchId switchId;
     private ValidationResult validationResult;
+    private List<Long> cookiesFromMissingRules;
+    private List<Long> cookiesFromExcessRules;
 
     private List<BaseInstallFlow> missingRules = emptyList();
     private List<RemoveFlow> excessRules = emptyList();
@@ -163,12 +167,14 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     protected void computeInstallRules(SwitchSyncState from, SwitchSyncState to,
                                        SwitchSyncEvent event, Object context) {
         ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
+        cookiesFromMissingRules = new ArrayList<>(validateRulesResult.getMissingRules());
+        // We are not yet able to synchronize the default rules.
+        cookiesFromMissingRules.removeIf(Cookie::isDefaultRule);
 
-        if (!validateRulesResult.getMissingRules().isEmpty()) {
+        if (!cookiesFromMissingRules.isEmpty()) {
             log.info("Key: {}, compute install rules", key);
             try {
-                missingRules = commandBuilder.buildCommandsToSyncMissingRules(
-                        switchId, validationResult.getValidateRulesResult().getMissingRules());
+                missingRules = commandBuilder.buildCommandsToSyncMissingRules(switchId, cookiesFromMissingRules);
             } catch (Exception e) {
                 sendException(e);
             }
@@ -178,12 +184,15 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     protected void computeRemoveRules(SwitchSyncState from, SwitchSyncState to,
                                       SwitchSyncEvent event, Object context) {
         ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
+        cookiesFromExcessRules = new ArrayList<>(validateRulesResult.getExcessRules());
+        // We are not yet able to synchronize the default rules.
+        cookiesFromExcessRules.removeIf(Cookie::isDefaultRule);
 
-        if (request.isRemoveExcess() && !validateRulesResult.getExcessRules().isEmpty()) {
+        if (request.isRemoveExcess() && !cookiesFromExcessRules.isEmpty()) {
             log.info("Key: {}, compute remove rules", key);
             try {
                 excessRules = commandBuilder.buildCommandsToRemoveExcessRules(
-                        switchId, validationResult.getFlowEntries(), validateRulesResult.getExcessRules());
+                        switchId, validationResult.getFlowEntries(), cookiesFromExcessRules);
             } catch (Exception e) {
                 sendException(e);
             }
@@ -300,8 +309,8 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
         RulesSyncEntry rulesEntry = new RulesSyncEntry(validateRulesResult.getMissingRules(),
                 validateRulesResult.getProperRules(),
                 validateRulesResult.getExcessRules(),
-                validateRulesResult.getMissingRules(),
-                request.isRemoveExcess() ? validateRulesResult.getExcessRules() : emptyList());
+                cookiesFromMissingRules,
+                request.isRemoveExcess() ? cookiesFromExcessRules : emptyList());
 
         MetersSyncEntry metersEntry = null;
         if (validationResult.isProcessMeters()) {

@@ -41,6 +41,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
@@ -64,6 +65,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
@@ -75,7 +77,7 @@ public class SwitchSyncServiceImplTest {
     private static SwitchId INGRESS_SWITCH_ID = new SwitchId(0x0000000000000002L);
     private static String FLOW_ID = "flow_id";
     private static String KEY = "KEY";
-    private static long EXCESS_COOKIE = 50L;
+    private static long EXCESS_COOKIE = Cookie.FORWARD_FLOW_COOKIE_MASK | 1;
 
     @Mock
     private SwitchManagerCarrier carrier;
@@ -120,7 +122,7 @@ public class SwitchSyncServiceImplTest {
         service.commandBuilder = commandBuilder;
 
         request = SwitchValidateRequest.builder().switchId(SWITCH_ID).performSync(true).build();
-        flowEntry = new FlowEntry(-1L, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
+        flowEntry = new FlowEntry(Cookie.FORWARD_FLOW_COOKIE_MASK | 7, 0, 0, 0, 0, "", 0, 0, 0, 0, null, null, null);
 
         InstallIngressFlow installingRule = new InstallIngressFlow(UUID.randomUUID(), FLOW_ID, flowEntry.getCookie(),
                 SWITCH_ID, 1, 2, 50, 60,
@@ -137,6 +139,20 @@ public class SwitchSyncServiceImplTest {
     @Test
     public void handleNothingRulesToSync() {
         missingRules = emptyList();
+
+        service.handleSwitchSync(KEY, request, makeValidationResult());
+
+        verify(carrier).response(eq(KEY), any(InfoMessage.class));
+        verify(carrier).cancelTimeoutCallback(eq(KEY));
+
+        verifyNoMoreInteractions(commandBuilder);
+        verifyNoMoreInteractions(carrier);
+    }
+
+    @Test
+    public void shouldDoNothingWhenMissingAndExcessRulesHaveDefaultCookies() {
+        missingRules = Collections.singletonList(Cookie.DEFAULT_RULES_MASK | 1);
+        excessRules = Collections.singletonList(Cookie.DEFAULT_RULES_MASK | 2);
 
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
