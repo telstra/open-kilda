@@ -101,9 +101,11 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         where:
-        switchType   | switches
-        "Centec"     | getCentecSwitches()
-        "non-Centec" | getNonCentecSwitches()
+        switchType         | switches
+        "Centec"           | getCentecSwitches()
+        "Noviflow"         | getNoviflowSwitches()
+        "Noviflow(Wb5164)" | getNoviflowWb5164()
+        "OVS"              | getVirtualSwitches()
     }
 
     @Unroll
@@ -171,9 +173,11 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         where:
-        switchType   | switches
-        "Centec"     | getCentecSwitches()
-        "non-Centec" | getNonCentecSwitches()
+        switchType         | switches
+        "Centec"           | getCentecSwitches()
+        "Noviflow"         | getNoviflowSwitches()
+        "Noviflow(Wb5164)" | getNoviflowWb5164()
+        "OVS"              | getVirtualSwitches()
     }
 
     @Unroll
@@ -235,9 +239,11 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         where:
-        switchType   | switches
-        "Centec"     | getCentecSwitches()
-        "non-Centec" | getNonCentecSwitches()
+        switchType         | switches
+        "Centec"           | getCentecSwitches()
+        "Noviflow"         | getNoviflowSwitches()
+        "Noviflow(Wb5164)" | getNoviflowWb5164()
+        "OVS"              | getVirtualSwitches()
     }
 
     @Unroll
@@ -300,9 +306,11 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         where:
-        switchType   | switches
-        "Centec"     | getCentecSwitches()
-        "non-Centec" | getNonCentecSwitches()
+        switchType         | switches
+        "Centec"           | getCentecSwitches()
+        "Noviflow"         | getNoviflowSwitches()
+        "Noviflow(Wb5164)" | getNoviflowWb5164()
+        "OVS"              | getVirtualSwitches()
     }
 
     @Unroll
@@ -347,9 +355,11 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         where:
-        switchType   | switches
-        "Centec"     | getCentecSwitches()
-        "non-Centec" | getNonCentecSwitches()
+        switchType         | switches
+        "Centec"           | getCentecSwitches()
+        "Noviflow"         | getNoviflowSwitches()
+        "Noviflow(Wb5164)" | getNoviflowWb5164()
+        "OVS"              | getVirtualSwitches()
     }
 
     @Unroll
@@ -375,7 +385,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
                         FlowEncapsulationType.TRANSIT_VLAN, 1, OutputVlanType.REPLACE, sw.dpId)).toJson()))
         producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
                 new InstallTransitFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 2L, sw.dpId, 3, 4, 3,
-                FlowEncapsulationType.TRANSIT_VLAN, sw.dpId)).toJson()))
+                        FlowEncapsulationType.TRANSIT_VLAN, sw.dpId)).toJson()))
         producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, 3L, sw.dpId, 5, 6, 5, 3,
                         FlowEncapsulationType.TRANSIT_VLAN,
@@ -423,9 +433,11 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         producer && producer.close()
 
         where:
-        switchType   | switches
-        "Centec"     | getCentecSwitches()
-        "non-Centec" | getNonCentecSwitches()
+        switchType         | switches
+        "Centec"           | getCentecSwitches()
+        "Noviflow"         | getNoviflowSwitches()
+        "Noviflow(Wb5164)" | getNoviflowWb5164()
+        "OVS"              | getVirtualSwitches()
     }
 
     def "Able to get the switch validate info on a NOT supported switch"() {
@@ -444,13 +456,23 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
     }
 
     @Memoized
-    List<Switch> getNonCentecSwitches() {
-        topology.activeSwitches.findAll { !it.centec && it.ofVersion == "OF_13" }
+    List<Switch> getNoviflowSwitches() {
+        topology.activeSwitches.findAll { it.noviflow && it.ofVersion == "OF_13" && !it.wb5164 }
     }
 
     @Memoized
     List<Switch> getCentecSwitches() {
         topology.getActiveSwitches().findAll { it.centec }
+    }
+
+    @Memoized
+    List<Switch> getNoviflowWb5164() {
+        topology.getActiveSwitches().findAll { it.wb5164 }
+    }
+
+    @Memoized
+    List<Switch> getVirtualSwitches() {
+        topology.getActiveSwitches().findAll { it.virtual }
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {
