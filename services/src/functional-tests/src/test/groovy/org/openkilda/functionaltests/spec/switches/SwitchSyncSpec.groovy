@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.messaging.command.switches.InstallRulesAction
 import org.openkilda.model.Cookie
 
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -212,6 +213,29 @@ class SwitchSyncSpec extends BaseSpecification {
 
         and: "Delete the flow"
         flowHelper.deleteFlow(flow.id)
+    }
+
+    def "System doesn't synchronize missing default rules"() {
+        given: "An active switch with missing default rules"
+        def sw = topology.activeSwitches.first()
+        northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
+        assert northbound.validateSwitchRules(sw.dpId).missingRules.size() == sw.defaultCookies.size()
+
+        when: "Synchronize rules on the switch"
+        northbound.synchronizeSwitchRules(sw.dpId)
+
+        then: "Missing rules are not synchronized"
+        with(northbound.validateSwitchRules(sw.dpId)) {
+            properRules.empty
+            excessRules.empty
+            missingRules.sort() == sw.defaultCookies.sort()
+        }
+
+        and: "Cleanup: Install default rules back"
+        northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert northbound.getSwitchRules(sw.dpId).flowEntries.size() == sw.defaultCookies.size()
+        }
     }
 
     private static Message buildMessage(final CommandData data) {
