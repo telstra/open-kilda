@@ -240,49 +240,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2563")
-    @Rerun(times = 4) //Race condition is being tested here, so need multiple runs to ensure stability
-    def "Reroute can be simultaneously performed with sync rules requests and not cause any rule discrepancies"() {
-        given: "A flow with reroute potential"
-        def switches = topologyHelper.getNotNeighboringSwitchPair()
-        def flow = flowHelper.randomFlow(switches)
-        flowHelper.addFlow(flow)
-        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
-        def newPath = switches.paths.find { it != currentPath }
-        switches.paths.findAll { it != newPath }.each { pathHelper.makePathMorePreferable(newPath, it) }
-        def relatedSwitches = (pathHelper.getInvolvedSwitches(currentPath) +
-                pathHelper.getInvolvedSwitches(newPath)).unique()
-
-        when: "Flow reroute is simultaneously requested together with sync rules requests for all related switches"
-        withPool {
-            def rerouteTask = { northbound.rerouteFlow(flow.id) }
-            rerouteTask.callAsync()
-            sleep(100) //experimentally find out that this ensures better overlapping of DB operations
-            relatedSwitches.eachParallel { northbound.synchronizeSwitchRules(it.dpId) } //#2563 to fire at this line
-        }
-
-        then: "Flow is Up and path has changed"
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-            assert pathHelper.convert(northbound.getFlowPath(flow.id)) == newPath
-        }
-
-        and: "Related switches have no rule discrepancies"
-        Wrappers.wait(WAIT_OFFSET) {
-            relatedSwitches.each {
-                def validation = northbound.validateSwitch(it.dpId)
-                switchHelper.verifyRuleSectionsAreEmpty(validation, ["missing", "excess"])
-                switchHelper.verifyMeterSectionsAreEmpty(validation, ["missing", "misconfigured", "excess"])
-            }
-        }
-
-        and: "Flow is healthy"
-        northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
-
-        and: "Cleanup: remove flow and reset costs"
-        flowHelper.deleteFlow(flow.id)
-    }
-
     def cleanup() {
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         database.resetCosts()
