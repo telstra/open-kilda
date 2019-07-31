@@ -45,6 +45,7 @@ import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MetersSyncEntry;
 import org.openkilda.messaging.info.switches.RulesSyncEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.utils.AbstractBaseFsm;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm.SwitchSyncEvent;
@@ -163,12 +164,14 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     protected void computeInstallRules(SwitchSyncState from, SwitchSyncState to,
                                        SwitchSyncEvent event, Object context) {
         ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
+        List<Long> cookiesFromMissingRules = validateRulesResult.getMissingRules();
+        // We are not yet able to synchronize the default rules.
+        cookiesFromMissingRules.removeIf(Cookie::isDefaultRule);
 
-        if (!validateRulesResult.getMissingRules().isEmpty()) {
+        if (!cookiesFromMissingRules.isEmpty()) {
             log.info("Key: {}, compute install rules", key);
             try {
-                missingRules = commandBuilder.buildCommandsToSyncMissingRules(
-                        switchId, validationResult.getValidateRulesResult().getMissingRules());
+                missingRules = commandBuilder.buildCommandsToSyncMissingRules(switchId, cookiesFromMissingRules);
             } catch (Exception e) {
                 sendException(e);
             }
@@ -178,12 +181,15 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     protected void computeRemoveRules(SwitchSyncState from, SwitchSyncState to,
                                       SwitchSyncEvent event, Object context) {
         ValidateRulesResult validateRulesResult = validationResult.getValidateRulesResult();
+        List<Long> cookiesFromExcessRules = validateRulesResult.getMissingRules();
+        // We are not yet able to synchronize the default rules.
+        cookiesFromExcessRules.removeIf(Cookie::isDefaultRule);
 
-        if (request.isRemoveExcess() && !validateRulesResult.getExcessRules().isEmpty()) {
+        if (request.isRemoveExcess() && !cookiesFromExcessRules.isEmpty()) {
             log.info("Key: {}, compute remove rules", key);
             try {
                 excessRules = commandBuilder.buildCommandsToRemoveExcessRules(
-                        switchId, validationResult.getFlowEntries(), validateRulesResult.getExcessRules());
+                        switchId, validationResult.getFlowEntries(), cookiesFromExcessRules);
             } catch (Exception e) {
                 sendException(e);
             }
