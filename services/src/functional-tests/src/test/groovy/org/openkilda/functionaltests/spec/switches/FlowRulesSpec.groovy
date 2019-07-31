@@ -52,7 +52,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Shared
     int flowRulesCount = 2
 
-    def setup() {
+    def setupOnce() {
         (srcSwitch, dstSwitch) = topology.getActiveSwitches()[0..1]
         srcSwDefaultRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries
         dstSwDefaultRules = northbound.getSwitchRules(dstSwitch.dpId).flowEntries

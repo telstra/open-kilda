@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -59,7 +60,7 @@ class PortAntiflapSpec extends HealthCheckSpecification {
 timeout"() {
         given: "Switch, port and ISL related to that port"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
-        assert isl
+        assumeTrue("Required a-switch isl is not found", isl as boolean)
 
         when: "ISL port begins to blink"
         def interval = (long) (antiflapMin * 1000 / 2)

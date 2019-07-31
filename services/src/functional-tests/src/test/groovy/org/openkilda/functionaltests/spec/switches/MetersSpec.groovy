@@ -419,16 +419,15 @@ meters in flow rules at all (#data.flowType flow)"() {
         flow.setMaximumBandwidth(flowRate)
         northbound.updateFlow(flow.id, flow)
 
-        then: "New meters should be installed on the switch"
+        then: "Meters with updated rate should be installed on the switch"
         def newMeters = null
         Wrappers.wait(Constants.RULES_DELETION_TIME + Constants.RULES_INSTALLATION_TIME) {
             newMeters = northbound.getAllMeters(sw.dpId).meterEntries.findAll {
                 !defaultMeters.meterEntries.contains(it)
             }
             assert newMeters.size() == 2
+            assert newMeters*.rate.every { it == flowRate }
         }
-        and: "New meters rate should be equal to flow bandwidth"
-        newMeters*.rate.every { it == flowRate }
 
         and: "New meters burst size should respect the min/max border value for Centec"
         newMeters*.burstSize.every { it == expectedBurstSize }

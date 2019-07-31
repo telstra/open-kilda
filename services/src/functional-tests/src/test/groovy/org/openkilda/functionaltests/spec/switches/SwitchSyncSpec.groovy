@@ -65,15 +65,11 @@ class SwitchSyncSpec extends BaseSpecification {
 
     def "Able to synchronize switch (install missing rules and meters)"() {
         given: "Two active not neighboring switches"
-        def switches = topology.getActiveSwitches()
-        def allLinks = northbound.getAllLinks()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allLinks.every { link -> !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId) }
-        } ?: assumeTrue("No suiting switches found", false)
+        def switchPair = topologyHelper.allNotNeighboringSwitchPairs.find { it.src.ofVersion != "OF_12" &&
+                it.dst.ofVersion != "OF_12" } ?: assumeTrue("No suiting switches found", false)
 
         and: "Create an intermediate-switch flow"
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow)
 
         and: "Reproduce situation when switches have missing rules and meters"
@@ -90,11 +86,11 @@ class SwitchSyncSpec extends BaseSpecification {
         }
 
         involvedSwitches.each { northbound.deleteSwitchRules(it.dpId, DeleteRulesAction.IGNORE_DEFAULTS) }
-        [srcSwitch, dstSwitch].each { northbound.deleteMeter(it.dpId, metersMap[it.dpId][0]) }
+        [switchPair.src, switchPair.dst].each { northbound.deleteMeter(it.dpId, metersMap[it.dpId][0]) }
         Wrappers.wait(RULES_DELETION_TIME) {
             def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
             involvedSwitches.each { assert validationResultsMap[it.dpId].rules.missing.size() == 2 }
-            [srcSwitch, dstSwitch].each { assert validationResultsMap[it.dpId].meters.missing.size() == 1 }
+            [switchPair.src, switchPair.dst].each { assert validationResultsMap[it.dpId].meters.missing.size() == 1 }
         }
 
         when: "Try to synchronize all switches"
@@ -108,7 +104,7 @@ class SwitchSyncSpec extends BaseSpecification {
             assert syncResultsMap[it.dpId].rules.removed.size() == 0
             assert syncResultsMap[it.dpId].rules.installed.containsAll(cookiesMap[it.dpId])
         }
-        [srcSwitch, dstSwitch].each {
+        [switchPair.src, switchPair.dst].each {
             assert syncResultsMap[it.dpId].meters.proper.size() == 0
             assert syncResultsMap[it.dpId].meters.excess.size() == 0
             assert syncResultsMap[it.dpId].meters.missing*.meterId == metersMap[it.dpId]

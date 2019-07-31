@@ -83,7 +83,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         and: "The flow allows traffic (only applicable flows are checked)"
         try {
-            def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 1000)
+            def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 1000, 3)
             withPool {
                 [exam.forward, exam.reverse].eachParallel { direction ->
                     def resources = traffExam.startExam(direction)
