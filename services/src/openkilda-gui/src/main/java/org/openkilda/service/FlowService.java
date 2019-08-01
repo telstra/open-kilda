@@ -15,6 +15,7 @@
 
 package org.openkilda.service;
 
+import org.openkilda.constants.IConstants;
 import org.openkilda.integration.converter.FlowConverter;
 import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.model.Flow;
@@ -39,10 +40,8 @@ import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.StringUtil;
 
 import org.apache.log4j.Logger;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
 
@@ -92,7 +91,7 @@ public class FlowService {
      *
      * @return SwitchRelationData
      */
-    public List<FlowInfo> getAllFlows(List<String> statuses) {
+    public List<FlowInfo> getAllFlows(List<String> statuses, boolean controller) {
         List<FlowInfo> flows = new ArrayList<FlowInfo>();
         if (!CollectionUtil.isEmpty(statuses)) {
             statuses = statuses.stream().map((status) -> status.toLowerCase()).collect(Collectors.toList());
@@ -103,22 +102,26 @@ public class FlowService {
                 flows = new ArrayList<FlowInfo>();
             }
         }
-
-        if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
-            try {
-                List<InventoryFlow> inventoryFlows = new ArrayList<InventoryFlow>();
-                String status = "";
-                for (String statusObj : statuses) {
-                    if (StringUtil.isNullOrEmpty(status)) {
-                        status += statusObj;
-                    } else {
-                        status += "," + statusObj;
+        if (!controller) {
+            if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
+                try {
+                    UserInfo userInfo = userService.getLoggedInUserInfo();
+                    if (userInfo.getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
+                        List<InventoryFlow> inventoryFlows = new ArrayList<InventoryFlow>();
+                        String status = "";
+                        for (String statusObj : statuses) {
+                            if (StringUtil.isNullOrEmpty(status)) {
+                                status += statusObj;
+                            } else {
+                                status += "," + statusObj;
+                            }
+                        }
+                        inventoryFlows = flowStoreService.getFlowsWithParams(status);
+                        processInventoryFlow(flows, inventoryFlows);
                     }
+                } catch (Exception ex) {
+                    LOGGER.error("Error occurred while retrieving flows from store", ex);
                 }
-                inventoryFlows = flowStoreService.getFlowsWithParams(status);
-                processInventoryFlow(flows, inventoryFlows);
-            } catch (Exception ex) {
-                LOGGER.error("Error occurred while retrieving flows from store", ex);
             }
         }
         return flows;
@@ -225,53 +228,56 @@ public class FlowService {
         }
         if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
             try {
-                InventoryFlow inventoryFlow = flowStoreService.getFlowById(flowId);
-                if (flow != null && inventoryFlow != null) {
-                    flowInfo.setState(inventoryFlow.getState());
-                    flowInfo.setIgnoreBandwidth(inventoryFlow.getIgnoreBandwidth());
-                    FlowDiscrepancy discrepancy = new FlowDiscrepancy();
-                    discrepancy.setControllerDiscrepancy(false);
-                    if (flowInfo.getMaximumBandwidth() != (inventoryFlow.getMaximumBandwidth() == null ? 0
-                            : inventoryFlow.getMaximumBandwidth())) {
+                UserInfo userInfo = userService.getLoggedInUserInfo();
+                if (userInfo.getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
+                    InventoryFlow inventoryFlow = flowStoreService.getFlowById(flowId);
+                    if (flow != null && inventoryFlow != null) {
+                        flowInfo.setState(inventoryFlow.getState());
+                        flowInfo.setIgnoreBandwidth(inventoryFlow.getIgnoreBandwidth());
+                        FlowDiscrepancy discrepancy = new FlowDiscrepancy();
+                        discrepancy.setControllerDiscrepancy(false);
+                        if (flowInfo.getMaximumBandwidth() != (inventoryFlow.getMaximumBandwidth() == null ? 0
+                                : inventoryFlow.getMaximumBandwidth())) {
+                            discrepancy.setBandwidth(true);
+
+                            FlowBandwidth flowBandwidth = new FlowBandwidth();
+                            flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth());
+                            flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
+                            discrepancy.setBandwidthValue(flowBandwidth);
+                        }
+                        if (("UP".equalsIgnoreCase(flowInfo.getStatus())
+                                && !"ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))
+                                || ("DOWN".equalsIgnoreCase(flowInfo.getStatus())
+                                        && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
+                            discrepancy.setStatus(true);
+
+                            FlowState flowState = new FlowState();
+                            flowState.setControllerState(flow.getStatus());
+                            flowState.setInventoryState(inventoryFlow.getState());
+                            discrepancy.setStatusValue(flowState);
+                        }
+                        flowInfo.setDiscrepancy(discrepancy);
+                    } else if (inventoryFlow == null && flow != null) {
+                        FlowDiscrepancy discrepancy = new FlowDiscrepancy();
+                        discrepancy.setInventoryDiscrepancy(true);
+                        discrepancy.setControllerDiscrepancy(false);
+                        discrepancy.setStatus(true);
                         discrepancy.setBandwidth(true);
 
                         FlowBandwidth flowBandwidth = new FlowBandwidth();
                         flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth());
-                        flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
+                        flowBandwidth.setInventoryBandwidth(0);
                         discrepancy.setBandwidthValue(flowBandwidth);
-                    }
-                    if (("UP".equalsIgnoreCase(flowInfo.getStatus())
-                            && !"ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))
-                            || ("DOWN".equalsIgnoreCase(flowInfo.getStatus())
-                                    && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
-                        discrepancy.setStatus(true);
 
                         FlowState flowState = new FlowState();
                         flowState.setControllerState(flow.getStatus());
-                        flowState.setInventoryState(inventoryFlow.getState());
+                        flowState.setInventoryState(null);
                         discrepancy.setStatusValue(flowState);
+
+                        flowInfo.setDiscrepancy(discrepancy);
+                    } else {
+                        flowConverter.toFlowInfo(flowInfo, inventoryFlow, csNames);
                     }
-                    flowInfo.setDiscrepancy(discrepancy);
-                } else if (inventoryFlow == null && flow != null) {
-                    FlowDiscrepancy discrepancy = new FlowDiscrepancy();
-                    discrepancy.setInventoryDiscrepancy(true);
-                    discrepancy.setControllerDiscrepancy(false);
-                    discrepancy.setStatus(true);
-                    discrepancy.setBandwidth(true);
-
-                    FlowBandwidth flowBandwidth = new FlowBandwidth();
-                    flowBandwidth.setControllerBandwidth(flow.getMaximumBandwidth());
-                    flowBandwidth.setInventoryBandwidth(0);
-                    discrepancy.setBandwidthValue(flowBandwidth);
-
-                    FlowState flowState = new FlowState();
-                    flowState.setControllerState(flow.getStatus());
-                    flowState.setInventoryState(null);
-                    discrepancy.setStatusValue(flowState);
-
-                    flowInfo.setDiscrepancy(discrepancy);
-                } else {
-                    flowConverter.toFlowInfo(flowInfo, inventoryFlow, csNames);
                 }
             } catch (Exception ex) {
                 LOGGER.error("Error occurred while retrieving flows from store", ex);

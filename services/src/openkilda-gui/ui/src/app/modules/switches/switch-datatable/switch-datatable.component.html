@@ -7,7 +7,7 @@
                </div>
           </div>
             <div class="col-sm-8 text-right text-filters mb-3">
-                <div *ngIf="hasStoreSetting" class="btn-group btn-group-sm btn-group-toggle mr-1" data-toggle="buttons">
+                <div *ngIf="hasStoreSetting && commonService.hasPermission('sw_switch_inventory')" class="btn-group btn-group-sm btn-group-toggle mr-1" data-toggle="buttons">
                     <label class="btn" (click)="toggleType('all')" [ngClass]="{ 'btn-secondary' : typeFilter == 'all','btn-dark': typeFilter != 'all'}">
                       <input type="radio" name="options" id="option1" autocomplete="off" checked> All
                     </label>
@@ -17,9 +17,9 @@
                     <label class="btn" (click)="toggleType('inventory')" [ngClass]="{ 'btn-secondary' : typeFilter == 'inventory','btn-dark': typeFilter != 'inventory'}">
                       <input type="radio" name="options" id="option3" autocomplete="off"> Inventory
                     </label>
-                    
+                    <a *ngIf="hasStoreSetting" class="mr-1"> &nbsp;| </a>
                   </div>
-                  <a *ngIf="hasStoreSetting" class="mr-1"> | </a>
+                  
                <a class="cursor-pointer" (click)="refreshList()"><i class="fa fa-refresh"></i>  Refresh</a>
             </div>
        </div>

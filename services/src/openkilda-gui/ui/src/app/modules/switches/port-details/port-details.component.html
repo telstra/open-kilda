@@ -91,7 +91,7 @@
       <li [ngClass]="{'active': openedTab == 'graph'}">
         <a href="javascript:void(0)" (click)="toggleTab('graph')" data-toggle="tab">GRAPH</a>
       </li>
-      <li *ngIf="hasStoreSetting" [ngClass]="{'active': openedTab == 'flow'}">
+      <li *ngIf="hasStoreSetting && commonService.hasPermission('sw_switch_inventory') && commonService.hasPermission('menu_flows')" [ngClass]="{'active': openedTab == 'flow'}">
         <a href="javascript:void(0)" (click)="toggleTab('flow')" data-toggle="tab">FLOWS</a>
       </li>
       <li *ngIf="hasStoreSetting && assignmentTypeDescrepancy" [ngClass]="{'active': openedTab == 'descripancy'}">
