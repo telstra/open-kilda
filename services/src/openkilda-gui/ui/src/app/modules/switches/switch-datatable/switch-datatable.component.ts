@@ -36,7 +36,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
   constructor(private loaderService : LoaderService,
     private renderer: Renderer2, 
     private router:Router,
-    private commonService:CommonService,
+    public commonService:CommonService,
     private storeSwitchService: StoreSettingtService,
     private clipboardService:ClipboardService
   ) { }
