@@ -15,11 +15,6 @@
 
 package org.openkilda.service;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
-import org.apache.log4j.Logger;
 import org.openkilda.constants.HttpError;
 import org.openkilda.constants.IConstants;
 import org.openkilda.dao.entity.SwitchNameEntity;
@@ -44,10 +39,18 @@ import org.openkilda.model.SwitchStatus;
 import org.openkilda.store.model.Customer;
 import org.openkilda.store.service.StoreService;
 import org.openkilda.utility.StringUtil;
+
+import org.apache.log4j.Logger;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 /**
  * The Class ServiceSwitchImpl.
@@ -111,14 +114,14 @@ public class SwitchService {
      */
     public SwitchInfo getSwitch(final String switchId) throws IntegrationException {
 
-		SwitchInfo switchInfo = null;
-		try {
-			switchInfo = switchIntegrationService.getSwitchesById(switchId);
-		} catch (Exception ex) {
-			LOGGER.error(
-					"Error occurred while retrieving switches from controller",
-					ex);
-		}
+        SwitchInfo switchInfo = null;
+        try {
+            switchInfo = switchIntegrationService.getSwitchesById(switchId);
+        } catch (Exception ex) {
+            LOGGER.error(
+                    "Error occurred while retrieving switches from controller",
+                    ex);
+        }
         if (storeService.getSwitchStoreConfig().getUrls().size() > 0) {
             try {
                 UserInfo userInfo = userService.getLoggedInUserInfo();

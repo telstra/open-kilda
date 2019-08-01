@@ -102,26 +102,26 @@ public class FlowService {
                 flows = new ArrayList<FlowInfo>();
             }
         }
-            if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
-                try {
-                    UserInfo userInfo = userService.getLoggedInUserInfo();
-                    if (userInfo.getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
-                        List<InventoryFlow> inventoryFlows = new ArrayList<InventoryFlow>();
-                        String status = "";
-                        for (String statusObj : statuses) {
-                            if (StringUtil.isNullOrEmpty(status)) {
-                                status += statusObj;
-                            } else {
-                                status += "," + statusObj;
-                            }
+        if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
+            try {
+                UserInfo userInfo = userService.getLoggedInUserInfo();
+                if (userInfo.getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
+                    List<InventoryFlow> inventoryFlows = new ArrayList<InventoryFlow>();
+                    String status = "";
+                    for (String statusObj : statuses) {
+                        if (StringUtil.isNullOrEmpty(status)) {
+                            status += statusObj;
+                        } else {
+                            status += "," + statusObj;
                         }
-                        inventoryFlows = flowStoreService.getFlowsWithParams(status);
-                        processInventoryFlow(flows, inventoryFlows);
                     }
-                } catch (Exception ex) {
-                    LOGGER.error("Error occurred while retrieving flows from store", ex);
+                    inventoryFlows = flowStoreService.getFlowsWithParams(status);
+                    processInventoryFlow(flows, inventoryFlows);
                 }
+            } catch (Exception ex) {
+                LOGGER.error("Error occurred while retrieving flows from store", ex);
             }
+        }
         return flows;
     }
 
