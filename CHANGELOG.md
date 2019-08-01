@@ -1,5 +1,52 @@
 # Changelog
 
+## v1.29.1 (01/08/2019)
+
+### Bug Fixes:
+-  [#2656](https://github.com/telstra/open-kilda/pull/2656) Hotfix to add permissions on switch, flow inventory and flow contracts. [**gui**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.29.0...v1.29.1).
+
+### Affected Components:
+gui
+
+---
+
+## v1.29.0 (31/07/2019)
+
+### Features:
+-  [#2591](https://github.com/telstra/open-kilda/pull/2591) Fix sync rules in case VxLAN encapsulation. [**storm-topologies**]
+-  [#2605](https://github.com/telstra/open-kilda/pull/2605) Add to FL getting of default rules such as they should be on the switch. [**floodlight**]
+-  [#2611](https://github.com/telstra/open-kilda/pull/2611) Add the default rules validation in the switch validation. [**northbound**][**storm-topologies**]
+-  [#2621](https://github.com/telstra/open-kilda/pull/2621) inPort and outPort are added as tags for the flow stats [**floodlight**][**storm-topologies**]
+
+### Bug Fixes:
+-  [#2628](https://github.com/telstra/open-kilda/pull/2628) Fix properly picking free port in swap endpoints test 
+-  [#2632](https://github.com/telstra/open-kilda/pull/2632) Fix flow create v2 issues +retries enhancement (Issue: [#2575](https://github.com/telstra/open-kilda/issues/2575)) [**floodlight**]
+-  [#2640](https://github.com/telstra/open-kilda/pull/2640) Make flow create retries configurable [**configuration**]
+-  [#2608](https://github.com/telstra/open-kilda/pull/2608) Limit traffexam bandwidth when examing in parallel [**tests**]
+-  [#2609](https://github.com/telstra/open-kilda/pull/2609) Move ExtensionModule file to 'main' to properly resolve in helpers [**tests**]
+-  [#2616](https://github.com/telstra/open-kilda/pull/2616) Fixed feature detection for E switches with 500 software (Issue: [#2615](https://github.com/telstra/open-kilda/issues/2615)) [**floodlight**]
+-  [#2618](https://github.com/telstra/open-kilda/pull/2618) Fix one of swap endpoints tests [**tests**]
+
+### Improvements:
+-  [#2627](https://github.com/telstra/open-kilda/pull/2627) Add workaround to switch validation logic regarding E-switches. (Issue: [#2562](https://github.com/telstra/open-kilda/issues/2562)) [**storm-topologies**]
+-  [#2583](https://github.com/telstra/open-kilda/pull/2583) Upd EnduranceSpec, add FlowPinger, add Dice for calling events randomly [**tests**]
+-  [#2606](https://github.com/telstra/open-kilda/pull/2606) add new endpoint for managing iptables rules on floodlight (Issue: [#1268](https://github.com/telstra/open-kilda/issues/1268)) [**tests**]
+-  [#2545](https://github.com/telstra/open-kilda/pull/2545) Update H&S reroute with encapsulation implementations 
+-  [#2617](https://github.com/telstra/open-kilda/pull/2617) add virtualImpl for managing floodlight access [**tests**]
+-  [#2623](https://github.com/telstra/open-kilda/pull/2623) Add default rules validation test and update existing validation tests [**tests**]
+-  [#2216](https://github.com/telstra/open-kilda/pull/2216) Create FloodlightDashboardLogger for logging OF events [**floodlight**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.28.0...v1.29.0).
+
+### Affected Components:
+fl, nb, swmanager, router, stats, flow, flow-hs
+
+### Upgrade notes:
+
+---
+
 ## v1.28.0 (23/07/2019)
 
 ### Features:
