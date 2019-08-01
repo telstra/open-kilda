@@ -91,7 +91,7 @@ public class FlowService {
      *
      * @return SwitchRelationData
      */
-    public List<FlowInfo> getAllFlows(List<String> statuses, boolean controller) {
+    public List<FlowInfo> getAllFlows(List<String> statuses) {
         List<FlowInfo> flows = new ArrayList<FlowInfo>();
         if (!CollectionUtil.isEmpty(statuses)) {
             statuses = statuses.stream().map((status) -> status.toLowerCase()).collect(Collectors.toList());
@@ -102,7 +102,6 @@ public class FlowService {
                 flows = new ArrayList<FlowInfo>();
             }
         }
-        if (!controller) {
             if (storeService.getLinkStoreConfig().getUrls().size() > 0) {
                 try {
                     UserInfo userInfo = userService.getLoggedInUserInfo();
@@ -123,7 +122,6 @@ public class FlowService {
                     LOGGER.error("Error occurred while retrieving flows from store", ex);
                 }
             }
-        }
         return flows;
     }
 
