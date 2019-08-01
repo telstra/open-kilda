@@ -170,7 +170,7 @@
           <li *ngIf="commonService.hasPermission('fw_permission_validate') && ((storeLinkSetting  && flowDetail.status)  || !(storeLinkSetting))" [ngClass]="{'active': openedTab == 'validate'}">
             <a href="javascript:void(0);" (click)="openTab('validate');">Validate</a>
           </li>
-          <li *ngIf="storeLinkSetting" [ngClass]="{'active': openedTab == 'contracts'}">
+          <li *ngIf="storeLinkSetting && commonService.hasPermission('fw_flow_contract') && commonService.hasPermission('fw_flow_inventory')" [ngClass]="{'active': openedTab == 'contracts'}">
             <a href="javascript:void(0);" (click)="openTab('contracts');">Contract</a>
           </li>
           <li *ngIf="storeLinkSetting && (bandWidthDescrepancy || statusDescrepancy)" [ngClass]="{'active': openedTab == 'descrepancy'}">
