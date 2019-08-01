@@ -49,7 +49,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   filterForm : FormGroup;
 
   constructor(private loaderService:LoaderService, private renderer: Renderer2,private router: Router,
-    private commonService: CommonService,
+    public commonService: CommonService,
     private clipboardService: ClipboardService,
     private formBuilder: FormBuilder) {
     this.wrapperHide = false;

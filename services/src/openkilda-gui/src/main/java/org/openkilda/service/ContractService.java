@@ -15,12 +15,15 @@
 
 package org.openkilda.service;
 
+import org.openkilda.constants.IConstants;
 import org.openkilda.integration.source.store.FlowStoreService;
 import org.openkilda.integration.source.store.dto.Contract;
 
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.usermanagement.model.UserInfo;
+import org.usermanagement.service.UserService;
 
 import java.util.List;
 
@@ -29,6 +32,9 @@ public class ContractService {
 
     @Autowired
     private FlowStoreService flowStoreService;
+
+    @Autowired
+    private UserService userService;
 
     private static final Logger LOGGER = Logger.getLogger(ContractService.class);
 
@@ -40,8 +46,14 @@ public class ContractService {
      */
     public List<Contract> getContracts(String linkId) {
         LOGGER.info("Inside ContractService method getContracts");
-        List<Contract> contracts = flowStoreService.getContracts(linkId);
-        return contracts;
+        UserInfo userInfo = userService.getLoggedInUserInfo();
+        if (userInfo.getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
+            if (userInfo.getPermissions().contains(IConstants.Permission.FW_FLOW_CONTRACT)) {
+                List<Contract> contracts = flowStoreService.getContracts(linkId);
+                return contracts;
+            }
+        }
+        return null;
     }
 
     /**

@@ -16,6 +16,7 @@
 package org.openkilda.service;
 
 import org.openkilda.constants.HttpError;
+import org.openkilda.constants.IConstants;
 import org.openkilda.dao.entity.SwitchNameEntity;
 import org.openkilda.dao.repository.SwitchNameRepository;
 import org.openkilda.integration.exception.IntegrationException;
@@ -41,8 +42,11 @@ import org.openkilda.store.service.StoreService;
 import org.openkilda.utility.StringUtil;
 
 import org.apache.log4j.Logger;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
 
 import java.util.ArrayList;
@@ -88,9 +92,12 @@ public class SwitchService {
         }
         if (storeConfigurationStatus && storeService.getSwitchStoreConfig().getUrls().size() > 0) {
             try {
-                List<InventorySwitch> inventorySwitches = new ArrayList<InventorySwitch>();
-                inventorySwitches = switchStoreService.getSwitches();
-                processInventorySwitch(switchInfo, inventorySwitches);
+                UserInfo userInfo = userService.getLoggedInUserInfo();
+                if (userInfo.getPermissions().contains(IConstants.Permission.SW_SWITCH_INVENTORY)) {
+                    List<InventorySwitch> inventorySwitches = new ArrayList<InventorySwitch>();
+                    inventorySwitches = switchStoreService.getSwitches();
+                    processInventorySwitch(switchInfo, inventorySwitches);
+                }
             } catch (Exception ex) {
                 LOGGER.error("Error occurred while retrieving switches from store", ex);
             }
@@ -107,22 +114,33 @@ public class SwitchService {
 
      */
     public SwitchInfo getSwitch(final String switchId) throws IntegrationException {
-        SwitchInfo switchInfo = switchIntegrationService.getSwitchesById(switchId);
+
+        SwitchInfo switchInfo = null;
+        try {
+            switchInfo = switchIntegrationService.getSwitchesById(switchId);
+        } catch (Exception ex) {
+            LOGGER.error(
+                    "Error occurred while retrieving switches from controller",
+                    ex);
+        }
         if (storeService.getSwitchStoreConfig().getUrls().size() > 0) {
             try {
-                InventorySwitch inventorySwitch = switchStoreService.getSwitch(switchId);
-                if (inventorySwitch != null) {
-                    switchInfo = processInventorySwitch(switchInfo, inventorySwitch);
-                } else {
-                    SwitchDiscrepancy discrepancy = new SwitchDiscrepancy();
-                    discrepancy.setControllerDiscrepancy(false);
-                    discrepancy.setStatus(true);
-                    discrepancy.setInventoryDiscrepancy(true);
+                UserInfo userInfo = userService.getLoggedInUserInfo();
+                if (userInfo.getPermissions().contains(IConstants.Permission.SW_SWITCH_INVENTORY)) {
+                    InventorySwitch inventorySwitch = switchStoreService.getSwitch(switchId);
+                    if (inventorySwitch != null) {
+                        switchInfo = processInventorySwitch(switchInfo, inventorySwitch);
+                    } else {
+                        SwitchDiscrepancy discrepancy = new SwitchDiscrepancy();
+                        discrepancy.setControllerDiscrepancy(false);
+                        discrepancy.setStatus(true);
+                        discrepancy.setInventoryDiscrepancy(true);
 
-                    SwitchStatus switchState = new SwitchStatus();
-                    switchState.setControllerStatus(switchInfo.getState());
-                    discrepancy.setStatusValue(switchState);
-                    switchInfo.setDiscrepancy(discrepancy);
+                        SwitchStatus switchState = new SwitchStatus();
+                        switchState.setControllerStatus(switchInfo.getState());
+                        discrepancy.setStatusValue(switchState);
+                        switchInfo.setDiscrepancy(discrepancy);
+                    }
                 }
             } catch (Exception ex) {
                 LOGGER.error("Error occurred while retrieving switches from store", ex);
@@ -498,4 +516,5 @@ public class SwitchService {
                 .updateLinkBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, linkMaxBandwidth);
         return linkBandwidthUpdate;
     }
+
 }

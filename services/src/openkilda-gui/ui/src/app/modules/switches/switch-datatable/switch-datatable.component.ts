@@ -6,6 +6,7 @@ import { Router } from '@angular/router';
 import { Switch } from 'src/app/common/data-models/switch';
 import { StoreSettingtService } from 'src/app/common/services/store-setting.service';
 import { ClipboardService } from 'ngx-clipboard';
+import { CommonService } from 'src/app/common/services/common.service';
 
 @Component({
   selector: 'app-switch-datatable',
@@ -35,6 +36,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
   constructor(private loaderService : LoaderService,
     private renderer: Renderer2, 
     private router:Router,
+    public commonService:CommonService,
     private storeSwitchService: StoreSettingtService,
     private clipboardService:ClipboardService
   ) { }
