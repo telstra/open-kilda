@@ -57,11 +57,31 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def flowInfo = northbound.getFlow(flow.id)
         flowInfo.encapsulationType == encapsulationCreate.toString().toLowerCase()
 
-        //TODO(andriidovhan) check rules(tunnel-id) when pr2503 is merged
+        and: "Correct rules are installed"
+        def vxlanRule = (flowInfo.encapsulationType == FlowEncapsulationType.VXLAN.toString().toLowerCase())
+        def flowInfoFromDb = database.getFlow(flow.id)
+        // ingressRule should contain "pushVxlan"
+        // egressRule should contain "tunnel-id"
+        with(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+            assert rules.find {
+                it.cookie == flowInfoFromDb.forwardPath.cookie.value
+            }.instructions.applyActions.pushVxlan as boolean == vxlanRule
+            assert rules.find {
+                it.cookie == flowInfoFromDb.reversePath.cookie.value
+            }.match.tunnelId as boolean == vxlanRule
+        }
 
-        //TODO(andriidovhan) uncomment when pr2530 is merged
-//        and: "Flow is valid"
-//        northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
+        with(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+            assert rules.find {
+                it.cookie == flowInfoFromDb.forwardPath.cookie.value
+            }.match.tunnelId as boolean == vxlanRule
+            assert rules.find {
+                it.cookie == flowInfoFromDb.reversePath.cookie.value
+            }.instructions.applyActions.pushVxlan as boolean == vxlanRule
+        }
+
+        and: "Flow is valid"
+        northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
 
         and: "The flow allows traffic"
         def traffExam = traffExamProvider.get()
@@ -86,9 +106,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def flowInfo2 = northbound.getFlow(flow.id)
         flowInfo2.encapsulationType == encapsulationUpdate.toString().toLowerCase()
 
-        //TODO(andriidovhan) uncomment when pr2530 is merged
-//        and: "Flow is valid"
-//        northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
+        and: "Flow is valid"
+        northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
 
         and: "The flow allows traffic"
         withPool {
@@ -104,7 +123,29 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         responsePing2.forward.pingSuccess
         responsePing2.reverse.pingSuccess
 
-        //TODO(andriidovhan) check rules(tunnel-id) when pr2503 is merged
+        and: "Rules are recreated"
+        def flowInfoFromDb2 = database.getFlow(flow.id)
+        [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value].sort() !=
+                [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value].sort()
+
+        and: "New rules are installed correctly"
+        with(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+            assert rules.find {
+                it.cookie == flowInfoFromDb2.forwardPath.cookie.value
+            }.instructions.applyActions.pushVxlan as boolean == !vxlanRule
+            assert rules.find {
+                it.cookie == flowInfoFromDb2.reversePath.cookie.value
+            }.match.tunnelId as boolean == !vxlanRule
+        }
+
+        with(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+            assert rules.find {
+                it.cookie == flowInfoFromDb2.forwardPath.cookie.value
+            }.match.tunnelId as boolean == !vxlanRule
+            assert rules.find {
+                it.cookie == flowInfoFromDb2.reversePath.cookie.value
+            }.instructions.applyActions.pushVxlan as boolean == !vxlanRule
+        }
 
         and: "Cleanup: Delete the flow"
         flowHelper.deleteFlow(flow.id)
@@ -166,18 +207,43 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def flowPathInfo = northbound.getFlowPath(flow.id)
         flowPathInfo.protectedPath
         northbound.getFlow(flow.id).flowStatusDetails
-        def flowInfoFromDb = database.getFlow(flow.id)
-        def protectedForwardCookie = flowInfoFromDb.protectedForwardPath.cookie.value
-        def protectedReverseCookie = flowInfoFromDb.protectedReversePath.cookie.value
 
         and: "Rules for main and protected paths are created"
-        Wrappers.wait(WAIT_OFFSET * 2) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
+        Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
+        def flowInfoFromDb = database.getFlow(flow.id)
+        // ingressRule should contain "pushVxlan"
+        // egressRule should contain "tunnel-id"
+        // protected path creates engressRule
+        def protectedForwardCookie = flowInfoFromDb.protectedForwardPath.cookie.value
+        def protectedReverseCookie = flowInfoFromDb.protectedReversePath.cookie.value
+        with(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+            assert rules.find {
+                it.cookie == flowInfoFromDb.forwardPath.cookie.value
+            }.instructions.applyActions.pushVxlan
+            assert rules.find {
+                it.cookie == flowInfoFromDb.reversePath.cookie.value
+            }.match.tunnelId
+            assert rules.find {
+                it.cookie == flowInfoFromDb.protectedReversePath.cookie.value
+            }.match.tunnelId
+        }
 
-        //TODO(andriidovhan) uncomment when pr2530 is merged
-//        and: "Validation of flow must be successful"
-//        northbound.validateFlow(flow.id).each { direction ->
-//            assert direction.discrepancies.empty
-//        }
+        with(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+            assert rules.find {
+                it.cookie == flowInfoFromDb.forwardPath.cookie.value
+            }.match.tunnelId
+            assert rules.find {
+                it.cookie == flowInfoFromDb.reversePath.cookie.value
+            }.instructions.applyActions.pushVxlan
+            assert rules.find {
+                it.cookie == flowInfoFromDb.protectedForwardPath.cookie.value
+            }.match.tunnelId
+        }
+
+        and: "Validation of flow must be successful"
+        northbound.validateFlow(flow.id).each { direction ->
+            assert direction.discrepancies.empty
+        }
 
         when: "Update flow: disable protected path(allocateProtectedPath=false)"
         def protectedFlowPath = northbound.getFlowPath(flow.id).protectedPath.forwardPath
@@ -197,11 +263,43 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             }
         }
 
-          //TODO(andriidovhan) uncomment when pr2530 is merged
-//        and: "Validation of flow must be successful"
-//        northbound.validateFlow(flow.id).each { direction ->
-//            assert direction.discrepancies.empty
-//        }
+        and: "Rules for protected path are deleted"
+        Wrappers.wait(WAIT_OFFSET) {
+            protectedFlowPath.each { sw ->
+                def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
+                    !Cookie.isDefaultRule(it.cookie)
+                }
+                assert rules.every { it != protectedForwardCookie && it != protectedReverseCookie }
+            }
+        }
+        def flowInfoFromDb2 = database.getFlow(flow.id)
+
+        and: "Rules for main path are recreated"
+        [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value].sort() !=
+                [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value].sort()
+
+        with(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+            assert rules.find {
+                it.cookie == flowInfoFromDb2.forwardPath.cookie.value
+            }.instructions.applyActions.pushVxlan
+            assert rules.find {
+                it.cookie == flowInfoFromDb2.reversePath.cookie.value
+            }.match.tunnelId
+        }
+
+        with(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+            assert rules.find {
+                it.cookie == flowInfoFromDb2.forwardPath.cookie.value
+            }.match.tunnelId
+            assert rules.find {
+                it.cookie == flowInfoFromDb2.reversePath.cookie.value
+            }.instructions.applyActions.pushVxlan
+        }
+
+        and: "Validation of flow must be successful"
+        northbound.validateFlow(flow.id).each { direction ->
+            assert direction.discrepancies.empty
+        }
 
         and: "Cleanup: Delete the flow and reset costs"
         flowHelper.deleteFlow(flow.id)
@@ -343,7 +441,17 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def flowInfo1 = northbound.getFlow(flow.id)
         flowInfo1.encapsulationType == encapsulationCreate.toString().toLowerCase()
 
-        //TODO(andriidovhan) check rules (tunnel-id) when pr2503 is merged
+        and: "Correct rules are installed"
+        def flowInfoFromDb = database.getFlow(flow.id)
+        // vxlan rules are not creating for a one-switch flow
+        with(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
+            assert !rules.find {
+                it.cookie == flowInfoFromDb.forwardPath.cookie.value
+            }.instructions.applyActions.pushVxlan
+            assert !rules.find {
+                it.cookie == flowInfoFromDb.reversePath.cookie.value
+            }.match.tunnelId
+        }
 
         and: "Flow is valid"
         northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
@@ -368,7 +476,20 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         responsePing2.forward.pingSuccess
         responsePing2.reverse.pingSuccess
 
-        //TODO(andriidovhan) check rules(tunnel-id) when pr2503 is merged
+        and: "Rules are recreated"
+        def flowInfoFromDb2 = database.getFlow(flow.id)
+        [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value].sort() !=
+                [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value].sort()
+
+        and: "New rules are installed correctly"
+        with(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
+            assert !rules.find {
+                it.cookie == flowInfoFromDb2.forwardPath.cookie.value
+            }.instructions.applyActions.pushVxlan
+            assert !rules.find {
+                it.cookie == flowInfoFromDb2.reversePath.cookie.value
+            }.match.tunnelId
+        }
 
         and: "Cleanup: Delete the flow"
         flowHelper.deleteFlow(flow.id)

@@ -1065,9 +1065,8 @@ switches"() {
         verifyEndpoints(response, flow1Src, flow1Dst, flow2Src, flow2Dst)
         verifyEndpoints(flow1.id, flow2.id, flow1Src, flow1Dst, flow2Src, flow2Dst)
 
-        //TODO(andriidovhan) uncomment when pr2503 is merged
-//        and: "Flows validation doesn't show any discrepancies"
-//        validateFlows(flow1, flow2)
+        and: "Flows validation doesn't show any discrepancies"
+        validateFlows(flow1, flow2)
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(switchPair)
