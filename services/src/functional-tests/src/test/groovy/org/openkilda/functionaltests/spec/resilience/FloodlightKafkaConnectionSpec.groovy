@@ -3,14 +3,18 @@ package org.openkilda.functionaltests.spec.resilience
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.payload.flow.FlowState
 
 import org.springframework.beans.factory.annotation.Value
 
 import java.util.concurrent.TimeUnit
 
 class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
+    static final int PERIODIC_SYNC_TIME = 60
+
     @Value('${floodlight.alive.timeout}')
     int floodlightAliveTimeout
 
@@ -19,7 +23,9 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
     def "System survives temporary connection outage between Floodlight and Kafka"() {
         when: "Controller loses connection to Kafka"
+        def flOut = false
         lockKeeper.knockoutFloodlight()
+        flOut = true
 
         then: "Right before controller alive timeout switches are still active and links are discovered"
         double interval = floodlightAliveTimeout * 0.4
@@ -41,19 +47,27 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
         when: "Controller restores connection to Kafka"
         lockKeeper.reviveFloodlight()
+        flOut = false
 
         then: "All links are discovered and switches become active"
         northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        Wrappers.wait(floodlightAliveInterval + WAIT_OFFSET) {
+        Wrappers.wait(PERIODIC_SYNC_TIME) {
             assert northbound.activeSwitches.size() == topology.activeSwitches.size()
         }
 
-        and: "System is able to successfully create a flow"
+        and: "System is able to successfully create a valid flow"
         def flow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
-        flowHelper.addFlow(flow)
+        northbound.addFlow(flow)
+        Wrappers.wait(WAIT_OFFSET * 2) { //it takes longer than usual in these conditions. why?
+            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
+            northbound.validateFlow(flow.id).each { assert it.asExpected }
+        }
 
         and: "Cleanup: remove the flow"
         flowHelper.deleteFlow(flow.id)
+
+        cleanup:
+        flOut && lockKeeper.reviveFloodlight()
     }
 
     def "System can detect switch changes if they happen while Floodlight was disconnected after it reconnects"() {

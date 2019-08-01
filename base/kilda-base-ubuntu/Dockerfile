@@ -45,6 +45,7 @@ RUN chmod 777 /app/* \
         make \
         apt-transport-https \
         openjdk-8-jdk \
+        iptables \
     && pip install --upgrade pip \
     && python -m pip install setuptools \
     && echo "export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> ~/.bashrc \
