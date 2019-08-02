@@ -11,6 +11,7 @@ import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.labservice.LabService
+import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 
 import groovy.util.logging.Slf4j
@@ -33,6 +34,9 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
 
     @Autowired
     LabService labService
+
+    @Autowired
+    LockKeeperService lockKeeper
 
     @Value('${spring.profiles.active}')
     String profile
@@ -68,6 +72,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
                 .flowsRerouteOnIslDiscoveryEnabled(true)
                 .useBfdForIslIntegrityCheck(true)
                 .flowsRerouteViaFlowHs(useHs)
+                .floodlightRoutePeriodicSync(true)
                 .build()
         northbound.toggleFeature(features)
 

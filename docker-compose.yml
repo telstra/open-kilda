@@ -255,6 +255,8 @@ services:
         condition: service_healthy
       logstash:
         condition: service_started
+    cap_add:
+      - NET_ADMIN
     networks:
       default:
         aliases:
@@ -280,6 +282,8 @@ services:
         condition: service_healthy
       logstash:
         condition: service_started
+    cap_add:
+      - NET_ADMIN
     networks:
       default:
         aliases:

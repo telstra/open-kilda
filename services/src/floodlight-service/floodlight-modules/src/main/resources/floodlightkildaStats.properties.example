@@ -64,8 +64,6 @@ org.openkilda.floodlight.KafkaChannel.environment-naming-prefix=
 org.openkilda.floodlight.KafkaChannel.bootstrap-servers=kafka.pendev:9092
 #org.openkilda.floodlight.KafkaChannel.heart-beat-interval=1
 
-org.openkilda.floodlight.KafkaChannel.testing-mode=YES
-
 org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-executors=20
 org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-disco-executors=20
 #org.openkilda.floodlight.kafka.KafkaMessageCollector.consumer-auto-commit-interval=1000
