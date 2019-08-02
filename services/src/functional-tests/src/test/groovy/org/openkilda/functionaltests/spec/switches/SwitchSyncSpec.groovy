@@ -1,10 +1,14 @@
 package org.openkilda.functionaltests.spec.switches
 
-import org.openkilda.model.Cookie
+import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
 import org.openkilda.functionaltests.BaseSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.Message
 import org.openkilda.messaging.command.CommandData
@@ -12,19 +16,18 @@ import org.openkilda.messaging.command.CommandMessage
 import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.command.flow.InstallTransitFlow
 import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.model.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.OutputVlanType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Unroll
-
-import static org.junit.Assume.assumeTrue
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
-import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 
 class SwitchSyncSpec extends BaseSpecification {
 
@@ -209,6 +212,72 @@ class SwitchSyncSpec extends BaseSpecification {
                 }
             }
         }
+
+        and: "Delete the flow"
+        flowHelper.deleteFlow(flow.id)
+    }
+
+    @Ignore("sync is not working yet, fix in pr2591")
+    @Tags(HARDWARE)
+    def "Able to synchronize switch with 'vxlan' rule(install missing rules and meters)"() {
+        given: "Two active Noviflow switches"
+        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.src.noviflow && it.dst.noviflow }
+
+        and: "Create a flow with vxlan encapsulation"
+        def flow = flowHelper.randomFlow(switchPair)
+        flow.encapsulationType = FlowEncapsulationType.VXLAN
+        flowHelper.addFlow(flow)
+
+        and: "Reproduce situation when switches have missing rules and meters"
+        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
+        def cookiesMap = involvedSwitches.collectEntries { sw ->
+            [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
+                !(it.cookie in sw.defaultCookies)
+            }*.cookie]
+        }
+        def metersMap = involvedSwitches.collectEntries { sw ->
+            [sw.dpId, northbound.getAllMeters(sw.dpId).meterEntries.findAll {
+                it.meterId > MAX_SYSTEM_RULE_METER_ID
+            }*.meterId]
+        }
+
+        involvedSwitches.each { northbound.deleteSwitchRules(it.dpId, DeleteRulesAction.IGNORE_DEFAULTS) }
+        [switchPair.src, switchPair.dst].each { northbound.deleteMeter(it.dpId, metersMap[it.dpId][0]) }
+        Wrappers.wait(RULES_DELETION_TIME) {
+            def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
+            involvedSwitches.each { assert validationResultsMap[it.dpId].rules.missing.size() == 2 }
+            [switchPair.src, switchPair.dst].each { assert validationResultsMap[it.dpId].meters.missing.size() == 1 }
+        }
+
+        when: "Try to synchronize all switches"
+        def syncResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.synchronizeSwitch(it.dpId, false)] }
+
+        then: "System detects missing rules and meters, then installs them"
+        involvedSwitches.each {
+            assert syncResultsMap[it.dpId].rules.proper.size() == 0
+            assert syncResultsMap[it.dpId].rules.excess.size() == 0
+            assert syncResultsMap[it.dpId].rules.missing.containsAll(cookiesMap[it.dpId])
+            assert syncResultsMap[it.dpId].rules.removed.size() == 0
+            assert syncResultsMap[it.dpId].rules.installed.containsAll(cookiesMap[it.dpId])
+        }
+        [switchPair.src, switchPair.dst].each {
+            assert syncResultsMap[it.dpId].meters.proper.size() == 0
+            assert syncResultsMap[it.dpId].meters.excess.size() == 0
+            assert syncResultsMap[it.dpId].meters.missing*.meterId == metersMap[it.dpId]
+            assert syncResultsMap[it.dpId].meters.removed.size() == 0
+            assert syncResultsMap[it.dpId].meters.installed*.meterId == metersMap[it.dpId]
+        }
+
+        and: "Switch validation doesn't complain about missing rules and meters"
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            involvedSwitches.each {
+                def validationResult = northbound.validateSwitch(it.dpId)
+                assert validationResult.rules.missing.size() == 0
+                assert validationResult.meters.missing.size() == 0
+            }
+        }
+
+        //TODO(andriidovhan) verify that synced rules are indeed vxlan rules when pr2503 is merged
 
         and: "Delete the flow"
         flowHelper.deleteFlow(flow.id)

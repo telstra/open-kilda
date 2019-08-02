@@ -1,12 +1,14 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
@@ -18,6 +20,7 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -1040,6 +1043,47 @@ switches"() {
 
         and: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+    }
+
+    @Unroll
+    @Tags(HARDWARE)
+    def "Able to swap endpoints (#description) for two vxlan flows with the same source and destination switches"() {
+        given: "Two flows with the same source and destination switches"
+        flow1.encapsulationType = FlowEncapsulationType.VXLAN
+        flow2.encapsulationType = FlowEncapsulationType.VXLAN
+        flowHelper.addFlow(flow1)
+        flowHelper.addFlow(flow2)
+
+        when: "Try to swap endpoints for flows"
+        def response = northbound.swapFlowEndpoint(
+                new SwapFlowPayload(flow1.id, flowHelper.toFlowEndpointV2(flow1Src),
+                        flowHelper.toFlowEndpointV2(flow1Dst)),
+                new SwapFlowPayload(flow2.id, flowHelper.toFlowEndpointV2(flow2Src),
+                        flowHelper.toFlowEndpointV2(flow2Dst)))
+
+        then: "Endpoints are successfully swapped"
+        verifyEndpoints(response, flow1Src, flow1Dst, flow2Src, flow2Dst)
+        verifyEndpoints(flow1, flow2, flow1Src, flow1Dst, flow2Src, flow2Dst)
+
+        //TODO(andriidovhan) uncomment when pr2503 is merged
+//        and: "Flows validation doesn't show any discrepancies"
+//        validateFlows(flow1, flow2)
+
+        and: "Switch validation doesn't show any missing/excess rules and meters"
+        validateSwitches(switchPair)
+
+        and: "Delete flows"
+        [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
+
+        where:
+        description << ["src1 <-> src2", "dst1 <-> dst2"]
+        switchPair << [getTopologyHelper().getAllNeighboringSwitchPairs().find { it.src.noviflow && it.dst.noviflow }] * 2
+        flow1 << [getFirstFlow(switchPair, switchPair)] * 2
+        flow2 << [getSecondFlow(switchPair, switchPair, flow1)] * 2
+        [flow1Src, flow1Dst, flow2Src, flow2Dst] << [
+                [flow2.source, flow1.destination, flow1.source, flow2.destination],
+                [flow1.source, flow2.destination, flow2.source, flow1.destination]
+        ]
     }
 
     void verifyEndpoints(response, FlowEndpointPayload flow1SrcExpected, FlowEndpointPayload flow1DstExpected,
