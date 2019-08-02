@@ -100,7 +100,7 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
 
     @Override
     protected void init() {
-        service = new NetworkSwitchService(this, persistenceManager, options.getBfdLogicalPortOffset());
+        service = new NetworkSwitchService(this, persistenceManager, options);
     }
 
     @Override
