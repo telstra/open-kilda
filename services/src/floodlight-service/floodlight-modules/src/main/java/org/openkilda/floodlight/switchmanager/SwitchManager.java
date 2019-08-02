@@ -551,10 +551,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         Optional.ofNullable(buildRoundTripLatencyFlow(sw)).ifPresent(flows::add);
 
         ArrayList<OFAction> actionListUnicastVxlanRule = new ArrayList<>();
-        OFInstructionMeter meter = buildMeterInstructionForUnicastVxlanRule(sw, actionListUnicastVxlanRule);
-        Optional.ofNullable(buildUnicastVerificationRuleVxlan(sw, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE,
-                meter, actionListUnicastVxlanRule)).ifPresent(flows::add);
-
+        if (featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
+            OFInstructionMeter meter = buildMeterInstructionForUnicastVxlanRule(sw, actionListUnicastVxlanRule);
+            Optional.ofNullable(buildUnicastVerificationRuleVxlan(sw, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE,
+                    meter, actionListUnicastVxlanRule)).ifPresent(flows::add);
+        }
         return flows;
     }
 
@@ -872,6 +873,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public void installUnicastVerificationRuleVxlan(final DatapathId dpid) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
 
+        // NOTE(tdurakov): reusing copy field feature here, since only switches with it supports pop/push vxlan's
+        // should be replaced with fair feature detection based on ActionId's during handshake
+        if (!featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
+            logger.debug("Skip installation of unicast verification vxlan rule for switch {}", dpid);
+            return;
+        }
+
         ArrayList<OFAction> actionList = new ArrayList<>();
         long cookie = VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
         long meterId = createMeterIdForDefaultRule(cookie).getValue();
@@ -879,24 +887,13 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFInstructionMeter meter = installMeterForDefaultRule(sw, meterId, meterRate, actionList);
 
         OFFlowMod flowMod = buildUnicastVerificationRuleVxlan(sw, cookie, meter, actionList);
-
-        if (flowMod == null) {
-            logger.debug("Skip installation of unicast verification vxlan rule for switch {}", dpid);
-        } else {
-            String flowname = "Unicast Vxlan";
-            flowname += "--VerificationFlowVxlan--" + dpid.toString();
-            pushFlow(sw, flowname, flowMod);
-        }
+        String flowname = "Unicast Vxlan";
+        flowname += "--VerificationFlowVxlan--" + dpid.toString();
+        pushFlow(sw, flowname, flowMod);
     }
 
     private OFFlowMod buildUnicastVerificationRuleVxlan(IOFSwitch sw, long cookie, OFInstructionMeter meter,
                                                         ArrayList<OFAction> actionList) {
-        // NOTE(tdurakov): reusing copy field feature here, since only switches with it supports pop/push vxlan's
-        // should be replaced with fair feature detection based on ActionId's during handshake
-        if (!featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
-            return null;
-        }
-
         OFFactory ofFactory = sw.getOFFactory();
         actionList.add(ofFactory.actions().noviflowPopVxlanTunnel());
         actionList.add(actionSendToController(sw));
