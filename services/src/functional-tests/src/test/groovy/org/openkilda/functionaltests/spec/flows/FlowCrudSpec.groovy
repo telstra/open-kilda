@@ -661,7 +661,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def sw = topology.getActiveSwitches().first()
         def flow = flowHelper.singleSwitchFlow(sw)
         flow.maximumBandwidth = bandwidth
-        flow.ignoreBandwidth = (bandwidth == 0) ? true : false
+        flow.ignoreBandwidth = bandwidth == 0
         flow.pinned = true
         flowHelper.addFlow(flow)
 
@@ -692,7 +692,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = bandwidth
-        flow.ignoreBandwidth = (bandwidth == 0) ? true : false
+        flow.ignoreBandwidth = bandwidth == 0
         flow.pinned = true
         flowHelper.addFlow(flow)
 

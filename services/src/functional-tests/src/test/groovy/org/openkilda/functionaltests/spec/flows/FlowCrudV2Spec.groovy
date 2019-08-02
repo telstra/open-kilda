@@ -3,7 +3,6 @@ package org.openkilda.functionaltests.spec.flows
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
@@ -36,7 +35,6 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -429,7 +427,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         }
     }
 
-    @Ignore("Should be fixed after first H&S deployment")
     @Unroll
     def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {
         given: "An isl"
@@ -465,7 +462,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         ]
     }
 
-    @Ignore("Should be fixed after first H&S deployment")
     def "Unable to create a flow on an isl port when ISL status is FAILED"() {
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -489,7 +485,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
     }
 
-    @Ignore("Should be fixed after first H&S deployment")
     def "Unable to create a flow on an isl port when ISL status is MOVED"() {
         given: "An inactive isl with moved state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -519,33 +514,285 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2576")
-    @Tags(VIRTUAL)
-    def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
-        given: "A deactivated switch"
+    @Unroll
+    def "Able to CRUD unmetered one-switch pinned flow"() {
+        when: "Create a flow"
         def sw = topology.getActiveSwitches().first()
+        def flow = flowHelperV2.singleSwitchFlow(sw)
+        flow.maximumBandwidth = 0
+        flow.ignoreBandwidth = true
+        flow.pinned = true
+        flowHelperV2.addFlow(flow)
+
+        then: "Pinned flow is created"
+        def flowInfo = northbound.getFlow(flow.flowId)
+        flowInfo.pinned
+
+        when: "Update the flow (pinned=false)"
+        northbound.updateFlow(flowInfo.id, flowInfo.tap { it.pinned = false })
+
+        then: "The pinned option is disabled"
+        def newFlowInfo = northbound.getFlow(flow.flowId)
+        !newFlowInfo.pinned
+        flowInfo.lastUpdated < newFlowInfo.lastUpdated
+
+        and: "Cleanup: Delete the flow"
+        flowHelper.deleteFlow(flow.flowId)
+    }
+
+    @Unroll
+    def "Able to CRUD pinned flow"() {
+        when: "Create a flow"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flow.pinned = true
+        flowHelperV2.addFlow(flow)
+
+        then: "Pinned flow is created"
+        def flowInfo = northbound.getFlow(flow.flowId)
+        flowInfo.pinned
+
+        when: "Update the flow (pinned=false)"
+        northbound.updateFlow(flowInfo.id, flowInfo.tap { it.pinned = false })
+
+        then: "The pinned option is disabled"
+        def newFlowInfo = northbound.getFlow(flow.flowId)
+        !newFlowInfo.pinned
+        flowInfo.lastUpdated < newFlowInfo.lastUpdated
+
+        and: "Cleanup: Delete the flow"
+        flowHelper.deleteFlow(flow.flowId)
+    }
+
+    def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
+        given: "Disconnected switch"
+        def sw = topology.getActiveSwitches()[0]
         def swIsls = topology.getRelatedIsls(sw)
         lockKeeper.knockoutSwitch(sw)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
         }
 
-        when: "Create a flow"
+        when: "Try to create a one-switch flow on a deactivated switch"
         def flow = flowHelperV2.singleSwitchFlow(sw)
         northboundV2.addFlow(flow)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch $sw.dpId not found"
+        exc.rawStatusCode == 400
+        exc.responseBodyAsString.to(MessageError).errorMessage == "Could not create flow: Source switch $sw.dpId and " +
+                "Destination switch $sw.dpId are not connected to the controller"
 
-        and: "Cleanup: Activate the switch and reset costs"
+        and: "Cleanup: Connect switch back to the controller"
         lockKeeper.reviveSwitch(sw)
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
             def links = northbound.getAllLinks()
             swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
+    }
+
+    def "System allows to CRUD protected flow"() {
+        given: "Two active not neighboring switches with two diverse paths at least"
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
+            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
+        } ?: assumeTrue("No suiting switches found", false)
+
+        when: "Create flow with protected path"
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flow.allocateProtectedPath = true
+        flowHelperV2.addFlow(flow)
+
+        then: "Flow is created with protected path"
+        def flowPathInfo = northbound.getFlowPath(flow.flowId)
+        flowPathInfo.protectedPath
+        def flowInfo = northbound.getFlow(flow.flowId)
+        flowInfo.flowStatusDetails
+
+        and: "Rules for main and protected paths are created"
+        Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.flowId) }
+
+        and: "Validation of flow must be successful"
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.discrepancies.empty }
+
+        when: "Update flow: disable protected path(allocateProtectedPath=false)"
+        def flowInfoFromDb = database.getFlow(flow.flowId)
+        def protectedForwardCookie = flowInfoFromDb.protectedForwardPath.cookie.value
+        def protectedReverseCookie = flowInfoFromDb.protectedReversePath.cookie.value
+        def protectedFlowPath = northbound.getFlowPath(flow.flowId).protectedPath.forwardPath
+        northbound.updateFlow(flowInfo.id, flowInfo.tap { it.allocateProtectedPath = false })
+
+        then: "Protected path is disabled"
+        !northbound.getFlowPath(flow.flowId).protectedPath
+        !northbound.getFlow(flow.flowId).flowStatusDetails
+
+        and: "Rules for protected path are deleted"
+        Wrappers.wait(WAIT_OFFSET) {
+            protectedFlowPath.each { sw ->
+                def rules = northbound.getSwitchRules(sw.switchId).flowEntries.findAll {
+                    !Cookie.isDefaultRule(it.cookie)
+                }
+                assert rules.every { it != protectedForwardCookie && it != protectedReverseCookie }
+            }
+        }
+
+        and: "Cleanup: delete the flow"
+        flowHelper.deleteFlow(flow.flowId)
+    }
+
+    def "System allows to create diverse flows"() {
+        given: "Two active not neighboring switches with three diverse paths at least"
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
+            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
+        } ?: assumeTrue("No suiting switches found", false)
+
+        when: "Create three flows with diversity enabled"
+        def flow1 = flowHelperV2.randomFlow(switchPair, false)
+        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.flowId }
+        def flow3 = flowHelperV2.randomFlow(switchPair, false, [flow1, flow2]).tap { it.diverseFlowId = flow2.flowId }
+        [flow1, flow2, flow3].each { flowHelperV2.addFlow(it) }
+
+        then: "All flows have diverse flow IDs in response"
+        northbound.getFlow(flow1.flowId).diverseWith.sort() == [flow2.flowId, flow3.flowId].sort()
+        northbound.getFlow(flow2.flowId).diverseWith.sort() == [flow1.flowId, flow3.flowId].sort()
+        northbound.getFlow(flow3.flowId).diverseWith.sort() == [flow1.flowId, flow2.flowId].sort()
+
+        and: "All flows have different paths"
+        def allInvolvedIsls = [flow1, flow2, flow3].collectMany {
+            pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(it.flowId)))
+        }
+        allInvolvedIsls.unique(false) == allInvolvedIsls
+
+        and: "Delete flows"
+        [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.flowId) }
+    }
+
+    def "System allows to set/update description/priority/max-latency for a flow"(){
+        given: "Two active neighboring switches"
+        def switchPair = topologyHelper.getNeighboringSwitchPair()
+
+        and: "Value for each field"
+        def initPriority = 100
+        def initMaxLatency = 200
+        def initDescription = "test description"
+        def initPeriodicPing = true
+
+        when: "Create a flow with predefined values"
+        def flow = flowHelperV2.randomFlow(switchPair)
+        flow.priority = initPriority
+        flow.maxLatency = initMaxLatency
+        flow.description = initDescription
+        flow.periodicPings = initPeriodicPing
+        flowHelperV2.addFlow(flow)
+
+        then: "Flow is created with needed values"
+        def flowInfo = northbound.getFlow(flow.flowId)
+        flowInfo.priority == initPriority
+        flowInfo.maxLatency == initMaxLatency
+        flowInfo.description == initDescription
+        flowInfo.periodicPings == initPeriodicPing
+
+        when: "Update predefined values"
+        def newPriority = 200
+        def newMaxLatency = 300
+        def newDescription = "test description updated"
+        def newPeriodicPing = false
+        flowInfo.priority = newPriority
+        flowInfo.maxLatency = newMaxLatency
+        flowInfo.description = newDescription
+        flowInfo.periodicPings = newPeriodicPing
+        northbound.updateFlow(flowInfo.id, flowInfo)
+
+        then: "Flow is updated correctly"
+        def newFlowInfo = northbound.getFlow(flow.flowId)
+        newFlowInfo.priority == newPriority
+        newFlowInfo.maxLatency == newMaxLatency
+        newFlowInfo.description == newDescription
+        newFlowInfo.periodicPings == newPeriodicPing
+
+        and: "Cleanup: Delete the flow"
+        flowHelper.deleteFlow(flow.flowId)
+    }
+
+    def "Systems allows to pass traffic via default and vlan flow when they are on the same port"() {
+        given: "At least 3 traffGen switches"
+        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
+        assumeTrue("Unable to find required switches in topology", (allTraffGenSwitches.size() > 2) as boolean)
+
+        when: "Create a vlan flow"
+        def (Switch srcSwitch, Switch dstSwitch) = allTraffGenSwitches
+        def bandwidth = 100
+        def vlanFlow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        vlanFlow.maximumBandwidth = bandwidth
+        vlanFlow.allocateProtectedPath = true
+        flowHelperV2.addFlow(vlanFlow)
+
+        and: "Create a default flow with the same srcSwitch and different dstSwitch"
+        Switch newDstSwitch = allTraffGenSwitches.find { it != dstSwitch && it != srcSwitch }
+        def defaultFlow = flowHelperV2.randomFlow(srcSwitch, newDstSwitch)
+        defaultFlow.maximumBandwidth = bandwidth
+        defaultFlow.source.vlanId = 0
+        defaultFlow.destination.vlanId = 0
+        defaultFlow.allocateProtectedPath = true
+        flowHelperV2.addFlow(defaultFlow)
+
+        then: "The default flow has less priority than the vlan flow"
+        def flowVlanPortInfo = database.getFlow(vlanFlow.flowId)
+        def flowFullPortInfo = database.getFlow(defaultFlow.flowId)
+
+        def rules = [srcSwitch.dpId, dstSwitch.dpId, newDstSwitch.dpId].collectEntries {
+            [(it): northbound.getSwitchRules(it).flowEntries]
+        }
+
+        // can't be imported safely org.openkilda.floodlight.switchmanager.SwitchManager.DEFAULT_FLOW_PRIORITY
+        def FLOW_PRIORITY = 24576
+        def DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1
+
+        [srcSwitch.dpId, dstSwitch.dpId].each { sw ->
+            [flowVlanPortInfo.forwardPath.cookie.value, flowVlanPortInfo.reversePath.cookie.value].each { cookie ->
+                assert rules[sw].find { it.cookie == cookie }.priority == FLOW_PRIORITY
+            }
+        }
+        // DEFAULT_FLOW_PRIORITY sets on an ingress rule only
+        rules[srcSwitch.dpId].find { it.cookie == flowFullPortInfo.reversePath.cookie.value }.priority == FLOW_PRIORITY
+        rules[newDstSwitch.dpId].find {
+            it.cookie == flowFullPortInfo.forwardPath.cookie.value
+        }.priority == FLOW_PRIORITY
+
+        rules[srcSwitch.dpId].find {
+            it.cookie == flowFullPortInfo.forwardPath.cookie.value
+        }.priority == DEFAULT_FLOW_PRIORITY
+        rules[newDstSwitch.dpId].find {
+            it.cookie == flowFullPortInfo.reversePath.cookie.value
+        }.priority == DEFAULT_FLOW_PRIORITY
+
+        and: "System allows traffic on the vlan flow"
+        def traffExam = traffExamProvider.get()
+        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
+                toFlowPayload(vlanFlow), bandwidth
+        )
+        withPool {
+            [exam.forward, exam.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
+        }
+
+        and: "System allows traffic on the default flow"
+        def exam2 = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
+                toFlowPayload(defaultFlow), 1000
+        )
+        withPool {
+            [exam2.forward, exam2.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
+        }
+
+        and: "Cleanup: Delete the flows"
+        [vlanFlow, defaultFlow].each { flow -> flowHelper.deleteFlow(flow.flowId) }
     }
 
     @Shared
