@@ -23,10 +23,9 @@ import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPairRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.TransitVlanRepository;
-import org.openkilda.persistence.repositories.VxlanRepository;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
 
 import lombok.extern.slf4j.Slf4j;
@@ -37,20 +36,17 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class BaseFlowService {
+    protected final FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
     protected final FlowResourcesManager flowResourcesManager;
     protected final TransactionManager transactionManager;
     protected final FlowRepository flowRepository;
     protected final FlowPairRepository flowPairRepository;
-    private final TransitVlanRepository transitVlanRepository;
-    private final VxlanRepository vxlanRepository;
 
     public BaseFlowService(PersistenceManager persistenceManager, FlowResourcesManager flowResourcesManager) {
         transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowRepository = repositoryFactory.createFlowRepository();
         flowPairRepository = repositoryFactory.createFlowPairRepository();
-        transitVlanRepository = repositoryFactory.createTransitVlanRepository();
-        vxlanRepository = repositoryFactory.createVxlanRepository();
         this.flowResourcesManager = flowResourcesManager;
     }
 
@@ -58,7 +54,12 @@ public class BaseFlowService {
         return flowRepository.exists(flowId);
     }
 
+    /**
+     * Fetch a path pair for the flow.
+     */
     public Optional<FlowPair> getFlowPair(String flowId) {
+        dashboardLogger.onFlowRead(flowId);
+
         return flowPairRepository.findById(flowId);
     }
 
@@ -68,6 +69,8 @@ public class BaseFlowService {
      * IMPORTANT: the method doesn't complete with flow paths and transit vlans!
      */
     public Collection<FlowPair> getFlows() {
+        dashboardLogger.onFlowDump();
+
         return flowRepository.findAll().stream()
                 .map(flow -> new FlowPair(flow, null, null))
                 .collect(Collectors.toList());

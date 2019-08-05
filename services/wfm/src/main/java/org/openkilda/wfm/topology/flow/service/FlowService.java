@@ -141,6 +141,8 @@ public class FlowService extends BaseFlowService {
     public FlowPair createFlow(Flow flow, String diverseFlowId, FlowCommandSender sender)
             throws RecoverableException, UnroutableFlowException, FlowAlreadyExistException, FlowValidationException,
             SwitchValidationException, FlowNotFoundException, ResourceAllocationException {
+        dashboardLogger.onFlowCreate(flow);
+
         flowValidator.validate(flow);
 
         if (doesFlowExist(flow.getFlowId())) {
@@ -244,6 +246,9 @@ public class FlowService extends BaseFlowService {
     public void saveFlow(FlowPair flowPair, FlowCommandSender sender) throws FlowAlreadyExistException,
             ResourceAllocationException {
         Flow flow = flowPair.getForward().getFlow();
+
+        dashboardLogger.onFlowPush(flow);
+
         String flowId = flow.getFlowId();
         if (doesFlowExist(flowId)) {
             throw new FlowAlreadyExistException(flowId);
@@ -292,6 +297,8 @@ public class FlowService extends BaseFlowService {
      * @return the deleted flow.
      */
     public UnidirectionalFlow deleteFlow(String flowId, FlowCommandSender sender) throws FlowNotFoundException {
+        dashboardLogger.onFlowDelete(flowId);
+
         List<FlowPathWithEncapsulation> result = transactionManager.doInTransaction(() -> {
             Flow flow = flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
@@ -347,6 +354,8 @@ public class FlowService extends BaseFlowService {
     public FlowPair updateFlow(Flow updatingFlow, String diverseFlowId, FlowCommandSender sender)
             throws RecoverableException, UnroutableFlowException, FlowNotFoundException, FlowValidationException,
             SwitchValidationException, ResourceAllocationException {
+        dashboardLogger.onFlowUpdate(updatingFlow);
+
         flowValidator.validate(updatingFlow);
 
         String flowId = updatingFlow.getFlowId();
@@ -458,6 +467,8 @@ public class FlowService extends BaseFlowService {
     public ReroutedFlowPaths rerouteFlow(String flowId, boolean forceToReroute, Set<PathId> pathIds,
                                          FlowCommandSender sender) throws RecoverableException, UnroutableFlowException,
             FlowNotFoundException, ResourceAllocationException {
+        dashboardLogger.onFlowPathReroute(flowId, pathIds, forceToReroute);
+
         RerouteResult result = null;
         try {
             result = (RerouteResult) getFailsafe().get(() ->
@@ -674,6 +685,8 @@ public class FlowService extends BaseFlowService {
 
             Flow flow = currentFlow.getFlow();
 
+            dashboardLogger.onFlowPathsSwap(flow);
+
             if (pathId != null && !(pathId.equals(flow.getForwardPathId()) || pathId.equals(flow.getReversePathId()))) {
                 throw new FlowValidationException(format("Requested pathId %s doesn't belongs to primary "
                         + "flow path for flow with id %s", pathId, flowId),
@@ -738,6 +751,8 @@ public class FlowService extends BaseFlowService {
      * @param status the status to set.
      */
     public void updateFlowStatus(String flowId, FlowStatus status, Set<PathId> pathIdSet) {
+        dashboardLogger.onFlowStatusUpdate(flowId, status);
+
         transactionManager.doInTransaction(() -> {
             flowRepository.updateStatus(flowId, status);
 
@@ -777,10 +792,8 @@ public class FlowService extends BaseFlowService {
             Flow flow = flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
             FlowStatus flowStatus = flow.computeFlowStatus();
-
             if (flowStatus != flow.getStatus()) {
-                log.debug("Set flow {} status to {}", flowId, flowStatus);
-
+                dashboardLogger.onFlowStatusUpdate(flowId, flowStatus);
                 flow.setStatus(flowStatus);
                 flowRepository.updateStatus(flow.getFlowId(), flowStatus);
             }
@@ -1291,6 +1304,8 @@ public class FlowService extends BaseFlowService {
     public List<FlowPair> swapFlowEnpoints(Flow firstFlow, Flow secondFlow, FlowCommandSender sender)
             throws FlowNotFoundException, FlowValidationException, ResourceAllocationException,
             UnroutableFlowException {
+        dashboardLogger.onFlowEndpointSwap(firstFlow, secondFlow);
+
         String firstFlowId = firstFlow.getFlowId();
         String secondFlowId = secondFlow.getFlowId();
 
