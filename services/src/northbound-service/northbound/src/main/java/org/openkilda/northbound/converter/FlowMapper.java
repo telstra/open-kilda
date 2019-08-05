@@ -22,7 +22,6 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.UniFlowPingResponse;
-import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.SwapFlowDto;
@@ -69,7 +68,7 @@ public interface FlowMapper {
      * @return {@link FlowResponsePayload} instance.
      */
     default FlowResponsePayload toFlowResponseOutput(FlowReadResponse r) {
-        FlowResponsePayload response = toFlowResponseOutput(r.getPayload().getForward());
+        FlowResponsePayload response = toFlowResponseOutput(r.getPayload());
         response.setDiverseWith(r.getDiverseWith());
         return response;
     }
@@ -130,7 +129,7 @@ public interface FlowMapper {
 
     @Mapping(source = "flowId", target = "id")
     @Mapping(source = "state", target = "status")
-    FlowIdStatusPayload toFlowIdStatusPayload(BidirectionalFlowDto flow);
+    FlowIdStatusPayload toFlowIdStatusPayload(FlowDto flow);
 
     @Mapping(target = "latency", source = "meters.networkLatency")
     UniFlowPingOutput toUniFlowPing(UniFlowPingResponse response);
