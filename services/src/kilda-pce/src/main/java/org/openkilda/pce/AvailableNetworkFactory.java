@@ -27,6 +27,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -105,14 +106,34 @@ public class AvailableNetworkFactory {
 
     private Collection<Isl> getAvailableIsls(BuildStrategy buildStrategy, Flow flow) {
         if (buildStrategy == BuildStrategy.COST) {
-            return flow.isIgnoreBandwidth() ? islRepository.findAllActive() :
+            Collection<Isl> isls = flow.isIgnoreBandwidth() ? islRepository.findAllActive() :
                     islRepository.findActiveWithAvailableBandwidth(flow.getBandwidth(), flow.getEncapsulationType());
+            validateIslsCost(isls);
+            return isls;
+
         } else if (buildStrategy == BuildStrategy.SYMMETRIC_COST) {
-            return flow.isIgnoreBandwidth() ? islRepository.findAllActive() :
+            Collection<Isl> isls = flow.isIgnoreBandwidth() ? islRepository.findAllActive() :
                     islRepository.findSymmetricActiveWithAvailableBandwidth(flow.getBandwidth(),
                             flow.getEncapsulationType());
+            validateIslsCost(isls);
+            return isls;
         } else {
             throw new UnsupportedOperationException(String.format("Unsupported buildStrategy type %s", buildStrategy));
+        }
+    }
+
+    private void validateIslsCost(Collection<Isl> isls) {
+        List<String> messages = new ArrayList<>();
+
+        for (Isl isl : isls) {
+            if (isl.getCost() < 0) {
+                messages.add(String.format("(%s_%d ===> %s_%d cost: %d)",
+                        isl.getSrcSwitch().getSwitchId(), isl.getSrcPort(), isl.getDestSwitch().getSwitchId(),
+                        isl.getDestPort(), isl.getCost()));
+            }
+        }
+        if (!messages.isEmpty()) {
+            log.error("Invalid network state. Following ISLs have negative costs: {}", String.join(", ", messages));
         }
     }
 
