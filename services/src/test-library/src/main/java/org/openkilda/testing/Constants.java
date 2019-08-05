@@ -23,6 +23,8 @@ import java.util.UUID;
 public final class Constants {
     public static final Integer DEFAULT_COST = 700;
     public static final Integer WAIT_OFFSET = 10;
+    public static final Integer PROTECTED_PATH_INSTALLATION_TIME = 20;
+    public static final Integer PATH_INSTALLATION_TIME = 15;
     public static final Integer TOPOLOGY_DISCOVERING_TIME = 120;
     public static final Integer SWITCHES_ACTIVATION_TIME = 10;
     public static final Integer RULES_DELETION_TIME = 7;

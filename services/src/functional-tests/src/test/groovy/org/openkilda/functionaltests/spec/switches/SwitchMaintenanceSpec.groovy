@@ -4,6 +4,7 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.DEFAULT_COST
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -100,9 +101,7 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
 
         then: "Flows are evacuated (rerouted)"
         def flow1PathUpdated, flow2PathUpdated
-        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
-        // Revise and fix the test appropriately.
-        Wrappers.wait(WAIT_OFFSET * 2) {
+        Wrappers.wait(PATH_INSTALLATION_TIME) {
             [flow1, flow2].each { assert northbound.getFlowStatus(it.id).status == FlowState.UP }
 
             flow1PathUpdated = PathHelper.convert(northbound.getFlowPath(flow1.id))
