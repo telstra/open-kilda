@@ -112,8 +112,7 @@ public class FlowCreateService {
         FlowCreateFsm fsm = fsms.get(key);
 
         if (fsm != null) {
-            fsm.fire(Event.TIMEOUT);
-
+            fsm.fireTimeout();
             removeIfFinished(fsm, key);
         }
     }

@@ -22,6 +22,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.IslRepository;
+import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
@@ -31,9 +32,10 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.ListUtils;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Stream;
 
 @Slf4j
 public class ResourcesDeallocationAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
@@ -59,40 +61,33 @@ public class ResourcesDeallocationAction extends FlowProcessingAction<FlowCreate
             return;
         }
 
-        FlowPath forwardPath = getFlowPath(stateMachine.getForwardPathId());
-        resourcesManager.deallocatePathResources(forwardPath.getPathId(),
-                forwardPath.getCookie().getUnmaskedValue(), flow.getEncapsulationType());
-        FlowPath reversePath = getFlowPath(stateMachine.getReversePathId());
-        resourcesManager.deallocatePathResources(reversePath.getPathId(),
-                reversePath.getCookie().getUnmaskedValue(), flow.getEncapsulationType());
-
-        if (flow.isAllocateProtectedPath()) {
-            FlowPath protectedForward = getFlowPath(stateMachine.getProtectedForwardPathId());
-            resourcesManager.deallocatePathResources(protectedForward.getPathId(),
-                    protectedForward.getCookie().getUnmaskedValue(), flow.getEncapsulationType());
-
-            FlowPath protectedReverse = getFlowPath(stateMachine.getProtectedReversePathId());
-            resourcesManager.deallocatePathResources(protectedReverse.getPathId(),
-                    protectedReverse.getCookie().getUnmaskedValue(), flow.getEncapsulationType());
-        }
-
-        List<PathSegment> segments =
-                ListUtils.union(flow.getForwardPath().getSegments(), flow.getReversePath().getSegments());
+        Collection<FlowResources> flowResources = stateMachine.getFlowResources();
         transactionManager.doInTransaction(() -> {
-            for (PathSegment pathSegment : segments) {
-                updateIslAvailableBandwidth(flow.getFlowId(), pathSegment.getSrcSwitch().getSwitchId(),
-                        pathSegment.getSrcPort(), pathSegment.getDestSwitch().getSwitchId(), pathSegment.getDestPort());
+            for (FlowResources resources : flowResources) {
+                resourcesManager.deallocatePathResources(resources);
+                FlowPath forward = getFlowPath(resources.getForward().getPathId());
+                FlowPath reverse = getFlowPath(resources.getReverse().getPathId());
+                Stream.of(forward, reverse)
+                        .peek(flowPathRepository::delete)
+                        .map(FlowPath::getSegments)
+                        .flatMap(List::stream)
+                        .forEach(segment -> updateIslAvailableBandwidth(stateMachine.getFlowId(), segment));
             }
         });
+        flowResources.clear();
+
+        saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
+                "Resources released successfully");
         log.debug("Flow resources have been deallocated for flow {}", flow.getFlowId());
     }
 
-    private void updateIslAvailableBandwidth(String flowId, SwitchId srcSwitchId, int srcPort,
-                                             SwitchId dstSwitchId, int dstPort) {
+    private void updateIslAvailableBandwidth(String flowId, PathSegment pathSegment) {
+        SwitchId srcSwitch = pathSegment.getSrcSwitch().getSwitchId();
+        SwitchId destSwitch = pathSegment.getDestSwitch().getSwitchId();
         long usedBandwidth = flowPathRepository.getUsedBandwidthBetweenEndpoints(
-                srcSwitchId, srcPort, dstSwitchId, dstPort);
+                srcSwitch, pathSegment.getSrcPort(), destSwitch, pathSegment.getDestPort());
 
-        islRepository.findByEndpoints(srcSwitchId, srcPort, dstSwitchId, dstPort)
+        islRepository.findByEndpoints(srcSwitch, pathSegment.getSrcPort(), destSwitch, pathSegment.getDestPort())
                 .ifPresent(isl -> {
                     isl.setAvailableBandwidth(isl.getMaxBandwidth() - usedBandwidth);
 

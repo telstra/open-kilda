@@ -93,6 +93,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
     // The amount of flow create operation retries left: that means how many retries may be executed.
     // NB: it differs from command execution retries amount.
     private int remainRetries;
+    private boolean timedOut;
 
     private FlowCreateFsm(String flowId, CommandContext commandContext, FlowCreateHubCarrier carrier, Config config) {
         super(commandContext);
@@ -110,12 +111,16 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
      * @return true if retry was triggered.
      */
     public boolean retryIfAllowed() {
-        if (remainRetries-- > 0) {
+        if (!timedOut && remainRetries-- > 0) {
             log.info("About to retry flow create. Retries left: {}", remainRetries);
             fire(Event.RETRY);
             return true;
         } else {
-            log.debug("Retry of flow creation is not possible: limit is exceeded");
+            if (timedOut) {
+                log.warn("Failed to create flow: operation timed out");
+            } else {
+                log.debug("Retry of flow creation is not possible: limit is exceeded");
+            }
             return false;
         }
     }
@@ -124,6 +129,11 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         if (!retryIfAllowed()) {
             fire(Event.NEXT);
         }
+    }
+
+    public void fireTimeout() {
+        timedOut = true;
+        fire(Event.TIMEOUT);
     }
 
     @Override
@@ -393,8 +403,9 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
 
             builder.transition()
                     .from(State._FAILED)
-                    .to(State.FLOW_VALIDATED)
-                    .on(Event.RETRY);
+                    .to(State.RESOURCES_ALLOCATED)
+                    .on(Event.RETRY)
+                    .perform(new ResourcesAllocationAction(pathComputer, persistenceManager, resourcesManager));
 
             builder.transitions()
                     .from(State._FAILED)
