@@ -55,14 +55,14 @@ public final class SpeakerCommandFsm extends WithContextStateMachine<SpeakerComm
                 log.debug("About to retry execution of the command {}", flowResponse);
                 fire(Event.RETRY);
             } else {
-                log.info("Failed to execute the command {}", flowResponse);
+                log.info("Failed to execute the flow command {}", flowResponse);
                 fire(Event.ERROR);
             }
         }
     }
 
     protected void sendCommand(State from, State to, Event event, FlowResponse flowResponse) {
-        log.debug("Sending command {} to a speaker", request);
+        log.debug("Sending a flow command {} to a speaker", request);
         carrier.sendSpeakerRequest(request);
     }
 

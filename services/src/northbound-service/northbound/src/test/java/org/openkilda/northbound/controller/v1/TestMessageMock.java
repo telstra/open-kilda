@@ -40,7 +40,6 @@ import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
-import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPathDto;
 import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
@@ -128,8 +127,7 @@ public class TestMessageMock implements MessagingChannel {
     private static final FlowResponse flowResponse = new FlowResponse(flowModel);
     private static final FlowResponse secondFlowResponse = new FlowResponse(secondFlowModel);
     static final SwapFlowResponse bulkFlowResponse = new SwapFlowResponse(flowResponse, secondFlowResponse);
-    static final FlowReadResponse FLOW_RESPONSE =
-            new FlowReadResponse(new BidirectionalFlowDto(flowModel, flowModel), null);
+    static final FlowReadResponse FLOW_RESPONSE = new FlowReadResponse(flowModel, null);
     static final GetFlowPathResponse FLOW_PATH_RESPONSE =
             new GetFlowPathResponse(FlowPathDto.builder()
                     .id(FLOW_ID)

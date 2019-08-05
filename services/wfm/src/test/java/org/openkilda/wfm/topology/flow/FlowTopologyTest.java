@@ -48,7 +48,6 @@ import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
-import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
@@ -491,7 +490,7 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowReadResponse infoData = (FlowReadResponse) infoMessage.getData();
         assertNotNull(infoData);
 
-        FlowDto flowTePayload = infoData.getPayload().getForward();
+        FlowDto flowTePayload = infoData.getPayload();
         assertEquals(flow, flowTePayload);
     }
 
@@ -704,10 +703,10 @@ public class FlowTopologyTest extends AbstractStormTest {
         FlowReadResponse flowResponse = (FlowReadResponse) message.getData();
         assertNotNull(flowResponse);
 
-        BidirectionalFlowDto flowPayload = flowResponse.getPayload();
+        FlowDto flowPayload = flowResponse.getPayload();
         assertNotNull(flowPayload);
         assertEquals(flowId, flowPayload.getFlowId());
-        return flowPayload.getForward().getState();
+        return flowPayload.getState();
     }
 
     private void checkErrorResponseType(ConsumerRecord<String, String> record, ErrorType type) throws IOException {

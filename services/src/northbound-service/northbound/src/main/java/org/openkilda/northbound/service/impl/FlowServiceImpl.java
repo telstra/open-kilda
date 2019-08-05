@@ -350,7 +350,6 @@ public class FlowServiceImpl implements FlowService {
                 .thenApply(result -> result.stream()
                         .map(FlowReadResponse.class::cast)
                         .map(FlowReadResponse::getPayload)
-                        .map(BidirectionalFlowDto::getForward)
                         .map(flowMapper::toFlowResponseOutput)
                         .collect(Collectors.toList()));
     }
