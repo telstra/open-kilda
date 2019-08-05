@@ -789,18 +789,17 @@ public class FlowService extends BaseFlowService {
 
     /**
      * Returns list of flows id in diverse group.
-     * @param flow the flow to get diverse group.
+     * @param flowId the flow to get diverse group.
+     * @param groupId the group of flows with which the target flow is diverse.
      * @return list of flows id.
      */
-    public List<String> getDiverseFlowsId(Flow flow) {
-        String groupId = flow.getGroupId();
-
+    public List<String> getDiverseFlowsId(String flowId, String groupId) {
         if (groupId == null) {
             return null;
         }
 
         return flowRepository.findFlowsIdByGroupId(groupId).stream()
-                .filter(id -> !id.equals(flow.getFlowId()))
+                .filter(id -> !id.equals(flowId))
                 .collect(Collectors.toList());
     }
 

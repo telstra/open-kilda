@@ -43,7 +43,6 @@ import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
 import org.openkilda.messaging.info.flow.FlowsResponse;
-import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
@@ -300,10 +299,8 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     }
 
     @Test
-    public void flowGetBidirectionalResponseTest() throws IOException, ClassNotFoundException {
-        FlowDto flow = FlowDto.builder().build();
-        BidirectionalFlowDto bidirectionalFlow = BidirectionalFlowDto.builder().forward(flow).reverse(flow).build();
-        FlowReadResponse data = new FlowReadResponse(bidirectionalFlow, Collections.singletonList(FLOW_NAME));
+    public void flowGetFlowReadResponseTest() throws IOException, ClassNotFoundException {
+        FlowReadResponse data = new FlowReadResponse(flowModel, Collections.singletonList(FLOW_NAME));
         System.out.println(data);
 
         InfoMessage info = new InfoMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION,
