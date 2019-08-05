@@ -79,6 +79,7 @@ public class OfFlowStatsMapperTest {
     public static final int dstOffset = 21;
     public static final long oxmSrcHeader = 22;
     public static final long oxmDstHeader = 23;
+    public static final TableId goToTable = TableId.of(24);
 
     @Test
     public void testToFlowStatsData() {
@@ -135,7 +136,7 @@ public class OfFlowStatsMapperTest {
                 .build();
         FlowApplyActions applyActions = new FlowApplyActions(port.toString(), flowSetFieldAction, ethType.toString(),
                 null, null, null, group.toString(), flowCopyFieldAction);
-        FlowInstructions instructions = new FlowInstructions(applyActions, null, meterId);
+        FlowInstructions instructions = new FlowInstructions(applyActions, null, meterId, goToTable.getValue());
         assertEquals(instructions, entry.getInstructions());
     }
 
@@ -187,6 +188,7 @@ public class OfFlowStatsMapperTest {
 
         instructions.add(factory.instructions().applyActions(actions));
         instructions.add(factory.instructions().buildMeter().setMeterId(meterId).build());
+        instructions.add(factory.instructions().gotoTable(goToTable));
 
         return instructions;
     }

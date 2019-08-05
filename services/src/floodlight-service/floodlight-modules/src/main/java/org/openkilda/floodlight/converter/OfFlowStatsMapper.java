@@ -46,6 +46,7 @@ import org.projectfloodlight.openflow.protocol.action.OFActionPushVlan;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstructionGotoTable;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
@@ -165,9 +166,14 @@ public abstract class OfFlowStatsMapper {
                 .map(instruction -> ((OFInstructionMeter) instruction).getMeterId())
                 .orElse(null);
 
+        Short table = Optional.ofNullable(instructionMap.get(OFInstructionType.GOTO_TABLE))
+                .map(instruction -> ((OFInstructionGotoTable) instruction).getTableId().getValue())
+                .orElse(null);
+
         return FlowInstructions.builder()
                 .applyActions(applyActions)
                 .goToMeter(meter)
+                .goToTable(table)
                 .build();
     }
 
