@@ -21,15 +21,15 @@ class HealthCheckSpecification extends BaseSpecification {
             Wrappers.wait(WAIT_OFFSET) {
                 assert northbound.activeSwitches.size() == topology.activeSwitches.size()
             }
-            links.findAll { it.state == IslChangeType.FAILED }.empty
+            links.findAll { it.state != IslChangeType.DISCOVERED }.empty
             def topoLinks = topology.islsForActiveSwitches.collectMany { isl ->
                 [islUtils.getIslInfo(links, isl).orElseThrow { new IslNotFoundException(isl.toString()) },
                  islUtils.getIslInfo(links, isl.reversed).orElseThrow {
                      new IslNotFoundException(isl.reversed.toString())
                  }]
             }
-            def missingLinks = links - topoLinks
-            missingLinks.empty
+            def missingLinks = links.findAll { it.state == IslChangeType.DISCOVERED } - topoLinks
+            assert missingLinks.empty, "These links are missing in topology.yaml"
             northbound.allFlows.empty
             northbound.allLinkProps.empty
         }

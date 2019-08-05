@@ -304,7 +304,7 @@ class FlowHelper {
             Wrappers.wait(timeout) {
                 try {
                     def result = northbound.getSwitchRules(sw).flowEntries*.cookie
-                    assert rulesPresent ? result.containsAll(cookies) : !result.any { it in cookies }
+                    assert rulesPresent ? result.containsAll(cookies) : !result.any { it in cookies }, sw
                 } catch (HttpClientErrorException exc) {
                     if (exc.rawStatusCode == 404) {
                         log.warn("Switch '$sw' was not found when checking rules after flow "

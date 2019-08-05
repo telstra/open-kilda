@@ -300,7 +300,6 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Unroll
-    @IterationTag(tags = [HARDWARE], iterationNameRegex = /bfd link/)
     def "Able to delete an inactive #islDescription link and re-discover it back afterwards"() {
         given: "An inactive link"
         assumeTrue("Unable to locate $islDescription ISL for this test", isl as boolean)

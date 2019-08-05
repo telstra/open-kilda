@@ -96,19 +96,14 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
         where:
         // It is impossible to understand whether ISL-free port is UP/DOWN on OF_12 switches.
         // Such switches always have 'config: []'.
-        sw << uniqueSwitches.findAll { it.ofVersion != "OF_12" }
+        //also, ban WB5164 due to #2636
+        sw << getTopology().getActiveSwitches().unique { sw -> sw.description }
+                           .findAll { it.ofVersion != "OF_12" && !it.wb5164 }
     }
 
     List<Isl> getUniqueIsls() {
-        def uniqueSwitches = getUniqueSwitches()*.dpId
+        def uniqueSwitches = getTopology().getActiveSwitches().unique { sw -> sw.description }*.dpId
         def isls = topology.islsForActiveSwitches.collect { [it, it.reversed] }.flatten()
         return isls.unique { it.srcSwitch.dpId }.findAll { it.srcSwitch.dpId in uniqueSwitches }
-    }
-
-    List<Switch> getUniqueSwitches() {
-        def nbSwitches = northbound.getAllSwitches()
-        return topology.getActiveSwitches().unique { sw ->
-            [nbSwitches.find { it.switchId == sw.dpId }.description, sw.ofVersion].sort()
-        }
     }
 }
