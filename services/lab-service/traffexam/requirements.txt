@@ -1,3 +1,5 @@
 click==7.0
 bottle==0.12.16
 pyroute2==0.5.5
+nsenter==0.2
+scapy>=2.4.2,<2.4.3
