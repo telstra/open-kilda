@@ -65,7 +65,7 @@ public class FlowDto implements Serializable {
     private boolean allocateProtectedPath;
 
     /**
-     * Flow cookie.
+     * Flow unmasked cookie.
      */
     @JsonProperty("cookie")
     private long cookie;
@@ -297,51 +297,6 @@ public class FlowDto implements Serializable {
     @JsonIgnore
     public long getFlagglessCookie() {
         return cookie & MASK_COOKIE_FLAGS;
-    }
-
-    /**
-     * Returns whether this represents a forward flow.
-     * The result is based on the cookie value,
-     * see {@link FlowDto#cookieMarkedAsFroward} and {@link FlowDto#cookieMarkedAsReversed()}.
-     */
-    @JsonIgnore
-    public boolean isForward() {
-        boolean isForward = cookieMarkedAsFroward();
-        boolean isReversed = cookieMarkedAsReversed();
-
-        if (isForward && isReversed) {
-            throw new IllegalArgumentException(
-                    "Invalid cookie flags combinations - it mark as forward and reverse flow at same time.");
-        }
-
-        return isForward;
-    }
-
-    @JsonIgnore
-    public boolean isReverse() {
-        return !isForward();
-    }
-
-    private boolean cookieMarkedAsFroward() {
-        boolean isMatch;
-
-        if ((cookie & 0xE000000000000000L) != 0) {
-            isMatch = (cookie & 0x4000000000000000L) != 0;
-        } else {
-            isMatch = (cookie & 0x0080000000000000L) == 0;
-        }
-        return isMatch;
-
-    }
-
-    private boolean cookieMarkedAsReversed() {
-        boolean isMatch;
-        if ((cookie & 0xE000000000000000L) != 0) {
-            isMatch = (cookie & 0x2000000000000000L) != 0;
-        } else {
-            isMatch = (cookie & 0x0080000000000000L) != 0;
-        }
-        return isMatch;
     }
 
     /**

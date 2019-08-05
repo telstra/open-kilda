@@ -27,11 +27,13 @@ import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.VxlanRepository;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.mappers.FlowMapper;
+import org.openkilda.wfm.topology.flow.model.FlowData;
 import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -63,13 +65,25 @@ public class BaseFlowService {
     }
 
     /**
-     * Fetches all flow pairs.
-     * <p/>
-     * IMPORTANT: the method doesn't complete with flow paths and transit vlans!
+     * Finds flow data with flow group by specified flow id.
+     * @param flowId flow identifier.
+     * @return flow data with flow group.
      */
-    public Collection<FlowPair> getFlows() {
+    public Optional<FlowData> getFlow(String flowId) {
+        return flowRepository.findById(flowId)
+                .map(flow -> FlowData.builder()
+                        .flowDto(FlowMapper.INSTANCE.map(flow))
+                        .flowGroup(flow.getGroupId())
+                        .build());
+    }
+
+    /**
+     * Fetches all flows without flow groups.
+     */
+    public List<FlowData> getFlows() {
         return flowRepository.findAll().stream()
-                .map(flow -> new FlowPair(flow, null, null))
+                .map(FlowMapper.INSTANCE::map)
+                .map(FlowData::new)
                 .collect(Collectors.toList());
     }
 
