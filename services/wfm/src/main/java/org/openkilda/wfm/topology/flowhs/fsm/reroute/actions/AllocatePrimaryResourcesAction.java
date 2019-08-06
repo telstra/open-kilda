@@ -27,6 +27,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
@@ -37,8 +38,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AllocatePrimaryResourcesAction extends BaseResourceAllocationAction {
     public AllocatePrimaryResourcesAction(PersistenceManager persistenceManager, PathComputer pathComputer,
-                                          FlowResourcesManager resourcesManager) {
-        super(persistenceManager, pathComputer, resourcesManager);
+                                          FlowResourcesManager resourcesManager,
+                                          FlowOperationsDashboardLogger dashboardLogger) {
+        super(persistenceManager, pathComputer, resourcesManager, dashboardLogger);
     }
 
     @Override

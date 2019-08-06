@@ -144,7 +144,8 @@ public final class FlowRerouteFsm
         builder.transition().from(State.INITIALIZED).to(State.FINISHED_WITH_ERROR).on(Event.TIMEOUT);
 
         builder.transition().from(State.FLOW_VALIDATED).to(State.PRIMARY_RESOURCES_ALLOCATED).on(Event.NEXT)
-                .perform(new AllocatePrimaryResourcesAction(persistenceManager, pathComputer, resourcesManager));
+                .perform(new AllocatePrimaryResourcesAction(persistenceManager, pathComputer, resourcesManager,
+                        dashboardLogger));
         builder.transitions().from(State.FLOW_VALIDATED)
                 .toAmong(State.REVERTING_FLOW_STATUS, State.REVERTING_FLOW_STATUS)
                 .onEach(Event.TIMEOUT, Event.ERROR);
@@ -161,7 +162,7 @@ public final class FlowRerouteFsm
 
         builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.RESOURCE_ALLOCATION_COMPLETED)
                 .on(Event.NEXT)
-                .perform(new PostResourceAllocationAction(persistenceManager));
+                .perform(new PostResourceAllocationAction(persistenceManager, dashboardLogger));
         builder.transition().from(State.PROTECTED_RESOURCES_ALLOCATED).to(State.MARKING_FLOW_DOWN)
                 .on(Event.NO_PATH_FOUND);
         builder.transitions().from(State.PROTECTED_RESOURCES_ALLOCATED)

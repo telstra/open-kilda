@@ -42,6 +42,7 @@ import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.action.NbTrackableAction;
@@ -77,9 +78,10 @@ abstract class BaseResourceAllocationAction extends
     protected final PathComputer pathComputer;
     protected final FlowResourcesManager resourcesManager;
     protected final FlowPathBuilder flowPathBuilder;
+    protected final FlowOperationsDashboardLogger dashboardLogger;
 
     BaseResourceAllocationAction(PersistenceManager persistenceManager, PathComputer pathComputer,
-                                 FlowResourcesManager resourcesManager) {
+                                 FlowResourcesManager resourcesManager, FlowOperationsDashboardLogger dashboardLogger) {
         transactionManager = persistenceManager.getTransactionManager();
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
@@ -87,6 +89,7 @@ abstract class BaseResourceAllocationAction extends
 
         this.pathComputer = pathComputer;
         this.resourcesManager = resourcesManager;
+        this.dashboardLogger = dashboardLogger;
 
         SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         flowPathBuilder = new FlowPathBuilder(switchRepository);
@@ -99,16 +102,17 @@ abstract class BaseResourceAllocationAction extends
             return Optional.empty();
         }
 
+        String flowId = stateMachine.getFlowId();
         try {
             allocateInTransaction(context, stateMachine);
 
             return Optional.empty();
         } catch (UnroutableFlowException | RecoverableException e) {
             String errorDescription = format("Not enough bandwidth or no path found for flow %s: %s",
-                    stateMachine.getFlowId(), e.getMessage());
-            log.debug(getGenericErrorMessage() + ": " + errorDescription);
+                    flowId, e.getMessage());
+            dashboardLogger.onFailedFlowReroute(flowId, getGenericErrorMessage() + ": " + errorDescription);
 
-            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), errorDescription);
+            saveHistory(stateMachine, stateMachine.getCarrier(), flowId, errorDescription);
 
             stateMachine.fire(Event.NO_PATH_FOUND);
 
@@ -116,10 +120,10 @@ abstract class BaseResourceAllocationAction extends
                     getGenericErrorMessage(), errorDescription));
         } catch (ResourceAllocationException e) {
             String errorDescription = format("Failed to allocate resources for flow %s: %s",
-                    stateMachine.getFlowId(), e.getMessage());
-            log.warn(getGenericErrorMessage() + ": " + errorDescription);
+                    flowId, e.getMessage());
+            dashboardLogger.onFailedFlowReroute(flowId, getGenericErrorMessage() + ": " + errorDescription);
 
-            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), errorDescription);
+            saveHistory(stateMachine, stateMachine.getCarrier(), flowId, errorDescription);
 
             stateMachine.fireError();
 
@@ -127,8 +131,10 @@ abstract class BaseResourceAllocationAction extends
                     getGenericErrorMessage(), errorDescription));
         } catch (Exception e) {
             String errorDescription = format("Failed to create a new path for flow %s: %s",
-                    stateMachine.getFlowId(), e.getMessage());
-            saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), errorDescription);
+                    flowId, e.getMessage());
+            dashboardLogger.onFailedFlowReroute(flowId, getGenericErrorMessage() + ": " + errorDescription);
+
+            saveHistory(stateMachine, stateMachine.getCarrier(), flowId, errorDescription);
 
             throw e;
         }
