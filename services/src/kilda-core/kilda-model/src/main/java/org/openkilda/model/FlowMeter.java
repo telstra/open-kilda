@@ -64,9 +64,9 @@ public class FlowMeter implements Serializable {
 
     @NonNull
     @Property(name = "flow_id")
+    @Index
     private String flowId;
 
-    @NonNull
     @Property(name = "path_id")
     @Index(unique = true)
     @Convert(graphPropertyType = String.class)
@@ -81,7 +81,7 @@ public class FlowMeter implements Serializable {
 
     @Builder(toBuilder = true)
     public FlowMeter(@NonNull SwitchId switchId, @NonNull MeterId meterId,
-                     @NonNull String flowId, @NonNull PathId pathId) {
+                     @NonNull String flowId, PathId pathId) {
         this.switchId = switchId;
         this.meterId = meterId;
         this.flowId = flowId;
