@@ -74,6 +74,7 @@ import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
@@ -886,6 +887,11 @@ public class FlowServiceImpl implements FlowService {
                         format("Could not validate flow: Flow %s not found", flowId), "Flow not found"));
 
         logger.debug("VALIDATE FLOW: Found Flows: {}", flow);
+
+        if (flow.getStatus() == FlowStatus.DOWN) {
+            throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(), ErrorType.NOT_ALLOWED,
+                    "Could not validate flow", format("Could not validate flow: Flow %s is in DOWN state", flowId));
+        }
 
         /*
          * Since we are getting switch rules, we can use a set.

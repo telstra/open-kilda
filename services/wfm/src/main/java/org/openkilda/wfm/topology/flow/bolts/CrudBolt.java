@@ -360,7 +360,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
             FlowInfoData fid = (FlowInfoData) message.getData();
 
-            UnidirectionalFlow deletedFlow = flowService.deleteFlow(flowId,
+            FlowDto flowDto = flowService.deleteFlow(flowId,
                     new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.DELETE) {
                         public void sendFlowCommands(String flowId, List<CommandGroup> commandGroups,
                                                      List<? extends CommandData> onSuccessCommands,
@@ -371,7 +371,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                         }
                     });
 
-            logger.info("UNPUSHed the flow: {}", deletedFlow);
+            logger.info("UNPUSHed the flow: {}", flowDto);
 
             Values values = new Values(new InfoMessage(
                     new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.DOWN)),
@@ -395,12 +395,12 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         try {
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.DELETE_FLOW);
 
-            UnidirectionalFlow deletedFlow = flowService.deleteFlow(flowId,
+            FlowDto deletedFlow = flowService.deleteFlow(flowId,
                     new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.DELETE));
 
             logger.info("Deleted the flow: {}", deletedFlow);
 
-            Values values = new Values(new InfoMessage(buildFlowResponse(deletedFlow),
+            Values values = new Values(new InfoMessage(new FlowResponse(deletedFlow),
                     message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowNotFoundException e) {
