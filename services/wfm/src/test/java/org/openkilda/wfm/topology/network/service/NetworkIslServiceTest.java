@@ -22,6 +22,7 @@ import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -52,6 +53,7 @@ import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.EmbeddedNeo4jDatabase;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
+import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 
@@ -90,6 +92,9 @@ public class NetworkIslServiceTest {
     private final NetworkOptions options = NetworkOptions.builder()
             .dbRepeatMaxDurationSeconds(30)
             .build();
+
+    @Mock
+    private NetworkTopologyDashboardLogger dashboardLogger;
 
     @Mock
     private IIslCarrier carrier;
@@ -145,7 +150,10 @@ public class NetworkIslServiceTest {
         }).when(transactionManager)
                 .doInTransaction(Mockito.any(RetryPolicy.class), Mockito.any(TransactionCallbackWithoutResult.class));
 
-        service = new NetworkIslService(carrier, persistenceManager, options);
+        NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder = mock(
+                NetworkTopologyDashboardLogger.Builder.class);
+        when(dashboardLoggerBuilder.build(any())).thenReturn(dashboardLogger);
+        service = new NetworkIslService(carrier, persistenceManager, options, dashboardLoggerBuilder);
     }
 
     @Test
@@ -284,6 +292,9 @@ public class NetworkIslServiceTest {
                                 && link.getStatus() == IslStatus.ACTIVE
                                 && link.getAvailableBandwidth() == 90));
 
+        verify(dashboardLogger).onIslUp(reference);
+        verifyNoMoreInteractions(dashboardLogger);
+
         verifyNoMoreInteractions(carrier);
     }
 
@@ -325,6 +336,9 @@ public class NetworkIslServiceTest {
                                 && link.getAvailableBandwidth() == 100
                                 && link.getDefaultMaxBandwidth() == 200));
 
+        verify(dashboardLogger).onIslUp(reference);
+        verifyNoMoreInteractions(dashboardLogger);
+
         verifyNoMoreInteractions(carrier);
     }
 
@@ -340,6 +354,10 @@ public class NetworkIslServiceTest {
         // setup alpha -> beta half
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
         service.islUp(endpointAlpha1, reference, new IslDataHolder(islAlphaBeta));
+
+        verify(dashboardLogger).onIslDown(reference);
+        verifyNoMoreInteractions(dashboardLogger);
+        reset(dashboardLogger);
 
         // setup beta -> alpha half
         reset(islRepository);
@@ -442,6 +460,21 @@ public class NetworkIslServiceTest {
 
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
         service.islSetupFromHistory(endpointAlpha1, reference, islAlphaBeta);
+
+        switch (initialStatus) {
+            case ACTIVE:
+                verify(dashboardLogger).onIslUp(reference);
+                break;
+            case INACTIVE:
+                verify(dashboardLogger).onIslDown(reference);
+                break;
+            case MOVED:
+                verify(dashboardLogger).onIslMoved(reference);
+                break;
+            default:
+                // nothing to do here
+        }
+        verifyNoMoreInteractions(dashboardLogger);
 
         reset(carrier);
 

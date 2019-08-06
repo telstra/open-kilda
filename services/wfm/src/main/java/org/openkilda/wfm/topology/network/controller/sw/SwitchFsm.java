@@ -134,7 +134,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     public void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
-        logWrapper.onSwitchUpdateStatus(switchId, NetworkTopologyDashboardLogger.SwitchState.ONLINE);
+        logWrapper.onSwitchOnline(switchId);
 
         transactionManager.doInTransaction(transactionRetryPolicy, this::persistSwitchData);
         updatePorts(context, speakerData, true);
@@ -147,7 +147,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     public void offlineEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
                              SwitchFsmContext context) {
-        logWrapper.onSwitchUpdateStatus(switchId, NetworkTopologyDashboardLogger.SwitchState.OFFLINE);
+        logWrapper.onSwitchOffline(switchId);
         transactionManager.doInTransaction(transactionRetryPolicy, () -> updatePersistentStatus(SwitchStatus.INACTIVE));
 
         for (AbstractPort port : portByNumber.values()) {
@@ -339,7 +339,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private AbstractPort portAdd(AbstractPort port, SwitchFsmContext context) {
         portByNumber.put(port.getPortNumber(), port);
         port.portAdd(context.getOutput());
-        logWrapper.onPortAdd(switchId, port);
+        logWrapper.onPortAdd(port);
 
         return port;
     }
@@ -347,7 +347,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private void portDel(AbstractPort port, SwitchFsmContext context) {
         portByNumber.remove(port.getPortNumber());
         port.portDel(context.getOutput());
-        logWrapper.onPortDelete(switchId, port);
+        logWrapper.onPortDelete(port);
     }
 
     private void updatePortLinkMode(AbstractPort port, LinkStatus status, SwitchFsmContext context) {

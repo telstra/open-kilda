@@ -16,11 +16,12 @@
 package org.openkilda.wfm.topology.network;
 
 import org.openkilda.model.SwitchId;
+import org.openkilda.reporting.AbstractDashboardLogger;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
-import org.openkilda.wfm.share.utils.AbstractLogWrapper;
 import org.openkilda.wfm.topology.network.controller.sw.AbstractPort;
-import org.openkilda.wfm.topology.network.model.LinkStatus;
+import org.openkilda.wfm.topology.network.controller.sw.LogicalBfdPort;
+import org.openkilda.wfm.topology.network.controller.sw.PhysicalPort;
 
 import org.slf4j.Logger;
 import org.slf4j.event.Level;
@@ -28,22 +29,7 @@ import org.slf4j.event.Level;
 import java.util.HashMap;
 import java.util.Map;
 
-public class NetworkTopologyDashboardLogger extends AbstractLogWrapper {
-
-    private static final String SWITCH_ID = "switch_id";
-    private static final String SRC_SWITCH = "src_switch";
-    private static final String DST_SWITCH = "dst_switch";
-    private static final String PORT = "port";
-    private static final String SRC_PORT = "src_port";
-    private static final String DST_PORT = "dst_port";
-    private static final String STATE = "state";
-    private static final String TYPE = "event_type";
-    private static final String SRC_SWITCH_PORT = "src_switch_port";
-    private static final String DST_SWITCH_PORT = "dst_switch_port";
-    private static final String PORT_TYPE = "port_type";
-    private static final String SWITCH_PORT = "switch_port";
-
-    private static final String TAG = "SWITCH_PORT_ISL_DASHBOARD";
+public class NetworkTopologyDashboardLogger extends AbstractDashboardLogger {
 
     public NetworkTopologyDashboardLogger(Logger logger) {
         super(logger);
@@ -52,92 +38,63 @@ public class NetworkTopologyDashboardLogger extends AbstractLogWrapper {
     /**
      * Log a port add event.
      *
-     * @param switchId a switch ID.
      * @param port a port number.
      */
-    public void onPortAdd(SwitchId switchId, AbstractPort port) {
-        Map<String, String> data = new HashMap<>();
-        data.put(TAG, "switch-port-isl");
-        data.put(TYPE, PORT);
-        data.put(SWITCH_ID, switchId.toString());
-        data.put(PORT, String.valueOf(port.getPortNumber()));
-        data.put(STATE, "add");
-        data.put(PORT_TYPE, port.getLogIdentifier());
-        data.put(SWITCH_PORT, port.getEndpoint().toString());
-        proceed(Level.INFO, String.format("Add port %d on switch %s", port.getPortNumber(), switchId), data);
+    public void onPortAdd(AbstractPort port) {
+        Map<String, String> context = makePortContext(port.getEndpoint(), port.makeDashboardPortLabel(this));
+        populateEvent(context, "add");
+        invokeLogger(Level.INFO,
+                String.format("Add port %d on switch %s",
+                              port.getPortNumber(), port.getEndpoint().getDatapath()), context);
     }
 
     /**
      * Log a port delete event.
      *
-     * @param switchId a switch ID.
      * @param port a port number.
      */
-    public void onPortDelete(SwitchId switchId, AbstractPort port) {
-        Map<String, String> data = new HashMap<>();
-        data.put(TAG, "switch-port-isl");
-        data.put(TYPE, PORT);
-        data.put(SWITCH_ID, switchId.toString());
-        data.put(PORT, String.valueOf(port.getPortNumber()));
-        data.put(STATE, "delete");
-        data.put(PORT_TYPE, port.getLogIdentifier());
-        data.put(SWITCH_PORT, port.getEndpoint().toString());
-        proceed(Level.INFO, String.format("Delete port %d on switch %s", port.getPortNumber(), switchId), data);
+    public void onPortDelete(AbstractPort port) {
+        Map<String, String> context = makePortContext(port.getEndpoint(), port.makeDashboardPortLabel(this));
+        populateEvent(context, "delete");
+        invokeLogger(Level.INFO,
+                String.format("Delete port %d on switch %s",
+                              port.getPortNumber(), port.getEndpoint().getDatapath()), context);
     }
 
-    /**
-     * Log a port changing state event.
-     *
-     * @param endpoint an endpoint.
-     * @param linkStatus a port status.
-     */
-    public void onUpdatePortStatus(Endpoint endpoint, LinkStatus linkStatus) {
-        Map<String, String> data = new HashMap<>();
-        data.put(TAG, "switch-port-isl");
-        data.put(TYPE, PORT);
-        data.put(SWITCH_ID, endpoint.getDatapath().toString());
-        data.put(PORT, String.valueOf(endpoint.getPortNumber()));
-        data.put(STATE, linkStatus.toString());
-        data.put(SWITCH_PORT, endpoint.toString());
-        String message = String.format("Port status event: switch_id=%s, port_id=%d, state=%s",
-                endpoint.getDatapath().toString(), endpoint.getPortNumber(), linkStatus);
-        proceed(Level.INFO, message, data);
+    public void onPortUp(Endpoint endpoint) {
+        onPortUpDown(endpoint, "UP");
     }
 
-    /**
-     * Log an ISL changing state event.
-     *
-     * @param ref an ISL path reference.
-     * @param state an ISL status.
-     */
-    public void onIslUpdateStatus(IslReference ref, String state) {
-        Map<String, String> data = new HashMap<>();
-        data.put(TAG, "switch-port-isl");
-        data.put(TYPE, "isl");
-        data.put(SRC_SWITCH, ref.getSource().getDatapath().toString());
-        data.put(DST_SWITCH, ref.getDest().getDatapath().toString());
-        data.put(STATE, state);
-        data.put(SRC_PORT, String.valueOf(ref.getSource().getPortNumber()));
-        data.put(DST_PORT, String.valueOf(ref.getDest().getPortNumber()));
-        data.put(SRC_SWITCH_PORT, ref.getSource().toString());
-        data.put(DST_SWITCH_PORT, ref.getDest().toString());
-        String message = String.format("ISL %s changed status to: %s", ref.toString(), state);
-        proceed(Level.INFO, message, data);
+    public void onPortDown(Endpoint endpoint) {
+        onPortUpDown(endpoint, "DOWN");
     }
 
-    /**
-     * Log a Switch status event.
-     *
-     * @param switchId a switch ID.
-     * @param state a switch state.
-     */
-    public void onSwitchUpdateStatus(SwitchId switchId, SwitchState state) {
-        Map<String, String> data = new HashMap<>();
-        data.put(TAG, "switch-port-isl");
-        data.put(TYPE, "switch");
-        data.put(SWITCH_ID, switchId.toString());
-        data.put(STATE, state.name());
-        proceed(Level.INFO, String.format("Switch '%s' change status to '%s'", switchId, state), data);
+    public void onPortFlappingStart(Endpoint endpoint) {
+        onPortFlappingStartStop(endpoint, "start");
+    }
+
+    public void onPortFlappingStop(Endpoint endpoint) {
+        onPortFlappingStartStop(endpoint, "stop");
+    }
+
+    public void onIslUp(IslReference reference) {
+        onIslUpDownMoved(reference, "UP");
+    }
+
+    public void onIslDown(IslReference reference) {
+        onIslUpDownMoved(reference, "DOWN");
+    }
+
+    public void onIslMoved(IslReference reference) {
+        onIslUpDownMoved(reference, "MOVED");
+    }
+
+    public void onSwitchOnline(SwitchId switchId) {
+        onSwitchOnlineOffline(switchId, "ONLINE");
+    }
+
+    public void onSwitchOffline(SwitchId switchId) {
+        onSwitchOnlineOffline(switchId, "OFFLINE");
     }
 
     /**
@@ -146,12 +103,9 @@ public class NetworkTopologyDashboardLogger extends AbstractLogWrapper {
      * @param switchId a switch ID.
      */
     public void onSwitchAdd(SwitchId switchId) {
-        Map<String, String> data = new HashMap<>();
-        data.put(TAG, "switch-port-isl");
-        data.put(TYPE, "switch");
-        data.put(SWITCH_ID, switchId.toString());
-        data.put(STATE, "add");
-        proceed(Level.INFO, String.format("Switch '%s' connected", switchId), data);
+        Map<String, String> context = makeSwitchContext(switchId);
+        populateEvent(context, "add");
+        invokeLogger(Level.INFO, String.format("Switch '%s' connected", switchId), context);
     }
 
     /**
@@ -160,12 +114,98 @@ public class NetworkTopologyDashboardLogger extends AbstractLogWrapper {
      * @param switchId a switch ID.
      */
     public void onSwitchDelete(SwitchId switchId) {
-        Map<String, String> data = new HashMap<>();
-        data.put(TAG, "switch-port-isl");
-        data.put(TYPE, "switch");
-        data.put(SWITCH_ID, switchId.toString());
-        data.put(STATE, "delete");
-        proceed(Level.INFO, String.format("Switch '%s' has been deleted", switchId), data);
+        Map<String, String> context = makeSwitchContext(switchId);
+        populateEvent(context, "delete");
+        invokeLogger(Level.INFO, String.format("Switch '%s' has been deleted", switchId), context);
+    }
+
+    public String makePortLabel(PhysicalPort port) {
+        return "physical";
+    }
+
+    public String makePortLabel(LogicalBfdPort port) {
+        return "logical-BFD";
+    }
+
+    private void onPortUpDown(Endpoint endpoint, String event) {
+        Map<String, String> context = makePortContext(endpoint);
+        populateEvent(context, event);
+        String message = String.format("Port status event: switch_id=%s, port_id=%d, state=%s",
+                                       endpoint.getDatapath().toString(), endpoint.getPortNumber(), event);
+        invokeLogger(Level.INFO, message, context);
+    }
+
+    private void onPortFlappingStartStop(Endpoint endpoint, String event) {
+        Map<String, String> context = makePortContext(endpoint);
+        populateEvent(context, "flapping-" + event);
+        invokeLogger(Level.INFO, String.format("Port %s %s flapping", endpoint, event), context);
+    }
+
+    private void onIslUpDownMoved(IslReference reference, String event) {
+        Map<String, String> context = makeContextTemplate("isl");
+        populateEvent(context, event);
+
+        Endpoint source = reference.getSource();
+        context.put("src_switch", source.getDatapath().toString());
+        context.put("src_port", String.valueOf(source.getPortNumber()));
+        context.put("src_switch_port", source.toString());
+
+        Endpoint dest = reference.getDest();
+        context.put("dst_switch", dest.getDatapath().toString());
+        context.put("dst_port", String.valueOf(dest.getPortNumber()));
+        context.put("dst_switch_port", dest.toString());
+
+        String message = String.format("ISL %s changed status to: %s", reference, event);
+        invokeLogger(Level.INFO, message, context);
+    }
+
+    private void onSwitchOnlineOffline(SwitchId switchId, String event) {
+        Map<String, String> context = makeSwitchContext(switchId);
+        populateEvent(context, event);
+        invokeLogger(Level.INFO, String.format("Switch '%s' change status to '%s'", switchId, event), context);
+    }
+
+    private Map<String, String> makeSwitchContext(SwitchId switchId) {
+        Map<String, String> context = makeContextTemplate("switch");
+        populateSwitch(context, switchId);
+        return context;
+    }
+
+    private Map<String, String> makePortContext(Endpoint endpoint) {
+        return makePortContext(endpoint, null);
+    }
+
+    private Map<String, String> makePortContext(Endpoint endpoint, String portType) {
+        Map<String, String> context = makeContextTemplate("port");
+        populateCommonPortContext(context, endpoint);
+        if (portType != null) {
+            context.put("port_type", portType);
+        }
+        return context;
+    }
+
+    private void populateEvent(Map<String, String> context, String event) {
+        context.put("state", event);
+    }
+
+    private void populateSwitch(Map<String, String> context, SwitchId switchId) {
+        context.put("switch_id", switchId.toString());
+    }
+
+    private void populateCommonPortContext(Map<String, String> context, Endpoint endpoint) {
+        populateSwitch(context, endpoint.getDatapath());
+        context.put("port", String.valueOf(endpoint.getPortNumber()));
+        context.put("switch_port", endpoint.toString());
+    }
+
+    private Map<String, String> makeContextTemplate(String domain) {
+        Map<String, String> context = new HashMap<>();
+        // TODO(surabujin): drop `SWITCH_PORT_ISL_DASHBOARD` field after dashboard query switch to the `dashboard` field
+        context.put("SWITCH_PORT_ISL_DASHBOARD", "switch-port-isl");
+
+        context.put("dashboard", "switch-port-isl");
+        context.put("event_type", domain);
+        return context;
     }
 
     public static Builder builder() {
@@ -176,9 +216,5 @@ public class NetworkTopologyDashboardLogger extends AbstractLogWrapper {
         public NetworkTopologyDashboardLogger build(Logger logger) {
             return new NetworkTopologyDashboardLogger(logger);
         }
-    }
-
-    public enum SwitchState {
-        ONLINE, OFFLINE
     }
 }

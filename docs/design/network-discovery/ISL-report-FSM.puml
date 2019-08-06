@@ -1,0 +1,24 @@
+Input signals:
+* isl-up
+* isl-down
+* isl-move
+
+@startuml
+title ISL report FSM
+
+[*] --> UNDEFINED
+
+UNDEFINED --> UP : isl-up
+UNDEFINED --> DOWN : isl-down
+UNDEFINED --> MOVED : isl-move
+
+UP --> DOWN : isl-down
+UP --> MOVED : isl-move
+
+DOWN --> UP : isl-up
+DOWN --> MOVED : isl-move
+
+MOVED --> DOWN : isl-down
+MOVED --> UP : isl-up
+
+@enduml

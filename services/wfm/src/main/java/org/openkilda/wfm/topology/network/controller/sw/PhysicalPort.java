@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.network.controller.sw;
 
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.share.model.Endpoint;
+import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
 import org.openkilda.wfm.topology.network.service.ISwitchCarrier;
 
 import lombok.Data;
@@ -51,11 +52,8 @@ public class PhysicalPort extends AbstractPort {
         carrier.setPortLinkMode(getEndpoint(), getLinkStatus());
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public String getLogIdentifier() {
-        return "physical";
+    public String makeDashboardPortLabel(NetworkTopologyDashboardLogger dashboardLogger) {
+        return dashboardLogger.makePortLabel(this);
     }
 }
