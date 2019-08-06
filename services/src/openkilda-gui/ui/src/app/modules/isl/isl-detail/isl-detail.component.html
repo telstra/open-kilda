@@ -82,12 +82,29 @@
         <div class="isl-speed-latency-bandwidth-details-div">
           <div class="row">
               <div class="col-sm-8">
-                  <div class='row isl_sbl_details'>
-                      <label class='col-sm-6 col-form-label'>Max Bandwidth:</label>
-                      <p class='col-sm-6 isl_div_speed'>{{ convertInMB(max_bandwidth) }}</p>
+                <div class='row isl_sbl_details'>
+                  <label class='col-sm-6 col-form-label'>Max Bandwidth(Mbps):</label>
+                  <!-- <p class='col-sm-6 isl_div_speed'>{{ convertInMB(max_bandwidth) }}</p> -->
+                  <div class="text_cost_details" id="text_bandwidth_details" [hidden]="showBandwidthEditing">
+                    <span class="col-sm-3" style="padding-right: 0 !important">{{ convertInMB(max_bandwidth) }}
+                      &nbsp; <i title="Max bandwidth is different from speed" *ngIf="max_bandwidth!=speed" class="fa fa-exclamation-triangle text-orange"></i>
+                    </span>
+                    <span >
+                      <span class="isl_div_bandwidth"></span><span class="ml-1 cursor-pointer" id="edit_isl_bandwidth" *ngIf="commonService.hasPermission('isl_update_bandwidth')"  style="display: inline;">
+                      <i title="Edit" (click)="editMaxbandwidth()" class="fa fa-pencil-square-o fa-2x cursor-pointer" ></i>
+                      </span>
+                    </span>
+                  </div>
+                  <div class="update_isl_cost col-sm-6" id="isl_cost_update" [hidden]="!showBandwidthEditing">
+                    <div class="row" style=" margin-bottom: 10px;">
+                      <input formControlName="max_bandwidth" type="text" name="max_bandwidth" style="height: 35px; margin-left: 15px; width: 25%; padding: 10px;">
+                      <span style="margin-right: 5px; border: 1; padding: 7px 12px;" class="btn kilda_btn ml-1" data-toggle="modal" (click)="saveEditedBandwidth()"><i class="icon icon-ok-sign"></i></span>
+                      <span style="margin-right: 5px; border: 1; padding: 6px 11px;" id="cancel_isl_bandwidth_update" class="btn kilda_btn ml-0.5" (click)="cancelEditedBandwidth()"><i class="icon icon-remove-sign"></i></span>
                     </div>
+                  </div>
+                </div>
                     <div class='row isl_sbl_details'>
-                      <label class='col-sm-6 col-form-label'>Speed:</label>
+                      <label class='col-sm-6 col-form-label'>Speed(Mbps):</label>
                       <p class='col-sm-6 isl_div_speed'>{{ convertInMB(speed) }}</p>
                     </div>
                     <!-- ISL Latency Details -->
@@ -117,14 +134,9 @@
                     </div>
                     <!-- ISL Avaliable Bandwidth Details -->
                     <div class='row isl_sbl_details'>
-                      <label class='col-sm-6 col-form-label'>Available Bandwidth:
+                      <label class='col-sm-6 col-form-label'>Available Bandwidth(Mbps):
                       </label>
                       <p class='col-sm-6 isl_div_avaliable_bandwidth'>{{ convertInMB(available_bandwidth) }}</p>
-                    </div>
-                    <div class='row isl_sbl_details'>
-                      <label class='col-sm-6 col-form-label'>Default Max Bandwidth:
-                      </label>
-                      <p class='col-sm-6 isl_div_avaliable_bandwidth'>{{ convertInMB(default_max_bandwidth) }}</p>
                     </div>
                     <div class='row isl_sbl_details'>
                       <label class='col-sm-6 col-form-label'>State:</label>

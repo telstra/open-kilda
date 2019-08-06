@@ -26,6 +26,7 @@ import org.openkilda.testing.service.traffexam.model.Bandwidth;
 import org.openkilda.testing.service.traffexam.model.Exam;
 import org.openkilda.testing.service.traffexam.model.FlowBidirectionalExam;
 import org.openkilda.testing.service.traffexam.model.Host;
+import org.openkilda.testing.service.traffexam.model.TimeLimit;
 import org.openkilda.testing.service.traffexam.model.Vlan;
 
 import java.util.HashMap;
@@ -53,7 +54,7 @@ public class FlowTrafficExamBuilder {
     /**
      * Builds bidirectional exam.
      */
-    public FlowBidirectionalExam buildBidirectionalExam(FlowPayload flow, int bandwidth)
+    public FlowBidirectionalExam buildBidirectionalExam(FlowPayload flow, int bandwidth, Long duration)
             throws FlowNotApplicableException {
         Optional<TraffGen> source = Optional.ofNullable(
                 endpointToTraffGen.get(makeComparableEndpoint(flow.getSource())));
@@ -77,6 +78,7 @@ public class FlowTrafficExamBuilder {
                 .destVlan(new Vlan(flow.getDestination().getVlanId()))
                 .bandwidthLimit(new Bandwidth(bandwidth))
                 .burstPkt(100)
+                .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
                 .build();
         Exam reverse = Exam.builder()
                 .flow(flow)
@@ -86,9 +88,16 @@ public class FlowTrafficExamBuilder {
                 .destVlan(new Vlan(flow.getSource().getVlanId()))
                 .bandwidthLimit(new Bandwidth(bandwidth))
                 .burstPkt(100)
+                .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
                 .build();
 
         return new FlowBidirectionalExam(forward, reverse);
+    }
+
+
+    public FlowBidirectionalExam buildBidirectionalExam(FlowPayload flow, int bandwidth)
+            throws FlowNotApplicableException {
+        return buildBidirectionalExam(flow, bandwidth, null);
     }
 
     /**

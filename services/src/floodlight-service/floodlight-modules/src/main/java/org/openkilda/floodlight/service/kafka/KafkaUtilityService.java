@@ -52,10 +52,6 @@ public class KafkaUtilityService implements IService {
         return owner;
     }
 
-    public boolean isTestingMode() {
-        return owner.getConfig().isTestingMode();
-    }
-
     @Override
     public void setup(FloodlightModuleContext moduleContext) throws FloodlightModuleException {
         // there is nothing to initialize here

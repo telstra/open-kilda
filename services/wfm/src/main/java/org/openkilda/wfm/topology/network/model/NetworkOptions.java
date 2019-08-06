@@ -48,6 +48,8 @@ public class NetworkOptions implements Serializable {
 
     private long delayMin;
 
+    private long dbRepeatMaxDurationSeconds;
+
     public NetworkOptions(NetworkTopologyConfig topologyConfig) {
         discoveryInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryInterval());
         discoveryPacketTtl = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryPacketTtl());
@@ -62,5 +64,8 @@ public class NetworkOptions implements Serializable {
         delayWarmUp = TimeUnit.SECONDS.toNanos(topologyConfig.getPortUpDownThrottlingDelaySecondsWarmUp());
         delayCoolingDown = TimeUnit.SECONDS.toNanos(topologyConfig.getPortUpDownThrottlingDelaySecondsCoolDown());
         delayMin = TimeUnit.SECONDS.toNanos(topologyConfig.getPortUpDownThrottlingDelaySecondsMin());
+
+        NetworkTopologyConfig.DiscoveryConfig discoveryConfig = topologyConfig.getDiscoveryConfig();
+        dbRepeatMaxDurationSeconds = discoveryConfig.getDbRepeatsTimeFrameSeconds();
     }
 }

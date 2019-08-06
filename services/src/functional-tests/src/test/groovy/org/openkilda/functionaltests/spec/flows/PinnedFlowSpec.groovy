@@ -35,7 +35,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         flowHelper.addFlow(flow)
 
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.id))
-        def altPath = switchPair.paths.find { it != currentPath }
+        def altPath = switchPair.paths.findAll { it != currentPath }.min { it.size() }
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
 
         when: "Make alt path more preferable than current path"

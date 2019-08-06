@@ -53,6 +53,7 @@ logger.level = INFO
 discovery.interval = {{ getv "/kilda_discovery_interval" }}
 discovery.packet.ttl = {{ getv "/kilda_discovery_packet_ttl" }}
 discovery.timeout = {{ getv "/kilda_discovery_timeout" }}
+discovery.db.write.repeats.time.frame = {{ getv "/kilda_discovery_db_write_repeats_time_frame" }}
 
 # multi-FL
 floodlight.alive.timeout = {{ getv "/kilda_floodlight_alive_timeout" }}

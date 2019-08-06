@@ -28,6 +28,7 @@ import org.openkilda.integration.source.store.SwitchStoreService;
 import org.openkilda.integration.source.store.dto.InventorySwitch;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.IslLinkInfo;
+import org.openkilda.model.LinkMaxBandwidth;
 import org.openkilda.model.LinkParametersDto;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.LinkUnderMaintenanceDto;
@@ -498,6 +499,22 @@ public class SwitchService {
         } else {
             return null;
         }
+    }
+    
+    /** Update max bandwidth.
+   *
+   * @param srcSwitch the source switch
+   * @param srcPort the source port
+   * @param dstSwitch the destination switch
+   * @param dstPort the destination port
+   * @param linkMaxBandwidth the max bandwidth
+   * @return the LinkMaxBandwidth
+   */
+    public LinkMaxBandwidth updateLinkBandwidth(String srcSwitch, String srcPort, String dstSwitch, String dstPort,
+                LinkMaxBandwidth linkMaxBandwidth) {
+        LinkMaxBandwidth linkBandwidthUpdate = switchIntegrationService
+                .updateLinkBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, linkMaxBandwidth);
+        return linkBandwidthUpdate;
     }
 
 }

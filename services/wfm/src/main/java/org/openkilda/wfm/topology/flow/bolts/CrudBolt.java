@@ -49,7 +49,6 @@ import org.openkilda.messaging.info.flow.FlowReadResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowStatusResponse;
-import org.openkilda.messaging.model.BidirectionalFlowDto;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
@@ -88,6 +87,7 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.flow.ComponentType;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
+import org.openkilda.wfm.topology.flow.model.FlowData;
 import org.openkilda.wfm.topology.flow.model.ReroutedFlowPaths;
 import org.openkilda.wfm.topology.flow.service.FeatureToggle;
 import org.openkilda.wfm.topology.flow.service.FeatureTogglesService;
@@ -115,7 +115,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
@@ -361,7 +360,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
             FlowInfoData fid = (FlowInfoData) message.getData();
 
-            UnidirectionalFlow deletedFlow = flowService.deleteFlow(flowId,
+            FlowDto flowDto = flowService.deleteFlow(flowId,
                     new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.DELETE) {
                         public void sendFlowCommands(String flowId, List<CommandGroup> commandGroups,
                                                      List<? extends CommandData> onSuccessCommands,
@@ -372,7 +371,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
                         }
                     });
 
-            logger.info("UNPUSHed the flow: {}", deletedFlow);
+            logger.info("UNPUSHed the flow: {}", flowDto);
 
             Values values = new Values(new InfoMessage(
                     new FlowStatusResponse(new FlowIdStatusPayload(flowId, FlowState.DOWN)),
@@ -396,12 +395,12 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         try {
             featureTogglesService.checkFeatureToggleEnabled(FeatureToggle.DELETE_FLOW);
 
-            UnidirectionalFlow deletedFlow = flowService.deleteFlow(flowId,
+            FlowDto deletedFlow = flowService.deleteFlow(flowId,
                     new FlowCommandSenderImpl(message.getCorrelationId(), tuple, StreamType.DELETE));
 
             logger.info("Deleted the flow: {}", deletedFlow);
 
-            Values values = new Values(new InfoMessage(buildFlowResponse(deletedFlow),
+            Values values = new Values(new InfoMessage(new FlowResponse(deletedFlow),
                     message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
         } catch (FlowNotFoundException e) {
@@ -615,7 +614,8 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             UnidirectionalFlow flow = FlowMapper.INSTANCE.map(request.getPayload());
             saveEvent(Event.UPDATE, flow.getFlowId(), "Flow updating", message.getCorrelationId(), tuple);
 
-            Optional<FlowPair> flowPair = flowService.getFlowPair(flow.getFlowId());
+            //TODO: this is extra fetch of the flow entity, must be moved into the service method.
+            Optional<FlowPair> flowPair = repositoryFactory.createFlowPairRepository().findById(flow.getFlowId());
             if (flowPair.isPresent()) {
                 saveDump(flowPair.get(), DumpType.STATE_BEFORE, message.getCorrelationId(), tuple);
             }
@@ -654,10 +654,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
     }
 
     private void handleDumpRequest(CommandMessage message, Tuple tuple) {
-        List<BidirectionalFlowDto> flows = flowService.getFlows().stream()
-                .map(x -> new BidirectionalFlowDto(FlowMapper.INSTANCE.map(x)))
-                .collect(Collectors.toList());
-
+        List<FlowData> flows = flowService.getFlows();
         logger.debug("Dump flows: found {} items", flows.size());
 
         String requestId = message.getCorrelationId();
@@ -667,9 +664,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
             outputCollector.emit(StreamType.RESPONSE.toString(), tuple, new Values(response));
         } else {
             int i = 0;
-            for (BidirectionalFlowDto flow : flows) {
-                Message response = new ChunkedInfoMessage(new FlowReadResponse(flow, null), System.currentTimeMillis(),
-                        requestId, i++, flows.size());
+            for (FlowData flowData : flows) {
+                Message response = new ChunkedInfoMessage(new FlowReadResponse(flowData.getFlowDto(), null),
+                        System.currentTimeMillis(), requestId, i++, flows.size());
 
                 outputCollector.emit(StreamType.RESPONSE.toString(), tuple, new Values(response));
             }
@@ -677,23 +674,22 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
     }
 
     private void handleReadRequest(String flowId, CommandMessage message, Tuple tuple) {
-        FlowPair flowPair = flowService.getFlowPair(flowId)
+        FlowData flowData = flowService.getFlow(flowId)
                 .orElseThrow(() -> new ClientException(message.getCorrelationId(), System.currentTimeMillis(),
                         ErrorType.NOT_FOUND, "Can not get flow", String.format("Flow %s not found", flowId)));
 
-        BidirectionalFlowDto flow =
-                new BidirectionalFlowDto(FlowMapper.INSTANCE.map(flowPair));
-        logger.debug("Got bidirectional flow: {}, correlationId {}", flow, message.getCorrelationId());
+        logger.debug("Got flow: {}, correlationId {}", flowData, message.getCorrelationId());
 
-        List<String> diverseFlowsId = flowService.getDiverseFlowsId(flowPair.getForward().getFlow());
+        List<String> diverseFlowsId = flowService.getDiverseFlowsId(flowId, flowData.getFlowGroup());
 
-        Values values = new Values(new InfoMessage(new FlowReadResponse(flow, diverseFlowsId),
+        Values values = new Values(new InfoMessage(new FlowReadResponse(flowData.getFlowDto(), diverseFlowsId),
                 message.getTimestamp(), message.getCorrelationId(), Destination.NORTHBOUND, null));
         outputCollector.emit(StreamType.RESPONSE.toString(), tuple, values);
     }
 
     private void handleMeterModeRequest(CommandMessage inMessage, Tuple tuple, final String flowId) {
-        FlowPair flowPair = flowService.getFlowPair(flowId)
+        //TODO: Must be moved into the service method.
+        FlowPair flowPair = repositoryFactory.createFlowPairRepository().findById(flowId)
                 .orElseThrow(() -> new MessageException(inMessage.getCorrelationId(), System.currentTimeMillis(),
                         ErrorType.NOT_FOUND, "Can not get flow", String.format("Flow %s not found", flowId)));
 

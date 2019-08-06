@@ -32,7 +32,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
     @Autowired
     NorthboundServiceV2 northboundV2
 
-    def "Should not be able to reroute to a path with not enough bandwidth available"() {
+    def "Not able to reroute to a path with not enough bandwidth available"() {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)
@@ -80,7 +80,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         }
     }
 
-    def "Should be able to reroute to a better path if it has enough bandwidth"() {
+    def "Able to reroute to a better path if it has enough bandwidth"() {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)
@@ -192,7 +192,7 @@ class IntentionalRerouteV2Spec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
-    def "Should be able to reroute to a path with not enough bandwidth available in case ignoreBandwidth=true"() {
+    def "Able to reroute to a path with not enough bandwidth available in case ignoreBandwidth=true"() {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
                 assumeTrue("No suiting switches found", false)

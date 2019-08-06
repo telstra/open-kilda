@@ -25,8 +25,8 @@ public final class Constants {
     public static final Integer WAIT_OFFSET = 10;
     public static final Integer TOPOLOGY_DISCOVERING_TIME = 120;
     public static final Integer SWITCHES_ACTIVATION_TIME = 10;
-    public static final Integer RULES_DELETION_TIME = 5;
-    public static final Integer RULES_INSTALLATION_TIME = 5;
+    public static final Integer RULES_DELETION_TIME = 7;
+    public static final Integer RULES_INSTALLATION_TIME = 7;
     public static final Integer STATS_LOGGING_TIMEOUT = 70;
     public static final SwitchId NON_EXISTENT_SWITCH_ID = new SwitchId("de:ad:be:ef:de:ad:be:ef");
     public static final String NON_EXISTENT_FLOW_ID = "non-existent-" + UUID.randomUUID().toString();

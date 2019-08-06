@@ -85,9 +85,13 @@ public class LinkOperationsService {
             if (underMaintenance) {
                 isl.setCost(isl.getCost() + islCostWhenUnderMaintenance);
                 reverceIsl.setCost(reverceIsl.getCost() + islCostWhenUnderMaintenance);
-            } else {
+            } else if (isl.getCost() >= islCostWhenUnderMaintenance
+                    && reverceIsl.getCost() >= islCostWhenUnderMaintenance) {
                 isl.setCost(isl.getCost() - islCostWhenUnderMaintenance);
                 reverceIsl.setCost(reverceIsl.getCost() - islCostWhenUnderMaintenance);
+            } else {
+                log.warn("Skipped updating cost for ISL {}_{} - {}_{} because cost will be negative after update.",
+                        srcSwitchId, srcPort, dstSwitchId, dstPort);
             }
 
             islRepository.createOrUpdate(isl);

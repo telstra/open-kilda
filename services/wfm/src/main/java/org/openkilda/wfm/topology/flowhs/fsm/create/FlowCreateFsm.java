@@ -28,6 +28,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.NbTrackableStateMachine;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -92,6 +93,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
     // The amount of flow create operation retries left: that means how many retries may be executed.
     // NB: it differs from command execution retries amount.
     private int remainRetries;
+    private boolean timedOut;
 
     private FlowCreateFsm(String flowId, CommandContext commandContext, FlowCreateHubCarrier carrier, Config config) {
         super(commandContext);
@@ -109,12 +111,16 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
      * @return true if retry was triggered.
      */
     public boolean retryIfAllowed() {
-        if (remainRetries-- > 0) {
+        if (!timedOut && remainRetries-- > 0) {
             log.info("About to retry flow create. Retries left: {}", remainRetries);
             fire(Event.RETRY);
             return true;
         } else {
-            log.debug("Retry of flow creation is not possible: limit is exceeded");
+            if (timedOut) {
+                log.warn("Failed to create flow: operation timed out");
+            } else {
+                log.debug("Retry of flow creation is not possible: limit is exceeded");
+            }
             return false;
         }
     }
@@ -123,6 +129,11 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         if (!retryIfAllowed()) {
             fire(Event.NEXT);
         }
+    }
+
+    public void fireTimeout() {
+        timedOut = true;
+        fire(Event.TIMEOUT);
     }
 
     @Override
@@ -216,12 +227,14 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
             SpeakerCommandFsm.Builder commandExecutorFsmBuilder =
                     SpeakerCommandFsm.getBuilder(carrier, config.getSpeakerCommandRetriesLimit());
 
+            FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
+
             // validate the flow
             builder.transition()
                     .from(State.INITIALIZED)
                     .to(State.FLOW_VALIDATED)
                     .on(Event.NEXT)
-                    .perform(new FlowValidateAction(persistenceManager));
+                    .perform(new FlowValidateAction(persistenceManager, dashboardLogger));
 
             // allocate flow resources
             builder.transition()
@@ -304,7 +317,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                     .from(State.VALIDATING_INGRESS_RULES)
                     .to(State.FINISHED)
                     .on(Event.NEXT)
-                    .perform(new CompleteFlowCreateAction(persistenceManager));
+                    .perform(new CompleteFlowCreateAction(persistenceManager, dashboardLogger));
 
             // error during validation or resource allocation
             builder.transitions()
@@ -386,12 +399,13 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
                     .from(State._FAILED)
                     .toFinal(State.FINISHED_WITH_ERROR)
                     .on(Event.NEXT)
-                    .perform(new HandleNotCreatedFlowAction(persistenceManager));
+                    .perform(new HandleNotCreatedFlowAction(persistenceManager, dashboardLogger));
 
             builder.transition()
                     .from(State._FAILED)
-                    .to(State.FLOW_VALIDATED)
-                    .on(Event.RETRY);
+                    .to(State.RESOURCES_ALLOCATED)
+                    .on(Event.RETRY)
+                    .perform(new ResourcesAllocationAction(pathComputer, persistenceManager, resourcesManager));
 
             builder.transitions()
                     .from(State._FAILED)

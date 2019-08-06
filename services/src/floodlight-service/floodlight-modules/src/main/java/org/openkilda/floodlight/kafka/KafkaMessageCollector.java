@@ -120,7 +120,6 @@ public class KafkaMessageCollector implements IFloodlightModule {
         private final KafkaMessageCollectorConfig consumerConfig;
 
         private final RecordHandler.Factory handlerFactory;
-        private final boolean isTestingMode;
 
         ConsumerLauncher(FloodlightModuleContext moduleContext, KafkaMessageCollectorConfig consumerConfig) {
             this.moduleContext = moduleContext;
@@ -128,19 +127,11 @@ public class KafkaMessageCollector implements IFloodlightModule {
 
             ConsumerContext context = new ConsumerContext(moduleContext);
             this.handlerFactory = new RecordHandler.Factory(context);
-
-            isTestingMode = moduleContext.getServiceImpl(KafkaUtilityService.class).isTestingMode();
         }
 
         protected void launch(ExecutorService handlerExecutor, KafkaConsumerSetup kafkaSetup) {
-            Consumer consumer;
-            if (!isTestingMode) {
-                consumer = new Consumer(moduleContext, handlerExecutor, kafkaSetup, handlerFactory,
-                        consumerConfig.getAutoCommitInterval());
-            } else {
-                consumer = new TestAwareConsumer(moduleContext, handlerExecutor, kafkaSetup, handlerFactory,
-                        consumerConfig.getAutoCommitInterval());
-            }
+            Consumer consumer = new Consumer(moduleContext, handlerExecutor, kafkaSetup, handlerFactory,
+                    consumerConfig.getAutoCommitInterval());
             Executors.newSingleThreadScheduledExecutor()
                     .scheduleWithFixedDelay(consumer, 0, 1, TimeUnit.MILLISECONDS);
         }

@@ -56,12 +56,14 @@ import org.openkilda.wfm.topology.network.storm.bolt.isl.BfdManager;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.failsafe.RetryPolicy;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEvent, IslFsmContext> {
@@ -71,6 +73,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     private final SwitchRepository switchRepository;
     private final TransactionManager transactionManager;
     private final FeatureTogglesRepository featureTogglesRepository;
+
+    private final RetryPolicy transactionRetryPolicy;
 
     private final BfdManager bfdManager;
 
@@ -96,6 +100,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();
 
         transactionManager = persistenceManager.getTransactionManager();
+        transactionRetryPolicy = transactionManager.makeRetryPolicyBlank()
+                .withMaxDuration(options.getDbRepeatMaxDurationSeconds(), TimeUnit.SECONDS);
 
         this.bfdManager = bfdManager;
 
@@ -300,37 +306,22 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
     }
 
     private void saveAllTransaction() {
-        try {
-            transactionManager.doInTransaction(() -> saveAll(Instant.now()));
-        } catch (Exception e) {
-            logDbException(e);
-            throw e;
-        }
+        transactionManager.doInTransaction(transactionRetryPolicy, () -> saveAll(Instant.now()));
     }
 
     private void saveStatusTransaction() {
-        try {
-            transactionManager.doInTransaction(() -> saveStatus(Instant.now()));
-        } catch (Exception e) {
-            logDbException(e);
-            throw e;
-        }
+        transactionManager.doInTransaction(transactionRetryPolicy, () -> saveStatus(Instant.now()));
     }
 
     private void saveStatusAndCostRaiseTransaction(IslFsmContext context) {
-        try {
-            transactionManager.doInTransaction(() -> {
-                Instant timeNow = Instant.now();
+        transactionManager.doInTransaction(transactionRetryPolicy, () -> {
+            Instant timeNow = Instant.now();
 
-                saveStatus(timeNow);
-                if (IslDownReason.PORT_DOWN == context.getDownReason()) {
-                    raiseCostOnPhysicalDown(timeNow);
-                }
-            });
-        } catch (Exception e) {
-            logDbException(e);
-            throw e;
-        }
+            saveStatus(timeNow);
+            if (IslDownReason.PORT_DOWN == context.getDownReason()) {
+                raiseCostOnPhysicalDown(timeNow);
+            }
+        });
     }
 
     private void saveAll(Instant timeNow) {
@@ -611,12 +602,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         }
 
         return humanReason;
-    }
-
-    private void logDbException(Exception e) {
-        log.error(
-                String.format("Error in DB transaction for ISL %s: %s", discoveryFacts.getReference(), e.getMessage()),
-                e);
     }
 
     private static IslStatus mapStatus(IslEndpointStatus.Status status) {

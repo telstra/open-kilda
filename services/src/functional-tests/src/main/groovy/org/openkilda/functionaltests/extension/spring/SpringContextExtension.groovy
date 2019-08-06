@@ -28,17 +28,10 @@ class SpringContextExtension extends AbstractGlobalExtension implements Applicat
     private static List<SpringContextListener> listeners = []
 
     void visitSpec(SpecInfo specInfo) {
-        //include dummy test only if the first feature in spec is parameterized or if the first feature to run is 
-        // profile-dependent. Dummy test lets Spring context to be initialized before running actual features to allow 
-        // accessing context from 'where' block. 
-        //it will always be the first in execution order, guaranteed by FeatureOrderExtension
-        def nonSpecialFeatures = specInfo.allFeaturesInExecutionOrder.findAll { !isFeatureSpecial(it) }
-        def isProfileDependent = TagExtension.collectAllTags(nonSpecialFeatures[0]).contains(Tag.VIRTUAL) ||
-                TagExtension.collectAllTags(nonSpecialFeatures[0]).contains(Tag.HARDWARE)
+        //always include dummy test to properly init context for 'where' block as well as 'setupOnce'
         specInfo.getAllFeatures().find {
             it.featureMethod.getAnnotation(PrepareSpringContextDummy)
-        }?.excluded = !((nonSpecialFeatures.size() > 0 && nonSpecialFeatures[0].parameterized)|| isProfileDependent) ||
-                specInfo.getFeatures().every { it.excluded || it.skipped } as boolean
+        }?.excluded = false
 
         specInfo.allFixtureMethods*.addInterceptor(new IMethodInterceptor() {
             boolean autowired = false

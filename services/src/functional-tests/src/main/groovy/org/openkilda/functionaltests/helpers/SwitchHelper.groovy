@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.messaging.model.SpeakerSwitchDescription
 import org.openkilda.model.Cookie
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult
@@ -28,6 +29,7 @@ import java.math.RoundingMode
 class SwitchHelper {
     static NorthboundService northbound
 
+    //below values are manufacturer-specific and override default Kilda values on firmware level
     static NOVIFLOW_BURST_COEFFICIENT = 1.005 // Driven by the Noviflow specification
     static CENTEC_MIN_BURST = 1024 // Driven by the Centec specification
     static CENTEC_MAX_BURST = 32000 // Driven by the Centec specification
@@ -41,16 +43,25 @@ class SwitchHelper {
     }
 
     @Memoized
+    static SpeakerSwitchDescription getDetails(Switch sw) {
+        northbound.getSwitch(sw.dpId).switchView.description
+    }
+
+    @Memoized
     static String getDescription(Switch sw) {
         northbound.getSwitch(sw.dpId).description
     }
 
     static List<Long> getDefaultCookies(Switch sw) {
-        if (sw.noviflow) {
+        if (sw.noviflow && !sw.wb5164) {
             return [Cookie.DROP_RULE_COOKIE, Cookie.VERIFICATION_BROADCAST_RULE_COOKIE,
                     Cookie.VERIFICATION_UNICAST_RULE_COOKIE, Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE,
                     Cookie.CATCH_BFD_RULE_COOKIE, Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE,
                     Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE]
+        } else if((sw.noviflow || sw.details.manufacturer == "E") && sw.wb5164){
+            return [Cookie.DROP_RULE_COOKIE, Cookie.VERIFICATION_BROADCAST_RULE_COOKIE,
+                    Cookie.VERIFICATION_UNICAST_RULE_COOKIE, Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE,
+                    Cookie.CATCH_BFD_RULE_COOKIE]
         } else if (sw.ofVersion == "OF_12") {
             return [Cookie.VERIFICATION_BROADCAST_RULE_COOKIE]
         } else {
@@ -60,15 +71,22 @@ class SwitchHelper {
     }
 
     static boolean isCentec(Switch sw) {
-        sw.description.toLowerCase().contains("centec")
+        sw.details.manufacturer.toLowerCase().contains("centec")
     }
 
     static boolean isNoviflow(Switch sw) {
-        sw.description.toLowerCase().contains("noviflow")
+        sw.details.manufacturer.toLowerCase().contains("noviflow")
     }
 
     static boolean isVirtual(Switch sw) {
-        sw.description.toLowerCase().contains("nicira")
+        sw.details.manufacturer.toLowerCase().contains("nicira")
+    }
+
+    /**
+     * A hardware with 100GB ports. Due to its nature sometimes requires special actions from Kilda
+     */
+    static boolean isWb5164(Switch sw) {
+        sw.details.hardware =~ "WB5164"
     }
 
     @Memoized

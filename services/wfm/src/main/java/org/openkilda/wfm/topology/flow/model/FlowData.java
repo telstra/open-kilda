@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,14 +13,23 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.kafka;
+package org.openkilda.wfm.topology.flow.model;
 
-public class KafkaBreakException extends Exception {
-    public KafkaBreakException(String s) {
-        super(s);
-    }
+import org.openkilda.messaging.model.FlowDto;
 
-    public KafkaBreakException(String s, Throwable throwable) {
-        super(s, throwable);
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Value;
+
+@Value
+@Builder
+@AllArgsConstructor
+public class FlowData {
+    FlowDto flowDto;
+    String flowGroup;
+
+    public FlowData(FlowDto flowDto) {
+        this.flowDto = flowDto;
+        this.flowGroup = null;
     }
 }

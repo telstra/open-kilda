@@ -2,6 +2,8 @@ package org.openkilda.functionaltests.extension.fixture
 
 import static org.openkilda.functionaltests.extension.ExtensionHelper.isFeatureSpecial
 
+import org.openkilda.functionaltests.extension.spring.SpringContextExtension
+
 import groovy.util.logging.Slf4j
 import org.spockframework.runtime.extension.AbstractGlobalExtension
 import org.spockframework.runtime.extension.IMethodInterceptor
@@ -24,8 +26,7 @@ class SetupOnceExtension extends AbstractGlobalExtension {
         specInfo.fixtureMethods.find { it.kind == MethodKind.SETUP }?.addInterceptor(setupOnceInterceptor)
 
         //if there is no 'setup', run 'setupOnce' right before the first feature
-        specInfo.allFeaturesInExecutionOrder.findAll { !isFeatureSpecial(it) }.featureMethod
-                *.addInterceptor(setupOnceInterceptor)
+        specInfo.allFeaturesInExecutionOrder.findAll { !isFeatureSpecial(it) }*.addInterceptor(setupOnceInterceptor)
     }
 
     class SetupOnceInterceptor implements IMethodInterceptor {
@@ -37,7 +38,7 @@ class SetupOnceExtension extends AbstractGlobalExtension {
             if (setupThrowed) {
                 throw setupThrowed
             }
-            if (!setupRan) {
+            if (!setupRan && SpringContextExtension.context) {
                 def spec = invocation.sharedInstance
                 if (spec instanceof SetupOnce) {
                     log.debug "Running fixture: setupOnce"

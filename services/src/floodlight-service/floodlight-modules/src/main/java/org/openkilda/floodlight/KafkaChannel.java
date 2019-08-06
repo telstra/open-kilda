@@ -18,7 +18,7 @@ package org.openkilda.floodlight;
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
-import org.openkilda.floodlight.service.kafka.KafkaProducerProxy;
+import org.openkilda.floodlight.service.kafka.KafkaProducerService;
 import org.openkilda.floodlight.service.kafka.KafkaUtilityService;
 
 import com.google.common.collect.ImmutableList;
@@ -50,7 +50,7 @@ public class KafkaChannel implements IFloodlightModule {
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
         return ImmutableMap.of(
                 KafkaUtilityService.class, new KafkaUtilityService(this),
-                IKafkaProducerService.class, new KafkaProducerProxy(this));
+                IKafkaProducerService.class, new KafkaProducerService());
     }
 
     @Override

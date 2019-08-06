@@ -8,6 +8,9 @@ import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -16,12 +19,18 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.messaging.Message
+import org.openkilda.messaging.command.CommandData
+import org.openkilda.messaging.command.CommandMessage
+import org.openkilda.messaging.command.flow.InstallIngressFlow
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.model.Cookie
+import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.OutputVlanType
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -30,7 +39,11 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import groovy.util.logging.Slf4j
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
@@ -46,6 +59,13 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider
+
+    @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
+    String flowTopic
+
+    @Autowired
+    @Qualifier("kafkaProducerProperties")
+    Properties producerProps
 
     @Shared
     def getPortViolationError = { String action, int port, SwitchId swId ->
@@ -77,7 +97,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "The flow allows traffic (only applicable flows are checked)"
         try {
-            def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 1000)
+            def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flow, 1000, 3)
             withPool {
                 [exam.forward, exam.reverse].eachParallel { direction ->
                     def resources = traffExam.startExam(direction)
@@ -661,7 +681,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def sw = topology.getActiveSwitches().first()
         def flow = flowHelper.singleSwitchFlow(sw)
         flow.maximumBandwidth = bandwidth
-        flow.ignoreBandwidth = (bandwidth == 0) ? true : false
+        flow.ignoreBandwidth = bandwidth == 0
         flow.pinned = true
         flowHelper.addFlow(flow)
 
@@ -692,7 +712,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flow.maximumBandwidth = bandwidth
-        flow.ignoreBandwidth = (bandwidth == 0) ? true : false
+        flow.ignoreBandwidth = bandwidth == 0
         flow.pinned = true
         flowHelper.addFlow(flow)
 
@@ -744,6 +764,57 @@ class FlowCrudSpec extends HealthCheckSpecification {
             def links = northbound.getAllLinks()
             swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
         }
+    }
+
+    @Ignore("https://github.com/telstra/open-kilda/issues/2625")
+    def "System recreates excess meter when flow is created with the same meterId"() {
+        given: "A Noviflow switch"
+        def sw = topology.activeSwitches.find { it.noviflow || it.virtual }
+                ?: assumeTrue("No suiting switch found", false)
+
+        and: "Create excess meters on the given switch"
+        def fakeBandwidth = 333
+        def amountOfExcessMeters = 10
+        def producer = new KafkaProducer(producerProps)
+        def excessMeterIds = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
+                .meterEntries*.meterId).take(amountOfExcessMeters)
+        excessMeterIds.each { meterId ->
+            producer.send(new ProducerRecord(flowTopic, sw.dpId.toString(), buildMessage(
+                    new InstallIngressFlow(UUID.randomUUID(), NON_EXISTENT_FLOW_ID, null, sw.dpId,
+                            5, 6, 5, meterId, FlowEncapsulationType.TRANSIT_VLAN,
+                            OutputVlanType.REPLACE, fakeBandwidth, meterId, sw.dpId)).toJson()))
+        }
+        producer.close()
+
+        assert northbound.validateSwitch(sw.dpId).meters.excess.size() == amountOfExcessMeters
+
+        when: "Create several flows"
+        List<String> flows = []
+        def amountOfFlows = 5
+        amountOfFlows.times {
+            def flow = flowHelper.singleSwitchFlow(sw)
+            northbound.addFlow(flow)
+            flows << flow.id
+        }
+
+        then: "Needed amount of flow was created"
+        northbound.getAllFlows().size() == amountOfFlows
+
+        and: "Needed amount of meter was recreated"
+        /* system knows nothing about excess meters
+         while creating one-switch flow system should create two meters
+         system checks database and assumes that there is no meter which is used by flow
+         as a result system creates flow with first available meters (32 and 33)
+         in reality we've already created excess meters 32..42
+         excess meters should NOT be just allocated to the created flow
+         they should be recreated(burst size should be recalculated) */
+        def validateSwitchInfo = northbound.validateSwitch(sw.dpId)
+        switchHelper.verifyRuleSectionsAreEmpty(validateSwitchInfo, ["missing", "excess"])
+        switchHelper.verifyMeterSectionsAreEmpty(validateSwitchInfo, ["missing", "misconfigured", "excess"])
+        validateSwitchInfo.meters.proper.size() == amountOfFlows * 2 // one flow creates two meters
+
+        and: "Cleanup: Delete the flows and excess meters"
+        flows.each { flowHelper.deleteFlow(it) }
     }
 
     @Shared
@@ -922,5 +993,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
                         }
                 ]
         ]
+    }
+
+    private static Message buildMessage(final CommandData data) {
+        return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null);
     }
 }

@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.30.0 (06/08/2019)
+
+### Features:
+-  [#2633](https://github.com/telstra/open-kilda/pull/2633) Adding feature to update isl bandwidth [**gui**]
+-  [#2601](https://github.com/telstra/open-kilda/pull/2601) Introduce a custom dashboard logger for flow operations. [**storm-topologies**]
+
+### Bug Fixes:
+-  [#2645](https://github.com/telstra/open-kilda/pull/2645) Fix for installing meter for vxlan unicast (Issue: [#2635](https://github.com/telstra/open-kilda/issues/2635)) [**floodlight**]
+-  [#2649](https://github.com/telstra/open-kilda/pull/2649) Fix: Ignore default rules when sync rules. [**storm-topologies**]
+-  [#2655](https://github.com/telstra/open-kilda/pull/2655) Added go to table instruction to OF flow mapping (Issue: [#2375](https://github.com/telstra/open-kilda/issues/2375)) [**floodlight**]
+-  [#2666](https://github.com/telstra/open-kilda/pull/2666) Fix flow create retries 
+-  [#2667](https://github.com/telstra/open-kilda/pull/2667) Added condition to skip cost reduction when link goes from state under maintenance and cost less than isl.cost.when.under.maintenance. (Issue: [#2319](https://github.com/telstra/open-kilda/issues/2319)) [**storm-topologies**]
+-  [#2670](https://github.com/telstra/open-kilda/pull/2670) Fix flows in DOWN state without flow paths [**northbound**][**storm-topologies**]
+
+### Improvements:
+-  [#2626](https://github.com/telstra/open-kilda/pull/2626) test: "System recreates excess meter when flow is created with the same meterId" (Issue: [#2625](https://github.com/telstra/open-kilda/issues/2625)) [**tests**]
+-  [#2631](https://github.com/telstra/open-kilda/pull/2631) Get rid of kafka breaker [**tests**]
+-  [#2638](https://github.com/telstra/open-kilda/pull/2638) update meterSpec according to wb5164 switch [**tests**]
+-  [#2516](https://github.com/telstra/open-kilda/pull/2516) add tests for checking the encapsulation-type field [**tests**]
+-  [#2646](https://github.com/telstra/open-kilda/pull/2646) Add WB5164 support to tests as well as various misc fixes [**tests**]
+-  [#2654](https://github.com/telstra/open-kilda/pull/2654) Refactor unit tests for install default rules [**floodlight**][**tests**]
+-  [#2657](https://github.com/telstra/open-kilda/pull/2657) fix pinned flow spec [**tests**]
+-  [#2602](https://github.com/telstra/open-kilda/pull/2602) Add ContentionSpec for v1 and v2 api [**tests**]
+-  [#2612](https://github.com/telstra/open-kilda/pull/2612) add tests for pinned/protected/diverse/default flow via APIv2 (Issue: [#2575](https://github.com/telstra/open-kilda/issues/2575)) [**tests**]
+-  [#2493](https://github.com/telstra/open-kilda/pull/2493) Repeat db transation on db locks (Issue: [#2391](https://github.com/telstra/open-kilda/issues/2391)) [**storm-topologies**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.29.0...v1.30.0).
+
+### Affected Components:
+nb, neo4j, swmanager, network, flow-hs, nbworker, reroute, fl, flow
+
+---
+
 ## v1.29.1 (01/08/2019)
 
 ### Bug Fixes:

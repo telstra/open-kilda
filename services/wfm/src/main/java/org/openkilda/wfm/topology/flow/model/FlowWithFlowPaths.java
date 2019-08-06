@@ -13,12 +13,18 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.kafka;
+package org.openkilda.wfm.topology.flow.model;
 
-import org.openkilda.messaging.ctrl.KafkaBreakTarget;
+import org.openkilda.model.Flow;
 
-public interface KafkaBreaker {
-    void shutoff(KafkaBreakTarget target, int region) throws KafkaBreakException;
+import lombok.Builder;
+import lombok.Value;
 
-    void restore(KafkaBreakTarget target, int region) throws KafkaBreakException;
+import java.util.List;
+
+@Value
+@Builder
+public class FlowWithFlowPaths {
+    Flow flow;
+    List<FlowPathWithEncapsulation> flowPaths;
 }

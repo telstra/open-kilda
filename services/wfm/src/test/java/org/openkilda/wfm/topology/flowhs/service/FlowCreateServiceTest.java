@@ -292,10 +292,11 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
 
         assertEquals("All installed rules should be deleted", installCommands, deleteCommands);
         verify(flowRepository).updateStatus(eq(flowId), eq(FlowStatus.DOWN));
-        verify(flowPathRepository).updateStatus(
-                eq(flowResources.getForward().getPathId()), eq(FlowPathStatus.INACTIVE));
-        verify(flowPathRepository).updateStatus(
-                eq(flowResources.getReverse().getPathId()), eq(FlowPathStatus.INACTIVE));
+
+        FlowPath forwardPath = flowPathRepository.findById(flowResources.getForward().getPathId()).get();
+        FlowPath reversePath = flowPathRepository.findById(flowResources.getReverse().getPathId()).get();
+        verify(flowPathRepository).delete(eq(forwardPath));
+        verify(flowPathRepository).delete(eq(reversePath));
     }
 
     @Test
@@ -350,10 +351,10 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
 
         assertEquals("All installed rules should be deleted", installCommands, deleteCommands);
         verify(flowRepository).updateStatus(eq(flowId), eq(FlowStatus.DOWN));
-        verify(flowPathRepository).updateStatus(
-                eq(flowResources.getForward().getPathId()), eq(FlowPathStatus.INACTIVE));
-        verify(flowPathRepository).updateStatus(
-                eq(flowResources.getReverse().getPathId()), eq(FlowPathStatus.INACTIVE));
+        FlowPath forwardPath = flowPathRepository.findById(flowResources.getForward().getPathId()).get();
+        FlowPath reversePath = flowPathRepository.findById(flowResources.getReverse().getPathId()).get();
+        verify(flowPathRepository).delete(eq(forwardPath));
+        verify(flowPathRepository).delete(eq(reversePath));
     }
 
     @Test
