@@ -41,15 +41,10 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class AllocateProtectedResourcesAction extends BaseResourceAllocationAction {
-
-    private final FlowOperationsDashboardLogger dashboardLogger;
-
     public AllocateProtectedResourcesAction(PersistenceManager persistenceManager, PathComputer pathComputer,
                                             FlowResourcesManager resourcesManager,
                                             FlowOperationsDashboardLogger dashboardLogger) {
-        super(persistenceManager, pathComputer, resourcesManager);
-
-        this.dashboardLogger = dashboardLogger;
+        super(persistenceManager, pathComputer, resourcesManager, dashboardLogger);
     }
 
     @Override

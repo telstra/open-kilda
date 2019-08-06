@@ -152,7 +152,7 @@ public class ValidateFlowAction extends
         } catch (FlowProcessingException e) {
             // This is a validation error.
             String errorMessage = format("%s: %s", e.getErrorMessage(), e.getErrorDescription());
-            log.debug(errorMessage);
+            dashboardLogger.onFailedFlowReroute(flowId, errorMessage);
 
             saveHistory(stateMachine, stateMachine.getCarrier(), flowId, e.getErrorDescription());
 

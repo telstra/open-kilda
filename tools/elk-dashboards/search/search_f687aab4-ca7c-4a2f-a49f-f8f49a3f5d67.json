@@ -1,0 +1,17 @@
+{
+      "title": "Kilda-FlowOperations",
+      "description": "",
+      "hits": 0,
+      "columns": [
+        "level",
+        "message"
+      ],
+      "sort": [
+        "@timestamp",
+        "desc"
+      ],
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\n  \"index\": \"AWUfJAj0duClWTXkEj7q\",\n  \"highlightAll\": true,\n  \"version\": true,\n  \"query\": {\n    \"query_string\": {\n      \"query\": \"_exists_:contextMap.FLOW_OPERATIONS_DASHBOARD OR (logger_name:\\\"net.floodlightcontroller.core.internal.OFSwitchHandshakeHandler\\\" AND message:\\\"code=INVALID_METER\\\")\",\n      \"analyze_wildcard\": true\n    }\n  },\n  \"filter\": []\n}"
+      }
+}
