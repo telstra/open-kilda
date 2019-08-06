@@ -60,17 +60,11 @@ compile:
 	$(MAKE) -C services/wfm all-in-one
 	$(MAKE) -C services/lab-service/lab test
 
-.PHONY: unit unit-java-common unit-java-storm
-unit: update-props unit-java-common unit-java-storm
-unit-java-common:
+.PHONY: unit
+unit: update-props
 	$(MAKE) build-no-test -C services/src
 	$(MAKE) unit -C services/src
-unit-java-storm: avoid-port-conflicts
 	mvn -B -f services/wfm/pom.xml test
-
-.PHONY: avoid-port-conflicts
-avoid-port-conflicts:
-	docker-compose stop
 
 clean-test:
 	docker-compose down
