@@ -94,6 +94,7 @@ public class BaseFlowService {
         Optional<Flow> foundFlow = flowRepository.findById(flowId);
         if (foundFlow.isPresent()) {
             Flow flow = foundFlow.get();
+
             FlowEncapsulationType encapsulationType = flow.getEncapsulationType();
             EncapsulationResources forwardEncapsulation = flowResourcesManager.getEncapsulationResources(
                     flow.getForwardPathId(), flow.getReversePathId(), encapsulationType).orElse(null);

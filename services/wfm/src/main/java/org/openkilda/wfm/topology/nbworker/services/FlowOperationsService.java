@@ -239,7 +239,7 @@ public class FlowOperationsService {
     }
 
     private List<PathNodePayload> buildPathFromFlow(Flow flow, FlowPath flowPath) {
-        return FlowPathMapper.INSTANCE.mapToPathNodes(flow, flowPath);
+        return flowPath != null ? FlowPathMapper.INSTANCE.mapToPathNodes(flow, flowPath) : Collections.emptyList();
     }
 
     /**

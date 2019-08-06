@@ -34,6 +34,11 @@ public class ReroutedFlowPaths {
      * @return is rerouted flag.
      */
     public boolean isRerouted() {
+        if ((oldFlowPaths.getForwardPath() == null && newFlowPaths.getForwardPath() != null)
+                || (oldFlowPaths.getProtectedForwardPath() == null && newFlowPaths.getProtectedForwardPath() != null)) {
+            return true;
+        }
+
         boolean isPrimaryRerouted = !Objects.equals(
                 FlowPathMapper.INSTANCE.map(newFlowPaths.getForwardPath()),
                 FlowPathMapper.INSTANCE.map(oldFlowPaths.getForwardPath()));
