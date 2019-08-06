@@ -121,10 +121,10 @@ class MetersSpec extends HealthCheckSpecification {
         def meters = northbound.getAllMeters(sw.dpId)
         assert meters.meterEntries.size() == 2
         assert meters.meterEntries.each {
-            assert it.rate == Math.max((long) (DISCO_PKT_RATE * DISCO_PKT_SIZE / 1024L), MIN_RATE_KBPS)
+            assert it.rate == Math.max((long) (DISCO_PKT_RATE * DISCO_PKT_SIZE * 8 / 1024L), MIN_RATE_KBPS)
         }
         //unable to use #getExpectedBurst. For Centects there's special burst due to KBPS
-        assert meters.meterEntries.every { it.burstSize == (long) ((DISCO_PKT_BURST * DISCO_PKT_SIZE) / 1024) }
+        assert meters.meterEntries.every { it.burstSize == (long) ((DISCO_PKT_BURST * DISCO_PKT_SIZE * 8) / 1024) }
         assert meters.meterEntries.every(defaultMeters)
         assert meters.meterEntries.every { ["KBPS", "BURST", "STATS"].containsAll(it.flags) }
         assert meters.meterEntries.every { it.flags.size() == 3 }

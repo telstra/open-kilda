@@ -1183,7 +1183,7 @@ public class SwitchManagerTest {
                 contains(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST))));
         for (OFMeterMod mod : actual) {
             long expectedBurstSize =
-                    config.getSystemMeterBurstSizeInPackets() * config.getDiscoPacketSize() / 1024L;
+                    config.getSystemMeterBurstSizeInPackets() * config.getDiscoPacketSize() * 8 / 1024L;
             assertThat(mod.getMeters(), everyItem(hasProperty("burstSize", is(expectedBurstSize))));
         }
     }

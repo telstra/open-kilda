@@ -26,6 +26,7 @@ public final class Meter implements Serializable {
     private static final double MAX_NOVIFLOW_BURST_COEFFICIENT = 1.005;
     private static final long MIN_CENTEC_SWITCH_BURST_SIZE = 1024L;
     private static final long MAX_CENTEC_SWITCH_BURST_SIZE = 32000L;
+    public static final int MIN_RATE_IN_KBPS = 64;
 
     private static final String[] METER_FLAGS = {"KBPS", "BURST", "STATS"};
 
@@ -62,6 +63,20 @@ public final class Meter implements Serializable {
         }
 
         return Math.round(bandwidth * burstCoefficient);
+    }
+
+    /**
+     * Convert rate from packets to kilobits.
+     */
+    public static long convertRateToKiloBits(long rateInPackets, long packetSizeInBytes) {
+        return Math.max(MIN_RATE_IN_KBPS, (rateInPackets * packetSizeInBytes * 8) / 1024L);
+    }
+
+    /**
+     * Convert burst size from packets to kilobits.
+     */
+    public static long convertBurstSizeToKiloBits(long burstSizeInPackets, long packetSizeInBytes) {
+        return (burstSizeInPackets * packetSizeInBytes * 8) / 1024L;
     }
 
     /**
