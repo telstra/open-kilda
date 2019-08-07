@@ -71,6 +71,7 @@ import org.openkilda.wfm.error.ClientException;
 import org.openkilda.wfm.error.FeatureTogglesNotEnabledException;
 import org.openkilda.wfm.error.FlowAlreadyExistException;
 import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.service.FlowCommandFactory;
@@ -128,6 +129,8 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
     private final FlowResourcesConfig flowResourcesConfig;
 
+    private final IslCostConfig islCostConfig;
+
     private transient RepositoryFactory repositoryFactory;
 
     private transient FlowService flowService;
@@ -146,10 +149,11 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
     private transient OutputCollector outputCollector;
 
     public CrudBolt(PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig,
-                    FlowResourcesConfig flowResourcesConfig) {
+                    FlowResourcesConfig flowResourcesConfig, IslCostConfig islCostConfig) {
         this.persistenceManager = persistenceManager;
         this.pathComputerConfig = pathComputerConfig;
         this.flowResourcesConfig = flowResourcesConfig;
+        this.islCostConfig = islCostConfig;
     }
 
     /**
@@ -185,7 +189,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
 
         flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         flowService = new FlowService(persistenceManager, pathComputerFactory, flowResourcesManager,
-                flowValidator, commandFactory);
+                flowValidator, commandFactory, islCostConfig);
         featureTogglesService = new FeatureTogglesService(persistenceManager.getRepositoryFactory());
     }
 

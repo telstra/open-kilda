@@ -27,10 +27,12 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.IslConfig;
 import org.openkilda.model.PathId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
@@ -94,6 +96,7 @@ public final class FlowRerouteFsm
     private boolean recreateIfSamePath;
     private boolean reroutePrimary;
     private boolean rerouteProtected;
+    private IslConfig islConfig;
 
     private FlowStatus originalFlowStatus;
     private FlowEncapsulationType originalEncapsulationType;
@@ -125,17 +128,22 @@ public final class FlowRerouteFsm
     private Map<UUID, InstallTransitRule> nonIngressCommands = new HashMap<>();
     private Map<UUID, RemoveRule> removeCommands = new HashMap<>();
 
-    public FlowRerouteFsm(CommandContext commandContext, FlowRerouteHubCarrier carrier) {
+    public FlowRerouteFsm(CommandContext commandContext, FlowRerouteHubCarrier carrier, IslCostConfig islCostConfig) {
         super(commandContext);
         this.carrier = carrier;
-
+        this.islConfig = IslConfig.builder()
+                .unstableIslTimeoutSec(islCostConfig.getIslUnstableTimeoutSec())
+                .unstableCostRaise(islCostConfig.getIslCostWhenPortDown())
+                .underMaintenanceCostRaise(islCostConfig.getIslCostWhenUnderMaintenance())
+                .build();
     }
 
     private static StateMachineBuilder<FlowRerouteFsm, State, Event, FlowRerouteContext> builder(
             PersistenceManager persistenceManager, PathComputer pathComputer, FlowResourcesManager resourcesManager) {
         StateMachineBuilder<FlowRerouteFsm, State, Event, FlowRerouteContext> builder =
                 StateMachineBuilderFactory.create(FlowRerouteFsm.class, State.class, Event.class,
-                        FlowRerouteContext.class, CommandContext.class, FlowRerouteHubCarrier.class);
+                        FlowRerouteContext.class, CommandContext.class, FlowRerouteHubCarrier.class,
+                        IslCostConfig.class);
 
         FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
 
@@ -358,17 +366,19 @@ public final class FlowRerouteFsm
 
     public static FlowRerouteFsm newInstance(CommandContext commandContext, FlowRerouteHubCarrier carrier,
                                              PersistenceManager persistenceManager,
-                                             PathComputer pathComputer, FlowResourcesManager resourcesManager) {
+                                             PathComputer pathComputer, FlowResourcesManager resourcesManager,
+                                             IslCostConfig islCostConfig) {
         return newInstance(State.INITIALIZED, commandContext, carrier,
-                persistenceManager, pathComputer, resourcesManager);
+                persistenceManager, pathComputer, resourcesManager, islCostConfig);
     }
 
     public static FlowRerouteFsm newInstance(State state, CommandContext commandContext,
                                              FlowRerouteHubCarrier carrier,
                                              PersistenceManager persistenceManager,
-                                             PathComputer pathComputer, FlowResourcesManager resourcesManager) {
+                                             PathComputer pathComputer, FlowResourcesManager resourcesManager,
+                                             IslCostConfig islCostConfig) {
         return builder(persistenceManager, pathComputer, resourcesManager)
-                .newStateMachine(state, commandContext, carrier);
+                .newStateMachine(state, commandContext, carrier, islCostConfig);
     }
 
     public void addNewResources(FlowResources flowResources) {

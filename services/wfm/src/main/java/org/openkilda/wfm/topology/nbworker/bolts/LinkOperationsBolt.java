@@ -72,11 +72,8 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
     private transient IslRepository islRepository;
     private transient FeatureTogglesRepository featureTogglesRepository;
 
-    private int islCostWhenUnderMaintenance;
-
-    public LinkOperationsBolt(PersistenceManager persistenceManager, int islCostWhenUnderMaintenance) {
+    public LinkOperationsBolt(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        this.islCostWhenUnderMaintenance = islCostWhenUnderMaintenance;
     }
 
     /**
@@ -84,8 +81,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
      */
     @Override
     public void init() {
-        this.linkOperationsService = new LinkOperationsService(this, repositoryFactory, transactionManager,
-                islCostWhenUnderMaintenance);
+        this.linkOperationsService = new LinkOperationsService(this, repositoryFactory, transactionManager);
         this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
         linkPropsRepository = repositoryFactory.createLinkPropsRepository();
         islRepository = repositoryFactory.createIslRepository();

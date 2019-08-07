@@ -26,6 +26,7 @@ import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.history.bolt.HistoryBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
@@ -107,8 +108,9 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
 
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
-        FlowCreateHubBolt hubBolt =
-                new FlowCreateHubBolt(config, persistenceManager, pathComputerConfig, flowResourcesConfig);
+        IslCostConfig islCostConfig = configurationProvider.getConfiguration(IslCostConfig.class);
+        FlowCreateHubBolt hubBolt = new FlowCreateHubBolt(config, persistenceManager, pathComputerConfig,
+                flowResourcesConfig, islCostConfig);
         topologyBuilder.setBolt(ComponentId.FLOW_CREATE_HUB.name(), hubBolt, parallelism)
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_FLOW_CREATE_HUB.name(), FIELDS_KEY)
                 .directGrouping(ComponentId.FLOW_CREATE_SPEAKER_WORKER.name(),
@@ -120,9 +122,10 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         int hubTimeout = (int) TimeUnit.SECONDS.toMillis(topologyConfig.getRerouteHubTimeoutSeconds());
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        IslCostConfig islCostConfig = configurationProvider.getConfiguration(IslCostConfig.class);
         FlowRerouteHubBolt hubBolt = new FlowRerouteHubBolt(ComponentId.FLOW_ROUTER_BOLT.name(),
                 ComponentId.FLOW_REROUTE_SPEAKER_WORKER.name(), hubTimeout, true,
-                persistenceManager, pathComputerConfig, flowResourcesConfig);
+                persistenceManager, pathComputerConfig, flowResourcesConfig, islCostConfig);
         topologyBuilder.setBolt(ComponentId.FLOW_REROUTE_HUB.name(), hubBolt, parallelism)
                 .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_FLOW_REROUTE_HUB.name(), FIELDS_KEY)
                 .directGrouping(ComponentId.FLOW_REROUTE_SPEAKER_WORKER.name(),

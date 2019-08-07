@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.nbworker.services;
 
 import org.openkilda.messaging.info.network.PathsInfoData;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.IslConfig;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.Path;
@@ -29,6 +30,7 @@ import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.share.mappers.PathMapper;
 
 import lombok.extern.slf4j.Slf4j;
@@ -43,13 +45,20 @@ public class PathsService {
     private PathComputer pathComputer;
     private SwitchRepository switchRepository;
     private KildaConfigurationRepository kildaConfigurationRepository;
+    private IslConfig islConfig;
 
-    public PathsService(RepositoryFactory repositoryFactory, PathComputerConfig pathComputerConfig) {
+    public PathsService(RepositoryFactory repositoryFactory, PathComputerConfig pathComputerConfig,
+                        IslCostConfig islCostConfig) {
         switchRepository = repositoryFactory.createSwitchRepository();
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
         PathComputerFactory pathComputerFactory = new PathComputerFactory(
                 pathComputerConfig, new AvailableNetworkFactory(pathComputerConfig, repositoryFactory));
         pathComputer = pathComputerFactory.getPathComputer();
+        islConfig = IslConfig.builder()
+                .unstableIslTimeoutSec(islCostConfig.getIslUnstableTimeoutSec())
+                .unstableCostRaise(islCostConfig.getIslCostWhenPortDown())
+                .underMaintenanceCostRaise(islCostConfig.getIslCostWhenUnderMaintenance())
+                .build();
     }
 
     /**
@@ -69,7 +78,8 @@ public class PathsService {
         }
         // TODO(tdurakov): NB request should accept encapsulation type as well, right now will use env default
         FlowEncapsulationType flowEncapsulationType = kildaConfigurationRepository.get().getFlowEncapsulationType();
-        List<Path> flowPaths = pathComputer.getNPaths(srcSwitchId, dstSwitchId, MAX_PATH_COUNT, flowEncapsulationType);
+        List<Path> flowPaths = pathComputer.getNPaths(srcSwitchId, dstSwitchId, MAX_PATH_COUNT, flowEncapsulationType,
+                islConfig);
 
         return flowPaths.stream().map(PathMapper.INSTANCE::map)
                 .map(path -> PathsInfoData.builder().path(path).build())

@@ -17,6 +17,7 @@ package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.IslConfig;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.RecoverableException;
@@ -35,10 +36,11 @@ public interface PathComputer {
      * only.
      *
      * @param flow the {@link Flow} instance
+     * @param islConfig ISL parameters that are used for to compute the path.
      * @return {@link PathPair} instances
      */
-    default PathPair getPath(Flow flow) throws UnroutableFlowException, RecoverableException {
-        return getPath(flow, Collections.emptyList());
+    default PathPair getPath(Flow flow, IslConfig islConfig) throws UnroutableFlowException, RecoverableException {
+        return getPath(flow, Collections.emptyList(), islConfig);
     }
 
     /**
@@ -47,9 +49,10 @@ public interface PathComputer {
      * @param flow the {@link Flow} instance.
      * @param reusePathsResources    allow already allocated path resources (bandwidth)
      *                               be reused in new path computation.
+     * @param islConfig ISL parameters that are used for to compute the path.
      * @return {@link PathPair} instances
      */
-    PathPair getPath(Flow flow, List<PathId> reusePathsResources)
+    PathPair getPath(Flow flow, List<PathId> reusePathsResources, IslConfig islConfig)
             throws UnroutableFlowException, RecoverableException;
 
     /**
@@ -58,10 +61,11 @@ public interface PathComputer {
      * @param srcSwitch source switchId
      * @param dstSwitch destination switchId
      * @param flowEncapsulationType target encapsulation type
+     * @param islConfig ISL parameters that are used for to compute paths.
      *
      * @return an list of N (or less) best paths ordered from best to worst.
      */
     List<Path> getNPaths(SwitchId srcSwitch, SwitchId dstSwitch, int count,
-                         FlowEncapsulationType flowEncapsulationType)
+                         FlowEncapsulationType flowEncapsulationType, IslConfig islConfig)
             throws RecoverableException, UnroutableFlowException;
 }

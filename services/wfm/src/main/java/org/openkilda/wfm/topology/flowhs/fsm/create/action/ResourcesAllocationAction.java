@@ -212,7 +212,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
 
     private void allocateMainPath(FlowCreateFsm fsm, Flow flow) throws UnroutableFlowException,
             RecoverableException, ResourceAllocationException {
-        PathPair pathPair = pathComputer.getPath(flow);
+        PathPair pathPair = pathComputer.getPath(flow, fsm.getIslConfig());
         FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
 
         long cookie = flowResources.getUnmaskedCookie();
@@ -242,7 +242,7 @@ public class ResourcesAllocationAction extends NbTrackableAction<FlowCreateFsm, 
     private void allocateProtectedPath(FlowCreateFsm fsm, Flow flow) throws UnroutableFlowException,
             RecoverableException, ResourceAllocationException, FlowNotFoundException {
         flow.setGroupId(getGroupId(flow.getFlowId()));
-        PathPair protectedPath = pathComputer.getPath(flow);
+        PathPair protectedPath = pathComputer.getPath(flow, fsm.getIslConfig());
 
         boolean overlappingProtectedPathFound =
                 flowPathBuilder.arePathsOverlapped(protectedPath.getForward(), flow.getForwardPath())

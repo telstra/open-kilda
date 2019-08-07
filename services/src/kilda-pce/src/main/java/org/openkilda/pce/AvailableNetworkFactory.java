@@ -17,6 +17,7 @@ package org.openkilda.pce;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslConfig;
 import org.openkilda.model.PathId;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.impl.AvailableNetwork;
@@ -53,9 +54,10 @@ public class AvailableNetworkFactory {
      * @param reuseResourcesForPaths      reuse resources already allocated by {@param reuseResourcesForPaths} paths.
      * @return {@link AvailableNetwork} instance.
      */
-    public AvailableNetwork getAvailableNetwork(Flow flow, List<PathId> reuseResourcesForPaths)
+    public AvailableNetwork getAvailableNetwork(Flow flow, List<PathId> reuseResourcesForPaths, IslConfig islConfig)
             throws RecoverableException {
-        return getAvailableNetwork(flow, reuseResourcesForPaths, BuildStrategy.from(config.getNetworkStrategy()));
+        return getAvailableNetwork(flow, reuseResourcesForPaths, BuildStrategy.from(config.getNetworkStrategy()),
+                islConfig);
     }
 
     /**
@@ -66,19 +68,20 @@ public class AvailableNetworkFactory {
      * @param buildStrategy               the {@link AvailableNetwork} building buildStrategy.
      * @return {@link AvailableNetwork} instance
      */
-    public AvailableNetwork getAvailableNetwork(
-            Flow flow, List<PathId> reusePathsResources, BuildStrategy buildStrategy) throws RecoverableException {
+    public AvailableNetwork getAvailableNetwork(Flow flow, List<PathId> reusePathsResources,
+                                                BuildStrategy buildStrategy,
+                                                IslConfig islConfig) throws RecoverableException {
         AvailableNetwork network = new AvailableNetwork();
         try {
             // Reads all active links from the database and creates representation of the network.
             Collection<Isl> links = getAvailableIsls(buildStrategy, flow);
-            links.forEach(network::addLink);
+            links.forEach(isl -> network.addLink(isl, islConfig));
 
             if (!reusePathsResources.isEmpty() && !flow.isIgnoreBandwidth()) {
                 // ISLs occupied by the flow (take the bandwidth already occupied by the flow into account).
                 Collection<Isl> flowLinks = islRepository.findActiveAndOccupiedByFlowPathWithAvailableBandwidth(
                         reusePathsResources, flow.getBandwidth(), flow.getEncapsulationType());
-                flowLinks.forEach(network::addLink);
+                flowLinks.forEach(isl -> network.addLink(isl, islConfig));
             }
         } catch (PersistenceException e) {
             throw new RecoverableException("An error from neo4j", e);

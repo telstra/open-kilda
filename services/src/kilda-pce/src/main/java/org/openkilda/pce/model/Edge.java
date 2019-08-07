@@ -16,6 +16,7 @@
 package org.openkilda.pce.model;
 
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslConfig;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -81,11 +82,11 @@ public class Edge {
      * @param isl the isl.
      * @return a builder instance
      */
-    public static Edge.EdgeBuilder fromIslToBuilder(Isl isl) {
+    public static Edge.EdgeBuilder fromIslToBuilder(Isl isl, IslConfig islConfig) {
         return Edge.builder()
                 .srcPort(isl.getSrcPort())
                 .destPort(isl.getDestPort())
-                .cost(isl.getCost())
+                .cost(isl.getEffectiveCost(islConfig))
                 .latency(isl.getLatency())
                 .availableBandwidth(isl.getAvailableBandwidth());
     }

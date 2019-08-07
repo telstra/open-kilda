@@ -44,6 +44,7 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.IslConfig;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
@@ -63,6 +64,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
@@ -97,6 +99,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
     private PathComputer pathComputer;
     @Mock
     private FlowCreateHubCarrier carrier;
+    @Mock
+    private IslCostConfig islCostConfig;
 
     @Captor
     private ArgumentCaptor<Flow> flowCaptor;
@@ -140,7 +144,12 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
 
         doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any(SpeakerFlowRequest.class));
         when(repositoryFactory.createSwitchFeaturesRepository()).thenReturn(switchFeaturesRepository);
-        target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager, 0, 0);
+
+        when(islCostConfig.getIslCostWhenPortDown()).thenReturn(10000);
+        when(islCostConfig.getIslCostWhenUnderMaintenance()).thenReturn(10000);
+
+        target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager, 0, 0,
+                islCostConfig);
     }
 
     @After
@@ -168,7 +177,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         FlowResources flowResources = allocateResources(flowId);
         when(flowResourcesManager.allocateFlowResources(any(Flow.class))).thenReturn(flowResources);
 
-        when(pathComputer.getPath(any(Flow.class))).thenReturn(getPath3Switches());
+        when(pathComputer.getPath(any(Flow.class), any(IslConfig.class))).thenReturn(getPath3Switches());
 
         target.handleRequest(key, new CommandContext(), request);
 
@@ -214,7 +223,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         mockFlowCreationInDb(flowId);
         FlowResources flowResources = allocateResources(flowId);
         when(flowResourcesManager.allocateFlowResources(any(Flow.class))).thenReturn(flowResources);
-        when(pathComputer.getPath(any(Flow.class))).thenReturn(getPathOneSwitch());
+        when(pathComputer.getPath(any(Flow.class), any(IslConfig.class))).thenReturn(getPathOneSwitch());
 
         target.handleRequest(key, new CommandContext(), flowRequest);
 
@@ -242,7 +251,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
 
     @Test
     public void shouldRollbackIfEgressRuleNotInstalled() throws Exception {
-        target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager, 0, 0);
+        target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager, 0, 0,
+                islCostConfig);
         String key = "failed_flow_create";
         String flowId = "failed_flow_id";
 
@@ -259,7 +269,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         mockFlowCreationInDb(flowId);
         FlowResources flowResources = allocateResources(flowId);
         when(flowResourcesManager.allocateFlowResources(any(Flow.class))).thenReturn(flowResources);
-        when(pathComputer.getPath(any(Flow.class))).thenReturn(getPath3Switches());
+        when(pathComputer.getPath(any(Flow.class), any(IslConfig.class))).thenReturn(getPath3Switches());
         target.handleRequest(key, new CommandContext(), flowRequest);
 
         verify(flowRepository).createOrUpdate(flowCaptor.capture());
@@ -301,7 +311,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
 
     @Test
     public void shouldRollbackIfIngressRuleNotInstalled() throws Exception {
-        target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager, 0, 0);
+        target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager, 0, 0,
+                islCostConfig);
         String key = "failed_flow_create";
         String flowId = "failed_flow_id";
 
@@ -318,7 +329,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         FlowResources flowResources = allocateResources(flowId);
         when(flowResourcesManager.allocateFlowResources(any(Flow.class))).thenReturn(flowResources);
         mockFlowCreationInDb(flowId);
-        when(pathComputer.getPath(any(Flow.class))).thenReturn(getPath3Switches());
+        when(pathComputer.getPath(any(Flow.class), any(IslConfig.class))).thenReturn(getPath3Switches());
         target.handleRequest(key, new CommandContext(), flowRequest);
 
         verify(flowRepository).createOrUpdate(flowCaptor.capture());
@@ -361,7 +372,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
     public void shouldCreateFlowWithRetryNonIngressRuleIfSwitchIsUnavailable() throws Exception {
         int retriesLimit = 10;
         target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager,
-                0, retriesLimit);
+                0, retriesLimit, islCostConfig);
         String key = "retries_non_ingress_installation";
         String flowId = "failed_flow_id";
 
@@ -378,7 +389,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         FlowResources flowResources = allocateResources(flowId);
         when(flowResourcesManager.allocateFlowResources(any(Flow.class))).thenReturn(flowResources);
         mockFlowCreationInDb(flowId);
-        when(pathComputer.getPath(any(Flow.class))).thenReturn(getPath3Switches());
+        when(pathComputer.getPath(any(Flow.class), any(IslConfig.class))).thenReturn(getPath3Switches());
         target.handleRequest(key, new CommandContext(), flowRequest);
 
         verify(flowRepository).createOrUpdate(flowCaptor.capture());
@@ -417,7 +428,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
     public void shouldCreateFlowWithRetryIngressRuleIfSwitchIsUnavailable() throws Exception {
         int retriesLimit = 10;
         target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager,
-                0, retriesLimit);
+                0, retriesLimit, islCostConfig);
         String key = "retries_non_ingress_installation";
         String flowId = "failed_flow_id";
 
@@ -434,7 +445,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         FlowResources flowResources = allocateResources(flowId);
         when(flowResourcesManager.allocateFlowResources(any(Flow.class))).thenReturn(flowResources);
         mockFlowCreationInDb(flowId);
-        when(pathComputer.getPath(any(Flow.class))).thenReturn(getPath3Switches());
+        when(pathComputer.getPath(any(Flow.class), any(IslConfig.class))).thenReturn(getPath3Switches());
         target.handleRequest(key, new CommandContext(), flowRequest);
 
         verify(flowRepository).createOrUpdate(flowCaptor.capture());
@@ -487,7 +498,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
                 .build();
         FlowResources flowResources = allocateResources(flowId);
         when(flowResourcesManager.allocateFlowResources(any(Flow.class))).thenReturn(flowResources);
-        when(pathComputer.getPath(any(Flow.class))).thenReturn(getPath3Switches());
+        when(pathComputer.getPath(any(Flow.class), any(IslConfig.class))).thenReturn(getPath3Switches());
         mockFlowCreationInDb(flowId);
 
         target.handleRequest(key, new CommandContext(), request);
@@ -537,7 +548,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         when(flowResourcesManager.allocateFlowResources(any(Flow.class)))
                 .thenReturn(mainResources)
                 .thenReturn(protectedResources);
-        when(pathComputer.getPath(any(Flow.class)))
+        when(pathComputer.getPath(any(Flow.class), any(IslConfig.class)))
                 .thenReturn(getPath2Switches())
                 .thenReturn(getPath3Switches());
 

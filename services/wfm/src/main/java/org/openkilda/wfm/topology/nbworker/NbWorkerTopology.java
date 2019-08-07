@@ -19,6 +19,7 @@ import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.nbworker.bolts.DiscoveryEncoderBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.FeatureTogglesBolt;
@@ -97,13 +98,11 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
 
-        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(persistenceManager,
-                topologyConfig.getIslCostWhenUnderMaintenance());
+        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(persistenceManager);
         tb.setBolt(SWITCHES_BOLT_NAME, switchesBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.SWITCH.toString());
 
-        LinkOperationsBolt linksBolt = new LinkOperationsBolt(persistenceManager,
-                topologyConfig.getIslCostWhenUnderMaintenance());
+        LinkOperationsBolt linksBolt = new LinkOperationsBolt(persistenceManager);
         tb.setBolt(LINKS_BOLT_NAME, linksBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ISL.toString());
 
@@ -119,7 +118,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
         tb.setBolt(KILDA_CONFIG_BOLT_NAME, kildaConfigurationBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.KILDA_CONFIG.toString());
 
-        PathsBolt pathsBolt = new PathsBolt(persistenceManager, pathComputerConfig);
+        IslCostConfig islCostConfig = configurationProvider.getConfiguration(IslCostConfig.class);
+        PathsBolt pathsBolt = new PathsBolt(persistenceManager, pathComputerConfig, islCostConfig);
         tb.setBolt(PATHS_BOLT_NAME, pathsBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.PATHS.toString());
 

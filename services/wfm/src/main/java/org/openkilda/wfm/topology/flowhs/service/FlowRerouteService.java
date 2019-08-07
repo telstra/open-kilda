@@ -20,6 +20,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
@@ -46,13 +47,16 @@ public class FlowRerouteService {
     private final PersistenceManager persistenceManager;
     private final PathComputer pathComputer;
     private final FlowResourcesManager flowResourcesManager;
+    private final IslCostConfig islCostConfig;
 
     public FlowRerouteService(FlowRerouteHubCarrier carrier, PersistenceManager persistenceManager,
-                              PathComputer pathComputer, FlowResourcesManager flowResourcesManager) {
+                              PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
+                              IslCostConfig islCostConfig) {
         this.carrier = carrier;
         this.persistenceManager = persistenceManager;
         this.pathComputer = pathComputer;
         this.flowResourcesManager = flowResourcesManager;
+        this.islCostConfig = islCostConfig;
     }
 
     /**
@@ -71,7 +75,7 @@ public class FlowRerouteService {
         }
 
         FlowRerouteFsm fsm = FlowRerouteFsm.newInstance(commandContext, carrier, persistenceManager,
-                pathComputer, flowResourcesManager);
+                pathComputer, flowResourcesManager, islCostConfig);
         fsms.put(key, fsm);
 
         controllerExecutor.fire(fsm, FlowRerouteFsm.Event.NEXT, FlowRerouteContext.builder()

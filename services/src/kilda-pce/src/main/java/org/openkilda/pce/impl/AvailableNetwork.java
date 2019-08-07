@@ -16,6 +16,7 @@
 package org.openkilda.pce.impl;
 
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslConfig;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -51,11 +52,11 @@ public class AvailableNetwork {
     /**
      * Creates switches (if they are not created yet) and ISL between them.
      */
-    public void addLink(Isl isl) {
+    public void addLink(Isl isl, IslConfig islConfig) {
         Node srcSwitch = getOrInitSwitch(isl.getSrcSwitch());
         Node dstSwitch = getOrInitSwitch(isl.getDestSwitch());
 
-        Edge edge = Edge.fromIslToBuilder(isl)
+        Edge edge = Edge.fromIslToBuilder(isl, islConfig)
                 .srcSwitch(srcSwitch)
                 .destSwitch(dstSwitch)
                 .build();

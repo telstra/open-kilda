@@ -49,6 +49,7 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
 import org.openkilda.wfm.error.FlowAlreadyExistException;
 import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -127,9 +128,10 @@ public class FlowServiceTest extends Neo4jBasedTest {
         when(pathComputerFactory.getPathComputer()).thenReturn(pathComputer);
 
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
+        IslCostConfig islCostConfig = configurationProvider.getConfiguration(IslCostConfig.class);
         flowService = new FlowService(persistenceManager,
                 pathComputerFactory, new FlowResourcesManager(persistenceManager, flowResourcesConfig), flowValidator,
-                new FlowCommandFactory());
+                new FlowCommandFactory(), islCostConfig);
 
         createTopology();
     }
@@ -194,7 +196,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
                 .destPort(33)
                 .build();
 
-        when(pathComputer.getPath(any(), anyList()))
+        when(pathComputer.getPath(any(), anyList(), any()))
                 .thenReturn(PATH_DIRECT_1_TO_4)
                 .thenReturn(PATH_DIRECT_1_TO_3);
 
@@ -220,7 +222,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
                 .allocateProtectedPath(true)
                 .build();
 
-        when(pathComputer.getPath(any()))
+        when(pathComputer.getPath(any(), any()))
                 .thenReturn(PATH_DIRECT_1_TO_3)
                 .thenReturn(PATH_1_TO_3_VIA_2);
 
@@ -238,12 +240,12 @@ public class FlowServiceTest extends Neo4jBasedTest {
 
         Flow flow = getFlowBuilder().build();
 
-        when(pathComputer.getPath(any())).thenReturn(PATH_DIRECT_1_TO_3);
+        when(pathComputer.getPath(any(), any())).thenReturn(PATH_DIRECT_1_TO_3);
 
         flowService.createFlow(flow, null, mock(FlowCommandSender.class));
         flowService.updateFlowStatus(FLOW_ID, FlowStatus.UP, emptySet());
 
-        when(pathComputer.getPath(any(), anyList())).thenReturn(PATH_1_TO_3_VIA_2);
+        when(pathComputer.getPath(any(), anyList(), any())).thenReturn(PATH_1_TO_3_VIA_2);
 
         ReroutedFlowPaths reroutedFlowPaths =
                 flowService.rerouteFlow(FLOW_ID, true, emptySet(), mock(FlowCommandSender.class));
@@ -266,7 +268,7 @@ public class FlowServiceTest extends Neo4jBasedTest {
                 .allocateProtectedPath(true)
                 .build();
 
-        when(pathComputer.getPath(any()))
+        when(pathComputer.getPath(any(), any()))
                 .thenReturn(PATH_DIRECT_1_TO_3)
                 .thenReturn(PATH_1_TO_3_VIA_2);
 
@@ -275,8 +277,8 @@ public class FlowServiceTest extends Neo4jBasedTest {
 
         Assert.assertThat(flowPathRepository.findAll(), hasSize(4));
 
-        when(pathComputer.getPath(any(), anyList())).thenReturn(PATH_DIRECT_1_TO_3);
-        when(pathComputer.getPath(any()))
+        when(pathComputer.getPath(any(), anyList(), any())).thenReturn(PATH_DIRECT_1_TO_3);
+        when(pathComputer.getPath(any(), any()))
                 .thenReturn(PATH_1_TO_3_VIA_2);
 
         ReroutedFlowPaths reroutedFlowPaths =

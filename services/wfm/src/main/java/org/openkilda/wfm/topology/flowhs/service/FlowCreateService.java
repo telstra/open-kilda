@@ -21,6 +21,7 @@ import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
@@ -45,7 +46,7 @@ public class FlowCreateService {
 
     public FlowCreateService(FlowCreateHubCarrier carrier, PersistenceManager persistenceManager,
                              PathComputer pathComputer, FlowResourcesManager flowResourcesManager,
-                             int genericRetriesLimit, int speakerCommandRetriesLimit) {
+                             int genericRetriesLimit, int speakerCommandRetriesLimit, IslCostConfig islCostConfig) {
         this.carrier = carrier;
         this.kildaConfigurationRepository = persistenceManager.getRepositoryFactory()
                 .createKildaConfigurationRepository();
@@ -54,8 +55,8 @@ public class FlowCreateService {
                 .flowCreationRetriesLimit(genericRetriesLimit)
                 .speakerCommandRetriesLimit(speakerCommandRetriesLimit)
                 .build();
-        this.fsmFactory =
-                FlowCreateFsm.factory(persistenceManager, carrier, fsmConfig, flowResourcesManager, pathComputer);
+        this.fsmFactory = FlowCreateFsm.factory(persistenceManager, carrier, fsmConfig, flowResourcesManager,
+                pathComputer, islCostConfig);
     }
 
     /**

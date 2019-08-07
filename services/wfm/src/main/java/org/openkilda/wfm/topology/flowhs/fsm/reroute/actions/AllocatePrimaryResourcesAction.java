@@ -60,7 +60,7 @@ public class AllocatePrimaryResourcesAction extends BaseResourceAllocationAction
         }
 
         log.debug("Finding a new primary path for flow {}", flowId);
-        PathPair potentialPath = pathComputer.getPath(flow, flow.getFlowPathIds());
+        PathPair potentialPath = pathComputer.getPath(flow, flow.getFlowPathIds(), stateMachine.getIslConfig());
         boolean newPathFound = isNotSamePath(potentialPath, flow.getForwardPath(), flow.getReversePath());
         if (newPathFound || stateMachine.isRecreateIfSamePath()) {
             if (!newPathFound) {

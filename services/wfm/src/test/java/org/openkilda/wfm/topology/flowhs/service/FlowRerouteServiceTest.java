@@ -62,6 +62,7 @@ import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
@@ -90,6 +91,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     private FlowRerouteHubCarrier carrier;
     @Mock
     private CommandContext commandContext;
+    @Mock
+    private IslCostConfig islCostConfig;
 
     @Before
     public void setUp() {
@@ -121,6 +124,9 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
+        when(islCostConfig.getIslCostWhenPortDown()).thenReturn(10000);
+        when(islCostConfig.getIslCostWhenUnderMaintenance()).thenReturn(10000);
+
         doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any());
     }
 
@@ -128,18 +134,18 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldFailRerouteFlowIfNoPathAvailable()
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenThrow(new UnroutableFlowException("No path found"));
+        when(pathComputer.getPath(any(), any(), any())).thenThrow(new UnroutableFlowException("No path found"));
         buildFlowResources();
 
         FlowRerouteService rerouteService = new FlowRerouteService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager);
+                pathComputer, flowResourcesManager, islCostConfig);
 
         rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null);
 
         assertEquals(FlowStatus.DOWN, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
         assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
-        verify(pathComputer, times(1)).getPath(any(), any());
+        verify(pathComputer, times(1)).getPath(any(), any(), any());
         verify(flowResourcesManager, never()).allocateFlowResources(any());
         verify(carrier, never()).sendSpeakerRequest(any());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -149,19 +155,19 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldFailRerouteFlowIfNoResourcesAvailable()
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        when(pathComputer.getPath(any(), any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         when(flowResourcesManager.allocateFlowResources(any()))
                 .thenThrow(new ResourceAllocationException("No resources"));
 
         FlowRerouteService rerouteService = new FlowRerouteService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager);
+                pathComputer, flowResourcesManager, islCostConfig);
 
         rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null);
 
         assertEquals(FlowStatus.UP, flow.getStatus());
         assertEquals(OLD_FORWARD_FLOW_PATH, flow.getForwardPathId());
         assertEquals(OLD_REVERSE_FLOW_PATH, flow.getReversePathId());
-        verify(pathComputer, times(4)).getPath(any(), any());
+        verify(pathComputer, times(4)).getPath(any(), any(), any());
         verify(flowResourcesManager, times(4)).allocateFlowResources(any());
         verify(carrier, never()).sendSpeakerRequest(any());
         verify(carrier, times(1)).sendNorthboundResponse(any());
@@ -171,11 +177,11 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldSkipRerouteIfNoNewPathFound()
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair());
+        when(pathComputer.getPath(any(), any(), any())).thenReturn(build2SwitchPathPair());
         buildFlowResources();
 
         FlowRerouteService rerouteService = new FlowRerouteService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager);
+                pathComputer, flowResourcesManager, islCostConfig);
 
         rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null);
 
@@ -190,11 +196,11 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldFailRerouteOnUnsuccessfulInstallation()
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        when(pathComputer.getPath(any(), any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
         FlowRerouteService rerouteService = new FlowRerouteService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager);
+                pathComputer, flowResourcesManager, islCostConfig);
 
         rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null);
 
@@ -230,11 +236,11 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldFailRerouteOnTimeoutDuringInstallation()
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        when(pathComputer.getPath(any(), any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
         FlowRerouteService rerouteService = new FlowRerouteService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager);
+                pathComputer, flowResourcesManager, islCostConfig);
 
         rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null);
 
@@ -264,11 +270,11 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldFailRerouteOnUnsuccessfulValidation()
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        when(pathComputer.getPath(any(), any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
         FlowRerouteService rerouteService = new FlowRerouteService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager);
+                pathComputer, flowResourcesManager, islCostConfig);
 
         rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null);
 
@@ -305,11 +311,11 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldFailRerouteOnTimeoutDuringValidation()
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        when(pathComputer.getPath(any(), any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
         FlowRerouteService rerouteService = new FlowRerouteService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager);
+                pathComputer, flowResourcesManager, islCostConfig);
 
         rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null);
 
@@ -339,11 +345,11 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldFailRerouteOnSwapPathsError()
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        when(pathComputer.getPath(any(), any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
         FlowRerouteService rerouteService = new FlowRerouteService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager);
+                pathComputer, flowResourcesManager, islCostConfig);
 
         rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null);
 
@@ -390,11 +396,11 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldFailRerouteOnErrorDuringCompletingFlowPathInstallation()
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        when(pathComputer.getPath(any(), any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
         FlowRerouteService rerouteService = new FlowRerouteService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager);
+                pathComputer, flowResourcesManager, islCostConfig);
 
         rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null);
 
@@ -433,11 +439,11 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldCompleteRerouteOnErrorDuringCompletingFlowPathRemoval()
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        when(pathComputer.getPath(any(), any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
         FlowRerouteService rerouteService = new FlowRerouteService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager);
+                pathComputer, flowResourcesManager, islCostConfig);
 
         rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null);
 
@@ -472,11 +478,11 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
     public void shouldCompleteRerouteOnErrorDuringResourceDeallocation()
             throws RecoverableException, UnroutableFlowException, ResourceAllocationException {
         Flow flow = build2SwitchFlow();
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        when(pathComputer.getPath(any(), any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
         FlowRerouteService rerouteService = new FlowRerouteService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager);
+                pathComputer, flowResourcesManager, islCostConfig);
 
         rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null);
 
@@ -514,11 +520,11 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         Flow flow = build2SwitchFlow();
         flow.setStatus(FlowStatus.DOWN);
 
-        when(pathComputer.getPath(any(), any())).thenReturn(build2SwitchPathPair(2, 3));
+        when(pathComputer.getPath(any(), any(), any())).thenReturn(build2SwitchPathPair(2, 3));
         buildFlowResources();
 
         FlowRerouteService rerouteService = new FlowRerouteService(carrier, persistenceManager,
-                pathComputer, flowResourcesManager);
+                pathComputer, flowResourcesManager, islCostConfig);
 
         rerouteService.handleRequest("test_key", commandContext, FLOW_ID, null);
 

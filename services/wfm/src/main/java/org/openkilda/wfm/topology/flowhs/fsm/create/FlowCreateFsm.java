@@ -22,10 +22,12 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.IslConfig;
 import org.openkilda.model.PathId;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
@@ -76,6 +78,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
 
     private final String flowId;
     private final FlowCreateHubCarrier carrier;
+    private final IslConfig islConfig;
 
     private Map<UUID, SpeakerCommandObserver> pendingCommands = new HashMap<>();
     private Set<UUID> failedCommands = new HashSet<>();
@@ -95,11 +98,17 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
     private int remainRetries;
     private boolean timedOut;
 
-    private FlowCreateFsm(String flowId, CommandContext commandContext, FlowCreateHubCarrier carrier, Config config) {
+    private FlowCreateFsm(String flowId, CommandContext commandContext, FlowCreateHubCarrier carrier, Config config,
+                          IslCostConfig islCostConfig) {
         super(commandContext);
         this.flowId = flowId;
         this.carrier = carrier;
         this.remainRetries = config.getFlowCreationRetriesLimit();
+        this.islConfig = IslConfig.builder()
+                .unstableIslTimeoutSec(islCostConfig.getIslUnstableTimeoutSec())
+                .unstableCostRaise(islCostConfig.getIslCostWhenPortDown())
+                .underMaintenanceCostRaise(islCostConfig.getIslCostWhenUnderMaintenance())
+                .build();
     }
 
     public boolean isPendingCommand(UUID commandId) {
@@ -168,8 +177,8 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
 
     public static FlowCreateFsm.Factory factory(PersistenceManager persistenceManager, FlowCreateHubCarrier carrier,
                                                 Config config, FlowResourcesManager resourcesManager,
-                                                PathComputer pathComputer) {
-        return new Factory(persistenceManager, carrier, config, resourcesManager, pathComputer);
+                                                PathComputer pathComputer, IslCostConfig islCostConfig) {
+        return new Factory(persistenceManager, carrier, config, resourcesManager, pathComputer, islCostConfig);
     }
 
     @Getter
@@ -215,14 +224,16 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         private final StateMachineBuilder<FlowCreateFsm, State, Event, FlowCreateContext> builder;
         private final FlowCreateHubCarrier carrier;
         private final Config config;
+        private final IslCostConfig islCostConfig;
 
         Factory(PersistenceManager persistenceManager, FlowCreateHubCarrier carrier, Config config,
-                       FlowResourcesManager resourcesManager, PathComputer pathComputer) {
+                       FlowResourcesManager resourcesManager, PathComputer pathComputer, IslCostConfig islCostConfig) {
             this.builder = StateMachineBuilderFactory.create(
                     FlowCreateFsm.class, State.class, Event.class, FlowCreateContext.class,
-                    String.class, CommandContext.class, FlowCreateHubCarrier.class, Config.class);
+                    String.class, CommandContext.class, FlowCreateHubCarrier.class, Config.class, IslCostConfig.class);
             this.carrier = carrier;
             this.config = config;
+            this.islCostConfig = islCostConfig;
 
             SpeakerCommandFsm.Builder commandExecutorFsmBuilder =
                     SpeakerCommandFsm.getBuilder(carrier, config.getSpeakerCommandRetriesLimit());
@@ -417,7 +428,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
         }
 
         public FlowCreateFsm produce(String flowId, CommandContext commandContext) {
-            return builder.newStateMachine(State.INITIALIZED, flowId, commandContext, carrier, config);
+            return builder.newStateMachine(State.INITIALIZED, flowId, commandContext, carrier, config, islCostConfig);
         }
     }
 

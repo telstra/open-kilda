@@ -47,6 +47,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.error.ClientException;
 import org.openkilda.wfm.error.FeatureTogglesNotEnabledException;
 import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.service.FlowCommandFactory;
@@ -91,6 +92,8 @@ public class FlowOperationsBolt extends BaseRichBolt {
 
     private final FlowResourcesConfig flowResourcesConfig;
 
+    private final IslCostConfig islCostConfig;
+
     private transient RepositoryFactory repositoryFactory;
     private transient PathComputerFactory pathComputerFactory;
 
@@ -103,10 +106,11 @@ public class FlowOperationsBolt extends BaseRichBolt {
     private static final Logger logger = LoggerFactory.getLogger(FlowOperationsBolt.class);
 
     public FlowOperationsBolt(PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig,
-                              FlowResourcesConfig flowResourcesConfig) {
+                              FlowResourcesConfig flowResourcesConfig, IslCostConfig islCostConfig) {
         this.persistenceManager = persistenceManager;
         this.pathComputerConfig = pathComputerConfig;
         this.flowResourcesConfig = flowResourcesConfig;
+        this.islCostConfig = islCostConfig;
     }
 
     @Override
@@ -121,7 +125,7 @@ public class FlowOperationsBolt extends BaseRichBolt {
         flowValidator = new FlowValidator(repositoryFactory);
         flowResourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
         flowService = new FlowService(persistenceManager, pathComputerFactory, flowResourcesManager,
-                flowValidator, commandFactory);
+                flowValidator, commandFactory, islCostConfig);
         featureTogglesService = new FeatureTogglesService(persistenceManager.getRepositoryFactory());
 
     }

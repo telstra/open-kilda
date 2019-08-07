@@ -30,6 +30,7 @@ import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
@@ -48,13 +49,14 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
     private final PersistenceManager persistenceManager;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
+    private final IslCostConfig islCostConfig;
 
     private transient FlowRerouteService service;
     private String currentKey;
 
     public FlowRerouteHubBolt(String routerBoltId, String workerBoltId, int timeoutMs, boolean autoAck,
                               PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig,
-                              FlowResourcesConfig flowResourcesConfig) {
+                              FlowResourcesConfig flowResourcesConfig, IslCostConfig islCostConfig) {
         super(HubBolt.Config.builder()
                 .requestSenderComponent(routerBoltId)
                 .workerComponent(workerBoltId)
@@ -65,6 +67,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
         this.persistenceManager = persistenceManager;
         this.pathComputerConfig = pathComputerConfig;
         this.flowResourcesConfig = flowResourcesConfig;
+        this.islCostConfig = islCostConfig;
     }
 
     @Override
@@ -75,7 +78,7 @@ public class FlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier
                 new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
 
         FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager, flowResourcesConfig);
-        service = new FlowRerouteService(this, persistenceManager, pathComputer, resourcesManager);
+        service = new FlowRerouteService(this, persistenceManager, pathComputer, resourcesManager, islCostConfig);
     }
 
     @Override

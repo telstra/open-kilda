@@ -37,6 +37,7 @@ import org.openkilda.model.FlowPair;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.IslConfig;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
@@ -58,6 +59,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.FlowAlreadyExistException;
 import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -114,10 +116,11 @@ public class FlowService extends BaseFlowService {
     private final PathComputerFactory pathComputerFactory;
     private final FlowValidator flowValidator;
     private final FlowCommandFactory flowCommandFactory;
+    private final IslConfig islConfig;
 
     public FlowService(@NonNull PersistenceManager persistenceManager, @NonNull PathComputerFactory pathComputerFactory,
                        @NonNull FlowResourcesManager flowResourcesManager, @NonNull FlowValidator flowValidator,
-                       @NonNull FlowCommandFactory flowCommandFactory) {
+                       @NonNull FlowCommandFactory flowCommandFactory, @NonNull IslCostConfig islCostConfig) {
         super(persistenceManager, flowResourcesManager);
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
@@ -128,6 +131,11 @@ public class FlowService extends BaseFlowService {
         this.pathComputerFactory = pathComputerFactory;
         this.flowValidator = flowValidator;
         this.flowCommandFactory = flowCommandFactory;
+        this.islConfig = IslConfig.builder()
+                .unstableIslTimeoutSec(islCostConfig.getIslUnstableTimeoutSec())
+                .unstableCostRaise(islCostConfig.getIslCostWhenPortDown())
+                .underMaintenanceCostRaise(islCostConfig.getIslCostWhenUnderMaintenance())
+                .build();
     }
 
     /**
@@ -164,7 +172,7 @@ public class FlowService extends BaseFlowService {
                         ensureEncapsulationType(flow);
                         // TODO: the strategy is defined either per flow or system-wide.
                         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-                        PathPair pathPair = pathComputer.getPath(flow);
+                        PathPair pathPair = pathComputer.getPath(flow, islConfig);
 
                         FlowResources flowResources = flowResourcesManager.allocateFlowResources(flow);
 
@@ -219,7 +227,7 @@ public class FlowService extends BaseFlowService {
                 getOrCreateFlowGroupId(flow.getFlowId()));
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair protectedPathPair = pathComputer.getPath(flow);
+        PathPair protectedPathPair = pathComputer.getPath(flow, islConfig);
 
         log.info("Creating the protected path {} for flow {}", protectedPathPair, flow);
 
@@ -390,7 +398,7 @@ public class FlowService extends BaseFlowService {
                         ensureEncapsulationType(updatingFlow);
                         PathComputer pathComputer = pathComputerFactory.getPathComputer();
                         PathPair newPathPair = pathComputer.getPath(updatingFlow,
-                                currentFlow.getFlow().getFlowPathIds());
+                                currentFlow.getFlow().getFlowPathIds(), islConfig);
 
                         log.info("Updating the flow with {} and path: {}", updatingFlow, newPathPair);
 
@@ -530,7 +538,7 @@ public class FlowService extends BaseFlowService {
             log.warn("Origin flow {} path: {}", flowId, flow.getForwardPath());
 
             PathComputer pathComputer = pathComputerFactory.getPathComputer();
-            PathPair pathPair = pathComputer.getPath(flow, flow.getFlowPathIds());
+            PathPair pathPair = pathComputer.getPath(flow, flow.getFlowPathIds(), islConfig);
 
             log.warn("Potential New Path for flow {} with LEFT path: {}, RIGHT path: {}",
                     flowId, pathPair.getForward(), pathPair.getReverse());
@@ -588,7 +596,7 @@ public class FlowService extends BaseFlowService {
 
             PathComputer pathComputer = pathComputerFactory.getPathComputer();
             PathPair pathPair = pathComputer.getPath(flow,
-                    Arrays.asList(flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()));
+                    Arrays.asList(flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()), islConfig);
 
             log.warn("Potential New Path for flow {} with LEFT path: {}, RIGHT path: {}",
                     flowId, pathPair.getForward(), pathPair.getReverse());
@@ -1339,7 +1347,7 @@ public class FlowService extends BaseFlowService {
             throws ResourceAllocationException, RecoverableException, FlowValidationException, UnroutableFlowException,
             FlowNotFoundException {
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair newPathPair = pathComputer.getPath(updatingFlow, pathIds);
+        PathPair newPathPair = pathComputer.getPath(updatingFlow, pathIds, islConfig);
 
         log.info("Updating the flow with {} and path: {}", updatingFlow, newPathPair);
 

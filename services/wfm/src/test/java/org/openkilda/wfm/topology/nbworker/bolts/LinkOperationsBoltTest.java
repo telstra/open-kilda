@@ -49,7 +49,6 @@ import java.util.Properties;
 public class LinkOperationsBoltTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId SWITCH_ID_2 = new SwitchId("00:00:00:00:00:00:00:02");
-    private static final int ISL_COST_WHEN_UNDER_MAINTENANCE = 10000;
 
     @ClassRule
     public static TemporaryFolder fsData = new TemporaryFolder();
@@ -89,7 +88,7 @@ public class LinkOperationsBoltTest {
         switchRepository.createOrUpdate(Switch.builder().switchId(SWITCH_ID_1).build());
         switchRepository.createOrUpdate(Switch.builder().switchId(SWITCH_ID_2).build());
 
-        LinkOperationsBolt bolt = new LinkOperationsBolt(persistenceManager, ISL_COST_WHEN_UNDER_MAINTENANCE);
+        LinkOperationsBolt bolt = new LinkOperationsBolt(persistenceManager);
         bolt.prepare(null, topologyContext, null);
         LinkPropsPut linkPropsPutRequest = new LinkPropsPut(new LinkPropsDto(
                 new NetworkEndpoint(SWITCH_ID_1, 1),

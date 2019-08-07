@@ -26,6 +26,7 @@ import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.topology.nbworker.services.PathsService;
 
 import org.apache.storm.task.OutputCollector;
@@ -38,17 +39,20 @@ import java.util.Map;
 public class PathsBolt extends PersistenceOperationsBolt {
     private transient PathsService pathService;
     private final PathComputerConfig pathComputerConfig;
+    private final IslCostConfig islCostConfig;
 
-    public PathsBolt(PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig) {
+    public PathsBolt(PersistenceManager persistenceManager, PathComputerConfig pathComputerConfig,
+                     IslCostConfig islCostConfig) {
         super(persistenceManager);
         this.pathComputerConfig = pathComputerConfig;
+        this.islCostConfig = islCostConfig;
     }
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         super.prepare(stormConf, context, collector);
         pathService = new PathsService(
-                repositoryFactory, pathComputerConfig);
+                repositoryFactory, pathComputerConfig, islCostConfig);
     }
 
     @Override

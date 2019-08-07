@@ -46,8 +46,6 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
     private static final SwitchId TEST_SWITCH_B_ID = new SwitchId(2);
     private static final int TEST_SWITCH_B_PORT = 1;
 
-    private static int islCostWhenUnderMaintenance = 10000;
-
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
@@ -64,12 +62,11 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
         };
 
         linkOperationsService = new LinkOperationsService(carrier, persistenceManager.getRepositoryFactory(),
-                persistenceManager.getTransactionManager(),
-                islCostWhenUnderMaintenance);
+                persistenceManager.getTransactionManager());
     }
 
     @Test
-    public void shouldUpdateLinkUnderMaintenanceFlagAndChangeCost() throws IslNotFoundException {
+    public void shouldUpdateLinkUnderMaintenanceFlag() throws IslNotFoundException {
         createIsl();
 
         for (int i = 0; i < 2; i++) {
@@ -77,8 +74,6 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
                     .updateLinkUnderMaintenanceFlag(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT,
                             TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT, true);
             assertEquals(2, link.size());
-            assertEquals(islCostWhenUnderMaintenance, link.get(0).getCost());
-            assertEquals(islCostWhenUnderMaintenance, link.get(1).getCost());
             assertTrue(link.get(0).isUnderMaintenance());
             assertTrue(link.get(1).isUnderMaintenance());
         }
@@ -88,8 +83,6 @@ public class LinkOperationsServiceTest extends Neo4jBasedTest {
                     .updateLinkUnderMaintenanceFlag(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT,
                             TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT, false);
             assertEquals(2, link.size());
-            assertEquals(0, link.get(0).getCost());
-            assertEquals(0, link.get(1).getCost());
             assertFalse(link.get(0).isUnderMaintenance());
             assertFalse(link.get(1).isUnderMaintenance());
         }

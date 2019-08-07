@@ -30,6 +30,7 @@ import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.config.IslCostConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
@@ -52,18 +53,21 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     private final PersistenceManager persistenceManager;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
+    private final IslCostConfig islCostConfig;
 
     private transient FlowCreateService service;
     private String currentKey;
 
     public FlowCreateHubBolt(FlowCreateConfig config, PersistenceManager persistenceManager,
-                             PathComputerConfig pathComputerConfig, FlowResourcesConfig flowResourcesConfig) {
+                             PathComputerConfig pathComputerConfig, FlowResourcesConfig flowResourcesConfig,
+                             IslCostConfig islCostConfig) {
         super(config);
 
         this.config = config;
         this.persistenceManager = persistenceManager;
         this.pathComputerConfig = pathComputerConfig;
         this.flowResourcesConfig = flowResourcesConfig;
+        this.islCostConfig = islCostConfig;
     }
 
     @Override
@@ -75,7 +79,7 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
                 new PathComputerFactory(pathComputerConfig, availableNetworkFactory).getPathComputer();
 
         service = new FlowCreateService(this, persistenceManager, pathComputer, resourcesManager,
-                config.getFlowCreationRetriesLimit(), config.getSpeakerCommandRetriesLimit());
+                config.getFlowCreationRetriesLimit(), config.getSpeakerCommandRetriesLimit(), islCostConfig);
     }
 
     @Override

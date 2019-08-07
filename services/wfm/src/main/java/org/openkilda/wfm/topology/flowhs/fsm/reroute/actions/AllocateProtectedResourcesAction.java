@@ -77,7 +77,8 @@ public class AllocateProtectedResourcesAction extends BaseResourceAllocationActi
 
         log.debug("Finding a new protected path for flow {}", flowId);
         PathPair potentialPath = pathComputer.getPath(flow,
-                asList(flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()));
+                asList(flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()),
+                stateMachine.getIslConfig());
 
         boolean overlappingProtectedPathFound =
                 flowPathBuilder.arePathsOverlapped(potentialPath.getForward(), primaryForwardPath)

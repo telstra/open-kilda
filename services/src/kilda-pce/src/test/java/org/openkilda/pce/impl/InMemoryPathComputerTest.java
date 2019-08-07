@@ -26,6 +26,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslConfig;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
@@ -173,7 +174,7 @@ public class InMemoryPathComputerTest {
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f);
+        PathPair path = pathComputer.getPath(f, IslConfig.builder().build());
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         assertEquals(new SwitchId("00:02"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path B
@@ -197,7 +198,7 @@ public class InMemoryPathComputerTest {
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f);
+        PathPair path = pathComputer.getPath(f, IslConfig.builder().build());
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> only difference is it should now have C as first hop .. since B is inactive
@@ -222,7 +223,7 @@ public class InMemoryPathComputerTest {
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f);
+        PathPair path = pathComputer.getPath(f, IslConfig.builder().build());
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> only difference is it should now have C as first hop .. since B is inactive
@@ -246,7 +247,7 @@ public class InMemoryPathComputerTest {
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f);
+        PathPair path = pathComputer.getPath(f, IslConfig.builder().build());
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> Should choose B .. because default cost (700) cheaper than 2000
@@ -273,7 +274,7 @@ public class InMemoryPathComputerTest {
         thrown.expect(UnroutableFlowException.class);
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        pathComputer.getPath(f);
+        pathComputer.getPath(f, IslConfig.builder().build());
     }
 
 
@@ -293,7 +294,7 @@ public class InMemoryPathComputerTest {
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f1);
+        PathPair path = pathComputer.getPath(f1, IslConfig.builder().build());
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
 
@@ -307,7 +308,7 @@ public class InMemoryPathComputerTest {
                 .ignoreBandwidth(false)
                 .build();
 
-        path = pathComputer.getPath(f2);
+        path = pathComputer.getPath(f2, IslConfig.builder().build());
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         assertEquals(new SwitchId("05:02"), path.getForward().getSegments().get(0).getDestSwitchId());
@@ -335,7 +336,7 @@ public class InMemoryPathComputerTest {
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair path = pathComputer.getPath(f1);
+        PathPair path = pathComputer.getPath(f1, IslConfig.builder().build());
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
 
@@ -352,7 +353,7 @@ public class InMemoryPathComputerTest {
 
         thrown.expect(UnroutableFlowException.class);
 
-        pathComputer.getPath(f2);
+        pathComputer.getPath(f2, IslConfig.builder().build());
     }
 
     /**
@@ -397,7 +398,7 @@ public class InMemoryPathComputerTest {
         PathComputer pathComputer = new InMemoryPathComputer(availableNetworkFactory,
                 new BestCostAndShortestPathFinder(200,
                         pathComputerFactory.getWeightFunctionByStrategy(WeightStrategy.COST)));
-        PathPair path = pathComputer.getPath(f1);
+        PathPair path = pathComputer.getPath(f1, IslConfig.builder().build());
         assertNotNull(path);
         assertThat(path.getForward().getSegments(), Matchers.hasSize(278));
 
@@ -414,7 +415,7 @@ public class InMemoryPathComputerTest {
 
         thrown.expect(UnroutableFlowException.class);
 
-        pathComputer.getPath(f2);
+        pathComputer.getPath(f2, IslConfig.builder().build());
     }
 
     /**
@@ -436,7 +437,7 @@ public class InMemoryPathComputerTest {
                 .build();
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair result = pathComputer.getPath(flow);
+        PathPair result = pathComputer.getPath(flow, IslConfig.builder().build());
         assertNotNull(result);
         // ensure start/end switches match
         List<Path.Segment> left = result.getForward().getSegments();
@@ -472,7 +473,7 @@ public class InMemoryPathComputerTest {
         Flow oldFlow = flowRepository.findById(flowId).orElseThrow(() -> new AssertionError("Flow not found"));
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair result = pathComputer.getPath(flow, oldFlow.getFlowPathIds());
+        PathPair result = pathComputer.getPath(flow, oldFlow.getFlowPathIds(), IslConfig.builder().build());
 
         assertThat(result.getForward().getSegments(), Matchers.hasSize(2));
         assertThat(result.getReverse().getSegments(), Matchers.hasSize(2));
@@ -508,7 +509,7 @@ public class InMemoryPathComputerTest {
         thrown.expect(UnroutableFlowException.class);
 
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        pathComputer.getPath(flow, flow.getFlowPathIds());
+        pathComputer.getPath(flow, flow.getFlowPathIds(), IslConfig.builder().build());
     }
 
     @Test
@@ -524,7 +525,7 @@ public class InMemoryPathComputerTest {
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build();
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair diversePath = pathComputer.getPath(flow);
+        PathPair diversePath = pathComputer.getPath(flow, IslConfig.builder().build());
 
         diversePath.getForward().getSegments().forEach(
                 segment -> {
@@ -548,7 +549,7 @@ public class InMemoryPathComputerTest {
                 .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build();
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        PathPair diversePath = pathComputer.getPath(flow);
+        PathPair diversePath = pathComputer.getPath(flow, IslConfig.builder().build());
 
         FlowPath forwardPath = FlowPath.builder()
                 .pathId(new PathId(UUID.randomUUID().toString()))
@@ -574,7 +575,7 @@ public class InMemoryPathComputerTest {
 
         flowRepository.createOrUpdate(flow);
 
-        PathPair path2 = pathComputer.getPath(flow, flow.getFlowPathIds());
+        PathPair path2 = pathComputer.getPath(flow, flow.getFlowPathIds(), IslConfig.builder().build());
         assertEquals(diversePath, path2);
     }
 

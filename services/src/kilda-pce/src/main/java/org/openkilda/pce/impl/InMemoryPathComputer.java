@@ -20,6 +20,7 @@ import static java.util.Collections.emptyList;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.IslConfig;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -57,9 +58,9 @@ public class InMemoryPathComputer implements PathComputer {
     }
 
     @Override
-    public PathPair getPath(Flow flow, List<PathId> reusePathsResources)
+    public PathPair getPath(Flow flow, List<PathId> reusePathsResources, IslConfig islConfig)
             throws UnroutableFlowException, RecoverableException {
-        return getPath(availableNetworkFactory.getAvailableNetwork(flow, reusePathsResources), flow);
+        return getPath(availableNetworkFactory.getAvailableNetwork(flow, reusePathsResources, islConfig), flow);
     }
 
     private PathPair getPath(AvailableNetwork network, Flow flow) throws UnroutableFlowException {
@@ -89,7 +90,7 @@ public class InMemoryPathComputer implements PathComputer {
 
     @Override
     public List<Path> getNPaths(SwitchId srcSwitchId, SwitchId dstSwitchId, int count,
-                                FlowEncapsulationType flowEncapsulationType)
+                                FlowEncapsulationType flowEncapsulationType, IslConfig islConfig)
             throws RecoverableException, UnroutableFlowException {
         Flow flow = Flow.builder()
                 .flowId("") // just any id, as not used.
@@ -100,7 +101,8 @@ public class InMemoryPathComputer implements PathComputer {
                 .bandwidth(1) // to get ISLs with non zero available bandwidth
                 .build();
 
-        AvailableNetwork availableNetwork = availableNetworkFactory.getAvailableNetwork(flow, Collections.emptyList());
+        AvailableNetwork availableNetwork = availableNetworkFactory.getAvailableNetwork(flow, Collections.emptyList(),
+                islConfig);
 
         List<List<Edge>> paths =
                 pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitchId, dstSwitchId, count);
