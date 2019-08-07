@@ -39,6 +39,7 @@ import org.openkilda.northbound.dto.v1.switches.PortDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncRequest;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
@@ -425,5 +426,32 @@ public class SwitchController extends BaseController {
                                                                   @RequestParam(value = "port", required = false)
                                                                           Integer port) {
         return switchService.getFlowsForSwitch(switchId, port);
+    }
+
+    /**
+     * Get switch properties.
+     *
+     * @param switchId the switch id.
+     * @return switch ports description.
+     */
+    @ApiOperation(value = "Get switch properties from the switch", response = SwitchPropertiesDto.class)
+    @GetMapping(value = "/{switch-id}/properties")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchPropertiesDto> getSwitchProperties(@PathVariable("switch-id") SwitchId switchId) {
+        return switchService.getSwitchProperties(switchId);
+    }
+
+    /**
+     * Update switch properties.
+     *
+     * @param switchId the switch id.
+     * @return switch ports description.
+     */
+    @ApiOperation(value = "Update switch properties from the switch", response = SwitchPropertiesDto.class)
+    @PutMapping(value = "/{switch-id}/properties")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchPropertiesDto> updateSwitchProperties(
+            @PathVariable("switch-id") SwitchId switchId, @RequestBody SwitchPropertiesDto switchPropertiesDto) {
+        return switchService.updateSwitchProperties(switchId, switchPropertiesDto);
     }
 }

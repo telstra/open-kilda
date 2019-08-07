@@ -30,6 +30,8 @@ import org.openkilda.messaging.command.switches.PortConfigurationRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesInstallRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
@@ -46,10 +48,13 @@ import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
+import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
+import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.PortStatus;
@@ -62,6 +67,7 @@ import org.openkilda.northbound.dto.v1.switches.PortDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
@@ -401,6 +407,36 @@ public class SwitchServiceImpl implements SwitchService {
                         .map(FlowResponse::getPayload)
                         .map(flowMapper::toFlowOutput)
                         .collect(Collectors.toList()));
+    }
+
+    @Override
+    public CompletableFuture<SwitchPropertiesDto> getSwitchProperties(SwitchId switchId) {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Get switch properties for the switch: {}", switchId);
+        GetSwitchPropertiesRequest data = new GetSwitchPropertiesRequest(switchId);
+        CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId);
+
+        return messagingChannel.sendAndGet(nbworkerTopic, message)
+                .thenApply(SwitchPropertiesResponse.class::cast)
+                .thenApply(response -> switchMapper.map(response.getSwitchProperties()));
+    }
+
+    @Override
+    public CompletableFuture<SwitchPropertiesDto> updateSwitchProperties(SwitchId switchId,
+                                                                         SwitchPropertiesDto switchPropertiesDto) {
+
+        String correlationId = RequestCorrelationId.getId();
+        logger.debug("Update switch properties for the switch: {}", switchId);
+        UpdateSwitchPropertiesRequest data = null;
+        try {
+            data = new UpdateSwitchPropertiesRequest(switchId, switchMapper.map(switchPropertiesDto));
+            CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
+            return messagingChannel.sendAndGet(nbworkerTopic, request)
+                    .thenApply(SwitchPropertiesResponse.class::cast)
+                    .thenApply(response -> switchMapper.map(response.getSwitchProperties()));
+        } catch (IllegalArgumentException e) {
+            throw new MessageException(ErrorType.REQUEST_INVALID, "Unable to parse request payload", e.getMessage());
+        }
     }
 
     private Boolean toPortAdminDown(PortStatus status) {

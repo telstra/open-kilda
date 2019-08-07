@@ -104,7 +104,7 @@ public class Switch implements Serializable {
     @Builder(toBuilder = true)
     public Switch(@NonNull SwitchId switchId, SwitchStatus status, String address,
                   String hostname, String controller, String description, boolean underMaintenance,
-                  Instant timeCreate, Instant timeModify) {
+                  Instant timeCreate, Instant timeModify, Set<SwitchFeature> features) {
         this.switchId = switchId;
         this.status = status;
         this.address = address;
@@ -114,6 +114,7 @@ public class Switch implements Serializable {
         this.underMaintenance = underMaintenance;
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
+        this.features = features;
     }
 
     /**

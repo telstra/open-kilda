@@ -50,7 +50,7 @@ import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeatures;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
@@ -62,7 +62,6 @@ import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
@@ -70,6 +69,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Sets;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -124,15 +124,12 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
                 Optional.of(Switch.builder()
                         .switchId(invocation.getArgument(0))
                         .status(SwitchStatus.ACTIVE)
+                        .features(Sets.newHashSet(SwitchFeature.METERS))
                         .build()));
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
 
         IslRepository islRepository = mock(IslRepository.class);
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
-
-        SwitchFeaturesRepository switchFeaturesRepository = mock(SwitchFeaturesRepository.class);
-        when(switchFeaturesRepository.findBySwitchId(any(SwitchId.class)))
-                .thenReturn(Optional.of(SwitchFeatures.builder().build()));
 
         doAnswer(invocation -> {
             FlowPath flowPath = invocation.getArgument(0);
@@ -141,7 +138,6 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         }).when(flowPathRepository).createOrUpdate(any(FlowPath.class));
 
         doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any(SpeakerFlowRequest.class));
-        when(repositoryFactory.createSwitchFeaturesRepository()).thenReturn(switchFeaturesRepository);
         target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager, 0, 0);
     }
 

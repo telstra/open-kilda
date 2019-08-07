@@ -21,12 +21,16 @@ import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
+import org.openkilda.messaging.nbtopology.request.GetSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
+import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -82,6 +86,10 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
             result = getSwitch((GetSwitchRequest) request);
         } else if (request instanceof DeleteSwitchRequest) {
             result = Collections.singletonList(deleteSwitch((DeleteSwitchRequest) request));
+        } else if (request instanceof GetSwitchPropertiesRequest) {
+            result = Collections.singletonList(getSwitchProperties((GetSwitchPropertiesRequest) request));
+        } else if (request instanceof UpdateSwitchPropertiesRequest) {
+            result = Collections.singletonList(updateSwitchProperties((UpdateSwitchPropertiesRequest) request));
         } else {
             unhandledInput(tuple);
         }
@@ -165,6 +173,28 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
 
         log.info("{} deletion of switch '{}'", deleted ? "Successful" : "Unsuccessful", switchId);
         return new DeleteSwitchResponse(deleted);
+    }
+
+    private SwitchPropertiesResponse getSwitchProperties(GetSwitchPropertiesRequest request) {
+        SwitchPropertiesDto found = switchOperationsService.getSwitchProperties(request.getSwitchId());
+        if (found == null) {
+            String message = String.format("Failed to found properties for switch '%s'.",
+                    request.getSwitchId());
+            log.error(message);
+            throw new MessageException(ErrorType.NOT_FOUND, message, "SwitchProperties are not found.");
+        }
+        return new SwitchPropertiesResponse(found);
+    }
+
+    private SwitchPropertiesResponse updateSwitchProperties(UpdateSwitchPropertiesRequest request) {
+        SwitchPropertiesDto updated = switchOperationsService.updateSwitchProperties(request.getSwitchId(),
+                request.getSwitchProperties());
+        if (updated == null) {
+            String message = String.format("Failed to update switch properties for switch '%s'", request.getSwitchId());
+            log.error(message);
+            throw new MessageException(ErrorType.NOT_FOUND, message, "SwitchProperties are not found.");
+        }
+        return new SwitchPropertiesResponse(updated);
     }
 
     @Override
