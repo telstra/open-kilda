@@ -94,7 +94,12 @@ public enum ErrorType {
     /**
      * The error message for not permitted operation.
      */
-    NOT_PERMITTED("Operation not permitted");
+    NOT_PERMITTED("Operation not permitted"),
+
+    /**
+     * The request cannot be processed.
+     */
+    UNPROCESSABLE_REQUEST("The request cannot be processed");
 
     /**
      * The text type value.

@@ -889,7 +889,8 @@ public class FlowServiceImpl implements FlowService {
         logger.debug("VALIDATE FLOW: Found Flows: {}", flow);
 
         if (flow.getStatus() == FlowStatus.DOWN) {
-            throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(), ErrorType.NOT_ALLOWED,
+            String correlationId = RequestCorrelationId.getId();
+            throw new MessageException(correlationId, System.currentTimeMillis(), ErrorType.UNPROCESSABLE_REQUEST,
                     "Could not validate flow", format("Could not validate flow: Flow %s is in DOWN state", flowId));
         }
 

@@ -73,6 +73,9 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
             case AUTH_FAILED:
                 status = HttpStatus.UNAUTHORIZED;
                 break;
+            case UNPROCESSABLE_REQUEST:
+                status = HttpStatus.UNPROCESSABLE_ENTITY;
+                break;
             case INTERNAL_ERROR:
                 status = HttpStatus.INTERNAL_SERVER_ERROR;
                 break;
