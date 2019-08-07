@@ -491,6 +491,10 @@ public class FlowService extends BaseFlowService {
         commandGroups.addAll(createRemoveRulesGroups(result.getToRemoveFlow()));
         commandGroups.addAll(createDeallocateResourcesGroups(result.getToRemoveFlow()));
 
+        if (!commandGroups.isEmpty()) {
+            dashboardLogger.onSuccessfulFlowReroute(flowId);
+        }
+
         // To avoid race condition in DB updates, we should send commands only after DB transaction commit.
         sender.sendFlowCommands(flowId,
                 commandGroups,
@@ -545,7 +549,8 @@ public class FlowService extends BaseFlowService {
             //no need to emit changes if path wasn't changed and flow is active.
             //force means to update flow even if path is not changed.
             if (!isFoundNewPath && flow.isActive() && !forceToReroute) {
-                log.warn("Reroute {} is unsuccessful: can't find new path.", flowId);
+                dashboardLogger.onFailedFlowReroute(flowId,
+                        format("Reroute %s is unsuccessful: can't find new path(s).", flowId));
                 toRemoveBuilder.forwardPath(null).reversePath(null);
             } else {
                 FlowResources flowResources = flowResourcesManager.allocateFlowResources(flow);
@@ -597,8 +602,8 @@ public class FlowService extends BaseFlowService {
                     || !isSamePath(pathPair.getReverse(), currentFlow.getProtectedReversePath());
 
             if (!isFoundNewPath && flow.isActive() && !forceToReroute) {
-                log.warn("Reroute {} is unsuccessful: can't find new protected path.", flowId);
-
+                dashboardLogger.onFailedFlowReroute(flowId,
+                        format("Reroute %s is unsuccessful: can't find new protected path(s).", flowId));
                 toRemoveBuilder.protectedForwardPath(null).protectedReversePath(null);
             } else {
                 // Create new flow paths, without resources
@@ -631,7 +636,9 @@ public class FlowService extends BaseFlowService {
                             .protectedForwardEncapsulation(flowResources.getForward().getEncapsulationResources())
                             .protectedReverseEncapsulation(flowResources.getReverse().getEncapsulationResources());
                 } else {
-                    log.warn("Reroute {} is unsuccessful: can't find non overlapping new protected path.", flowId);
+                    dashboardLogger.onFailedFlowReroute(flowId,
+                            format("Reroute %s is unsuccessful: can't find non overlapping new protected path.",
+                                    flowId));
 
                     currentForwardPath.setStatus(FlowPathStatus.INACTIVE);
                     currentReversePath.setStatus(FlowPathStatus.INACTIVE);
