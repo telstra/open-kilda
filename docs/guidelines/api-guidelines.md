@@ -116,7 +116,7 @@ Return suitable codes to provide additional information in case of errors:
 
 * `400 Bad Request`: The request is malformed (the request body does not parse). Required field is not provided. 
 * `404 Not Found`: Requesting for a resource that does not exist
-* `422 Unprocessable Entity`: Used for validation errors – request was understood, but contained invalid parameters
+* `422 Unprocessable Entity`: Used for cases when request is correct, but a server was unable to process the contained instructions
 
 * `500 Internal Server Error`: Something is wrong with the server
 * `501 Not Implemented`: This feature is not ready yet
