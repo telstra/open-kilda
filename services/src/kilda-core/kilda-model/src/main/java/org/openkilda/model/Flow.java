@@ -409,6 +409,17 @@ public class Flow implements Serializable {
         return getPath(getProtectedReversePathId()).orElse(null);
     }
 
+    /**
+     * Sets null to all flow paths.
+     */
+    public final void resetPaths() {
+        this.forwardPathId = null;
+        this.reversePathId = null;
+
+        this.protectedForwardPathId = null;
+        this.protectedReversePathId = null;
+    }
+
     private FlowPath validateReversePath(FlowPath path) {
         checkArgument(isReverse(path),
                 "Reverse path %s and the flow have different endpoints, but expected the same.",

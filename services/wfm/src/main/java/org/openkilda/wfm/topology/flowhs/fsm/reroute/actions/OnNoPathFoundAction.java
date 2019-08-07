@@ -54,18 +54,27 @@ public class OnNoPathFoundAction extends
             Flow flow = getFlow(flowId, FetchStrategy.NO_RELATIONS);
             if (stateMachine.isReroutePrimary() && stateMachine.getNewPrimaryForwardPath() == null
                     && stateMachine.getNewPrimaryReversePath() == null) {
-                log.debug("Set the flow path status of {}/{} to inactive.",
-                        flow.getForwardPathId(), flow.getReversePathId());
-                flowPathRepository.updateStatus(flow.getForwardPathId(), FlowPathStatus.INACTIVE);
-                flowPathRepository.updateStatus(flow.getReversePathId(), FlowPathStatus.INACTIVE);
+                if (flow.getForwardPathId() == null && flow.getReversePathId() == null) {
+                    log.debug("Skip marking flow path statuses as inactive: flow {} doesn't have main paths", flowId);
+                } else {
+                    log.debug("Set the flow path status of {}/{} to inactive.",
+                            flow.getForwardPathId(), flow.getReversePathId());
+                    flowPathRepository.updateStatus(flow.getForwardPathId(), FlowPathStatus.INACTIVE);
+                    flowPathRepository.updateStatus(flow.getReversePathId(), FlowPathStatus.INACTIVE);
+                }
             }
 
             if (stateMachine.isRerouteProtected() && stateMachine.getNewProtectedForwardPath() == null
                     && stateMachine.getNewProtectedReversePath() == null) {
-                log.debug("Set the flow path status of {}/{} to inactive.",
-                        flow.getProtectedForwardPathId(), flow.getProtectedReversePathId());
-                flowPathRepository.updateStatus(flow.getProtectedForwardPathId(), FlowPathStatus.INACTIVE);
-                flowPathRepository.updateStatus(flow.getProtectedReversePathId(), FlowPathStatus.INACTIVE);
+                if (flow.getForwardPathId() == null && flow.getReversePathId() == null) {
+                    log.debug("Skip marking flow path statuses as inactive: flow {} doesn't have protected paths",
+                            flowId);
+                } else {
+                    log.debug("Set the flow path status of {}/{} to inactive.",
+                            flow.getProtectedForwardPathId(), flow.getProtectedReversePathId());
+                    flowPathRepository.updateStatus(flow.getProtectedForwardPathId(), FlowPathStatus.INACTIVE);
+                    flowPathRepository.updateStatus(flow.getProtectedReversePathId(), FlowPathStatus.INACTIVE);
+                }
             }
         });
 
