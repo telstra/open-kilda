@@ -36,10 +36,10 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
     private static final String FLOW_CREATE_EVENT = "flow_create";
     private static final String FLOW_UPDATE_EVENT = "flow_update";
     private static final String FLOW_DELETE_EVENT = "flow_delete";
-    private static final String PATHS_SWAP_EVENT = "paths_swap_reroute";
+    private static final String PATHS_SWAP_EVENT = "paths_swap";
     private static final String REROUTE_EVENT = "flow_reroute";
+    private static final String REROUTE_RESULT_EVENT = "flow_reroute_result";
     private static final String STATUS_UPDATE_EVENT = "status_update";
-    private static final String STATUS = "status";
 
     private static final String TAG = "FLOW_OPERATIONS_DASHBOARD";
 
@@ -155,7 +155,7 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(TAG, "flow-status-update");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, STATUS_UPDATE_EVENT);
-        data.put(STATUS, status.toString());
+        data.put("status", status.toString());
         proceed(Level.INFO, String.format("Update the status of the flow %s to %s", flowId, status), data);
     }
 
@@ -224,5 +224,30 @@ public class FlowOperationsDashboardLogger extends AbstractLogWrapper {
         data.put(EVENT_TYPE, REROUTE_EVENT);
         data.put("forced_reroute", Boolean.toString(forceToReroute));
         proceed(Level.INFO, String.format("Reroute paths %s of the flow %s", pathIds, flowId), data);
+    }
+
+    /**
+     * Log a flow-reroute-successful event.
+     */
+    public void onSuccessfulFlowReroute(String flowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "flow-reroute-successful");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, REROUTE_RESULT_EVENT);
+        data.put("reroute-result", "successful");
+        proceed(Level.INFO, String.format("Successful reroute of the flow %s", flowId), data);
+    }
+
+    /**
+     * Log a flow-reroute-failed event.
+     */
+    public void onFailedFlowReroute(String flowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "flow-reroute-failed");
+        data.put(FLOW_ID, flowId);
+        data.put(EVENT_TYPE, REROUTE_RESULT_EVENT);
+        data.put("reroute-result", "failed");
+        data.put("failure-reason", failureReason);
+        proceed(Level.WARN, String.format("Failed reroute of the flow %s, reason: %s", flowId, failureReason), data);
     }
 }

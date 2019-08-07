@@ -29,6 +29,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.action.NbTrackableAction;
@@ -47,10 +48,13 @@ public class PostResourceAllocationAction extends
 
     private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
+    private final FlowOperationsDashboardLogger dashboardLogger;
 
-    public PostResourceAllocationAction(PersistenceManager persistenceManager) {
+    public PostResourceAllocationAction(PersistenceManager persistenceManager,
+                                        FlowOperationsDashboardLogger dashboardLogger) {
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        this.dashboardLogger = dashboardLogger;
     }
 
     @Override
@@ -80,7 +84,8 @@ public class PostResourceAllocationAction extends
             if (stateMachine.getNewPrimaryForwardPath() == null && stateMachine.getNewPrimaryReversePath() == null
                     && stateMachine.getNewProtectedForwardPath() == null
                     && stateMachine.getNewProtectedReversePath() == null) {
-                log.debug("Reroute {} is unsuccessful: can't find new path(s).", flowId);
+                dashboardLogger.onFailedFlowReroute(flowId,
+                        format("Reroute %s is unsuccessful: can't find new path(s).", flowId));
 
                 stateMachine.fire(Event.REROUTE_IS_SKIPPED);
             }

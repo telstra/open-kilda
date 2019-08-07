@@ -46,6 +46,7 @@ public class UpdateFlowStatusAction extends
     @Override
     protected void perform(State from, State to, Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
         String flowId = stateMachine.getFlowId();
+        dashboardLogger.onSuccessfulFlowReroute(flowId);
 
         FlowStatus resultStatus = persistenceManager.getTransactionManager().doInTransaction(() -> {
             Flow flow = getFlow(flowId, FetchStrategy.DIRECT_RELATIONS);
