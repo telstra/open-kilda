@@ -19,11 +19,11 @@ import static java.lang.String.format;
 import static org.openkilda.persistence.repositories.impl.Neo4jSwitchRepository.SWITCH_NAME_PROPERTY_NAME;
 
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.PersistenceException;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 
 import com.google.common.collect.Lists;
 import org.neo4j.ogm.cypher.ComparisonOperator;
@@ -32,32 +32,32 @@ import org.neo4j.ogm.cypher.Filter;
 import java.util.Collection;
 import java.util.Optional;
 
-public class Neo4jSwitchFeaturesRepository extends Neo4jGenericRepository<SwitchFeatures>
-        implements SwitchFeaturesRepository {
+public class Neo4JSwitchPropertiesRepository extends Neo4jGenericRepository<SwitchProperties>
+        implements SwitchPropertiesRepository {
     private static final String SWITCH_FIELD = "switchObj";
 
 
-    public Neo4jSwitchFeaturesRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
+    public Neo4JSwitchPropertiesRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
         super(sessionFactory, transactionManager);
     }
 
     @Override
-    protected Class<SwitchFeatures> getEntityType() {
-        return SwitchFeatures.class;
+    protected Class<SwitchProperties> getEntityType() {
+        return SwitchProperties.class;
     }
 
     @Override
-    public Optional<SwitchFeatures> findBySwitchId(SwitchId switchId) {
+    public Optional<SwitchProperties> findBySwitchId(SwitchId switchId) {
         if (switchId == null) {
-            throw new IllegalArgumentException("Switch id should be not null for SwitchFeatures");
+            throw new IllegalArgumentException("Switch id should be not null for SwitchProperties");
         }
         Filter switchFilter = new Filter(SWITCH_NAME_PROPERTY_NAME, ComparisonOperator.EQUALS, switchId.toString());
         switchFilter.setNestedPath(new Filter.NestedPathSegment(SWITCH_FIELD, Switch.class));
 
-        Collection<SwitchFeatures> results = Lists.newArrayList(loadAll(switchFilter));
+        Collection<SwitchProperties> results = Lists.newArrayList(loadAll(switchFilter));
 
         if (results.size() > 1) {
-            throw new PersistenceException(format("Found more that 1 SwitchFeatures entity by %s as switch name",
+            throw new PersistenceException(format("Found more that 1 SwitchProperties entity by %s as switch name",
                     switchId));
         }
         return results.isEmpty() ? Optional.empty() : Optional.of(results.iterator().next());

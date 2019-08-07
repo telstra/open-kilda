@@ -20,10 +20,10 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.persistence.Neo4jBasedTest;
-import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import org.junit.BeforeClass;
@@ -33,45 +33,45 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class Neo4jSwitchFeaturesRepositoryTest extends Neo4jBasedTest {
+public class Neo4JSwitchPropertiesRepositoryTest extends Neo4jBasedTest {
     static final SwitchId TEST_SWITCH_ID = new SwitchId(1);
 
     static SwitchRepository switchRepository;
-    static SwitchFeaturesRepository switchFeaturesRepository;
+    static SwitchPropertiesRepository switchPropertiesRepository;
 
     @BeforeClass
     public static void setUp() {
         switchRepository = new Neo4jSwitchRepository(neo4jSessionFactory, txManager);
-        switchFeaturesRepository = new Neo4jSwitchFeaturesRepository(neo4jSessionFactory, txManager);
+        switchPropertiesRepository = new Neo4JSwitchPropertiesRepository(neo4jSessionFactory, txManager);
     }
 
     @Test
-    public void shouldCreateSwitchFeaturesWithRelation() {
+    public void shouldCreateSwitchPropertiesWithRelation() {
         Switch origSwitch = Switch.builder().switchId(TEST_SWITCH_ID)
                 .description("Some description").build();
 
         switchRepository.createOrUpdate(origSwitch);
-        SwitchFeatures switchFeatures = SwitchFeatures.builder().switchObj(origSwitch)
-                .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
+        SwitchProperties switchProperties = SwitchProperties.builder().switchObj(origSwitch)
+                .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
 
-        switchFeaturesRepository.createOrUpdate(switchFeatures);
-        List<SwitchFeatures> switchFeaturesResult = new ArrayList<>(switchFeaturesRepository.findAll());
-        assertEquals(1, switchFeaturesResult.size());
-        assertNotNull(switchFeaturesResult.get(0).getSwitchObj());
+        switchPropertiesRepository.createOrUpdate(switchProperties);
+        List<SwitchProperties> switchPropertiesResult = new ArrayList<>(switchPropertiesRepository.findAll());
+        assertEquals(1, switchPropertiesResult.size());
+        assertNotNull(switchPropertiesResult.get(0).getSwitchObj());
     }
 
     @Test
-    public void shouldFindSwitchFeautesBySwitchId() {
+    public void shouldFindSwitchPropertiesBySwitchId() {
         Switch origSwitch = Switch.builder().switchId(TEST_SWITCH_ID)
                 .description("Some description").build();
 
         switchRepository.createOrUpdate(origSwitch);
-        SwitchFeatures switchFeatures = SwitchFeatures.builder().switchObj(origSwitch)
-                .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
+        SwitchProperties switchProperties = SwitchProperties.builder().switchObj(origSwitch)
+                .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
 
-        switchFeaturesRepository.createOrUpdate(switchFeatures);
-        Optional<SwitchFeatures> switchFeaturesOptional = switchFeaturesRepository.findBySwitchId(TEST_SWITCH_ID);
-        assertTrue(switchFeaturesOptional.isPresent());
+        switchPropertiesRepository.createOrUpdate(switchProperties);
+        Optional<SwitchProperties> switchPropertiesOptional = switchPropertiesRepository.findBySwitchId(TEST_SWITCH_ID);
+        assertTrue(switchPropertiesOptional.isPresent());
     }
 
 }

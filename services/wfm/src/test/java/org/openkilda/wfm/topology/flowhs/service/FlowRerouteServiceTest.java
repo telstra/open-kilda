@@ -47,8 +47,8 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
@@ -58,7 +58,7 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
@@ -110,10 +110,10 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
         FeatureTogglesRepository featureTogglesRepository = mock(FeatureTogglesRepository.class);
         when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
 
-        SwitchFeaturesRepository featuresRepository = mock(SwitchFeaturesRepository.class);
+        SwitchPropertiesRepository featuresRepository = mock(SwitchPropertiesRepository.class);
         when(featuresRepository.findBySwitchId(any(SwitchId.class)))
-                .thenReturn(Optional.of(SwitchFeatures.builder().build()));
-        when(repositoryFactory.createSwitchFeaturesRepository()).thenReturn(featuresRepository);
+                .thenReturn(Optional.of(SwitchProperties.builder().build()));
+        when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(featuresRepository);
 
         FlowEventRepository flowEventRepository = mock(FlowEventRepository.class);
         when(flowEventRepository.existsByTaskId(any())).thenReturn(false);

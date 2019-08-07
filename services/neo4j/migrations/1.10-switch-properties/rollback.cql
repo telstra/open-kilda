@@ -1,0 +1,1 @@
+MATCH (n:switch_properties) SET n:switch_features REMOVE n:switch_properties

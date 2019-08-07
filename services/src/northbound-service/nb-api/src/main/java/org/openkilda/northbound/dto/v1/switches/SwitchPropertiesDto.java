@@ -13,14 +13,25 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.northbound.dto.v1.switches;
 
-import org.openkilda.model.SwitchFeatures;
-import org.openkilda.model.SwitchId;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 
-import java.util.Optional;
+import java.util.List;
 
-public interface SwitchFeaturesRepository extends Repository<SwitchFeatures> {
-    Optional<SwitchFeatures> findBySwitchId(SwitchId switchId);
+@Data
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class SwitchPropertiesDto {
+    @JsonProperty("support_bfd")
+    private boolean supportBfd;
+
+    @JsonProperty("supported_transit_encapsulation")
+    private List<String> supportedTransitEncapsulation;
+
+    @JsonProperty("support_meters")
+    private boolean supportMeters;
+
 
 }

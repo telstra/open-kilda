@@ -16,18 +16,21 @@
 package org.openkilda.wfm.topology.nbworker.services;
 
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.IslNotFoundException;
@@ -47,6 +50,7 @@ import java.util.stream.Stream;
 public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
 
     private SwitchRepository switchRepository;
+    private SwitchPropertiesRepository switchPropertiesRepository;
     private TransactionManager transactionManager;
     private LinkOperationsService linkOperationsService;
     private IslRepository islRepository;
@@ -62,6 +66,7 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
         this.islRepository = repositoryFactory.createIslRepository();
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();
+        this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
     }
 
     /**
@@ -227,5 +232,45 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
                 throw new IllegalSwitchStateException(switchId.toString(), message);
             }
         }
+    }
+
+    /**
+     * Get switch properties.
+     *
+     * @param switchId target switch id
+     */
+    public SwitchPropertiesDto getSwitchProperties(SwitchId switchId) {
+        Optional<SwitchProperties> result = switchPropertiesRepository.findBySwitchId(switchId);
+        if (!result.isPresent()) {
+            return null;
+        }
+        return SwitchMapper.INSTANCE.map(result.get());
+    }
+
+    /**
+     * Update switch properties .
+     *
+     * @param switchId target switch id
+     * @param switchPropertiesDto target switch id
+     */
+    public SwitchPropertiesDto updateSwitchProperties(SwitchId switchId, SwitchPropertiesDto switchPropertiesDto) {
+        SwitchProperties update = SwitchMapper.INSTANCE.map(switchPropertiesDto);
+        return transactionManager.doInTransaction(() -> {
+            Optional<SwitchProperties> foundSwitchProperties = switchPropertiesRepository.findBySwitchId(switchId);
+            if (!(foundSwitchProperties.isPresent())) {
+                return null;
+            }
+
+            SwitchProperties sf = foundSwitchProperties.get();
+
+            sf.setSupportBfd(update.isSupportBfd());
+            sf.setSupportMeters(update.isSupportMeters());
+            sf.setSupportedTransitEncapsulation(update.getSupportedTransitEncapsulation());
+
+            switchPropertiesRepository.createOrUpdate(sf);
+
+
+            return SwitchMapper.INSTANCE.map(sf);
+        });
     }
 }

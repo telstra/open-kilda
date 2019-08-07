@@ -31,14 +31,14 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.Neo4jBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
-import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.collect.Lists;
@@ -59,7 +59,7 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
 
     static IslRepository islRepository;
     static SwitchRepository switchRepository;
-    static SwitchFeaturesRepository switchFeaturesRepository;
+    static SwitchPropertiesRepository switchPropertiesRepository;
     static FlowRepository flowRepository;
     static FlowPathRepository flowPathRepository;
 
@@ -72,23 +72,23 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
         switchRepository = new Neo4jSwitchRepository(neo4jSessionFactory, txManager);
         flowRepository = new Neo4jFlowRepository(neo4jSessionFactory, txManager);
         flowPathRepository = new Neo4jFlowPathRepository(neo4jSessionFactory, txManager);
-        switchFeaturesRepository = new Neo4jSwitchFeaturesRepository(neo4jSessionFactory, txManager);
+        switchPropertiesRepository = new Neo4JSwitchPropertiesRepository(neo4jSessionFactory, txManager);
     }
 
     @Before
     public void createSwitches() {
         switchA = buildTestSwitch(1);
         switchRepository.createOrUpdate(switchA);
-        SwitchFeatures switchAFeatures = SwitchFeatures.builder()
+        SwitchProperties switchAFeatures = SwitchProperties.builder()
                 .switchObj(switchA)
-                .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
-        switchFeaturesRepository.createOrUpdate(switchAFeatures);
+                .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
+        switchPropertiesRepository.createOrUpdate(switchAFeatures);
         switchB = buildTestSwitch(2);
         switchRepository.createOrUpdate(switchB);
-        SwitchFeatures switchBFeatures = SwitchFeatures.builder()
+        SwitchProperties switchBFeatures = SwitchProperties.builder()
                 .switchObj(switchB)
-                .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
-        switchFeaturesRepository.createOrUpdate(switchBFeatures);
+                .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
+        switchPropertiesRepository.createOrUpdate(switchBFeatures);
         assertEquals(2, switchRepository.findAll().size());
     }
 

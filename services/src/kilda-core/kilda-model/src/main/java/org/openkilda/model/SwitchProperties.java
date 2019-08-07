@@ -53,9 +53,9 @@ import java.util.Set;
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(exclude = {"entityId", "switchObj"})
-@NodeEntity(label = "switch_features")
+@NodeEntity(label = "switch_properties")
 @ToString(exclude = {"switchObj"})
-public class SwitchFeatures implements Serializable {
+public class SwitchProperties implements Serializable {
     private static final long serialVersionUID = 1L;
 
     public static Set<FlowEncapsulationType> DEFAULT_FLOW_ENCAPSULATION_TYPES = Collections.singleton(
@@ -85,9 +85,9 @@ public class SwitchFeatures implements Serializable {
     private boolean supportMeters;
 
     @Builder(toBuilder = true)
-    public SwitchFeatures(Switch switchObj, boolean supportBfd, boolean supportVxlanPushPop,
-                          boolean supportVxlanVniMatch, Set<FlowEncapsulationType> supportedTransitEncapsulation,
-                          boolean supportMeters) {
+    public SwitchProperties(Switch switchObj, boolean supportBfd, boolean supportVxlanPushPop,
+                            boolean supportVxlanVniMatch, Set<FlowEncapsulationType> supportedTransitEncapsulation,
+                            boolean supportMeters) {
         this.switchObj = switchObj;
         this.supportBfd = supportBfd;
         this.supportVxlanPushPop = supportVxlanPushPop;

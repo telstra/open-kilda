@@ -50,8 +50,8 @@ import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.pce.Path;
@@ -62,7 +62,7 @@ import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
@@ -130,9 +130,9 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         IslRepository islRepository = mock(IslRepository.class);
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
 
-        SwitchFeaturesRepository switchFeaturesRepository = mock(SwitchFeaturesRepository.class);
-        when(switchFeaturesRepository.findBySwitchId(any(SwitchId.class)))
-                .thenReturn(Optional.of(SwitchFeatures.builder().build()));
+        SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
+        when(switchPropertiesRepository.findBySwitchId(any(SwitchId.class)))
+                .thenReturn(Optional.of(SwitchProperties.builder().build()));
 
         doAnswer(invocation -> {
             FlowPath flowPath = invocation.getArgument(0);
@@ -141,7 +141,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         }).when(flowPathRepository).createOrUpdate(any(FlowPath.class));
 
         doAnswer(getSpeakerCommandsAnswer()).when(carrier).sendSpeakerRequest(any(SpeakerFlowRequest.class));
-        when(repositoryFactory.createSwitchFeaturesRepository()).thenReturn(switchFeaturesRepository);
+        when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
         target = new FlowCreateService(carrier, persistenceManager, pathComputer, flowResourcesManager, 0, 0);
     }
 
