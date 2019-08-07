@@ -157,14 +157,14 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
 
         String query = "MATCH (fp:flow_path)-[:owns]-(ps:path_segment) "
                 + "WHERE fp.path_id IN $path_ids "
-                + "MATCH (src_features:switch_features)<-[:has]-(src:switch)-[:source]-(ps)-[:destination]-"
-                + "(dst:switch)-[:has]->(dst_features:switch_features) "
+                + "MATCH (src_properties:switch_properties)<-[:has]-(src:switch)-[:source]-(ps)-[:destination]-"
+                + "(dst:switch)-[:has]->(dst_properties:switch_properties) "
                 + "MATCH (src)-[link:isl]->(dst) "
                 + "WHERE src.state = $switch_status AND dst.state = $switch_status AND link.status = $isl_status "
                 + " AND link.src_port = ps.src_port AND link.dst_port = ps.dst_port "
                 + " AND link.available_bandwidth + fp.bandwidth >= $requested_bandwidth "
-                + " AND $supported_transit_encapsulation IN src_features.supported_transit_encapsulation "
-                + " AND $supported_transit_encapsulation IN dst_features.supported_transit_encapsulation "
+                + " AND $supported_transit_encapsulation IN src_properties.supported_transit_encapsulation "
+                + " AND $supported_transit_encapsulation IN dst_properties.supported_transit_encapsulation "
                 + "RETURN src, link, dst";
 
         return addIslConfigToIsl(Lists.newArrayList(getSession().query(getEntityType(), query, parameters)));
@@ -193,13 +193,13 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                 "supported_transit_encapsulation",
                 flowEncapsulationTypeConverter.toGraphProperty(flowEncapsulationType));
 
-        String query = "MATCH (src_features:switch_features)<-[:has]-(src:switch)-[link:isl]->"
-                + "(dst:switch)-[:has]->(dst_features:switch_features) "
+        String query = "MATCH (src_properties:switch_properties)<-[:has]-(src:switch)-[link:isl]->"
+                + "(dst:switch)-[:has]->(dst_properties:switch_properties) "
                 + "WHERE src.state = $switch_status AND dst.state = $switch_status AND link.status = $isl_status "
                 + "AND link.available_bandwidth >= $requested_bandwidth "
-                + "AND $supported_transit_encapsulation IN src_features.supported_transit_encapsulation "
-                + "AND $supported_transit_encapsulation IN dst_features.supported_transit_encapsulation "
-                + "RETURN src_features, src, link, dst, dst_features";
+                + "AND $supported_transit_encapsulation IN src_properties.supported_transit_encapsulation "
+                + "AND $supported_transit_encapsulation IN dst_properties.supported_transit_encapsulation "
+                + "RETURN src_properties, src, link, dst, dst_properties";
 
         return addIslConfigToIsl(Lists.newArrayList(getSession().query(getEntityType(), query, parameters)));
     }
@@ -215,15 +215,15 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                 "supported_transit_encapsulation",
                 flowEncapsulationTypeConverter.toGraphProperty(flowEncapsulationType));
 
-        String query = "MATCH  (src_features:switch_features)<-[:has]-(source:switch)-[link:isl]->"
-                + "(dest:switch)-[:has]->(dst_features:switch_features) "
+        String query = "MATCH  (src_properties:switch_properties)<-[:has]-(source:switch)-[link:isl]->"
+                + "(dest:switch)-[:has]->(dst_properties:switch_properties) "
                 + "MATCH (dest)-[reverse:isl {src_port: link.dst_port, dst_port: link.src_port}]->(source) "
                 + "WHERE source.state = $active_switch AND dest.state = $active_switch AND link.status = $active_isl "
                 + "AND link.available_bandwidth >= $required_bandwidth "
                 + "AND reverse.available_bandwidth >= $required_bandwidth "
-                + "AND $supported_transit_encapsulation IN src_features.supported_transit_encapsulation "
-                + "AND $supported_transit_encapsulation IN dst_features.supported_transit_encapsulation "
-                + "RETURN src_features, source, link, dest, dst_features";
+                + "AND $supported_transit_encapsulation IN src_properties.supported_transit_encapsulation "
+                + "AND $supported_transit_encapsulation IN dst_properties.supported_transit_encapsulation "
+                + "RETURN src_properties, source, link, dest, dst_properties";
 
         return addIslConfigToIsl(Lists.newArrayList(getSession().query(getEntityType(), query, parameters)));
     }
