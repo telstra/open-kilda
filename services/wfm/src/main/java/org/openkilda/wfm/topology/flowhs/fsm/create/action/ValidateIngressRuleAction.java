@@ -19,9 +19,9 @@ import static java.lang.String.format;
 
 import org.openkilda.floodlight.flow.request.InstallIngressRule;
 import org.openkilda.floodlight.flow.response.FlowRuleResponse;
-import org.openkilda.model.SwitchFeatures;
+import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
+import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.topology.flowhs.fsm.common.action.FlowProcessingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
@@ -37,12 +37,12 @@ import java.util.UUID;
 @Slf4j
 public class ValidateIngressRuleAction extends FlowProcessingAction<FlowCreateFsm, State, Event, FlowCreateContext> {
 
-    private final SwitchFeaturesRepository switchFeaturesRepository;
+    private final SwitchRepository switchRepository;
 
     public ValidateIngressRuleAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
 
-        this.switchFeaturesRepository = persistenceManager.getRepositoryFactory().createSwitchFeaturesRepository();
+        this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
     }
 
     @Override
@@ -50,12 +50,13 @@ public class ValidateIngressRuleAction extends FlowProcessingAction<FlowCreateFs
         UUID commandId = context.getSpeakerFlowResponse().getCommandId();
 
         InstallIngressRule expected = stateMachine.getIngressCommands().get(commandId);
-        SwitchFeatures switchFeatures =  switchFeaturesRepository.findBySwitchId(expected.getSwitchId())
-                .orElseThrow(() -> new IllegalStateException(format("Failed to find list of features for switch %s",
+
+        Switch switchObj =  switchRepository.findById(expected.getSwitchId())
+                .orElseThrow(() -> new IllegalStateException(format("Failed to find switch %s",
                         expected.getSwitchId())));
 
         FlowRuleResponse response = (FlowRuleResponse) context.getSpeakerFlowResponse();
-        RulesValidator validator = new IngressRulesValidator(expected, response, switchFeatures);
+        RulesValidator validator = new IngressRulesValidator(expected, response, switchObj.getFeatures());
         String action;
         if (!validator.validate()) {
             stateMachine.getFailedCommands().add(commandId);

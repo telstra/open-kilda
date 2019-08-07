@@ -30,8 +30,8 @@ import org.openkilda.model.IslStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.Path;
@@ -51,7 +51,7 @@ import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
+import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.impl.Neo4jSessionFactory;
 import org.openkilda.persistence.spi.PersistenceProvider;
@@ -75,7 +75,7 @@ public class InMemoryPathComputerTest {
     static TestServer testServer;
     static TransactionManager txManager;
     static SwitchRepository switchRepository;
-    static SwitchFeaturesRepository switchFeaturesRepository;
+    static SwitchPropertiesRepository switchPropertiesRepository;
     static IslRepository islRepository;
     static FlowRepository flowRepository;
     static FlowPathRepository flowPathRepository;
@@ -152,7 +152,7 @@ public class InMemoryPathComputerTest {
 
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         switchRepository = repositoryFactory.createSwitchRepository();
-        switchFeaturesRepository = repositoryFactory.createSwitchFeaturesRepository();
+        switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         islRepository = repositoryFactory.createIslRepository();
         flowRepository = repositoryFactory.createFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
@@ -768,9 +768,9 @@ public class InMemoryPathComputerTest {
                 .build();
 
         switchRepository.createOrUpdate(sw);
-        SwitchFeatures switchFeatures = SwitchFeatures.builder().switchObj(sw)
-                .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
-        switchFeaturesRepository.createOrUpdate(switchFeatures);
+        SwitchProperties switchProperties = SwitchProperties.builder().switchObj(sw)
+                .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES).build();
+        switchPropertiesRepository.createOrUpdate(switchProperties);
         return sw;
     }
 
