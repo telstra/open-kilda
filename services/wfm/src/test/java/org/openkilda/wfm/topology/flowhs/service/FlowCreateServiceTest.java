@@ -17,6 +17,8 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -176,6 +178,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         Flow createdFlow = flowCaptor.getValue();
         assertThat(createdFlow.getStatus(), is(FlowStatus.IN_PROGRESS));
         assertThat(createdFlow.getFlowId(), is(flowId));
+        assertNotNull(createdFlow.getForwardPath());
+        assertNotNull(createdFlow.getReversePath());
 
         // verify response to northbound is sent
         verify(carrier).sendNorthboundResponse(any(Message.class));
@@ -222,6 +226,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         Flow createdFlow = flowCaptor.getValue();
         assertThat(createdFlow.getStatus(), is(FlowStatus.IN_PROGRESS));
         assertThat(createdFlow.getFlowId(), is(flowId));
+        assertNotNull(createdFlow.getForwardPath());
+        assertNotNull(createdFlow.getReversePath());
 
         // verify response to northbound is sent
         verify(carrier).sendNorthboundResponse(any(Message.class));
@@ -267,6 +273,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         Flow createdFlow = flowCaptor.getValue();
         assertThat(createdFlow.getStatus(), is(FlowStatus.IN_PROGRESS));
         assertThat(createdFlow.getFlowId(), is(flowId));
+        assertNotNull(createdFlow.getForwardPath());
+        assertNotNull(createdFlow.getReversePath());
 
         // verify response to northbound is sent
         verify(carrier).sendNorthboundResponse(any(Message.class));
@@ -326,6 +334,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         Flow createdFlow = flowCaptor.getValue();
         assertThat(createdFlow.getStatus(), is(FlowStatus.IN_PROGRESS));
         assertThat(createdFlow.getFlowId(), is(flowId));
+        assertNotNull(createdFlow.getForwardPath());
+        assertNotNull(createdFlow.getReversePath());
 
         // verify response to northbound is sent
         verify(carrier).sendNorthboundResponse(any(Message.class));
@@ -351,6 +361,10 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
 
         assertEquals("All installed rules should be deleted", installCommands, deleteCommands);
         verify(flowRepository).updateStatus(eq(flowId), eq(FlowStatus.DOWN));
+        Flow updatedFlow = flowRepository.findById(flowId).get();
+        assertNull(updatedFlow.getForwardPath());
+        assertNull(updatedFlow.getReversePath());
+
         FlowPath forwardPath = flowPathRepository.findById(flowResources.getForward().getPathId()).get();
         FlowPath reversePath = flowPathRepository.findById(flowResources.getReverse().getPathId()).get();
         verify(flowPathRepository).delete(eq(forwardPath));
@@ -386,6 +400,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         Flow createdFlow = flowCaptor.getValue();
         assertThat(createdFlow.getStatus(), is(FlowStatus.IN_PROGRESS));
         assertThat(createdFlow.getFlowId(), is(flowId));
+        assertNotNull(createdFlow.getForwardPath());
+        assertNotNull(createdFlow.getReversePath());
 
         // verify response to northbound is sent
         verify(carrier).sendNorthboundResponse(any(Message.class));
@@ -407,6 +423,10 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
 
         assertEquals(0, remainingRetries);
         verify(flowRepository).updateStatus(eq(flowId), eq(FlowStatus.UP));
+        Flow updatedFlow = flowRepository.findById(flowId).get();
+        assertNotNull(updatedFlow.getForwardPath());
+        assertNotNull(updatedFlow.getReversePath());
+
         verify(flowPathRepository).updateStatus(
                 eq(flowResources.getForward().getPathId()), eq(FlowPathStatus.ACTIVE));
         verify(flowPathRepository).updateStatus(
@@ -442,6 +462,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         Flow createdFlow = flowCaptor.getValue();
         assertThat(createdFlow.getStatus(), is(FlowStatus.IN_PROGRESS));
         assertThat(createdFlow.getFlowId(), is(flowId));
+        assertNotNull(createdFlow.getForwardPath());
+        assertNotNull(createdFlow.getReversePath());
 
         // verify response to northbound is sent
         verify(carrier).sendNorthboundResponse(any(Message.class));
@@ -497,6 +519,8 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         assertThat(createdFlow.getStatus(), is(FlowStatus.IN_PROGRESS));
         assertThat(createdFlow.getFlowId(), is(flowId));
         assertTrue(createdFlow.isPinned());
+        assertNotNull(createdFlow.getForwardPath());
+        assertNotNull(createdFlow.getReversePath());
 
         // verify response to northbound is sent
         verify(carrier).sendNorthboundResponse(any(Message.class));
@@ -551,6 +575,10 @@ public class FlowCreateServiceTest extends AbstractFlowTest {
         assertThat(createdFlow.getStatus(), is(FlowStatus.IN_PROGRESS));
         assertThat(createdFlow.getFlowId(), is(flowId));
         assertTrue(createdFlow.isAllocateProtectedPath());
+        assertNotNull(createdFlow.getForwardPath());
+        assertNotNull(createdFlow.getReversePath());
+        assertNotNull(createdFlow.getProtectedForwardPath());
+        assertNotNull(createdFlow.getProtectedReversePath());
 
         // verify response to northbound is sent
         verify(carrier).sendNorthboundResponse(any(Message.class));

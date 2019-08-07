@@ -72,6 +72,9 @@ public class ResourcesDeallocationAction extends FlowProcessingAction<FlowCreate
                         .map(FlowPath::getSegments)
                         .flatMap(List::stream)
                         .forEach(segment -> updateIslAvailableBandwidth(stateMachine.getFlowId(), segment));
+
+                flow.resetPaths();
+                flowRepository.createOrUpdate(flow);
             }
         });
         flowResources.clear();
