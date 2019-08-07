@@ -19,7 +19,9 @@ import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.messaging.model.SwitchFeaturesDto;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchStatus;
 
 import org.mapstruct.Mapper;
@@ -28,7 +30,7 @@ import org.mapstruct.factory.Mappers;
 /**
  * Convert {@link Switch} to {@link SwitchInfoData} and back.
  */
-@Mapper
+@Mapper(uses = {FlowMapper.class})
 public abstract class SwitchMapper {
 
     public static final SwitchMapper INSTANCE = Mappers.getMapper(SwitchMapper.class);
@@ -130,4 +132,9 @@ public abstract class SwitchMapper {
                 throw new IllegalArgumentException("Unsupported Switch status: " + status);
         }
     }
+
+    public abstract SwitchFeaturesDto map(SwitchFeatures switchFeatures);
+
+    public abstract SwitchFeatures map(SwitchFeaturesDto switchFeatures);
 }
+

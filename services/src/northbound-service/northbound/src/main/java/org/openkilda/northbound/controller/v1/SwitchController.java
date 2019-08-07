@@ -39,6 +39,7 @@ import org.openkilda.northbound.dto.v1.switches.PortDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchFeaturesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncRequest;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
@@ -425,5 +426,32 @@ public class SwitchController extends BaseController {
                                                                   @RequestParam(value = "port", required = false)
                                                                           Integer port) {
         return switchService.getFlowsForSwitch(switchId, port);
+    }
+
+    /**
+     * Get switch features.
+     *
+     * @param switchId the switch id.
+     * @return switch ports description.
+     */
+    @ApiOperation(value = "Get switch features from the switch", response = SwitchFeaturesDto.class)
+    @GetMapping(value = "/{switch-id}/features")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchFeaturesDto> getSwitchFeatures(@PathVariable("switch-id") SwitchId switchId) {
+        return switchService.getSwitchFeatures(switchId);
+    }
+
+    /**
+     * Update switch features.
+     *
+     * @param switchId the switch id.
+     * @return switch ports description.
+     */
+    @ApiOperation(value = "Update switch features from the switch", response = SwitchFeaturesDto.class)
+    @PutMapping(value = "/{switch-id}/features")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<SwitchFeaturesDto> updateSwitchFeatures(@PathVariable("switch-id") SwitchId switchId,
+                                                                     @RequestBody SwitchFeaturesDto switchFeaturesDto) {
+        return switchService.updateSwitchFeatures(switchId, switchFeaturesDto);
     }
 }

@@ -32,6 +32,7 @@ import org.openkilda.northbound.dto.v1.switches.PortDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchFeaturesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
@@ -216,4 +217,22 @@ public interface SwitchService {
      * @return list of flows that goes through a particular switch.
      */
     CompletableFuture<List<FlowPayload>> getFlowsForSwitch(SwitchId switchId, Integer port);
+
+    /**
+     * Get switch features.
+     *
+     * @param switchId id of the swtich
+     * @return switch features object
+     */
+    CompletableFuture<SwitchFeaturesDto> getSwitchFeatures(SwitchId switchId);
+
+
+    /**
+     * Update switch switch features.
+     *
+     * @param switchId id of the swtich
+     * @return switch features object
+     */
+    CompletableFuture<SwitchFeaturesDto> updateSwitchFeatures(SwitchId switchId,
+                                                                 SwitchFeaturesDto switchFeaturesDto);
 }

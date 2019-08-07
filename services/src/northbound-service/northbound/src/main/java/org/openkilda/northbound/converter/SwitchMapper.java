@@ -34,13 +34,14 @@ import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationDto;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchFeaturesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {FlowMapper.class})
 public interface SwitchMapper {
 
     /**
@@ -98,6 +99,19 @@ public interface SwitchMapper {
     MeterInfoDto toMeterInfoDto(MeterInfoEntry data);
 
     MeterMisconfiguredInfoDto toMeterMisconfiguredInfoDto(MeterMisconfiguredInfoEntry data);
+
+    @Mapping(target = "supportedTransitEncapsulation",
+            expression = "java(entry.getSupportedTransitEncapsulation().stream()"
+                       + ".map(e -> e.toString().toLowerCase()).collect(java.util.stream.Collectors.toList()))")
+    SwitchFeaturesDto map(org.openkilda.messaging.model.SwitchFeaturesDto entry);
+
+    @Mapping(target = "supportedTransitEncapsulation",
+            expression = "java(entry.getSupportedTransitEncapsulation().stream()"
+                    + ".map(e-> org.openkilda.messaging.payload.flow.FlowEncapsulationType.valueOf(e.toUpperCase()))"
+                    + ".collect(java.util.stream.Collectors.toSet()))")
+    org.openkilda.messaging.model.SwitchFeaturesDto map(SwitchFeaturesDto entry);
+
+
 
     default String toSwithId(SwitchId switchId) {
         return switchId.toString();

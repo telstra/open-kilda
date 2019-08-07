@@ -21,12 +21,16 @@ import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.model.SwitchFeaturesDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
+import org.openkilda.messaging.nbtopology.request.GetSwitchFeaturesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.messaging.nbtopology.request.UpdateSwitchFeaturesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
+import org.openkilda.messaging.nbtopology.response.SwitchFeaturesResponse;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -85,6 +89,10 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
             result = getSwitch((GetSwitchRequest) request);
         } else if (request instanceof DeleteSwitchRequest) {
             result = Collections.singletonList(deleteSwitch((DeleteSwitchRequest) request));
+        } else if (request instanceof GetSwitchFeaturesRequest) {
+            result = Collections.singletonList(getSwitchFeatures((GetSwitchFeaturesRequest) request));
+        } else if (request instanceof UpdateSwitchFeaturesRequest) {
+            result = Collections.singletonList(updateSwitchFeatures((UpdateSwitchFeaturesRequest) request));
         } else {
             unhandledInput(tuple);
         }
@@ -168,6 +176,28 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
 
         log.info("{} deletion of switch '{}'", deleted ? "Successful" : "Unsuccessful", switchId);
         return new DeleteSwitchResponse(deleted);
+    }
+
+    private SwitchFeaturesResponse getSwitchFeatures(GetSwitchFeaturesRequest request) {
+        SwitchFeaturesDto found = switchOperationsService.getSwitchFeatures(request.getSwitchId());
+        if (found == null) {
+            String message = String.format("Failed to found features for switch '%s'.",
+                    request.getSwitchId());
+            log.error(message);
+            throw new MessageException(ErrorType.NOT_FOUND, message, "SwitchFeatures are not found.");
+        }
+        return new SwitchFeaturesResponse(found);
+    }
+
+    private SwitchFeaturesResponse updateSwitchFeatures(UpdateSwitchFeaturesRequest request) {
+        SwitchFeaturesDto updated = switchOperationsService.updateSwitchFeatures(request.getSwitchId(),
+                request.getSwitchFeatures());
+        if (updated == null) {
+            String message = String.format("Failed to update switch features for switch '%s'", request.getSwitchId());
+            log.error(message);
+            throw new MessageException(ErrorType.NOT_FOUND, message, "SwitchFeatures are not found.");
+        }
+        return new SwitchFeaturesResponse(updated);
     }
 
     @Override

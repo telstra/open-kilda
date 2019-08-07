@@ -46,10 +46,13 @@ import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowsForSwitchRequest;
+import org.openkilda.messaging.nbtopology.request.GetSwitchFeaturesRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
+import org.openkilda.messaging.nbtopology.request.UpdateSwitchFeaturesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
+import org.openkilda.messaging.nbtopology.response.SwitchFeaturesResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.PortStatus;
@@ -62,6 +65,7 @@ import org.openkilda.northbound.dto.v1.switches.PortDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchFeaturesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
@@ -401,6 +405,34 @@ public class SwitchServiceImpl implements SwitchService {
                         .map(FlowResponse::getPayload)
                         .map(flowMapper::toFlowOutput)
                         .collect(Collectors.toList()));
+    }
+
+    @Override
+    public CompletableFuture<SwitchFeaturesDto> getSwitchFeatures(SwitchId switchId) {
+        final String correlationId = RequestCorrelationId.getId();
+        logger.debug("Get switch features for the switch: {}", switchId);
+        GetSwitchFeaturesRequest data = new GetSwitchFeaturesRequest(switchId);
+        CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId);
+
+        return messagingChannel.sendAndGet(nbworkerTopic, message)
+                .thenApply(SwitchFeaturesResponse.class::cast)
+                .thenApply(response -> switchMapper.map(response.getSwitchFeatures()));
+    }
+
+    @Override
+    public CompletableFuture<SwitchFeaturesDto> updateSwitchFeatures(SwitchId switchId,
+                                                                     SwitchFeaturesDto switchFeaturesDto) {
+
+        String correlationId = RequestCorrelationId.getId();
+        logger.debug("Update switch feature for the switch: {}", switchId);
+        UpdateSwitchFeaturesRequest data =
+                new UpdateSwitchFeaturesRequest(switchId, switchMapper.map(switchFeaturesDto));
+
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), correlationId);
+
+        return messagingChannel.sendAndGet(nbworkerTopic, request)
+                .thenApply(SwitchFeaturesResponse.class::cast)
+                .thenApply(response -> switchMapper.map(response.getSwitchFeatures()));
     }
 
     private Boolean toPortAdminDown(PortStatus status) {
