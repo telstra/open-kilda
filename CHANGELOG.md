@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.30.1 (07/08/2019)
+
+### Bug Fixes:
+-  [#2670](https://github.com/telstra/open-kilda/pull/2670) Fix flows in DOWN state without flow paths [**northbound**][**storm-topologies**]
+-  [#2677](https://github.com/telstra/open-kilda/pull/2677) Fix error code for flow validation if flow is in DOWN state [**northbound**]
+-  [#2678](https://github.com/telstra/open-kilda/pull/2678) Fix failed flow creation/reroute without paths 
+
+### Other changes:
+-  [#2674](https://github.com/telstra/open-kilda/pull/2674) Introduce FlowOperations Kibana dashboard [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.30.0...v1.30.1).
+
+### Affected Components:
+flow-hs, nb
+
+--- 
+
 ## v1.30.0 (06/08/2019)
 
 ### Features:
