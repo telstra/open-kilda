@@ -54,12 +54,11 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
     private FlowPathRepository flowPathRepository;
 
     public SwitchOperationsService(RepositoryFactory repositoryFactory,
-                                   TransactionManager transactionManager,
-                                   int islCostWhenUnderMaintenance) {
+                                   TransactionManager transactionManager) {
         this.switchRepository = repositoryFactory.createSwitchRepository();
         this.transactionManager = transactionManager;
         this.linkOperationsService
-                = new LinkOperationsService(this, repositoryFactory, transactionManager, islCostWhenUnderMaintenance);
+                = new LinkOperationsService(this, repositoryFactory, transactionManager);
         this.islRepository = repositoryFactory.createIslRepository();
         this.flowRepository = repositoryFactory.createFlowRepository();
         this.flowPathRepository = repositoryFactory.createFlowPathRepository();

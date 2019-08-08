@@ -25,6 +25,7 @@ import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslConfig;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
@@ -273,6 +274,7 @@ public class AvailableNetworkTest {
                 .latency(latency)
                 .availableBandwidth(500000)
                 .build();
+        isl.setIslConfig(IslConfig.builder().build());
         network.addLink(isl);
     }
 

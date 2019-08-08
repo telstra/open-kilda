@@ -20,6 +20,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslConfig;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.UnroutableFlowException;
@@ -32,6 +33,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -271,10 +273,10 @@ public class BestCostAndShortestPathFinderTest {
         addBidirectionalLink(network, SWITCH_ID_1, SWITCH_ID_2, 1, 2, 100);
         addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_4, 3, 4, 100);
         addBidirectionalLink(network, SWITCH_ID_2, SWITCH_ID_3, 5, 68, 100);
-        addLink(network, SWITCH_ID_3, SWITCH_ID_5, 7, 8, 10, 100);
-        addLink(network, SWITCH_ID_5, SWITCH_ID_3, 8, 7, 10000, 100);
-        addLink(network, SWITCH_ID_4, SWITCH_ID_5, 9, 10, 100, 100);
-        addLink(network, SWITCH_ID_5, SWITCH_ID_4, 10, 9, 100, 100);
+        addLink(network, SWITCH_ID_3, SWITCH_ID_5, 7, 8, 10, 100, null, false);
+        addLink(network, SWITCH_ID_5, SWITCH_ID_3, 8, 7, 10000, 100, null, false);
+        addLink(network, SWITCH_ID_4, SWITCH_ID_5, 9, 10, 100, 100, null, false);
+        addLink(network, SWITCH_ID_5, SWITCH_ID_4, 10, 9, 100, 100, null, false);
 
         network.reduceByWeight(WEIGHT_FUNCTION);
         return network;
@@ -325,8 +327,8 @@ public class BestCostAndShortestPathFinderTest {
 
     private void addBidirectionalLink(AvailableNetwork network, SwitchId firstSwitch, SwitchId secondSwitch,
                                       int srcPort, int dstPort, int cost) {
-        addLink(network, firstSwitch, secondSwitch, srcPort, dstPort, cost, 1);
-        addLink(network, secondSwitch, firstSwitch, dstPort, srcPort, cost, 1);
+        addLink(network, firstSwitch, secondSwitch, srcPort, dstPort, cost, 1, null, false);
+        addLink(network, secondSwitch, firstSwitch, dstPort, srcPort, cost, 1, null, false);
     }
 
     private AvailableNetwork buildTestNetwork() {
@@ -341,60 +343,136 @@ public class BestCostAndShortestPathFinderTest {
          */
         AvailableNetwork network = new AvailableNetwork();
         addLink(network, SWITCH_ID_A, SWITCH_ID_F,
-                7, 60, 0, 3);
+                7, 60, 0, 3, null, false);
         addLink(network, SWITCH_ID_A, SWITCH_ID_B,
-                5, 32, 10, 18);
+                5, 32, 10, 18, null, false);
         addLink(network, SWITCH_ID_A, SWITCH_ID_D,
-                2, 2, 10, 2);
+                2, 2, 10, 2, null, false);
         addLink(network, SWITCH_ID_A, SWITCH_ID_E,
-                6, 16, 10, 15);
+                6, 16, 10, 15, null, false);
         addLink(network, SWITCH_ID_A, SWITCH_ID_C,
-                1, 3, 40, 4);
+                1, 3, 40, 4, null, false);
         addLink(network, SWITCH_ID_D, SWITCH_ID_C,
-                1, 1, 100, 7);
+                1, 1, 100, 7, null, false);
         addLink(network, SWITCH_ID_D, SWITCH_ID_A,
-                2, 2, 10, 1);
+                2, 2, 10, 1, null, false);
         addLink(network, SWITCH_ID_C, SWITCH_ID_F,
-                6, 19, 10, 3);
+                6, 19, 10, 3, null, false);
         addLink(network, SWITCH_ID_C, SWITCH_ID_D,
-                1, 1, 100, 2);
+                1, 1, 100, 2, null, false);
         addLink(network, SWITCH_ID_C, SWITCH_ID_A,
-                3, 1, 100, 2);
+                3, 1, 100, 2, null, false);
         addLink(network, SWITCH_ID_E, SWITCH_ID_B,
-                52, 52, 10, 381);
+                52, 52, 10, 381, null, false);
         addLink(network, SWITCH_ID_E, SWITCH_ID_A,
-                16, 6, 10, 18);
+                16, 6, 10, 18, null, false);
         addLink(network, SWITCH_ID_B, SWITCH_ID_F,
-                48, 49, 10, 97);
+                48, 49, 10, 97, null, false);
         addLink(network, SWITCH_ID_B, SWITCH_ID_E,
-                52, 52, 10, 1021);
+                52, 52, 10, 1021, null, false);
         addLink(network, SWITCH_ID_B, SWITCH_ID_A,
-                32, 5, 10, 16);
+                32, 5, 10, 16, null, false);
         addLink(network, SWITCH_ID_F, SWITCH_ID_B,
-                49, 48, 10, 0);
+                49, 48, 10, 0, null, false);
         addLink(network, SWITCH_ID_F, SWITCH_ID_C,
-                19, 6, 10, 3);
+                19, 6, 10, 3, null, false);
         addLink(network, SWITCH_ID_F, SWITCH_ID_A,
-                50, 7, 0, 3);
+                50, 7, 0, 3, null, false);
 
         network.reduceByWeight(WEIGHT_FUNCTION);
         return network;
     }
 
-    private AvailableNetwork buildNetworkWithoutReversePathAvailable() {
+    @Test
+    public void shouldBuildPathDependsOnIslConfig() throws  UnroutableFlowException {
+        // Network without unstable and under maintenance links.
+        AvailableNetwork network = buildTestNetworkForVerifyIslConfig(false, false);
+
+        BestCostAndShortestPathFinder finder = new BestCostAndShortestPathFinder(ALLOWED_DEPTH, WEIGHT_FUNCTION);
+        Pair<List<Edge>, List<Edge>> pairPath = finder.findPathInNetwork(network, SWITCH_ID_A, SWITCH_ID_B);
+        List<Edge> forwardPath = pairPath.getLeft();
+        assertThat(forwardPath, Matchers.hasSize(1));
+        assertEquals(SWITCH_ID_A, forwardPath.get(0).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_B, forwardPath.get(0).getDestSwitch().getSwitchId());
+
+        List<Edge> reversePath = pairPath.getRight();
+        assertThat(reversePath, Matchers.hasSize(1));
+        assertEquals(SWITCH_ID_B, reversePath.get(0).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_A, reversePath.get(0).getDestSwitch().getSwitchId());
+
+        // Network where shortest path has under maintenance link.
+        network = buildTestNetworkForVerifyIslConfig(true, false);
+
+        pairPath = finder.findPathInNetwork(network, SWITCH_ID_A, SWITCH_ID_B);
+        forwardPath = pairPath.getLeft();
+        assertThat(forwardPath, Matchers.hasSize(2));
+        assertEquals(SWITCH_ID_A, forwardPath.get(0).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_C, forwardPath.get(0).getDestSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_C, forwardPath.get(1).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_B, forwardPath.get(1).getDestSwitch().getSwitchId());
+
+        reversePath = pairPath.getRight();
+        assertThat(reversePath, Matchers.hasSize(2));
+        assertEquals(SWITCH_ID_B, reversePath.get(0).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_C, reversePath.get(0).getDestSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_C, reversePath.get(1).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_A, reversePath.get(1).getDestSwitch().getSwitchId());
+
+        // Network where shortest path has under maintenance link and another short path has unstable link.
+        network = buildTestNetworkForVerifyIslConfig(true, true);
+
+        pairPath = finder.findPathInNetwork(network, SWITCH_ID_A, SWITCH_ID_B);
+        forwardPath = pairPath.getLeft();
+        assertThat(forwardPath, Matchers.hasSize(3));
+        assertEquals(SWITCH_ID_A, forwardPath.get(0).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_D, forwardPath.get(0).getDestSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_D, forwardPath.get(1).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_E, forwardPath.get(1).getDestSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_E, forwardPath.get(2).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_B, forwardPath.get(2).getDestSwitch().getSwitchId());
+
+        reversePath = pairPath.getRight();
+        assertThat(reversePath, Matchers.hasSize(3));
+        assertEquals(SWITCH_ID_B, reversePath.get(0).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_E, reversePath.get(0).getDestSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_E, reversePath.get(1).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_D, reversePath.get(1).getDestSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_D, reversePath.get(2).getSrcSwitch().getSwitchId());
+        assertEquals(SWITCH_ID_A, reversePath.get(2).getDestSwitch().getSwitchId());
+    }
+
+    private AvailableNetwork buildTestNetworkForVerifyIslConfig(boolean shortestPathHasUnderMaintenanceLink,
+                                                                boolean shortPathHasUnstableLink) {
         /*
          *   Topology:
          *
-         *   SW1---SW2---SW3
+         *   A-------B
+         *   |\     /|
+         *   | +-C-+ |
+         *   D-------E
          */
         AvailableNetwork network = new AvailableNetwork();
-        addLink(network, SWITCH_ID_1, SWITCH_ID_2, 1, 2, 100, 100);
-        addLink(network, SWITCH_ID_2, SWITCH_ID_3, 5, 6, 100, 100);
+        addLink(network, SWITCH_ID_A, SWITCH_ID_B,
+                1, 1, 0, 0, null, shortestPathHasUnderMaintenanceLink);
+
+        addLink(network, SWITCH_ID_A, SWITCH_ID_C,
+                2, 1, 0, 0, null, false);
+        addLink(network, SWITCH_ID_C, SWITCH_ID_B,
+                2, 2, 0, 0, shortPathHasUnstableLink ? Instant.now() : null, false);
+
+        addLink(network, SWITCH_ID_A, SWITCH_ID_D,
+                3, 1, 0, 0, null, false);
+        addLink(network, SWITCH_ID_D, SWITCH_ID_E,
+                1, 1, 0, 0, null, false);
+        addLink(network, SWITCH_ID_E, SWITCH_ID_B,
+                2, 3, 0, 0, null, false);
+
+        network.reduceByWeight(WEIGHT_FUNCTION);
         return network;
     }
 
     private void addLink(AvailableNetwork network, SwitchId srcDpid, SwitchId dstDpid, int srcPort, int dstPort,
-                           int cost, int latency) {
+                         int cost, int latency, Instant timeUnstable, boolean isUnderMaintenance) {
         Switch srcSwitch = Switch.builder().switchId(srcDpid).build();
         Switch dstSwitch = Switch.builder().switchId(dstDpid).build();
 
@@ -405,7 +483,10 @@ public class BestCostAndShortestPathFinderTest {
                 .destPort(dstPort)
                 .cost(cost)
                 .latency(latency)
+                .timeUnstable(timeUnstable)
+                .underMaintenance(isUnderMaintenance)
                 .build();
+        isl.setIslConfig(IslConfig.builder().build());
         network.addLink(isl);
     }
 

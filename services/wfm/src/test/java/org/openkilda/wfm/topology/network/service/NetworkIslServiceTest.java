@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.network.service;
 
+import static java.time.Duration.between;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeast;
@@ -67,6 +68,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.neo4j.driver.v1.exceptions.TransientException;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -86,8 +88,6 @@ public class NetworkIslServiceTest {
     private final Map<SwitchId, Switch> allocatedSwitches = new HashMap<>();
 
     private final NetworkOptions options = NetworkOptions.builder()
-            .islCostRaiseOnPhysicalDown(10000)
-            .islCostWhenUnderMaintenance(15000)
             .dbRepeatMaxDurationSeconds(30)
             .build();
 
@@ -329,24 +329,13 @@ public class NetworkIslServiceTest {
     }
 
     @Test
-    public void changeIslCostAndLinkPropsCostOnPortDown() {
+    public void setIslUnstableTimeOnPortDown() {
         // prepare data
-        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2)
-                .cost(10)
-                .build();
-        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1)
-                .cost(20)
-                .build();
+        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2).build();
+        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1).build();
 
         mockPersistenceIsl(endpointAlpha1, endpointBeta2, null);
         mockPersistenceIsl(endpointBeta2, endpointAlpha1, null);
-
-        mockPersistenceLinkProps(endpointAlpha1, endpointBeta2,
-                                 makeLinkProps(endpointAlpha1, endpointBeta2).cost(10).build());
-        mockPersistenceLinkProps(endpointBeta2, endpointAlpha1, null);
-
-        mockPersistenceBandwidthAllocation(endpointAlpha1, endpointBeta2, 0L);
-        mockPersistenceBandwidthAllocation(endpointBeta2, endpointAlpha1, 0L);
 
         // setup alpha -> beta half
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
@@ -362,52 +351,27 @@ public class NetworkIslServiceTest {
                 .thenReturn(Optional.of(islBetaAlpha.toBuilder().build()));
         service.islUp(endpointBeta2, reference, new IslDataHolder(islBetaAlpha));
 
-        // mock/prepare persistent data
-        reset(carrier);
-        reset(islRepository);
-        reset(linkPropsRepository);
-
-        when(islRepository.findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
-                                           endpointBeta2.getDatapath(), endpointBeta2.getPortNumber()))
-                .thenReturn(Optional.of(islAlphaBeta));
-        when(islRepository.findByEndpoints(endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
-                                           endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber()))
-                .thenReturn(Optional.of(islBetaAlpha));
-
-        mockPersistenceLinkProps(endpointAlpha1, endpointBeta2,
-                                 makeLinkProps(endpointAlpha1, endpointBeta2).cost(10).build());
-
         // isl fail by PORT DOWN
         service.islDown(endpointAlpha1, reference, IslDownReason.PORT_DOWN);
 
-        // ensure we have stored cost update
+        // ensure we have marked ISL as unstable
+        int timeOutUnstableSec = 1;
         verify(islRepository, atLeastOnce()).createOrUpdate(argThat(
                 link ->
                         link.getSrcSwitch().getSwitchId().equals(this.endpointAlpha1.getDatapath())
                                 && link.getSrcPort() == this.endpointAlpha1.getPortNumber()
                                 && link.getDestSwitch().getSwitchId().equals(this.endpointBeta2.getDatapath())
                                 && link.getDestPort() == this.endpointBeta2.getPortNumber()
-                                && link.getCost() == options.getIslCostRaiseOnPhysicalDown() + 10));
+                                && link.getTimeUnstable() != null
+                                && between(link.getTimeUnstable(), Instant.now()).getSeconds() < timeOutUnstableSec));
         verify(islRepository, atLeastOnce()).createOrUpdate(argThat(
                 link ->
                         link.getSrcSwitch().getSwitchId().equals(this.endpointBeta2.getDatapath())
                                 && link.getSrcPort() == this.endpointBeta2.getPortNumber()
                                 && link.getDestSwitch().getSwitchId().equals(this.endpointAlpha1.getDatapath())
                                 && link.getDestPort() == this.endpointAlpha1.getPortNumber()
-                                && link.getCost() == options.getIslCostRaiseOnPhysicalDown() + 20));
-
-        verify(linkPropsRepository).findByEndpoints(endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber(),
-                                                    endpointBeta2.getDatapath(), endpointBeta2.getPortNumber());
-        verify(linkPropsRepository).createOrUpdate(argThat(
-                props ->
-                        props.getSrcSwitchId() == endpointAlpha1.getDatapath()
-                                && props.getSrcPort() == endpointAlpha1.getPortNumber()
-                                && props.getDstSwitchId() == endpointBeta2.getDatapath()
-                                && props.getDstPort() == endpointBeta2.getPortNumber()
-                                && props.getCost() == options.getIslCostRaiseOnPhysicalDown() + 10));
-        verify(linkPropsRepository).findByEndpoints(endpointBeta2.getDatapath(), endpointBeta2.getPortNumber(),
-                                                    endpointAlpha1.getDatapath(), endpointAlpha1.getPortNumber());
-        verifyNoMoreInteractions(linkPropsRepository);
+                                && link.getTimeUnstable() != null
+                                && between(link.getTimeUnstable(), Instant.now()).getSeconds() < timeOutUnstableSec));
     }
 
     @Test
