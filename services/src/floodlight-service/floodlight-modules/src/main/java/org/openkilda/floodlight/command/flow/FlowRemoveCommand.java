@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.flow;
 
+import static org.openkilda.floodlight.switchmanager.SwitchManager.convertDpIdToMac;
+
 import org.openkilda.floodlight.FloodlightResponse;
 import org.openkilda.floodlight.command.MessageWriter;
 import org.openkilda.floodlight.command.OfCommand;
@@ -39,6 +41,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
 
@@ -134,8 +137,12 @@ public class FlowRemoveCommand extends FlowCommand {
 
         if (criteria.getInPort() != null) {
             // Match either In Port or both Port & Vlan criteria.
+            MacAddress srcMac = convertDpIdToMac(DatapathId.of(criteria.getIngressSwitchId().toLong()));
+
             Match match = matchFlow(criteria.getInPort(),
-                    Optional.ofNullable(criteria.getEncapsulationId()).orElse(0), ofFactory);
+
+                    Optional.ofNullable(criteria.getEncapsulationId()).orElse(0),
+                    criteria.getEncapsulationType(), srcMac, ofFactory);
             builder.setMatch(match);
         } else if (criteria.getEncapsulationId() != null) {
             // Match In Vlan criterion if In Port is not specified

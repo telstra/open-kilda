@@ -15,6 +15,7 @@
 
 package org.openkilda.floodlight.command.flow;
 
+import static org.openkilda.floodlight.switchmanager.SwitchManager.convertDpIdToMac;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 
 import org.openkilda.floodlight.command.MessageWriter;
@@ -36,6 +37,9 @@ import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 
@@ -47,6 +51,7 @@ import java.util.UUID;
 public class InstallTransitRuleCommand extends FlowInstallCommand {
     final Integer transitEncapsulationId;
     final FlowEncapsulationType transitEncapsulationType;
+    final SwitchId ingressSwitchId;
 
     @JsonCreator
     public InstallTransitRuleCommand(@JsonProperty("command_id") UUID commandId,
@@ -58,10 +63,12 @@ public class InstallTransitRuleCommand extends FlowInstallCommand {
                                      @JsonProperty("output_port") Integer outputPort,
                                      @JsonProperty("transit_encapsulation_id") Integer transitEncapsulationId,
                                      @JsonProperty("transit_encapsulation_type")
-                                             FlowEncapsulationType transitEncapsulationType) {
+                                             FlowEncapsulationType transitEncapsulationType,
+                                     @JsonProperty("ingress_switch_id") SwitchId ingressSwitchId) {
         super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort);
         this.transitEncapsulationId = transitEncapsulationId;
         this.transitEncapsulationType = transitEncapsulationType;
+        this.ingressSwitchId = ingressSwitchId;
     }
 
     @Override
@@ -69,8 +76,8 @@ public class InstallTransitRuleCommand extends FlowInstallCommand {
             throws SwitchOperationException {
         OFFactory factory = sw.getOFFactory();
         List<OFAction> actionList = new ArrayList<>();
-
-        Match match = matchFlow(inputPort, transitEncapsulationId, factory);
+        MacAddress srcMac = convertDpIdToMac(DatapathId.of(ingressSwitchId.toLong()));
+        Match match = matchFlow(inputPort, transitEncapsulationId, transitEncapsulationType, srcMac, factory);
         actionList.add(setOutputPort(factory, OFPort.of(outputPort)));
 
         OFFlowMod flowMod = prepareFlowModBuilder(factory)
@@ -107,4 +114,13 @@ public class InstallTransitRuleCommand extends FlowInstallCommand {
                 .build()).build();
     }
 
+    final OFAction actionPushVlan(final OFFactory ofFactory, final int etherType) {
+        OFActions actions = ofFactory.actions();
+        return actions.buildPushVlan().setEthertype(EthType.of(etherType)).build();
+    }
+
+    final OFAction actionPopVlan(final OFFactory ofFactory) {
+        OFActions actions = ofFactory.actions();
+        return actions.popVlan();
+    }
 }

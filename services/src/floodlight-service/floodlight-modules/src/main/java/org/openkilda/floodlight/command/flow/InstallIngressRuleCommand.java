@@ -15,6 +15,13 @@
 
 package org.openkilda.floodlight.command.flow;
 
+import static org.openkilda.floodlight.switchmanager.SwitchManager.INTERNAL_ETH_DEST_OFFSET;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.MAC_ADDRESS_SIZE_IN_BITS;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_ETH_DST_MAC;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_IPV4_DST;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_IPV4_SRC;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_UDP_SRC;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.convertDpIdToMac;
 import static org.openkilda.messaging.Utils.ETH_TYPE;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
 
@@ -49,7 +56,9 @@ import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionMeter;
 import org.projectfloodlight.openflow.protocol.match.Match;
-import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.ArrayList;
@@ -82,7 +91,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
                                      @JsonProperty("transit_encapsulation_type")
                                              FlowEncapsulationType transitEncapsulationType) {
         super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort,
-                transitEncapsulationId, transitEncapsulationType);
+                transitEncapsulationId, transitEncapsulationType, switchId);
         this.bandwidth = bandwidth;
         this.inputVlanId = inputVlanId;
         this.outputVlanType = outputVlanType;
@@ -103,7 +112,15 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
     }
 
     List<OFAction> getOutputAction(OFFactory ofFactory) {
-        return inputVlanTypeToOfActionList(ofFactory);
+        switch (transitEncapsulationType) {
+            case TRANSIT_VLAN:
+                return inputVlanTypeToOfActionList(ofFactory);
+            case VXLAN:
+                return transitVxlanToActionList(ofFactory);
+            default:
+                throw new UnsupportedOperationException(
+                        String.format("Unknown encapsulation type: %s", transitEncapsulationType));
+        }
     }
 
     OFPort getOutputPort() {
@@ -128,7 +145,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
         OFInstructionApplyActions actions = applyActions(ofFactory, actionList);
 
         // build match by input port and input vlan id
-        Match match = matchFlow(inputPort, inputVlanId, ofFactory);
+        Match match = matchFlow(inputPort, inputVlanId, FlowEncapsulationType.TRANSIT_VLAN, null, ofFactory);
 
         // build FLOW_MOD command with meter
         OFFlowAdd.Builder builder = prepareFlowModBuilder(ofFactory)
@@ -152,9 +169,36 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
         return actionList;
     }
 
-    final OFAction actionPushVlan(OFFactory ofFactory, int etherType) {
+    private List<OFAction> transitVxlanToActionList(OFFactory ofFactory) {
+        List<OFAction> actionList = new ArrayList<>(3);
+        MacAddress srcMac = convertDpIdToMac(DatapathId.of(switchId.toLong()));
+        actionList.add(actionPushVxlan(ofFactory, transitEncapsulationId, srcMac));
+        actionList.add(actionVxlanEthDstCopyField(ofFactory));
+        return actionList;
+    }
+
+    private OFAction actionPushVxlan(OFFactory ofFactory, long tunnelId, MacAddress ethSrc) {
         OFActions actions = ofFactory.actions();
-        return actions.buildPushVlan().setEthertype(EthType.of(etherType)).build();
+        return actions.buildNoviflowPushVxlanTunnel()
+                .setVni(tunnelId)
+                .setEthSrc(ethSrc)
+                .setEthDst(STUB_VXLAN_ETH_DST_MAC)
+                .setUdpSrc(STUB_VXLAN_UDP_SRC)
+                .setIpv4Src(STUB_VXLAN_IPV4_SRC)
+                .setIpv4Dst(STUB_VXLAN_IPV4_DST)
+                .setFlags((short) 0x01)
+                .build();
+    }
+
+    private OFAction actionVxlanEthDstCopyField(OFFactory ofFactory) {
+        OFOxms oxms = ofFactory.oxms();
+        return ofFactory.actions().buildNoviflowCopyField()
+                .setNBits(MAC_ADDRESS_SIZE_IN_BITS)
+                .setSrcOffset(INTERNAL_ETH_DEST_OFFSET)
+                .setDstOffset(0)
+                .setOxmSrcHeader(oxms.buildNoviflowPacketOffset().getTypeLen())
+                .setOxmDstHeader(oxms.buildNoviflowPacketOffset().getTypeLen())
+                .build();
     }
 
     OFInstructionMeter getMeterInstructions(Set<Feature> supportedFeatures, OFFactory ofFactory,

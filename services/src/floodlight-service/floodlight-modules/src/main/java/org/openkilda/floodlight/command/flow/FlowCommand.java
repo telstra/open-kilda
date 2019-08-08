@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.flow;
 
+import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
+import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 
 import org.openkilda.floodlight.FloodlightResponse;
@@ -26,6 +28,7 @@ import org.openkilda.floodlight.flow.response.FlowErrorResponse.ErrorCode;
 import org.openkilda.floodlight.utils.CompletableFutureAdapter;
 import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.Cookie;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.SwitchId;
 
 import lombok.Getter;
@@ -39,6 +42,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
 import org.projectfloodlight.openflow.protocol.errormsg.OFFlowModFailedErrorMsg;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
@@ -92,11 +96,22 @@ public abstract class FlowCommand extends OfCommand {
                 .build();
     }
 
-    final Match matchFlow(Integer inputPort, Integer inputVlan, OFFactory ofFactory) {
+    final Match matchFlow(Integer inputPort, Integer tunnelId, FlowEncapsulationType encapsulationType,
+                          MacAddress ethSrc, OFFactory ofFactory) {
         Match.Builder mb = ofFactory.buildMatch();
         mb.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
-        if (inputVlan > 0) {
-            matchVlan(ofFactory, mb, inputVlan);
+        if (tunnelId > 0) {
+            switch (encapsulationType) {
+                case TRANSIT_VLAN:
+                    matchVlan(ofFactory, mb, tunnelId);
+                    break;
+                case VXLAN:
+                    matchVxlan(ofFactory, mb, tunnelId, ethSrc);
+                    break;
+                default:
+                    throw new UnsupportedOperationException(
+                            String.format("Unknown encapsulation type: %s", encapsulationType));
+            }
         }
 
         return mb.build();
@@ -108,6 +123,18 @@ public abstract class FlowCommand extends OfCommand {
                     OFVlanVidMatch.ofRawVid(OF10_VLAN_MASK));
         } else {
             matchBuilder.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(vlanId));
+        }
+    }
+
+    final void matchVxlan(OFFactory ofFactory, Match.Builder matchBuilder, long tunnelId,
+                               MacAddress ethSrc) {
+        if (ethSrc != null) {
+            matchBuilder.setExact(MatchField.ETH_SRC, ethSrc);
+        }
+        if (OF_12.compareTo(ofFactory.getVersion()) >= 0) {
+            throw new UnsupportedOperationException("Switch doesn't support tunnel_id match");
+        } else {
+            matchBuilder.setExact(MatchField.TUNNEL_ID, U64.of(tunnelId));
         }
     }
 

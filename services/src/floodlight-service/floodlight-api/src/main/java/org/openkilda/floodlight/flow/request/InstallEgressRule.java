@@ -62,9 +62,10 @@ public class InstallEgressRule extends InstallTransitRule {
                              @JsonProperty("transit_encapsulation_type")
                                      FlowEncapsulationType transitEncapsulationType,
                              @JsonProperty("output_vlan_type") OutputVlanType outputVlanType,
-                             @JsonProperty("output_vlan_id") Integer outputVlanId) {
+                             @JsonProperty("output_vlan_id") Integer outputVlanId,
+                             @JsonProperty("ingress_switch_id") SwitchId ingressSwitchId) {
         super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort,
-                transitEncapsulationId, transitEncapsulationType);
+                transitEncapsulationId, transitEncapsulationType, ingressSwitchId);
         this.outputVlanType = outputVlanType;
         this.outputVlanId = outputVlanId;
     }

@@ -47,6 +47,10 @@ public class InstallTransitRule extends InstallFlowRule {
     @JsonProperty("transit_encapsulation_type")
     protected FlowEncapsulationType transitEncapsulationType;
 
+
+    @JsonProperty("ingress_switch_id")
+    protected SwitchId ingressSwitchId;
+
     @JsonCreator
     public InstallTransitRule(@JsonProperty("message_context") MessageContext messageContext,
                               @JsonProperty("command_id") UUID commandId,
@@ -57,9 +61,12 @@ public class InstallTransitRule extends InstallFlowRule {
                               @JsonProperty("output_port") Integer outputPort,
                               @JsonProperty("transit_encapsulation_id") Integer transitEncapsulationId,
                               @JsonProperty("transit_encapsulation_type")
-                                      FlowEncapsulationType transitEncapsulationType) {
+                                      FlowEncapsulationType transitEncapsulationType,
+                              @JsonProperty("ingress_switch_id") SwitchId ingressSwitchId
+                              ) {
         super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort);
         this.transitEncapsulationId = transitEncapsulationId;
         this.transitEncapsulationType = transitEncapsulationType;
+        this.ingressSwitchId = ingressSwitchId;
     }
 }
