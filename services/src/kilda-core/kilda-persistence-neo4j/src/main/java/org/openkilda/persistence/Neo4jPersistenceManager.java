@@ -25,12 +25,14 @@ import org.neo4j.ogm.session.SessionFactory;
  * Neo4j OGM implementation of {@link PersistenceManager}.
  */
 public class Neo4jPersistenceManager implements PersistenceManager {
-    private final Neo4jConfig config;
+    private final Neo4jConfig neo4jConfig;
+    private final NetworkConfig networkConfig;
 
     private transient volatile Neo4jTransactionManager neo4jTransactionManager;
 
-    public Neo4jPersistenceManager(Neo4jConfig config) {
-        this.config = config;
+    public Neo4jPersistenceManager(Neo4jConfig neo4jConfig, NetworkConfig networkConfig) {
+        this.neo4jConfig = neo4jConfig;
+        this.networkConfig = networkConfig;
     }
 
     @Override
@@ -40,7 +42,7 @@ public class Neo4jPersistenceManager implements PersistenceManager {
 
     @Override
     public RepositoryFactory getRepositoryFactory() {
-        return new Neo4jRepositoryFactory(getNeo4jTransactionManager(), getTransactionManager());
+        return new Neo4jRepositoryFactory(getNeo4jTransactionManager(), getTransactionManager(), networkConfig);
     }
 
     private Neo4jTransactionManager getNeo4jTransactionManager() {
@@ -48,14 +50,14 @@ public class Neo4jPersistenceManager implements PersistenceManager {
             synchronized (this) {
                 if (neo4jTransactionManager == null) {
                     Builder configBuilder = new Builder()
-                            .uri(config.getUri())
-                            .credentials(config.getLogin(), config.getPassword());
-                    if (config.getConnectionPoolSize() > 0) {
-                        configBuilder.connectionPoolSize(config.getConnectionPoolSize());
+                            .uri(neo4jConfig.getUri())
+                            .credentials(neo4jConfig.getLogin(), neo4jConfig.getPassword());
+                    if (neo4jConfig.getConnectionPoolSize() > 0) {
+                        configBuilder.connectionPoolSize(neo4jConfig.getConnectionPoolSize());
                     }
 
-                    if (config.getIndexesAuto() != null) {
-                        configBuilder.autoIndex(config.getIndexesAuto());
+                    if (neo4jConfig.getIndexesAuto() != null) {
+                        configBuilder.autoIndex(neo4jConfig.getIndexesAuto());
                     }
 
                     SessionFactory sessionFactory =

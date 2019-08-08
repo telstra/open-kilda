@@ -62,6 +62,21 @@ public abstract class Neo4jBasedTest {
             public String getIndexesAuto() {
                 return "update";
             }
+        }, new NetworkConfig() {
+            @Override
+            public int getIslUnstableTimeoutSec() {
+                return 60;
+            }
+
+            @Override
+            public int getIslCostWhenPortDown() {
+                return 10000;
+            }
+
+            @Override
+            public int getIslCostWhenUnderMaintenance() {
+                return 10000;
+            }
         });
 
         txManager = (Neo4jTransactionManager) persistenceManager.getTransactionManager();

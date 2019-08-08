@@ -54,11 +54,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
 
     private transient FeatureTogglesRepository featureTogglesRepository;
 
-    private int islCostWhenUnderMaintenance;
-
-    public SwitchOperationsBolt(PersistenceManager persistenceManager, int islCostWhenUnderMaintenance) {
+    public SwitchOperationsBolt(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        this.islCostWhenUnderMaintenance = islCostWhenUnderMaintenance;
     }
 
     /**
@@ -67,7 +64,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
     @Override
     public void init() {
         this.switchOperationsService =
-                new SwitchOperationsService(repositoryFactory, transactionManager, islCostWhenUnderMaintenance);
+                new SwitchOperationsService(repositoryFactory, transactionManager);
         this.flowOperationsService = new FlowOperationsService(repositoryFactory, transactionManager);
 
         featureTogglesRepository = repositoryFactory.createFeatureTogglesRepository();

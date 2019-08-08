@@ -18,6 +18,7 @@ package org.openkilda.persistence.spi;
 import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.Neo4jPersistenceManager;
+import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.PersistenceManager;
 
 /**
@@ -26,7 +27,8 @@ import org.openkilda.persistence.PersistenceManager;
 public class Neo4jPersistenceProvider implements PersistenceProvider {
     @Override
     public PersistenceManager createPersistenceManager(ConfigurationProvider configurationProvider) {
-        Neo4jConfig config = configurationProvider.getConfiguration(Neo4jConfig.class);
-        return new Neo4jPersistenceManager(config);
+        Neo4jConfig neo4jConfig = configurationProvider.getConfiguration(Neo4jConfig.class);
+        NetworkConfig networkConfig = configurationProvider.getConfiguration(NetworkConfig.class);
+        return new Neo4jPersistenceManager(neo4jConfig, networkConfig);
     }
 }
