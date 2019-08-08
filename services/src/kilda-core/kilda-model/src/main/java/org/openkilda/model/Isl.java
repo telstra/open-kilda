@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.Property;
 import org.neo4j.ogm.annotation.RelationshipEntity;
 import org.neo4j.ogm.annotation.StartNode;
+import org.neo4j.ogm.annotation.Transient;
 import org.neo4j.ogm.annotation.typeconversion.Convert;
 import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
@@ -117,6 +118,13 @@ public class Isl implements Serializable {
     @Property(name = "bfd_session_status")
     private String bfdSessionStatus;
 
+    @Property(name = "time_unstable")
+    @Convert(InstantStringConverter.class)
+    private Instant timeUnstable;
+
+    @Transient
+    private transient IslConfig islConfig;
+
     /**
      * Constructor used by the builder only and needed to copy srcSwitch to srcSwitchId, destSwitch to destSwitchId.
      */
@@ -125,7 +133,7 @@ public class Isl implements Serializable {
                long latency, long speed, int cost, long maxBandwidth, long defaultMaxBandwidth, long availableBandwidth,
                IslStatus status, IslStatus actualStatus,
                Instant timeCreate, Instant timeModify, boolean underMaintenance, boolean enableBfd,
-               String bfdSessionStatus) {
+               String bfdSessionStatus, Instant timeUnstable) {
         this.srcSwitch = srcSwitch;
         this.destSwitch = destSwitch;
         this.srcPort = srcPort;
@@ -143,6 +151,7 @@ public class Isl implements Serializable {
         this.underMaintenance = underMaintenance;
         this.enableBfd = enableBfd;
         this.bfdSessionStatus = bfdSessionStatus;
+        this.timeUnstable = timeUnstable;
     }
 
     @Override
@@ -156,5 +165,25 @@ public class Isl implements Serializable {
                 + ", availableBandwidth=" + availableBandwidth
                 + ", status=" + status
                 + '}';
+    }
+
+    /**
+     * Get the ISL cost, given the current flags of the ISL.
+     */
+    public int getEffectiveCost() {
+        if (islConfig == null) {
+            islConfig = IslConfig.DEFAULT;
+        }
+
+        int effectiveCost = cost;
+
+        if (underMaintenance) {
+            effectiveCost += islConfig.getUnderMaintenanceCostRaise();
+        }
+
+        if (timeUnstable != null && timeUnstable.plus(islConfig.getUnstableIslTimeout()).isAfter(Instant.now())) {
+            effectiveCost += islConfig.getUnstableCostRaise();
+        }
+        return effectiveCost;
     }
 }
