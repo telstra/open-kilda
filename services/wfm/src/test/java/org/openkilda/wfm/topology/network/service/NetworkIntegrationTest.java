@@ -56,7 +56,6 @@ public class NetworkIntegrationTest {
     private static final NetworkOptions options = NetworkOptions.builder()
             .bfdEnabled(true)
             .bfdLogicalPortOffset(200)
-            .islCostRaiseOnPhysicalDown(10000)
             .dbRepeatMaxDurationSeconds(30)
             .build();
 

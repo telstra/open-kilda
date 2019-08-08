@@ -34,10 +34,6 @@ public class NetworkOptions implements Serializable {
 
     private Long discoveryTimeout;
 
-    private Integer islCostRaiseOnPhysicalDown;
-
-    private Integer islCostWhenUnderMaintenance;
-
     private Integer bfdLogicalPortOffset;
 
     private boolean bfdEnabled;
@@ -54,9 +50,6 @@ public class NetworkOptions implements Serializable {
         discoveryInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryInterval());
         discoveryPacketTtl = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryPacketTtl());
         discoveryTimeout = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryTimeout());
-
-        islCostRaiseOnPhysicalDown = topologyConfig.getIslCostWhenPortDown();
-        islCostWhenUnderMaintenance = topologyConfig.getIslCostWhenUnderMaintenance();
 
         bfdLogicalPortOffset = topologyConfig.getBfdPortOffset();
         bfdEnabled = topologyConfig.isBfdEnabled();

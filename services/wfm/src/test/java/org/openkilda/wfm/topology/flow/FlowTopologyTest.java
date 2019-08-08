@@ -62,6 +62,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.Neo4jPersistenceManager;
+import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
@@ -120,7 +121,9 @@ public class FlowTopologyTest extends AbstractStormTest {
         launchEnvironment.setupOverlay(configOverlay);
 
         Neo4jConfig neo4jConfig = launchEnvironment.getConfigurationProvider().getConfiguration(Neo4jConfig.class);
-        persistenceManager = new Neo4jPersistenceManager(neo4jConfig);
+        NetworkConfig networkConfig
+                = launchEnvironment.getConfigurationProvider().getConfiguration(NetworkConfig.class);
+        persistenceManager = new Neo4jPersistenceManager(neo4jConfig, networkConfig);
 
         flowTopology = new FlowTopology(launchEnvironment);
         topologyConfig = flowTopology.getConfig();

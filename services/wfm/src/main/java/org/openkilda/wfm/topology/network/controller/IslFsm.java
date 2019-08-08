@@ -78,8 +78,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
     private final BfdManager bfdManager;
 
-    private final int costRaiseOnPhysicalDown;
-    private final int islCostWhenUnderMaintenance;
     private final BiIslDataHolder<IslEndpointStatus> endpointStatus;
 
     private final DiscoveryFacts discoveryFacts;
@@ -105,8 +103,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
 
         this.bfdManager = bfdManager;
 
-        costRaiseOnPhysicalDown = options.getIslCostRaiseOnPhysicalDown();
-        islCostWhenUnderMaintenance = options.getIslCostWhenUnderMaintenance();
         endpointStatus = new BiIslDataHolder<>(reference);
         endpointStatus.putBoth(new IslEndpointStatus(IslEndpointStatus.Status.DOWN));
 
@@ -204,7 +200,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         logWrapper.onIslUpdateStatus(discoveryFacts.getReference(), nextState);
 
         updateEndpointStatusByEvent(event, context);
-        saveStatusAndCostRaiseTransaction(context);
+        saveStatusAndSetIslUnstableTimeTransaction(context);
         triggerAffectedFlowReroute(context);
     }
 
@@ -313,13 +309,13 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         transactionManager.doInTransaction(transactionRetryPolicy, () -> saveStatus(Instant.now()));
     }
 
-    private void saveStatusAndCostRaiseTransaction(IslFsmContext context) {
+    private void saveStatusAndSetIslUnstableTimeTransaction(IslFsmContext context) {
         transactionManager.doInTransaction(transactionRetryPolicy, () -> {
             Instant timeNow = Instant.now();
 
             saveStatus(timeNow);
             if (IslDownReason.PORT_DOWN == context.getDownReason()) {
-                raiseCostOnPhysicalDown(timeNow);
+                setIslUnstableTime(timeNow);
             }
         });
     }
@@ -356,18 +352,19 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         pushIslChanges(link);
     }
 
-    private void raiseCostOnPhysicalDown(Instant timeNow) {
+    private void setIslUnstableTime(Instant timeNow) {
         Socket socket = prepareSocket();
-        raiseCostOnPhysicalDown(socket.getSource(), socket.getDest(), timeNow);
-        raiseCostOnPhysicalDown(socket.getDest(), socket.getSource(), timeNow);
+        setIslUnstableTime(socket.getSource(), socket.getDest(), timeNow);
+        setIslUnstableTime(socket.getDest(), socket.getSource(), timeNow);
     }
 
-    private void raiseCostOnPhysicalDown(Anchor source, Anchor dest, Instant timeNow) {
+    private void setIslUnstableTime(Anchor source, Anchor dest, Instant timeNow) {
         Isl link = loadOrCreateIsl(source, dest, timeNow);
 
-        log.debug("Raise ISL {} ===> {} cost due to physical down (cost-now:{}, raise:{})",
-                  source, dest, link.getCost(), costRaiseOnPhysicalDown);
-        applyIslCostRaiseOnPhysicalDown(link, timeNow);
+        log.debug("Set ISL {} ===> {} unstable time due to physical port down", source, dest);
+
+        link.setTimeModify(timeNow);
+        link.setTimeUnstable(timeNow);
         pushIslChanges(link);
     }
 
@@ -398,10 +395,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 .underMaintenance(source.getSw().isUnderMaintenance() || dest.getSw().isUnderMaintenance());
         initializeFromLinkProps(sourceEndpoint, destEndpoint, islBuilder);
         Isl link = islBuilder.build();
-
-        if (link.isUnderMaintenance()) {
-            link.setCost(link.getCost() + islCostWhenUnderMaintenance);
-        }
 
         log.debug("Create new DB object (prefilled): {}", link);
         return link;
@@ -483,14 +476,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         link.setAvailableBandwidth(link.getMaxBandwidth() - usedBandwidth);
     }
 
-    private void applyIslCostRaiseOnPhysicalDown(Isl link, Instant timeNow) {
-        if (link.getCost() < costRaiseOnPhysicalDown) {
-            link.setTimeModify(timeNow);
-            link.setCost(link.getCost() + costRaiseOnPhysicalDown);
-            propagateIslCostUpdateToLinkProps(link, timeNow);
-        }
-    }
-
     private void initializeFromLinkProps(Endpoint source, Endpoint dest, IslBuilder isl) {
         Optional<LinkProps> linkProps = loadLinkProps(source, dest);
         if (linkProps.isPresent()) {
@@ -505,18 +490,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             if (maxBandwidth != null) {
                 isl.maxBandwidth(maxBandwidth);
             }
-        }
-    }
-
-    private void propagateIslCostUpdateToLinkProps(Isl link, Instant timeNow) {
-        Optional<LinkProps> linkProps = loadLinkProps(
-                Endpoint.of(link.getSrcSwitch().getSwitchId(), link.getSrcPort()),
-                Endpoint.of(link.getDestSwitch().getSwitchId(), link.getDestPort()));
-        if (linkProps.isPresent()) {
-            LinkProps entry = linkProps.get();
-            entry.setCost(link.getCost());
-            entry.setTimeModify(timeNow);
-            linkPropsRepository.createOrUpdate(entry);
         }
     }
 

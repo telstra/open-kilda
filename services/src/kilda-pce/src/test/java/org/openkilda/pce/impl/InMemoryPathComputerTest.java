@@ -44,6 +44,7 @@ import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.finder.BestCostAndShortestPathFinder;
 import org.openkilda.persistence.Neo4jConfig;
+import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -121,6 +122,23 @@ public class InMemoryPathComputerTest {
                                 @Override
                                 public String getIndexesAuto() {
                                     return "update";
+                                }
+                            };
+                        } else if (configurationType.equals(NetworkConfig.class)) {
+                            return (T) new NetworkConfig() {
+                                @Override
+                                public int getIslUnstableTimeoutSec() {
+                                    return 7200;
+                                }
+
+                                @Override
+                                public int getIslCostWhenPortDown() {
+                                    return 10000;
+                                }
+
+                                @Override
+                                public int getIslCostWhenUnderMaintenance() {
+                                    return 10000;
                                 }
                             };
                         } else {

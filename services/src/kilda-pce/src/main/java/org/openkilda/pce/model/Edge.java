@@ -85,7 +85,7 @@ public class Edge {
         return Edge.builder()
                 .srcPort(isl.getSrcPort())
                 .destPort(isl.getDestPort())
-                .cost(isl.getCost())
+                .cost(isl.getEffectiveCost())
                 .latency(isl.getLatency())
                 .availableBandwidth(isl.getAvailableBandwidth());
     }
