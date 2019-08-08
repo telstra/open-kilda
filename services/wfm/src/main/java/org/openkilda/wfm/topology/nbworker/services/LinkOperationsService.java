@@ -38,17 +38,14 @@ public class LinkOperationsService {
     private final ILinkOperationsServiceCarrier carrier;
     private IslRepository islRepository;
     private TransactionManager transactionManager;
-    private int islCostWhenUnderMaintenance;
 
 
     public LinkOperationsService(ILinkOperationsServiceCarrier carrier,
                                  RepositoryFactory repositoryFactory,
-                                 TransactionManager transactionManager,
-                                 int islCostWhenUnderMaintenance) {
+                                 TransactionManager transactionManager) {
         this.carrier = carrier;
         this.islRepository = repositoryFactory.createIslRepository();
         this.transactionManager = transactionManager;
-        this.islCostWhenUnderMaintenance = islCostWhenUnderMaintenance;
     }
 
     /**
@@ -81,18 +78,6 @@ public class LinkOperationsService {
 
             isl.setUnderMaintenance(underMaintenance);
             reverceIsl.setUnderMaintenance(underMaintenance);
-
-            if (underMaintenance) {
-                isl.setCost(isl.getCost() + islCostWhenUnderMaintenance);
-                reverceIsl.setCost(reverceIsl.getCost() + islCostWhenUnderMaintenance);
-            } else if (isl.getCost() >= islCostWhenUnderMaintenance
-                    && reverceIsl.getCost() >= islCostWhenUnderMaintenance) {
-                isl.setCost(isl.getCost() - islCostWhenUnderMaintenance);
-                reverceIsl.setCost(reverceIsl.getCost() - islCostWhenUnderMaintenance);
-            } else {
-                log.warn("Skipped updating cost for ISL {}_{} - {}_{} because cost will be negative after update.",
-                        srcSwitchId, srcPort, dstSwitchId, dstPort);
-            }
 
             islRepository.createOrUpdate(isl);
             islRepository.createOrUpdate(reverceIsl);

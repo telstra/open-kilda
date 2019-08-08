@@ -97,13 +97,11 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 PersistenceProvider.getInstance().createPersistenceManager(configurationProvider);
         PathComputerConfig pathComputerConfig = configurationProvider.getConfiguration(PathComputerConfig.class);
 
-        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(persistenceManager,
-                topologyConfig.getIslCostWhenUnderMaintenance());
+        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(persistenceManager);
         tb.setBolt(SWITCHES_BOLT_NAME, switchesBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.SWITCH.toString());
 
-        LinkOperationsBolt linksBolt = new LinkOperationsBolt(persistenceManager,
-                topologyConfig.getIslCostWhenUnderMaintenance());
+        LinkOperationsBolt linksBolt = new LinkOperationsBolt(persistenceManager);
         tb.setBolt(LINKS_BOLT_NAME, linksBolt, parallelism)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.ISL.toString());
 
