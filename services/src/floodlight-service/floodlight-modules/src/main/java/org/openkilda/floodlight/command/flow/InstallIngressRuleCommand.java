@@ -33,11 +33,11 @@ import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
 import org.openkilda.messaging.MessageContext;
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -130,7 +130,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
     final OFFlowMod getInstallRuleCommand(IOFSwitch sw, FeatureDetectorService featureDetectorService) {
         List<OFAction> actionList = new ArrayList<>();
         OFFactory ofFactory = sw.getOFFactory();
-        Set<Feature> supportedFeatures = featureDetectorService.detectSwitch(sw);
+        Set<SwitchFeature> supportedFeatures = featureDetectorService.detectSwitch(sw);
 
         // build meter instruction
         OFInstructionMeter meter = getMeterInstructions(supportedFeatures, ofFactory, actionList);
@@ -153,7 +153,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
                 .setMatch(match)
                 .setPriority(inputVlanId == 0 ? SwitchManager.DEFAULT_FLOW_PRIORITY : FLOW_PRIORITY);
 
-        if (supportedFeatures.contains(Feature.RESET_COUNTS_FLAG)) {
+        if (supportedFeatures.contains(SwitchFeature.RESET_COUNTS_FLAG)) {
             builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
         }
 
@@ -201,10 +201,10 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
                 .build();
     }
 
-    OFInstructionMeter getMeterInstructions(Set<Feature> supportedFeatures, OFFactory ofFactory,
+    OFInstructionMeter getMeterInstructions(Set<SwitchFeature> supportedFeatures, OFFactory ofFactory,
                                             List<OFAction> actionList) {
         OFInstructionMeter meterInstruction = null;
-        if (meterId != null && supportedFeatures.contains(Feature.METERS)) {
+        if (meterId != null && supportedFeatures.contains(SwitchFeature.METERS)) {
             if (ofFactory.getVersion().compareTo(OF_15) == 0) {
                 actionList.add(ofFactory.actions().buildMeter().setMeterId(meterId.getValue()).build());
             } else /* OF_13, OF_14 */ {

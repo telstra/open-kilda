@@ -26,7 +26,7 @@ import org.openkilda.floodlight.feature.NoviFlowCopyFieldFeature;
 import org.openkilda.floodlight.feature.PktpsFlagFeature;
 import org.openkilda.floodlight.feature.ResetCountsFlagFeature;
 import org.openkilda.floodlight.switchmanager.SwitchManager;
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
+import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.ImmutableList;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -47,7 +47,7 @@ public class FeatureDetectorService implements IService {
      * @param sw target switch
      * @return supported features
      */
-    public Set<Feature> detectSwitch(IOFSwitch sw) {
+    public Set<SwitchFeature> detectSwitch(IOFSwitch sw) {
         return features.stream()
                 .map(x -> x.discover(sw))
                 .filter(Optional::isPresent)

@@ -20,22 +20,22 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertEquals;
 import static org.openkilda.floodlight.test.standard.OutputCommands.ofFactory;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.BFD;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.GROUP_PACKET_OUT_CONTROLLER;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.METERS;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.NOVIFLOW_COPY_FIELD;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.RESET_COUNTS_FLAG;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
+import static org.openkilda.model.SwitchFeature.BFD;
+import static org.openkilda.model.SwitchFeature.GROUP_PACKET_OUT_CONTROLLER;
+import static org.openkilda.model.SwitchFeature.METERS;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
+import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
 
 import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.test.standard.OutputCommands;
 import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.MessageContext;
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.Sets;
@@ -59,7 +59,7 @@ public class InstallEgressRuleCommandTest {
     public void setUp() {
         iofSwitch = createMock(IOFSwitch.class);
         featureDetectorService = createMock(FeatureDetectorService.class);
-        Set<Feature> features = Sets.newHashSet(METERS, BFD, GROUP_PACKET_OUT_CONTROLLER,
+        Set<SwitchFeature> features = Sets.newHashSet(METERS, BFD, GROUP_PACKET_OUT_CONTROLLER,
                 NOVIFLOW_COPY_FIELD, RESET_COUNTS_FLAG);
         expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(features);
 

@@ -17,7 +17,7 @@ package org.openkilda.floodlight.feature;
 
 import static org.apache.commons.lang3.StringUtils.containsIgnoreCase;
 
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
+import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
@@ -27,8 +27,8 @@ import java.util.Optional;
 public class PktpsFlagFeature extends AbstractFeature {
 
     @Override
-    public Optional<Feature> discover(IOFSwitch sw) {
-        Optional<Feature> empty = Optional.empty();
+    public Optional<SwitchFeature> discover(IOFSwitch sw) {
+        Optional<SwitchFeature> empty = Optional.empty();
         SwitchDescription description = sw.getSwitchDescription();
 
         if (description.getHardwareDescription() == null) {
@@ -48,6 +48,6 @@ public class PktpsFlagFeature extends AbstractFeature {
             return empty;
         }
 
-        return Optional.of(Feature.PKTPS_FLAG);
+        return Optional.of(SwitchFeature.PKTPS_FLAG);
     }
 }

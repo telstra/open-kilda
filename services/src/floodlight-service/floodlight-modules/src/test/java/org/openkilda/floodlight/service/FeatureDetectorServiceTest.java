@@ -16,16 +16,16 @@
 package org.openkilda.floodlight.service;
 
 import static org.easymock.EasyMock.expect;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.BFD;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.BFD_REVIEW;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.GROUP_PACKET_OUT_CONTROLLER;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.LIMITED_BURST_SIZE;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.METERS;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.NOVIFLOW_COPY_FIELD;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.PKTPS_FLAG;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.RESET_COUNTS_FLAG;
+import static org.openkilda.model.SwitchFeature.BFD;
+import static org.openkilda.model.SwitchFeature.BFD_REVIEW;
+import static org.openkilda.model.SwitchFeature.GROUP_PACKET_OUT_CONTROLLER;
+import static org.openkilda.model.SwitchFeature.LIMITED_BURST_SIZE;
+import static org.openkilda.model.SwitchFeature.METERS;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
+import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
+import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
 
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
+import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -133,10 +133,10 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
                 ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG));
     }
 
-    private void discoveryCheck(IOFSwitch sw, Set<Feature> expectedFeatures) {
+    private void discoveryCheck(IOFSwitch sw, Set<SwitchFeature> expectedFeatures) {
         replayAll();
 
-        Set<Feature> actualFeatures = featuresDetector.detectSwitch(sw);
+        Set<SwitchFeature> actualFeatures = featuresDetector.detectSwitch(sw);
         Assert.assertEquals(expectedFeatures, actualFeatures);
     }
 

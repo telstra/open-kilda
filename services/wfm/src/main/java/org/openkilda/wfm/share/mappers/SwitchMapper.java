@@ -50,6 +50,7 @@ public abstract class SwitchMapper {
                         .serialNumber(sw.getOfDescriptionSerialNumber())
                         .software(sw.getOfDescriptionSoftware())
                         .build())
+                .features(sw.getFeatures())
                 .build();
         return new SwitchInfoData(sw.getSwitchId(), map(sw.getStatus()), sw.getAddress(), sw.getHostname(),
                 sw.getDescription(), sw.getController(), sw.isUnderMaintenance(), switchView);
@@ -82,6 +83,7 @@ public abstract class SwitchMapper {
                 sw.setOfDescriptionSoftware(data.getSwitchView().getDescription().getSoftware());
                 sw.setOfDescriptionSerialNumber(data.getSwitchView().getDescription().getSerialNumber());
             }
+            sw.setFeatures(data.getSwitchView().getFeatures());
         }
 
         return sw;
