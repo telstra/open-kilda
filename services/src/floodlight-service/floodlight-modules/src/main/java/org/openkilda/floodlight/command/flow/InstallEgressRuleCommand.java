@@ -34,7 +34,6 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
-import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
 
 import java.util.ArrayList;
@@ -59,10 +58,9 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
                                     @JsonProperty("transit_encapsulation_id") Integer transitEncapsulationId,
                                     @JsonProperty("transit_encapsulation_type")
                                             FlowEncapsulationType transitEncapsulationType,
-                                    @JsonProperty("ingress_switch_id") SwitchId ingressSwitchId,
                                     @JsonProperty("multi_table") boolean multiTable) {
         super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort,
-                transitEncapsulationId, transitEncapsulationType, ingressSwitchId, multiTable);
+                transitEncapsulationId, transitEncapsulationType, multiTable);
         this.outputVlanType = outputVlanType;
         this.outputVlanId = outputVlanId;
     }
@@ -82,10 +80,10 @@ public class InstallEgressRuleCommand extends InstallTransitRuleCommand {
         OFInstructionApplyActions actions = applyActions(ofFactory, actionList);
 
         // build FLOW_MOD command, no meter
-        MacAddress srcMac = convertDpIdToMac(DatapathId.of(ingressSwitchId.toLong()));
+        MacAddress dstMac = convertDpIdToMac(sw.getId());
 
         OFFlowMod flowMod = prepareFlowModBuilder(ofFactory)
-                .setMatch(matchFlow(inputPort, transitEncapsulationId, transitEncapsulationType, srcMac, ofFactory))
+                .setMatch(matchFlow(inputPort, transitEncapsulationId, transitEncapsulationType, dstMac, ofFactory))
                 .setInstructions(ImmutableList.of(actions))
                 .build();
 

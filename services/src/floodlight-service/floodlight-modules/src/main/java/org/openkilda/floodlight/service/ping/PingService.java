@@ -90,7 +90,7 @@ public class PingService implements IService {
         l2.setPayload(l3);
         l2.setEtherType(EthType.IPv4);
 
-        l2.setSourceMACAddress(ping.getSource().getDatapath().toMacAddress());
+        l2.setSourceMACAddress(ping.getDest().getDatapath().toMacAddress());
         l2.setDestinationMACAddress(ping.getDest().getDatapath().toMacAddress());
         if (null != ping.getSourceVlanId()) {
             l2.setVlanID(ping.getSourceVlanId());

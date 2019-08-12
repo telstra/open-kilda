@@ -325,6 +325,7 @@ public class TransitBasedFlowCommandBuilderTest extends Neo4jBasedTest {
         assertEquals(flow.getSrcPort(), (int) srcSwitchCriteria.getInPort());
         assertEquals(flow.getForwardPath().getSegments().get(0).getSrcPort(), (int) srcSwitchCriteria.getOutPort());
         assertEquals(flow.getSrcVlan(), (int) srcSwitchCriteria.getEncapsulationId());
+        assertNull(srcSwitchCriteria.getEgressSwitchId());
 
         RemoveRule destSwitchCommand = commands.get(1);
         assertEquals(destSwitch.getSwitchId(), destSwitchCommand.getSwitchId());
@@ -337,6 +338,8 @@ public class TransitBasedFlowCommandBuilderTest extends Neo4jBasedTest {
         assertEquals(flow.getDestPort(), (int) destSwitchCriteria.getInPort());
         assertEquals(flow.getReversePath().getSegments().get(0).getSrcPort(), (int) destSwitchCriteria.getOutPort());
         assertEquals(flow.getDestVlan(), (int) destSwitchCriteria.getEncapsulationId());
+        assertNull(destSwitchCriteria.getEgressSwitchId());
+
     }
 
     @Test
@@ -365,6 +368,8 @@ public class TransitBasedFlowCommandBuilderTest extends Neo4jBasedTest {
         assertEquals(flow.getSrcPort(), (int) srcSwitchCriteria.getInPort());
         assertEquals(flow.getForwardPath().getSegments().get(0).getSrcPort(), (int) srcSwitchCriteria.getOutPort());
         assertEquals(flow.getSrcVlan(), (int) srcSwitchCriteria.getEncapsulationId());
+        assertNull(srcSwitchCriteria.getEgressSwitchId());
+
 
         RemoveRule destSwitchCommand = commands.get(1);
         assertEquals(destSwitch.getSwitchId(), destSwitchCommand.getSwitchId());
@@ -377,6 +382,8 @@ public class TransitBasedFlowCommandBuilderTest extends Neo4jBasedTest {
         assertEquals(flow.getDestPort(), (int) destSwitchCriteria.getInPort());
         assertEquals(flow.getReversePath().getSegments().get(0).getSrcPort(), (int) destSwitchCriteria.getOutPort());
         assertEquals(flow.getDestVlan(), (int) destSwitchCriteria.getEncapsulationId());
+        assertNull(destSwitchCriteria.getEgressSwitchId());
+
     }
 
     @Test
@@ -411,6 +418,7 @@ public class TransitBasedFlowCommandBuilderTest extends Neo4jBasedTest {
                 .stream().findAny()
                 .orElseThrow(() -> new IllegalStateException("Vlan should be present"));
         assertEquals(forwardVlan.getVlan(), (int) forwardTransitSwitchCriteria.getEncapsulationId());
+        assertNull(forwardTransitSwitchCriteria.getEgressSwitchId());
 
         RemoveRule forwardEgressRule = commands.get(1);
         assertEquals(destSwitch.getSwitchId(), forwardEgressRule.getSwitchId());
@@ -424,6 +432,7 @@ public class TransitBasedFlowCommandBuilderTest extends Neo4jBasedTest {
                 (int) forwardEgressSwitchCriteria.getInPort());
         assertEquals(flow.getDestPort(), (int) forwardEgressSwitchCriteria.getOutPort());
         assertEquals(forwardVlan.getVlan(), (int) forwardEgressSwitchCriteria.getEncapsulationId());
+        assertEquals(forward.getDestSwitch().getSwitchId(), forwardEgressSwitchCriteria.getEgressSwitchId());
 
 
     }
@@ -457,6 +466,7 @@ public class TransitBasedFlowCommandBuilderTest extends Neo4jBasedTest {
                 .stream().findAny()
                 .orElseThrow(() -> new IllegalStateException("Vlan should be present"));
         assertEquals(forwardVlan.getVlan(), (int) forwardEgressSwitchCriteria.getEncapsulationId());
+        assertEquals(forward.getDestSwitch().getSwitchId(), forwardEgressSwitchCriteria.getEgressSwitchId());
 
         RemoveRule reverseEgressRule = commands.get(1);
         assertEquals(srcSwitch.getSwitchId(), reverseEgressRule.getSwitchId());
@@ -473,6 +483,7 @@ public class TransitBasedFlowCommandBuilderTest extends Neo4jBasedTest {
                 .stream().findAny()
                 .orElseThrow(() -> new IllegalStateException("Vlan should be present"));
         assertEquals(reverseVlan.getVlan(), (int) reverseEgressSwitchCriteria.getEncapsulationId());
+        assertEquals(reverse.getDestSwitch().getSwitchId(), reverseEgressSwitchCriteria.getEgressSwitchId());
     }
 
     private void setSegmentsWithoutTransitSwitches(FlowPath forward, FlowPath reverse) {
