@@ -56,6 +56,7 @@ public class InstallIngressRuleCommandTest {
 
     private static final String FLOW_ID = "test_flow";
     private static final SwitchId SWITCH_ID = new SwitchId(1);
+    private static final SwitchId EGRESS_SWITCH_ID = new SwitchId(2);
     private IOFSwitch iofSwitch;
     private FeatureDetectorService featureDetectorService;
     private static final OutputCommands scheme = new ReplaceSchemeOutputCommands();
@@ -95,11 +96,12 @@ public class InstallIngressRuleCommandTest {
                 new MeterId(meterId),
                 outTunnelId,
                 TRANSIT_VLAN,
+                EGRESS_SWITCH_ID,
                 false);
 
         OFFlowMod result = command.getInstallRuleCommand(iofSwitch, featureDetectorService);
-        assertEquals(scheme.ingressReplaceFlowMod(inPort, outPort, inVlan, outTunnelId, meterId, cookie,
-                TRANSIT_VLAN, DatapathId.of(SWITCH_ID.toLong())), result);
+        assertEquals(scheme.ingressReplaceFlowMod(DatapathId.of(SWITCH_ID.toLong()), inPort, outPort, inVlan,
+                outTunnelId, meterId, cookie, TRANSIT_VLAN, DatapathId.of(EGRESS_SWITCH_ID.toLong())), result);
     }
 
     @Test
@@ -123,11 +125,12 @@ public class InstallIngressRuleCommandTest {
                 new MeterId(meterId),
                 outTunnelId,
                 VXLAN,
+                EGRESS_SWITCH_ID,
                 false);
 
         OFFlowMod result = command.getInstallRuleCommand(iofSwitch, featureDetectorService);
-        assertEquals(scheme.ingressReplaceFlowMod(inPort, outPort, inVlan, outTunnelId, meterId, cookie,
-                VXLAN, DatapathId.of(SWITCH_ID.toLong())), result);
+        assertEquals(scheme.ingressReplaceFlowMod(DatapathId.of(SWITCH_ID.toLong()), inPort, outPort, inVlan,
+                outTunnelId, meterId, cookie, VXLAN, DatapathId.of(EGRESS_SWITCH_ID.toLong())), result);
     }
 
     @Test
@@ -152,11 +155,13 @@ public class InstallIngressRuleCommandTest {
                 new MeterId(meterId),
                 outTunnelId,
                 TRANSIT_VLAN,
+                EGRESS_SWITCH_ID,
                 false);
 
         OFFlowMod result = command.getInstallRuleCommand(iofSwitch, featureDetectorService);
-        assertEquals(scheme.ingressNoMatchVlanIdFlowMod(inPort, outPort, outTunnelId, meterId, cookie,
-                TRANSIT_VLAN, DatapathId.of(SWITCH_ID.toLong())), result);
+        assertEquals(scheme.ingressNoMatchVlanIdFlowMod(DatapathId.of(SWITCH_ID.toLong()),
+                inPort, outPort, outTunnelId, meterId, cookie,
+                TRANSIT_VLAN, DatapathId.of(EGRESS_SWITCH_ID.toLong())), result);
     }
 
     @Test
@@ -181,10 +186,11 @@ public class InstallIngressRuleCommandTest {
                 new MeterId(meterId),
                 outTunnelId,
                 VXLAN,
+                EGRESS_SWITCH_ID,
                 false);
 
         OFFlowMod result = command.getInstallRuleCommand(iofSwitch, featureDetectorService);
-        assertEquals(scheme.ingressNoMatchVlanIdFlowMod(inPort, outPort, outTunnelId, meterId, cookie,
-                VXLAN, DatapathId.of(SWITCH_ID.toLong())), result);
+        assertEquals(scheme.ingressNoMatchVlanIdFlowMod(DatapathId.of(SWITCH_ID.toLong()), inPort, outPort, outTunnelId,
+                meterId, cookie, VXLAN, DatapathId.of(EGRESS_SWITCH_ID.toLong())), result);
     }
 }

@@ -62,7 +62,7 @@ public class InstallEgressRuleCommandTest {
         Set<Feature> features = Sets.newHashSet(METERS, BFD, GROUP_PACKET_OUT_CONTROLLER,
                 NOVIFLOW_COPY_FIELD, RESET_COUNTS_FLAG);
         expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(features);
-
+        expect(iofSwitch.getId()).andReturn(DatapathId.of(1L));
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
         replay(iofSwitch);
         replay(featureDetectorService);
@@ -86,12 +86,11 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 TRANSIT_VLAN,
-                SWITCH_ID,
                 false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
-        assertEquals(scheme.egressReplaceFlowMod(inPort, outPort, transitEncapsulationId, outVlan, cookie,
-                TRANSIT_VLAN, DatapathId.of(SWITCH_ID.toLong())), result);
+        assertEquals(scheme.egressReplaceFlowMod(DatapathId.of(SWITCH_ID.toLong()), inPort, outPort,
+                transitEncapsulationId, outVlan, cookie, TRANSIT_VLAN), result);
     }
 
     @Test
@@ -112,12 +111,11 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 TRANSIT_VLAN,
-                SWITCH_ID,
                 false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
-        assertEquals(scheme.egressPopFlowMod(inPort, outPort, transitEncapsulationId, cookie,
-                TRANSIT_VLAN, DatapathId.of(SWITCH_ID.toLong())), result);
+        assertEquals(scheme.egressPopFlowMod(DatapathId.of(SWITCH_ID.toLong()), inPort, outPort, transitEncapsulationId,
+                cookie, TRANSIT_VLAN), result);
     }
 
     @Test
@@ -138,12 +136,11 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 TRANSIT_VLAN,
-                SWITCH_ID,
                 false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
-        assertEquals(scheme.egressPushFlowMod(inPort, outPort, transitEncapsulationId, outVlan, cookie,
-                TRANSIT_VLAN, DatapathId.of(SWITCH_ID.toLong())), result);
+        assertEquals(scheme.egressPushFlowMod(DatapathId.of(SWITCH_ID.toLong()), inPort, outPort,
+                transitEncapsulationId, outVlan, cookie, TRANSIT_VLAN), result);
     }
 
     @Test
@@ -164,12 +161,11 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 TRANSIT_VLAN,
-                SWITCH_ID,
                 false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
-        assertEquals(scheme.egressNoneFlowMod(inPort, outPort, transitEncapsulationId, cookie,
-                TRANSIT_VLAN, DatapathId.of(SWITCH_ID.toLong())), result);
+        assertEquals(scheme.egressNoneFlowMod(DatapathId.of(SWITCH_ID.toLong()), inPort, outPort,
+                transitEncapsulationId, cookie, TRANSIT_VLAN), result);
     }
 
 
@@ -191,12 +187,12 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 VXLAN,
-                SWITCH_ID,
                 false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
-        assertEquals(scheme.egressReplaceFlowMod(inPort, outPort, transitEncapsulationId, outVlan, cookie,
-                VXLAN, DatapathId.of(SWITCH_ID.toLong())), result);
+        assertEquals(scheme.egressReplaceFlowMod(DatapathId.of(SWITCH_ID.toLong()), inPort, outPort,
+                transitEncapsulationId, outVlan, cookie,
+                VXLAN), result);
     }
 
     @Test
@@ -217,12 +213,11 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 VXLAN,
-                SWITCH_ID,
                 false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
-        assertEquals(scheme.egressPopFlowMod(inPort, outPort, transitEncapsulationId, cookie,
-                VXLAN, DatapathId.of(SWITCH_ID.toLong())), result);
+        assertEquals(scheme.egressPopFlowMod(DatapathId.of(SWITCH_ID.toLong()), inPort, outPort, transitEncapsulationId,
+                cookie, VXLAN), result);
     }
 
     @Test
@@ -243,12 +238,11 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 VXLAN,
-                SWITCH_ID,
                 false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
-        assertEquals(scheme.egressPushFlowMod(inPort, outPort, transitEncapsulationId, outVlan, cookie,
-                VXLAN, DatapathId.of(SWITCH_ID.toLong())), result);
+        assertEquals(scheme.egressPushFlowMod(DatapathId.of(SWITCH_ID.toLong()), inPort, outPort,
+                transitEncapsulationId, outVlan, cookie, VXLAN), result);
     }
 
     @Test
@@ -269,12 +263,11 @@ public class InstallEgressRuleCommandTest {
                 outVlan,
                 transitEncapsulationId,
                 VXLAN,
-                SWITCH_ID,
                 false);
 
         OFMessage result = command.getCommands(iofSwitch, null).get(0).getOfMessage();
-        assertEquals(scheme.egressNoneFlowMod(inPort, outPort, transitEncapsulationId, cookie,
-                VXLAN, DatapathId.of(SWITCH_ID.toLong())), result);
+        assertEquals(scheme.egressNoneFlowMod(DatapathId.of(SWITCH_ID.toLong()), inPort, outPort,
+                transitEncapsulationId, cookie, VXLAN), result);
     }
 
 }

@@ -313,6 +313,7 @@ class RecordHandler implements Runnable {
 
         context.getSwitchManager().installIngressFlow(
                 DatapathId.of(command.getSwitchId().toLong()),
+                DatapathId.of(command.getEgressSwitchId().toLong()),
                 command.getId(),
                 command.getCookie(),
                 command.getInputPort(),
@@ -321,7 +322,8 @@ class RecordHandler implements Runnable {
                 command.getTransitEncapsulationId(),
                 command.getOutputVlanType(),
                 meterId,
-                command.getTransitEncapsulationType());
+                command.getTransitEncapsulationType(),
+                command.isMultiTable());
     }
 
     /**
@@ -362,7 +364,7 @@ class RecordHandler implements Runnable {
                 command.getOutputVlanId(),
                 command.getOutputVlanType(),
                 command.getTransitEncapsulationType(),
-                DatapathId.of(command.getIngressSwitchId().toLong()));
+                command.isMultiTable());
     }
 
     /**
@@ -401,7 +403,7 @@ class RecordHandler implements Runnable {
                 command.getOutputPort(),
                 command.getTransitEncapsulationId(),
                 command.getTransitEncapsulationType(),
-                DatapathId.of(command.getIngressSwitchId().toLong()));
+                command.isMultiTable());
     }
 
     /**
@@ -450,7 +452,8 @@ class RecordHandler implements Runnable {
                 command.getInputVlanId(),
                 command.getOutputVlanId(),
                 directOutputVlanType,
-                meterId);
+                meterId,
+                command.isMultiTable());
     }
 
     /**

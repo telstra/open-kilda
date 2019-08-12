@@ -87,6 +87,12 @@ public class InstallIngressFlow extends InstallTransitFlow {
     protected Long meterId;
 
     /**
+     * id of the egress switch.
+     */
+    @JsonProperty("egress_switch_id")
+    protected SwitchId egressSwitchId;
+
+    /**
      * Instance constructor.
      *
      * @param transactionId  transaction id
@@ -101,7 +107,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
      * @param outputVlanType output vlan type action
      * @param bandwidth      flow bandwidth
      * @param meterId        flow meter id
-     * @param ingressSwitchId id of the ingress switch
+     * @param egressSwitchId id of the ingress switch
      * @param multiTable     multitable flag
      * @throws IllegalArgumentException if any of mandatory parameters is null
      */
@@ -119,14 +125,15 @@ public class InstallIngressFlow extends InstallTransitFlow {
                               @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                               @JsonProperty("bandwidth") final Long bandwidth,
                               @JsonProperty("meter_id") final Long meterId,
-                              @JsonProperty("ingress_switch_id") final SwitchId ingressSwitchId,
+                              @JsonProperty("egress_switch_id") final SwitchId egressSwitchId,
                               @JsonProperty("multi_table") final boolean multiTable) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
-                transitEncapsulationType, ingressSwitchId, multiTable);
+                transitEncapsulationType, multiTable);
         setInputVlanId(inputVlanId);
         setOutputVlanType(outputVlanType);
         setBandwidth(bandwidth);
         setMeterId(meterId);
+        setEgressSwitchId(egressSwitchId);
     }
 
     /**
@@ -222,6 +229,24 @@ public class InstallIngressFlow extends InstallTransitFlow {
     }
 
     /**
+     * Returns id of the egress switch.
+     *
+     * @return egress switch id
+     */
+    public SwitchId getEgressSwitchId() {
+        return egressSwitchId;
+    }
+
+    /**
+     * Sets id for the egress switch.
+     *
+     * @param egressSwitchId id of the switch
+     */
+    public void setEgressSwitchId(SwitchId egressSwitchId) {
+        this.egressSwitchId = egressSwitchId;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -239,6 +264,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
                 .add("output_vlan_type", outputVlanType)
                 .add("bandwidth", bandwidth)
                 .add("meter_id", meterId)
+                .add("egress_switch_id", egressSwitchId)
                 .add("multi_table", multiTable)
                 .toString();
     }
@@ -268,6 +294,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
                 && Objects.equals(getOutputVlanType(), that.getOutputVlanType())
                 && Objects.equals(getBandwidth(), that.getBandwidth())
                 && Objects.equals(getMeterId(), that.getMeterId())
+                && Objects.equals(getEgressSwitchId(), that.getEgressSwitchId())
                 && Objects.equals(isMultiTable(), that.isMultiTable());
     }
 
@@ -278,6 +305,6 @@ public class InstallIngressFlow extends InstallTransitFlow {
     public int hashCode() {
         return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort,
                 inputVlanId, transitEncapsulationId, transitEncapsulationType, outputVlanType, bandwidth, meterId,
-                multiTable);
+                egressSwitchId, multiTable, egressSwitchId);
     }
 }

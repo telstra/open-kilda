@@ -206,7 +206,7 @@ public class FlowCommandFactory {
                 flowPath.getCookie().getValue(), switchId, inputPortNo, outPort,
                 encapsulationResources.getTransitEncapsulationId(),
                 encapsulationResources.getEncapsulationType(), outVlan, getOutputVlanType(flow, flowPath),
-                flowPath.getSrcSwitch().getSwitchId(), false);
+                false);
     }
 
     private RemoveFlow buildRemoveEgressFlow(Flow flow, FlowPath flowPath, int inputPortNo,
@@ -219,7 +219,7 @@ public class FlowCommandFactory {
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(cookie, inputPortNo,
                 encapsulationResources.getTransitEncapsulationId(),
                 0, outPort, encapsulationResources.getEncapsulationType(),
-                flowPath.getSrcSwitch().getSwitchId());
+                flowPath.getDestSwitch().getSwitchId());
         return new RemoveFlow(transactionIdGenerator.generate(), flow.getFlowId(), cookie,
                 switchId, null, criteria, false);
     }
@@ -240,7 +240,7 @@ public class FlowCommandFactory {
         return new InstallTransitFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(),
                 flowPath.getCookie().getValue(), switchId, inputPortNo, outputPortNo,
                 encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
-                flowPath.getSrcSwitch().getSwitchId(), false);
+                false);
     }
 
     private RemoveFlow buildRemoveTransitFlow(FlowPath flowPath, SwitchId switchId,
@@ -249,7 +249,7 @@ public class FlowCommandFactory {
         long cookie = flowPath.getCookie().getValue();
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(cookie,
                 inputPortNo, encapsulationResources.getTransitEncapsulationId(), 0, outputPortNo,
-                encapsulationResources.getEncapsulationType(), flowPath.getSrcSwitch().getSwitchId());
+                encapsulationResources.getEncapsulationType(), null);
         return new RemoveFlow(transactionIdGenerator.generate(), flowPath.getFlow().getFlowId(), cookie,
                 switchId, null, criteria, false);
     }
@@ -267,6 +267,7 @@ public class FlowCommandFactory {
                                                       EncapsulationResources encapsulationResources) {
         boolean isForward = flow.isForward(flowPath);
         SwitchId switchId = isForward ? flow.getSrcSwitch().getSwitchId() : flow.getDestSwitch().getSwitchId();
+        SwitchId egressSwitchId = isForward ? flow.getDestSwitch().getSwitchId() : flow.getSrcSwitch().getSwitchId();
         int inPort = isForward ? flow.getSrcPort() : flow.getDestPort();
         int inVlan = isForward ? flow.getSrcVlan() : flow.getDestVlan();
 
@@ -276,7 +277,7 @@ public class FlowCommandFactory {
                 flowPath.getCookie().getValue(), switchId, inPort,
                 outputPortNo, inVlan, encapsulationResources.getTransitEncapsulationId(),
                 encapsulationResources.getEncapsulationType(), getOutputVlanType(flow, flowPath),
-                flow.getBandwidth(), meterId, flowPath.getSrcSwitch().getSwitchId(), false);
+                flow.getBandwidth(), meterId, egressSwitchId, false);
     }
 
     private RemoveFlow buildRemoveIngressFlow(Flow flow, FlowPath flowPath, Integer outputPortNo) {

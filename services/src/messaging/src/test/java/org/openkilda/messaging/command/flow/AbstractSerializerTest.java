@@ -71,7 +71,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     private static final String FLOW_NAME = "test_flow";
     private static final PathId PATH_ID = new PathId("path_name");
     private static final SwitchId SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:00");
-    private static final SwitchId INGRESS_SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:00");
+    private static final SwitchId EGRESS_SWITCH_ID = new SwitchId("00:00:00:00:00:00:00:00");
     private static final String CORRELATION_ID = UUID.randomUUID().toString();
     private static final UUID TRANSACTION_ID = UUID.randomUUID();
     private static final long TIMESTAMP = System.currentTimeMillis();
@@ -129,7 +129,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     public void serializeInstallEgressFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallEgressFlow data = new InstallEgressFlow(TRANSACTION_ID, FLOW_NAME, COOKIE,
                 SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_ENCAPSULATION_ID, TRANSIT_ENCAPSULATION_TYPE,
-                OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, INGRESS_SWITCH_ID, false);
+                OUTPUT_VLAN_ID, OUTPUT_VLAN_TYPE, false);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -151,7 +151,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     public void serializeInstallIngressFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallIngressFlow data = new InstallIngressFlow(TRANSACTION_ID, FLOW_NAME, COOKIE, SWITCH_ID,
                 INPUT_PORT, OUTPUT_PORT, INPUT_VLAN_ID, TRANSIT_ENCAPSULATION_ID, TRANSIT_ENCAPSULATION_TYPE,
-                OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID, INGRESS_SWITCH_ID, false);
+                OUTPUT_VLAN_TYPE, BANDWIDTH, METER_ID, EGRESS_SWITCH_ID, false);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);
@@ -172,8 +172,7 @@ public abstract class AbstractSerializerTest implements AbstractSerializer {
     @Test
     public void serializeInstallTransitFlowMessageTest() throws IOException, ClassNotFoundException {
         InstallTransitFlow data = new InstallTransitFlow(TRANSACTION_ID, FLOW_NAME, COOKIE,
-                SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_ENCAPSULATION_ID, TRANSIT_ENCAPSULATION_TYPE,
-                INGRESS_SWITCH_ID, false);
+                SWITCH_ID, INPUT_PORT, OUTPUT_PORT, TRANSIT_ENCAPSULATION_ID, TRANSIT_ENCAPSULATION_TYPE, false);
         System.out.println(data);
 
         CommandMessage command = new CommandMessage(data, System.currentTimeMillis(), CORRELATION_ID, DESTINATION);

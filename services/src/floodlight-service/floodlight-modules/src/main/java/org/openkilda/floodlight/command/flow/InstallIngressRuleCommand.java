@@ -15,9 +15,8 @@
 
 package org.openkilda.floodlight.command.flow;
 
-import static org.openkilda.floodlight.switchmanager.SwitchManager.INTERNAL_ETH_DEST_OFFSET;
+import static org.openkilda.floodlight.switchmanager.SwitchManager.INTERNAL_ETH_SRC_OFFSET;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.MAC_ADDRESS_SIZE_IN_BITS;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_ETH_DST_MAC;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_IPV4_DST;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_IPV4_SRC;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.STUB_VXLAN_UDP_SRC;
@@ -74,6 +73,7 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
     private final Integer inputVlanId;
     private final OutputVlanType outputVlanType;
     private final MeterId meterId;
+    private final SwitchId egressSwitchId;
 
     @JsonCreator
     public InstallIngressRuleCommand(@JsonProperty("command_id") UUID commandId,
@@ -90,13 +90,15 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
                                      @JsonProperty("transit_encapsulation_id") Integer transitEncapsulationId,
                                      @JsonProperty("transit_encapsulation_type")
                                              FlowEncapsulationType transitEncapsulationType,
+                                     @JsonProperty("egress_switch_id") SwitchId egressSwitchId,
                                      @JsonProperty("multi_table") boolean multiTable) {
         super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort,
-                transitEncapsulationId, transitEncapsulationType, switchId, multiTable);
+                transitEncapsulationId, transitEncapsulationType, multiTable);
         this.bandwidth = bandwidth;
         this.inputVlanId = inputVlanId;
         this.outputVlanType = outputVlanType;
         this.meterId = meterId;
+        this.egressSwitchId = egressSwitchId;
     }
 
     @Override
@@ -173,17 +175,18 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
     private List<OFAction> transitVxlanToActionList(OFFactory ofFactory) {
         List<OFAction> actionList = new ArrayList<>(3);
         MacAddress srcMac = convertDpIdToMac(DatapathId.of(switchId.toLong()));
-        actionList.add(actionPushVxlan(ofFactory, transitEncapsulationId, srcMac));
+        MacAddress dstMac = convertDpIdToMac(DatapathId.of(egressSwitchId.toLong()));
+        actionList.add(actionPushVxlan(ofFactory, transitEncapsulationId, srcMac, dstMac));
         actionList.add(actionVxlanEthDstCopyField(ofFactory));
         return actionList;
     }
 
-    private OFAction actionPushVxlan(OFFactory ofFactory, long tunnelId, MacAddress ethSrc) {
+    private OFAction actionPushVxlan(OFFactory ofFactory, long tunnelId, MacAddress ethSrc, MacAddress ethDst) {
         OFActions actions = ofFactory.actions();
         return actions.buildNoviflowPushVxlanTunnel()
                 .setVni(tunnelId)
                 .setEthSrc(ethSrc)
-                .setEthDst(STUB_VXLAN_ETH_DST_MAC)
+                .setEthDst(ethDst)
                 .setUdpSrc(STUB_VXLAN_UDP_SRC)
                 .setIpv4Src(STUB_VXLAN_IPV4_SRC)
                 .setIpv4Dst(STUB_VXLAN_IPV4_DST)
@@ -195,8 +198,8 @@ public class InstallIngressRuleCommand extends InstallTransitRuleCommand {
         OFOxms oxms = ofFactory.oxms();
         return ofFactory.actions().buildNoviflowCopyField()
                 .setNBits(MAC_ADDRESS_SIZE_IN_BITS)
-                .setSrcOffset(INTERNAL_ETH_DEST_OFFSET)
-                .setDstOffset(0)
+                .setSrcOffset(INTERNAL_ETH_SRC_OFFSET)
+                .setDstOffset(48)
                 .setOxmSrcHeader(oxms.buildNoviflowPacketOffset().getTypeLen())
                 .setOxmDstHeader(oxms.buildNoviflowPacketOffset().getTypeLen())
                 .build();
