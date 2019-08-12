@@ -12,8 +12,7 @@
 		"transit_encapsulation_id": 100,
 		"transit_encapsulation_type": "TRANSIT_VLAN",
 		"output_vlan_id": 200,
-		"output_vlan_type": "REPLACE",
-		"ingress_switch_id": "00:00:00:00:00:00:00:09"
+		"output_vlan_type": "REPLACE"
 	}
 }
 

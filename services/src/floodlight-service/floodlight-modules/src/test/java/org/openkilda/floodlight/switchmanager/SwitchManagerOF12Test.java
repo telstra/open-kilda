@@ -75,7 +75,7 @@ public class SwitchManagerOF12Test {
         int outputPort = 4;
         int transitVlanId = 512;
         switchManager.installTransitFlow(switchDpId, flowId, commonFlowCookie, inputPort, outputPort, transitVlanId,
-                FlowEncapsulationType.TRANSIT_VLAN, ingressSwitchDpId);
+                FlowEncapsulationType.TRANSIT_VLAN, false);
 
         OFFactory referenceOfFactory = new OFFactoryVer12Mock();
         OFFlowMod expected = referenceOfFactory.buildFlowAdd()

@@ -59,6 +59,7 @@ import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
 
@@ -70,57 +71,55 @@ public interface OutputCommands {
 
     OFFactory ofFactory = new OFFactoryMock();
 
-    OFFlowAdd egressReplaceFlowMod(int inputPort, int outputPort, int inputVlan, int outputVlan, long cookie,
-                                   FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpid);
+    OFFlowAdd egressReplaceFlowMod(DatapathId dpid, int inputPort, int outputPort, int inputVlan, int outputVlan,
+                                   long cookie, FlowEncapsulationType encapsulationType);
 
-    OFFlowAdd egressPopFlowMod(int inputPort, int outputPort, int tunnelId, long cookie,
-                               FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpid);
+    OFFlowAdd egressPopFlowMod(DatapathId dpid, int inputPort, int outputPort, int tunnelId, long cookie,
+                               FlowEncapsulationType encapsulationType);
 
-    OFFlowAdd egressPushFlowMod(int inputPort, int outputPort, int tunnelId, int outputVlan, long cookie,
-                                FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpid);
+    OFFlowAdd egressPushFlowMod(DatapathId dpid, int inputPort, int outputPort, int tunnelId, int outputVlan,
+                                long cookie, FlowEncapsulationType encapsulationType);
 
-    OFFlowAdd egressNoneFlowMod(int inputPort, int outputPort, int tunnelId, long cookie,
-                                FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpid);
+    OFFlowAdd egressNoneFlowMod(DatapathId dpid, int inputPort, int outputPort, int tunnelId, long cookie,
+                                FlowEncapsulationType encapsulationType);
 
-    OFFlowAdd egressFlowMod(int inputPort, int outputPort, int tunnelId, long cookie,
-                            FlowEncapsulationType encapsulationType, OFInstructionApplyActions actions,
-                            DatapathId ingressSwitchDpid);
+    OFFlowAdd egressFlowMod(DatapathId dpid, int inputPort, int outputPort, int tunnelId, long cookie,
+                            FlowEncapsulationType encapsulationType, OFInstructionApplyActions actions);
 
-    OFFlowAdd ingressMatchVlanIdFlowMod(int inputPort, int outputPort, int inputVlan, int tunnelId,
+    OFFlowAdd ingressMatchVlanIdFlowMod(DatapathId dpid, int inputPort, int outputPort, int inputVlan, int tunnelId,
                                         long meterId, long cookie, FlowEncapsulationType encapsulationType,
-                                        DatapathId ingressSwitchDpid);
+                                        DatapathId egressSwitchDpId);
 
-    OFFlowAdd ingressNoMatchVlanIdFlowMod(int inputPort, int outputPort, int tunnelId,
+    OFFlowAdd ingressNoMatchVlanIdFlowMod(DatapathId dpid, int inputPort, int outputPort, int tunnelId,
                                           long meterId, long cookie, FlowEncapsulationType encapsulationType,
-                                          DatapathId ingressSwitchDpId);
+                                          DatapathId egressSwitchDpId);
 
-    default OFFlowAdd ingressReplaceFlowMod(int inputPort, int outputPort, int inputVlan,
+    default OFFlowAdd ingressReplaceFlowMod(DatapathId dpid, int inputPort, int outputPort, int inputVlan,
                                             int tunnelId, long meterId, long cookie,
-                                            FlowEncapsulationType encapsulationType,
-                                            DatapathId ingressSwitchDpid) {
-        return ingressMatchVlanIdFlowMod(inputPort, outputPort, inputVlan, tunnelId, meterId, cookie,
-                encapsulationType, ingressSwitchDpid);
+                                            FlowEncapsulationType encapsulationType, DatapathId egressSwitchDpId) {
+        return ingressMatchVlanIdFlowMod(dpid, inputPort, outputPort, inputVlan, tunnelId, meterId, cookie,
+                encapsulationType, egressSwitchDpId);
     }
 
-    default OFFlowAdd ingressNoneFlowMod(int inputPort, int outputPort, int tunnelId, long meterId,
+    default OFFlowAdd ingressNoneFlowMod(DatapathId dpid, int inputPort, int outputPort, int tunnelId, long meterId,
                                          long cookie, FlowEncapsulationType encapsulationType,
-                                         DatapathId ingressSwitchDpId) {
-        return ingressNoMatchVlanIdFlowMod(inputPort, outputPort, tunnelId, meterId, cookie,
-                encapsulationType, ingressSwitchDpId);
+                                         DatapathId egressSwitchDpId) {
+        return ingressNoMatchVlanIdFlowMod(dpid, inputPort, outputPort, tunnelId, meterId, cookie,
+                encapsulationType, egressSwitchDpId);
     }
 
-    default OFFlowAdd ingressPushFlowMod(int inputPort, int outputPort, int tunnelId, long meterId,
+    default OFFlowAdd ingressPushFlowMod(DatapathId dpid, int inputPort, int outputPort, int tunnelId, long meterId,
                                          long cookie, FlowEncapsulationType encapsulationType,
-                                         DatapathId ingressSwitchDpId) {
-        return ingressNoMatchVlanIdFlowMod(inputPort, outputPort, tunnelId, meterId, cookie,
-                encapsulationType, ingressSwitchDpId);
+                                         DatapathId egressSwitchDpId) {
+        return ingressNoMatchVlanIdFlowMod(dpid, inputPort, outputPort, tunnelId, meterId, cookie,
+                encapsulationType, egressSwitchDpId);
     }
 
-    default OFFlowAdd ingressPopFlowMod(int inputPort, int outputPort, int inputVlan, int tunnelId,
+    default OFFlowAdd ingressPopFlowMod(DatapathId dpid, int inputPort, int outputPort, int inputVlan, int tunnelId,
                                         long meterId, long cookie, FlowEncapsulationType encapsulationType,
-                                        DatapathId ingressSwitchDpid) {
-        return ingressMatchVlanIdFlowMod(inputPort, outputPort, inputVlan, tunnelId, meterId, cookie,
-                encapsulationType, ingressSwitchDpid);
+                                        DatapathId egressSwitchDpId) {
+        return ingressMatchVlanIdFlowMod(dpid, inputPort, outputPort, inputVlan, tunnelId, meterId, cookie,
+                encapsulationType, egressSwitchDpId);
     }
 
     /**
@@ -133,14 +132,14 @@ public interface OutputCommands {
      * @return built command.
      */
     default OFFlowAdd transitFlowMod(int inputPort, int outputPort, int tunnelId, long cookie,
-                                     FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpid) {
+                                     FlowEncapsulationType encapsulationType) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setPriority(FLOW_PRIORITY)
-                .setMatch(matchFlow(inputPort, tunnelId, encapsulationType, ingressSwitchDpid))
+                .setMatch(matchFlow(null, inputPort, tunnelId, encapsulationType))
                 .setInstructions(singletonList(
                         ofFactory.instructions().applyActions(singletonList(
                                 ofFactory.actions().buildOutput()
@@ -153,8 +152,8 @@ public interface OutputCommands {
                 .build();
     }
 
-    default Match matchFlow(int inputPort, int tunnelId, FlowEncapsulationType encapsulationType,
-                            DatapathId ingressSwitchDpid) {
+    default Match matchFlow(DatapathId dpid, int inputPort, int tunnelId, FlowEncapsulationType encapsulationType
+    ) {
         Match.Builder matchBuilder = ofFactory.buildMatch();
         matchBuilder.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
         switch (encapsulationType) {
@@ -163,11 +162,11 @@ public interface OutputCommands {
                 matchBuilder.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(tunnelId));
                 break;
             case VXLAN:
-                matchBuilder.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
-                if (ingressSwitchDpid != null) {
-                    matchBuilder.setExact(MatchField.ETH_SRC,
-                            MacAddress.of(Arrays.copyOfRange(ingressSwitchDpid.getBytes(), 2, 8)));
+                if (dpid != null) {
+                    matchBuilder.setExact(MatchField.ETH_DST,
+                            MacAddress.of(Arrays.copyOfRange(dpid.getBytes(), 2, 8)));
                 }
+                matchBuilder.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
                 matchBuilder.setExact(MatchField.TUNNEL_ID, U64.of(tunnelId));
                 break;
         }
@@ -370,6 +369,163 @@ public interface OutputCommands {
                 .build();
     }
 
+    /**
+     * Create drop flow for specific table.
+     *
+     * @param dpid datapath of the switch.
+     * @param tableId table to install.
+     * @param cookie target cookie.
+     * @return created OFFlowAdd.
+     */
+    default OFFlowAdd installDropFlowForTable(DatapathId dpid, int tableId, long cookie) {
+        return ofFactory.buildFlowAdd()
+                .setTableId(TableId.of(tableId))
+                .setCookie(U64.of(cookie))
+                .setPriority(1)
+                .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setMatch(ofFactory.buildMatch().build())
+                .build();
+    }
+
+    /**
+     * Create pass through egress isl vxlan default rule for table 0.
+     *
+     * @param dpid datapath of the switch.
+     * @param port isl port.
+     * @return created OFFlowAdd.
+     */
+    default OFFlowAdd installEgressIslVxlanRule(DatapathId dpid, int port) {
+        Match match = ofFactory.buildMatch()
+                .setExact(MatchField.ETH_DST, MacAddress.of(Arrays.copyOfRange(dpid.getBytes(), 2, 8)))
+                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                .setExact(MatchField.IN_PORT, OFPort.of(port))
+                .setExact(MatchField.UDP_SRC, TransportPort.of(SwitchManager.STUB_VXLAN_UDP_SRC))
+                .setExact(MatchField.UDP_DST, TransportPort.of(SwitchManager.VXLAN_UDP_DST))
+                .build();
+        return ofFactory.buildFlowAdd()
+                .setCookie(U64.of(Cookie.encodeIslVxlanEgress(port)))
+                .setPriority(SwitchManager.ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE)
+                .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setMatch(match)
+                .setInstructions(ImmutableList.of(
+                        ofFactory.instructions().gotoTable(TableId.of(SwitchManager.EGRESS_TABLE_ID))))
+                .build();
+    }
+
+    /**
+     * Create pass through transit isl vxlan default rule for table 0.
+     *
+     * @param dpid datapath of the switch.
+     * @param port isl port.
+     * @return created OFFlowAdd.
+     */
+    default OFFlowAdd installTransitIslVxlanRule(DatapathId dpid, int port) {
+        Match match = ofFactory.buildMatch()
+                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                .setExact(MatchField.IN_PORT, OFPort.of(port))
+                .setExact(MatchField.UDP_SRC, TransportPort.of(SwitchManager.STUB_VXLAN_UDP_SRC))
+                .setExact(MatchField.UDP_DST, TransportPort.of(SwitchManager.VXLAN_UDP_DST))
+                .build();
+        return ofFactory.buildFlowAdd()
+                .setCookie(U64.of(Cookie.encodeIslVxlanTransit(port)))
+                .setPriority(SwitchManager.ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE)
+                .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setMatch(match)
+                .setInstructions(ImmutableList.of(
+                        ofFactory.instructions().gotoTable(TableId.of(SwitchManager.TRANSIT_TABLE_ID))))
+                .build();
+    }
+
+    /**
+     * Create pass through egress isl vlan default rule for table 0.
+     *
+     * @param dpid datapath of the switch.
+     * @param port isl port.
+     * @return created OFFlowAdd.
+     */
+    default OFFlowAdd installEgressIslVlanRule(DatapathId dpid, int port) {
+        Match match = ofFactory.buildMatch()
+                .setExact(MatchField.IN_PORT, OFPort.of(port))
+                .build();
+        return ofFactory.buildFlowAdd()
+                .setCookie(U64.of(Cookie.encodeIslVlanEgress(port)))
+                .setPriority(SwitchManager.ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE)
+                .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setMatch(match)
+                .setInstructions(ImmutableList.of(
+                        ofFactory.instructions().gotoTable(TableId.of(SwitchManager.EGRESS_TABLE_ID))))
+                .build();
+    }
+
+
+    /**
+     * Install intermediate rule for isl on switch in table 0 to route ingress traffic.
+     *
+     * @param dpid datapathId of the switch
+     * @param port customer port
+     */
+    default OFFlowAdd installIntermediateIngressRule(DatapathId dpid, int port) {
+        Match match = ofFactory.buildMatch()
+                .setExact(MatchField.IN_PORT, OFPort.of(port))
+                .build();
+        return ofFactory.buildFlowAdd()
+                .setCookie(U64.of(Cookie.encodeIngressRulePassThrough(port)))
+                .setPriority(SwitchManager.INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE)
+                .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setMatch(match)
+                .setInstructions(ImmutableList.of(
+                        ofFactory.instructions().gotoTable(TableId.of(SwitchManager.INGRESS_TABLE_ID))))
+                .build();
+    }
+
+    /**
+     * Install default pass through rule for pre ingress table.
+     *
+     * @param dpid datapathId of the switch
+     */
+    default OFFlowAdd installPreIngressTablePassThroughDefaultRule(DatapathId dpid) {
+        return ofFactory.buildFlowAdd()
+                .setTableId(TableId.of(SwitchManager.PRE_INGRESS_TABLE_ID))
+                .setCookie(U64.of(Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE))
+                .setPriority(1)
+                .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setMatch(ofFactory.buildMatch().build())
+                .setInstructions(ImmutableList.of(
+                        ofFactory.instructions().gotoTable(TableId.of(SwitchManager.INGRESS_TABLE_ID))))
+                .build();
+    }
+
+    /**
+     * Install default pass through rule for pre egress table.
+     *
+     * @param dpid datapathId of the switch
+     */
+    default OFFlowAdd installEgressTablePassThroughDefaultRule(final DatapathId dpid) {
+        return ofFactory.buildFlowAdd()
+                .setTableId(TableId.of(SwitchManager.EGRESS_TABLE_ID))
+                .setCookie(U64.of(Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE))
+                .setPriority(1)
+                .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setMatch(ofFactory.buildMatch().build())
+                .setInstructions(ImmutableList.of(
+                        ofFactory.instructions().gotoTable(TableId.of(SwitchManager.TRANSIT_TABLE_ID))))
+                .build();
+    }
+
     default OFFlowAdd installVerificationBroadcastRule(boolean supportsUpdPortMatch) {
 
         Match.Builder matchBuilder = ofFactory.buildMatch()
@@ -397,6 +553,7 @@ public interface OutputCommands {
     default OFFlowAdd installVerificationUnicastRule(DatapathId defaultDpId) {
         Match match = ofFactory.buildMatch()
                 .setExact(MatchField.ETH_DST, MacAddress.of(defaultDpId))
+                .setExact(MatchField.ETH_SRC, MacAddress.of(defaultDpId))
                 .build();
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(Cookie.VERIFICATION_UNICAST_RULE_COOKIE))
@@ -505,7 +662,7 @@ public interface OutputCommands {
      */
     default OFFlowAdd installUnicastVerificationRuleVxlan(DatapathId dpid) {
         Builder builder = ofFactory.buildMatch();
-        builder.setMasked(MatchField.ETH_DST, MacAddress.of(dpid), MacAddress.NO_MASK);
+        builder.setMasked(MatchField.ETH_SRC, MacAddress.of(dpid), MacAddress.NO_MASK);
         builder.setExact(MatchField.UDP_SRC, TransportPort.of(4500));
         Match match = builder.build();
 
@@ -525,7 +682,7 @@ public interface OutputCommands {
                                                 ofFactory.oxms().buildEthDst()
                                                         .setValue(MacAddress.of(dpid))
                                                         .build()).build()))
-                        ))
+                ))
                 .build();
     }
 }
