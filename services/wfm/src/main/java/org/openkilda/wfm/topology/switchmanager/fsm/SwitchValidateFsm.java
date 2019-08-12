@@ -218,8 +218,7 @@ public class SwitchValidateFsm
         try {
             if (processMeters) {
                 log.info("Key: {}, validate meters", key);
-                validateMetersResult = validationService.validateMeters(switchId, presentMeters,
-                        carrier.getFlowMeterMinBurstSizeInKbits(), carrier.getFlowMeterBurstCoefficient());
+                validateMetersResult = validationService.validateMeters(switchId, presentMeters);
             }
 
         } catch (Exception e) {

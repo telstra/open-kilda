@@ -50,7 +50,7 @@ public class SwitchValidateServiceImpl implements SwitchValidateService {
     public SwitchValidateServiceImpl(SwitchManagerCarrier carrier, PersistenceManager persistenceManager) {
         this.carrier = carrier;
         this.builder = SwitchValidateFsm.builder();
-        this.validationService = new ValidationServiceImpl(persistenceManager);
+        this.validationService = new ValidationServiceImpl(persistenceManager, carrier.getTopologyConfig());
     }
 
     @Override
