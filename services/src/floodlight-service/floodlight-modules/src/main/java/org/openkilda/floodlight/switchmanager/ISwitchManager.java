@@ -36,7 +36,9 @@ import java.util.List;
 import java.util.Map;
 
 public interface ISwitchManager extends IFloodlightService {
-    /** OVS software switch manufacturer constant value. */
+    /**
+     * OVS software switch manufacturer constant value.
+     */
     String OVS_MANUFACTURER = "Nicira, Inc.";
 
     long COOKIE_FLAG_SERVICE = 0x8000000000000000L;
@@ -66,6 +68,7 @@ public interface ISwitchManager extends IFloodlightService {
 
     /**
      * Add default rule for install verfication rule applicable for vxlan.
+     *
      * @param dpid datapathId of switch
      * @return unicast verification vxlan rule cookie if installation succeeds otherwise null.
      * @throws SwitchOperationException in case of errors
@@ -81,6 +84,17 @@ public interface ISwitchManager extends IFloodlightService {
      */
     Long installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
             throws SwitchOperationException;
+
+    /**
+     * Installs the default drop rule.
+     *
+     * @param dpid datapathId of switch
+     * @param tableId target table id
+     * @param cookie drop rule cookie
+     * @throws SwitchOperationException in case of errors
+     */
+    Long installDropFlowForTable(final DatapathId dpid, final int tableId,
+                                 final long cookie) throws SwitchOperationException;
 
     /**
      * Installs the default drop rule.
@@ -119,6 +133,58 @@ public interface ISwitchManager extends IFloodlightService {
     Long installRoundTripLatencyFlow(final DatapathId dpid) throws SwitchOperationException;
 
     /**
+     * Install intermediate rule for isl on switch in table 0 to route egress in case of vxlan.
+     *
+     * @param dpid datapathId of the switch
+     * @param port isl port
+     * @throws SwitchOperationException Switch not found
+     */
+    void installEgressIslVxlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
+     * Install intermediate rule for isl on switch in table 0 to route transit in case of vxlan.
+     *
+     * @param dpid datapathId of the switch
+     * @param port isl port
+     * @throws SwitchOperationException Switch not found
+     */
+    void installTransitIslVxlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
+     * Install intermediate rule for isl on switch in table 0 to route egress in case of vlan.
+     *
+     * @param dpid datapathId of the switch
+     * @param port isl port
+     * @throws SwitchOperationException Switch not found
+     */
+    void installEgressIslVlanRule(final DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
+     * Install intermediate rule for isl on switch in table 0 to route ingress traffic.
+     *
+     * @param dpid datapathId of the switch
+     * @param port customer port
+     * @throws SwitchOperationException Switch not found
+     */
+    void installIntermediateIngressRule(final DatapathId dpid, int port) throws SwitchOperationException;
+
+    /**
+     * Install default pass through rule for pre ingress table.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    void installPreIngressTablePassThroughDefaultRule(final DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Install default pass through rule for pre egress table.
+     *
+     * @param dpid datapathId of the switch
+     * @throws SwitchOperationException Switch not found
+     */
+    void installEgressTablePassThroughDefaultRule(final DatapathId dpid) throws SwitchOperationException;
+
+    /**
      * Installs custom drop rule .. ie cookie, priority, match
      *
      * @param dpid datapathId of switch
@@ -134,20 +200,23 @@ public interface ISwitchManager extends IFloodlightService {
     /**
      * Installs an flow on ingress switch.
      *
-     * @param dpid              datapathId of the switch
-     * @param flowId            flow id
-     * @param inputPort         port to expect the packet on
-     * @param outputPort        port to forward the packet out
-     * @param inputVlanId       input vlan to match on, 0 means not to match on vlan
-     * @param transitTunnelId   vlan or vni to add before outputing on outputPort
+     * @param dpid datapathId of the switch
+     * @param dstDpid datapathId of the egress switch
+     * @param flowId flow id
+     * @param inputPort port to expect the packet on
+     * @param outputPort port to forward the packet out
+     * @param inputVlanId input vlan to match on, 0 means not to match on vlan
+     * @param transitTunnelId vlan or vni to add before outputing on outputPort
      * @param encapsulationType flow encapsulation type
      * @param enableLldp        if True LLDP packets will be send to LLDP rule
+     * @param multiTable multitable pipeline flag
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
-    long installIngressFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort, int inputVlanId,
+    long installIngressFlow(DatapathId dpid, DatapathId dstDpid, String flowId, Long cookie, int inputPort,
+                            int outputPort, int inputVlanId,
                             int transitTunnelId, OutputVlanType outputVlanType, long meterId,
-                            FlowEncapsulationType encapsulationType, boolean enableLldp)
+                            FlowEncapsulationType encapsulationType, boolean enableLldp, boolean multiTable)
             throws SwitchOperationException;
 
     /**
@@ -157,69 +226,71 @@ public interface ISwitchManager extends IFloodlightService {
      * @param inputPort         port to expect the packet on
      * @param tunnelId          vlan or vni to match packet
      * @param encapsulationType flow encapsulation type
+     * @param multiTable        switch operations mode
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
     long installLldpIngressFlow(DatapathId dpid, Long cookie, int inputPort, int tunnelId, long meterId,
-                                FlowEncapsulationType encapsulationType)
+                                FlowEncapsulationType encapsulationType, boolean multiTable)
             throws SwitchOperationException;
 
     /**
      * Installs flow on egress swtich.
      *
-     * @param dpid              datapathId of the switch
-     * @param flowId            flow id
-     * @param inputPort         port to expect the packet on
-     * @param outputPort        port to forward the packet out
-     * @param transitTunnelId   vlan or vni to match on the ingressPort
-     * @param outputVlanId      set vlan on packet before forwarding via outputPort; 0 means not to set
-     * @param outputVlanType    type of action to apply to the outputVlanId if greater than 0
+     * @param dpid datapathId of the switch
+     * @param flowId flow id
+     * @param inputPort port to expect the packet on
+     * @param outputPort port to forward the packet out
+     * @param transitTunnelId vlan or vni to match on the ingressPort
+     * @param outputVlanId set vlan on packet before forwarding via outputPort; 0 means not to set
+     * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
      * @param encapsulationType flow encapsulation type
-     * @param ingressSwitchDpId datapathId of the ingress switch
+     * @param multiTable multitable pipeline flag
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
     long installEgressFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
                            int transitTunnelId, int outputVlanId, OutputVlanType outputVlanType,
-                           FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpId)
+                           FlowEncapsulationType encapsulationType,
+                           boolean multiTable)
             throws SwitchOperationException;
 
     /**
      * Installs flow on a transit switch.
      *
-     * @param dpid              datapathId of the switch
-     * @param flowId            flow id
-     * @param inputPort         port to expect packet on
-     * @param outputPort        port to forward packet out
-     * @param transitTunnelId   vlan or vni to match on inputPort
+     * @param dpid datapathId of the switch
+     * @param flowId flow id
+     * @param inputPort port to expect packet on
+     * @param outputPort port to forward packet out
+     * @param transitTunnelId vlan or vni to match on inputPort
      * @param encapsulationType flow encapsulation type
-     * @param  ingressSwitchDpId datapathId of the ingress switch
+     * @param multiTable multitable pipeline flag
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
     long installTransitFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
-                            int transitTunnelId, FlowEncapsulationType encapsulationType,
-                            DatapathId ingressSwitchDpId)
+                            int transitTunnelId, FlowEncapsulationType encapsulationType, boolean multiTable)
             throws SwitchOperationException;
 
     /**
      * Installs flow through one switch.
      *
-     * @param dpid           datapathId of the switch
-     * @param flowId         flow id
-     * @param inputPort      port to expect packet on
-     * @param outputPort     port to forward packet out
-     * @param inputVlanId    vlan to match on inputPort
-     * @param outputVlanId   set vlan on packet before forwarding via outputPort; 0 means not to set
+     * @param dpid datapathId of the switch
+     * @param flowId flow id
+     * @param inputPort port to expect packet on
+     * @param outputPort port to forward packet out
+     * @param inputVlanId vlan to match on inputPort
+     * @param outputVlanId set vlan on packet before forwarding via outputPort; 0 means not to set
      * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
      * @param enableLldp     if True LLDP packets will be send to LLDP rule
+     * @param multiTable multitable pipeline flag
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
     long installOneSwitchFlow(final DatapathId dpid, final String flowId, final Long cookie,
                                                       final int inputPort, final int outputPort, int inputVlanId,
                                                       int outputVlanId, final OutputVlanType outputVlanType,
-                                                      final long meterId, boolean enableLldp)
+                                                      final long meterId, boolean enableLldp, boolean multiTable)
             throws SwitchOperationException;
 
     /**
@@ -261,9 +332,9 @@ public interface ISwitchManager extends IFloodlightService {
      * Installs a meter on ingress switch OF_13.
      * TODO: describe params meaning in accordance with OF
      *
-     * @param dpid      datapath ID of the switch
+     * @param dpid datapath ID of the switch
      * @param bandwidth the bandwidth limit value
-     * @param meterId   the meter ID
+     * @param meterId the meter ID
      * @throws SwitchOperationException Switch not found
      */
     void installMeterForFlow(DatapathId dpid, long bandwidth, long meterId) throws SwitchOperationException;
@@ -281,7 +352,7 @@ public interface ISwitchManager extends IFloodlightService {
     /**
      * Deletes the meter from the switch OF_13.
      *
-     * @param dpid    datapath ID of the switch
+     * @param dpid datapath ID of the switch
      * @param meterId meter identifier
      * @throws SwitchOperationException Switch not found
      */

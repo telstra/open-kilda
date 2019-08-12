@@ -15,8 +15,6 @@
 
 package org.openkilda.floodlight.command.flow;
 
-import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
-import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 
 import org.openkilda.floodlight.FloodlightResponse;
@@ -100,7 +98,7 @@ public abstract class FlowCommand extends SpeakerCommand {
     }
 
     final Match matchFlow(Integer inputPort, Integer tunnelId, FlowEncapsulationType encapsulationType,
-                          MacAddress ethSrc, OFFactory ofFactory) {
+                          MacAddress ethDst, OFFactory ofFactory) {
         Match.Builder mb = ofFactory.buildMatch();
         mb.setExact(MatchField.IN_PORT, OFPort.of(inputPort));
         if (tunnelId > 0) {
@@ -109,7 +107,7 @@ public abstract class FlowCommand extends SpeakerCommand {
                     matchVlan(ofFactory, mb, tunnelId);
                     break;
                 case VXLAN:
-                    matchVxlan(ofFactory, mb, tunnelId, ethSrc);
+                    matchVxlan(ofFactory, mb, tunnelId, ethDst);
                     break;
                 default:
                     throw new UnsupportedOperationException(
@@ -130,9 +128,9 @@ public abstract class FlowCommand extends SpeakerCommand {
     }
 
     final void matchVxlan(OFFactory ofFactory, Match.Builder matchBuilder, long tunnelId,
-                               MacAddress ethSrc) {
-        if (ethSrc != null) {
-            matchBuilder.setExact(MatchField.ETH_SRC, ethSrc);
+                               MacAddress ethDst) {
+        if (ethDst != null) {
+            matchBuilder.setExact(MatchField.ETH_DST, ethDst);
         }
         if (OF_12.compareTo(ofFactory.getVersion()) >= 0) {
             throw new UnsupportedOperationException("Switch doesn't support tunnel_id match");

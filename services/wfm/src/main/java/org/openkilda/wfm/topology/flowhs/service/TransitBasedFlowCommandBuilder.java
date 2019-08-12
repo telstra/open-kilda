@@ -168,6 +168,7 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
                 .inputVlanId(inputVlanId)
                 .transitEncapsulationId(encapsulationResources.getTransitEncapsulationId())
                 .transitEncapsulationType(encapsulationResources.getEncapsulationType())
+                .egressSwitchId(flowPath.getDestSwitch().getSwitchId())
                 .build();
     }
 
@@ -234,8 +235,7 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
         return new InstallTransitRule(messageContext, commandId, flowPath.getFlow().getFlowId(), flowPath.getCookie(),
                 switchId, inputPort, outputPort,
                 encapsulationResources.getTransitEncapsulationId(), encapsulationResources.getEncapsulationType(),
-                flowPath.getSrcSwitch().getSwitchId(), false
-                );
+                false);
     }
 
     private InstallEgressRule buildInstallEgressRule(CommandContext context, FlowPath flowPath,
@@ -254,7 +254,6 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
                 .outputPort(outputPort)
                 .outputVlanId(destVlan)
                 .outputVlanType(getOutputVlanType(srcVlan, destVlan))
-                .ingressSwitchId(flowPath.getSrcSwitch().getSwitchId())
                 .build();
     }
 
@@ -264,7 +263,7 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
 
         DeleteRulesCriteria ingressCriteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort,
                 inputVlanId, 0, outputPort, encapsulationResources.getEncapsulationType(),
-                flowPath.getSrcSwitch().getSwitchId());
+                null);
         UUID commandId = commandIdGenerator.generate();
         return RemoveRule.builder()
                 .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
@@ -315,7 +314,7 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
                                               EncapsulationResources encapsulationResources) {
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort,
                 encapsulationResources.getTransitEncapsulationId(),
-                0, outputPort, encapsulationResources.getEncapsulationType(), flowPath.getSrcSwitch().getSwitchId());
+                0, outputPort, encapsulationResources.getEncapsulationType(), null);
         UUID commandId = commandIdGenerator.generate();
         return RemoveRule.builder()
                 .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
@@ -331,7 +330,7 @@ public class TransitBasedFlowCommandBuilder implements FlowCommandBuilder {
                                              EncapsulationResources encapsulationResources) {
         DeleteRulesCriteria criteria = new DeleteRulesCriteria(flowPath.getCookie().getValue(), inputPort,
                 encapsulationResources.getTransitEncapsulationId(),
-                0, outputPort, encapsulationResources.getEncapsulationType(), flowPath.getSrcSwitch().getSwitchId());
+                0, outputPort, encapsulationResources.getEncapsulationType(), flowPath.getDestSwitch().getSwitchId());
         UUID commandId = commandIdGenerator.generate();
         return RemoveRule.builder()
                 .messageContext(new MessageContext(commandId.toString(), context.getCorrelationId()))
