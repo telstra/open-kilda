@@ -26,7 +26,7 @@ public final class Constants {
     public static final int outputPort = 2;
     public static final int transitEncapsulationId = 100;
     public static final FlowEncapsulationType transitEncapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
-    public static final SwitchId ingresSwitchId = new SwitchId("00:00:00:00:00:00:00:02");
+    public static final SwitchId egressSwitchId = new SwitchId("00:00:00:00:00:00:00:02");
     public static final int outputVlanId = 200;
     public static final int inputVlanId = 300;
     public static final long bandwidth = 10000;

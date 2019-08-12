@@ -42,21 +42,21 @@ import java.util.List;
 
 public class ReplaceSchemeOutputCommands extends PushSchemeOutputCommands {
     @Override
-    public OFFlowAdd ingressMatchVlanIdFlowMod(int inputPort, int outputPort, int inputVlan,
+    public OFFlowAdd ingressMatchVlanIdFlowMod(DatapathId dpid, int inputPort, int outputPort, int inputVlan,
                                                int tunnelId, long meterId, long cookie,
-                                               FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpid) {
+                                               FlowEncapsulationType encapsulationType, DatapathId egressSwitchDpid) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setPriority(FLOW_PRIORITY)
-                .setMatch(matchFlow(inputPort, inputVlan, FlowEncapsulationType.TRANSIT_VLAN, ingressSwitchDpid))
+                .setMatch(matchFlow(null, inputPort, inputVlan, FlowEncapsulationType.TRANSIT_VLAN))
                 .setInstructions(Arrays.asList(
                         ofFactory.instructions().buildMeter().setMeterId(meterId).build(),
                         ofFactory.instructions()
-                                .applyActions(getPushActions(outputPort, tunnelId, encapsulationType,
-                                        ingressSwitchDpid))
+                                .applyActions(getPushActions(dpid, outputPort, tunnelId, encapsulationType,
+                                        egressSwitchDpid))
                                 .createBuilder()
                                 .build()))
                 .setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS))
@@ -65,16 +65,15 @@ public class ReplaceSchemeOutputCommands extends PushSchemeOutputCommands {
 
     }
 
-    private OFFlowAdd egressPushFlowMod(int inputPort, int tunnelId, long cookie,
-                                        FlowEncapsulationType encapsulationType, List<OFAction> actions,
-                                        DatapathId ingressSwitchDpid) {
+    private OFFlowAdd egressPushFlowMod(DatapathId dpid, int inputPort, int tunnelId, long cookie,
+                                        FlowEncapsulationType encapsulationType, List<OFAction> actions) {
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(cookie & FLOW_COOKIE_MASK))
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setPriority(FLOW_PRIORITY)
-                .setMatch(matchFlow(inputPort, tunnelId, encapsulationType, ingressSwitchDpid))
+                .setMatch(matchFlow(dpid, inputPort, tunnelId, encapsulationType))
                 .setInstructions(singletonList(
                         ofFactory.instructions().applyActions(actions)
                                 .createBuilder()
@@ -84,14 +83,14 @@ public class ReplaceSchemeOutputCommands extends PushSchemeOutputCommands {
     }
 
     @Override
-    public OFFlowAdd egressPushFlowMod(int inputPort, int outputPort, int tunnelId, int outputVlan, long cookie,
-                                       FlowEncapsulationType encapsulationType,  DatapathId ingressSwitchDpid) {
-        return egressPushFlowMod(inputPort, tunnelId, cookie, encapsulationType,
-                getPopActions(OutputVlanType.PUSH, outputPort, outputVlan, encapsulationType), ingressSwitchDpid);
+    public OFFlowAdd egressPushFlowMod(DatapathId dpid, int inputPort, int outputPort, int tunnelId, int outputVlan,
+                                       long cookie, FlowEncapsulationType encapsulationType) {
+        return egressPushFlowMod(dpid, inputPort, tunnelId, cookie, encapsulationType,
+                getPopActions(OutputVlanType.PUSH, outputPort, outputVlan, encapsulationType));
     }
 
-    private List<OFAction> getPushActions(int outputPort, int tunnelId, FlowEncapsulationType encapsulationType,
-                                          DatapathId ingressSwitchDpId) {
+    private List<OFAction> getPushActions(DatapathId dpid, int outputPort, int tunnelId,
+                                          FlowEncapsulationType encapsulationType, DatapathId egressSwitchDpId) {
         switch (encapsulationType) {
             default:
             case TRANSIT_VLAN:
@@ -106,7 +105,7 @@ public class ReplaceSchemeOutputCommands extends PushSchemeOutputCommands {
                                 .setPort(OFPort.of(outputPort))
                                 .build());
             case VXLAN:
-                return getPushVxlanAction(outputPort, tunnelId, ingressSwitchDpId);
+                return getPushVxlanAction(dpid, outputPort, tunnelId, egressSwitchDpId);
         }
     }
 
@@ -157,10 +156,10 @@ public class ReplaceSchemeOutputCommands extends PushSchemeOutputCommands {
     }
 
     @Override
-    public OFFlowAdd egressPopFlowMod(int inputPort, int outputPort, int transitVlan, long cookie,
-                                      FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpid) {
+    public OFFlowAdd egressPopFlowMod(DatapathId dpid, int inputPort, int outputPort, int transitVlan, long cookie,
+                                      FlowEncapsulationType encapsulationType) {
         if (encapsulationType == FlowEncapsulationType.TRANSIT_VLAN) {
-            return egressNoneFlowMod(inputPort, outputPort, transitVlan, cookie, encapsulationType, ingressSwitchDpid);
+            return egressNoneFlowMod(dpid, inputPort, outputPort, transitVlan, cookie, encapsulationType);
         } else if (encapsulationType == FlowEncapsulationType.VXLAN) {
             List<OFAction> actions = new ArrayList<>();
             actions.add(ofFactory.actions().noviflowPopVxlanTunnel());
@@ -169,18 +168,18 @@ public class ReplaceSchemeOutputCommands extends PushSchemeOutputCommands {
                     .setMaxLen(0xFFFFFFFF)
                     .setPort(OFPort.of(outputPort))
                     .build());
-            return egressFlowMod(inputPort, outputPort, transitVlan, cookie, encapsulationType,
+            return egressFlowMod(dpid, inputPort, outputPort, transitVlan, cookie, encapsulationType,
                     ofFactory.instructions().applyActions(actions)
                             .createBuilder()
-                            .build(), ingressSwitchDpid);
+                            .build());
         }
         return null;
     }
 
     @Override
-    public OFFlowAdd egressReplaceFlowMod(int inputPort, int outputPort, int inputVlan, int outputVlan, long cookie,
-                                          FlowEncapsulationType encapsulationType, DatapathId ingressSwitchDpid) {
+    public OFFlowAdd egressReplaceFlowMod(DatapathId dpid, int inputPort, int outputPort, int inputVlan, int outputVlan,
+                                          long cookie, FlowEncapsulationType encapsulationType) {
         List<OFAction> actions = getPopActions(OutputVlanType.REPLACE, outputPort, outputVlan, encapsulationType);
-        return egressPushFlowMod(inputPort, inputVlan, cookie, encapsulationType, actions, ingressSwitchDpid);
+        return egressPushFlowMod(dpid, inputPort, inputVlan, cookie, encapsulationType, actions);
     }
 }
