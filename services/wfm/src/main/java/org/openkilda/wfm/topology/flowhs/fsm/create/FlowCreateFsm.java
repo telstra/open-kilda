@@ -77,14 +77,14 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
     private final String flowId;
     private final FlowCreateHubCarrier carrier;
 
-    private Map<UUID, SpeakerCommandObserver> pendingCommands = new HashMap<>();
-    private Set<UUID> failedCommands = new HashSet<>();
-
     private List<FlowResources> flowResources = new ArrayList<>();
     private PathId forwardPathId;
     private PathId reversePathId;
     private PathId protectedForwardPathId;
     private PathId protectedReversePathId;
+
+    private Map<UUID, SpeakerCommandObserver> pendingCommands = new HashMap<>();
+    private Set<UUID> failedCommands = new HashSet<>();
 
     private Map<UUID, InstallIngressRule> ingressCommands = new HashMap<>();
     private Map<UUID, InstallTransitRule> nonIngressCommands = new HashMap<>();
@@ -113,6 +113,7 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
     public boolean retryIfAllowed() {
         if (!timedOut && remainRetries-- > 0) {
             log.info("About to retry flow create. Retries left: {}", remainRetries);
+            resetState();
             fire(Event.RETRY);
             return true;
         } else {
@@ -164,6 +165,19 @@ public final class FlowCreateFsm extends NbTrackableStateMachine<FlowCreateFsm, 
     @Override
     public void sendResponse(Message message) {
         carrier.sendNorthboundResponse(message);
+    }
+
+    private void resetState() {
+        ingressCommands.clear();
+        nonIngressCommands.clear();
+        removeCommands.clear();
+        failedCommands.clear();
+        flowResources.clear();
+
+        forwardPathId = null;
+        reversePathId = null;
+        protectedForwardPathId = null;
+        protectedReversePathId = null;
     }
 
     public static FlowCreateFsm.Factory factory(PersistenceManager persistenceManager, FlowCreateHubCarrier carrier,

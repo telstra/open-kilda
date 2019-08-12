@@ -43,9 +43,12 @@ public class OnReceivedInstallResponseAction extends OnReceivedResponseAction {
 
         if (stateMachine.getPendingCommands().isEmpty()) {
             if (stateMachine.getFailedCommands().isEmpty()) {
-                log.debug("Received responses for all pending commands");
+                log.debug("Successfully executed all pending commands");
                 stateMachine.fire(Event.NEXT);
             } else {
+                log.debug("Received responses of all pending commands. Total failed commands: {}",
+                        stateMachine.getFailedCommands().size());
+                stateMachine.getFailedCommands().clear();
                 stateMachine.fireError();
             }
         }
