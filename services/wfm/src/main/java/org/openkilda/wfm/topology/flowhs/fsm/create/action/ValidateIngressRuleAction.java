@@ -56,22 +56,24 @@ public class ValidateIngressRuleAction extends FlowProcessingAction<FlowCreateFs
 
         FlowRuleResponse response = (FlowRuleResponse) context.getSpeakerFlowResponse();
         RulesValidator validator = new IngressRulesValidator(expected, response, switchFeatures);
+        String action;
         if (!validator.validate()) {
             stateMachine.getFailedCommands().add(commandId);
+            action = format("Rule is valid: switch %s, cookie %s", expected.getSwitchId(), expected.getCookie());
         } else {
-            saveHistory(stateMachine, expected);
-            stateMachine.getPendingCommands().remove(commandId);
-            if (stateMachine.getPendingCommands().isEmpty()) {
-                log.debug("Ingress rules have been validated for flow {}", stateMachine.getFlowId());
-                stateMachine.fire(Event.NEXT);
-            }
+            action = format("Rule is invalid: switch %s, cookie %s",  expected.getSwitchId(), expected.getCookie());
+        }
+
+        stateMachine.getPendingCommands().remove(commandId);
+        if (stateMachine.getPendingCommands().isEmpty()) {
+            log.debug("Ingress rules have been validated for flow {}", stateMachine.getFlowId());
+            saveHistory(stateMachine, expected, action);
+            stateMachine.fire(Event.NEXT);
         }
     }
 
-    private void saveHistory(FlowCreateFsm stateMachine, InstallIngressRule expected) {
-        String action = format("Rule is valid: switch %s, cookie %s",
-                expected.getSwitchId().toString(), expected.getCookie());
-        String description = format("Ingress rule has been validated successfully: switch %s, cookie %s",
+    private void saveHistory(FlowCreateFsm stateMachine, InstallIngressRule expected, String action) {
+        String description = format("Ingress rule validation is completed: switch %s, cookie %s",
                 expected.getSwitchId().toString(), expected.getCookie());
         saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(), action, description);
     }
