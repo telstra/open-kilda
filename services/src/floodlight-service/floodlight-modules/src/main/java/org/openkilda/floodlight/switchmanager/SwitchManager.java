@@ -174,7 +174,6 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     public static final int FLOW_PRIORITY = FlowModUtils.PRIORITY_HIGH;
     public static final int DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1;
     public static final int BDF_DEFAULT_PORT = 3784;
-    public static final int MIN_RATE_IN_KBPS = 64;
     public static final int ROUND_TRIP_LATENCY_GROUP_ID = 1;
     public static final MacAddress STUB_VXLAN_ETH_DST_MAC = MacAddress.of(0xFFFFFFEDCBA2L);
     public static final IPv4Address STUB_VXLAN_IPV4_SRC = IPv4Address.of("127.0.0.1");
@@ -388,7 +387,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         OFFactory ofFactory = sw.getOFFactory();
 
         // build meter instruction
-        OFInstructionMeter meter = buildMeterInstruction(meterId, sw, ofFactory, actionList);
+        OFInstructionMeter meter = buildMeterInstruction(meterId, sw, actionList);
 
         // output action based on encap scheme
         actionList.addAll(inputVlanTypeToOfActionList(ofFactory, transitTunnelId, outputVlanType,
@@ -495,7 +494,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
 
         // build meter instruction
-        OFInstructionMeter meter = buildMeterInstruction(meterId, sw, ofFactory, actionList);
+        OFInstructionMeter meter = buildMeterInstruction(meterId, sw, actionList);
 
         // output action based on encap scheme
         actionList.addAll(pushSchemeOutputVlanTypeToOfActionList(ofFactory, outputVlanId, outputVlanType));
@@ -571,7 +570,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     private OFInstructionMeter buildMeterInstructionForBroadcastRule(IOFSwitch sw, ArrayList<OFAction> actionList) {
         return buildMeterInstruction(createMeterIdForDefaultRule(VERIFICATION_BROADCAST_RULE_COOKIE).getValue(),
-                sw, sw.getOFFactory(), actionList);
+                sw, actionList);
     }
 
     private ArrayList<OFAction> prepareActionListForUnicastRule(IOFSwitch sw) {
@@ -582,12 +581,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     private OFInstructionMeter buildMeterInstructionForUnicastRule(IOFSwitch sw, ArrayList<OFAction> actionList) {
         return buildMeterInstruction(createMeterIdForDefaultRule(VERIFICATION_UNICAST_RULE_COOKIE).getValue(),
-                sw, sw.getOFFactory(), actionList);
+                sw, actionList);
     }
 
     private OFInstructionMeter buildMeterInstructionForUnicastVxlanRule(IOFSwitch sw, ArrayList<OFAction> actionList) {
         return buildMeterInstruction(createMeterIdForDefaultRule(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE).getValue(),
-                sw, sw.getOFFactory(), actionList);
+                sw, actionList);
     }
 
     /**
@@ -707,7 +706,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                     .collect(Collectors.toSet());
             installMeter(sw, flags, bandwidth, burstSize, meterId);
         } else {
-            throw new InvalidMeterIdException(dpid, "Meter id must be positive.");
+            throw new InvalidMeterIdException(dpid, format("Meter id must be greater than %d.", MIN_FLOW_METER_ID));
         }
     }
 
@@ -1857,7 +1856,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     @VisibleForTesting
     OFInstructionMeter installMeterForDefaultRule(IOFSwitch sw, long meterId, long ratePkts,
-                                                  ArrayList<OFAction> actionList) {
+                                                  List<OFAction> actionList) {
+        return installOrReinstallMeter(sw, meterId, ratePkts, config.getDiscoPacketSize(),
+                config.getSystemMeterBurstSizeInPackets(), actionList);
+    }
+
+    private OFInstructionMeter installOrReinstallMeter(IOFSwitch sw, long meterId, long rateInPackets,
+                                                       long packetSizeInBytes, long burstSizeInPackets,
+                                                       List<OFAction> actionList) {
         OFMeterConfig meterConfig;
         try {
             meterConfig = getMeter(sw.getId(), meterId);
@@ -1880,19 +1886,19 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             if (featureDetectorService.detectSwitch(sw).contains(Feature.PKTPS_FLAG)) {
                 flags = ImmutableSet.of(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
                 // With PKTPS flag rate and burst size is in packets
-                rate = ratePkts;
-                burstSize = config.getSystemMeterBurstSizeInPackets();
+                rate = rateInPackets;
+                burstSize = burstSizeInPackets;
             } else {
                 flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
                 // With KBPS flag rate and burst size is in Kbits
-                rate = Math.max(MIN_RATE_IN_KBPS, (ratePkts * config.getDiscoPacketSize()) / 1024L);
-                burstSize = config.getSystemMeterBurstSizeInPackets() * config.getDiscoPacketSize() / 1024L;
+                rate = Meter.convertRateToKiloBits(rateInPackets, packetSizeInBytes);
+                burstSize = Meter.convertBurstSizeToKiloBits(burstSizeInPackets, packetSizeInBytes);
             }
 
             if (meterBandDrop != null && meterBandDrop.getRate() == rate
                     && CollectionUtils.isEqualCollection(meterConfig.getFlags(), flags)) {
                 logger.debug("Meter {} won't be reinstalled on switch {}. It already exists", meterId, sw.getId());
-                return buildMeterInstruction(meterId, sw, sw.getOFFactory(), actionList);
+                return buildMeterInstruction(meterId, sw, actionList);
             }
 
             if (meterBandDrop != null) {
@@ -1908,7 +1914,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             return null;
         }
 
-        return buildMeterInstruction(meterId, sw, sw.getOFFactory(), actionList);
+        return buildMeterInstruction(meterId, sw, actionList);
     }
 
     /**
@@ -1916,12 +1922,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      *
      * @param meterId meter to be installed.
      * @param sw switch information.
-     * @param ofFactory OF factory for the switch.
      * @param actionList actions for the flow.
      * @return built {@link OFInstructionMeter} for OF 1.3 and 1.4, otherwise returns null.
      */
-    private OFInstructionMeter buildMeterInstruction(long meterId, IOFSwitch sw, OFFactory ofFactory,
-                                                     List<OFAction> actionList) {
+    private OFInstructionMeter buildMeterInstruction(long meterId, IOFSwitch sw, List<OFAction> actionList) {
+        OFFactory ofFactory = sw.getOFFactory();
         OFInstructionMeter meterInstruction = null;
         if (meterId != 0L && (config.isOvsMetersEnabled() || !isOvs(sw))) {
             if (ofFactory.getVersion().compareTo(OF_12) <= 0) {
