@@ -469,8 +469,8 @@ public class FlowService extends BaseFlowService {
      * @param sender         the command sender for flow rules installation and deletion.
      */
     public ReroutedFlowPaths rerouteFlow(String flowId, boolean forceToReroute, Set<PathId> pathIds,
-                                         FlowCommandSender sender) throws RecoverableException, UnroutableFlowException,
-            FlowNotFoundException, ResourceAllocationException {
+                                         FlowCommandSender sender) throws UnroutableFlowException,
+            FlowNotFoundException, ResourceAllocationException, FlowValidationException {
         dashboardLogger.onFlowPathReroute(flowId, pathIds, forceToReroute);
 
         RerouteResult result = null;
@@ -478,7 +478,7 @@ public class FlowService extends BaseFlowService {
             result = (RerouteResult) getFailsafe().get(() ->
                     transactionManager.doInTransaction(() -> doReroute(flowId, forceToReroute, pathIds)));
         } catch (FailsafeException e) {
-            unwrapFaisafeException(e);
+            unwrapCrudFaisafeException(e);
         }
 
         log.warn("Reroute finished. Paths to create: {}. Paths to remove: {}",
@@ -505,11 +505,17 @@ public class FlowService extends BaseFlowService {
     }
 
     private RerouteResult doReroute(String flowId, boolean forceToReroute, Set<PathId> pathIds)
-            throws FlowNotFoundException, RecoverableException, UnroutableFlowException, ResourceAllocationException {
+            throws FlowNotFoundException, RecoverableException, UnroutableFlowException, ResourceAllocationException,
+            FlowValidationException {
         FlowPathsWithEncapsulation currentFlow =
                 getFlowPathPairWithEncapsulation(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
         Flow flow = currentFlow.getFlow();
+        if (flow.getStatus() == FlowStatus.IN_PROGRESS) {
+            throw new FlowValidationException(format("Cannot reroute the flow %s that is in progress state", flowId),
+                    ErrorType.UNPROCESSABLE_REQUEST);
+        }
+
         Flow initialFlow = flow.toBuilder().build();
 
         featureTogglesRepository.find().ifPresent(featureToggles ->
@@ -1257,12 +1263,6 @@ public class FlowService extends BaseFlowService {
                 .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT))
                 .onRetry(e -> log.warn("Retrying transaction finished with exception", e))
                 .onRetriesExceeded(e -> log.warn("TX retry attempts exceed with error", e));
-    }
-
-    private void unwrapFaisafeException(FailsafeException e) throws UnroutableFlowException,
-            ResourceAllocationException, FlowNotFoundException {
-        unwrapBaseFaisafeException(e);
-        throw e;
     }
 
     private void unwrapCrudFaisafeException(FailsafeException e) throws UnroutableFlowException,

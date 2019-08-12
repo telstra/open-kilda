@@ -553,6 +553,9 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         } catch (FlowNotFoundException e) {
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
                     ErrorType.NOT_FOUND, errorType, e.getMessage());
+        } catch (FlowValidationException e) {
+            throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
+                    e.getType(), errorType, e.getMessage());
         } catch (UnroutableFlowException e) {
             flowService.updateFlowStatus(flowId, FlowStatus.DOWN, request.getPathIds());
             throw new MessageException(message.getCorrelationId(), System.currentTimeMillis(),
