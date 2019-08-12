@@ -18,9 +18,9 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
-import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -113,10 +113,10 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                 },
                 [description: "port on dst1 <-> port on src2, vlans are equal"].tap {
                     def switchPair = getTopologyHelper().getNotNeighboringSwitchPair()
-                    def flow1 = getFlowHelper().randomFlow(switchPair)
+                    def flow1 = getFlowHelper().randomFlow(switchPair, false)
                     def flow2 = getFlowHelper().randomFlow(switchPair, false, [flow1])
-                    flow1.destination.portNumber = getFreePort(switchPair.dst, [switchPair.src])
-                    flow2.source.portNumber = getFreePort(switchPair.src, [switchPair.dst], [flow1.destination.portNumber])
+                    flow1.destination.portNumber = getFreePort(switchPair.dst, [switchPair.src], [flow1.source.portNumber])
+                    flow2.source.portNumber = getFreePort(switchPair.src, [switchPair.dst], [flow2.destination.portNumber])
                     flow2.source.vlanId = flow1.source.vlanId
                     it.flows = [flow1, flow2]
                     it.firstSwap = new SwapFlowPayload(flow1.id,
@@ -1063,7 +1063,7 @@ switches"() {
 
         then: "Endpoints are successfully swapped"
         verifyEndpoints(response, flow1Src, flow1Dst, flow2Src, flow2Dst)
-        verifyEndpoints(flow1, flow2, flow1Src, flow1Dst, flow2Src, flow2Dst)
+        verifyEndpoints(flow1.id, flow2.id, flow1Src, flow1Dst, flow2Src, flow2Dst)
 
         //TODO(andriidovhan) uncomment when pr2503 is merged
 //        and: "Flows validation doesn't show any discrepancies"

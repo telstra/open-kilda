@@ -7,7 +7,9 @@ import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.rerun.Rerun
 import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
 import groovyx.gpars.group.DefaultPGroup
@@ -56,7 +58,8 @@ class ContentionV2Spec extends BaseSpecification {
         when: "Create multiple flows on the same ISLs concurrently"
         def flowsAmount = 6
         def group = new DefaultPGroup(flowsAmount)
-        def flows = (1..flowsAmount).collect { flowHelperV2.randomFlow(topologyHelper.notNeighboringSwitchPair) }
+        List<FlowRequestV2> flows = []
+        flowsAmount.times { flows << flowHelperV2.randomFlow(topologyHelper.notNeighboringSwitchPair, false , flows) }
         def createTasks = flows.collect { flow ->
             group.task { flowHelperV2.addFlow(flow) }
         }

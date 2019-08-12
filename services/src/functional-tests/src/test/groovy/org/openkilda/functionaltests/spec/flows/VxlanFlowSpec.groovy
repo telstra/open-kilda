@@ -11,6 +11,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -138,6 +139,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         flowInfo.lastUpdated < newFlowInfo.lastUpdated
 
         and: "Cleanup: Delete the flow"
+        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.id).status == FlowState.UP }
         flowHelper.deleteFlow(flow.id)
     }
 
