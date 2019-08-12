@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.model.Cookie;
@@ -36,6 +37,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
+import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
@@ -43,24 +45,32 @@ import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
 
 public class ValidationServiceImplTest {
 
     private static final SwitchId SWITCH_ID_A = new SwitchId("00:10");
     private static final SwitchId SWITCH_ID_B = new SwitchId("00:20");
     private static final SwitchId SWITCH_ID_E = new SwitchId("00:30");
-    private static final long MIN_BURST_SIZE_IN_KBITS = 1024;
-    private static final double BURST_COEFFICIENT = 1.05;
     private static final long FLOW_E_BANDWIDTH = 10000L;
+    private static SwitchManagerTopologyConfig topologyConfig;
+
+    @BeforeClass
+    public static void setupOnce() {
+        PropertiesBasedConfigurationProvider configurationProvider =
+                new PropertiesBasedConfigurationProvider(new Properties());
+        topologyConfig = configurationProvider.getConfiguration(SwitchManagerTopologyConfig.class);
+    }
 
     @Test
     public void validateRulesEmpty() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, emptyList(), emptyList());
         assertTrue(response.getMissingRules().isEmpty());
         assertTrue(response.getProperRules().isEmpty());
@@ -70,7 +80,7 @@ public class ValidationServiceImplTest {
     @Test
     public void validateRulesSimpleSegmentCookies() {
         ValidationService validationService =
-                new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L, 3L).build());
+                new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L, 3L).build(), topologyConfig);
         List<FlowEntry> flowEntries =
                 Lists.newArrayList(FlowEntry.builder().cookie(1L).build(), FlowEntry.builder().cookie(2L).build());
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
@@ -82,7 +92,8 @@ public class ValidationServiceImplTest {
     @Test
     public void validateRulesSegmentAndIngressCookies() {
         ValidationService validationService =
-                new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L).withIngressCookies(1L).build());
+                new ValidationServiceImpl(persistenceManager().withSegmentsCookies(2L).withIngressCookies(1L).build(),
+                        topologyConfig);
         List<FlowEntry> flowEntries =
                 Lists.newArrayList(FlowEntry.builder().cookie(1L).build(), FlowEntry.builder().cookie(2L).build());
         ValidateRulesResult response = validationService.validateRules(SWITCH_ID_A, flowEntries, emptyList());
@@ -93,7 +104,7 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateDefaultRules() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         List<FlowEntry> flowEntries =
                 Lists.newArrayList(FlowEntry.builder().cookie(0x8000000000000001L).priority(1).byteCount(123).build(),
                         FlowEntry.builder().cookie(0x8000000000000001L).priority(2).build(),
@@ -115,9 +126,8 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersEmpty() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
-        ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_A, new ArrayList<>(),
-                MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
+        ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_A, new ArrayList<>());
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
         assertTrue(response.getProperMeters().isEmpty());
@@ -126,10 +136,9 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersProperMeters() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
-                MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
+                Lists.newArrayList(new MeterEntry(32, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})));
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
         assertFalse(response.getProperMeters().isEmpty());
@@ -139,10 +148,9 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersMisconfiguredMeters() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(new MeterEntry(32, 10000, 10498, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
-                MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
+                Lists.newArrayList(new MeterEntry(32, 10000, 10498, "OF_13", new String[]{"KBPS", "BURST", "STATS"})));
         assertTrue(response.getMissingMeters().isEmpty());
         assertFalse(response.getMisconfiguredMeters().isEmpty());
         assertEquals(10498L, (long) response.getMisconfiguredMeters().get(0).getActual().getBurstSize());
@@ -153,10 +161,9 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersMissingAndExcessMeters() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(new MeterEntry(33, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})),
-                MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
+                Lists.newArrayList(new MeterEntry(33, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})));
         assertFalse(response.getMissingMeters().isEmpty());
         assertEquals(32L, (long) response.getMissingMeters().get(0).getMeterId());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
@@ -167,10 +174,9 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersIgnoreDefaultMeters() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(new MeterEntry(2, 0, 0, null, null), new MeterEntry(3, 0, 0, null, null)),
-                MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
+                Lists.newArrayList(new MeterEntry(2, 0, 0, null, null), new MeterEntry(3, 0, 0, null, null)));
         assertFalse(response.getMissingMeters().isEmpty());
         assertEquals(1, response.getMissingMeters().size());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
@@ -180,13 +186,13 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersProperMetersESwitch() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         long rateESwitch = FLOW_E_BANDWIDTH + (long) (FLOW_E_BANDWIDTH * 0.01) - 1;
         long burstSize = (long) (FLOW_E_BANDWIDTH * 1.05);
         long burstSizeESwitch = burstSize + (long) (burstSize * 0.01) - 1;
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_E,
                 Lists.newArrayList(new MeterEntry(32, rateESwitch, burstSizeESwitch, "OF_13",
-                        new String[]{"KBPS", "BURST", "STATS"})), MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
+                        new String[]{"KBPS", "BURST", "STATS"})));
         assertTrue(response.getMissingMeters().isEmpty());
         assertTrue(response.getMisconfiguredMeters().isEmpty());
         assertFalse(response.getProperMeters().isEmpty());
@@ -196,13 +202,13 @@ public class ValidationServiceImplTest {
 
     @Test
     public void validateMetersMisconfiguredMetersESwitch() {
-        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build());
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
         long rateESwitch = FLOW_E_BANDWIDTH + (long) (FLOW_E_BANDWIDTH * 0.01) + 1;
         long burstSize = (long) (FLOW_E_BANDWIDTH * 1.05);
         long burstSizeESwitch = burstSize + (long) (burstSize * 0.01) + 1;
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_E,
                 Lists.newArrayList(new MeterEntry(32, rateESwitch, burstSizeESwitch, "OF_13",
-                        new String[]{"KBPS", "BURST", "STATS"})), MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT);
+                        new String[]{"KBPS", "BURST", "STATS"})));
         assertTrue(response.getMissingMeters().isEmpty());
         assertFalse(response.getMisconfiguredMeters().isEmpty());
         assertEquals(10606L, (long) response.getMisconfiguredMeters().get(0).getActual().getBurstSize());

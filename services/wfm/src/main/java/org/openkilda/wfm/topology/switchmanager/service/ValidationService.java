@@ -27,6 +27,5 @@ public interface ValidationService {
     ValidateRulesResult validateRules(SwitchId switchId, List<FlowEntry> presentRules,
                                       List<FlowEntry> expectedDefaultRules);
 
-    ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
-                                        long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient);
+    ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters);
 }

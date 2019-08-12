@@ -27,6 +27,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
+import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateMetersResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
@@ -49,9 +50,13 @@ public class ValidationServiceImpl implements ValidationService {
     private static final double E_SWITCH_METER_BURST_SIZE_EQUALS_DELTA_COEFFICIENT = 0.01;
 
     private FlowPathRepository flowPathRepository;
+    private final long flowMeterMinBurstSizeInKbits;
+    private final double flowMeterBurstCoefficient;
 
-    public ValidationServiceImpl(PersistenceManager persistenceManager) {
+    public ValidationServiceImpl(PersistenceManager persistenceManager, SwitchManagerTopologyConfig topologyConfig) {
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        this.flowMeterMinBurstSizeInKbits = topologyConfig.getFlowMeterMinBurstSizeInKbits();
+        this.flowMeterBurstCoefficient = topologyConfig.getFlowMeterBurstCoefficient();
     }
 
     @Override
@@ -151,8 +156,7 @@ public class ValidationServiceImpl implements ValidationService {
     }
 
     @Override
-    public ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters,
-                                               long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient) {
+    public ValidateMetersResult validateMeters(SwitchId switchId, List<MeterEntry> presentMeters) {
         log.debug("Validating meters on switch {}", switchId);
 
         presentMeters.removeIf(meterEntry -> MeterId.isMeterIdOfDefaultRule(meterEntry.getMeterId()));

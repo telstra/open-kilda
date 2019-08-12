@@ -36,6 +36,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.switchmanager.StreamType;
+import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchSyncService;
@@ -59,19 +60,16 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
     private final PersistenceManager persistenceManager;
     private final FlowResourcesConfig flowResourcesConfig;
+    private final SwitchManagerTopologyConfig topologyConfig;
     private transient SwitchValidateService validateService;
     private transient SwitchSyncService syncService;
 
-    private long flowMeterMinBurstSizeInKbits;
-    private double flowMeterBurstCoefficient;
-
     public SwitchManagerHub(HubBolt.Config hubConfig, PersistenceManager persistenceManager,
-                            long flowMeterMinBurstSizeInKbits, double flowMeterBurstCoefficient,
+                            SwitchManagerTopologyConfig topologyConfig,
                             FlowResourcesConfig flowResourcesConfig) {
         super(hubConfig);
         this.persistenceManager = persistenceManager;
-        this.flowMeterMinBurstSizeInKbits = flowMeterMinBurstSizeInKbits;
-        this.flowMeterBurstCoefficient = flowMeterBurstCoefficient;
+        this.topologyConfig = topologyConfig;
         this.flowResourcesConfig = flowResourcesConfig;
     }
 
@@ -163,13 +161,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     }
 
     @Override
-    public long getFlowMeterMinBurstSizeInKbits() {
-        return flowMeterMinBurstSizeInKbits;
-    }
-
-    @Override
-    public double getFlowMeterBurstCoefficient() {
-        return flowMeterBurstCoefficient;
+    public SwitchManagerTopologyConfig getTopologyConfig() {
+        return topologyConfig;
     }
 
     @Override
