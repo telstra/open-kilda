@@ -17,7 +17,7 @@ class WfmManipulator {
      * TODO(rtretiak): find a more reliable way to wait for the H-hour
      * Not respecting this wait may lead to subsequent tests instability
      */
-    private static final int WFM_WARMUP_SECONDS = 120
+    private static final int WFM_WARMUP_SECONDS = 180
 
     DockerClient dockerClient
     Container wfmContainer
