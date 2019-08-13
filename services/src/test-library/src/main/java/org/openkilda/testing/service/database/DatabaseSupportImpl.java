@@ -222,7 +222,7 @@ public class DatabaseSupportImpl implements Database {
     @Override
     public boolean resetCosts() {
         Session session = ((Neo4jSessionFactory) transactionManager).getSession();
-        String query = "MATCH ()-[i:isl]->() SET i.cost=$cost";
+        String query = "MATCH ()-[i:isl]->() SET i.cost=$cost, i.time_unstable=null";
         Result result = session.query(query, ImmutableMap.of("cost", DEFAULT_COST));
         return result.queryStatistics().getPropertiesSet() > 0;
     }

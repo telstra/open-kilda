@@ -17,17 +17,13 @@ import spock.lang.Unroll
 
 class IslCostSpec extends HealthCheckSpecification {
 
-    @Value('${isl.cost.when.port.down}')
-    int islCostWhenPortDown
-
     def setupOnce() {
         database.resetCosts()  // reset cost on all links before tests
     }
 
     @Unroll
     @IterationTag(tags = [SMOKE], iterationNameRegex = /a direct/)
-    def "Cost of #description ISL is increased due to bringing port down on a switch \
-(ISL cost < isl.cost.when.port.down)"() {
+    def "Cost of #description ISL is not increased due to bringing port down on a switch"() {
         given: "An active ISL with created link props"
         int islCost = islUtils.getIslInfo(isl).get().cost
         northbound.updateLinkProps([isl, isl.reversed].collect { islUtils.toLinkProps(it, [cost: islCost.toString()]) })
@@ -39,13 +35,12 @@ class IslCostSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
 
         and: "Cost of forward and reverse ISLs after bringing port down is increased"
-        def newCost = islCostWhenPortDown + islCost
         def isls = northbound.getAllLinks()
-        islUtils.getIslInfo(isls, isl).get().cost == newCost
-        islUtils.getIslInfo(isls, isl.reversed).get().cost == newCost
+        islUtils.getIslInfo(isls, isl).get().cost == islCost
+        islUtils.getIslInfo(isls, isl.reversed).get().cost == islCost
 
-        and: "Cost on corresponding link props is increased as well"
-        northbound.getAllLinkProps()*.props.cost == [newCost, newCost]*.toString()
+        and: "Cost on corresponding link props is not increased as well"
+        northbound.getAllLinkProps()*.props.cost == [islCost, islCost]*.toString()
 
         and: "Bring port up on the source switch and reset costs"
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
@@ -58,69 +53,6 @@ class IslCostSpec extends HealthCheckSpecification {
         isl                                                                                    | description
         getTopology().islsForActiveSwitches.find { !it.aswitch }                               | "a direct"
         getTopology().islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort } | "an a-switch"
-    }
-
-    @Unroll
-    @IterationTag(tags = [SMOKE], iterationNameRegex = /an a-switch/)
-    def "Cost of #data.description ISL is NOT increased due to bringing port down on a switch \
-(ISL cost #data.condition isl.cost.when.port.down)"() {
-        given: "An active ISL with created link props"
-        def linkProps = [islUtils.toLinkProps(data.isl, ["cost": data.cost.toString()])]
-        northbound.updateLinkProps(linkProps)
-        int islCost = islUtils.getIslInfo(data.isl).get().cost
-
-        when: "Bring port down on the source switch"
-        northbound.portDown(data.isl.srcSwitch.dpId, data.isl.srcPort)
-
-        then: "ISL status becomes 'FAILED'"
-        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(data.isl).get().state == IslChangeType.FAILED }
-
-        and: "Cost of forward and reverse ISLs after bringing port down is NOT increased"
-        def isls = northbound.getAllLinks()
-        islUtils.getIslInfo(isls, data.isl).get().cost == islCost
-        islUtils.getIslInfo(isls, data.isl.reversed).get().cost == islCost
-
-        and: "Cost on corresponding link props is NOT increased as well"
-        northbound.getAllLinkProps()*.props.cost == [islCost, islCost]*.toString()
-
-        and: "Cleanup: Bring port up on the source switch, delete link props and reset costs"
-        northbound.portUp(data.isl.srcSwitch.dpId, data.isl.srcPort)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(data.isl).get().state == IslChangeType.DISCOVERED
-        }
-        northbound.deleteLinkProps(northbound.getAllLinkProps())
-
-        where:
-        data << [
-                [
-                        isl        : getTopology().islsForActiveSwitches.find { !it.aswitch },
-                        description: "a direct",
-                        cost       : getIslCostWhenPortDown(),
-                        condition  : "="
-                ],
-                [
-                        isl        : getTopology().islsForActiveSwitches.find {
-                            it.aswitch?.inPort && it.aswitch?.outPort
-                        },
-                        description: "an a-switch",
-                        cost       : getIslCostWhenPortDown(),
-                        condition  : "="
-                ],
-                [
-                        isl        : getTopology().islsForActiveSwitches.find { !it.aswitch },
-                        description: "a direct",
-                        cost       : getIslCostWhenPortDown() + 1,
-                        condition  : ">"
-                ],
-                [
-                        isl        : getTopology().islsForActiveSwitches.find {
-                            it.aswitch?.inPort && it.aswitch?.outPort
-                        },
-                        description: "an a-switch",
-                        cost       : getIslCostWhenPortDown() + 1,
-                        condition  : ">"
-                ]
-        ]
     }
 
     //'ISL with BFD session' case is covered in BfdSpec. Spoiler: it should act the same and don't change cost at all.

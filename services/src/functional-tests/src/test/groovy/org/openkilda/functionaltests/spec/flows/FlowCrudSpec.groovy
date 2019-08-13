@@ -8,7 +8,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -815,6 +814,57 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "Cleanup: Delete the flows and excess meters"
         flows.each { flowHelper.deleteFlow(it) }
+    }
+
+    def "System takes isl time_unstable info into account while creating a flow"() {
+        given: "Two active not neighboring switches with two possible paths at least"
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
+            it.paths.unique { it.first().portNo }.size() > 1
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "Select two possible paths for further manipulation with them"
+        def firstPath = switchPair.paths.min { it.size() }
+        def secondPath = switchPair.paths.findAll { it != firstPath }.max { it.size() }
+        def altPaths = switchPair.paths.findAll {
+            it != firstPath && it.first().portNo != firstPath.first().portNo &&
+                    it != secondPath && it.first().portNo != secondPath.first().portNo
+        }.sort { it.size() }
+
+        and: "Make all alternative paths unavailable (bring ports down on the srcSwitch)"
+        List<PathNode> broughtDownPorts = []
+        altPaths.unique { it.first() }.each { path ->
+            def src = path.first()
+            broughtDownPorts.add(src)
+            northbound.portDown(src.switchId, src.portNo)
+        }
+        Wrappers.wait(antiflapMin + WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == FAILED
+            }.size() == broughtDownPorts.size() * 2
+        }
+
+        and: "Make the first selected path unstable by bringing port down/up"
+        // after bringing port down/up, the isl will be marked as unstable by updating the 'time_unstable' field in DB
+        def islToBreak = pathHelper.getInvolvedIsls(firstPath).first()
+        northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == FAILED }
+        northbound.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == DISCOVERED }
+
+        when: "Create a flow"
+        def flow = flowHelper.randomFlow(switchPair)
+        flowHelper.addFlow(flow)
+
+        then: "Flow is created on the link from the second selected path"
+        PathHelper.convert(northbound.getFlowPath(flow.id)).first().portNo == secondPath.first().portNo
+
+        and: "Restore topology, delete the flow and reset costs"
+        broughtDownPorts.each { northbound.portUp(it.switchId, it.portNo) }
+        flowHelper.deleteFlow(flow.id)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getAllLinks().each { assert it.state != FAILED }
+        }
+        database.resetCosts()
     }
 
     @Shared
