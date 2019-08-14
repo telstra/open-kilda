@@ -869,14 +869,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
-    public void installUnicastVerificationRuleVxlan(final DatapathId dpid) throws SwitchOperationException {
+    public Long installUnicastVerificationRuleVxlan(final DatapathId dpid) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
 
         // NOTE(tdurakov): reusing copy field feature here, since only switches with it supports pop/push vxlan's
         // should be replaced with fair feature detection based on ActionId's during handshake
         if (!featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
             logger.debug("Skip installation of unicast verification vxlan rule for switch {}", dpid);
-            return;
+            return null;
         }
 
         ArrayList<OFAction> actionList = new ArrayList<>();
@@ -889,6 +889,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         String flowname = "Unicast Vxlan";
         flowname += "--VerificationFlowVxlan--" + dpid.toString();
         pushFlow(sw, flowname, flowMod);
+        return cookie;
     }
 
     private OFFlowMod buildUnicastVerificationRuleVxlan(IOFSwitch sw, long cookie, OFInstructionMeter meter,
@@ -917,7 +918,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public void installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
+    public Long installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
             throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
 
@@ -952,6 +953,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         if (flowMod == null) {
             logger.debug("Not installing unicast verification match for {}", dpid);
+            return cookie;
         } else {
             if (!isBroadcast) {
                 logger.debug("Installing unicast verification match for {}", dpid);
@@ -960,6 +962,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             String flowName = (isBroadcast) ? "Broadcast" : "Unicast";
             flowName += "--VerificationFlow--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
+            return cookie;
         }
     }
 
@@ -1146,7 +1149,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public void installDropFlow(final DatapathId dpid) throws SwitchOperationException {
+    public Long installDropFlow(final DatapathId dpid) throws SwitchOperationException {
         // TODO: leverage installDropFlowCustom
         IOFSwitch sw = lookupSwitch(dpid);
 
@@ -1154,10 +1157,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         if (flowMod == null) {
             logger.debug("Skip installation of drop flow for switch {}", dpid);
+            return null;
         } else {
             logger.debug("Installing drop flow for switch {}", dpid);
             String flowName = "--DropRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
+            return DROP_RULE_COOKIE;
         }
     }
 
@@ -1173,16 +1178,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
-    public void installBfdCatchFlow(DatapathId dpid) throws SwitchOperationException {
+    public Long installBfdCatchFlow(DatapathId dpid) throws SwitchOperationException {
 
         IOFSwitch sw = lookupSwitch(dpid);
 
         OFFlowMod flowMod = buildBfdCatchFlow(sw);
         if (flowMod == null) {
             logger.debug("Skip installation of universal BFD catch flow for switch {}", dpid);
+            return null;
         } else {
             String flowName = "--CatchBfdRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
+            return CATCH_BFD_RULE_COOKIE;
         }
     }
 
@@ -1205,16 +1212,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
-    public void installRoundTripLatencyFlow(DatapathId dpid) throws SwitchOperationException {
+    public Long installRoundTripLatencyFlow(DatapathId dpid) throws SwitchOperationException {
         logger.info("Installing round trip default rule on {}", dpid);
         IOFSwitch sw = lookupSwitch(dpid);
 
         OFFlowMod flowMod = buildRoundTripLatencyFlow(sw);
         if (flowMod == null) {
             logger.debug("Skip installation of round-trip latency rule for switch {}", dpid);
+            return null;
         } else {
             String flowName = "--RoundTripLatencyRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
+            return ROUND_TRIP_LATENCY_RULE_COOKIE;
         }
     }
 
@@ -1255,15 +1264,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .build();
     }
 
-    void installDropLoopRule(DatapathId dpid) throws SwitchOperationException {
+    @Override
+    public Long installDropLoopRule(DatapathId dpid) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
 
         OFFlowMod flowMod = buildDropLoopRule(sw);
         if (flowMod == null) {
             logger.debug("Skip installation of drop loop rule for switch {}", dpid);
+            return null;
         } else {
             String flowName = "--DropLoopRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
+            return DROP_VERIFICATION_LOOP_RULE_COOKIE;
         }
     }
 

@@ -221,8 +221,8 @@ public class SwitchController extends BaseController {
     public CompletableFuture<List<Long>> installSwitchRules(
             @PathVariable("switch-id") SwitchId switchId,
             @ApiParam(value = "default: INSTALL_DEFAULTS. Can be one of InstallRulesAction: "
-                    + " INSTALL_DROP,INSTALL_BROADCAST,INSTALL_UNICAST,INSTALL_BFD_CATCH,INSTALL_ROUND_TRIP_LATENCY,"
-                    + "INSTALL_UNICAST_VXLAN,INSTALL_DEFAULTS")
+                    + "INSTALL_DROP,INSTALL_BROADCAST,INSTALL_UNICAST,INSTALL_DROP_VERIFICATION_LOOP,INSTALL_BFD_CATCH,"
+                    + "INSTALL_ROUND_TRIP_LATENCY,INSTALL_UNICAST_VXLAN,INSTALL_DEFAULTS")
             @RequestParam(value = "install-action", required = false) Optional<InstallRulesAction> installAction) {
         return switchService.installRules(switchId, installAction.orElse(InstallRulesAction.INSTALL_DEFAULTS));
     }

@@ -67,41 +67,56 @@ public interface ISwitchManager extends IFloodlightService {
     /**
      * Add default rule for install verfication rule applicable for vxlan.
      * @param dpid datapathId of switch
+     * @return unicast verification vxlan rule cookie if installation succeeds otherwise null.
      * @throws SwitchOperationException in case of errors
      */
-    void installUnicastVerificationRuleVxlan(final DatapathId dpid) throws SwitchOperationException;
+    Long installUnicastVerificationRuleVxlan(final DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Installs the default verification rule, if it is allowed. One case where it isn't -
      * if the switch is an OpenFlow 1.2 switch and isBroadcast = false. In that scenario, nothing
      * happens.
+     *
+     * @return verification rule cookie if installation succeeds otherwise null.
      */
-    void installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
+    Long installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
             throws SwitchOperationException;
 
     /**
      * Installs the default drop rule.
      *
      * @param dpid datapathId of switch
+     * @return drop rule cookie if installation succeeds otherwise null.
      * @throws SwitchOperationException in case of errors
      */
-    void installDropFlow(final DatapathId dpid) throws SwitchOperationException;
+    Long installDropFlow(final DatapathId dpid) throws SwitchOperationException;
+
+    /**
+     * Installs the drop verification loop rule.
+     *
+     * @param dpid datapathId of switch
+     * @return drop loop rule cookie if installation succeeds otherwise null.
+     * @throws SwitchOperationException in case of errors
+     */
+    Long installDropLoopRule(final DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Installs the default catch rule for BFD. Only applicable for NoviFlow switches.
      *
      * @param dpid datapathId of switch
+     * @return bfd catch rule cookie if installation succeeds otherwise null.
      * @throws SwitchOperationException in case of errors
      */
-    void installBfdCatchFlow(final DatapathId dpid) throws SwitchOperationException;
+    Long installBfdCatchFlow(final DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Installs the default round trip latency rule. Only applicable for NoviFlow switches.
      *
      * @param dpid datapathId of switch
+     * @return round trip latency rule cookie if installation succeeds otherwise null.
      * @throws SwitchOperationException in case of errors
      */
-    void installRoundTripLatencyFlow(final DatapathId dpid) throws SwitchOperationException;
+    Long installRoundTripLatencyFlow(final DatapathId dpid) throws SwitchOperationException;
 
     /**
      * Installs custom drop rule .. ie cookie, priority, match

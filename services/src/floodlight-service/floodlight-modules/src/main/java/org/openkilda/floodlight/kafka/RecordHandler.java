@@ -66,6 +66,7 @@ import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
 import org.openkilda.messaging.command.flow.MeterModifyCommandRequest;
+import org.openkilda.messaging.command.flow.ReinstallDefaultFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.flow.RemoveFlow;
 import org.openkilda.messaging.command.flow.RemoveFlowForSwitchManagerRequest;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
@@ -91,6 +92,7 @@ import org.openkilda.messaging.error.rule.FlowCommandErrorData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.discovery.DiscoPacketSendingConfirmation;
 import org.openkilda.messaging.info.flow.FlowInstallResponse;
+import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.messaging.info.flow.FlowRemoveResponse;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.info.meter.MeterEntry;
@@ -108,6 +110,7 @@ import org.openkilda.messaging.info.switches.PortDescription;
 import org.openkilda.messaging.info.switches.SwitchPortsDescription;
 import org.openkilda.messaging.info.switches.SwitchRulesResponse;
 import org.openkilda.messaging.model.NetworkEndpoint;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
@@ -194,6 +197,8 @@ class RecordHandler implements Runnable {
             doDeleteFlow(message, replyToTopic, replyDestination);
         } else if (data instanceof RemoveFlowForSwitchManagerRequest) {
             doDeleteFlowForSwitchManager(message);
+        } else if (data instanceof ReinstallDefaultFlowForSwitchManagerRequest) {
+            doReinstallDefaultFlowForSwitchManager(message);
         } else if (data instanceof NetworkCommandData) {
             doNetworkDump(message);
         } else if (data instanceof SwitchRulesDeleteRequest) {
@@ -463,7 +468,12 @@ class RecordHandler implements Runnable {
         RemoveFlow command = (RemoveFlow) message.getData();
         DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
 
-        processDeleteFlow(command, dpid);
+        try {
+            processDeleteFlow(command, dpid);
+        } catch (SwitchOperationException e) {
+            throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
+                    ErrorType.DELETION_FAILURE, e);
+        }
 
         message.setDestination(replyDestination);
         getKafkaProducer().sendMessageAndTrack(replyToTopic, message);
@@ -474,34 +484,113 @@ class RecordHandler implements Runnable {
      *
      * @param message command message for flow deletion
      */
-    private void doDeleteFlowForSwitchManager(final CommandMessage message)
-            throws FlowCommandException {
+    private void doDeleteFlowForSwitchManager(final CommandMessage message) {
         RemoveFlowForSwitchManagerRequest request = (RemoveFlowForSwitchManagerRequest) message.getData();
+        IKafkaProducerService producerService = getKafkaProducer();
         String replyToTopic = context.getKafkaSwitchManagerTopic();
         DatapathId dpid = DatapathId.of(request.getSwitchId().toLong());
 
-        processDeleteFlow(request.getFlowCommand(), dpid);
+        try {
+            processDeleteFlow(request.getFlowCommand(), dpid);
 
-        InfoMessage response = new InfoMessage(new FlowRemoveResponse(), System.currentTimeMillis(),
-                message.getCorrelationId());
-        getKafkaProducer().sendMessageAndTrack(replyToTopic, message.getCorrelationId(), response);
+            InfoMessage response = new InfoMessage(new FlowRemoveResponse(), System.currentTimeMillis(),
+                    message.getCorrelationId());
+            producerService.sendMessageAndTrack(replyToTopic, message.getCorrelationId(), response);
+
+        } catch (SwitchOperationException e) {
+            logger.error("Failed to process switch rule deletion for switch: '{}'", request.getSwitchId(), e);
+            anError(ErrorType.DELETION_FAILURE)
+                    .withMessage(e.getMessage())
+                    .withDescription(request.getSwitchId().toString())
+                    .withCorrelationId(message.getCorrelationId())
+                    .withTopic(replyToTopic)
+                    .sendVia(producerService);
+        }
     }
 
-    private void processDeleteFlow(RemoveFlow command, DatapathId dpid) throws FlowCommandException {
-        ISwitchManager switchManager = context.getSwitchManager();
-        try {
-            logger.info("Deleting flow {} from switch {}", command.getId(), dpid);
+    /**
+     * Reinstall default flow.
+     *
+     * @param message command message for flow deletion
+     */
+    private void doReinstallDefaultFlowForSwitchManager(CommandMessage message) {
+        ReinstallDefaultFlowForSwitchManagerRequest request =
+                (ReinstallDefaultFlowForSwitchManagerRequest) message.getData();
+        IKafkaProducerService producerService = getKafkaProducer();
+        String replyToTopic = context.getKafkaSwitchManagerTopic();
 
-            DeleteRulesCriteria criteria = Optional.ofNullable(command.getCriteria())
-                    .orElseGet(() -> DeleteRulesCriteria.builder().cookie(command.getCookie()).build());
-            List<Long> cookiesOfRemovedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
-            if (cookiesOfRemovedRules.isEmpty()) {
-                logger.warn("No rules were removed by criteria {} for flow {} from switch {}",
-                        criteria, command.getId(), dpid);
+        long cookie = request.getCookie();
+
+        if (!Cookie.isDefaultRule(cookie)) {
+            logger.warn("Failed to reinstall default switch rule for switch: '{}'.  Rule is not default.",
+                    request.getSwitchId());
+            anError(ErrorType.DATA_INVALID)
+                    .withMessage("Failed to reinstall default switch rule. Rule is not default")
+                    .withDescription(request.getSwitchId().toString())
+                    .withCorrelationId(message.getCorrelationId())
+                    .withTopic(replyToTopic)
+                    .sendVia(producerService);
+        }
+
+        SwitchId switchId = request.getSwitchId();
+        DatapathId dpid = DatapathId.of(switchId.toLong());
+        try {
+            RemoveFlow command = new RemoveFlow(null, "REMOVE_DEFAULT_FLOW", cookie, switchId, null, null);
+            List<Long> removedFlows = processDeleteFlow(command, dpid);
+
+            for (Long removedFlow : removedFlows) {
+                Long installedFlow = processInstallDefaultFlowByCookie(dpid, removedFlow);
+
+                InfoMessage response = new InfoMessage(new FlowReinstallResponse(removedFlow, installedFlow),
+                        System.currentTimeMillis(), message.getCorrelationId());
+                producerService.sendMessageAndTrack(replyToTopic, message.getCorrelationId(), response);
             }
+
         } catch (SwitchOperationException e) {
-            throw new FlowCommandException(command.getId(), command.getCookie(), command.getTransactionId(),
-                    ErrorType.DELETION_FAILURE, e);
+            logger.error("Failed to reinstall switch rule for switch: '{}'", request.getSwitchId(), e);
+            anError(ErrorType.INTERNAL_ERROR)
+                    .withMessage(e.getMessage())
+                    .withDescription(request.getSwitchId().toString())
+                    .withCorrelationId(message.getCorrelationId())
+                    .withTopic(replyToTopic)
+                    .sendVia(producerService);
+        }
+
+    }
+
+    private Long processInstallDefaultFlowByCookie(DatapathId dpid, long cookie) throws SwitchOperationException {
+        ISwitchManager switchManager = context.getSwitchManager();
+
+        if (cookie == DROP_RULE_COOKIE) {
+            return switchManager.installDropFlow(dpid);
+        } else if (cookie == VERIFICATION_BROADCAST_RULE_COOKIE) {
+            return switchManager.installVerificationRule(dpid, true);
+        } else if (cookie == VERIFICATION_UNICAST_RULE_COOKIE) {
+            return switchManager.installVerificationRule(dpid, false);
+        } else if (cookie == DROP_VERIFICATION_LOOP_RULE_COOKIE) {
+            return switchManager.installDropLoopRule(dpid);
+        } else if (cookie == CATCH_BFD_RULE_COOKIE) {
+            return switchManager.installBfdCatchFlow(dpid);
+        } else if (cookie == ROUND_TRIP_LATENCY_RULE_COOKIE) {
+            return switchManager.installRoundTripLatencyFlow(dpid);
+        } else if (cookie == VERIFICATION_UNICAST_VXLAN_RULE_COOKIE) {
+            return switchManager.installUnicastVerificationRuleVxlan(dpid);
+        } else {
+            logger.debug("Unexpected default switch rule");
+        }
+        return null;
+    }
+
+    private List<Long> processDeleteFlow(RemoveFlow command, DatapathId dpid) throws SwitchOperationException {
+        ISwitchManager switchManager = context.getSwitchManager();
+        logger.info("Deleting flow {} from switch {}", command.getId(), dpid);
+
+        DeleteRulesCriteria criteria = Optional.ofNullable(command.getCriteria())
+                .orElseGet(() -> DeleteRulesCriteria.builder().cookie(command.getCookie()).build());
+        List<Long> cookiesOfRemovedRules = switchManager.deleteRulesByCriteria(dpid, criteria);
+        if (cookiesOfRemovedRules.isEmpty()) {
+            logger.warn("No rules were removed by criteria {} for flow {} from switch {}",
+                    criteria, command.getId(), dpid);
         }
 
         Long meterId = command.getMeterId();
@@ -514,6 +603,7 @@ class RecordHandler implements Runnable {
                 logger.error("Failed to delete meter {} from switch {}: {}", meterId, dpid, e.getMessage());
             }
         }
+        return cookiesOfRemovedRules;
     }
 
     /**
@@ -551,6 +641,9 @@ class RecordHandler implements Runnable {
                 // TODO: this isn't always added (ie if OF1.2). Is there a better response?
                 switchManager.installVerificationRule(dpid, false);
                 installedRules.add(VERIFICATION_UNICAST_RULE_COOKIE);
+            } else if (installAction == InstallRulesAction.INSTALL_DROP_VERIFICATION_LOOP) {
+                switchManager.installDropLoopRule(dpid);
+                installedRules.add(DROP_VERIFICATION_LOOP_RULE_COOKIE);
             } else if (installAction == InstallRulesAction.INSTALL_BFD_CATCH) {
                 // TODO: this isn't installed as well. Refactor this section
                 switchManager.installBfdCatchFlow(dpid);
@@ -824,7 +917,10 @@ class RecordHandler implements Runnable {
     private void installFlow(BaseInstallFlow command) throws FlowCommandException,
             SwitchOperationException {
         logger.debug("Processing flow install command {}", command);
-        if (command instanceof InstallIngressFlow) {
+        if (Cookie.isDefaultRule(command.getCookie())) {
+            DatapathId dpid = DatapathId.of(command.getSwitchId().toLong());
+            processInstallDefaultFlowByCookie(dpid, command.getCookie());
+        } else if (command instanceof InstallIngressFlow) {
             installIngressFlow((InstallIngressFlow) command);
         } else if (command instanceof InstallEgressFlow) {
             installEgressFlow((InstallEgressFlow) command);
