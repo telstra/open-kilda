@@ -212,9 +212,9 @@ class FlowHelper {
         def mainFlowPath = flowPathInfo.forwardPath
         def srcMainSwitch = mainFlowPath[0]
         def dstMainSwitch = mainFlowPath[-1]
-        def mainFlowTransitSwitches = mainFlowPath[1..-2]
+        def mainFlowTransitSwitches = (mainFlowPath.size() > 2) ? mainFlowPath[1..-2] : []
         def protectedFlowPath = flowPathInfo.protectedPath.forwardPath
-        def protectedFlowTransitSwitches = protectedFlowPath[1..-2]
+        def protectedFlowTransitSwitches = (protectedFlowPath.size() > 2) ? protectedFlowPath[1..-2] : []
 
         def commonSwitches = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
         def commonTransitSwitches = mainFlowTransitSwitches*.switchId.intersect(protectedFlowTransitSwitches*.switchId)
