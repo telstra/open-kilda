@@ -15,8 +15,7 @@
 
 package org.openkilda.floodlight.feature;
 
-import org.openkilda.messaging.model.SpeakerSwitchView;
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
+import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
@@ -28,8 +27,8 @@ public class NoviFlowCopyFieldFeature extends AbstractFeature {
     public static final String NOVIFLOW_MANUFACTURER_SUFFIX = "noviflow";
 
     @Override
-    public Optional<SpeakerSwitchView.Feature> discover(IOFSwitch sw) {
-        Optional<SpeakerSwitchView.Feature> empty = Optional.empty();
+    public Optional<SwitchFeature> discover(IOFSwitch sw) {
+        Optional<SwitchFeature> empty = Optional.empty();
 
         SwitchDescription description = sw.getSwitchDescription();
         if (description == null || description.getSoftwareDescription() == null
@@ -49,6 +48,6 @@ public class NoviFlowCopyFieldFeature extends AbstractFeature {
             return empty;
         }
 
-        return Optional.of(Feature.NOVIFLOW_COPY_FIELD);
+        return Optional.of(SwitchFeature.NOVIFLOW_COPY_FIELD);
     }
 }

@@ -57,10 +57,10 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.Meter;
 import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.SwitchFeature;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -411,7 +411,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setMatch(match);
 
         // centec switches don't support RESET_COUNTS flag
-        if (featureDetectorService.detectSwitch(sw).contains(Feature.RESET_COUNTS_FLAG)) {
+        if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.RESET_COUNTS_FLAG)) {
             builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
         }
         return pushFlow(sw, "--InstallIngressFlow--", builder.build());
@@ -517,7 +517,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setMatch(match);
 
         // centec switches don't support RESET_COUNTS flag
-        if (featureDetectorService.detectSwitch(sw).contains(Feature.RESET_COUNTS_FLAG)) {
+        if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.RESET_COUNTS_FLAG)) {
             builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
         }
 
@@ -550,7 +550,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         Optional.ofNullable(buildRoundTripLatencyFlow(sw)).ifPresent(flows::add);
 
         ArrayList<OFAction> actionListUnicastVxlanRule = new ArrayList<>();
-        if (featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
+        if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
             OFInstructionMeter meter = buildMeterInstructionForUnicastVxlanRule(sw, actionListUnicastVxlanRule);
             Optional.ofNullable(buildUnicastVerificationRuleVxlan(sw, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE,
                     meter, actionListUnicastVxlanRule)).ifPresent(flows::add);
@@ -560,7 +560,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     private ArrayList<OFAction> prepareActionListForBroadcastRule(IOFSwitch sw) {
         ArrayList<OFAction> actionList = new ArrayList<>();
-        if (featureDetectorService.detectSwitch(sw).contains(Feature.GROUP_PACKET_OUT_CONTROLLER)) {
+        if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.GROUP_PACKET_OUT_CONTROLLER)) {
             actionList.add(sw.getOFFactory().actions().group(OFGroup.of(ROUND_TRIP_LATENCY_GROUP_ID)));
         } else {
             addStandardDiscoveryActions(sw, actionList);
@@ -874,7 +874,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         // NOTE(tdurakov): reusing copy field feature here, since only switches with it supports pop/push vxlan's
         // should be replaced with fair feature detection based on ActionId's during handshake
-        if (!featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
+        if (!featureDetectorService.detectSwitch(sw).contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
             logger.debug("Skip installation of unicast verification vxlan rule for switch {}", dpid);
             return;
         }
@@ -929,7 +929,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         OFFactory ofFactory = sw.getOFFactory();
 
-        if (isBroadcast && featureDetectorService.detectSwitch(sw).contains(Feature.GROUP_PACKET_OUT_CONTROLLER)) {
+        if (isBroadcast && featureDetectorService.detectSwitch(sw)
+                .contains(SwitchFeature.GROUP_PACKET_OUT_CONTROLLER)) {
             logger.debug("Installing round trip latency group actions on switch {}", dpid);
 
             try {
@@ -1187,8 +1188,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     private OFFlowMod buildBfdCatchFlow(IOFSwitch sw) {
-        Set<Feature> features = featureDetectorService.detectSwitch(sw);
-        if (!features.contains(Feature.BFD)) {
+        Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
+        if (!features.contains(SwitchFeature.BFD)) {
             return null;
         }
 
@@ -1219,7 +1220,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     private OFFlowMod buildRoundTripLatencyFlow(IOFSwitch sw) {
-        if (!featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
+        if (!featureDetectorService.detectSwitch(sw).contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
             return null;
         }
 
@@ -1883,7 +1884,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             long burstSize;
             Set<OFMeterFlags> flags;
 
-            if (featureDetectorService.detectSwitch(sw).contains(Feature.PKTPS_FLAG)) {
+            if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.PKTPS_FLAG)) {
                 flags = ImmutableSet.of(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
                 // With PKTPS flag rate and burst size is in packets
                 rate = rateInPackets;

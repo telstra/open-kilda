@@ -19,8 +19,8 @@ import org.openkilda.floodlight.command.OfCommand;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.messaging.MessageContext;
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.MeterId;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
 import lombok.AllArgsConstructor;
@@ -46,8 +46,8 @@ abstract class MeterCommand extends OfCommand {
 
     void checkSwitchSupportCommand(IOFSwitch sw, FeatureDetectorService featureDetectorService)
             throws UnsupportedSwitchOperationException {
-        Set<Feature> supportedFeatures = featureDetectorService.detectSwitch(sw);
-        if (!supportedFeatures.contains(Feature.METERS)) {
+        Set<SwitchFeature> supportedFeatures = featureDetectorService.detectSwitch(sw);
+        if (!supportedFeatures.contains(SwitchFeature.METERS)) {
             throw new UnsupportedSwitchOperationException(sw.getId(), "Switch doesn't support meters");
         }
     }

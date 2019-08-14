@@ -18,9 +18,9 @@ package org.openkilda.wfm.topology.network.controller.sw;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.messaging.model.SpeakerSwitchView;
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
@@ -70,7 +70,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private final SwitchId switchId;
     private final Integer bfdLogicalPortOffset;
 
-    private final Set<SpeakerSwitchView.Feature> features = new HashSet<>();
+    private final Set<SwitchFeature> features = new HashSet<>();
     private final Map<Integer, AbstractPort> portByNumber = new HashMap<>();
 
     public static SwitchFsmFactory factory() {
@@ -224,7 +224,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         }
     }
 
-    private void updateFeatures(Set<SpeakerSwitchView.Feature> update) {
+    private void updateFeatures(Set<SwitchFeature> update) {
         if (!features.equals(update)) {
             log.info("Update features for {} - old:{} new:{}", switchId, features, update);
             features.clear();
@@ -283,6 +283,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
         sw.setStatus(SwitchStatus.ACTIVE);
 
+        sw.setFeatures(speakerData.getFeatures());
+
         persistSwitchFeatures(sw);
         switchRepository.createOrUpdate(sw);
     }
@@ -293,7 +295,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                 SwitchFeatures.builder()
                         .switchObj(sw)
                         .supportedTransitEncapsulation(SwitchFeatures.DEFAULT_FLOW_ENCAPSULATION_TYPES)
-                        .supportMeters(features.contains(Feature.METERS))
+                        .supportMeters(features.contains(SwitchFeature.METERS))
                         .build());
         switchFeaturesRepository.createOrUpdate(switchFeatures);
     }
@@ -335,7 +337,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
      * wee have a deal with logical-BFD port.
      */
     private boolean isPhysicalPort(int portNumber) {
-        if (features.contains(SpeakerSwitchView.Feature.BFD)) {
+        if (features.contains(SwitchFeature.BFD)) {
             return portNumber < bfdLogicalPortOffset;
         }
         return true;

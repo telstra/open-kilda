@@ -13,23 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.floodlight.feature;
+package org.openkilda.model;
 
-import static org.openkilda.model.SwitchFeature.LIMITED_BURST_SIZE;
-
-import org.openkilda.model.SwitchFeature;
-
-import net.floodlightcontroller.core.IOFSwitch;
-import org.apache.commons.lang3.StringUtils;
-
-import java.util.Optional;
-
-public class LimitedBurstSizeFeature extends AbstractFeature {
-    @Override
-    public Optional<SwitchFeature> discover(IOFSwitch sw) {
-        if (StringUtils.contains(sw.getSwitchDescription().getManufacturerDescription(), "Centec")) {
-            return Optional.of(LIMITED_BURST_SIZE);
-        }
-        return Optional.empty();
-    }
+public enum SwitchFeature {
+    METERS,
+    BFD,
+    BFD_REVIEW,
+    GROUP_PACKET_OUT_CONTROLLER,
+    RESET_COUNTS_FLAG,
+    LIMITED_BURST_SIZE,
+    NOVIFLOW_COPY_FIELD,
+    PKTPS_FLAG
 }

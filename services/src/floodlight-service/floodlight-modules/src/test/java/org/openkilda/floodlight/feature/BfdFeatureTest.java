@@ -15,8 +15,7 @@
 
 package org.openkilda.floodlight.feature;
 
-import org.openkilda.messaging.model.SpeakerSwitchView;
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
+import org.openkilda.model.SwitchFeature;
 
 import io.netty.channel.local.LocalChannel;
 import io.netty.util.HashedWheelTimer;
@@ -57,13 +56,13 @@ public class BfdFeatureTest {
     }
 
     private static void assertWithBfdSupport(String description) {
-        Optional<Feature> feature = bfdFeature.discover(createSwitchWithSoftwareDescription(description));
+        Optional<SwitchFeature> feature = bfdFeature.discover(createSwitchWithSoftwareDescription(description));
         Assert.assertTrue(feature.isPresent());
-        Assert.assertEquals(SpeakerSwitchView.Feature.BFD, feature.get());
+        Assert.assertEquals(SwitchFeature.BFD, feature.get());
     }
 
     private static void assertWithoutBfdSupport(String description) {
-        Optional<Feature> feature = bfdFeature.discover(createSwitchWithSoftwareDescription(description));
+        Optional<SwitchFeature> feature = bfdFeature.discover(createSwitchWithSoftwareDescription(description));
         Assert.assertFalse(feature.isPresent());
     }
 

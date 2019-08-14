@@ -19,7 +19,7 @@ import static org.openkilda.floodlight.pathverification.DiscoveryPacket.CHASSIS_
 import static org.openkilda.floodlight.pathverification.DiscoveryPacket.OPTIONAL_LLDPTV_PACKET_TYPE;
 import static org.openkilda.floodlight.pathverification.DiscoveryPacket.PORT_ID_LLDPTV_PACKET_TYPE;
 import static org.openkilda.floodlight.pathverification.DiscoveryPacket.TTL_LLDPTV_PACKET_TYPE;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.NOVIFLOW_COPY_FIELD;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 
 import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.command.Command;

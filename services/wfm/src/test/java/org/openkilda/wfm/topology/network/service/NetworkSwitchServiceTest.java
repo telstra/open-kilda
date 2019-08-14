@@ -30,9 +30,9 @@ import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.messaging.model.SpeakerSwitchPortView.State;
 import org.openkilda.messaging.model.SpeakerSwitchView;
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.Isl;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchFeatures;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
@@ -457,7 +457,7 @@ public class NetworkSwitchServiceTest {
     public void switchFromOnlineToOnlineWithLostBfdFeature() {
         NetworkSwitchService service = new NetworkSwitchService(carrier, persistenceManager, options);
 
-        List<SpeakerSwitchPortView> ports = doSpeakerOnline(service, Collections.singleton(Feature.BFD));
+        List<SpeakerSwitchPortView> ports = doSpeakerOnline(service, Collections.singleton(SwitchFeature.BFD));
         List<SpeakerSwitchPortView> ports2 = swapBfdPortsState(ports);
 
         resetMocks();
@@ -490,7 +490,7 @@ public class NetworkSwitchServiceTest {
         resetMocks();
 
         service.switchBecomeManaged(getSpeakerSwitchView().toBuilder()
-                .features(Collections.singleton(Feature.BFD))
+                .features(Collections.singleton(SwitchFeature.BFD))
                 .ports(ports2)
                 .build());
 
@@ -679,7 +679,7 @@ public class NetworkSwitchServiceTest {
                                         LinkStatus.of(ports.get(0).getState()));
     }
 
-    private List<SpeakerSwitchPortView> doSpeakerOnline(NetworkSwitchService service, Set<Feature> features) {
+    private List<SpeakerSwitchPortView> doSpeakerOnline(NetworkSwitchService service, Set<SwitchFeature> features) {
         List<SpeakerSwitchPortView> ports = getSpeakerSwitchPortViews();
         SpeakerSwitchView speakerSwitchView = getSpeakerSwitchView().toBuilder()
                 .features(features)
@@ -705,7 +705,7 @@ public class NetworkSwitchServiceTest {
                     .speakerSocketAddress(speakerInetAddress)
                     .ofVersion("OF_13")
                     .description(switchDescription)
-                    .features(Collections.singleton(Feature.BFD))
+                    .features(Collections.singleton(SwitchFeature.BFD))
                     .build();
     }
 

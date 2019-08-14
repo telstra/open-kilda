@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.feature;
 
-import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
 
@@ -28,5 +28,5 @@ public abstract class AbstractFeature {
     protected static final Pattern E_SWITCH_HARDWARE_DESCRIPTION_REGEX = Pattern.compile("^WB5\\d{3}-E$");
     protected static final String CENTEC_MANUFACTURED = "Centec";
 
-    public abstract Optional<SpeakerSwitchView.Feature> discover(IOFSwitch sw);
+    public abstract Optional<SwitchFeature> discover(IOFSwitch sw);
 }

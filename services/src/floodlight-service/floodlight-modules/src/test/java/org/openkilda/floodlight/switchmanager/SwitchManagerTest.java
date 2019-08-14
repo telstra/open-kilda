@@ -48,13 +48,6 @@ import static org.openkilda.floodlight.pathverification.PathVerificationService.
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.OVS_MANUFACTURER;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.BFD;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.GROUP_PACKET_OUT_CONTROLLER;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.LIMITED_BURST_SIZE;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.METERS;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.NOVIFLOW_COPY_FIELD;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.PKTPS_FLAG;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.RESET_COUNTS_FLAG;
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
@@ -65,6 +58,13 @@ import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID;
 import static org.openkilda.model.MeterId.MIN_SYSTEM_RULE_METER_ID;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
+import static org.openkilda.model.SwitchFeature.BFD;
+import static org.openkilda.model.SwitchFeature.GROUP_PACKET_OUT_CONTROLLER;
+import static org.openkilda.model.SwitchFeature.LIMITED_BURST_SIZE;
+import static org.openkilda.model.SwitchFeature.METERS;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
+import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
+import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
 
 import org.openkilda.floodlight.OFFactoryVer12Mock;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
@@ -76,9 +76,9 @@ import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.test.standard.OutputCommands;
 import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
@@ -1393,7 +1393,7 @@ public class SwitchManagerTest {
     private Capture<OFFlowMod> prepareForInstallTest(boolean isCentecSwitch) {
         Capture<OFFlowMod> capture = EasyMock.newCapture();
 
-        Set<Feature> features;
+        Set<SwitchFeature> features;
         if (isCentecSwitch) {
             features = Sets.newHashSet(METERS, LIMITED_BURST_SIZE);
         } else {

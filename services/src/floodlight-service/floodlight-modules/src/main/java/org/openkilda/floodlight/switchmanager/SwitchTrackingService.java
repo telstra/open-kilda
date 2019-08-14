@@ -37,6 +37,7 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -288,7 +289,7 @@ public class SwitchTrackingService implements IOFSwitchListener, IService {
                 .serialNumber(ofDescription.getSerialNumber())
                 .datapath(ofDescription.getDatapathDescription())
                 .build();
-        Set<SpeakerSwitchView.Feature> features = featureDetector.detectSwitch(sw);
+        Set<SwitchFeature> features = featureDetector.detectSwitch(sw);
         List<SpeakerSwitchPortView> ports = switchManager.getPhysicalPorts(sw).stream()
                 .map(port -> new SpeakerSwitchPortView(
                         port.getPortNo().getPortNumber(),
