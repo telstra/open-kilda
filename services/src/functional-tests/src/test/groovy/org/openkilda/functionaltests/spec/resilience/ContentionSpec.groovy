@@ -6,6 +6,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.rerun.Rerun
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowState
 
 import groovyx.gpars.group.DefaultPGroup
@@ -48,7 +49,8 @@ class ContentionSpec extends BaseSpecification {
         when: "Create multiple flows on the same ISLs concurrently"
         def flowsAmount = 15
         def group = new DefaultPGroup(flowsAmount)
-        def flows = (1..flowsAmount).collect { flowHelper.randomFlow(topologyHelper.notNeighboringSwitchPair) }
+        List<FlowCreatePayload> flows = []
+        flowsAmount.times { flows << flowHelper.randomFlow(topologyHelper.notNeighboringSwitchPair, false , flows) }
         def createTasks = flows.collect { flow ->
             group.task { flowHelper.addFlow(flow) }
         }

@@ -121,10 +121,10 @@ class MetersSpec extends HealthCheckSpecification {
         def meters = northbound.getAllMeters(sw.dpId)
         assert meters.meterEntries.size() == 2
         assert meters.meterEntries.each {
-            assert it.rate == Math.max((long) (DISCO_PKT_RATE * DISCO_PKT_SIZE / 1024L), MIN_RATE_KBPS)
+            assert it.rate == Math.max((long) (DISCO_PKT_RATE * DISCO_PKT_SIZE * 8 / 1024L), MIN_RATE_KBPS)
         }
         //unable to use #getExpectedBurst. For Centects there's special burst due to KBPS
-        assert meters.meterEntries.every { it.burstSize == (long) ((DISCO_PKT_BURST * DISCO_PKT_SIZE) / 1024) }
+        assert meters.meterEntries.every { it.burstSize == (long) ((DISCO_PKT_BURST * DISCO_PKT_SIZE * 8) / 1024) }
         assert meters.meterEntries.every(defaultMeters)
         assert meters.meterEntries.every { ["KBPS", "BURST", "STATS"].containsAll(it.flags) }
         assert meters.meterEntries.every { it.flags.size() == 3 }
@@ -158,14 +158,14 @@ class MetersSpec extends HealthCheckSpecification {
     def "Default meters should express bandwidth in kbps on Noviflow Wb5164 switch(#sw.dpId)"() {
         expect: "Only the default meters should be present on the switch"
         def meters = northbound.getAllMeters(sw.dpId)
-        assert meters.meterEntries.size() == 3
+        assert meters.meterEntries.size() == 2
         assert meters.meterEntries.every(defaultMeters)
         meters.meterEntries.each { assert it.rate == MIN_RATE_KBPS }
         //TODO(andriidovhan) fix calculations of burst size on Noviflow Wb5164 switches for default meters
         // here we can't use the getExpectedBurst method
-        meters.meterEntries.every { assert it.burstSize == 999L }
-        meters.meterEntries.every { assert ["KBPS", "BURST", "STATS"].containsAll(it.flags) }
-        meters.meterEntries.every { assert it.flags.size() == 3 }
+        meters.meterEntries.each { assert it.burstSize == 999L }
+        meters.meterEntries.each { assert ["KBPS", "BURST", "STATS"].containsAll(it.flags) }
+        meters.meterEntries.each { assert it.flags.size() == 3 }
 
         where:
         sw << (getNoviflowWb5164().unique { it.description } ?:

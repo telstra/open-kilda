@@ -29,4 +29,17 @@ public class MeterTest {
         assertEquals(1105500, Meter.calculateBurstSize(1100000L, 1024L, 1.005, "NW000.0.0"));
         assertEquals(1105500, Meter.calculateBurstSize(1100000L, 1024L, 1.05, "NW000.0.0"));
     }
+
+    @Test
+    public void convertRateToKiloBitsTest() {
+        assertEquals(800, Meter.convertRateToKiloBits(100, 1024));
+        assertEquals(64, Meter.convertRateToKiloBits(1, 1));
+        assertEquals(64, Meter.convertRateToKiloBits(8, 16));
+    }
+
+    @Test
+    public void convertBurstSizeToKiloBitsTest() {
+        assertEquals(800, Meter.convertBurstSizeToKiloBits(100, 1024));
+        assertEquals(1, Meter.convertBurstSizeToKiloBits(8, 16));
+    }
 }

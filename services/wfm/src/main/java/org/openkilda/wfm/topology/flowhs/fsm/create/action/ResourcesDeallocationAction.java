@@ -77,7 +77,6 @@ public class ResourcesDeallocationAction extends FlowProcessingAction<FlowCreate
                 flowRepository.createOrUpdate(flow);
             }
         });
-        flowResources.clear();
 
         saveHistory(stateMachine, stateMachine.getCarrier(), stateMachine.getFlowId(),
                 "Resources released successfully");

@@ -2,6 +2,8 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
@@ -9,6 +11,8 @@ import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -59,9 +63,13 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         "Could not $action flow: The port $port on the switch '$swId' is occupied by an ISL."
     }
 
+    @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTags([
+            @IterationTag(tags = [SMOKE], iterationNameRegex = /vlan /),
+            @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /and vlan only on/)
+    ])
     @Unroll("Valid #data.description has traffic and no rule discrepancies \
 (#flow.source.switchId - #flow.destination.switchId)")
-    @Tags([TOPOLOGY_DEPENDENT])
     def "Valid flow has no rule discrepancies"() {
         given: "A flow"
         assumeTrue("There should be at least two active traffgens for test execution",

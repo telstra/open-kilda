@@ -68,15 +68,6 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to install default rule on an #sw.ofVersion switch(#sw.dpId, install-action=#data.installRulesAction)"(
             Map data, Switch sw) {
-        assumeFalse("Unable to run the test because an OF_12 switch has one broadcast rule as the default",
-                sw.ofVersion == "OF_12" && data.installRulesAction != InstallRulesAction.INSTALL_BROADCAST)
-        assumeFalse("Unable to run the test because only NoviFlow switches support installation of BFD catch rule",
-                !sw.noviflow && data.installRulesAction == InstallRulesAction.INSTALL_BFD_CATCH)
-        assumeFalse("Unable to run the test because only NoviFlow switches support installation of Round Trip Latency "
-                + "rule", !sw.noviflow && data.installRulesAction == InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY)
-        assumeFalse("Unable to run the test because only NoviFlow switches support installation of Unicast VXLAN rule",
-                !sw.noviflow && data.installRulesAction == InstallRulesAction.INSTALL_UNICAST_VXLAN)
-
         given: "A switch without any rules"
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
         assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
@@ -131,6 +122,14 @@ class DefaultRulesSpec extends HealthCheckSpecification {
                 ],
                 getTopology().getActiveSwitches().unique { activeSw -> activeSw.description }
         ].combinations()
+        .findAll { dataPiece, theSw ->
+            //OF_12 has only broadcast rule, so filter out all other combinations for OF_12
+            !(theSw.ofVersion == "OF_12" && dataPiece.installRulesAction != InstallRulesAction.INSTALL_BROADCAST) &&
+                    //BFD, Round Trip and VXlan are available only on Noviflow
+                    !(!theSw.noviflow && dataPiece.installRulesAction in [InstallRulesAction.INSTALL_BFD_CATCH,
+                                                                  InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY,
+                                                                  InstallRulesAction.INSTALL_UNICAST_VXLAN])
+        }
     }
 
     @Unroll
@@ -162,9 +161,6 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Able to delete default rule from an #sw.ofVersion switch (#sw.dpId, delete-action=#data.deleteRulesAction)"(
             Map data, Switch sw) {
-        assumeFalse("Unable to run the test because an OF_12 switch has one broadcast rule as the default",
-                sw.ofVersion == "OF_12" && data.cookie != Cookie.VERIFICATION_BROADCAST_RULE_COOKIE)
-
         when: "Delete rules from the switch"
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
         assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
@@ -218,7 +214,10 @@ class DefaultRulesSpec extends HealthCheckSpecification {
                         ]
                 ],
                 getTopology().getActiveSwitches().unique { activeSw -> activeSw.description }
-        ].combinations()
+        ].combinations().findAll { dataPiece, theSw ->
+            //OF_12 switches has only one broadcast rule, so not all iterations will be applicable
+            !(theSw.ofVersion == "OF_12" && dataPiece.cookie != Cookie.VERIFICATION_BROADCAST_RULE_COOKIE)
+        }
     }
 
     void compareRules(actualRules, expectedRules) {
