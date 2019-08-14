@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.31.0 (14/08/2019)
+
+### Bug Fixes:
+-  [#2662](https://github.com/telstra/open-kilda/pull/2662) Fixed incorrect converting meter rate/burstsize from packets to kilobits [**floodlight**]
+-  [#2685](https://github.com/telstra/open-kilda/pull/2685) Fix default flow creation in v2 +fixed resetting of FSM in case of retry [**northbound**]
+
+### Improvements:
+-  [#2672](https://github.com/telstra/open-kilda/pull/2672) Misc fixes in tests [**tests**]
+
+### Other changes:
+-  [#2637](https://github.com/telstra/open-kilda/pull/2637) Enable Vxlan support for v2 api [**floodlight**]
+-  [#2683](https://github.com/telstra/open-kilda/pull/2683) Fix Kilda-FlowOperations-Filtered-Table Kibana search 
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.30.1...v1.31.0).
+
+### Affected Components:
+flow-hs, nb, fl
+
+---
+
 ## v1.30.1 (07/08/2019)
 
 ### Bug Fixes:
