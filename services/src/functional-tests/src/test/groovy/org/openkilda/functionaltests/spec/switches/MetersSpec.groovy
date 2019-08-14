@@ -160,10 +160,14 @@ class MetersSpec extends HealthCheckSpecification {
         def meters = northbound.getAllMeters(sw.dpId)
         assert meters.meterEntries.size() == 2
         assert meters.meterEntries.every(defaultMeters)
-        meters.meterEntries.each { assert it.rate == MIN_RATE_KBPS }
-        //TODO(andriidovhan) fix calculations of burst size on Noviflow Wb5164 switches for default meters
-        // here we can't use the getExpectedBurst method
-        meters.meterEntries.each { assert it.burstSize == 999L }
+        meters.meterEntries.each {
+            verifyRateSizeOnWb5164(it.rate,
+                    Math.max((long) (DISCO_PKT_RATE * DISCO_PKT_SIZE * 8 / 1024L), MIN_RATE_KBPS))
+        }
+        meters.meterEntries.each {
+            verifyBurstSizeOnWb5164(it.burstSize,
+                (long) ((DISCO_PKT_BURST * DISCO_PKT_SIZE * 8) / 1024))
+        }
         meters.meterEntries.each { assert ["KBPS", "BURST", "STATS"].containsAll(it.flags) }
         meters.meterEntries.each { assert it.flags.size() == 3 }
 
