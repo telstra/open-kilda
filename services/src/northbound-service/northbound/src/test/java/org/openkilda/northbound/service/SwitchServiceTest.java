@@ -70,12 +70,14 @@ public class SwitchServiceTest {
         RequestCorrelationId.create(correlationId);
 
         Long missingRule = 100L;
+        Long misconfiguredRule = 11L;
         Long excessRule = 101L;
         Long properRule = 10L;
         SwitchId switchId = new SwitchId(1L);
 
-        RulesSyncEntry rulesSyncEntry = new RulesSyncEntry(singletonList(missingRule), singletonList(properRule),
-                singletonList(excessRule), singletonList(missingRule), singletonList(excessRule));
+        RulesSyncEntry rulesSyncEntry = new RulesSyncEntry(singletonList(missingRule), singletonList(misconfiguredRule),
+                singletonList(properRule), singletonList(excessRule), singletonList(missingRule),
+                singletonList(excessRule));
         SwitchSyncResponse rules = new SwitchSyncResponse(rulesSyncEntry, MetersSyncEntry.builder().build());
         messageExchanger.mockResponse(correlationId, rules);
 
@@ -92,12 +94,14 @@ public class SwitchServiceTest {
         RequestCorrelationId.create(correlationId);
 
         Long missingRule = 100L;
+        Long misconfiguredRule = 11L;
         Long excessRule = 101L;
         Long properRule = 10L;
         SwitchId switchId = new SwitchId(1L);
 
-        RulesSyncEntry rulesEntry = new RulesSyncEntry(singletonList(missingRule), singletonList(properRule),
-                singletonList(excessRule), singletonList(missingRule), singletonList(excessRule));
+        RulesSyncEntry rulesEntry = new RulesSyncEntry(singletonList(missingRule), singletonList(misconfiguredRule),
+                singletonList(properRule), singletonList(excessRule), singletonList(missingRule),
+                singletonList(excessRule));
         InfoData validationResult = new SwitchSyncResponse(rulesEntry,
                 MetersSyncEntry.builder().proper(singletonList(getMeterInfo(properRule))).build());
         messageExchanger.mockResponse(correlationId, validationResult);
@@ -105,6 +109,7 @@ public class SwitchServiceTest {
         SwitchSyncResult result = switchService.syncSwitch(switchId, true).get();
         RulesSyncDto rules = result.getRules();
         assertThat(rules.getMissing(), is(singletonList(missingRule)));
+        assertThat(rules.getMisconfigured(), is(singletonList(misconfiguredRule)));
         assertThat(rules.getInstalled(), is(singletonList(missingRule)));
         assertThat(rules.getExcess(), is(singletonList(excessRule)));
         assertThat(rules.getInstalled(), is(singletonList(missingRule)));

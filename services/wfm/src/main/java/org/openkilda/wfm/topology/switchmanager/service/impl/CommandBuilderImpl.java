@@ -24,6 +24,7 @@ import org.openkilda.messaging.info.rule.FlowApplyActions;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.rule.FlowInstructions;
 import org.openkilda.messaging.info.rule.FlowMatchField;
+import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
@@ -65,7 +66,8 @@ public class CommandBuilderImpl implements CommandBuilder {
 
     @Override
     public List<BaseInstallFlow> buildCommandsToSyncMissingRules(SwitchId switchId, List<Long> switchRules) {
-        List<BaseInstallFlow> commands = new ArrayList<>();
+
+        List<BaseInstallFlow> commands = new ArrayList<>(buildInstallDefaultRuleCommands(switchId, switchRules));
 
         flowPathRepository.findBySegmentDestSwitch(switchId)
                 .forEach(flowPath -> {
@@ -109,6 +111,17 @@ public class CommandBuilderImpl implements CommandBuilder {
                         }
                     }
                 });
+
+        return commands;
+    }
+
+    private List<BaseInstallFlow> buildInstallDefaultRuleCommands(SwitchId switchId, List<Long> switchRules) {
+        List<BaseInstallFlow> commands = new ArrayList<>();
+        switchRules.stream()
+                .filter(Cookie::isDefaultRule)
+                .map(cookie -> new BaseInstallFlow(transactionIdGenerator.generate(), "SWMANAGER_DEFAULT_RULE_INSTALL",
+                        cookie, switchId, 0, 0))
+                .forEach(commands::add);
 
         return commands;
     }
