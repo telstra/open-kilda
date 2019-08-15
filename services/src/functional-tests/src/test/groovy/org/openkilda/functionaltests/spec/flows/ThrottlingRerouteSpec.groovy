@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -63,20 +64,19 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         def untilReroutesBegin = { rerouteTriggersEnd.time + rerouteDelay * 1000 - new Date().time }
 
         then: "The oldest broken flow is still not rerouted before rerouteDelay run out"
-        //TODO: new H&S reroute updates the flow status right after resource allocation.
-        // Revise and fix the test appropriately.
-        //sleep(untilReroutesBegin() - (long) (rerouteDelay * 1000 * 0.2)) //check after 80% of rerouteDelay has passed
+        sleep(untilReroutesBegin() - (long) (rerouteDelay * 1000 * 0.3)) //check after 70% of rerouteDelay has passed
         northbound.getFlowStatus(flows.first().id).status == FlowState.UP
 
         and: "The oldest broken flow is rerouted when the rerouteDelay runs out"
-        Wrappers.wait(untilReroutesBegin() / 1000.0 + WAIT_OFFSET * 2) {
+        def waitTime = untilReroutesBegin() / 1000.0 + PATH_INSTALLATION_TIME
+        Wrappers.wait(waitTime) {
             //Flow should go DOWN or change path on reroute. In our case it doesn't matter which of these happen.
             assert northbound.getFlowStatus(flows.first().id).status == FlowState.DOWN ||
                     northbound.getFlowPath(flows.first().id) != flowPaths.first()
         }
 
         and: "The rest of the flows are rerouted too"
-        Wrappers.wait(untilReroutesBegin() / 1000.0 + WAIT_OFFSET) {
+        Wrappers.wait(WAIT_OFFSET) {
             flowPaths[1..-1].each { flowPath ->
                 assert northbound.getFlowStatus(flowPath.id).status == FlowState.DOWN ||
                         northbound.getFlowPath(flowPath.id) != flowPath

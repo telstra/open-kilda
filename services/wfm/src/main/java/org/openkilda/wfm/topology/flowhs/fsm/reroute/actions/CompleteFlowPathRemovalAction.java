@@ -17,19 +17,24 @@ package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
+import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.RecoverablePersistenceException;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.failsafe.RetryPolicy;
+import org.neo4j.driver.v1.exceptions.ClientException;
 
 import java.util.Objects;
 import java.util.stream.Stream;
 
 @Slf4j
 public class CompleteFlowPathRemovalAction extends BaseFlowPathRemovalAction {
+    private static final int MAX_TRANSACTION_RETRY_COUNT = 3;
 
     public CompleteFlowPathRemovalAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
@@ -38,7 +43,13 @@ public class CompleteFlowPathRemovalAction extends BaseFlowPathRemovalAction {
     @Override
     protected void perform(State from, State to,
                            Event event, FlowRerouteContext context, FlowRerouteFsm stateMachine) {
-        transactionManager.doInTransaction(() -> {
+        RetryPolicy retryPolicy = new RetryPolicy()
+                .retryOn(RecoverableException.class)
+                .retryOn(RecoverablePersistenceException.class)
+                .retryOn(ClientException.class)
+                .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT);
+
+        transactionManager.doInTransaction(retryPolicy, () -> {
             Flow flow = getFlow(stateMachine.getFlowId());
 
             FlowPath oldPrimaryForward = null;
