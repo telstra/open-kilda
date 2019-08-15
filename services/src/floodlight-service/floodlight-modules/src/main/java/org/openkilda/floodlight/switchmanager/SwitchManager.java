@@ -19,6 +19,7 @@ import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.DISCOVERY_PACKET_UDP_PORT;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.LATENCY_PACKET_UDP_PORT;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.ROUND_TRIP_LATENCY_T1_OFFSET;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.ROUND_TRIP_LATENCY_TIMESTAMP_SIZE;
@@ -1756,6 +1757,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         MacAddress dstMac = isBroadcast ? MacAddress.of(verificationBcastPacketDst) : dpIdToMac(sw.getId());
         Builder builder = sw.getOFFactory().buildMatch();
         builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.NO_MASK);
+        if (isBroadcast) {
+            builder.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+            builder.setExact(MatchField.IP_PROTO, IpProtocol.UDP);
+            builder.setExact(MatchField.UDP_DST, TransportPort.of(DISCOVERY_PACKET_UDP_PORT));
+        }
         return builder.build();
     }
 

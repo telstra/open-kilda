@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.test.standard;
 
 import static java.util.Collections.singletonList;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.DISCOVERY_PACKET_UDP_PORT;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.LATENCY_PACKET_UDP_PORT;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.ROUND_TRIP_LATENCY_T1_OFFSET;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.ROUND_TRIP_LATENCY_TIMESTAMP_SIZE;
@@ -372,6 +373,9 @@ public interface OutputCommands {
     default OFFlowAdd installVerificationBroadcastRule() {
         Match match = ofFactory.buildMatch()
                 .setExact(MatchField.ETH_DST, MacAddress.of(VERIFICATION_BCAST_PACKET_DST))
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                .setExact(MatchField.UDP_DST, TransportPort.of(DISCOVERY_PACKET_UDP_PORT))
                 .build();
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(Cookie.VERIFICATION_BROADCAST_RULE_COOKIE))
