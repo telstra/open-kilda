@@ -23,6 +23,8 @@ import org.openkilda.model.SwitchId;
 import java.util.Optional;
 
 public interface FlowMeterRepository extends Repository<FlowMeter> {
+    Optional<FlowMeter> findLldpMeterByMeterIdSwitchIdAndFlowId(MeterId meterId, SwitchId switchId, String flowId);
+
     Optional<FlowMeter> findByPathId(PathId pathId);
 
     /**

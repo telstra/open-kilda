@@ -62,4 +62,8 @@ public interface RepositoryFactory {
     KildaConfigurationRepository createKildaConfigurationRepository();
 
     SwitchFeaturesRepository createSwitchFeaturesRepository();
+
+    LldpResourcesRepository createLldpResourcesRepository();
+
+    ConnectedDeviceRepository createConnectedDeviceRepository();
 }

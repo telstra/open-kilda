@@ -31,3 +31,12 @@ CREATE CONSTRAINT ON (`vxlan`:`vxlan`) ASSERT `vxlan`.`vni` IS UNIQUE;
 CREATE CONSTRAINT ON (`switch_features`:`switch_features`) ASSERT `switch_features`.`entityId` IS UNIQUE;
 CREATE INDEX ON :`vxlan`(`path_id`);
 CREATE INDEX ON :`flow_meter` (`switch_id`);
+CREATE INDEX ON :`flow_meter` (`flow_id`);
+CREATE CONSTRAINT ON (`connected_device`:`connected_device`) ASSERT `connected_device`.`entityId` IS UNIQUE;
+CREATE CONSTRAINT ON (`connected_device`:`connected_device`) ASSERT `connected_device`.`unique_index` IS UNIQUE;
+CREATE INDEX ON :`connected_device` (`flow_id`);
+CREATE INDEX ON :`connected_device` (`source`);
+CREATE INDEX ON :`connected_device` (`mac_address`);
+CREATE CONSTRAINT ON (`lldp_resources`:`lldp_resources`) ASSERT `lldp_resources`.`entityId` IS UNIQUE;
+CREATE CONSTRAINT ON (`lldp_resources`:`lldp_resources`) ASSERT `lldp_resources`.`flow_id` IS UNIQUE;
+
