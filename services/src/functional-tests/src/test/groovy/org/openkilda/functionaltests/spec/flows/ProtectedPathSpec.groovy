@@ -250,7 +250,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2377")
     @Unroll
     def "System reroutes #flowDescription flow to more preferable path and ignores protected path when reroute\
  is intentional"() {
@@ -418,7 +417,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
         exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found. " +
+                "Could not create flow: Not enough bandwidth found or path not found : " +
                 "Couldn't find non overlapping protected path"
 
         and: "Cleanup: restore available bandwidth"
@@ -761,8 +760,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         and: "New meter is created on the src and dst switches"
         def newSrcSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.src.dpId)
         def newDstSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.dst.dpId)
-        newSrcSwitchCreatedMeterIds.sort() != srcSwitchCreatedMeterIds.sort()
-        newDstSwitchCreatedMeterIds.sort() != dstSwitchCreatedMeterIds.sort()
+        //added || x.empty to allow situation when meters are not available on src or dst
+        newSrcSwitchCreatedMeterIds.sort() != srcSwitchCreatedMeterIds.sort() || srcSwitchCreatedMeterIds.empty
+        newDstSwitchCreatedMeterIds.sort() != dstSwitchCreatedMeterIds.sort() || dstSwitchCreatedMeterIds.empty
 
         and: "Rules are updated"
         Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
@@ -771,10 +771,12 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             [switchPair.src.dpId, switchPair.dst.dpId].each { switchId ->
                 def switchValidateInfo = northbound.validateSwitch(switchId)
-                assert switchValidateInfo.meters.proper.size() == 1
+                if(switchValidateInfo.meters) {
+                    assert switchValidateInfo.meters.proper.size() == 1
+                    switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
+                }
                 assert switchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 3
                 switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
-                switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
             }
         }
 

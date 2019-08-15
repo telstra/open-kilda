@@ -29,6 +29,7 @@ class IslCostSpec extends HealthCheckSpecification {
     def "Cost of #description ISL is increased due to bringing port down on a switch \
 (ISL cost < isl.cost.when.port.down)"() {
         given: "An active ISL with created link props"
+        assumeTrue("$description isl is not found for the test", isl.asBoolean())
         int islCost = islUtils.getIslInfo(isl).get().cost
         northbound.updateLinkProps([isl, isl.reversed].collect { islUtils.toLinkProps(it, [cost: islCost.toString()]) })
 
