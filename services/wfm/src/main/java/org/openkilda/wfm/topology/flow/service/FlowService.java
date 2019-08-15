@@ -62,6 +62,7 @@ import org.openkilda.wfm.share.flow.resources.EncapsulationResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
+import org.openkilda.wfm.share.flow.resources.ResourceNotAvailableException;
 import org.openkilda.wfm.share.flow.service.FlowCommandFactory;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
@@ -302,29 +303,45 @@ public class FlowService extends BaseFlowService {
     public FlowDto deleteFlow(String flowId, FlowCommandSender sender) throws FlowNotFoundException {
         dashboardLogger.onFlowDelete(flowId);
 
-        FlowWithFlowPaths result = transactionManager.doInTransaction(() -> {
-            Flow flow = flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
+        RetryPolicy retryPolicy = new RetryPolicy()
+                .retryOn(RecoverableException.class)
+                .retryOn(ResourceNotAvailableException.class)
+                .retryOn(TransientException.class)
+                .withDelay(RETRY_DELAY, TimeUnit.MILLISECONDS)
+                .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT);
 
-            log.info("Deleting the flow: {}", flow);
+        FlowWithFlowPaths result;
+        try {
+            result = transactionManager.doInTransaction(retryPolicy, () -> {
+                Flow flow = flowRepository.findById(flowId).orElseThrow(() -> new FlowNotFoundException(flowId));
 
-            Collection<FlowPath> flowPaths = flowPathRepository.findByFlowId(flowId);
+                log.info("Deleting the flow: {}", flow);
 
-            flowPathRepository.lockInvolvedSwitches(flowPaths.toArray(new FlowPath[0]));
+                Collection<FlowPath> flowPaths = flowPathRepository.findByFlowId(flowId);
 
-            List<FlowPathWithEncapsulation> flowPathWithEncapsulations = flowPaths.stream()
-                    .map(path -> getFlowPathWithEncapsulation(flow, path))
-                    .collect(Collectors.toList());
+                flowPathRepository.lockInvolvedSwitches(flowPaths.toArray(new FlowPath[0]));
 
-            // Remove flow and all associated paths
-            flowRepository.delete(flow);
+                List<FlowPathWithEncapsulation> flowPathWithEncapsulations = flowPaths.stream()
+                        .map(path -> getFlowPathWithEncapsulation(flow, path))
+                        .collect(Collectors.toList());
 
-            flowPathWithEncapsulations.forEach(flowPath -> updateIslsForFlowPath(flowPath.getFlowPath()));
+                // Remove flow and all associated paths
+                flowRepository.delete(flow);
 
-            return FlowWithFlowPaths.builder()
-                    .flow(flow)
-                    .flowPaths(flowPathWithEncapsulations)
-                    .build();
-        });
+                flowPathWithEncapsulations.forEach(flowPath -> updateIslsForFlowPath(flowPath.getFlowPath()));
+
+                return FlowWithFlowPaths.builder()
+                        .flow(flow)
+                        .flowPaths(flowPathWithEncapsulations)
+                        .build();
+            });
+        } catch (FailsafeException e) {
+            if (e.getCause() instanceof FlowNotFoundException) {
+                throw (FlowNotFoundException) e.getCause();
+            } else {
+                throw e;
+            }
+        }
 
         // Assemble a command batch with RemoveRule commands and resource deallocation requests.
 
@@ -1056,14 +1073,21 @@ public class FlowService extends BaseFlowService {
     }
 
     private FlowPathWithEncapsulation getFlowPathWithEncapsulation(Flow flow, FlowPath flowPath) {
-        FlowEncapsulationType flowEncapsulationType = flowPath.getFlow().getEncapsulationType();
-        EncapsulationResources encapsulationResources = flowResourcesManager.getEncapsulationResources(
-                flowPath.getPathId(),
-                flow.getOppositePathId(flowPath.getPathId()),
-                flowEncapsulationType).orElse(null);
+        EncapsulationResources encapResources;
+        if (flow.isOneSwitchFlow()) {
+            encapResources = null;
+        } else {
+            FlowEncapsulationType encapType = flowPath.getFlow().getEncapsulationType();
+            PathId forwardPathId = flowPath.getPathId();
+            PathId reversePathId = flow.getOppositePathId(flowPath.getPathId());
+            encapResources = flowResourcesManager.getEncapsulationResources(forwardPathId, reversePathId, encapType)
+                    .orElseThrow(() ->
+                            new ResourceNotAvailableException(format("Failed to find resources for flow path %s",
+                                    flowPath.getPathId())));
+        }
         return FlowPathWithEncapsulation.builder()
                 .flowPath(flowPath)
-                .encapsulation(encapsulationResources)
+                .encapsulation(encapResources)
                 .build();
     }
 
