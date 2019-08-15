@@ -413,7 +413,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
         exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found : " +
+                "Could not create flow: Not enough bandwidth found or path not found. " +
                 "Couldn't find non overlapping protected path"
 
         and: "Cleanup: restore available bandwidth"
