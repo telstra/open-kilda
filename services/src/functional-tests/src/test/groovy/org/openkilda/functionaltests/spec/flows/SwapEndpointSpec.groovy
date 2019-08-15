@@ -504,7 +504,9 @@ switches"() {
         then: "An error is received (409 code)"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 409
-        // TODO check error message
+        exc.responseBodyAsString.to(MessageError).errorMessage.contains("Can not swap endpoints for flows: " +
+                "Requested flow '$flow1.id' conflicts with existing flow '$flow3.id'.")
+
         and: "Delete flows"
         [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
 

@@ -8,6 +8,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDEN
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -24,6 +25,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Cookie
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
@@ -61,6 +63,24 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
     @Shared
     def getPortViolationError = { String action, int port, SwitchId swId ->
         "Could not $action flow: The port $port on the switch '$swId' is occupied by an ISL."
+    }
+
+    def "System marks flow as UP when and only when all the rules are actually set on all involved switches"() {
+        given: "Two active not neighbouring switches"
+        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+
+        when: "Create a flow"
+        def flow = flowHelperV2.randomFlow(switchPair)
+        northboundV2.addFlow(flow)
+
+        then: "Flow is created"
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+
+        and: "All needed rules are installed on all involved switches"
+        flowHelperV2.checkRulesOnSwitches(flow.flowId, RULES_INSTALLATION_TIME, true)
+
+        and: "Cleanup: Delete the flow"
+        flowHelper.deleteFlow(flow.flowId)
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
@@ -522,7 +542,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
     }
 
-    @Unroll
     def "Able to CRUD unmetered one-switch pinned flow"() {
         when: "Create a flow"
         def sw = topology.getActiveSwitches().first()

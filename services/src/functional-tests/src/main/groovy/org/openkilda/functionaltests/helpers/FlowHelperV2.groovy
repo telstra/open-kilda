@@ -1,17 +1,12 @@
 package org.openkilda.functionaltests.helpers
 
-import org.openkilda.model.Flow
-import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
-
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.model.FlowDto
-import org.openkilda.messaging.model.FlowPairDto
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
@@ -141,14 +136,7 @@ class FlowHelperV2 {
         log.debug("Adding flow '${flow.flowId}'")
         def response = northboundV2.addFlow(flow)
 
-        def flowEntry = null
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
-
-            flowEntry = db.getFlow(flow.flowId)
-            assert flowEntry
-        }
-        checkRulesOnSwitches(flowEntry, RULES_INSTALLATION_TIME, true)
+        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         return response
     }
@@ -170,6 +158,30 @@ class FlowHelperV2 {
                         (newEp.vlanId == it.vlanId || it.vlanId == 0 || newEp.vlanId == 0)
             }
         } || existingFlows*.flowId.contains(newFlow.flowId)
+    }
+
+    /**
+     * Checks flow rules presence (or absence) on all involved switches.
+     */
+    void checkRulesOnSwitches(String flowId, int timeout, boolean rulesPresent) {
+        def flowEntry = db.getFlow(flowId)
+        def cookies = [flowEntry.forwardPath.cookie.value, flowEntry.reversePath.cookie.value]
+        def switches = PathHelper.convert(northbound.getFlowPath(flowEntry.flowId))*.switchId.toSet()
+        switches.each { sw ->
+            Wrappers.wait(timeout) {
+                try {
+                    def result = northbound.getSwitchRules(sw).flowEntries*.cookie
+                    assert rulesPresent ? result.containsAll(cookies) : !result.any { it in cookies }
+                } catch (HttpClientErrorException exc) {
+                    if (exc.rawStatusCode == 404) {
+                        log.warn("Switch '$sw' was not found when checking rules after flow "
+                                + (rulesPresent ? "creation" : "deletion"))
+                    } else {
+                        throw exc
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -207,32 +219,9 @@ class FlowHelperV2 {
         return new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US).format(new Date()) + "_" +
                 faker.food().ingredient().toLowerCase().replaceAll(/\W/, "") + faker.number().digits(4)
     }
-    
+
     private String generateDescription() {
         //The health of autotest flows is always questionable
         "autotest flow with ${faker.medical().symptoms().uncapitalize()}"
-    }
-
-    /**
-     * Checks flow rules presence (or absence) on source and destination switches.
-     */
-    private void checkRulesOnSwitches(Flow flowEntry, int timeout, boolean rulesPresent) {
-        def cookies = [flowEntry.forwardPath.cookie.value, flowEntry.reversePath.cookie.value]
-        def switches = [flowEntry.srcSwitch.switchId, flowEntry.destSwitch.switchId].toSet()
-        switches.each { sw ->
-            Wrappers.wait(timeout) {
-                try {
-                    def result = northbound.getSwitchRules(sw).flowEntries*.cookie
-                    assert rulesPresent ? result.containsAll(cookies) : !result.any { it in cookies }
-                } catch (HttpClientErrorException exc) {
-                    if (exc.rawStatusCode == 404) {
-                        log.warn("Switch '$sw' was not found when checking rules after flow "
-                                + (rulesPresent ? "creation" : "deletion"))
-                    } else {
-                        throw exc
-                    }
-                }
-            }
-        }
     }
 }
