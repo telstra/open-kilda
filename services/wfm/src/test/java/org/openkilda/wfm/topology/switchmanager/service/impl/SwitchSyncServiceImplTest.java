@@ -65,7 +65,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
@@ -139,20 +138,6 @@ public class SwitchSyncServiceImplTest {
     @Test
     public void handleNothingRulesToSync() {
         missingRules = emptyList();
-
-        service.handleSwitchSync(KEY, request, makeValidationResult());
-
-        verify(carrier).response(eq(KEY), any(InfoMessage.class));
-        verify(carrier).cancelTimeoutCallback(eq(KEY));
-
-        verifyNoMoreInteractions(commandBuilder);
-        verifyNoMoreInteractions(carrier);
-    }
-
-    @Test
-    public void shouldDoNothingWhenMissingAndExcessRulesHaveDefaultCookies() {
-        missingRules = Collections.singletonList(Cookie.DEFAULT_RULES_MASK | 1);
-        excessRules = Collections.singletonList(Cookie.DEFAULT_RULES_MASK | 2);
 
         service.handleSwitchSync(KEY, request, makeValidationResult());
 

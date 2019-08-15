@@ -134,7 +134,7 @@ public class JsonSerializationTest {
     @Test
     public void switchSyncResultTest() throws IOException {
         RulesSyncDto rules = new RulesSyncDto(singletonList(0L), singletonList(1L), singletonList(2L),
-                singletonList(3L), singletonList(4L));
+                singletonList(3L), singletonList(4L), singletonList(5L));
         MetersSyncDto meters = new MetersSyncDto(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(),
                 emptyList());
         SwitchSyncResult dto = new SwitchSyncResult(rules, meters);

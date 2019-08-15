@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.topology.switchmanager.fsm.SwitchSyncFsm;
@@ -83,6 +84,18 @@ public class SwitchSyncServiceImpl implements SwitchSyncService {
         }
 
         fsm.fire(SwitchSyncEvent.RULES_REMOVED);
+        process(fsm);
+    }
+
+    @Override
+    public void handleReinstallDefaultRulesResponse(String key, FlowReinstallResponse response) {
+        SwitchSyncFsm fsm = fsms.get(key);
+        if (fsm == null) {
+            logFsmNotFound(key);
+            return;
+        }
+
+        fsm.fire(SwitchSyncEvent.RULES_REINSTALLED, response);
         process(fsm);
     }
 
