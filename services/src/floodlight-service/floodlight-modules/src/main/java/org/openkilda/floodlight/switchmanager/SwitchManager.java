@@ -34,6 +34,7 @@ import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 import static org.openkilda.model.Cookie.isDefaultRule;
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
+import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
@@ -1757,7 +1758,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         MacAddress dstMac = isBroadcast ? MacAddress.of(verificationBcastPacketDst) : dpIdToMac(sw.getId());
         Builder builder = sw.getOFFactory().buildMatch();
         builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.NO_MASK);
-        if (isBroadcast) {
+        if (isBroadcast && featureDetectorService.detectSwitch(sw).contains(MATCH_UDP_PORT)) {
             builder.setExact(MatchField.ETH_TYPE, EthType.IPv4);
             builder.setExact(MatchField.IP_PROTO, IpProtocol.UDP);
             builder.setExact(MatchField.UDP_DST, TransportPort.of(DISCOVERY_PACKET_UDP_PORT));
