@@ -622,8 +622,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
     def "Able to synchronize rules for a flow with VXLAN encapsulation"() {
         given: "Two active not neighboring Noviflow switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
-            swP.src.noviflow && swP.dst.noviflow && swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).every { it.noviflow }
+            swP.src.noviflow && !swP.src.wb5164 && swP.dst.noviflow && !swP.dst.wb5164 && swP.paths.find { path ->
+                pathHelper.getInvolvedSwitches(path).every { it.noviflow && !it.wb5164 }
             }
         } ?: assumeTrue("Unable to find required switches in topology", false)
 
@@ -635,7 +635,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         and: "Reproduce situation when switches have missing rules by deleting flow rules from them"
         def flowInfoFromDb = database.getFlow(flow.id)
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)*.dpId
-        def transitSwitchIds = (involvedSwitches.size() > 2) ? involvedSwitches[-1..-2] : []
+        def transitSwitchIds = involvedSwitches[-1..-2]
         def defaultPlusFlowRulesMap = involvedSwitches.collectEntries { switchId ->
             [switchId, northbound.getSwitchRules(switchId).flowEntries]
         }

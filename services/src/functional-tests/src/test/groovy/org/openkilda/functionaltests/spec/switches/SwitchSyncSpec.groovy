@@ -226,8 +226,8 @@ class SwitchSyncSpec extends BaseSpecification {
     def "Able to synchronize switch with 'vxlan' rule(install missing rules and meters)"() {
         given: "Two active not neighboring Noviflow switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
-            swP.src.noviflow && swP.dst.noviflow && swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).every { it.noviflow }
+            swP.src.noviflow && !swP.src.wb5164 && swP.dst.noviflow && !swP.dst.wb5164 && swP.paths.find { path ->
+                pathHelper.getInvolvedSwitches(path).every { it.noviflow && !it.wb5164 }
             }
         } ?: assumeTrue("Unable to find required switches in topology", false)
 
@@ -239,7 +239,7 @@ class SwitchSyncSpec extends BaseSpecification {
         and: "Reproduce situation when switches have missing rules and meters"
         def flowInfoFromDb = database.getFlow(flow.id)
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
-        def transitSwitchIds = (involvedSwitches.size() > 2) ? involvedSwitches[-1..-2]*.dpId : []
+        def transitSwitchIds = involvedSwitches[-1..-2]*.dpId
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
                 !(it.cookie in sw.defaultCookies)

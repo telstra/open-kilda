@@ -1076,7 +1076,9 @@ switches"() {
 
         where:
         description << ["src1 <-> src2", "dst1 <-> dst2"]
-        switchPair << [getTopologyHelper().getAllNeighboringSwitchPairs().find { it.src.noviflow && it.dst.noviflow }] * 2
+        switchPair << [getTopologyHelper().getAllNeighboringSwitchPairs().find {
+            it.src.noviflow && !it.src.wb5164 && it.dst.noviflow && !it.dst.wb5164
+        }] * 2
         flow1 << [getFirstFlow(switchPair, switchPair)] * 2
         flow2 << [getSecondFlow(switchPair, switchPair, flow1)] * 2
         [flow1Src, flow1Dst, flow2Src, flow2Dst] << [
