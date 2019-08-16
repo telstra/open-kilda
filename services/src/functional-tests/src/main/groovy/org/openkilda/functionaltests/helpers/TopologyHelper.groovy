@@ -1,9 +1,14 @@
 package org.openkilda.functionaltests.helpers
 
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.model.topology.TopologyDefinition.Status
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.model.topology.TopologyDefinition.TraffGenConfig
 import org.openkilda.testing.service.database.Database
+import org.openkilda.testing.service.northbound.NorthboundService
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import groovy.transform.Memoized
@@ -14,7 +19,8 @@ import org.springframework.stereotype.Component
 @Component
 @Slf4j
 class TopologyHelper {
-
+    @Autowired
+    NorthboundService northbound
     @Autowired
     TopologyDefinition topology
     @Autowired
@@ -70,6 +76,31 @@ class TopologyHelper {
         //get deep copy
         def mapper = new ObjectMapper()
         return mapper.readValue(mapper.writeValueAsString(getSwitchPairsCached()), SwitchPair[]).toList()
+    }
+
+    TopologyDefinition readCurrentTopology() {
+        def switches = northbound.getAllSwitches()
+        def links = northbound.getAllLinks()
+        def i = 0
+        def topoSwitches = switches.collect {
+            i++
+            new Switch("ofsw$i", it.switchId, it.switchView.ofVersion, switchStateToStatus(it.state), [], null, null)
+        }
+        def topoLinks = links.collect { link ->
+            new Isl(topoSwitches.find { it.dpId == link.source.switchId }, link.source.portNo,
+                    topoSwitches.find { it.dpId == link.destination.switchId }, link.destination.portNo,
+                    link.maxBandwidth, null)
+        }
+        return new TopologyDefinition(topoSwitches, topoLinks, [], TraffGenConfig.defaultConfig())
+    }
+
+    private static Status switchStateToStatus(SwitchChangeType state) {
+        switch (state) {
+            case SwitchChangeType.ACTIVATED:
+                return Status.Active
+            default:
+                return Status.Inactive
+        }
     }
 
     @Memoized

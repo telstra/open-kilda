@@ -35,6 +35,10 @@ class EnduranceSpec extends BaseSpecification {
     def r = new Random()
     List<FlowPayload> flows = Collections.synchronizedList(new ArrayList<FlowPayload>())
 
+    def setup() {
+        topoHelper.purgeTopology()
+    }
+
     /**
      * Deploy topology and create certain amount of flows in the system. Define amount of events to happen during the
      * test and their chances to happen.

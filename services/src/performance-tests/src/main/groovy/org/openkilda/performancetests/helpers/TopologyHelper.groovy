@@ -29,7 +29,7 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
     IslUtils islUtils
     @Value('${discovery.timeout}')
     int discoveryTimeout
-    
+
     @Value("#{'\${floodlight.regions}'.split(',')}")
     List<String> regions
 
@@ -38,12 +38,12 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
 
     @Value("#{'\${floodlight.controllers.stat}'.split(',')}")
     List<String> statControllers
-    
+
     CustomTopology createRandomTopology(int switchesAmount, int islsAmount) {
         def topo = new CustomTopology()
         switchesAmount.times { i ->
             def region = i % regions.size()
-            topo.addCasualSwitch("${managementControllers[region]} ${statControllers[region]}") 
+            topo.addCasualSwitch("${managementControllers[region]} ${statControllers[region]}")
         }
         islsAmount.times {
             def src = topo.pickRandomSwitch()
@@ -54,8 +54,8 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
         def allSwitches = topo.getSwitches()
         def allLinks = topo.getIsls()
         for (def i = 0; i < allSwitches.size() - 1; i++) {
-            if (!allLinks.find { it.srcSwitch == allSwitches[i] && it.dstSwitch == allSwitches[i+1] }) {
-                topo.addIsl(allSwitches[i], allSwitches[i+1])
+            if (!allLinks.find { it.srcSwitch == allSwitches[i] && it.dstSwitch == allSwitches[i + 1] }) {
+                topo.addIsl(allSwitches[i], allSwitches[i + 1])
             }
         }
 
@@ -98,21 +98,21 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
      * topology definition.
      */
     def purgeTopology(TopologyDefinition topo, LabInstance lab = null) {
-        lab ? labService.deleteLab(lab) : labService.deleteLab()
-        List<IslInfoData> topoIsls
-        Wrappers.wait(WAIT_OFFSET + discoveryTimeout) {
-            topoIsls = northbound.getAllLinks().findAll {
-                it.source.switchId in topo.activeSwitches*.dpId ||
-                        it.destination.switchId in topo.activeSwitches*.dpId
-            }.unique({ [it.source.switchId, it.source.portNo, it.destination.switchId, it.destination.portNo].sort() })
-            topoIsls.each { assert it.state == IslChangeType.FAILED } || true
-        }
-        topoIsls.each {
-            northbound.deleteLink(islUtils.toLinkParameters(it))
+        if (lab) {
+            labService.deleteLab(lab)
+        } else {
+            def currentLab = labService.getLab()
+            if(currentLab) {
+                labService.deleteLab(currentLab)
+            }
         }
         def topoSwitches = northbound.getAllSwitches().findAll { it.switchId in topo.switches*.dpId }
         topoSwitches.each {
-            northbound.deleteSwitch(it.switchId, false)
+            northbound.deleteSwitch(it.switchId, true)
         }
+    }
+
+    def purgeTopology() {
+        purgeTopology(readCurrentTopology())
     }
 }
