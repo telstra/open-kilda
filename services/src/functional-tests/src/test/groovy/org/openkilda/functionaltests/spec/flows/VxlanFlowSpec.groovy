@@ -260,7 +260,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         exc.rawStatusCode == 404
         // TODO(andriidovhan)fix errorMessage when the 2587 issue is fixed
         exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found : " +
+                "Could not create flow: Not enough bandwidth found or path not found. " +
                 "Failed to find path with requested bandwidth=$flow.maximumBandwidth: Switch $switchPair.src.dpId" +
                 " doesn't have links with enough bandwidth"
     }
