@@ -61,6 +61,7 @@ import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
 import static org.openkilda.model.SwitchFeature.BFD;
 import static org.openkilda.model.SwitchFeature.GROUP_PACKET_OUT_CONTROLLER;
 import static org.openkilda.model.SwitchFeature.LIMITED_BURST_SIZE;
+import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
@@ -207,6 +208,15 @@ public class SwitchManagerTest {
 
     @Test
     public void installVerificationBroadcastRule() throws Exception {
+        runInstallVerificationBroadcastRule(true);
+    }
+
+    @Test
+    public void installVerificationBroadcastWithoutUdpMatchSupportRule() throws Exception {
+        runInstallVerificationBroadcastRule(false);
+    }
+
+    public void runInstallVerificationBroadcastRule(boolean supportsUdpPortMatch) throws Exception {
         mockGetGroupsRequest(ImmutableList.of(ROUND_TRIP_LATENCY_GROUP_ID));
         mockGetMetersRequest(ImmutableList.of(meterId), true, 10L);
         mockFlowStatsRequest(VERIFICATION_BROADCAST_RULE_COOKIE);
@@ -223,8 +233,11 @@ public class SwitchManagerTest {
 
         expect(iofSwitch.write(anyObject(OFMeterMod.class))).andReturn(true);
         expect(switchDescription.getManufacturerDescription()).andReturn("").times(2);
-        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(
-                Sets.newHashSet(BFD, GROUP_PACKET_OUT_CONTROLLER, NOVIFLOW_COPY_FIELD));
+        Set<SwitchFeature> features = Sets.newHashSet(BFD, GROUP_PACKET_OUT_CONTROLLER, NOVIFLOW_COPY_FIELD);
+        if (supportsUdpPortMatch) {
+            features.add(MATCH_UDP_PORT);
+        }
+        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(features);
         expectLastCall();
 
         replay(ofSwitchService);
@@ -233,7 +246,8 @@ public class SwitchManagerTest {
         replay(featureDetectorService);
 
         switchManager.installVerificationRule(defaultDpid, true);
-        assertEquals(scheme.installVerificationBroadcastRule(), captureVerificationBroadcast.getValue());
+        assertEquals(scheme.installVerificationBroadcastRule(supportsUdpPortMatch),
+                captureVerificationBroadcast.getValue());
     }
 
     @Test
@@ -1309,7 +1323,7 @@ public class SwitchManagerTest {
         expect(iofSwitch.write(capture(capture))).andStubReturn(true);
         expect(featureDetectorService.detectSwitch(iofSwitch))
                 .andReturn(Sets.newHashSet(GROUP_PACKET_OUT_CONTROLLER, NOVIFLOW_COPY_FIELD, PKTPS_FLAG))
-                .times(7);
+                .times(8);
         mockBarrierRequest();
         mockGetMetersRequest(Lists.newArrayList(unicastMeterId, broadcastMeterId), true, expectedRate);
         mockGetGroupsRequest(Lists.newArrayList(ROUND_TRIP_LATENCY_GROUP_ID));

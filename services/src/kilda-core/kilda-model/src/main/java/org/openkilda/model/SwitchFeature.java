@@ -23,5 +23,6 @@ public enum SwitchFeature {
     RESET_COUNTS_FLAG,
     LIMITED_BURST_SIZE,
     NOVIFLOW_COPY_FIELD,
-    PKTPS_FLAG
+    PKTPS_FLAG,
+    MATCH_UDP_PORT
 }
