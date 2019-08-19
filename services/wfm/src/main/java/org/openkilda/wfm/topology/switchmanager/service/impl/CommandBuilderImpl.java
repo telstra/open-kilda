@@ -120,7 +120,7 @@ public class CommandBuilderImpl implements CommandBuilder {
         switchRules.stream()
                 .filter(Cookie::isDefaultRule)
                 .map(cookie -> new BaseInstallFlow(transactionIdGenerator.generate(), "SWMANAGER_DEFAULT_RULE_INSTALL",
-                        cookie, switchId, 0, 0))
+                        cookie, switchId, 0, 0, false))
                 .forEach(commands::add);
 
         return commands;
