@@ -53,7 +53,7 @@ def get_pull_request_id(commit):
 
 
 def lable_filter(label):
-    return all([label not in ['feature', 'bug', 'bugfix', 'improvement', 'Next Release', 'Ready to Merge'],
+    return all([label not in ['feature', 'bug', 'improvement', 'Next Release', 'Ready to Merge'],
                 not label.startswith('priority/')
                 ])
 
@@ -72,7 +72,7 @@ def main(github_token, new_version, from_version, git_rev_list):
         raise click.BadParameter('Must set --from-version or --git-rev-list')
 
     if git_rev_list is None:
-        git_rev_list = f'v{from_ver}..origin/release-{to_ver}'
+        git_rev_list = f'v{from_ver}..upstream/release-{to_ver}'
 
     repo = Repo(".")
     commits = list(repo.iter_commits(git_rev_list, max_count=500, min_parents=2))
@@ -102,7 +102,7 @@ def main(github_token, new_version, from_version, git_rev_list):
 
         if 'feature' in labels:
             features.append(pr)
-        elif 'bug' in labels or 'bugfix' in labels:
+        elif 'bug' in labels:
             bugs.append(pr)
         elif 'improvement' in labels:
             improvements.append(pr)
