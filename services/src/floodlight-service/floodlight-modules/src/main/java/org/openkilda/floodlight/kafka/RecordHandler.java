@@ -536,7 +536,7 @@ class RecordHandler implements Runnable {
         SwitchId switchId = request.getSwitchId();
         DatapathId dpid = DatapathId.of(switchId.toLong());
         try {
-            RemoveFlow command = new RemoveFlow(null, "REMOVE_DEFAULT_FLOW", cookie, switchId, null, null);
+            RemoveFlow command = new RemoveFlow(null, "REMOVE_DEFAULT_FLOW", cookie, switchId, null, null, false);
             Set<Long> removedFlows = new HashSet<>(processDeleteFlow(command, dpid));
 
             for (Long removedFlow : removedFlows) {
