@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -12,18 +13,8 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.Constants
-
-import org.springframework.beans.factory.annotation.Value
 
 class LinkMaintenanceSpec extends HealthCheckSpecification {
-
-    @Value('${isl.cost.when.under.maintenance}')
-    int islCostWhenUnderMaintenance
-
-    def setupOnce() {
-        database.resetCosts()  // set default cost on all links before tests
-    }
 
     @Tags(SMOKE)
     def "Maintenance mode can be set/unset for a particular link"() {
@@ -36,9 +27,9 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         then: "Maintenance flag for forward and reverse ISLs is really set"
         response.each { assert it.underMaintenance }
 
-        and: "Cost for ISLs is changed respectively"
-        database.getIslCost(isl) == islCostWhenUnderMaintenance + Constants.DEFAULT_COST
-        database.getIslCost(isl.reversed) == islCostWhenUnderMaintenance + Constants.DEFAULT_COST
+        and: "Cost for ISLs is not changed"
+        database.getIslCost(isl) == DEFAULT_COST
+        database.getIslCost(isl.reversed) == DEFAULT_COST
 
         when: "Unset maintenance mode from the link"
         response = northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, false, false))
@@ -47,8 +38,8 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         response.each { assert !it.underMaintenance }
 
         and: "Cost for ISLs is changed to the default value"
-        database.getIslCost(isl) == Constants.DEFAULT_COST
-        database.getIslCost(isl.reversed) == Constants.DEFAULT_COST
+        database.getIslCost(isl) == DEFAULT_COST
+        database.getIslCost(isl.reversed) == DEFAULT_COST
     }
 
     def "Flows can be evacuated (rerouted) from a particular link when setting maintenance mode for it"() {

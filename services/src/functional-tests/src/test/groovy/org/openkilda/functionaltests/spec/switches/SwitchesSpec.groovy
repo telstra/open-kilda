@@ -197,6 +197,5 @@ class SwitchesSpec extends HealthCheckSpecification {
             assert northbound.getSwitch(switchToDisconnect.dpId).state == SwitchChangeType.ACTIVATED
         }
         [simpleFlow, singleFlow].each { flowHelper.deleteFlow(it.id) }
-        database.resetCosts()
     }
 }

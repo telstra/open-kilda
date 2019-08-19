@@ -96,6 +96,7 @@ import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 import org.openkilda.persistence.Neo4jConfig;
+import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
@@ -234,6 +235,23 @@ public class FlowServiceImpl implements FlowService {
                                 @Override
                                 public String getIndexesAuto() {
                                     return "none";
+                                }
+                            };
+                        } else if (configurationType.equals(NetworkConfig.class)) {
+                            return (T) new NetworkConfig() {
+                                @Override
+                                public int getIslUnstableTimeoutSec() {
+                                    return 7200;
+                                }
+
+                                @Override
+                                public int getIslCostWhenPortDown() {
+                                    return 10000;
+                                }
+
+                                @Override
+                                public int getIslCostWhenUnderMaintenance() {
+                                    return 10000;
                                 }
                             };
                         } else {

@@ -27,6 +27,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.Neo4jPersistenceManager;
+import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.EmbeddedNeo4jDatabase;
@@ -49,7 +50,6 @@ import java.util.Properties;
 public class LinkOperationsBoltTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId SWITCH_ID_2 = new SwitchId("00:00:00:00:00:00:00:02");
-    private static final int ISL_COST_WHEN_UNDER_MAINTENANCE = 10000;
 
     @ClassRule
     public static TemporaryFolder fsData = new TemporaryFolder();
@@ -69,7 +69,8 @@ public class LinkOperationsBoltTest {
         configProps.setProperty("neo4j.indexes.auto", "update"); // ask to create indexes/constraints if needed
         PropertiesBasedConfigurationProvider configurationProvider =
                 new PropertiesBasedConfigurationProvider(configProps);
-        persistenceManager = new Neo4jPersistenceManager(configurationProvider.getConfiguration(Neo4jConfig.class));
+        persistenceManager = new Neo4jPersistenceManager(configurationProvider.getConfiguration(Neo4jConfig.class),
+                configurationProvider.getConfiguration(NetworkConfig.class));
     }
 
     @Before
@@ -89,7 +90,7 @@ public class LinkOperationsBoltTest {
         switchRepository.createOrUpdate(Switch.builder().switchId(SWITCH_ID_1).build());
         switchRepository.createOrUpdate(Switch.builder().switchId(SWITCH_ID_2).build());
 
-        LinkOperationsBolt bolt = new LinkOperationsBolt(persistenceManager, ISL_COST_WHEN_UNDER_MAINTENANCE);
+        LinkOperationsBolt bolt = new LinkOperationsBolt(persistenceManager);
         bolt.prepare(null, topologyContext, null);
         LinkPropsPut linkPropsPutRequest = new LinkPropsPut(new LinkPropsDto(
                 new NetworkEndpoint(SWITCH_ID_1, 1),

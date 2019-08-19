@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslConfig;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
@@ -58,8 +59,12 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
     private final IslStatusConverter islStatusConverter = new IslStatusConverter();
     private final FlowEncapsulationTypeConverter flowEncapsulationTypeConverter = new FlowEncapsulationTypeConverter();
 
-    public Neo4jIslRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
+    private final IslConfig islConfig;
+
+    public Neo4jIslRepository(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager,
+                              IslConfig islConfig) {
         super(sessionFactory, transactionManager);
+        this.islConfig = islConfig;
     }
 
     @Override
@@ -73,7 +78,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                 + " OR (d.name = $switch_id AND i.dst_port = $port) "
                 + "RETURN s, i, d";
 
-        return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
+        return addIslConfigToIsl(Lists.newArrayList(getSession().query(getEntityType(), query, parameters)));
     }
 
     @Override
@@ -81,7 +86,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
         Filter srcSwitchFilter = createSrcSwitchFilter(srcSwitchId);
         Filter srcPortFilter = new Filter(SRC_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, srcPort);
 
-        return loadAll(srcSwitchFilter.and(srcPortFilter));
+        return addIslConfigToIsl(loadAll(srcSwitchFilter.and(srcPortFilter)));
     }
 
     @Override
@@ -89,19 +94,19 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
         Filter dstSwitchFilter = createDstSwitchFilter(dstSwitchId);
         Filter dstPortFilter = new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, dstPort);
 
-        return loadAll(dstSwitchFilter.and(dstPortFilter));
+        return addIslConfigToIsl(loadAll(dstSwitchFilter.and(dstPortFilter)));
     }
 
     @Override
     public Collection<Isl> findBySrcSwitch(SwitchId switchId) {
         Filter srcSwitchFilter = createSrcSwitchFilter(switchId);
-        return loadAll(srcSwitchFilter);
+        return addIslConfigToIsl(loadAll(srcSwitchFilter));
     }
 
     @Override
     public Collection<Isl> findByDestSwitch(SwitchId switchId) {
         Filter destSwitchFilter = createDstSwitchFilter(switchId);
-        return loadAll(destSwitchFilter);
+        return addIslConfigToIsl(loadAll(destSwitchFilter));
     }
 
     @Override
@@ -116,7 +121,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
             throw new PersistenceException(format("Found more that 1 ISL entity with %s_%d - %s_%d",
                     srcSwitchId, srcPort, dstSwitchId, dstPort));
         }
-        return isls.isEmpty() ? Optional.empty() : Optional.of(isls.iterator().next());
+        return isls.isEmpty() ? Optional.empty() : Optional.of(addIslConfigToIsl(isls.iterator().next()));
     }
 
     @Override
@@ -136,7 +141,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
             filters.and(new Filter(DST_PORT_PROPERTY_NAME, ComparisonOperator.EQUALS, dstPort));
         }
 
-        return loadAll(filters);
+        return addIslConfigToIsl(loadAll(filters));
     }
 
     @Override
@@ -162,7 +167,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                 + " AND $supported_transit_encapsulation IN dst_features.supported_transit_encapsulation "
                 + "RETURN src, link, dst";
 
-        return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
+        return addIslConfigToIsl(Lists.newArrayList(getSession().query(getEntityType(), query, parameters)));
     }
 
     @Override
@@ -175,7 +180,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                 + "WHERE src.state = $switch_status AND dst.state = $switch_status AND link.status = $isl_status "
                 + "RETURN src, link, dst";
 
-        return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
+        return addIslConfigToIsl(Lists.newArrayList(getSession().query(getEntityType(), query, parameters)));
     }
 
     @Override
@@ -196,7 +201,7 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                 + "AND $supported_transit_encapsulation IN dst_features.supported_transit_encapsulation "
                 + "RETURN src_features, src, link, dst, dst_features";
 
-        return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
+        return addIslConfigToIsl(Lists.newArrayList(getSession().query(getEntityType(), query, parameters)));
     }
 
     @Override
@@ -220,7 +225,17 @@ public class Neo4jIslRepository extends Neo4jGenericRepository<Isl> implements I
                 + "AND $supported_transit_encapsulation IN dst_features.supported_transit_encapsulation "
                 + "RETURN src_features, source, link, dest, dst_features";
 
-        return Lists.newArrayList(getSession().query(getEntityType(), query, parameters));
+        return addIslConfigToIsl(Lists.newArrayList(getSession().query(getEntityType(), query, parameters)));
+    }
+
+    private Isl addIslConfigToIsl(Isl isl) {
+        isl.setIslConfig(islConfig);
+        return isl;
+    }
+
+    private Collection<Isl> addIslConfigToIsl(Collection<Isl> isls) {
+        isls.forEach(isl -> isl.setIslConfig(islConfig));
+        return isls;
     }
 
     @Override
