@@ -64,8 +64,9 @@ public class InstallTransitRuleCommand extends FlowInstallCommand {
                                      @JsonProperty("transit_encapsulation_id") Integer transitEncapsulationId,
                                      @JsonProperty("transit_encapsulation_type")
                                              FlowEncapsulationType transitEncapsulationType,
-                                     @JsonProperty("ingress_switch_id") SwitchId ingressSwitchId) {
-        super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort);
+                                     @JsonProperty("ingress_switch_id") SwitchId ingressSwitchId,
+                                     @JsonProperty("multi_table") boolean multiTable) {
+        super(commandId, flowId, messageContext, cookie, switchId, inputPort, outputPort, multiTable);
         this.transitEncapsulationId = transitEncapsulationId;
         this.transitEncapsulationType = transitEncapsulationType;
         this.ingressSwitchId = ingressSwitchId;

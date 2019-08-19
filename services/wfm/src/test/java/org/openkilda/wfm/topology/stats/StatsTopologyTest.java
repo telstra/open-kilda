@@ -451,7 +451,7 @@ public class StatsTopologyTest extends AbstractStormTest {
 
     private void sendRemoveFlowCommand(UnidirectionalFlow flow) throws IOException {
         RemoveFlow removeFlow = new RemoveFlow(TRANSACTION_ID, flow.getFlowId(), flow.getCookie(),
-                flow.getSrcSwitch().getSwitchId(), flow.getMeterId(), null);
+                flow.getSrcSwitch().getSwitchId(), flow.getMeterId(), null, false);
         sendFlowCommand(removeFlow);
     }
 
@@ -467,7 +467,8 @@ public class StatsTopologyTest extends AbstractStormTest {
                 flow.getDestVlan(),
                 OutputVlanType.PUSH,
                 flow.getBandwidth(),
-                flow.getMeterId().longValue());
+                flow.getMeterId().longValue(),
+                false);
         sendFlowCommand(installOneSwitchFlow);
     }
 

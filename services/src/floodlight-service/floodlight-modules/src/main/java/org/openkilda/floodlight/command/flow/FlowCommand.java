@@ -64,12 +64,15 @@ public abstract class FlowCommand extends OfCommand {
     final UUID commandId;
     final String flowId;
     final Cookie cookie;
+    final boolean multiTable;
 
-    FlowCommand(UUID commandId, String flowId, MessageContext messageContext, Cookie cookie, SwitchId switchId) {
+    FlowCommand(UUID commandId, String flowId, MessageContext messageContext, Cookie cookie, SwitchId switchId,
+                boolean multiTable) {
         super(switchId, messageContext);
         this.commandId = commandId;
         this.flowId = flowId;
         this.cookie = cookie;
+        this.multiTable = multiTable;
     }
 
     @Override

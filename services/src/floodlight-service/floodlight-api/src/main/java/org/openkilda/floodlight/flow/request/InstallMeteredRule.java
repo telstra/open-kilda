@@ -46,8 +46,8 @@ class InstallMeteredRule extends InstallFlowRule {
 
     public InstallMeteredRule(MessageContext messageContext, UUID commandId, String flowId, Cookie cookie,
                               SwitchId switchId, Integer inputPort, Integer outputPort, MeterId meterId,
-                              Long bandwidth) {
-        super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort);
+                              Long bandwidth, boolean multiTable) {
+        super(messageContext, commandId, flowId, cookie, switchId, inputPort, outputPort, multiTable);
         this.meterId = meterId;
         this.bandwidth = bandwidth;
     }

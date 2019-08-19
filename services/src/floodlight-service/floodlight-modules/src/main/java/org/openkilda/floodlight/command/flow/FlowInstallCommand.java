@@ -35,8 +35,8 @@ public abstract class FlowInstallCommand extends FlowCommand {
     final Integer outputPort;
 
     FlowInstallCommand(UUID commandId, String flowId, MessageContext messageContext, Cookie cookie, SwitchId switchId,
-                       Integer inputPort, Integer outputPort) {
-        super(commandId, flowId, messageContext, cookie, switchId);
+                       Integer inputPort, Integer outputPort, boolean multiTable) {
+        super(commandId, flowId, messageContext, cookie, switchId, multiTable);
         this.inputPort = inputPort;
         this.outputPort = outputPort;
     }

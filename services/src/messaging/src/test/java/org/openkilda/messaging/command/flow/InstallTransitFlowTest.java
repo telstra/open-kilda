@@ -33,7 +33,7 @@ import java.util.UUID;
 public class InstallTransitFlowTest {
     private InstallTransitFlow flow = new InstallTransitFlow(UUID.randomUUID(),
             flowName, 0L, switchId, inputPort, outputPort, transitEncapsulationId, transitEncapsulationType,
-            ingresSwitchId);
+            ingresSwitchId, false);
 
     @Test
     public void toStringTest() throws Exception {

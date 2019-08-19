@@ -53,6 +53,9 @@ public class RemoveFlow extends BaseFlow {
     @JsonProperty("criteria")
     private DeleteRulesCriteria criteria;
 
+    @JsonProperty("multi_table")
+    private boolean multiTable;
+
     /**
      * Instance constructor.
      *
@@ -70,13 +73,15 @@ public class RemoveFlow extends BaseFlow {
             @JsonProperty("cookie") Long cookie,
             @JsonProperty("switch_id") SwitchId switchId,
             @JsonProperty("meter_id") Long meterId,
-            @JsonProperty("criteria") DeleteRulesCriteria criteria) {
+            @JsonProperty("criteria") DeleteRulesCriteria criteria,
+            @JsonProperty("multi_table") boolean multiTable) {
         super(transactionId, flowId, cookie, switchId);
 
         if (meterId != null && meterId <= 0L) {
             throw new IllegalArgumentException("need to set non negative meter_id");
         }
         this.meterId = meterId;
+        this.multiTable = multiTable;
         this.criteria = criteria;
     }
 }

@@ -153,7 +153,7 @@ public class CommandBuilderImpl implements CommandBuilder {
                 0, outPort, FlowEncapsulationType.TRANSIT_VLAN, ingressSwitchId);
 
         return new RemoveFlow(transactionIdGenerator.generate(), "SWMANAGER_BATCH_REMOVE", entry.getCookie(),
-                switchId, null, criteria);
+                switchId, null, criteria, false);
     }
 
     private List<BaseInstallFlow> buildInstallCommandFromSegment(FlowPath flowPath, PathSegment segment) {

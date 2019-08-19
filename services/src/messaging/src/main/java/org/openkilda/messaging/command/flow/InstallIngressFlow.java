@@ -102,6 +102,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
      * @param bandwidth      flow bandwidth
      * @param meterId        flow meter id
      * @param ingressSwitchId id of the ingress switch
+     * @param multiTable     multitable flag
      * @throws IllegalArgumentException if any of mandatory parameters is null
      */
     @JsonCreator
@@ -118,9 +119,10 @@ public class InstallIngressFlow extends InstallTransitFlow {
                               @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                               @JsonProperty("bandwidth") final Long bandwidth,
                               @JsonProperty("meter_id") final Long meterId,
-                              @JsonProperty("ingress_switch_id") final SwitchId ingressSwitchId) {
+                              @JsonProperty("ingress_switch_id") final SwitchId ingressSwitchId,
+                              @JsonProperty("multi_table") final boolean multiTable) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
-                transitEncapsulationType, ingressSwitchId);
+                transitEncapsulationType, ingressSwitchId, multiTable);
         setInputVlanId(inputVlanId);
         setOutputVlanType(outputVlanType);
         setBandwidth(bandwidth);
@@ -237,6 +239,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
                 .add("output_vlan_type", outputVlanType)
                 .add("bandwidth", bandwidth)
                 .add("meter_id", meterId)
+                .add("multi_table", multiTable)
                 .toString();
     }
 
@@ -264,7 +267,8 @@ public class InstallIngressFlow extends InstallTransitFlow {
                 && Objects.equals(getTransitEncapsulationType(), that.getTransitEncapsulationType())
                 && Objects.equals(getOutputVlanType(), that.getOutputVlanType())
                 && Objects.equals(getBandwidth(), that.getBandwidth())
-                && Objects.equals(getMeterId(), that.getMeterId());
+                && Objects.equals(getMeterId(), that.getMeterId())
+                && Objects.equals(isMultiTable(), that.isMultiTable());
     }
 
     /**
@@ -273,6 +277,7 @@ public class InstallIngressFlow extends InstallTransitFlow {
     @Override
     public int hashCode() {
         return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort,
-                inputVlanId, transitEncapsulationId, transitEncapsulationType, outputVlanType, bandwidth, meterId);
+                inputVlanId, transitEncapsulationId, transitEncapsulationType, outputVlanType, bandwidth, meterId,
+                multiTable);
     }
 }

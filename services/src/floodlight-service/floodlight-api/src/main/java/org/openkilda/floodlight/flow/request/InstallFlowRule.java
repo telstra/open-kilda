@@ -50,8 +50,8 @@ public class InstallFlowRule extends SpeakerFlowRequest {
     private Integer outputPort;
 
     public InstallFlowRule(MessageContext context, UUID commandId, String id, Cookie cookie, SwitchId switchId,
-                           Integer inputPort, Integer outputPort) {
-        super(context, commandId, id, switchId);
+                           Integer inputPort, Integer outputPort, boolean multiTable) {
+        super(context, commandId, id, switchId, multiTable);
 
         this.cookie = cookie;
         this.inputPort = inputPort;
