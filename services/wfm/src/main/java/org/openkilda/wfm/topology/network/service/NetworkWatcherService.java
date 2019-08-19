@@ -93,13 +93,17 @@ public class NetworkWatcherService {
     }
 
     /**
-     * .
+     * Process discovery packet confirmation.
      */
-    public void confirmation(Endpoint endpoint, long packetNo) {
+    public void processConfirmation(Endpoint endpoint, long packetNo, boolean confirmed) {
         log.debug("Watcher service receive SEND-confirmation for {} id:{} task:{}", endpoint, packetNo, taskId);
         Packet packet = Packet.of(endpoint, packetNo);
         if (producedPackets.remove(packet)) {
-            confirmedPackets.add(packet);
+            if (confirmed) {
+                confirmedPackets.add(packet);
+            } else {
+                log.warn("Discovery packet was rejected for {} id:{} task:{}", endpoint, packetNo, taskId);
+            }
         } else if (log.isDebugEnabled()) {
             log.debug("Can't find produced packet for {} id:{} task:{}", endpoint, packetNo, taskId);
         }

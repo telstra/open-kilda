@@ -67,8 +67,8 @@ public class PollIntegrationTest {
                         .packetId(discoveryRequest.getPacketId())
                         .build();
 
-                watcherService.confirmation(Endpoint.of(discoveryRequest.getSwitchId(),
-                        discoveryRequest.getPortNumber()), discoveryRequest.getPacketId());
+                watcherService.processConfirmation(Endpoint.of(discoveryRequest.getSwitchId(),
+                        discoveryRequest.getPortNumber()), discoveryRequest.getPacketId(), true);
                 watcherService.discovery(response);
             }
         };
@@ -112,9 +112,9 @@ public class PollIntegrationTest {
         NetworkIntegrationCarrier integrationCarrier = new NetworkIntegrationCarrier() {
             @Override
             public void sendDiscovery(DiscoverIslCommandData discoveryRequest) {
-                watcherService.confirmation(
+                watcherService.processConfirmation(
                         Endpoint.of(discoveryRequest.getSwitchId(), discoveryRequest.getPortNumber()),
-                        discoveryRequest.getPacketId());
+                        discoveryRequest.getPacketId(), true);
             }
         };
 
