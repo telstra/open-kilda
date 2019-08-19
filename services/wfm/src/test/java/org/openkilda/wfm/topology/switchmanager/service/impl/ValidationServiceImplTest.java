@@ -107,10 +107,10 @@ public class ValidationServiceImplTest {
         ValidateRulesResult response =
                 validationService.validateRules(SWITCH_ID_A, flowEntries, expectedDefaultFlowEntries);
         assertEquals(ImmutableSet.of(0x8000000000000001L), new HashSet<>(response.getProperRules()));
-        assertEquals(ImmutableSet.of(0x8000000000000002L), new HashSet<>(response.getMisconfiguredRules()));
+        assertEquals(ImmutableSet.of(0x8000000000000001L, 0x8000000000000002L),
+                new HashSet<>(response.getMisconfiguredRules()));
         assertEquals(ImmutableSet.of(0x8000000000000003L), new HashSet<>(response.getMissingRules()));
-        assertEquals(ImmutableSet.of(0x8000000000000001L, 0x8000000000000002L, 0x8000000000000004L),
-                new HashSet<>(response.getExcessRules()));
+        assertEquals(ImmutableSet.of(0x8000000000000004L), new HashSet<>(response.getExcessRules()));
     }
 
     @Test

@@ -130,7 +130,7 @@ public class ValidationServiceImpl implements ValidationService {
                 }
 
                 if (defaultRule.size() > 1) {
-                    excessRules.add(expectedDefaultRule.getCookie());
+                    misconfiguredRules.add(expectedDefaultRule.getCookie());
                 }
             }
         });
