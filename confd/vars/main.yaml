@@ -109,7 +109,7 @@ kilda_isl_unstable_timeout_sec: 7200
 
 kilda_port_up_down_throttling_delay_seconds_min: 1
 kilda_port_up_down_throttling_delay_seconds_warm_up: 5
-kilda_port_up_down_throttling_delay_seconds_cool_down: 5
+kilda_port_up_down_throttling_delay_seconds_cool_down: 10
 
 kilda_bfd_port_offset: 200
 

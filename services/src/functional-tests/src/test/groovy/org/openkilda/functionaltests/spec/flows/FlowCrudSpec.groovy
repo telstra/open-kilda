@@ -483,7 +483,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         given: "A switch that has no connection to other switches"
         def isolatedSwitch = topology.activeSwitches[1]
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
-            northbound.portDown(isolatedSwitch.dpId, port)
+            antiflap.portDown(isolatedSwitch.dpId, port)
         }
         //wait until ISLs are actually got failed
         Wrappers.wait(WAIT_OFFSET) {
@@ -507,10 +507,10 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "Cleanup: restore connection to the isolated switch and reset costs"
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
-            northbound.portUp(isolatedSwitch.dpId, port)
+            antiflap.portUp(isolatedSwitch.dpId, port)
         }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED }
+            northbound.getAllLinks().each { assert it.state == DISCOVERED }
         }
         database.resetCosts()
 
@@ -634,7 +634,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
         assumeTrue("Unable to find required isl", isl as boolean)
-        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         islUtils.waitForIslStatus([isl, isl.reversed], FAILED)
 
         when: "Try to create a flow using ISL src port"
@@ -649,7 +649,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 getPortViolationError("create", isl.srcPort, isl.srcSwitch.dpId)
 
         and: "Cleanup: Restore state of the ISL"
-        northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
     }
 
@@ -843,7 +843,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         altPaths.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
         Wrappers.wait(antiflapMin + WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -854,9 +854,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
         and: "Make the first selected path unstable by bringing port down/up"
         // after bringing port down/up, the isl will be marked as unstable by updating the 'time_unstable' field in DB
         def islToBreak = pathHelper.getInvolvedIsls(firstPath).first()
-        northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == FAILED }
-        northbound.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == DISCOVERED }
 
         when: "Create a flow"
@@ -867,7 +867,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         PathHelper.convert(northbound.getFlowPath(flow.id)).first().portNo == secondPath.first().portNo
 
         and: "Restore topology, delete the flow and reset costs"
-        broughtDownPorts.each { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != FAILED }

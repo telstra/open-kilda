@@ -51,7 +51,7 @@ class FlowPriorityRerouteSpec extends HealthCheckSpecification {
         def currentIsls = pathHelper.getInvolvedIsls(currentPath)
         def newIsls = pathHelper.getInvolvedIsls(altPath)
         def islToBreak = currentIsls.find { !newIsls.contains(it) }
-        northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         then: "Flows were rerouted"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
@@ -69,7 +69,7 @@ class FlowPriorityRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: revert system to original state"
-        northbound.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         flows.each { flowHelper.deleteFlow(it.id) }
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED

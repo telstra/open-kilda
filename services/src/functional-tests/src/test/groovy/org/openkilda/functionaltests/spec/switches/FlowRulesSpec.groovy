@@ -596,7 +596,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
         // Switches may have parallel links, so we need to get involved ISLs.
         def islToFail = pathHelper.getInvolvedIsls(flowPath).first()
-        northbound.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "The flow was rerouted after reroute timeout"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
@@ -610,7 +610,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         checkTrafficCountersInRules(flow.destination, false)
 
         and: "Revive the ISL back (bring switch port up), delete the flow and reset costs"
-        northbound.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }

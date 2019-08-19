@@ -43,7 +43,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
 
         and: "Init simultaneous reroute of both flows by bringing current path's ISL down"
         def islToBreak = currentIsls.find { !newIsls.contains(it) }
-        northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         TimeUnit.SECONDS.sleep(rerouteDelay - 1)
 
         then: "Both flows change their paths (or go Down if no path)"
@@ -63,7 +63,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         flows.count { pathHelper.convert(northbound.getFlowPath(it.id)) == newPath } == 1
 
         and: "Cleanup: revert system to original state"
-        northbound.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         flows.each { flowHelper.deleteFlow(it.id) }
         [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())

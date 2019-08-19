@@ -57,7 +57,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
             }*.meterId]
         }
 
-        northbound.portDown(islsToBreak[0].srcSwitch.dpId, islsToBreak[0].srcPort)
+        antiflap.portDown(islsToBreak[0].srcSwitch.dpId, islsToBreak[0].srcPort)
 
         then: "Flow is not rerouted and marked as DOWN when the first ISL is broken"
         Wrappers.wait(WAIT_OFFSET) {
@@ -65,7 +65,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
             assert pathHelper.convert(northbound.getFlowPath(flow.id)) == currentPath
         }
         islsToBreak[1..-1].each { islToBreak ->
-            northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+            antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         }
 
         and: "Rules and meters are not changed"
@@ -85,7 +85,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
 
         when: "The broken ISLs are restored one by one"
         islsToBreak[0..-2].each { islToBreak ->
-            northbound.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+            antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
                 assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
                 TimeUnit.SECONDS.sleep(rerouteDelay - 1)
@@ -93,7 +93,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
                 assert pathHelper.convert(northbound.getFlowPath(flow.id)) == currentPath
             }
         }
-        northbound.portUp(islsToBreak[-1].srcSwitch.dpId, islsToBreak[-1].srcPort)
+        antiflap.portUp(islsToBreak[-1].srcSwitch.dpId, islsToBreak[-1].srcPort)
 
         then: "Flow is marked as UP when the last ISL is restored"
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {

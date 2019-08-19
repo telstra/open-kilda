@@ -383,7 +383,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         given: "A switch that has no connection to other switches"
         def isolatedSwitch = topology.activeSwitches[1]
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
-            northbound.portDown(isolatedSwitch.dpId, port)
+            antiflap.portDown(isolatedSwitch.dpId, port)
         }
         //wait until ISLs are actually got failed
         Wrappers.wait(WAIT_OFFSET) {
@@ -407,7 +407,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         and: "Cleanup: restore connection to the isolated switch and reset costs"
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
-            northbound.portUp(isolatedSwitch.dpId, port)
+            antiflap.portUp(isolatedSwitch.dpId, port)
         }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED }
@@ -496,7 +496,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
         assumeTrue("Unable to find required isl", isl as boolean)
-        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         islUtils.waitForIslStatus([isl, isl.reversed], FAILED)
 
         when: "Try to create a flow using ISL src port"
@@ -511,7 +511,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
                 getPortViolationError("create", isl.srcPort, isl.srcSwitch.dpId)
 
         and: "Cleanup: Restore state of the ISL"
-        northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
     }
 

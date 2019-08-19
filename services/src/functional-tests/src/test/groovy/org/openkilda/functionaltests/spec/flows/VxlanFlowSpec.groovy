@@ -380,7 +380,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         switchPair.paths.findAll { it != requiredPath }.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -399,7 +399,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         //TODO(andriidovhan)add errorMessage when the 2587 issue is fixed
 
         and: "Cleanup: Reset costs"
-        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }

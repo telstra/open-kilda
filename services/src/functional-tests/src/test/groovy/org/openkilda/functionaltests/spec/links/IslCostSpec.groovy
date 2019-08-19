@@ -29,7 +29,7 @@ class IslCostSpec extends HealthCheckSpecification {
         northbound.updateLinkProps([isl, isl.reversed].collect { islUtils.toLinkProps(it, [cost: islCost.toString()]) })
 
         when: "Bring port down on the source switch"
-        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
 
         then: "ISL status becomes 'FAILED'"
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
@@ -43,7 +43,7 @@ class IslCostSpec extends HealthCheckSpecification {
         northbound.getAllLinkProps()*.props.cost == [islCost, islCost]*.toString()
 
         and: "Bring port up on the source switch and reset costs"
-        northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }

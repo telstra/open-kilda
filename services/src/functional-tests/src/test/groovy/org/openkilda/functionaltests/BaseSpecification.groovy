@@ -6,6 +6,7 @@ import org.openkilda.functionaltests.extension.fixture.SetupOnce
 import org.openkilda.functionaltests.extension.spring.PrepareSpringContextDummy
 import org.openkilda.functionaltests.helpers.FlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.PortAntiflapHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.model.SwitchId
@@ -28,64 +29,45 @@ class BaseSpecification extends Specification implements SetupOnce {
 
     @Autowired
     TopologyDefinition topology
-
     @Autowired
     NorthboundService northbound
-
     @Autowired
     FloodlightService floodlight
-
     @Autowired
     LockKeeperService lockKeeper
-
     @Autowired
     Database database
-
     @Autowired
     OtsdbQueryService otsdb
-
     @Autowired
     IslUtils islUtils
-
     @Autowired
     FlowHelper flowHelper
-
     @Autowired
     TopologyHelper topologyHelper
-
     @Autowired
     PathHelper pathHelper
-
     @Autowired
     SwitchHelper switchHelper
-
     @Autowired
-    GrpcService grpc
+    PortAntiflapHelper antiflap
 
     @Value('${spring.profiles.active}')
     String profile
-
     @Value('${reroute.delay}')
     int rerouteDelay
-
     @Value('${discovery.interval}')
     int discoveryInterval
-
     @Value('${discovery.timeout}')
     int discoveryTimeout
-
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
-
     @Value('${antiflap.min}')
     int antiflapMin
-
     @Value("#{'\${floodlight.regions}'.split(',')}")
     List<String> regions
-
     @Value("#{'\${floodlight.controllers.management}'.split(',')}")
     List<String> managementControllers
-
     @Value("#{'\${floodlight.controllers.stat}'.split(',')}")
     List<String> statControllers
 

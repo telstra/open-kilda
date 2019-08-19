@@ -169,7 +169,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         switchPair.paths.findAll { it != flow1Path }.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -186,7 +186,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         flow2Path == flow1Path
 
         and: "Restore topology, delete flows and reset costs"
-        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
