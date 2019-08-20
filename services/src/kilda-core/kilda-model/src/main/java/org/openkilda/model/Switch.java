@@ -15,6 +15,8 @@
 
 package org.openkilda.model;
 
+import org.openkilda.converters.SwitchFeatureConverter;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Data;
@@ -33,6 +35,8 @@ import org.neo4j.ogm.typeconversion.InstantStringConverter;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -82,6 +86,9 @@ public class Switch implements Serializable {
     private String ofDescriptionSoftware;
     private String ofDescriptionSerialNumber;
     private String ofDescriptionDatapath;
+
+    @Convert(SwitchFeatureConverter.class)
+    private Set<SwitchFeature> features = new HashSet<>();
 
     @Property(name = "under_maintenance")
     private boolean underMaintenance;

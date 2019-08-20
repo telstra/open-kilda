@@ -16,16 +16,17 @@
 package org.openkilda.floodlight.service;
 
 import static org.easymock.EasyMock.expect;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.BFD;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.BFD_REVIEW;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.GROUP_PACKET_OUT_CONTROLLER;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.LIMITED_BURST_SIZE;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.METERS;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.NOVIFLOW_COPY_FIELD;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.PKTPS_FLAG;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.RESET_COUNTS_FLAG;
+import static org.openkilda.model.SwitchFeature.BFD;
+import static org.openkilda.model.SwitchFeature.BFD_REVIEW;
+import static org.openkilda.model.SwitchFeature.GROUP_PACKET_OUT_CONTROLLER;
+import static org.openkilda.model.SwitchFeature.LIMITED_BURST_SIZE;
+import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
+import static org.openkilda.model.SwitchFeature.METERS;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
+import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
+import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
 
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
+import org.openkilda.model.SwitchFeature;
 
 import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -60,39 +61,40 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     @Test
     public void metersCommon() {
         discoveryCheck(makeSwitchMock("Common Inc", "Soft123", "Hard123", OFVersion.OF_13),
-                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, METERS, RESET_COUNTS_FLAG, PKTPS_FLAG));
+                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, METERS, RESET_COUNTS_FLAG, PKTPS_FLAG,
+                               MATCH_UDP_PORT));
     }
 
     @Test
     public void metersOf12() {
         discoveryCheck(makeSwitchMock("Common Inc", "Soft123", "Hard123", OFVersion.OF_12),
-                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, RESET_COUNTS_FLAG, PKTPS_FLAG));
+                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, RESET_COUNTS_FLAG, PKTPS_FLAG, MATCH_UDP_PORT));
     }
 
     @Test
     public void metersNicira() {
         discoveryCheck(makeSwitchMock("Nicira, Inc.", "Soft123", "Hard123", OFVersion.OF_13),
-                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, RESET_COUNTS_FLAG, PKTPS_FLAG));
+                       ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, RESET_COUNTS_FLAG, PKTPS_FLAG, MATCH_UDP_PORT));
     }
 
     @Test
     public void bfdCommon() {
         discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_13),
                        ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG,
-                               NOVIFLOW_COPY_FIELD, PKTPS_FLAG));
+                               NOVIFLOW_COPY_FIELD, PKTPS_FLAG, MATCH_UDP_PORT));
     }
 
     @Test
     public void bfdReview() {
         discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_14),
                        ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, BFD_REVIEW, METERS, RESET_COUNTS_FLAG,
-                               NOVIFLOW_COPY_FIELD, PKTPS_FLAG));
+                               NOVIFLOW_COPY_FIELD, PKTPS_FLAG, MATCH_UDP_PORT));
     }
 
     @Test
     public void copyFieldOnESwitches() {
         discoveryCheck(makeSwitchMock("E", "NW400.4.0", "WB5164", OFVersion.OF_13),
-                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG));
+                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT));
     }
 
     @Test
@@ -105,20 +107,20 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     public void roundTripActon() {
         discoveryCheck(makeSwitchMock("Sonus Networks Inc, 4 Technology Park Dr, Westford, MA 01886, USA",
                 "8.1.0.14", "VX3048", OFVersion.OF_12),
-                ImmutableSet.of(RESET_COUNTS_FLAG, PKTPS_FLAG));
+                ImmutableSet.of(RESET_COUNTS_FLAG, PKTPS_FLAG, MATCH_UDP_PORT));
     }
 
     @Test
     public void eswitch500Software() {
         discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW500.0.1", "WB5164-E", OFVersion.OF_13),
-                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG));
+                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT));
     }
 
     @Test
     public void pktpsFlagCommon() {
         discoveryCheck(makeSwitchMock("NoviFlow Inc", "NW400.4.0", "NS21100", OFVersion.OF_13),
                 ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG,
-                        NOVIFLOW_COPY_FIELD, PKTPS_FLAG));
+                        NOVIFLOW_COPY_FIELD, PKTPS_FLAG, MATCH_UDP_PORT));
     }
 
     @Test
@@ -130,13 +132,13 @@ public class FeatureDetectorServiceTest extends EasyMockSupport {
     @Test
     public void pktpsFlagESwitch() {
         discoveryCheck(makeSwitchMock("E", "NW400.4.0", "WB5164", OFVersion.OF_13),
-                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG));
+                ImmutableSet.of(GROUP_PACKET_OUT_CONTROLLER, BFD, METERS, RESET_COUNTS_FLAG, MATCH_UDP_PORT));
     }
 
-    private void discoveryCheck(IOFSwitch sw, Set<Feature> expectedFeatures) {
+    private void discoveryCheck(IOFSwitch sw, Set<SwitchFeature> expectedFeatures) {
         replayAll();
 
-        Set<Feature> actualFeatures = featuresDetector.detectSwitch(sw);
+        Set<SwitchFeature> actualFeatures = featuresDetector.detectSwitch(sw);
         Assert.assertEquals(expectedFeatures, actualFeatures);
     }
 

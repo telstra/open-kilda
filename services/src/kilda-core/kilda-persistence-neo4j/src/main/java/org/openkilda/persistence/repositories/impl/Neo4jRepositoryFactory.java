@@ -17,6 +17,7 @@ package org.openkilda.persistence.repositories.impl;
 
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
+import org.openkilda.persistence.repositories.ConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
@@ -26,6 +27,7 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.LinkPropsRepository;
+import org.openkilda.persistence.repositories.LldpResourcesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
@@ -143,5 +145,15 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public SwitchFeaturesRepository createSwitchFeaturesRepository() {
         return new Neo4jSwitchFeaturesRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public LldpResourcesRepository createLldpResourcesRepository() {
+        return new Neo4jLldpResourcesRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public ConnectedDeviceRepository createConnectedDeviceRepository() {
+        return new Neo4jConnectedDevicesRepository(sessionFactory, transactionManager);
     }
 }

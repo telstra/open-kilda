@@ -48,13 +48,6 @@ import static org.openkilda.floodlight.pathverification.PathVerificationService.
 import static org.openkilda.floodlight.switchmanager.ISwitchManager.OVS_MANUFACTURER;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.ROUND_TRIP_LATENCY_GROUP_ID;
 import static org.openkilda.floodlight.test.standard.PushSchemeOutputCommands.ofFactory;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.BFD;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.GROUP_PACKET_OUT_CONTROLLER;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.LIMITED_BURST_SIZE;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.METERS;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.NOVIFLOW_COPY_FIELD;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.PKTPS_FLAG;
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.RESET_COUNTS_FLAG;
 import static org.openkilda.model.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
@@ -65,6 +58,14 @@ import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID;
 import static org.openkilda.model.MeterId.MIN_SYSTEM_RULE_METER_ID;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
+import static org.openkilda.model.SwitchFeature.BFD;
+import static org.openkilda.model.SwitchFeature.GROUP_PACKET_OUT_CONTROLLER;
+import static org.openkilda.model.SwitchFeature.LIMITED_BURST_SIZE;
+import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
+import static org.openkilda.model.SwitchFeature.METERS;
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
+import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
+import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
 
 import org.openkilda.floodlight.OFFactoryVer12Mock;
 import org.openkilda.floodlight.error.InvalidMeterIdException;
@@ -76,9 +77,9 @@ import org.openkilda.floodlight.service.FeatureDetectorService;
 import org.openkilda.floodlight.test.standard.OutputCommands;
 import org.openkilda.floodlight.test.standard.ReplaceSchemeOutputCommands;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
@@ -207,6 +208,15 @@ public class SwitchManagerTest {
 
     @Test
     public void installVerificationBroadcastRule() throws Exception {
+        runInstallVerificationBroadcastRule(true);
+    }
+
+    @Test
+    public void installVerificationBroadcastWithoutUdpMatchSupportRule() throws Exception {
+        runInstallVerificationBroadcastRule(false);
+    }
+
+    public void runInstallVerificationBroadcastRule(boolean supportsUdpPortMatch) throws Exception {
         mockGetGroupsRequest(ImmutableList.of(ROUND_TRIP_LATENCY_GROUP_ID));
         mockGetMetersRequest(ImmutableList.of(meterId), true, 10L);
         mockFlowStatsRequest(VERIFICATION_BROADCAST_RULE_COOKIE);
@@ -223,8 +233,11 @@ public class SwitchManagerTest {
 
         expect(iofSwitch.write(anyObject(OFMeterMod.class))).andReturn(true);
         expect(switchDescription.getManufacturerDescription()).andReturn("").times(2);
-        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(
-                Sets.newHashSet(BFD, GROUP_PACKET_OUT_CONTROLLER, NOVIFLOW_COPY_FIELD));
+        Set<SwitchFeature> features = Sets.newHashSet(BFD, GROUP_PACKET_OUT_CONTROLLER, NOVIFLOW_COPY_FIELD);
+        if (supportsUdpPortMatch) {
+            features.add(MATCH_UDP_PORT);
+        }
+        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(features);
         expectLastCall();
 
         replay(ofSwitchService);
@@ -233,7 +246,8 @@ public class SwitchManagerTest {
         replay(featureDetectorService);
 
         switchManager.installVerificationRule(defaultDpid, true);
-        assertEquals(scheme.installVerificationBroadcastRule(), captureVerificationBroadcast.getValue());
+        assertEquals(scheme.installVerificationBroadcastRule(supportsUdpPortMatch),
+                captureVerificationBroadcast.getValue());
     }
 
     @Test
@@ -1309,7 +1323,7 @@ public class SwitchManagerTest {
         expect(iofSwitch.write(capture(capture))).andStubReturn(true);
         expect(featureDetectorService.detectSwitch(iofSwitch))
                 .andReturn(Sets.newHashSet(GROUP_PACKET_OUT_CONTROLLER, NOVIFLOW_COPY_FIELD, PKTPS_FLAG))
-                .times(7);
+                .times(8);
         mockBarrierRequest();
         mockGetMetersRequest(Lists.newArrayList(unicastMeterId, broadcastMeterId), true, expectedRate);
         mockGetGroupsRequest(Lists.newArrayList(ROUND_TRIP_LATENCY_GROUP_ID));
@@ -1393,7 +1407,7 @@ public class SwitchManagerTest {
     private Capture<OFFlowMod> prepareForInstallTest(boolean isCentecSwitch) {
         Capture<OFFlowMod> capture = EasyMock.newCapture();
 
-        Set<Feature> features;
+        Set<SwitchFeature> features;
         if (isCentecSwitch) {
             features = Sets.newHashSet(METERS, LIMITED_BURST_SIZE);
         } else {

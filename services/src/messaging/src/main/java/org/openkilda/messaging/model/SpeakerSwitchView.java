@@ -15,6 +15,7 @@
 
 package org.openkilda.messaging.model;
 
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -50,7 +51,7 @@ public class SpeakerSwitchView implements Serializable {
     private SpeakerSwitchDescription description;
 
     @JsonProperty(value = "features", required = true)
-    private Set<Feature> features;
+    private Set<SwitchFeature> features;
 
     @JsonProperty(value = "ports", required = true)
     private List<SpeakerSwitchPortView> ports;
@@ -63,7 +64,7 @@ public class SpeakerSwitchView implements Serializable {
             @JsonProperty("speaker-socket") InetSocketAddress speakerSocketAddress,
             @JsonProperty("OF-version") String ofVersion,
             @JsonProperty("description") SpeakerSwitchDescription description,
-            @JsonProperty("features") Set<Feature> features,
+            @JsonProperty("features") Set<SwitchFeature> features,
             @JsonProperty("ports") List<SpeakerSwitchPortView> ports) {
         this.datapath = datapath;
         this.switchSocketAddress = switchSocketAddress;
@@ -75,14 +76,4 @@ public class SpeakerSwitchView implements Serializable {
         this.ports = ImmutableList.copyOf(Optional.ofNullable(ports).orElse(Collections.emptyList()));
     }
 
-    public enum Feature {
-        METERS,
-        BFD,
-        BFD_REVIEW,
-        GROUP_PACKET_OUT_CONTROLLER,
-        RESET_COUNTS_FLAG,
-        LIMITED_BURST_SIZE,
-        NOVIFLOW_COPY_FIELD,
-        PKTPS_FLAG
-    }
 }

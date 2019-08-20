@@ -5,6 +5,7 @@ import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -20,7 +21,6 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
@@ -219,9 +219,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         then: "Flow is switched to protected path"
-        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
-        // Revise and fix the test appropriately.
-        Wrappers.wait(WAIT_OFFSET * 2) {
+        Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
             def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.id)
 
@@ -250,7 +248,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2377")
     @Unroll
     def "System reroutes #flowDescription flow to more preferable path and ignores protected path when reroute\
  is intentional"() {
@@ -336,9 +333,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         then: "Flow is switched to protected path"
-        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
-        // Revise and fix the test appropriately.
-        Wrappers.wait(WAIT_OFFSET * 2) {
+        Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             def newPathInfo = northbound.getFlowPath(flow.id)
             def newCurrentPath = pathHelper.convert(newPathInfo)
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
@@ -528,9 +523,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         then: "Protected path is recalculated"
         def newProtectedPath
-        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
-        // Revise and fix the test appropriately.
-        Wrappers.wait(WAIT_OFFSET * 2) {
+        Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             newProtectedPath = pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
             assert newProtectedPath != currentProtectedPath
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
@@ -540,11 +533,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         currentPath == pathHelper.convert(northbound.getFlowPath(flow.id))
 
         and: "Bandwidth is reserved for new protected path on involved ISLs"
-
         def allLinks
-        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
-        // Revise and fix the test appropriately.
-        Wrappers.wait(WAIT_OFFSET * 2) {
+        Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             def newProtectedIsls = pathHelper.getInvolvedIsls(newProtectedPath)
             allLinks = northbound.getAllLinks()
             def newProtectedIslsInfo = newProtectedIsls.collect { islUtils.getIslInfo(allLinks, it).get() }
@@ -761,8 +751,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         and: "New meter is created on the src and dst switches"
         def newSrcSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.src.dpId)
         def newDstSwitchCreatedMeterIds = getCreatedMeterIds(switchPair.dst.dpId)
-        newSrcSwitchCreatedMeterIds.sort() != srcSwitchCreatedMeterIds.sort()
-        newDstSwitchCreatedMeterIds.sort() != dstSwitchCreatedMeterIds.sort()
+        //added || x.empty to allow situation when meters are not available on src or dst
+        newSrcSwitchCreatedMeterIds.sort() != srcSwitchCreatedMeterIds.sort() || srcSwitchCreatedMeterIds.empty
+        newDstSwitchCreatedMeterIds.sort() != dstSwitchCreatedMeterIds.sort() || dstSwitchCreatedMeterIds.empty
 
         and: "Rules are updated"
         Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
@@ -771,10 +762,12 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             [switchPair.src.dpId, switchPair.dst.dpId].each { switchId ->
                 def switchValidateInfo = northbound.validateSwitch(switchId)
-                assert switchValidateInfo.meters.proper.size() == 1
+                if(switchValidateInfo.meters) {
+                    assert switchValidateInfo.meters.proper.size() == 1
+                    switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
+                }
                 assert switchValidateInfo.rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 3
                 switchHelper.verifyRuleSectionsAreEmpty(switchValidateInfo, ["missing", "excess"])
-                switchHelper.verifyMeterSectionsAreEmpty(switchValidateInfo, ["missing", "misconfigured", "excess"])
             }
         }
 
@@ -929,9 +922,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         //TODO (andriidovhan) FlowState should be DEGRADED and mainFlowPathStatus should be "Up" when pr2430 is merged
         then: "Flow state is still DEGRADED"
-        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
-        // Revise and fix the test appropriately.
-        Wrappers.wait(WAIT_OFFSET * 2) {
+        Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED
             with(northbound.getFlow(flow.id).flowStatusDetails) {
                 mainFlowPathStatus == "Up"

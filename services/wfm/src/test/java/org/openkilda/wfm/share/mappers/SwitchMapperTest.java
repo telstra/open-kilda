@@ -19,11 +19,15 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 
+import com.google.common.collect.Sets;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.Set;
 
 public class SwitchMapperTest {
 
@@ -31,6 +35,7 @@ public class SwitchMapperTest {
 
     @Test
     public void switchMapperTest() {
+        Set<SwitchFeature> features = Sets.newHashSet(SwitchFeature.METERS, SwitchFeature.PKTPS_FLAG);
         SpeakerSwitchView switchView = SpeakerSwitchView.builder()
                 .ofVersion("13")
                 .description(SpeakerSwitchDescription.builder()
@@ -40,6 +45,7 @@ public class SwitchMapperTest {
                         .serialNumber("serial_number")
                         .software("software")
                         .build())
+                .features(features)
                 .build();
 
         Switch sw = Switch.builder()
@@ -57,6 +63,7 @@ public class SwitchMapperTest {
         sw.setOfDescriptionHardware(switchView.getDescription().getHardware());
         sw.setOfDescriptionSoftware(switchView.getDescription().getSoftware());
         sw.setOfDescriptionSerialNumber(switchView.getDescription().getSerialNumber());
+        sw.setFeatures(switchView.getFeatures());
 
         SwitchInfoData switchInfoData = new SwitchInfoData(TEST_SWITCH_ID, SwitchMapper.INSTANCE.map(sw.getStatus()),
                 sw.getAddress(), sw.getHostname(), sw.getDescription(), sw.getController(), sw.isUnderMaintenance(),

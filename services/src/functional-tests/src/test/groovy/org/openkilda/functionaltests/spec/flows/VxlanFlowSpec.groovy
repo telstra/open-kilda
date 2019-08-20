@@ -171,7 +171,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def protectedReverseCookie = flowInfoFromDb.protectedReversePath.cookie.value
 
         and: "Rules for main and protected paths are created"
-        Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
+        Wrappers.wait(WAIT_OFFSET * 2) { flowHelper.verifyRulesOnProtectedFlow(flow.id) }
 
         //TODO(andriidovhan) uncomment when pr2530 is merged
 //        and: "Validation of flow must be successful"
@@ -322,7 +322,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         exc.rawStatusCode == 404
         // TODO(andriidovhan) fix errorMessage when the 2587 issue is fixed
         exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not create flow: Not enough bandwidth found or path not found. Failed to find path with " +
+                "Could not create flow: Not enough bandwidth found or path not found : Failed to find path with " +
                 "requested bandwidth=$flow.maximumBandwidth: " +
                 "Switch $switchPair.dst.dpId doesn't have links with enough bandwidth"
     }

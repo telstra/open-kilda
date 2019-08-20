@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.resilience
 
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -57,9 +58,8 @@ class ChaosSpec extends HealthCheckSpecification {
             northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.empty
         }
         TimeUnit.SECONDS.sleep(rerouteDelay) //all throttled reroutes should start executing
-        //TODO: new H&S reroute requires more time to complete because of switch rule validation.
-        // Revise and fix the test appropriately.
-        Wrappers.wait(WAIT_OFFSET * 5 + flowsAmount) {
+
+        Wrappers.wait(PATH_INSTALLATION_TIME * 3 + flowsAmount) {
             flows.each { flow ->
                 assert northbound.getFlowStatus(flow.id).status == FlowState.UP
                 northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }

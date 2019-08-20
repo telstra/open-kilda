@@ -19,6 +19,7 @@ import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.ROUTER_TO_FLOW_REROUTE_HUB;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_CREATE;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_TO_HUB_REROUTE;
+import static org.openkilda.wfm.topology.flowhs.bolts.RouterBolt.FLOW_ID_FIELD;
 
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
@@ -42,10 +43,12 @@ import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.topology.TopologyBuilder;
+import org.apache.storm.tuple.Fields;
 
 import java.util.concurrent.TimeUnit;
 
 public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
+    private static final Fields FLOW_FIELD = new Fields(FLOW_ID_FIELD);
 
     private int parallelism;
 
@@ -110,7 +113,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
         FlowCreateHubBolt hubBolt =
                 new FlowCreateHubBolt(config, persistenceManager, pathComputerConfig, flowResourcesConfig);
         topologyBuilder.setBolt(ComponentId.FLOW_CREATE_HUB.name(), hubBolt, parallelism)
-                .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_FLOW_CREATE_HUB.name(), FIELDS_KEY)
+                .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_FLOW_CREATE_HUB.name(), FLOW_FIELD)
                 .directGrouping(ComponentId.FLOW_CREATE_SPEAKER_WORKER.name(),
                         Stream.SPEAKER_WORKER_TO_HUB_CREATE.name())
                 .directGrouping(CoordinatorBolt.ID);
@@ -124,7 +127,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 ComponentId.FLOW_REROUTE_SPEAKER_WORKER.name(), hubTimeout, true,
                 persistenceManager, pathComputerConfig, flowResourcesConfig);
         topologyBuilder.setBolt(ComponentId.FLOW_REROUTE_HUB.name(), hubBolt, parallelism)
-                .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_FLOW_REROUTE_HUB.name(), FIELDS_KEY)
+                .fieldsGrouping(ComponentId.FLOW_ROUTER_BOLT.name(), ROUTER_TO_FLOW_REROUTE_HUB.name(), FLOW_FIELD)
                 .directGrouping(ComponentId.FLOW_REROUTE_SPEAKER_WORKER.name(),
                         Stream.SPEAKER_WORKER_TO_HUB_REROUTE.name())
                 .directGrouping(CoordinatorBolt.ID);

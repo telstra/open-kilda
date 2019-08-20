@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.PersistenceManager;
@@ -151,8 +152,8 @@ public class NetworkIntegrationTest {
     @Test
     @Ignore
     public void switchAdd() {
-        Set<SpeakerSwitchView.Feature> features = new HashSet<>();
-        features.add(SpeakerSwitchView.Feature.BFD);
+        Set<SwitchFeature> features = new HashSet<>();
+        features.add(SwitchFeature.BFD);
 
         Integer bfdLocalPortOffset = options.getBfdLogicalPortOffset();
         List<SpeakerSwitchPortView> ports = ImmutableList.of(

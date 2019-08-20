@@ -766,15 +766,15 @@ class FlowCrudSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
             def links = northbound.getAllLinks()
-            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
+            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == DISCOVERED }
         }
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2625")
     def "System recreates excess meter when flow is created with the same meterId"() {
         given: "A Noviflow switch"
-        def sw = topology.activeSwitches.find { it.noviflow || it.virtual }
-                ?: assumeTrue("No suiting switch found", false)
+        def sw = topology.activeSwitches.find { it.noviflow || it.virtual } ?:
+                assumeTrue("No suiting switch found", false)
 
         and: "Create excess meters on the given switch"
         def fakeBandwidth = 333

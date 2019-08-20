@@ -15,9 +15,9 @@
 
 package org.openkilda.floodlight.feature;
 
-import static org.openkilda.messaging.model.SpeakerSwitchView.Feature.LIMITED_BURST_SIZE;
+import static org.openkilda.model.SwitchFeature.LIMITED_BURST_SIZE;
 
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
+import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import org.apache.commons.lang3.StringUtils;
@@ -26,7 +26,7 @@ import java.util.Optional;
 
 public class LimitedBurstSizeFeature extends AbstractFeature {
     @Override
-    public Optional<Feature> discover(IOFSwitch sw) {
+    public Optional<SwitchFeature> discover(IOFSwitch sw) {
         if (StringUtils.contains(sw.getSwitchDescription().getManufacturerDescription(), "Centec")) {
             return Optional.of(LIMITED_BURST_SIZE);
         }

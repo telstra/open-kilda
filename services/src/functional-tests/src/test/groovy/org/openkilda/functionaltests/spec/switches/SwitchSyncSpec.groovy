@@ -72,7 +72,7 @@ class SwitchSyncSpec extends BaseSpecification {
         def flow = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow)
 
-        and: "Reproduce situation when switches have missing rules and meters"
+        and: "Drop all rules an meters from related switches (both default and non-default)"
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
@@ -85,20 +85,29 @@ class SwitchSyncSpec extends BaseSpecification {
             }*.meterId]
         }
 
-        involvedSwitches.each { northbound.deleteSwitchRules(it.dpId, DeleteRulesAction.IGNORE_DEFAULTS) }
-        [switchPair.src, switchPair.dst].each { northbound.deleteMeter(it.dpId, metersMap[it.dpId][0]) }
+        involvedSwitches.each { sw ->
+            northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
+            northbound.getAllMeters(sw.dpId).meterEntries.each { northbound.deleteMeter(sw.dpId, it.meterId) }
+        }
         Wrappers.wait(RULES_DELETION_TIME) {
             def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
-            involvedSwitches.each { assert validationResultsMap[it.dpId].rules.missing.size() == 2 }
-            [switchPair.src, switchPair.dst].each { assert validationResultsMap[it.dpId].meters.missing.size() == 1 }
+            involvedSwitches[1..-2].each {
+                assert validationResultsMap[it.dpId].rules.missing.size() == 2 + it.defaultCookies.size()
+                //missing meters for default rules are not supported atm, so nothing here
+                assert validationResultsMap[it.dpId].meters.missing.empty
+            }
+            [switchPair.src, switchPair.dst].each {
+                assert validationResultsMap[it.dpId].rules.missing.size() == 2 + it.defaultCookies.size()
+                assert validationResultsMap[it.dpId].meters.missing.size() == 1
+            }
         }
 
         when: "Try to synchronize all switches"
         def syncResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.synchronizeSwitch(it.dpId, false)] }
 
-        then: "System detects missing rules and meters, then installs them"
+        then: "System detects missing rules and meters (both default and flow-related), then installs them"
         involvedSwitches.each {
-            assert syncResultsMap[it.dpId].rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 0
+            assert syncResultsMap[it.dpId].rules.proper.size() == 0
             assert syncResultsMap[it.dpId].rules.excess.size() == 0
             assert syncResultsMap[it.dpId].rules.missing.containsAll(cookiesMap[it.dpId])
             assert syncResultsMap[it.dpId].rules.removed.size() == 0
@@ -112,7 +121,7 @@ class SwitchSyncSpec extends BaseSpecification {
             assert syncResultsMap[it.dpId].meters.installed*.meterId == metersMap[it.dpId]
         }
 
-        and: "Switch validation doesn't complain about missing rules and meters"
+        and: "Switch validation doesn't complain about any missing rules and meters"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             involvedSwitches.each {
                 def validationResult = northbound.validateSwitch(it.dpId)

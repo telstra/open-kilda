@@ -30,6 +30,9 @@ public class RulesSyncDto extends RulesValidationDto {
     @JsonProperty("missing")
     private List<Long> missing;
 
+    @JsonProperty("misconfigured")
+    private List<Long> misconfigured;
+
     @JsonProperty("proper")
     private List<Long> proper;
 

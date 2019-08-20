@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.feature;
 
-import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.SwitchDescription;
@@ -27,8 +27,8 @@ public class BfdFeature extends AbstractFeature {
     private static final Pattern NOVIFLOW_SOFTWARE_REGEX = Pattern.compile("^NW\\d{3}\\.\\d+\\.\\d+$");
 
     @Override
-    public Optional<SpeakerSwitchView.Feature> discover(IOFSwitch sw) {
-        Optional<SpeakerSwitchView.Feature> empty = Optional.empty();
+    public Optional<SwitchFeature> discover(IOFSwitch sw) {
+        Optional<SwitchFeature> empty = Optional.empty();
 
         SwitchDescription description = sw.getSwitchDescription();
         if (description == null || description.getSoftwareDescription() == null) {
@@ -38,6 +38,6 @@ public class BfdFeature extends AbstractFeature {
             return empty;
         }
 
-        return Optional.of(SpeakerSwitchView.Feature.BFD);
+        return Optional.of(SwitchFeature.BFD);
     }
 }

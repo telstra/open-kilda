@@ -19,6 +19,7 @@ import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.DISCOVERY_PACKET_UDP_PORT;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.LATENCY_PACKET_UDP_PORT;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.ROUND_TRIP_LATENCY_T1_OFFSET;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.ROUND_TRIP_LATENCY_TIMESTAMP_SIZE;
@@ -33,6 +34,7 @@ import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 import static org.openkilda.model.Cookie.isDefaultRule;
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
+import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_12;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_13;
 import static org.projectfloodlight.openflow.protocol.OFVersion.OF_15;
@@ -57,10 +59,10 @@ import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
-import org.openkilda.messaging.model.SpeakerSwitchView.Feature;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.Meter;
 import org.openkilda.model.OutputVlanType;
+import org.openkilda.model.SwitchFeature;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -411,7 +413,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setMatch(match);
 
         // centec switches don't support RESET_COUNTS flag
-        if (featureDetectorService.detectSwitch(sw).contains(Feature.RESET_COUNTS_FLAG)) {
+        if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.RESET_COUNTS_FLAG)) {
             builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
         }
         return pushFlow(sw, "--InstallIngressFlow--", builder.build());
@@ -517,7 +519,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .setMatch(match);
 
         // centec switches don't support RESET_COUNTS flag
-        if (featureDetectorService.detectSwitch(sw).contains(Feature.RESET_COUNTS_FLAG)) {
+        if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.RESET_COUNTS_FLAG)) {
             builder.setFlags(ImmutableSet.of(OFFlowModFlags.RESET_COUNTS));
         }
 
@@ -550,7 +552,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         Optional.ofNullable(buildRoundTripLatencyFlow(sw)).ifPresent(flows::add);
 
         ArrayList<OFAction> actionListUnicastVxlanRule = new ArrayList<>();
-        if (featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
+        if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
             OFInstructionMeter meter = buildMeterInstructionForUnicastVxlanRule(sw, actionListUnicastVxlanRule);
             Optional.ofNullable(buildUnicastVerificationRuleVxlan(sw, VERIFICATION_UNICAST_VXLAN_RULE_COOKIE,
                     meter, actionListUnicastVxlanRule)).ifPresent(flows::add);
@@ -560,7 +562,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
     private ArrayList<OFAction> prepareActionListForBroadcastRule(IOFSwitch sw) {
         ArrayList<OFAction> actionList = new ArrayList<>();
-        if (featureDetectorService.detectSwitch(sw).contains(Feature.GROUP_PACKET_OUT_CONTROLLER)) {
+        if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.GROUP_PACKET_OUT_CONTROLLER)) {
             actionList.add(sw.getOFFactory().actions().group(OFGroup.of(ROUND_TRIP_LATENCY_GROUP_ID)));
         } else {
             addStandardDiscoveryActions(sw, actionList);
@@ -869,14 +871,14 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
-    public void installUnicastVerificationRuleVxlan(final DatapathId dpid) throws SwitchOperationException {
+    public Long installUnicastVerificationRuleVxlan(final DatapathId dpid) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
 
         // NOTE(tdurakov): reusing copy field feature here, since only switches with it supports pop/push vxlan's
         // should be replaced with fair feature detection based on ActionId's during handshake
-        if (!featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
+        if (!featureDetectorService.detectSwitch(sw).contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
             logger.debug("Skip installation of unicast verification vxlan rule for switch {}", dpid);
-            return;
+            return null;
         }
 
         ArrayList<OFAction> actionList = new ArrayList<>();
@@ -889,6 +891,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         String flowname = "Unicast Vxlan";
         flowname += "--VerificationFlowVxlan--" + dpid.toString();
         pushFlow(sw, flowname, flowMod);
+        return cookie;
     }
 
     private OFFlowMod buildUnicastVerificationRuleVxlan(IOFSwitch sw, long cookie, OFInstructionMeter meter,
@@ -917,7 +920,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public void installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
+    public Long installVerificationRule(final DatapathId dpid, final boolean isBroadcast)
             throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
 
@@ -929,7 +932,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         OFFactory ofFactory = sw.getOFFactory();
 
-        if (isBroadcast && featureDetectorService.detectSwitch(sw).contains(Feature.GROUP_PACKET_OUT_CONTROLLER)) {
+        if (isBroadcast && featureDetectorService.detectSwitch(sw)
+                .contains(SwitchFeature.GROUP_PACKET_OUT_CONTROLLER)) {
             logger.debug("Installing round trip latency group actions on switch {}", dpid);
 
             try {
@@ -952,6 +956,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         if (flowMod == null) {
             logger.debug("Not installing unicast verification match for {}", dpid);
+            return cookie;
         } else {
             if (!isBroadcast) {
                 logger.debug("Installing unicast verification match for {}", dpid);
@@ -960,6 +965,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             String flowName = (isBroadcast) ? "Broadcast" : "Unicast";
             flowName += "--VerificationFlow--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
+            return cookie;
         }
     }
 
@@ -1146,7 +1152,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
      * {@inheritDoc}
      */
     @Override
-    public void installDropFlow(final DatapathId dpid) throws SwitchOperationException {
+    public Long installDropFlow(final DatapathId dpid) throws SwitchOperationException {
         // TODO: leverage installDropFlowCustom
         IOFSwitch sw = lookupSwitch(dpid);
 
@@ -1154,10 +1160,12 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
 
         if (flowMod == null) {
             logger.debug("Skip installation of drop flow for switch {}", dpid);
+            return null;
         } else {
             logger.debug("Installing drop flow for switch {}", dpid);
             String flowName = "--DropRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
+            return DROP_RULE_COOKIE;
         }
     }
 
@@ -1173,22 +1181,24 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
-    public void installBfdCatchFlow(DatapathId dpid) throws SwitchOperationException {
+    public Long installBfdCatchFlow(DatapathId dpid) throws SwitchOperationException {
 
         IOFSwitch sw = lookupSwitch(dpid);
 
         OFFlowMod flowMod = buildBfdCatchFlow(sw);
         if (flowMod == null) {
             logger.debug("Skip installation of universal BFD catch flow for switch {}", dpid);
+            return null;
         } else {
             String flowName = "--CatchBfdRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
+            return CATCH_BFD_RULE_COOKIE;
         }
     }
 
     private OFFlowMod buildBfdCatchFlow(IOFSwitch sw) {
-        Set<Feature> features = featureDetectorService.detectSwitch(sw);
-        if (!features.contains(Feature.BFD)) {
+        Set<SwitchFeature> features = featureDetectorService.detectSwitch(sw);
+        if (!features.contains(SwitchFeature.BFD)) {
             return null;
         }
 
@@ -1205,21 +1215,23 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     @Override
-    public void installRoundTripLatencyFlow(DatapathId dpid) throws SwitchOperationException {
+    public Long installRoundTripLatencyFlow(DatapathId dpid) throws SwitchOperationException {
         logger.info("Installing round trip default rule on {}", dpid);
         IOFSwitch sw = lookupSwitch(dpid);
 
         OFFlowMod flowMod = buildRoundTripLatencyFlow(sw);
         if (flowMod == null) {
             logger.debug("Skip installation of round-trip latency rule for switch {}", dpid);
+            return null;
         } else {
             String flowName = "--RoundTripLatencyRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
+            return ROUND_TRIP_LATENCY_RULE_COOKIE;
         }
     }
 
     private OFFlowMod buildRoundTripLatencyFlow(IOFSwitch sw) {
-        if (!featureDetectorService.detectSwitch(sw).contains(Feature.NOVIFLOW_COPY_FIELD)) {
+        if (!featureDetectorService.detectSwitch(sw).contains(SwitchFeature.NOVIFLOW_COPY_FIELD)) {
             return null;
         }
 
@@ -1255,15 +1267,18 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
                 .build();
     }
 
-    void installDropLoopRule(DatapathId dpid) throws SwitchOperationException {
+    @Override
+    public Long installDropLoopRule(DatapathId dpid) throws SwitchOperationException {
         IOFSwitch sw = lookupSwitch(dpid);
 
         OFFlowMod flowMod = buildDropLoopRule(sw);
         if (flowMod == null) {
             logger.debug("Skip installation of drop loop rule for switch {}", dpid);
+            return null;
         } else {
             String flowName = "--DropLoopRule--" + dpid.toString();
             pushFlow(sw, flowName, flowMod);
+            return DROP_VERIFICATION_LOOP_RULE_COOKIE;
         }
     }
 
@@ -1743,6 +1758,11 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
         MacAddress dstMac = isBroadcast ? MacAddress.of(verificationBcastPacketDst) : dpIdToMac(sw.getId());
         Builder builder = sw.getOFFactory().buildMatch();
         builder.setMasked(MatchField.ETH_DST, dstMac, MacAddress.NO_MASK);
+        if (isBroadcast && featureDetectorService.detectSwitch(sw).contains(MATCH_UDP_PORT)) {
+            builder.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+            builder.setExact(MatchField.IP_PROTO, IpProtocol.UDP);
+            builder.setExact(MatchField.UDP_DST, TransportPort.of(DISCOVERY_PACKET_UDP_PORT));
+        }
         return builder.build();
     }
 
@@ -1883,7 +1903,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             long burstSize;
             Set<OFMeterFlags> flags;
 
-            if (featureDetectorService.detectSwitch(sw).contains(Feature.PKTPS_FLAG)) {
+            if (featureDetectorService.detectSwitch(sw).contains(SwitchFeature.PKTPS_FLAG)) {
                 flags = ImmutableSet.of(OFMeterFlags.PKTPS, OFMeterFlags.STATS, OFMeterFlags.BURST);
                 // With PKTPS flag rate and burst size is in packets
                 rate = rateInPackets;

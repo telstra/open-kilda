@@ -23,6 +23,7 @@ import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowInstallResponse;
+import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.messaging.info.flow.FlowRemoveResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterData;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
@@ -122,6 +123,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
                 syncService.handleInstallRulesResponse(key);
             } else if (data instanceof FlowRemoveResponse) {
                 syncService.handleRemoveRulesResponse(key);
+            } else if (data instanceof FlowReinstallResponse) {
+                syncService.handleReinstallDefaultRulesResponse(key, (FlowReinstallResponse) data);
             } else if (data instanceof DeleteMeterResponse) {
                 syncService.handleRemoveMetersResponse(key);
             } else {

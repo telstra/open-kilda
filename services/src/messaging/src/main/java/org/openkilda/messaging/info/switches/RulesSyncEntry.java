@@ -30,6 +30,9 @@ public class RulesSyncEntry implements Serializable {
     @JsonProperty("missing")
     List<Long> missing;
 
+    @JsonProperty("misconfigured")
+    List<Long> misconfigured;
+
     @JsonProperty("proper")
     List<Long> proper;
 
@@ -44,11 +47,13 @@ public class RulesSyncEntry implements Serializable {
 
     @JsonCreator
     public RulesSyncEntry(@JsonProperty("missing") List<Long> missing,
+                          @JsonProperty("misconfigured") List<Long> misconfigured,
                           @JsonProperty("proper") List<Long> proper,
                           @JsonProperty("excess") List<Long> excess,
                           @JsonProperty("installed") List<Long> installed,
                           @JsonProperty("removed") List<Long> removed) {
         this.missing = missing;
+        this.misconfigured = misconfigured;
         this.proper = proper;
         this.excess = excess;
         this.installed = installed;

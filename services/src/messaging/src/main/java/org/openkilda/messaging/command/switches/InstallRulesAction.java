@@ -28,6 +28,9 @@ public enum InstallRulesAction {
     // Install just the verification (unicast) rule only
     INSTALL_UNICAST,
 
+    // Install just the drop verification loop rule only
+    INSTALL_DROP_VERIFICATION_LOOP,
+
     // Install BFD catch rule
     INSTALL_BFD_CATCH,
 

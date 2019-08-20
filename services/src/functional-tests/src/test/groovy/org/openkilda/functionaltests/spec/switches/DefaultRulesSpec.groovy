@@ -129,6 +129,8 @@ class DefaultRulesSpec extends HealthCheckSpecification {
                     !(!theSw.noviflow && dataPiece.installRulesAction in [InstallRulesAction.INSTALL_BFD_CATCH,
                                                                   InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY,
                                                                   InstallRulesAction.INSTALL_UNICAST_VXLAN])
+                    //having broadcast rule with 'drop loop' rule on WB5164 will lead to packet storm. See #2595
+                    !(!theSw.wb5164 && dataPiece.installRulesAction == InstallRulesAction.INSTALL_BROADCAST)
         }
     }
 
@@ -216,7 +218,9 @@ class DefaultRulesSpec extends HealthCheckSpecification {
                 getTopology().getActiveSwitches().unique { activeSw -> activeSw.description }
         ].combinations().findAll { dataPiece, theSw ->
             //OF_12 switches has only one broadcast rule, so not all iterations will be applicable
-            !(theSw.ofVersion == "OF_12" && dataPiece.cookie != Cookie.VERIFICATION_BROADCAST_RULE_COOKIE)
+            !(theSw.ofVersion == "OF_12" && dataPiece.cookie != Cookie.VERIFICATION_BROADCAST_RULE_COOKIE) &&
+                    //dropping this rule on WB5164 will lead to disco-packet storm. Reason: #2595
+            !(theSw.wb5164 && dataPiece.cookie == Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE)
         }
     }
 

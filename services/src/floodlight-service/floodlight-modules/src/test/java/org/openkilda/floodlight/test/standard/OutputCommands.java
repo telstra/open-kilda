@@ -16,6 +16,7 @@
 package org.openkilda.floodlight.test.standard;
 
 import static java.util.Collections.singletonList;
+import static org.openkilda.floodlight.pathverification.PathVerificationService.DISCOVERY_PACKET_UDP_PORT;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.LATENCY_PACKET_UDP_PORT;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.ROUND_TRIP_LATENCY_T1_OFFSET;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.ROUND_TRIP_LATENCY_TIMESTAMP_SIZE;
@@ -369,17 +370,23 @@ public interface OutputCommands {
                 .build();
     }
 
-    default OFFlowAdd installVerificationBroadcastRule() {
-        Match match = ofFactory.buildMatch()
-                .setExact(MatchField.ETH_DST, MacAddress.of(VERIFICATION_BCAST_PACKET_DST))
-                .build();
+    default OFFlowAdd installVerificationBroadcastRule(boolean supportsUpdPortMatch) {
+
+        Match.Builder matchBuilder = ofFactory.buildMatch()
+                .setExact(MatchField.ETH_DST, MacAddress.of(VERIFICATION_BCAST_PACKET_DST));
+        if (supportsUpdPortMatch) {
+            matchBuilder
+                    .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                    .setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+                    .setExact(MatchField.UDP_DST, TransportPort.of(DISCOVERY_PACKET_UDP_PORT));
+        }
         return ofFactory.buildFlowAdd()
                 .setCookie(U64.of(Cookie.VERIFICATION_BROADCAST_RULE_COOKIE))
                 .setPriority(SwitchManager.VERIFICATION_RULE_PRIORITY)
                 .setHardTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setIdleTimeout(FlowModUtils.INFINITE_TIMEOUT)
                 .setBufferId(OFBufferId.NO_BUFFER)
-                .setMatch(match)
+                .setMatch(matchBuilder.build())
                 .setInstructions(Arrays.asList(
                         ofFactory.instructions().buildMeter().setMeterId(2L).build(),
                         ofFactory.instructions().applyActions(singletonList(

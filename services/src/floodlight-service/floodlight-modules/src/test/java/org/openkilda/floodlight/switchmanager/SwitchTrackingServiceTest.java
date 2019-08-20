@@ -43,6 +43,7 @@ import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.messaging.model.SpeakerSwitchView;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableList;
@@ -82,8 +83,8 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
     private static final String KAFKA_ISL_DISCOVERY_TOPIC = "kilda.topo.disco";
     private static final DatapathId dpId = DatapathId.of(0x7fff);
     private static String switchIpAddress;
-    private static final Set<SpeakerSwitchView.Feature> switchFeatures = Collections.singleton(
-            SpeakerSwitchView.Feature.METERS);
+    private static final Set<SwitchFeature> switchFeatures = Collections.singleton(
+            SwitchFeature.METERS);
 
     private final SwitchTrackingService service = new SwitchTrackingService();
 
@@ -254,7 +255,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         }
         expect(switchManager.getPhysicalPorts(sw)).andReturn(physicalPorts);
 
-        expect(featureDetector.detectSwitch(sw)).andReturn(ImmutableSet.of(SpeakerSwitchView.Feature.METERS));
+        expect(featureDetector.detectSwitch(sw)).andReturn(ImmutableSet.of(SwitchFeature.METERS));
 
         return prepareSwitchEventCommon(dpId);
     }
@@ -343,9 +344,9 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         ));
 
         expect(featureDetector.detectSwitch(iofSwitch1))
-                .andReturn(ImmutableSet.of(SpeakerSwitchView.Feature.METERS));
+                .andReturn(ImmutableSet.of(SwitchFeature.METERS));
         expect(featureDetector.detectSwitch(iofSwitch2))
-                .andReturn(ImmutableSet.of(SpeakerSwitchView.Feature.METERS, SpeakerSwitchView.Feature.BFD));
+                .andReturn(ImmutableSet.of(SwitchFeature.METERS, SwitchFeature.BFD));
 
         ArrayList<Message> producedMessages = new ArrayList<>();
         // setup hook for verify that we create new message for producer
@@ -378,7 +379,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
                                 new InetSocketAddress(Inet4Address.getByName("127.0.1.254"), 6653),
                                 "OF_13",
                                 switchDescription,
-                                ImmutableSet.of(SpeakerSwitchView.Feature.METERS),
+                                ImmutableSet.of(SwitchFeature.METERS),
                                 ImmutableList.of(
                                         new SpeakerSwitchPortView(1, SpeakerSwitchPortView.State.UP),
                                         new SpeakerSwitchPortView(2, SpeakerSwitchPortView.State.UP)))),
@@ -390,7 +391,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
                         new InetSocketAddress(Inet4Address.getByName("127.0.1.254"), 6653),
                         "OF_13",
                         switchDescription,
-                        ImmutableSet.of(SpeakerSwitchView.Feature.METERS, SpeakerSwitchView.Feature.BFD),
+                        ImmutableSet.of(SwitchFeature.METERS, SwitchFeature.BFD),
                         ImmutableList.of(
                                 new SpeakerSwitchPortView(3, SpeakerSwitchPortView.State.UP),
                                 new SpeakerSwitchPortView(4, SpeakerSwitchPortView.State.UP),
@@ -399,7 +400,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         assertEquals(expectedMessages, producedMessages);
     }
 
-    private SpeakerSwitchView makeSwitchRecord(DatapathId datapath, Set<SpeakerSwitchView.Feature> features,
+    private SpeakerSwitchView makeSwitchRecord(DatapathId datapath, Set<SwitchFeature> features,
                                                boolean... portState) {
         List<SpeakerSwitchPortView> ports = new ArrayList<>(portState.length);
         for (int idx = 0; idx < portState.length; idx++) {

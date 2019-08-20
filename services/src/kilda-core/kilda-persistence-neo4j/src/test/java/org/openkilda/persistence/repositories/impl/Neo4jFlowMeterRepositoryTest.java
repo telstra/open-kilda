@@ -16,6 +16,8 @@
 package org.openkilda.persistence.repositories.impl;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.openkilda.model.FlowMeter;
 import org.openkilda.model.MeterId;
@@ -30,9 +32,11 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Collection;
+import java.util.Optional;
 
 public class Neo4jFlowMeterRepositoryTest extends Neo4jBasedTest {
     static final String TEST_FLOW_ID = "test_flow";
+    static final String TEST_PATH_ID = "test_path";
 
     static FlowMeterRepository flowMeterRepository;
     static SwitchRepository switchRepository;
@@ -53,12 +57,7 @@ public class Neo4jFlowMeterRepositoryTest extends Neo4jBasedTest {
 
     @Test
     public void shouldCreateFlowMeter() {
-        FlowMeter meter = FlowMeter.builder()
-                .switchId(theSwitch.getSwitchId())
-                .meterId(new MeterId(1))
-                .pathId(new PathId(TEST_FLOW_ID + "_path"))
-                .flowId(TEST_FLOW_ID)
-                .build();
+        FlowMeter meter = createFlowMeter();
         flowMeterRepository.createOrUpdate(meter);
 
         Collection<FlowMeter> allMeters = flowMeterRepository.findAll();
@@ -69,13 +68,64 @@ public class Neo4jFlowMeterRepositoryTest extends Neo4jBasedTest {
     }
 
     @Test
+    public void shouldCreateLldpMeter() {
+        FlowMeter meter = createFlowMeter(5, null); // LLDP meter has no path ID
+        flowMeterRepository.createOrUpdate(meter);
+
+        Collection<FlowMeter> allMeters = flowMeterRepository.findAll();
+        assertEquals(1, allMeters.size());
+        FlowMeter foundMeter = allMeters.iterator().next();
+
+        assertEquals(theSwitch.getSwitchId(), foundMeter.getSwitchId());
+        assertEquals(TEST_FLOW_ID, foundMeter.getFlowId());
+        assertEquals(5, foundMeter.getMeterId().getValue());
+        assertNull(foundMeter.getPathId());
+    }
+
+    @Test
+    public void shouldCreateTwoLldpMeterForOneSwitch() {
+        FlowMeter meter1 = createFlowMeter(5, null); // LLDP meter has no path ID
+        FlowMeter meter2 = createFlowMeter(7, null); // LLDP meter has no path ID
+        flowMeterRepository.createOrUpdate(meter1);
+        flowMeterRepository.createOrUpdate(meter2);
+
+        Collection<FlowMeter> allMeters = flowMeterRepository.findAll();
+        assertEquals(2, allMeters.size());
+
+
+        FlowMeter createdMeter1 = flowMeterRepository.findLldpMeterByMeterIdSwitchIdAndFlowId(
+                meter1.getMeterId(), meter1.getSwitchId(), meter1.getFlowId()).get();
+        FlowMeter createdMeter2 = flowMeterRepository.findLldpMeterByMeterIdSwitchIdAndFlowId(
+                meter2.getMeterId(), meter2.getSwitchId(), meter2.getFlowId()).get();
+
+        assertEquals(meter1, createdMeter1);
+        assertEquals(meter2, createdMeter2);
+    }
+
+    @Test
+    public void shouldFindLldpMeter() {
+        FlowMeter flowMeter = createFlowMeter();
+
+        MeterId lldpMeterId = new MeterId(33);
+        FlowMeter lldpMeter = createFlowMeter(33, null); // LLDP meter has no path ID
+
+        flowMeterRepository.createOrUpdate(flowMeter);
+        flowMeterRepository.createOrUpdate(lldpMeter);
+
+        Optional<FlowMeter> meter = flowMeterRepository.findLldpMeterByMeterIdSwitchIdAndFlowId(
+                lldpMeterId, theSwitch.getSwitchId(), TEST_FLOW_ID);
+
+        assertTrue(meter.isPresent());
+
+        assertEquals(theSwitch.getSwitchId(), meter.get().getSwitchId());
+        assertEquals(TEST_FLOW_ID, meter.get().getFlowId());
+        assertEquals(33, meter.get().getMeterId().getValue());
+        assertNull(meter.get().getPathId());
+    }
+
+    @Test
     public void shouldDeleteFlowMeter() {
-        FlowMeter meter = FlowMeter.builder()
-                .switchId(theSwitch.getSwitchId())
-                .meterId(new MeterId(1))
-                .pathId(new PathId(TEST_FLOW_ID + "_path"))
-                .flowId(TEST_FLOW_ID)
-                .build();
+        FlowMeter meter = createFlowMeter();
         flowMeterRepository.createOrUpdate(meter);
 
         flowMeterRepository.delete(meter);
@@ -85,12 +135,7 @@ public class Neo4jFlowMeterRepositoryTest extends Neo4jBasedTest {
 
     @Test
     public void shouldDeleteFoundFlowMeter() {
-        FlowMeter meter = FlowMeter.builder()
-                .switchId(theSwitch.getSwitchId())
-                .meterId(new MeterId(1))
-                .pathId(new PathId(TEST_FLOW_ID + "_path"))
-                .flowId(TEST_FLOW_ID)
-                .build();
+        FlowMeter meter = createFlowMeter();
         flowMeterRepository.createOrUpdate(meter);
 
         Collection<FlowMeter> allMeters = flowMeterRepository.findAll();
@@ -98,5 +143,18 @@ public class Neo4jFlowMeterRepositoryTest extends Neo4jBasedTest {
         flowMeterRepository.delete(foundMeter);
 
         assertEquals(0, flowMeterRepository.findAll().size());
+    }
+
+    private FlowMeter createFlowMeter(int meterId, PathId pathId) {
+        return FlowMeter.builder()
+                .switchId(theSwitch.getSwitchId())
+                .meterId(new MeterId(meterId))
+                .pathId(pathId)
+                .flowId(TEST_FLOW_ID)
+                .build();
+    }
+
+    private FlowMeter createFlowMeter() {
+        return createFlowMeter(1, new PathId(TEST_PATH_ID));
     }
 }

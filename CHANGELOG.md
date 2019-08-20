@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.32.0 (20/08/2019)
+
+### Features:
+-  [#2669](https://github.com/telstra/open-kilda/pull/2669) Added models and repos for Connected Devices (Issue: [#2582](https://github.com/telstra/open-kilda/issues/2582)) 
+
+### Bug Fixes:
+-  [#2596](https://github.com/telstra/open-kilda/pull/2596) Added udp dst port match into broadcast default rule. (Issue: [#2595](https://github.com/telstra/open-kilda/issues/2595)) [**floodlight**]
+-  [#2695](https://github.com/telstra/open-kilda/pull/2695) Fix flow delete without resources +flow reroute v2 resource deallocation [**storm-topologies**]
+-  [#2700](https://github.com/telstra/open-kilda/pull/2700) Update tests to workaround issue #2595 [**tests**]
+-  [#2705](https://github.com/telstra/open-kilda/pull/2705) Hot fix wrong error message expected in func tests [**tests**]
+-  [#2709](https://github.com/telstra/open-kilda/pull/2709) Hot fix wrong error message expected in func tests [**tests**]
+-  [#2710](https://github.com/telstra/open-kilda/pull/2710) Do not match UDP port for broadcast rule on Centec [**floodlight**]
+
+### Improvements:
+-  [#2691](https://github.com/telstra/open-kilda/pull/2691) Increase wait after wfm finished for better test stability. [**tests**]
+-  [#2668](https://github.com/telstra/open-kilda/pull/2668) Use hs auto-reroutes by default. Update waiters for path allocation [**tests**]
+-  [#2673](https://github.com/telstra/open-kilda/pull/2673) Simplify unit test exec process 
+-  [#2647](https://github.com/telstra/open-kilda/pull/2647) add tests: vxlan for api v2 [**tests**]
+-  [#2682](https://github.com/telstra/open-kilda/pull/2682) Added switch features to switch DB model [**storm-topologies**]
+-  [#2686](https://github.com/telstra/open-kilda/pull/2686) Add the default rules to switch rules synchronization. [**floodlight**][**storm-topologies**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.31.0...v1.32.0).
+
+### Upgrade notes:
+It is required to synchronize default rules on all switches.
+
+Also please consider using following migration scripts to update db:
+- [1.9 migration-script.xml](https://github.com/telstra/open-kilda/blob/v1.32.0/services/neo4j/migrations/1.9-connected-devices/1-update-constraints-changelog.xml)
+
+In case of issues these rollback scripts should be executed:
+- [1.9 rollback.cql](https://github.com/telstra/open-kilda/blob/v1.32.0/services/neo4j/migrations/1.9-connected-devices/rollback.cql)
+
+---
+
 ## v1.31.0 (14/08/2019)
 
 ### Bug Fixes:
