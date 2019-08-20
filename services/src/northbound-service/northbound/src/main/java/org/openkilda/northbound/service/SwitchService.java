@@ -35,6 +35,7 @@ import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
+import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -187,6 +188,16 @@ public interface SwitchService {
      * @return the port description.
      */
     CompletableFuture<PortDescription> getPortDescription(SwitchId switchId, int port);
+
+    /**
+     * Get a list of states with reference to time.
+     * @param switchId the switch id.
+     * @param port the port number.
+     * @param from start date for a search.
+     * @param to end date for a search.
+     * @return port history.
+     */
+    CompletableFuture<List<PortHistoryResponse>> getPortHistory(SwitchId switchId, int port, long from, long to);
 
     /**
      * Update "Under maintenance" flag for the switch.

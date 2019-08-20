@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.network.service;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -25,6 +26,7 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
@@ -35,6 +37,8 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.slf4j.Logger;
+
+import java.time.Instant;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkPortServiceTest {
@@ -128,40 +132,42 @@ public class NetworkPortServiceTest {
     @Test
     public void inUnOperationalUpDownPort() {
         NetworkPortService service = makeService();
-        Endpoint port1 = Endpoint.of(alphaDatapath, 1);
+        Endpoint endpoint = Endpoint.of(alphaDatapath, 1);
 
-        service.setup(port1, null);
-        service.updateOnlineMode(port1, true);
+        service.setup(endpoint, null);
+        service.updateOnlineMode(endpoint, true);
 
         resetMocks();
 
-        service.updateOnlineMode(port1, false);
+        service.updateOnlineMode(endpoint, false);
 
         // Port 1 from Unknown to UP then DOWN
 
-        service.updateLinkStatus(port1, LinkStatus.UP);
-        service.updateLinkStatus(port1, LinkStatus.DOWN);
+        service.updateLinkStatus(endpoint, LinkStatus.UP);
+        service.updateLinkStatus(endpoint, LinkStatus.DOWN);
 
         verifyZeroInteractions(dashboardLogger);
 
-        verify(carrier, never()).enableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
-        verify(carrier, never()).disableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
-        verify(carrier, never()).notifyPortPhysicalDown(Endpoint.of(alphaDatapath, 1));
+        verify(carrier, never()).enableDiscoveryPoll(endpoint);
+        verify(carrier, never()).disableDiscoveryPoll(endpoint);
+        verify(carrier, never()).notifyPortPhysicalDown(endpoint);
 
         resetMocks();
 
-        service.updateOnlineMode(port1, true);
+        service.updateOnlineMode(endpoint, true);
 
-        service.updateLinkStatus(port1, LinkStatus.UP);
-        service.updateLinkStatus(port1, LinkStatus.DOWN);
+        service.updateLinkStatus(endpoint, LinkStatus.UP);
+        service.updateLinkStatus(endpoint, LinkStatus.DOWN);
 
-        verify(dashboardLogger).onUpdatePortStatus(port1, LinkStatus.UP);
-        verify(dashboardLogger).onUpdatePortStatus(port1, LinkStatus.DOWN);
+        verify(dashboardLogger).onUpdatePortStatus(endpoint, LinkStatus.UP);
+        verify(dashboardLogger).onUpdatePortStatus(endpoint, LinkStatus.DOWN);
         verifyNoMoreInteractions(dashboardLogger);
 
-        verify(carrier).enableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
-        verify(carrier).disableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
-        verify(carrier).notifyPortPhysicalDown(Endpoint.of(alphaDatapath, 1));
+        verify(carrier).enableDiscoveryPoll(endpoint);
+        verify(carrier).disableDiscoveryPoll(endpoint);
+        verify(carrier).notifyPortPhysicalDown(endpoint);
+        verify(carrier).sendPortStateChangedHistory(eq(endpoint), eq(PortHistoryEvent.PORT_UP), any(Instant.class));
+        verify(carrier).sendPortStateChangedHistory(eq(endpoint), eq(PortHistoryEvent.PORT_DOWN), any(Instant.class));
 
         // System.out.println(mockingDetails(carrier).printInvocations());
     }
