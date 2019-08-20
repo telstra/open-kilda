@@ -15,10 +15,12 @@
 
 package org.openkilda.wfm.share.history.service;
 
+import org.openkilda.model.SwitchId;
 import org.openkilda.model.history.FlowDump;
 import org.openkilda.model.history.FlowEvent;
 import org.openkilda.model.history.FlowHistory;
 import org.openkilda.model.history.HistoryLog;
+import org.openkilda.model.history.PortHistory;
 import org.openkilda.model.history.StateLog;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
@@ -27,8 +29,10 @@ import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.persistence.repositories.history.FlowHistoryRepository;
 import org.openkilda.persistence.repositories.history.FlowStateRepository;
 import org.openkilda.persistence.repositories.history.HistoryLogRepository;
+import org.openkilda.persistence.repositories.history.PortHistoryRepository;
 import org.openkilda.persistence.repositories.history.StateLogRepository;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.openkilda.wfm.share.history.model.PortHistoryData;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +50,7 @@ public class HistoryService {
     private final FlowStateRepository flowStateRepository;
     private final HistoryLogRepository historyLogRepository;
     private final StateLogRepository stateLogRepository;
+    private final PortHistoryRepository portHistoryRepository;
 
     public HistoryService(PersistenceManager persistenceManager) {
         this(persistenceManager.getTransactionManager(), persistenceManager.getRepositoryFactory());
@@ -58,6 +63,7 @@ public class HistoryService {
         flowStateRepository = repositoryFactory.createFlowStateRepository();
         historyLogRepository = repositoryFactory.createHistoryLogRepository();
         stateLogRepository = repositoryFactory.createStateLogRepository();
+        portHistoryRepository = repositoryFactory.createPortHistoryRepository();
     }
 
     /**
@@ -82,6 +88,11 @@ public class HistoryService {
                 store(historyHolder.getTaskId(), dump);
             }
         });
+    }
+
+    public void store(PortHistoryData data) {
+        PortHistory entity = HistoryMapper.INSTANCE.map(data);
+        portHistoryRepository.createOrUpdate(entity);
     }
 
     private void store(String taskId, FlowEvent flowEvent) {
@@ -134,5 +145,9 @@ public class HistoryService {
 
     public List<FlowDump> listFlowDump(String taskId) {
         return new ArrayList<>(flowStateRepository.findFlowDumpByTaskId(taskId));
+    }
+
+    public List<PortHistory> listPortHistory(SwitchId switchId, int portNumber, Instant start, Instant end) {
+        return new ArrayList<>(portHistoryRepository.findBySwitchIdAndPortNumber(switchId, portNumber, start, end));
     }
 }

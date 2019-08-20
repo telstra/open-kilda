@@ -15,9 +15,13 @@
 
 package org.openkilda.wfm.topology.network.controller.port;
 
+import org.openkilda.wfm.share.history.model.PortHistoryAction;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
+import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmEvent;
+import org.openkilda.wfm.topology.network.controller.port.PortFsm.PortFsmState;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
+import org.openkilda.wfm.topology.network.service.IPortCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
@@ -25,47 +29,62 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 import org.squirrelframework.foundation.fsm.annotation.ContextInsensitive;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
+import java.time.Instant;
+
 @Slf4j
 @ContextInsensitive
-public class PortReportFsm
-        extends AbstractStateMachine<PortReportFsm, PortFsm.PortFsmState, PortFsm.PortFsmEvent, Void> {
+public final class PortReportFsm extends AbstractStateMachine<PortReportFsm, PortFsmState, PortFsmEvent, Void> {
 
     private final NetworkTopologyDashboardLogger dashboardLogger;
 
     private final Endpoint endpoint;
+    private final IPortCarrier carrier;
 
-    public static PortReportFsmFactory factory(NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder) {
-        return new PortReportFsmFactory(dashboardLoggerBuilder);
+    public static PortReportFsmFactory factory(NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder,
+                                               IPortCarrier carrier) {
+        return new PortReportFsmFactory(dashboardLoggerBuilder, carrier);
     }
 
-    public PortReportFsm(NetworkTopologyDashboardLogger.Builder dashboardLoggerBuider, Endpoint endpoint) {
+    private PortReportFsm(NetworkTopologyDashboardLogger.Builder dashboardLoggerBuider, Endpoint endpoint,
+                          IPortCarrier carrier) {
         this.dashboardLogger = dashboardLoggerBuider.build(log);
         this.endpoint = endpoint;
+        this.carrier = carrier;
     }
 
     // -- FSM actions --
 
-    public void becomeUp(PortFsm.PortFsmState from, PortFsm.PortFsmState to, PortFsm.PortFsmEvent event) {
+    public void becomeUp(PortFsmState from, PortFsmState to, PortFsmEvent event) {
         dashboardLogger.onUpdatePortStatus(endpoint, LinkStatus.UP);
+        sendPortHistory(event, carrier);
     }
 
-    public void becomeDown(PortFsm.PortFsmState from, PortFsm.PortFsmState to, PortFsm.PortFsmEvent event) {
+    public void becomeDown(PortFsmState from, PortFsmState to, PortFsmEvent event) {
         dashboardLogger.onUpdatePortStatus(endpoint, LinkStatus.DOWN);
+        sendPortHistory(event, carrier);
+    }
+
+    private void sendPortHistory(PortFsmEvent fsmEvent, IPortCarrier carrier) {
+        PortHistoryAction event =
+                fsmEvent == PortFsmEvent.PORT_UP ? PortHistoryAction.PORT_UP : PortHistoryAction.PORT_DOWN;
+        carrier.sendPortStateChangedHistory(endpoint, event, Instant.now());
     }
 
     // -- service data types --
 
     public static class PortReportFsmFactory {
         private final NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder;
-        private final StateMachineBuilder<PortReportFsm, PortFsm.PortFsmState, PortFsm.PortFsmEvent, Void> builder;
+        private final IPortCarrier carrier;
+        private final StateMachineBuilder<PortReportFsm, PortFsmState, PortFsmEvent, Void> builder;
 
-        PortReportFsmFactory(NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder) {
+        PortReportFsmFactory(NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder, IPortCarrier carrier) {
             this.dashboardLoggerBuilder = dashboardLoggerBuilder;
+            this.carrier = carrier;
 
             builder = StateMachineBuilderFactory.create(
-                    PortReportFsm.class, PortFsm.PortFsmState.class, PortFsm.PortFsmEvent.class, Void.class,
+                    PortReportFsm.class, PortFsmState.class, PortFsmEvent.class, Void.class,
                     // extra parameters
-                    NetworkTopologyDashboardLogger.Builder.class, Endpoint.class);
+                    NetworkTopologyDashboardLogger.Builder.class, Endpoint.class, IPortCarrier.class);
 
             // INIT
             builder.transition()
@@ -86,7 +105,7 @@ public class PortReportFsm
         }
 
         public PortReportFsm produce(Endpoint endpoint) {
-            return builder.newStateMachine(PortFsm.PortFsmState.INIT, dashboardLoggerBuilder, endpoint);
+            return builder.newStateMachine(PortFsm.PortFsmState.INIT, dashboardLoggerBuilder, endpoint, carrier);
         }
     }
 }

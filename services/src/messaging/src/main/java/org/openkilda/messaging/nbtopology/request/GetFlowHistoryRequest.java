@@ -24,7 +24,7 @@ import lombok.Value;
 @ReadRequest
 @Value
 @Builder
-public class GetFlowHistoryRequest extends BaseRequest {
+public class GetFlowHistoryRequest extends HistoryRequest {
     @JsonProperty("flow_id")
     String flowId;
 

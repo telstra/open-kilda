@@ -24,6 +24,7 @@ import org.openkilda.messaging.info.switches.RulesSyncEntry;
 import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.messaging.payload.history.PortHistoryPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto;
 import org.openkilda.northbound.dto.v1.switches.MeterMisconfiguredInfoDto;
@@ -36,6 +37,7 @@ import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
+import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -98,6 +100,8 @@ public interface SwitchMapper {
     MeterInfoDto toMeterInfoDto(MeterInfoEntry data);
 
     MeterMisconfiguredInfoDto toMeterMisconfiguredInfoDto(MeterMisconfiguredInfoEntry data);
+
+    PortHistoryResponse map(PortHistoryPayload response);
 
     default String toSwithId(SwitchId switchId) {
         return switchId.toString();
