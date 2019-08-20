@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
+import org.openkilda.wfm.share.history.model.PortHistoryData;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
@@ -184,6 +185,10 @@ public class NetworkIntegrationCarrier
     @Override
     public void notifyIslDown(Endpoint endpoint, IslReference reference, IslDownReason reason) {
         islService.islDown(endpoint, reference, reason);
+    }
+
+    @Override
+    public void sendPortHistory(PortHistoryData portHistory) {
     }
 
     @Override

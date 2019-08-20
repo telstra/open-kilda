@@ -39,7 +39,9 @@ public enum ComponentId {
     REROUTE_OUTPUT("reroute.output"),
 
     STATUS_ENCODER("status.encoder"),
-    STATUS_OUTPUT("status.output");
+    STATUS_OUTPUT("status.output"),
+
+    PORT_HISTORY("port.history");
 
     private final String value;
 

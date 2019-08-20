@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,30 +15,26 @@
 
 package org.openkilda.messaging.nbtopology.request;
 
-import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.NonNull;
 import lombok.Value;
 
-@ReadRequest
 @Value
 @Builder
-public class GetFlowHistoryRequest extends HistoryRequest {
-    @JsonProperty("flow_id")
-    String flowId;
+public class PortHistoryRequest extends HistoryRequest {
+    @NonNull
+    @JsonProperty("switch_id")
+    private SwitchId switchId;
 
-    @JsonProperty("timestamp_from")
-    long timestampFrom;
+    @JsonProperty("port_no")
+    private int portNumber;
 
-    @JsonProperty("timestamp_to")
-    long timestampTo;
-
-    public GetFlowHistoryRequest(@JsonProperty("flow_id") String flowId,
-                                 @JsonProperty("timestamp_from") long timestampFrom,
-                                 @JsonProperty("timestamp_to") long timestampTo) {
-        this.flowId = flowId;
-        this.timestampFrom = timestampFrom;
-        this.timestampTo = timestampTo;
+    public PortHistoryRequest(@JsonProperty("switch_id") SwitchId switchId,
+                              @JsonProperty("port_no") int portNumber) {
+        this.switchId = switchId;
+        this.portNumber = portNumber;
     }
 }
