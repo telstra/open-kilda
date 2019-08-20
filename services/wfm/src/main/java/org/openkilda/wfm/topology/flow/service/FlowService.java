@@ -490,12 +490,15 @@ public class FlowService extends BaseFlowService {
             FlowNotFoundException, ResourceAllocationException {
         dashboardLogger.onFlowPathReroute(flowId, pathIds, forceToReroute);
 
-        RerouteResult result = null;
+        RerouteResult result;
         try {
-            result = (RerouteResult) getFailsafe().get(() ->
-                    transactionManager.doInTransaction(() -> doReroute(flowId, forceToReroute, pathIds)));
-        } catch (FailsafeException e) {
-            unwrapFaisafeException(e);
+            result = doRerouteWithRetries(flowId, forceToReroute, pathIds);
+        } catch (UnroutableFlowException e) {
+            dashboardLogger.onFailedFlowReroute(flowId, "Path was not found. " + e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            dashboardLogger.onFailedFlowReroute(flowId, e.getMessage());
+            throw e;
         }
 
         log.warn("Reroute finished. Paths to create: {}. Paths to remove: {}",
@@ -519,6 +522,18 @@ public class FlowService extends BaseFlowService {
                 createFlowPathStatusRequests(result.getToCreateFlow(), FlowPathStatus.INACTIVE));
 
         return new ReroutedFlowPaths(result.getInitialFlow(), result.getUpdatedFlow());
+    }
+
+    private RerouteResult doRerouteWithRetries(String flowId, boolean forceToReroute, Set<PathId> pathIds)
+            throws ResourceAllocationException, FlowNotFoundException, UnroutableFlowException {
+        RerouteResult result = null;
+        try {
+            result = (RerouteResult) getFailsafe().get(() ->
+                    transactionManager.doInTransaction(() -> doReroute(flowId, forceToReroute, pathIds)));
+        } catch (FailsafeException e) {
+            unwrapFaisafeException(e);
+        }
+        return result;
     }
 
     private RerouteResult doReroute(String flowId, boolean forceToReroute, Set<PathId> pathIds)
