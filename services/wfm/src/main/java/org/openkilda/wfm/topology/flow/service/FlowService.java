@@ -66,6 +66,7 @@ import org.openkilda.wfm.share.flow.resources.ResourceNotAvailableException;
 import org.openkilda.wfm.share.flow.service.FlowCommandFactory;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
+import org.openkilda.wfm.topology.flow.model.FlowData;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flow.model.FlowPathWithEncapsulation;
 import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
@@ -86,6 +87,7 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
 import net.jodah.failsafe.RetryPolicy;
 import net.jodah.failsafe.SyncFailsafe;
+import org.neo4j.driver.v1.exceptions.ClientException;
 import org.neo4j.driver.v1.exceptions.TransientException;
 
 import java.time.Instant;
@@ -827,6 +829,16 @@ public class FlowService extends BaseFlowService {
                 .collect(Collectors.toList());
     }
 
+    public Optional<FlowData> getFlowById(String flowId) {
+        // NB: workaround for an issue with OGM/neo4j, when ClientException 'Unable to load NODE with id' is thrown
+        return (Optional<FlowData>) getFailsafe().get(() -> transactionManager.doInTransaction(() -> getFlow(flowId)));
+    }
+
+    public List<FlowData> getAllFlows() {
+        // NB: workaround for an issue with OGM/neo4j, when ClientException 'Unable to load NODE with id' is thrown
+        return (List<FlowData>) getFailsafe().get(() -> transactionManager.doInTransaction(() -> getFlows()));
+    }
+
     private FlowPathPair buildFlowPathPair(FlowPair flowPair, FlowResources flowResources, Instant timeCreate) {
         FlowPathStatus pathStatus = flowPair.getForward().getStatus() == FlowStatus.IN_PROGRESS
                 ? FlowPathStatus.IN_PROGRESS : FlowPathStatus.ACTIVE;
@@ -1277,6 +1289,7 @@ public class FlowService extends BaseFlowService {
                 .retryOn(RecoverableException.class)
                 .retryOn(ResourceAllocationException.class)
                 .retryOn(TransientException.class)
+                .retryOn(ClientException.class)
                 .withDelay(RETRY_DELAY, TimeUnit.MILLISECONDS)
                 .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT))
                 .onRetry(e -> log.warn("Retrying transaction finished with exception", e))

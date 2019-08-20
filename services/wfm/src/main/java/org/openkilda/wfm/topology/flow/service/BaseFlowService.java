@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flow.service;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPair;
+import org.openkilda.persistence.FetchStrategy;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.FlowPairRepository;
@@ -72,7 +73,7 @@ public class BaseFlowService {
      */
     public Optional<FlowData> getFlow(String flowId) {
         dashboardLogger.onFlowRead(flowId);
-        return flowRepository.findById(flowId)
+        return flowRepository.findById(flowId, FetchStrategy.DIRECT_RELATIONS)
                 .map(flow -> FlowData.builder()
                         .flowDto(FlowMapper.INSTANCE.map(flow))
                         .flowGroup(flow.getGroupId())
