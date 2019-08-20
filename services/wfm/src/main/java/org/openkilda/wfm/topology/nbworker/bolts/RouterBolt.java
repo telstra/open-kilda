@@ -28,8 +28,8 @@ import org.openkilda.messaging.info.rule.SwitchFlowEntries;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.FeatureTogglesBaseRequest;
 import org.openkilda.messaging.nbtopology.request.FlowsBaseRequest;
-import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.GetPathsRequest;
+import org.openkilda.messaging.nbtopology.request.HistoryRequest;
 import org.openkilda.messaging.nbtopology.request.KildaConfigurationBaseRequest;
 import org.openkilda.messaging.nbtopology.request.LinksBaseRequest;
 import org.openkilda.messaging.nbtopology.request.SwitchesBaseRequest;
@@ -87,7 +87,7 @@ public class RouterBolt extends AbstractBolt {
             getOutput().emit(StreamType.KILDA_CONFIG.toString(), input, new Values(request, getCommandContext()));
         } else if (request instanceof GetPathsRequest) {
             getOutput().emit(StreamType.PATHS.toString(), input, new Values(request, getCommandContext()));
-        } else if (request instanceof GetFlowHistoryRequest) {
+        } else if (request instanceof HistoryRequest) {
             getOutput().emit(StreamType.HISTORY.toString(), input, new Values(request, getCommandContext()));
         } else {
             unhandledInput(input);

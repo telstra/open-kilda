@@ -15,16 +15,21 @@
 
 package org.openkilda.wfm.topology.network.service;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
+import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.share.history.model.PortHistoryData;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.NetworkTopologyDashboardLogger;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
@@ -32,9 +37,13 @@ import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.slf4j.Logger;
+
+import java.util.List;
 
 @RunWith(MockitoJUnitRunner.class)
 public class NetworkPortServiceTest {
@@ -43,6 +52,9 @@ public class NetworkPortServiceTest {
 
     @Mock
     private NetworkTopologyDashboardLogger dashboardLogger;
+
+    @Captor
+    private ArgumentCaptor<PortHistoryData> argumentCaptor;
 
     private final SwitchId alphaDatapath = new SwitchId(1);
 
@@ -162,6 +174,16 @@ public class NetworkPortServiceTest {
         verify(carrier).enableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
         verify(carrier).disableDiscoveryPoll(Endpoint.of(alphaDatapath, 1));
         verify(carrier).notifyPortPhysicalDown(Endpoint.of(alphaDatapath, 1));
+        verify(carrier, times(2)).sendPortHistory(argumentCaptor.capture());
+
+        List<PortHistoryData> historyDataList = argumentCaptor.getAllValues();
+        PortHistoryData upEvent = historyDataList.get(0);
+        assertThat(upEvent.getEndpoint(), is(Endpoint.of(alphaDatapath, 1)));
+        assertThat(upEvent.getStatus(), is(PortStatus.UP));
+
+        PortHistoryData downEvent = historyDataList.get(1);
+        assertThat(downEvent.getEndpoint(), is(Endpoint.of(alphaDatapath, 1)));
+        assertThat(downEvent.getStatus(), is(PortStatus.DOWN));
 
         // System.out.println(mockingDetails(carrier).printInvocations());
     }
