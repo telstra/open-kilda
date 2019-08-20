@@ -19,6 +19,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -30,6 +31,12 @@ import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
 import org.openkilda.messaging.command.flow.InstallTransitFlow;
+import org.openkilda.messaging.command.flow.RemoveFlow;
+import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.messaging.info.rule.FlowApplyActions;
+import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.rule.FlowInstructions;
+import org.openkilda.messaging.info.rule.FlowMatchField;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -45,8 +52,8 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
-import org.openkilda.wfm.topology.switchmanager.service.CommandBuilder;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -63,8 +70,10 @@ public class CommandBuilderImplTest {
     private static final SwitchId SWITCH_ID_B = new SwitchId("00:20");
     private static final SwitchId SWITCH_ID_C = new SwitchId("00:30");
 
-    @Test
-    public void testCommandBuilder() {
+    private static CommandBuilderImpl commandBuilder;
+
+    @BeforeClass
+    public static void setUpOnce() {
         Properties configProps = new Properties();
         configProps.setProperty("flow.meter-id.max", "40");
         configProps.setProperty("flow.vlan.max", "50");
@@ -72,7 +81,11 @@ public class CommandBuilderImplTest {
         PropertiesBasedConfigurationProvider configurationProvider =
                 new PropertiesBasedConfigurationProvider(configProps);
         FlowResourcesConfig flowResourcesConfig = configurationProvider.getConfiguration(FlowResourcesConfig.class);
-        CommandBuilder commandBuilder = new CommandBuilderImpl(persistenceManager().build(), flowResourcesConfig);
+        commandBuilder = new CommandBuilderImpl(persistenceManager().build(), flowResourcesConfig);
+    }
+
+    @Test
+    public void testCommandBuilder() {
         List<BaseInstallFlow> response = commandBuilder
                 .buildCommandsToSyncMissingRules(SWITCH_ID_B, Arrays.asList(1L, 2L, 3L, 4L));
         assertEquals(4, response.size());
@@ -82,7 +95,7 @@ public class CommandBuilderImplTest {
         assertTrue(response.get(3) instanceof InstallIngressFlow);
     }
 
-    private PersistenceManagerBuilder persistenceManager() {
+    private static PersistenceManagerBuilder persistenceManager() {
         return new PersistenceManagerBuilder();
     }
 
@@ -171,5 +184,95 @@ public class CommandBuilderImplTest {
             when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
             return persistenceManager;
         }
+    }
+
+    @Test
+    public void shouldBuildRemoveFlowWithoutMeterFromFlowEntryWithTransitVlanEncapsulation() {
+        Long cookie = Cookie.FORWARD_FLOW_COOKIE_MASK | 1;
+        String inPort = "1";
+        String inVlan = "10";
+        String outPort = "2";
+        FlowEntry flowEntry = buildFlowEntry(cookie, inPort, inVlan, outPort, null, false);
+
+        RemoveFlow removeFlow = commandBuilder.buildRemoveFlowWithoutMeterFromFlowEntry(SWITCH_ID_A, flowEntry);
+        assertEquals(cookie, removeFlow.getCookie());
+
+        DeleteRulesCriteria criteria = removeFlow.getCriteria();
+        assertEquals(cookie, criteria.getCookie());
+        assertEquals(Integer.valueOf(inPort), criteria.getInPort());
+        assertEquals(Integer.valueOf(inVlan), criteria.getEncapsulationId());
+        assertEquals(Integer.valueOf(outPort), criteria.getOutPort());
+    }
+
+    @Test
+    public void shouldBuildRemoveFlowWithoutMeterFromFlowEntryWithStringOutPort() {
+        Long cookie = Cookie.FORWARD_FLOW_COOKIE_MASK | 1;
+        String inPort = "1";
+        String inVlan = "10";
+        String outPort = "in_port";
+        FlowEntry flowEntry = buildFlowEntry(cookie, inPort, inVlan, outPort, null, false);
+
+        RemoveFlow removeFlow = commandBuilder.buildRemoveFlowWithoutMeterFromFlowEntry(SWITCH_ID_A, flowEntry);
+        assertEquals(cookie, removeFlow.getCookie());
+
+        DeleteRulesCriteria criteria = removeFlow.getCriteria();
+        assertEquals(cookie, criteria.getCookie());
+        assertEquals(Integer.valueOf(inPort), criteria.getInPort());
+        assertEquals(Integer.valueOf(inVlan), criteria.getEncapsulationId());
+        assertNull(criteria.getOutPort());
+    }
+
+    @Test
+    public void shouldBuildRemoveFlowWithoutMeterFromFlowEntryWithVxlanEncapsulationIngress() {
+        Long cookie = Cookie.FORWARD_FLOW_COOKIE_MASK | 1;
+        String inPort = "1";
+        String outPort = "2";
+        String tunnelId = "10";
+        FlowEntry flowEntry = buildFlowEntry(cookie, inPort, null, outPort, tunnelId, true);
+
+        RemoveFlow removeFlow = commandBuilder.buildRemoveFlowWithoutMeterFromFlowEntry(SWITCH_ID_A, flowEntry);
+        assertEquals(cookie, removeFlow.getCookie());
+
+        DeleteRulesCriteria criteria = removeFlow.getCriteria();
+        assertEquals(cookie, criteria.getCookie());
+        assertEquals(Integer.valueOf(inPort), criteria.getInPort());
+        assertEquals(Integer.valueOf(tunnelId), criteria.getEncapsulationId());
+        assertEquals(Integer.valueOf(outPort), criteria.getOutPort());
+    }
+
+    @Test
+    public void shouldBuildRemoveFlowWithoutMeterFromFlowEntryWithVxlanEncapsulationTransitAndEgress() {
+        Long cookie = Cookie.FORWARD_FLOW_COOKIE_MASK | 1;
+        String inPort = "1";
+        String outPort = "2";
+        String tunnelId = "10";
+        FlowEntry flowEntry = buildFlowEntry(cookie, inPort, null, outPort, tunnelId, false);
+
+        RemoveFlow removeFlow = commandBuilder.buildRemoveFlowWithoutMeterFromFlowEntry(SWITCH_ID_A, flowEntry);
+        assertEquals(cookie, removeFlow.getCookie());
+
+        DeleteRulesCriteria criteria = removeFlow.getCriteria();
+        assertEquals(cookie, criteria.getCookie());
+        assertEquals(Integer.valueOf(inPort), criteria.getInPort());
+        assertEquals(Integer.valueOf(tunnelId), criteria.getEncapsulationId());
+        assertEquals(Integer.valueOf(outPort), criteria.getOutPort());
+    }
+
+    private FlowEntry buildFlowEntry(Long cookie, String inPort, String inVlan, String outPort,
+                                     String tunnelId, boolean tunnelIdIngressRule) {
+        return FlowEntry.builder()
+                .cookie(cookie)
+                .match(FlowMatchField.builder()
+                        .inPort(inPort)
+                        .vlanVid(inVlan)
+                        .tunnelId(!tunnelIdIngressRule ? tunnelId : null)
+                        .build())
+                .instructions(FlowInstructions.builder()
+                        .applyActions(FlowApplyActions.builder()
+                                .flowOutput(outPort)
+                                .pushVxlan(tunnelIdIngressRule ? tunnelId : null)
+                                .build())
+                        .build())
+                .build();
     }
 }
