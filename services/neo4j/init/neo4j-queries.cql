@@ -37,3 +37,4 @@ CREATE CONSTRAINT ON (`connected_device`:`connected_device`) ASSERT `connected_d
 CREATE INDEX ON :`connected_device` (`flow_id`);
 CREATE INDEX ON :`connected_device` (`source`);
 CREATE INDEX ON :`connected_device` (`mac_address`);
+CREATE CONSTRAINT ON (`port_history`:`port_history`) ASSERT `port_history`.`entityId` IS UNIQUE;
