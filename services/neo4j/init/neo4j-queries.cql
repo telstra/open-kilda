@@ -39,4 +39,4 @@ CREATE INDEX ON :`connected_device` (`source`);
 CREATE INDEX ON :`connected_device` (`mac_address`);
 CREATE CONSTRAINT ON (`lldp_resources`:`lldp_resources`) ASSERT `lldp_resources`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`lldp_resources`:`lldp_resources`) ASSERT `lldp_resources`.`flow_id` IS UNIQUE;
-
+CREATE CONSTRAINT ON (`port_history`:`port_history`) ASSERT `port_history`.`entityId` IS UNIQUE;

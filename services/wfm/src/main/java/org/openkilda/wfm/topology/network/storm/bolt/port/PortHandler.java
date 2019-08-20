@@ -15,10 +15,13 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.port;
 
+import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
+
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.model.Isl;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.history.model.PortHistoryAction;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.controller.AntiFlapFsm.Config;
@@ -30,6 +33,8 @@ import org.openkilda.wfm.topology.network.service.NetworkAntiFlapService;
 import org.openkilda.wfm.topology.network.service.NetworkPortService;
 import org.openkilda.wfm.topology.network.storm.ComponentId;
 import org.openkilda.wfm.topology.network.storm.bolt.decisionmaker.DecisionMakerHandler;
+import org.openkilda.wfm.topology.network.storm.bolt.history.command.HistoryCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.history.command.PortHistoryCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.sw.SwitchHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslCommand;
@@ -47,6 +52,8 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.time.Instant;
+
 public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlapCarrier {
     public static final String BOLT_ID = ComponentId.PORT_HANDLER.toString();
 
@@ -60,6 +67,9 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     public static final String STREAM_POLL_ID = "poll";
     public static final Fields STREAM_POLL_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER,
             FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
+
+    public static final String STREAM_HISTORY_ID = "history";
+    private static final Fields STREAM_HISTORY_FIELDS = new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     private transient NetworkPortService portService;
     private transient NetworkAntiFlapService antiFlapService;
@@ -115,6 +125,7 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     public void declareOutputFields(OutputFieldsDeclarer streamManager) {
         streamManager.declare(STREAM_FIELDS);
         streamManager.declareStream(STREAM_POLL_ID, STREAM_POLL_FIELDS);
+        streamManager.declareStream(STREAM_HISTORY_ID, STREAM_HISTORY_FIELDS);
     }
 
     // IPortCarrier
@@ -149,6 +160,11 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
         emit(getCurrentTuple(), makeDefaultTuple(new UniIslPhysicalDownCommand(endpoint)));
     }
 
+    @Override
+    public void sendPortStateChangedHistory(Endpoint endpoint, PortHistoryAction event, Instant time) {
+        HistoryCommand command =  new PortHistoryCommand(endpoint.getDatapath(), endpoint.getPortNumber(), event, time);
+        emit(STREAM_HISTORY_ID, getCurrentTuple(), makeHistoryTuple(command));
+    }
 
     @Override
     public void removeUniIslHandler(Endpoint endpoint) {
@@ -198,5 +214,9 @@ public class PortHandler extends AbstractBolt implements IPortCarrier, IAntiFlap
     private Values makePollTuple(WatchListCommand command) {
         Endpoint endpoint = command.getEndpoint();
         return new Values(endpoint.getDatapath(), endpoint.getPortNumber(), command, getCommandContext());
+    }
+
+    private Values makeHistoryTuple(HistoryCommand command) {
+        return new Values(command, getCommandContext());
     }
 }
