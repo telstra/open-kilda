@@ -12,7 +12,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 
-import org.springframework.beans.factory.annotation.Value
 import spock.lang.Unroll
 
 class IslCostSpec extends HealthCheckSpecification {

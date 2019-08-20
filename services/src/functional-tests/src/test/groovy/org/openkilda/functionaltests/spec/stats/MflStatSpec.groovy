@@ -17,10 +17,12 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
 import spock.lang.Narrative
+import spock.lang.See
 import spock.lang.Shared
 
 import javax.inject.Provider
 
+@See("https://github.com/telstra/open-kilda/tree/develop/docs/design/fl-statistics")
 @Ignore("unstable on jenkins") // TODO(andriidovhan)  find out what is wrong with it
 @Narrative("""Now we have two FL instances: Management and Statistics.
 - FL Stats: collect statistics only from the switches.

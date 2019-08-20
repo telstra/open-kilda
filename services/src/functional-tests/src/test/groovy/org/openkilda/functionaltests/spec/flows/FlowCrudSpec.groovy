@@ -49,12 +49,15 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
+import spock.lang.See
 import spock.lang.Shared
 import spock.lang.Unroll
 
 import javax.inject.Provider
 
 @Slf4j
+@See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/usecase/flow-crud-create-full.png",
+        "https://github.com/telstra/open-kilda/blob/develop/docs/design/usecase/flow-crud-delete-full.png"])
 @Narrative("Verify CRUD operations and health of most typical types of flows on different types of switches.")
 class FlowCrudSpec extends HealthCheckSpecification {
 

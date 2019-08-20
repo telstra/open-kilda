@@ -27,8 +27,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
+import spock.lang.See
 import spock.lang.Unroll
 
+@See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-sync")
 class SwitchSyncSpec extends BaseSpecification {
 
     @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
