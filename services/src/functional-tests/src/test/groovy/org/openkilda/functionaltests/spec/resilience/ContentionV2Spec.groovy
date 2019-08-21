@@ -86,7 +86,7 @@ class ContentionV2Spec extends BaseSpecification {
 
         then: "Available bandwidth on all related isls is reverted back to normal"
         relatedIsls.each {
-            with(northbound.getLink(it)) {
+            verifyAll(northbound.getLink(it)) {
                 availableBandwidth == maxBandwidth
                 maxBandwidth == speed
             }

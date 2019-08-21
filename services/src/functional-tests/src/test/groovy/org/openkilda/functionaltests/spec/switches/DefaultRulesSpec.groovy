@@ -170,12 +170,12 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         }
 
         and: "Switch and rules validation shows that corresponding default rule is missing"
-        with(northbound.validateSwitchRules(sw.dpId)) {
+        verifyAll(northbound.validateSwitchRules(sw.dpId)) {
             missingRules == deletedRules
             excessRules.empty
             properRules == sw.defaultCookies.findAll { it != data.cookie }
         }
-        with(northbound.validateSwitch(sw.dpId)) {
+        verifyAll(northbound.validateSwitch(sw.dpId)) {
             rules.missing == deletedRules
             rules.misconfigured.empty
             rules.excess.empty

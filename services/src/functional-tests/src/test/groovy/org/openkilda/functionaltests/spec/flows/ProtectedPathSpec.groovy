@@ -894,7 +894,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         then: "Flow state is changed to DEGRADED"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED }
-        with(northbound.getFlow(flow.id).flowStatusDetails) {
+        verifyAll(northbound.getFlow(flow.id).flowStatusDetails) {
             mainFlowPathStatus == "Up"
             protectedFlowPathStatus == "Down"
         }
@@ -904,7 +904,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
-        with(northbound.getFlow(flow.id).flowStatusDetails) {
+        verifyAll(northbound.getFlow(flow.id).flowStatusDetails) {
             mainFlowPathStatus == "Down"
             protectedFlowPathStatus == "Down"
         }
@@ -926,7 +926,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Flow state is still DEGRADED"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED
-            with(northbound.getFlow(flow.id).flowStatusDetails) {
+            verifyAll(northbound.getFlow(flow.id).flowStatusDetails) {
                 mainFlowPathStatus == "Up"
                 protectedFlowPathStatus == "Down"
             }
