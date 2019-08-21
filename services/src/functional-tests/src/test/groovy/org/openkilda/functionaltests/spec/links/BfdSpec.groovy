@@ -145,7 +145,7 @@ class BfdSpec extends HealthCheckSpecification {
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow &&
                 it.aswitch?.inPort && it.aswitch?.outPort }
         assumeTrue("Require at least one a-switch BFD ISL between Noviflow switches", isl as boolean)
-        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, true))
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
 
@@ -153,7 +153,7 @@ class BfdSpec extends HealthCheckSpecification {
         northbound.deleteLink(islUtils.toLinkParameters(isl))
 
         and: "Discover the removed link again"
-        northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
             assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED

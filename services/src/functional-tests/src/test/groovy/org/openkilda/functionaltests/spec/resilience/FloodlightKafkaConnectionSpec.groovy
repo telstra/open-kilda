@@ -17,9 +17,10 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
     @Value('${floodlight.alive.timeout}')
     int floodlightAliveTimeout
-
     @Value('${floodlight.alive.interval}')
     int floodlightAliveInterval
+    @Value('${antiflap.cooldown}')
+    int antiflapCooldown
 
     def "System survives temporary connection outage between Floodlight and Kafka"() {
         when: "Controller loses connection to Kafka"
@@ -92,7 +93,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
         and: "Cleanup: restore the broken link"
         lockKeeper.portsUp([isl.aswitch.inPort])
-        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+        Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
             def isls = northbound.getAllLinks()
             assert islUtils.getIslInfo(isls, isl).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(isls, isl.reversed).get().state == IslChangeType.DISCOVERED

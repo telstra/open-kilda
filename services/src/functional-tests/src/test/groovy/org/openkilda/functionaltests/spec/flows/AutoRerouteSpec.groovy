@@ -39,7 +39,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         def flowIsls = pathHelper.getInvolvedIsls(flowPath)
         allFlowPaths.findAll { it != flowPath }.each { altFlowIsls.addAll(pathHelper.getInvolvedIsls(it)) }
         def islToFail = flowIsls.find { !(it in altFlowIsls) && !(it.reversed in altFlowIsls) }
-        northbound.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "The flow was rerouted after reroute timeout"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
@@ -48,7 +48,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "Revive the ISL back (bring switch port up) and delete the flow"
-        northbound.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -67,18 +67,18 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         altPaths.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
 
         when: "One of the flow ISLs goes down"
         def isl = pathHelper.getInvolvedIsls(flowPath).first()
-        northbound.portDown(isl.dstSwitch.dpId, isl.dstPort)
+        antiflap.portDown(isl.dstSwitch.dpId, isl.dstPort)
 
         then: "The flow becomes 'Down'"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
 
         when: "ISL goes back up"
-        northbound.portUp(isl.dstSwitch.dpId, isl.dstPort)
+        antiflap.portUp(isl.dstSwitch.dpId, isl.dstPort)
         Wrappers.wait(antiflapCooldown + discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
@@ -89,7 +89,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "Restore topology to the original state, remove the flow"
-        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -184,7 +184,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         altPaths.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
 
         when: "The intermediate switch is disconnected"
@@ -211,7 +211,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         and: "Restore topology to the original state, remove the flow, reset toggles"
         flowHelper.deleteFlow(flow.id)
         northbound.toggleFeature(FeatureTogglesDto.builder().flowsRerouteOnIslDiscoveryEnabled(true).build())
-        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -234,7 +234,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         allFlowPaths.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
 
         then: "The flow goes to 'Down' status"
@@ -244,7 +244,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         broughtDownPorts.findAll {
             it.portNo != flowPath.first().portNo
         }.each {
-            northbound.portUp(it.switchId, it.portNo)
+            antiflap.portUp(it.switchId, it.portNo)
         }
 
         then: "The flow goes to 'Up' status"
@@ -257,7 +257,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Bring port involved in the original path up and delete the flow"
-        northbound.portUp(flowPath.first().switchId, flowPath.first().portNo)
+        antiflap.portUp(flowPath.first().switchId, flowPath.first().portNo)
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -336,13 +336,13 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         def islToFail = topology.islsForActiveSwitches.find {
             !involvedIsls.contains(it) && !involvedIsls.contains(it.reversed)
         }
-        northbound.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "Link status becomes 'FAILED'"
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToFail).get().state == IslChangeType.FAILED }
 
         when: "Failed link goes up"
-        northbound.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "Link status becomes 'DISCOVERED'"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -402,21 +402,21 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         allFlowPaths.findAll { it != flowPath }.each { pathHelper.makePathMorePreferable(it, flowPath) }
 
         when: "Bring the flow port down on the source switch"
-        northbound.portDown(flow.source.datapath, flow.source.portNumber)
+        antiflap.portDown(flow.source.datapath, flow.source.portNumber)
 
         then: "The flow is not rerouted"
         TimeUnit.SECONDS.sleep(rerouteDelay)
         PathHelper.convert(northbound.getFlowPath(flow.id)) == flowPath
 
         when: "Bring the flow port down on the destination switch"
-        northbound.portDown(flow.destination.datapath, flow.destination.portNumber)
+        antiflap.portDown(flow.destination.datapath, flow.destination.portNumber)
 
         then: "The flow is not rerouted"
         TimeUnit.SECONDS.sleep(rerouteDelay)
         PathHelper.convert(northbound.getFlowPath(flow.id)) == flowPath
 
         and: "Bring flow ports up and delete the flow"
-        ["source", "destination"].each { northbound.portUp(flow."$it".datapath, flow."$it".portNumber) }
+        ["source", "destination"].each { antiflap.portUp(flow."$it".datapath, flow."$it".portNumber) }
         flowHelper.deleteFlow(flow.id)
     }
 

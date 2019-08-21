@@ -118,7 +118,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
         Wrappers.wait(antiflapMin + WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -132,7 +132,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
 
         when: "Force flows to reroute by bringing port down on the source switch"
         broughtDownPorts.add(flow1Path.first())
-        northbound.portDown(flow1Path.first().switchId, flow1Path.first().portNo)
+        antiflap.portDown(flow1Path.first().switchId, flow1Path.first().portNo)
 
         then: "Flows are rerouted to alternative path with link under maintenance"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
@@ -149,7 +149,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         }
 
         and: "Restore topology, delete flows, unset maintenance mode and reset costs"
-        broughtDownPorts.each { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
         northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(islUnderMaintenance, false, false))
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {

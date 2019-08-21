@@ -31,7 +31,7 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
     def "Able to bring ISL-busy port down/up on an #isl.srcSwitch.ofVersion switch(#isl.srcSwitch.dpId)"() {
         when: "Bring port down on the switch"
         def portDownTime = new Date()
-        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
 
         then: "Forward and reverse ISLs between switches becomes 'FAILED'"
         Wrappers.wait(WAIT_OFFSET) {
@@ -51,7 +51,7 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
 
         when: "Bring port up on the switch"
         def portUpTime = new Date()
-        northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
 
         then: "Forward and reverse ISLs between switches becomes 'DISCOVERED'"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -82,13 +82,13 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
 
         when: "Bring port down on the switch"
         def port = topology.getAllowedPortsForSwitch(sw).find { "LINK_DOWN" in northbound.getPort(sw.dpId, it).state }
-        northbound.portDown(sw.dpId, port)
+        antiflap.portDown(sw.dpId, port)
 
         then: "Port is really DOWN"
         Wrappers.wait(WAIT_OFFSET) { assert "PORT_DOWN" in northbound.getPort(sw.dpId, port).config }
 
         when: "Bring port up on the switch"
-        northbound.portUp(sw.dpId, port)
+        antiflap.portUp(sw.dpId, port)
 
         then: "Port is really UP"
         Wrappers.wait(WAIT_OFFSET) { assert !("PORT_DOWN" in northbound.getPort(sw.dpId, port).config) }

@@ -109,14 +109,15 @@ class SwitchesSpec extends HealthCheckSpecification {
         getSwitchFlowsResponse2[0].id == protectedFlow.id
 
         when: "Get all flows going through the src switch based on the dstPort of the single switch flow"
-        def getSwitchFlowsResponse3 = northbound.getSwitchFlows(switchPair.src.dpId, singleFlow.destination.portId)
+        def getSwitchFlowsResponse3 = northbound.getSwitchFlows(switchPair.src.dpId, singleFlow.destination.portNumber)
 
         then: "Only the single switch flow is in the response list"
         getSwitchFlowsResponse3.size() == 1
         getSwitchFlowsResponse3[0].id == singleFlow.id
 
         when: "Get all flows going through the dst switch based on the dstPort of the protected flow"
-        def getSwitchFlowsResponse4 = northbound.getSwitchFlows(switchPair.dst.dpId, protectedFlow.destination.portId)
+        def getSwitchFlowsResponse4 = northbound.getSwitchFlows(switchPair.dst.dpId,
+                protectedFlow.destination.portNumber)
 
         then: "Only the protected flow is in the response list"
         getSwitchFlowsResponse4.size() == 1
@@ -129,7 +130,7 @@ class SwitchesSpec extends HealthCheckSpecification {
         }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -146,7 +147,7 @@ class SwitchesSpec extends HealthCheckSpecification {
         getSwitchFlowsResponse5*.id.sort() == [protectedFlow.id, singleFlow.id].sort()
 
         and: "Cleanup: Delete the flows"
-        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         [protectedFlow, singleFlow].each { flowHelper.deleteFlow(it.id) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -167,8 +168,8 @@ class SwitchesSpec extends HealthCheckSpecification {
     @Tags(VIRTUAL)
     def "Systems allows to get all flows that goes through a DEACTIVATED switch"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().first()
-                ?: assumeTrue("No suiting switches found", false)
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().first() ?:
+                assumeTrue("No suiting switches found", false)
 
         and: "A simple flow"
         def simpleFlow = flowHelper.randomFlow(switchPair)
