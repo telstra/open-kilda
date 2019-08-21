@@ -654,7 +654,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
     }
 
     private void handleDumpRequest(CommandMessage message, Tuple tuple) {
-        List<FlowData> flows = flowService.getFlows();
+        List<FlowData> flows = flowService.getAllFlows();
         logger.debug("Dump flows: found {} items", flows.size());
 
         String requestId = message.getCorrelationId();
@@ -674,7 +674,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
     }
 
     private void handleReadRequest(String flowId, CommandMessage message, Tuple tuple) {
-        FlowData flowData = flowService.getFlow(flowId)
+        FlowData flowData = flowService.getFlowById(flowId)
                 .orElseThrow(() -> new ClientException(message.getCorrelationId(), System.currentTimeMillis(),
                         ErrorType.NOT_FOUND, "Can not get flow", String.format("Flow %s not found", flowId)));
 
