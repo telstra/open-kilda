@@ -1067,9 +1067,8 @@ switches"() {
         verifyEndpoints(response, flow1Src, flow1Dst, flow2Src, flow2Dst)
         verifyEndpoints(flow1.id, flow2.id, flow1Src, flow1Dst, flow2Src, flow2Dst)
 
-        //TODO(andriidovhan) uncomment when pr2503 is merged
-//        and: "Flows validation doesn't show any discrepancies"
-//        validateFlows(flow1, flow2)
+        and: "Flows validation doesn't show any discrepancies"
+        validateFlows(flow1, flow2)
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(switchPair)
@@ -1079,7 +1078,9 @@ switches"() {
 
         where:
         description << ["src1 <-> src2", "dst1 <-> dst2"]
-        switchPair << [getTopologyHelper().getAllNeighboringSwitchPairs().find { it.src.noviflow && it.dst.noviflow }] * 2
+        switchPair << [getTopologyHelper().getAllNeighboringSwitchPairs().find {
+            it.src.noviflow && !it.src.wb5164 && it.dst.noviflow && !it.dst.wb5164
+        }] * 2
         flow1 << [getFirstFlow(switchPair, switchPair)] * 2
         flow2 << [getSecondFlow(switchPair, switchPair, flow1)] * 2
         [flow1Src, flow1Dst, flow2Src, flow2Dst] << [

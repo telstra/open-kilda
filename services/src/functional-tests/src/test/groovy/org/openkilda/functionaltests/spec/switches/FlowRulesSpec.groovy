@@ -35,7 +35,6 @@ import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -619,11 +618,14 @@ class FlowRulesSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
-    @Ignore("sync is not working yet, fix in pr2591")
     @Tags(HARDWARE)
     def "Able to synchronize rules for a flow with VXLAN encapsulation"() {
-        given: "Two active Noviflow switches"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.src.noviflow && it.dst.noviflow }
+        given: "Two active not neighboring Noviflow switches"
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
+            swP.src.noviflow && !swP.src.wb5164 && swP.dst.noviflow && !swP.dst.wb5164 && swP.paths.find { path ->
+                pathHelper.getInvolvedSwitches(path).every { it.noviflow && !it.wb5164 }
+            }
+        } ?: assumeTrue("Unable to find required switches in topology", false)
 
         and: "Create a flow with vxlan encapsulation"
         def flow = flowHelper.randomFlow(switchPair)
@@ -631,7 +633,9 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flowHelper.addFlow(flow)
 
         and: "Reproduce situation when switches have missing rules by deleting flow rules from them"
+        def flowInfoFromDb = database.getFlow(flow.id)
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)*.dpId
+        def transitSwitchIds = involvedSwitches[-1..-2]
         def defaultPlusFlowRulesMap = involvedSwitches.collectEntries { switchId ->
             [switchId, northbound.getSwitchRules(switchId).flowEntries]
         }
@@ -655,13 +659,44 @@ class FlowRulesSpec extends HealthCheckSpecification {
                 compareRules(northbound.getSwitchRules(switchId).flowEntries, defaultPlusFlowRulesMap[switchId])
             }
         }
-        //TODO(andriidovhan) verify that synced rules are indeed vxlan rules when pr2503 is merged
+
+        and: "Rules are synced correctly"
+        // ingressRule should contain "pushVxlan"
+        // egressRule should contain "tunnel-id"
+        with(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+            assert rules.find {
+                it.cookie == flowInfoFromDb.forwardPath.cookie.value
+            }.instructions.applyActions.pushVxlan
+            assert rules.find {
+                it.cookie == flowInfoFromDb.reversePath.cookie.value
+            }.match.tunnelId
+        }
+
+        with(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+            assert rules.find {
+                it.cookie == flowInfoFromDb.forwardPath.cookie.value
+            }.match.tunnelId
+            assert rules.find {
+                it.cookie == flowInfoFromDb.reversePath.cookie.value
+            }.instructions.applyActions.pushVxlan
+        }
+
+        transitSwitchIds.each { swId ->
+            with(northbound.getSwitchRules(swId).flowEntries) { rules ->
+                assert rules.find {
+                    it.cookie == flowInfoFromDb.forwardPath.cookie.value
+                }.match.tunnelId
+                assert rules.find {
+                    it.cookie == flowInfoFromDb.reversePath.cookie.value
+                }.match.tunnelId
+            }
+        }
 
         and: "No missing rules were found after rules validation"
         involvedSwitches.each { switchId ->
             with(northbound.validateSwitchRules(switchId)) {
                 verifyAll {
-                    properRules.size() == flowRulesCount
+                    properRules.findAll { !Cookie.isDefaultRule(it) }.size() == flowRulesCount
                     missingRules.empty
                     excessRules.empty
                 }
