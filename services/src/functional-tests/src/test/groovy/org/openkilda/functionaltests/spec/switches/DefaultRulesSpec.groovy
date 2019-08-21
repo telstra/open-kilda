@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static org.junit.Assume.assumeFalse
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -28,12 +27,6 @@ import org.springframework.beans.factory.annotation.Value
 import spock.lang.Unroll
 
 class DefaultRulesSpec extends HealthCheckSpecification {
-    @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
-    String flowTopic
-    @Autowired
-    @Qualifier("kafkaProducerProperties")
-    Properties producerProps
-
     @Unroll("Default rules are installed on an #sw.ofVersion switch(#sw.dpId)")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Default rules are installed on switches"() {

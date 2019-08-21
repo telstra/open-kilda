@@ -24,10 +24,12 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
+import spock.lang.See
 import spock.lang.Unroll
 
 import javax.inject.Provider
 
+@See("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/protected-paths")
 @Narrative("""Protected path - it is pre-calculated, reserved, and deployed (except ingress rule),
 so we can switch traffic fast.
 

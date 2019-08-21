@@ -7,7 +7,9 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.info.event.SwitchInfoData
 
 import groovy.transform.Memoized
+import spock.lang.See
 
+@See("https://github.com/telstra/open-kilda/tree/develop/docs/design/grpc-client")
 @Tags(HARDWARE)
 class GrpcBaseSpecification extends HealthCheckSpecification {
     @Memoized

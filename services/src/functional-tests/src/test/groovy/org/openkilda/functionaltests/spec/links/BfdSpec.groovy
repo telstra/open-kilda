@@ -11,7 +11,9 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 
 import spock.lang.Narrative
+import spock.lang.See
 
+@See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery")
 @Narrative("""BFD stands for Bidirectional Forwarding Detection. For now tested only on Noviflow switches. 
 Main purpose is to detect ISL failure on switch level, which should be times faster than a regular 
 controller-involved discovery mechanism""")

@@ -18,7 +18,9 @@ import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
 import spock.lang.Issue
 import spock.lang.Narrative
+import spock.lang.See
 
+@See("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/pce-diverse-flows")
 @Narrative("""
 This test suite verifies the ability to create diverse flows in the system. Diverse flows are flows that should not 
 overlap at all or the overlapping should be minimal. Such flows form a so-called diversity group. Ideally, the diversity 
