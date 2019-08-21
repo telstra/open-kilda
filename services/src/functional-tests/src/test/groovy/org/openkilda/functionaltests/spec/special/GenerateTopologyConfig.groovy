@@ -20,35 +20,12 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator.Feature
 class GenerateTopologyConfig extends BaseSpecification {
 
     def "Generate 'topology.yaml' file based on currently discovered topology"() {
-        when: "Request discovered switches and ISLs from northbound"
-        def switches = northbound.getAllSwitches()
-        def links = northbound.getAllLinks()
-
-        and: "Build topology config based on this data"
-        def i = 0
-        def topoSwitches = switches.collect {
-            i++
-            new Switch("ofsw$i", it.switchId, it.switchView.ofVersion, switchStateToStatus(it.state), [], null, null)
-        }
-        def topoLinks = links.collect { link ->
-            new Isl(topoSwitches.find { it.dpId == link.source.switchId }, link.source.portNo,
-                    topoSwitches.find { it.dpId == link.destination.switchId }, link.destination.portNo,
-                    link.maxBandwidth, null)
-        }
-        def topo = new TopologyDefinition(topoSwitches, topoLinks, [], TraffGenConfig.defaultConfig())
+        when: "Build topology config based on existing switches and ISLs"
+        def topo = topologyHelper.readCurrentTopology()
 
         then: "Able to serialize and save it to 'target'"
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory().configure(Feature.USE_NATIVE_OBJECT_ID, false))
         mapper.setSerializationInclusion(Include.NON_NULL)
         new File("target/topology.yaml").write(mapper.writeValueAsString(topo))
-    }
-
-    Status switchStateToStatus(SwitchChangeType state) {
-        switch (state) {
-            case SwitchChangeType.ACTIVATED:
-                return Status.Active
-            default:
-                return Status.Inactive
-        }
     }
 }
