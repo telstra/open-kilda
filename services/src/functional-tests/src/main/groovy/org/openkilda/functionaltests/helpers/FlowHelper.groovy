@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -234,22 +235,28 @@ class FlowHelper {
         assert !rulesOnDstSwitch.contains(protectedReverseCookie)
 
         //this loop checks rules on common nodes(except src and dst switches)
-        commonTransitSwitches.each { sw ->
-            def rules = northbound.getSwitchRules(sw).flowEntries*.cookie
-            assert rules.containsAll([mainForwardCookie, mainReverseCookie,
-                                      protectedForwardCookie, protectedReverseCookie])
+        withPool {
+            commonTransitSwitches.eachParallel { sw ->
+                def rules = northbound.getSwitchRules(sw).flowEntries*.cookie
+                assert rules.containsAll([mainForwardCookie, mainReverseCookie,
+                                          protectedForwardCookie, protectedReverseCookie])
+            }
         }
 
         //this loop checks rules on unique transit nodes
-        protectedFlowTransitSwitches.findAll { !commonSwitches.contains(it.switchId) }.each { node ->
-            def rules = northbound.getSwitchRules(node.switchId).flowEntries*.cookie
-            assert rules.containsAll([protectedForwardCookie, protectedReverseCookie])
+        withPool {
+            protectedFlowTransitSwitches.findAll { !commonSwitches.contains(it.switchId) }.eachParallel { node ->
+                def rules = northbound.getSwitchRules(node.switchId).flowEntries*.cookie
+                assert rules.containsAll([protectedForwardCookie, protectedReverseCookie])
+            }
         }
 
         //this loop checks rules on unique main nodes
-        mainFlowTransitSwitches.findAll { !commonSwitches.contains(it.switchId) }.each { node ->
-            def rules = northbound.getSwitchRules(node.switchId).flowEntries*.cookie
-            assert rules.containsAll([mainForwardCookie, mainReverseCookie])
+        withPool {
+            mainFlowTransitSwitches.findAll { !commonSwitches.contains(it.switchId) }.eachParallel { node ->
+                def rules = northbound.getSwitchRules(node.switchId).flowEntries*.cookie
+                assert rules.containsAll([mainForwardCookie, mainReverseCookie])
+            }
         }
     }
 
@@ -300,17 +307,19 @@ class FlowHelper {
     private void checkRulesOnSwitches(Flow flowEntry, int timeout, boolean rulesPresent) {
         def cookies = [flowEntry.forwardPath.cookie.value, flowEntry.reversePath.cookie.value]
         def switches = [flowEntry.srcSwitch.switchId, flowEntry.destSwitch.switchId].toSet()
-        switches.each { sw ->
-            Wrappers.wait(timeout) {
-                try {
-                    def result = northbound.getSwitchRules(sw).flowEntries*.cookie
-                    assert rulesPresent ? result.containsAll(cookies) : !result.any { it in cookies }, sw
-                } catch (HttpClientErrorException exc) {
-                    if (exc.rawStatusCode == 404) {
-                        log.warn("Switch '$sw' was not found when checking rules after flow "
-                                + (rulesPresent ? "creation" : "deletion"))
-                    } else {
-                        throw exc
+        withPool {
+            switches.eachParallel { sw ->
+                Wrappers.wait(timeout) {
+                    try {
+                        def result = northbound.getSwitchRules(sw).flowEntries*.cookie
+                        assert rulesPresent ? result.containsAll(cookies) : !result.any { it in cookies }, sw
+                    } catch (HttpClientErrorException exc) {
+                        if (exc.rawStatusCode == 404) {
+                            log.warn("Switch '$sw' was not found when checking rules after flow "
+                                    + (rulesPresent ? "creation" : "deletion"))
+                        } else {
+                            throw exc
+                        }
                     }
                 }
             }
