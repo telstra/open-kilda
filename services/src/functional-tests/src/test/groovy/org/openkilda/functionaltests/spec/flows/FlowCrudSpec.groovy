@@ -598,7 +598,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         flowHelper.addFlow(flow)
 
         when: "Try to edit port to isl port"
-        flowHelper.updateFlow(flow.id, flow.tap { it."$data.switchType".portNumber = isl."$data.port" })
+        northbound.updateFlow(flow.id, flow.tap { it."$data.switchType".portNumber = isl."$data.port" })
 
         then:
         def exc = thrown(HttpClientErrorException)
