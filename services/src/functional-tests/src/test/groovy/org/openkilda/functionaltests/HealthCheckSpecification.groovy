@@ -21,7 +21,7 @@ class HealthCheckSpecification extends BaseSpecification {
             Wrappers.wait(WAIT_OFFSET) {
                 links = northbound.getAllLinks()
                 assert northbound.activeSwitches.size() == topology.activeSwitches.size()
-                links.findAll { it.state != IslChangeType.DISCOVERED }.empty
+                assert links.findAll { it.state != IslChangeType.DISCOVERED }.empty
             }
             def topoLinks = topology.islsForActiveSwitches.collectMany { isl ->
                 [islUtils.getIslInfo(links, isl).orElseThrow { new IslNotFoundException(isl.toString()) },

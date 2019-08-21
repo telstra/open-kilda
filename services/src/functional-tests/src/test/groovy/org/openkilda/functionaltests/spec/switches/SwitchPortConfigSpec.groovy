@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.switches
 
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -11,13 +12,13 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 import spock.lang.Unroll
 
 @Narrative("Verify that Kilda allows to properly control port state on switches (bring ports up or down).")
+@Tags([SMOKE_SWITCHES])
 class SwitchPortConfigSpec extends HealthCheckSpecification {
 
     @Value('${opentsdb.metric.prefix}')

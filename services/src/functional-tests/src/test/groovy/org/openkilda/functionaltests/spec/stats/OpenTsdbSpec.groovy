@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.stats
 
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -24,7 +25,7 @@ class OpenTsdbSpec extends HealthCheckSpecification {
     String metricPrefix
 
     @Unroll("Stats are being logged for metric:#metric, tags:#tags")
-    @Tags([TOPOLOGY_DEPENDENT, SMOKE])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Basic stats are being logged"(metric, tags) {
         expect: "At least 1 result in the past 2 minutes"
         otsdb.query(2.minutes.ago, metric, tags).dps.size() > 0
