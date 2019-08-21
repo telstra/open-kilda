@@ -459,12 +459,10 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         and: "No missing rules were found after rules validation"
         involvedSwitches.each { switchId ->
-            with(northbound.validateSwitchRules(switchId)) {
-                verifyAll {
-                    properRules.findAll { !Cookie.isDefaultRule(it) }.size() == flowRulesCount
-                    missingRules.empty
-                    excessRules.empty
-                }
+            verifyAll(northbound.validateSwitchRules(switchId)) {
+                properRules.findAll { !Cookie.isDefaultRule(it) }.size() == flowRulesCount
+                missingRules.empty
+                excessRules.empty
             }
         }
 
@@ -659,12 +657,10 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         and: "No missing rules were found after rules validation"
         involvedSwitches.each { switchId ->
-            with(northbound.validateSwitchRules(switchId)) {
-                verifyAll {
-                    properRules.size() == flowRulesCount
-                    missingRules.empty
-                    excessRules.empty
-                }
+            verifyAll(northbound.validateSwitchRules(switchId)) {
+                properRules.size() == flowRulesCount
+                missingRules.empty
+                excessRules.empty
             }
         }
 

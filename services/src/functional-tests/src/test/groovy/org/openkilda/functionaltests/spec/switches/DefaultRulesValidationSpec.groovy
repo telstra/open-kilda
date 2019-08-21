@@ -25,14 +25,14 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
     def "Switch and rule validation can properly detect default rules to 'proper' section (#sw.name)"() {
         given: "Clean switch without customer flows"
         expect: "Switch validation shows all expected default rules in 'proper' section"
-        with(northbound.validateSwitchRules(sw.dpId)) {
+        verifyAll(northbound.validateSwitchRules(sw.dpId)) {
             missingRules.empty
             excessRules.empty
             properRules == sw.defaultCookies
         }
 
         and: "Rule validation shows all expected default rules in 'proper' section"
-        with(northbound.validateSwitch(sw.dpId)) {
+        verifyAll(northbound.validateSwitch(sw.dpId)) {
             rules.missing.empty
             rules.misconfigured.empty
             rules.excess.empty

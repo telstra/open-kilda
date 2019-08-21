@@ -73,20 +73,20 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         def flowInfoFromDb = database.getFlow(flow.flowId)
         // ingressRule should contain "pushVxlan"
         // egressRule should contain "tunnel-id"
-        with(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
-            assert rules.find {
+        verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+            rules.find {
                 it.cookie == flowInfoFromDb.forwardPath.cookie.value
             }.instructions.applyActions.pushVxlan as boolean == vxlanRule
-            assert rules.find {
+            rules.find {
                 it.cookie == flowInfoFromDb.reversePath.cookie.value
             }.match.tunnelId as boolean == vxlanRule
         }
 
-        with(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
-            assert rules.find {
+        verifyAll(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+            rules.find {
                 it.cookie == flowInfoFromDb.forwardPath.cookie.value
             }.match.tunnelId as boolean == vxlanRule
-            assert rules.find {
+            rules.find {
                 it.cookie == flowInfoFromDb.reversePath.cookie.value
             }.instructions.applyActions.pushVxlan as boolean == vxlanRule
         }
@@ -106,9 +106,9 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         and: "Flow is pingable"
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            assert it.forward.pingSuccess
-            assert it.reverse.pingSuccess
+        verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
+            forward.pingSuccess
+            reverse.pingSuccess
         }
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
@@ -131,9 +131,9 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         }
 
         and: "Flow is pingable"
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            assert it.forward.pingSuccess
-            assert it.reverse.pingSuccess
+        verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
+            forward.pingSuccess
+            reverse.pingSuccess
         }
 
         and: "Rules are recreated"
@@ -142,20 +142,20 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
                 [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value].sort()
 
         and: "New rules are installed correctly"
-        with(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
-            assert rules.find {
+        verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+            rules.find {
                 it.cookie == flowInfoFromDb2.forwardPath.cookie.value
             }.instructions.applyActions.pushVxlan as boolean == !vxlanRule
-            assert rules.find {
+            rules.find {
                 it.cookie == flowInfoFromDb2.reversePath.cookie.value
             }.match.tunnelId as boolean == !vxlanRule
         }
 
-        with(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
-            assert rules.find {
+        verifyAll(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+            rules.find {
                 it.cookie == flowInfoFromDb2.forwardPath.cookie.value
             }.match.tunnelId as boolean == !vxlanRule
-            assert rules.find {
+            rules.find {
                 it.cookie == flowInfoFromDb2.reversePath.cookie.value
             }.instructions.applyActions.pushVxlan as boolean == !vxlanRule
         }
@@ -229,26 +229,26 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         // protected path creates engressRule
         def protectedForwardCookie = flowInfoFromDb.protectedForwardPath.cookie.value
         def protectedReverseCookie = flowInfoFromDb.protectedReversePath.cookie.value
-        with(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
-            assert rules.find {
+        verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+            rules.find {
                 it.cookie == flowInfoFromDb.forwardPath.cookie.value
             }.instructions.applyActions.pushVxlan
-            assert rules.find {
+            rules.find {
                 it.cookie == flowInfoFromDb.reversePath.cookie.value
             }.match.tunnelId
-            assert rules.find {
+            rules.find {
                 it.cookie == flowInfoFromDb.protectedReversePath.cookie.value
             }.match.tunnelId
         }
 
-        with(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
-            assert rules.find {
+        verifyAll(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+            rules.find {
                 it.cookie == flowInfoFromDb.forwardPath.cookie.value
             }.match.tunnelId
-            assert rules.find {
+            rules.find {
                 it.cookie == flowInfoFromDb.reversePath.cookie.value
             }.instructions.applyActions.pushVxlan
-            assert rules.find {
+            rules.find {
                 it.cookie == flowInfoFromDb.protectedForwardPath.cookie.value
             }.match.tunnelId
         }
@@ -282,20 +282,20 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         [flowInfoFromDb.forwardPath.cookie.value, flowInfoFromDb.reversePath.cookie.value].sort() !=
                 [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value].sort()
 
-        with(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
-            assert rules.find {
+        verifyAll(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+            rules.find {
                 it.cookie == flowInfoFromDb2.forwardPath.cookie.value
             }.instructions.applyActions.pushVxlan
-            assert rules.find {
+            rules.find {
                 it.cookie == flowInfoFromDb2.reversePath.cookie.value
             }.match.tunnelId
         }
 
-        with(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
-            assert rules.find {
+        verifyAll(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+            rules.find {
                 it.cookie == flowInfoFromDb2.forwardPath.cookie.value
             }.match.tunnelId
-            assert rules.find {
+            rules.find {
                 it.cookie == flowInfoFromDb2.reversePath.cookie.value
             }.instructions.applyActions.pushVxlan
         }
@@ -448,11 +448,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         and: "Correct rules are installed"
         def flowInfoFromDb = database.getFlow(flow.flowId)
         // vxlan rules are not creating for a one-switch flow
-        with(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
-            assert !rules.find {
+        verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
+            !rules.find {
                 it.cookie == flowInfoFromDb.forwardPath.cookie.value
             }.instructions.applyActions.pushVxlan
-            assert !rules.find {
+            !rules.find {
                 it.cookie == flowInfoFromDb.reversePath.cookie.value
             }.match.tunnelId
         }
@@ -461,9 +461,9 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "Flow is pingable"
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            assert it.forward.pingSuccess
-            assert it.reverse.pingSuccess
+        verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
+            forward.pingSuccess
+            reverse.pingSuccess
         }
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
@@ -477,9 +477,9 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "Flow is pingable"
-        with(northbound.pingFlow(flow.flowId, new PingInput())) {
-            assert it.forward.pingSuccess
-            assert it.reverse.pingSuccess
+        verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
+            forward.pingSuccess
+            reverse.pingSuccess
         }
 
         and: "Rules are recreated"
@@ -488,11 +488,11 @@ class VxlanFlowV2Spec extends HealthCheckSpecification {
                 [flowInfoFromDb2.forwardPath.cookie.value, flowInfoFromDb2.reversePath.cookie.value].sort()
 
         and: "New rules are installed correctly"
-        with(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
-            assert !rules.find {
+        verifyAll(northbound.getSwitchRules(sw.dpId).flowEntries) { rules ->
+            !rules.find {
                 it.cookie == flowInfoFromDb2.forwardPath.cookie.value
             }.instructions.applyActions.pushVxlan
-            assert !rules.find {
+            !rules.find {
                 it.cookie == flowInfoFromDb2.reversePath.cookie.value
             }.match.tunnelId
         }

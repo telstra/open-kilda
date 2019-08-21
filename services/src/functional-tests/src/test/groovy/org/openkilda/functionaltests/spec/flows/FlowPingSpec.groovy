@@ -223,7 +223,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         def response = northbound.pingFlow(wrongFlowId, new PingInput())
 
         then: "Receive error response"
-        with(response) {
+        verifyAll(response) {
             flowId == wrongFlowId
             !forward
             !reverse

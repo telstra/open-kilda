@@ -399,24 +399,20 @@ class FlowDiversitySpec extends HealthCheckSpecification {
     void verifySegmentsStats(List<FlowPathPayload> flowPaths, Map expectedValuesMap) {
         flowPaths.each { flow ->
             with(flow.diverseGroupPayload) { diverseGroup ->
-                with(diverseGroup.overlappingSegments) {
-                    verifyAll {
-                        islCount == expectedValuesMap["diverseGroup"][flow.id]["islCount"]
-                        switchCount == expectedValuesMap["diverseGroup"][flow.id]["switchCount"]
-                        islPercent == expectedValuesMap["diverseGroup"][flow.id]["islPercent"]
-                        switchPercent == expectedValuesMap["diverseGroup"][flow.id]["switchPercent"]
-                    }
+                verifyAll(diverseGroup.overlappingSegments) {
+                    islCount == expectedValuesMap["diverseGroup"][flow.id]["islCount"]
+                    switchCount == expectedValuesMap["diverseGroup"][flow.id]["switchCount"]
+                    islPercent == expectedValuesMap["diverseGroup"][flow.id]["islPercent"]
+                    switchPercent == expectedValuesMap["diverseGroup"][flow.id]["switchPercent"]
                 }
                 with(diverseGroup.otherFlows) { otherFlows ->
                     assert (flowPaths*.id - flow.id).containsAll(otherFlows*.id)
                     otherFlows.each { otherFlow ->
-                        with(otherFlow.segmentsStats) {
-                            verifyAll {
-                                islCount == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["islCount"]
-                                switchCount == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["switchCount"]
-                                islPercent == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["islPercent"]
-                                switchPercent == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["switchPercent"]
-                            }
+                        verifyAll(otherFlow.segmentsStats) {
+                            islCount == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["islCount"]
+                            switchCount == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["switchCount"]
+                            islPercent == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["islPercent"]
+                            switchPercent == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]["switchPercent"]
                         }
                     }
                 }
