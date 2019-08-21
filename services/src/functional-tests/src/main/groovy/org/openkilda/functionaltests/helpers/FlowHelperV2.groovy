@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.helpers.model.SwitchPair
@@ -167,17 +168,19 @@ class FlowHelperV2 {
         def flowEntry = db.getFlow(flowId)
         def cookies = [flowEntry.forwardPath.cookie.value, flowEntry.reversePath.cookie.value]
         def switches = PathHelper.convert(northbound.getFlowPath(flowEntry.flowId))*.switchId.toSet()
-        switches.each { sw ->
-            Wrappers.wait(timeout) {
-                try {
-                    def result = northbound.getSwitchRules(sw).flowEntries*.cookie
-                    assert rulesPresent ? result.containsAll(cookies) : !result.any { it in cookies }
-                } catch (HttpClientErrorException exc) {
-                    if (exc.rawStatusCode == 404) {
-                        log.warn("Switch '$sw' was not found when checking rules after flow "
-                                + (rulesPresent ? "creation" : "deletion"))
-                    } else {
-                        throw exc
+        withPool {
+            switches.eachParallel { sw ->
+                Wrappers.wait(timeout) {
+                    try {
+                        def result = northbound.getSwitchRules(sw).flowEntries*.cookie
+                        assert rulesPresent ? result.containsAll(cookies) : !result.any { it in cookies }
+                    } catch (HttpClientErrorException exc) {
+                        if (exc.rawStatusCode == 404) {
+                            log.warn("Switch '$sw' was not found when checking rules after flow "
+                                    + (rulesPresent ? "creation" : "deletion"))
+                        } else {
+                            throw exc
+                        }
                     }
                 }
             }
