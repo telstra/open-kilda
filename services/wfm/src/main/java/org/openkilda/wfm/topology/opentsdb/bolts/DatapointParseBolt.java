@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.opentsdb.bolts;
 
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -44,7 +44,7 @@ public class DatapointParseBolt extends BaseRichBolt {
 
     @Override
     public void execute(Tuple tuple) {
-        InfoData data = (InfoData) tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
+        InfoData data = (InfoData) tuple.getValueByField(MessageKafkaTranslator.FIELD_ID_PAYLOAD);
         LOGGER.debug("Processing datapoint: {}", data);
         try {
             if (data instanceof Datapoint) {

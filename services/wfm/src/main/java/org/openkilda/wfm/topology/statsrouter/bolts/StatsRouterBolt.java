@@ -25,7 +25,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.wfm.topology.statsrouter.service.MessageSender;
 import org.openkilda.wfm.topology.statsrouter.service.StatsRouterService;
 import org.openkilda.wfm.topology.utils.AbstractTickRichBolt;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.task.OutputCollector;
@@ -85,7 +85,7 @@ public class StatsRouterBolt extends AbstractTickRichBolt implements MessageSend
     protected void doWork(Tuple tuple) {
         try {
             currentTuple = tuple;
-            Object message = tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
+            Object message = tuple.getValueByField(MessageKafkaTranslator.FIELD_ID_PAYLOAD);
             if (message instanceof CommandMessage) {
                 statsRouterService.handleStatsRequest((CommandMessage) message);
             } else if (message instanceof InfoMessage) {

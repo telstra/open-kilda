@@ -18,7 +18,7 @@ package org.openkilda.wfm.share.hubandspoke;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -62,7 +62,7 @@ public abstract class WorkerBolt extends CoordinatedBolt {
 
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        String key = input.getStringByField(MessageTranslator.KEY_FIELD);
+        String key = input.getStringByField(MessageKafkaTranslator.KEY_FIELD);
         String sourceComponent = input.getSourceComponent();
 
         if (sourceComponent.equals(workerConfig.getHubComponent())) {
@@ -90,7 +90,7 @@ public abstract class WorkerBolt extends CoordinatedBolt {
      * @param values response to be sent to the hub.
      */
     protected void emitResponseToHub(Tuple input, Values values) {
-        String key = input.getStringByField(MessageTranslator.KEY_FIELD);
+        String key = input.getStringByField(MessageKafkaTranslator.KEY_FIELD);
         cancelCallback(key, input);
 
         Tuple processingRequest = pendingTasks.remove(key);
@@ -107,7 +107,7 @@ public abstract class WorkerBolt extends CoordinatedBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declareStream(workerConfig.getStreamToHub(), true, MessageTranslator.STREAM_FIELDS);
+        declarer.declareStream(workerConfig.getStreamToHub(), true, MessageKafkaTranslator.STREAM_FIELDS);
     }
 
     @Builder

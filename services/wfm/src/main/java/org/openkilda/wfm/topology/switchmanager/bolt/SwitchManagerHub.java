@@ -43,7 +43,7 @@ import org.openkilda.wfm.topology.switchmanager.service.SwitchSyncService;
 import org.openkilda.wfm.topology.switchmanager.service.SwitchValidateService;
 import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchSyncServiceImpl;
 import org.openkilda.wfm.topology.switchmanager.service.impl.SwitchValidateServiceImpl;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -85,8 +85,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
-        String key = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
-        CommandMessage message = pullValue(input, MessageTranslator.FIELD_ID_PAYLOAD, CommandMessage.class);
+        String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
+        CommandMessage message = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, CommandMessage.class);
 
         CommandData data = message.getData();
         if (data instanceof SwitchValidateRequest) {
@@ -108,8 +108,8 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
 
     @Override
     protected void onWorkerResponse(Tuple input) throws PipelineException {
-        String key = KeyProvider.getParentKey(input.getStringByField(MessageTranslator.FIELD_ID_KEY));
-        Message message = pullValue(input, MessageTranslator.FIELD_ID_PAYLOAD, Message.class);
+        String key = KeyProvider.getParentKey(input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY));
+        Message message = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Message.class);
 
         if (message instanceof InfoMessage) {
             InfoData data = ((InfoMessage) message).getData();
@@ -178,9 +178,9 @@ public class SwitchManagerHub extends HubBolt implements SwitchManagerCarrier {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declareStream(SpeakerWorkerBolt.INCOME_STREAM, MessageTranslator.STREAM_FIELDS);
+        declarer.declareStream(SpeakerWorkerBolt.INCOME_STREAM, MessageKafkaTranslator.STREAM_FIELDS);
 
-        Fields fields = new Fields(MessageTranslator.FIELD_ID_KEY, MessageTranslator.FIELD_ID_PAYLOAD);
+        Fields fields = new Fields(MessageKafkaTranslator.FIELD_ID_KEY, MessageKafkaTranslator.FIELD_ID_PAYLOAD);
         declarer.declareStream(StreamType.TO_NORTHBOUND.toString(), fields);
     }
 }

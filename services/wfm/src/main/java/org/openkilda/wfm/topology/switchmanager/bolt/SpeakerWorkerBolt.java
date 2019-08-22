@@ -23,7 +23,7 @@ import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
 import org.openkilda.wfm.topology.switchmanager.StreamType;
 import org.openkilda.wfm.topology.switchmanager.service.SpeakerCommandCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.impl.SpeakerWorkerService;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
@@ -46,16 +46,16 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
 
     @Override
     protected void onHubRequest(Tuple input) throws PipelineException {
-        String key = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
-        CommandData command = pullValue(input, MessageTranslator.FIELD_ID_PAYLOAD, CommandData.class);
+        String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
+        CommandData command = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, CommandData.class);
 
         service.sendCommand(key, command);
     }
 
     @Override
     protected void onAsyncResponse(Tuple input) throws PipelineException {
-        String key = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
-        Message message = pullValue(input, MessageTranslator.FIELD_ID_PAYLOAD, Message.class);
+        String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
+        Message message = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Message.class);
 
         service.handleResponse(key, message);
     }
@@ -68,7 +68,7 @@ public class SpeakerWorkerBolt extends WorkerBolt implements SpeakerCommandCarri
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
-        declarer.declareStream(StreamType.TO_FLOODLIGHT.toString(), MessageTranslator.STREAM_FIELDS);
+        declarer.declareStream(StreamType.TO_FLOODLIGHT.toString(), MessageKafkaTranslator.STREAM_FIELDS);
     }
 
     @Override

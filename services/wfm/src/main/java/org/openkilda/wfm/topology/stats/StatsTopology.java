@@ -32,6 +32,7 @@ import static org.openkilda.wfm.topology.stats.StatsStreamType.CACHE_UPDATE;
 import static org.openkilda.wfm.topology.stats.StatsStreamType.STATS_REQUEST;
 import static org.openkilda.wfm.topology.stats.bolts.CacheBolt.statsWithCacheFields;
 
+import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.spi.PersistenceProvider;
 import org.openkilda.wfm.LaunchEnvironment;
@@ -39,6 +40,7 @@ import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.stats.bolts.CacheBolt;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt;
 import org.openkilda.wfm.topology.stats.bolts.SpeakerBolt;
+import org.openkilda.wfm.topology.stats.bolts.SpeakerRequestDecoderBolt;
 import org.openkilda.wfm.topology.stats.bolts.StatsRequesterBolt;
 import org.openkilda.wfm.topology.stats.bolts.TickBolt;
 import org.openkilda.wfm.topology.stats.metrics.FlowMetricGenBolt;
@@ -47,12 +49,15 @@ import org.openkilda.wfm.topology.stats.metrics.MeterStatsMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.PortMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.SystemRuleMetricGenBolt;
 import org.openkilda.wfm.topology.stats.metrics.TableStatsMetricGenBolt;
+import org.openkilda.wfm.topology.utils.JsonKafkaTranslator;
 
+import com.google.common.collect.ImmutableList;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.spout.KafkaSpout;
+import org.apache.storm.kafka.spout.KafkaSpoutConfig;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
-
 
 public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
     public static final String STATS_FIELD = "stats";
@@ -91,16 +96,8 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         builder.setBolt(statsOfsBolt, speakerBolt, parallelism)
                 .shuffleGrouping(kafkaSpoutId);
 
-        // Spout for listening kilda.speaker.flow topic and collect changes for cache
-        KafkaSpout kafkaSpeakerSpout = buildKafkaSpout(topologyConfig.getKafkaSpeakerFlowTopic(),
-                STATS_KILDA_SPEAKER_SPOUT.name());
-        builder.setSpout(STATS_KILDA_SPEAKER_SPOUT.name(), kafkaSpeakerSpout, parallelism);
-
-        // CacheFilterBolt catch data from kilda.speaker spout and tried to find InstallEgressFlow
-        // or InstallOneSwitchFlow and throw tuple to CacheBolt
-        builder.setBolt(STATS_CACHE_FILTER_BOLT.name(), new CacheFilterBolt(),
-                parallelism)
-                .shuffleGrouping(STATS_KILDA_SPEAKER_SPOUT.name());
+        inputSpeakerRequests(builder, parallelism);
+        cacheSyncFilter(builder, parallelism);
 
         // Cache bolt get data from NEO4J on start
         PersistenceManager persistenceManager =
@@ -148,5 +145,35 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
                 .shuffleGrouping(SYSTEM_RULE_STATS_METRIC_GEN.name());
 
         return builder.createTopology();
+    }
+
+    /**
+     * Capture and decode speaker requests (kilda.speaker.flow).
+     */
+    private void inputSpeakerRequests(TopologyBuilder topology, int scaleFactor) {
+        String id = STATS_KILDA_SPEAKER_SPOUT.name();
+        KafkaTopicsConfig topics = topologyConfig.getKafkaTopics();
+        KafkaSpoutConfig<String, String> config = makeKafkaSpoutConfig(
+                    ImmutableList.of(
+                            topics.getSpeakerFlowHsTopic(),
+                            topics.getSpeakerFlowTopic()),
+                    id, StringDeserializer.class)
+                .setRecordTranslator(new JsonKafkaTranslator())
+                .build();
+        topology.setSpout(id, new KafkaSpout<>(config), scaleFactor);
+
+        SpeakerRequestDecoderBolt decoder = new SpeakerRequestDecoderBolt();
+        topology.setBolt(SpeakerRequestDecoderBolt.BOLT_ID, decoder)
+                .shuffleGrouping(id);
+    }
+
+    /**
+     * CacheFilterBolt catch data from kilda.speaker spout and tried to find InstallEgressFlow
+     * or InstallOneSwitchFlow and throw tuple to CacheBolt.
+     */
+    private void cacheSyncFilter(TopologyBuilder topology, int scaleFactor) {
+        topology.setBolt(STATS_CACHE_FILTER_BOLT.name(), new CacheFilterBolt(), scaleFactor)
+                .shuffleGrouping(SpeakerRequestDecoderBolt.BOLT_ID, SpeakerRequestDecoderBolt.STREAM_GENERIC_ID)
+                .shuffleGrouping(SpeakerRequestDecoderBolt.BOLT_ID, SpeakerRequestDecoderBolt.STREAM_HUB_AND_SPOKE_ID);
     }
 }

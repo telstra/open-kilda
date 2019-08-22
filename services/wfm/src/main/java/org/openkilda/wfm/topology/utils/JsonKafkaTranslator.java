@@ -15,24 +15,19 @@
 
 package org.openkilda.wfm.topology.utils;
 
-import org.openkilda.messaging.info.InfoData;
+import org.openkilda.wfm.CommandContext;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.storm.tuple.Fields;
-import org.apache.storm.tuple.Values;
+import lombok.extern.slf4j.Slf4j;
 
-import java.util.List;
-
-public class InfoDataTranslator extends KafkaRecordTranslator<String, InfoData> {
-
+@Slf4j
+public class JsonKafkaTranslator extends GenericKafkaRecordTranslator<String, String> {
     @Override
-    public List<Object> apply(ConsumerRecord<String, InfoData> record) {
-        InfoData data = record.value();
-        return new Values(record.key(), data);
+    protected String decodePayload(String payload) {
+        return payload;
     }
 
     @Override
-    public Fields getFieldsFor(String stream) {
-        return new Fields(MessageKafkaTranslator.KEY_FIELD, MessageKafkaTranslator.FIELD_ID_PAYLOAD);
+    protected CommandContext makeContext(String payload) {
+        return new CommandContext();
     }
 }
