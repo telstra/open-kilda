@@ -68,4 +68,8 @@ public interface Database {
     List<Object> dumpAllNodes();
 
     List<Map<String, Object>> dumpAllRelations();
+
+    List<Object> dumpAllSwitches();
+
+    List<Object> dumpAllIsls();
 }
