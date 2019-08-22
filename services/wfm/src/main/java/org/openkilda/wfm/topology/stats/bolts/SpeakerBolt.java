@@ -29,7 +29,7 @@ import org.openkilda.messaging.info.stats.SwitchTableStatsData;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.topology.stats.StatsStreamType;
 import org.openkilda.wfm.topology.stats.StatsTopology;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -54,7 +54,7 @@ public class SpeakerBolt extends AbstractBolt {
     protected void handleInput(Tuple tuple) throws Exception {
         logger.debug("Ingoing tuple: {}", tuple);
 
-        Message message = pullValue(tuple, MessageTranslator.FIELD_ID_PAYLOAD, Message.class);
+        Message message = pullValue(tuple, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Message.class);
         if (!(message instanceof InfoMessage)) {
             return;
         }
@@ -107,7 +107,7 @@ public class SpeakerBolt extends AbstractBolt {
      */
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        Fields fields = new Fields(MessageTranslator.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
+        Fields fields = new Fields(MessageKafkaTranslator.FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
         outputFieldsDeclarer.declareStream(PORT_STATS_STREAM, fields);
         outputFieldsDeclarer.declareStream(METER_CFG_STATS_STREAM, fields);
 

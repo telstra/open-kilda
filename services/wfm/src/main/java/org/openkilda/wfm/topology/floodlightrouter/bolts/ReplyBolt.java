@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
@@ -38,7 +38,7 @@ public class ReplyBolt extends AbstractBolt {
     @Override
     protected void handleInput(Tuple input) throws Exception {
         String key = input.getStringByField(AbstractTopology.KEY_FIELD);
-        Object message = pullValue(input, MessageTranslator.FIELD_ID_PAYLOAD, Object.class);
+        Object message = pullValue(input, MessageKafkaTranslator.FIELD_ID_PAYLOAD, Object.class);
         Values values = new Values(key, message);
         getOutput().emit(outputStream, input, values);
     }

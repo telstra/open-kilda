@@ -20,7 +20,7 @@ import static org.openkilda.wfm.share.hubandspoke.CoordinatedBolt.COMMAND_FIELD;
 import static org.openkilda.wfm.share.hubandspoke.CoordinatedBolt.TIMEOUT_FIELD;
 
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.Value;
@@ -60,7 +60,7 @@ public final class CoordinatorBolt extends AbstractBolt {
     }
 
     private void handleCommand(Tuple input) {
-        String key = input.getStringByField(MessageTranslator.KEY_FIELD);
+        String key = input.getStringByField(MessageKafkaTranslator.KEY_FIELD);
         CoordinatorCommand command = (CoordinatorCommand) input.getValueByField(COMMAND_FIELD);
         switch (command) {
             case REQUEST_CALLBACK:
@@ -116,7 +116,7 @@ public final class CoordinatorBolt extends AbstractBolt {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        Fields fields = new Fields(MessageTranslator.KEY_FIELD, FIELD_ID_CONTEXT);
+        Fields fields = new Fields(MessageKafkaTranslator.KEY_FIELD, FIELD_ID_CONTEXT);
         declarer.declare(true, fields);
     }
 

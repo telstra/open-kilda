@@ -36,7 +36,6 @@ import org.openkilda.model.Cookie;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.stats.MeasurePoint;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -79,7 +78,6 @@ public class CacheFilterBolt extends BaseRichBolt {
 
     private static final Logger logger = LoggerFactory.getLogger(CacheFilterBolt.class);
 
-    private TopologyContext context;
     private OutputCollector outputCollector;
 
 
@@ -88,7 +86,6 @@ public class CacheFilterBolt extends BaseRichBolt {
      */
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
-        this.context = topologyContext;
         this.outputCollector = outputCollector;
     }
 
@@ -98,19 +95,42 @@ public class CacheFilterBolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
         try {
-            Object message = tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
-            if (message instanceof BaseMessage) {
-                handleCommandMessage(tuple, (BaseMessage) message);
-
-            } else if (message instanceof AbstractMessage) {
-                handleAbstractMessage(tuple, (AbstractMessage) message);
-            } else {
-                logger.error("Unable to handle input tuple {}", tuple);
-            }
+            safeExec(tuple);
         } catch (Exception e) {
             logger.error(String.format("Unhandled exception in %s", getClass().getName()), e);
         } finally {
             outputCollector.ack(tuple);
+        }
+    }
+
+    private void safeExec(Tuple input) {
+        String stream = input.getSourceStreamId();
+        if (SpeakerRequestDecoderBolt.STREAM_GENERIC_ID.equals(stream)) {
+            routeGenericMessage(input);
+        } else if (SpeakerRequestDecoderBolt.STREAM_HUB_AND_SPOKE_ID.equals(stream)) {
+            routeHubAndSpokeMessage(input);
+        } else {
+            logger.error(
+                    "Unexpected tuple - source:{}, stream:{}, target:{}",
+                    input.getSourceComponent(), stream, getClass().getName());
+        }
+    }
+
+    private void routeGenericMessage(Tuple input) {
+        Object message = input.getValueByField(SpeakerRequestDecoderBolt.FIELD_ID_PAYLOAD);
+        if (message instanceof BaseMessage) {
+            handleCommandMessage(input, (BaseMessage) message);
+        } else {
+            reportNotHandled(input);
+        }
+    }
+
+    private void routeHubAndSpokeMessage(Tuple input) {
+        Object message = input.getValueByField(SpeakerRequestDecoderBolt.FIELD_ID_PAYLOAD);
+        if (message instanceof AbstractMessage) {
+            handleAbstractMessage(input, (AbstractMessage) message);
+        } else {
+            reportNotHandled(input);
         }
     }
 
@@ -205,5 +225,9 @@ public class CacheFilterBolt extends BaseRichBolt {
 
     private void logFlowDetails(String flowCommand, String flowId, SwitchId switchId, Long cookie) {
         logger.debug("Catch {} command flow_id={} sw={} cookie={}", flowCommand, flowId, switchId, cookie);
+    }
+
+    private void reportNotHandled(Tuple input) {
+        logger.error("Unable to handle input tuple {}", input);
     }
 }

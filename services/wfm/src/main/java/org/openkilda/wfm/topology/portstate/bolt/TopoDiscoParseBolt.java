@@ -21,7 +21,7 @@ import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.wfm.error.MessageException;
 import org.openkilda.wfm.topology.portstate.PortStateTopology;
 import org.openkilda.wfm.topology.utils.AbstractKafkaParserBolt;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -47,7 +47,7 @@ public class TopoDiscoParseBolt extends AbstractKafkaParserBolt {
     }
 
     private void doParseMessage(Tuple tuple) {
-        Message message = (Message) tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
+        Message message = (Message) tuple.getValueByField(MessageKafkaTranslator.FIELD_ID_PAYLOAD);
         try {
             InfoData infoData = getInfoData(message);
             if (infoData instanceof PortInfoData) {

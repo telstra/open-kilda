@@ -62,7 +62,7 @@ public class FlowMetricGenBolt extends MetricGenBolt {
         if (flowEntry != null) {
             flowId = flowEntry.getFlowId();
         } else {
-            log.warn("missed cache for sw {} cookie {}", switchId, entry.getCookie());
+            log.warn("Missed cache for switch {} cookie {}", switchId, entry.getCookie());
         }
 
         emitAnySwitchMetrics(entry, timestamp, switchId, flowId);

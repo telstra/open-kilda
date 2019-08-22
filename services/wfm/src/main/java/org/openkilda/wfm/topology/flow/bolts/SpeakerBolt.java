@@ -24,7 +24,7 @@ import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.rule.FlowCommandErrorData;
 import org.openkilda.wfm.topology.flow.FlowTopology;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -53,7 +53,7 @@ public class SpeakerBolt extends BaseRichBolt {
         logger.debug("Request tuple={}", tuple);
 
         try {
-            Message message = (Message) tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
+            Message message = (Message) tuple.getValueByField(MessageKafkaTranslator.FIELD_ID_PAYLOAD);
             if (!Destination.WFM_TRANSACTION.equals(message.getDestination())) {
                 return;
             }

@@ -36,7 +36,7 @@ import org.openkilda.messaging.nbtopology.request.SwitchesBaseRequest;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.nbworker.StreamType;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -47,7 +47,7 @@ public class RouterBolt extends AbstractBolt {
 
     @Override
     protected void handleInput(Tuple input) throws PipelineException {
-        String key = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
+        String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         Message message = pullValue(input, FIELD_ID_PAYLOAD, Message.class);
 
         if (message instanceof CommandMessage) {

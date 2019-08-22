@@ -32,10 +32,11 @@ import org.openkilda.wfm.kafka.CustomNamedSubscription;
 import org.openkilda.wfm.kafka.MessageDeserializer;
 import org.openkilda.wfm.kafka.MessageSerializer;
 import org.openkilda.wfm.topology.utils.AbstractMessageTranslator;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.storm.Config;
@@ -295,11 +296,16 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     }
 
     private KafkaSpoutConfig.Builder<String, Message> getKafkaSpoutConfigBuilder(List<String> topics, String spoutId) {
-        KafkaSpoutConfig.Builder<String, Message> config = new KafkaSpoutConfig.Builder<>(kafkaConfig.getHosts(),
-                StringDeserializer.class, MessageDeserializer.class, new CustomNamedSubscription(topics));
+        return makeKafkaSpoutConfig(topics, spoutId, MessageDeserializer.class)
+                .setRecordTranslator(new MessageKafkaTranslator());
+    }
+
+    protected <V> KafkaSpoutConfig.Builder<String, V> makeKafkaSpoutConfig(
+            List<String> topics, String spoutId, Class<? extends Deserializer<V>> valueDecoder) {
+        KafkaSpoutConfig.Builder<String, V> config = new KafkaSpoutConfig.Builder<>(
+                kafkaConfig.getHosts(), StringDeserializer.class, valueDecoder, new CustomNamedSubscription(topics));
 
         config.setGroupId(makeKafkaGroupName(spoutId))
-                .setRecordTranslator(new MessageTranslator())
                 .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST);
 
         return config;

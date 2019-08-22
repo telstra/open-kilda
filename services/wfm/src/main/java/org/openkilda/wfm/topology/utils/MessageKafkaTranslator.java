@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2018 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,24 +15,20 @@
 
 package org.openkilda.wfm.topology.utils;
 
-import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.Message;
+import org.openkilda.wfm.CommandContext;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.storm.tuple.Fields;
-import org.apache.storm.tuple.Values;
+import lombok.extern.slf4j.Slf4j;
 
-import java.util.List;
-
-public class InfoDataTranslator extends KafkaRecordTranslator<String, InfoData> {
-
+@Slf4j
+public class MessageKafkaTranslator extends GenericKafkaRecordTranslator<Message, Message> {
     @Override
-    public List<Object> apply(ConsumerRecord<String, InfoData> record) {
-        InfoData data = record.value();
-        return new Values(record.key(), data);
+    protected Message decodePayload(Message payload) {
+        return payload;
     }
 
     @Override
-    public Fields getFieldsFor(String stream) {
-        return new Fields(MessageKafkaTranslator.KEY_FIELD, MessageKafkaTranslator.FIELD_ID_PAYLOAD);
+    protected CommandContext makeContext(Message payload) {
+        return new CommandContext(payload);
     }
 }

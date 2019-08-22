@@ -17,7 +17,7 @@ package org.openkilda.wfm.share.hubandspoke;
 
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt.CoordinatorCommand;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -42,7 +42,7 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
     @Override
     protected void dispatch(Tuple input) throws Exception {
         if (CoordinatorBolt.ID.equals(input.getSourceComponent())) {
-            String key = input.getStringByField(MessageTranslator.KEY_FIELD);
+            String key = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
             onTimeout(key, input);
         } else {
             super.dispatch(input);
@@ -58,8 +58,9 @@ abstract class CoordinatedBolt extends AbstractBolt implements TimeoutCallback {
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declareStream(CoordinatorBolt.INCOME_STREAM, new Fields(MessageTranslator.KEY_FIELD,
-                COMMAND_FIELD, TIMEOUT_FIELD, AbstractBolt.FIELD_ID_CONTEXT));
+        declarer.declareStream(CoordinatorBolt.INCOME_STREAM,
+                               new Fields(MessageKafkaTranslator.FIELD_ID_KEY, COMMAND_FIELD, TIMEOUT_FIELD,
+                                          FIELD_ID_CONTEXT));
     }
 
     /**

@@ -24,7 +24,7 @@ import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.stats.SwitchPortStatusData;
 import org.openkilda.wfm.error.MessageException;
 import org.openkilda.wfm.topology.utils.AbstractKafkaParserBolt;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -40,7 +40,7 @@ public class WfmStatsParseBolt extends AbstractKafkaParserBolt {
     @Override
     public void execute(Tuple tuple) {
         logger.debug("Ingoing tuple: {}", tuple);
-        Message message = (Message) tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
+        Message message = (Message) tuple.getValueByField(MessageKafkaTranslator.FIELD_ID_PAYLOAD);
         try {
             InfoData data = getInfoData(message);
             if (data instanceof SwitchPortStatusData) {
