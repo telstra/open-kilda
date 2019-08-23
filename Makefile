@@ -26,7 +26,7 @@ up-test-mode:
 	@echo ~~
 	@echo
 	cp -n .env.example .env
-	OK_TESTS="DISABLE_LOGIN" docker-compose up -d
+	OK_TESTS="DISABLE_LOGIN" docker-compose -f docker-compose.yml -f docker-compose.test.yml up -d
 	docker-compose logs -f wfm
 	$(MAKE) -C tools/elk-dashboards
 

@@ -64,9 +64,10 @@ class TopologyConfig {
 
         topologyDefinition.setControllers([managementControllers[0], statControllers[0]])
         topologyDefinition.setBfdOffset(bfdOffset)
-        for (TopologyDefinition.Switch sw : topologyDefinition.getSwitches()) {
-            sw.setController(managementControllers[0] + " " + statControllers[0])
+        topologyDefinition.switches.eachWithIndex { sw, i ->
+            //equally split load between all regions
+            sw.setController(managementControllers[i % regions.size()] + " " + statControllers[i % regions.size()])
         }
-        return topologyDefinition;
+        return topologyDefinition
     }
 }

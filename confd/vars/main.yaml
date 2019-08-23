@@ -120,7 +120,7 @@ kilda_floodlight_alive_timeout: 10
 kilda_floodlight_alive_interval: 2
 kilda_floodlight_request_timeout: 180
 kilda_message_blacklist_timeout: 180
-kilda_floodlight_regions: "1"
+kilda_floodlight_regions: "1,2"
 
 kilda_logging_json_file: False
 kilda_logging_logstash: True
