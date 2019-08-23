@@ -24,7 +24,6 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
-import org.apache.commons.lang3.StringUtils;
 import org.neo4j.ogm.annotation.GeneratedValue;
 import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.Index;
@@ -115,29 +114,6 @@ public class Switch implements Serializable {
         this.timeCreate = timeCreate;
         this.timeModify = timeModify;
         this.features = features;
-    }
-
-    /**
-     * Checks Centec switch by the manufacturer description.
-     */
-    public static boolean isCentecSwitch(String manufacturerDescription) {
-        return StringUtils.contains(manufacturerDescription.toLowerCase(), "centec");
-    }
-
-    /**
-     * Checks Noviflow switch by the software description.
-     */
-    public static boolean isNoviflowSwitch(String softwareDescription) {
-        return NOVIFLOW_SOFTWARE_REGEX.matcher(softwareDescription).matches();
-    }
-
-    /**
-     * Checks Noviflow E switch by the manufacturer and hardware description.
-     */
-    public static boolean isNoviflowESwitch(String manufacturerDescription, String hardwareDescription) {
-        return E_SWITCH_MANUFACTURER_DESCRIPTION.equalsIgnoreCase(manufacturerDescription)
-                || hardwareDescription != null
-                && E_SWITCH_HARDWARE_DESCRIPTION_REGEX.matcher(hardwareDescription).matches();
     }
 
     public boolean isActive() {

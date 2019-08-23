@@ -17,12 +17,15 @@ package org.openkilda.floodlight.service;
 
 import org.openkilda.floodlight.config.provider.FloodlightModuleConfigurationProvider;
 import org.openkilda.floodlight.feature.AbstractFeature;
+import org.openkilda.floodlight.feature.AccurateSetOfMeterRateAndBurstSizeFeature;
 import org.openkilda.floodlight.feature.BfdFeature;
 import org.openkilda.floodlight.feature.BfdReviewFeature;
 import org.openkilda.floodlight.feature.GroupPacketOutFeature;
 import org.openkilda.floodlight.feature.LimitedBurstSizeFeature;
 import org.openkilda.floodlight.feature.MatchUdpPortFeature;
+import org.openkilda.floodlight.feature.MaxBurstCoefficientLimitationFeature;
 import org.openkilda.floodlight.feature.MeterFeature;
+import org.openkilda.floodlight.feature.MinMaxBurstSizeLimitationFeature;
 import org.openkilda.floodlight.feature.NoviFlowCopyFieldFeature;
 import org.openkilda.floodlight.feature.PktpsFlagFeature;
 import org.openkilda.floodlight.feature.ResetCountsFlagFeature;
@@ -71,6 +74,9 @@ public class FeatureDetectorService implements IService {
                 new LimitedBurstSizeFeature(),
                 new NoviFlowCopyFieldFeature(),
                 new PktpsFlagFeature(),
-                new MatchUdpPortFeature());
+                new MatchUdpPortFeature(),
+                new AccurateSetOfMeterRateAndBurstSizeFeature(),
+                new MaxBurstCoefficientLimitationFeature(),
+                new MinMaxBurstSizeLimitationFeature());
     }
 }

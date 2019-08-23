@@ -15,7 +15,10 @@
 
 package org.openkilda.model;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static org.junit.Assert.assertEquals;
+import static org.openkilda.model.SwitchFeature.MAX_BURST_COEFFICIENT_LIMITATION;
+import static org.openkilda.model.SwitchFeature.MIN_MAX_BURST_SIZE_LIMITATION;
 
 import org.junit.Test;
 
@@ -23,11 +26,13 @@ public class MeterTest {
 
     @Test
     public void calculateBurstSize() {
-        assertEquals(1024, Meter.calculateBurstSize(512L, 1024L, 1.0, "centec"));
-        assertEquals(32000, Meter.calculateBurstSize(32333L, 1024L, 1.0, "centec"));
-        assertEquals(10030, Meter.calculateBurstSize(10000L, 1024L, 1.003, "centec"));
-        assertEquals(1105500, Meter.calculateBurstSize(1100000L, 1024L, 1.005, "NW000.0.0"));
-        assertEquals(1105500, Meter.calculateBurstSize(1100000L, 1024L, 1.05, "NW000.0.0"));
+        assertEquals(1024, Meter.calculateBurstSize(512L, 1024L, 1.0, newHashSet(MIN_MAX_BURST_SIZE_LIMITATION)));
+        assertEquals(32000, Meter.calculateBurstSize(32333L, 1024L, 1.0, newHashSet(MIN_MAX_BURST_SIZE_LIMITATION)));
+        assertEquals(10030, Meter.calculateBurstSize(10000L, 1024L, 1.003, newHashSet(MIN_MAX_BURST_SIZE_LIMITATION)));
+        assertEquals(1105500, Meter.calculateBurstSize(1100000L, 1024L, 1.005,
+                newHashSet(MAX_BURST_COEFFICIENT_LIMITATION)));
+        assertEquals(1105500, Meter.calculateBurstSize(1100000L, 1024L, 1.05,
+                newHashSet(MAX_BURST_COEFFICIENT_LIMITATION)));
     }
 
     @Test

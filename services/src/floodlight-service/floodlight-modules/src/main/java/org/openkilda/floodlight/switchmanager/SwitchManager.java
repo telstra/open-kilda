@@ -700,8 +700,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             IOFSwitch sw = lookupSwitch(dpid);
             verifySwitchSupportsMeters(sw);
             long burstSize = Meter.calculateBurstSize(bandwidth, config.getFlowMeterMinBurstSizeInKbits(),
-                    config.getFlowMeterBurstCoefficient(), sw.getSwitchDescription().getManufacturerDescription(),
-                    sw.getSwitchDescription().getSoftwareDescription());
+                    config.getFlowMeterBurstCoefficient(), featureDetectorService.detectSwitch(sw));
 
             Set<OFMeterFlags> flags = Arrays.stream(Meter.getMeterFlags())
                     .map(OFMeterFlags::valueOf)
@@ -723,8 +722,7 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
             verifySwitchSupportsMeters(sw);
 
             long burstSize = Meter.calculateBurstSize(bandwidth, config.getFlowMeterMinBurstSizeInKbits(),
-                    config.getFlowMeterBurstCoefficient(), sw.getSwitchDescription().getManufacturerDescription(),
-                    sw.getSwitchDescription().getSoftwareDescription());
+                    config.getFlowMeterBurstCoefficient(), featureDetectorService.detectSwitch(sw));
 
             Set<OFMeterFlags> flags = Arrays.stream(Meter.getMeterFlags())
                     .map(OFMeterFlags::valueOf)

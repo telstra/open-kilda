@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static org.openkilda.model.SwitchFeature.ACCURATE_SET_OF_METER_RATE_AND_BURST_SIZE;
 
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
@@ -175,15 +176,15 @@ public class ValidationServiceImpl implements ValidationService {
         }
 
         Switch sw = paths.iterator().next().getSrcSwitch();
-        boolean isESwitch = Switch.isNoviflowESwitch(sw.getOfDescriptionManufacturer(), sw.getOfDescriptionHardware());
+        boolean accurateRateAndBurstSize = sw.getFeatures().contains(ACCURATE_SET_OF_METER_RATE_AND_BURST_SIZE);
 
         List<SimpleMeterEntry> expectedMeters = getExpectedFlowMeters(paths);
 
-        return comparePresentedAndExpectedMeters(isESwitch, presentMeters, expectedMeters);
+        return comparePresentedAndExpectedMeters(accurateRateAndBurstSize, presentMeters, expectedMeters);
     }
 
     private ValidateMetersResult comparePresentedAndExpectedMeters(
-            boolean isESwitch, List<MeterEntry> presentMeters, List<SimpleMeterEntry> expectedMeters) {
+            boolean accurateRateAndBurstSize, List<MeterEntry> presentMeters, List<SimpleMeterEntry> expectedMeters) {
         Map<Long, MeterEntry> presentMeterMap = presentMeters.stream()
                 .collect(Collectors.toMap(MeterEntry::getMeterId, Function.identity()));
 
@@ -199,14 +200,16 @@ public class ValidationServiceImpl implements ValidationService {
                 continue;
             }
 
-            if (equalsRate(presentedMeter.getRate(), expectedMeter.getRate(), isESwitch)
-                    && equalsBurstSize(presentedMeter.getBurstSize(), expectedMeter.getBurstSize(), isESwitch)
+            if (equalsRate(presentedMeter.getRate(), expectedMeter.getRate(), accurateRateAndBurstSize)
+                    && equalsBurstSize(
+                            presentedMeter.getBurstSize(), expectedMeter.getBurstSize(), accurateRateAndBurstSize)
                     && Arrays.equals(presentedMeter.getFlags(), expectedMeter.getFlags())) {
 
                 properMeters.add(makeProperMeterEntry(
                         expectedMeter.getFlowId(), expectedMeter.getCookie(), presentedMeter));
             } else {
-                misconfiguredMeters.add(makeMisconfiguredMeterEntry(presentedMeter, expectedMeter, isESwitch));
+                misconfiguredMeters.add(
+                        makeMisconfiguredMeterEntry(presentedMeter, expectedMeter, accurateRateAndBurstSize));
             }
         }
 
@@ -238,7 +241,7 @@ public class ValidationServiceImpl implements ValidationService {
 
         for (FlowPath path : paths) {
             long calculatedBurstSize = Meter.calculateBurstSize(path.getBandwidth(), flowMeterMinBurstSizeInKbits,
-                    flowMeterBurstCoefficient, path.getSrcSwitch().getDescription());
+                    flowMeterBurstCoefficient, path.getSrcSwitch().getFeatures());
 
             SimpleMeterEntry expectedMeter = new SimpleMeterEntry(path.getFlow().getFlowId(),
                     path.getMeterId().getValue(), path.getCookie().getValue(), path.getBandwidth(), calculatedBurstSize,
@@ -309,21 +312,21 @@ public class ValidationServiceImpl implements ValidationService {
                 .build();
     }
 
-    private boolean equalsRate(long actual, long expected, boolean isESwitch) {
+    private boolean equalsRate(long actual, long expected, boolean accurateRateAndBurstSize) {
         // E-switches have a bug when installing the rate and burst size.
         // Such switch sets the rate different from the rate that was sent to it.
         // Therefore, we compare actual and expected values ​​using the delta coefficient.
-        if (isESwitch) {
+        if (!accurateRateAndBurstSize) {
             return Math.abs(actual - expected) <= expected * E_SWITCH_METER_RATE_EQUALS_DELTA_COEFFICIENT;
         }
         return actual == expected;
     }
 
-    private boolean equalsBurstSize(long actual, long expected, boolean isESwitch) {
+    private boolean equalsBurstSize(long actual, long expected, boolean accurateRateAndBurstSize) {
         // E-switches have a bug when installing the rate and burst size.
         // Such switch sets the burst size different from the burst size that was sent to it.
         // Therefore, we compare actual and expected values ​​using the delta coefficient.
-        if (isESwitch) {
+        if (!accurateRateAndBurstSize) {
             return Math.abs(actual - expected) <= expected * E_SWITCH_METER_BURST_SIZE_EQUALS_DELTA_COEFFICIENT;
         }
         return Math.abs(actual - expected) <= METER_BURST_SIZE_EQUALS_DELTA;

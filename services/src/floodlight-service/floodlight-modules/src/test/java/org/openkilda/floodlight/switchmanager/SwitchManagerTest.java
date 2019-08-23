@@ -58,11 +58,14 @@ import static org.openkilda.model.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE;
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID;
 import static org.openkilda.model.MeterId.MIN_SYSTEM_RULE_METER_ID;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
+import static org.openkilda.model.SwitchFeature.ACCURATE_SET_OF_METER_RATE_AND_BURST_SIZE;
 import static org.openkilda.model.SwitchFeature.BFD;
 import static org.openkilda.model.SwitchFeature.GROUP_PACKET_OUT_CONTROLLER;
 import static org.openkilda.model.SwitchFeature.LIMITED_BURST_SIZE;
 import static org.openkilda.model.SwitchFeature.MATCH_UDP_PORT;
+import static org.openkilda.model.SwitchFeature.MAX_BURST_COEFFICIENT_LIMITATION;
 import static org.openkilda.model.SwitchFeature.METERS;
+import static org.openkilda.model.SwitchFeature.MIN_MAX_BURST_SIZE_LIMITATION;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
 import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
 import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
@@ -670,14 +673,19 @@ public class SwitchManagerTest {
 
     private void runInstallMeterTest(long bandwidth, long burstSize, boolean isCentecSwitch, boolean isNoviFlowSwitch)
             throws Exception {
+        Set<SwitchFeature> switchFeatures = Sets.newHashSet(ACCURATE_SET_OF_METER_RATE_AND_BURST_SIZE);
         expect(ofSwitchService.getActiveSwitch(dpid)).andStubReturn(iofSwitch);
         expect(iofSwitch.getId()).andReturn(dpid);
         expect(iofSwitch.getOFFactory()).andStubReturn(ofFactory);
         expect(iofSwitch.getSwitchDescription()).andStubReturn(switchDescription);
-        expect(switchDescription.getManufacturerDescription())
-                .andStubReturn(isCentecSwitch ? CENTEC_SWITCH_DESCRIPTION : "");
-        expect(switchDescription.getSoftwareDescription())
-                .andStubReturn(isNoviFlowSwitch ? NOVIFLOW_SWITCH_DESCRIPTION : "");
+        expect(switchDescription.getManufacturerDescription()).andStubReturn("");
+        if (isCentecSwitch) {
+            switchFeatures = Sets.newHashSet(MIN_MAX_BURST_SIZE_LIMITATION);
+        }
+        if (isNoviFlowSwitch) {
+            switchFeatures = Sets.newHashSet(MAX_BURST_COEFFICIENT_LIMITATION);
+        }
+        expect(featureDetectorService.detectSwitch(iofSwitch)).andStubReturn(switchFeatures);
 
         expect(iofSwitch.write(scheme.installMeter(bandwidth, burstSize, meterId))).andReturn(true);
         expect(iofSwitch.writeRequest(anyObject(OFBarrierRequest.class)))
@@ -686,6 +694,7 @@ public class SwitchManagerTest {
         replay(ofSwitchService);
         replay(iofSwitch);
         replay(switchDescription);
+        replay(featureDetectorService);
 
         switchManager.installMeterForFlow(dpid, bandwidth, meterId);
     }

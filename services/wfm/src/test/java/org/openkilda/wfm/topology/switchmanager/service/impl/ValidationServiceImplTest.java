@@ -35,6 +35,7 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
@@ -47,6 +48,7 @@ import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -54,6 +56,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 public class ValidationServiceImplTest {
 
@@ -285,14 +288,17 @@ public class ValidationServiceImplTest {
             when(flowPathRepository.findBySegmentDestSwitch(any())).thenReturn(pathsBySegment);
             when(flowPathRepository.findByEndpointSwitch(any())).thenReturn(flowPaths);
 
+            Set<SwitchFeature> features = Sets.newHashSet(SwitchFeature.ACCURATE_SET_OF_METER_RATE_AND_BURST_SIZE);
             Switch switchA = Switch.builder()
                     .switchId(SWITCH_ID_A)
                     .description("Nicira, Inc. OF_13 2.5.5")
                     .build();
+            switchA.setFeatures(features);
             Switch switchB = Switch.builder()
                     .switchId(SWITCH_ID_B)
                     .description("Nicira, Inc. OF_13 2.5.5")
                     .build();
+            switchB.setFeatures(features);
             FlowPath flowPathA = mock(FlowPath.class);
             when(flowPathA.getSrcSwitch()).thenReturn(switchB);
             when(flowPathA.getDestSwitch()).thenReturn(switchA);

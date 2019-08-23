@@ -15,9 +15,12 @@
 
 package org.openkilda.model;
 
+import static org.openkilda.model.SwitchFeature.MIN_MAX_BURST_SIZE_LIMITATION;
+
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.Set;
 
 @Data
 public final class Meter implements Serializable {
@@ -35,21 +38,11 @@ public final class Meter implements Serializable {
     private MeterId meterId;
 
     /**
-     * Calculate burst size using combined (manufacturer + software) switch description.
+     * Calculate burst size using switch features.
      */
     public static long calculateBurstSize(long bandwidth, long flowMeterMinBurstSizeInKbits,
-                                          double flowMeterBurstCoefficient, String switchDescription) {
-        return calculateBurstSize(bandwidth, flowMeterMinBurstSizeInKbits, flowMeterBurstCoefficient,
-                switchDescription, switchDescription);
-    }
-
-    /**
-     * Calculate burst size using switch manufacturer and software description.
-     */
-    public static long calculateBurstSize(long bandwidth, long flowMeterMinBurstSizeInKbits,
-                                          double flowMeterBurstCoefficient, String switchManufacturerDescription,
-                                          String switchSoftwareDescription) {
-        if (Switch.isCentecSwitch(switchManufacturerDescription)) {
+                                          double flowMeterBurstCoefficient, Set<SwitchFeature> switchFeatures) {
+        if (switchFeatures.contains(MIN_MAX_BURST_SIZE_LIMITATION)) {
             long burstSize = Math.max(flowMeterMinBurstSizeInKbits, Math.round(bandwidth * flowMeterBurstCoefficient));
             if (burstSize < MIN_CENTEC_SWITCH_BURST_SIZE) {
                 return MIN_CENTEC_SWITCH_BURST_SIZE;
@@ -58,7 +51,7 @@ public final class Meter implements Serializable {
         }
 
         double burstCoefficient = flowMeterBurstCoefficient;
-        if (Switch.isNoviflowSwitch(switchSoftwareDescription) && burstCoefficient > MAX_NOVIFLOW_BURST_COEFFICIENT) {
+        if (switchFeatures.contains(SwitchFeature.MAX_BURST_COEFFICIENT_LIMITATION)) {
             burstCoefficient = MAX_NOVIFLOW_BURST_COEFFICIENT;
         }
 

@@ -100,8 +100,7 @@ public class InstallMeterCommand extends MeterCommand {
 
         if (meterId != null && meterId.getValue() > 0L) {
             long burstSize = Meter.calculateBurstSize(bandwidth, config.getFlowMeterMinBurstSizeInKbits(),
-                    config.getFlowMeterBurstCoefficient(), sw.getSwitchDescription().getManufacturerDescription(),
-                    sw.getSwitchDescription().getSoftwareDescription());
+                    config.getFlowMeterBurstCoefficient(), featureDetectorService.detectSwitch(sw));
 
             Set<OFMeterFlags> flags = ImmutableSet.of(OFMeterFlags.KBPS, OFMeterFlags.BURST, OFMeterFlags.STATS);
             return getMeter(sw, flags, burstSize);
