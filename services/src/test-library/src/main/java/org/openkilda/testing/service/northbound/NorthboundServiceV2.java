@@ -15,12 +15,20 @@
 
 package org.openkilda.testing.service.northbound;
 
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
+
+import java.util.List;
 
 public interface NorthboundServiceV2 {
     FlowResponseV2 addFlow(FlowRequestV2 request);
 
     FlowRerouteResponseV2 rerouteFlow(String flowId);
+
+    List<PortHistoryResponse> getPortHistory(SwitchId switchId, Integer port);
+
+    List<PortHistoryResponse> getPortHistory(SwitchId switchId, Integer port, Long timeFrom, Long timeTo);
 }
