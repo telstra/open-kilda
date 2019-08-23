@@ -16,9 +16,11 @@
 package org.openkilda.testing.service.northbound;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2;
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +30,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -47,6 +53,26 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     public FlowRerouteResponseV2 rerouteFlow(String flowId) {
         return restTemplate.exchange("/api/v2/flows/{flow_id}/reroute", HttpMethod.POST,
                 new HttpEntity<>(buildHeadersWithCorrelationId()), FlowRerouteResponseV2.class, flowId).getBody();
+    }
+
+    @Override
+    public List<PortHistoryResponse> getPortHistory(SwitchId switchId, Integer port) {
+        return getPortHistory(switchId, port, null, null);
+    }
+
+    @Override
+    public List<PortHistoryResponse> getPortHistory(SwitchId switchId, Integer port, Long timeFrom, Long timeTo) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v2/switch/{switch_id}/ports/{port}/history");
+        if (timeFrom != null) {
+            uriBuilder.queryParam("timeFrom", timeFrom);
+        }
+        if (timeTo != null) {
+            uriBuilder.queryParam("timeTo", timeTo);
+        }
+
+        PortHistoryResponse[] portHistory = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), PortHistoryResponse[].class, switchId, port).getBody();
+        return Arrays.asList(portHistory);
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {
