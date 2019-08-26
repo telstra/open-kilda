@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.switchmanager.service.impl;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.when;
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
+import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -58,6 +60,7 @@ public class ValidationServiceImplTest {
     private static final SwitchId SWITCH_ID_A = new SwitchId("00:10");
     private static final SwitchId SWITCH_ID_B = new SwitchId("00:20");
     private static final SwitchId SWITCH_ID_E = new SwitchId("00:30");
+    private static final SwitchId SWITCH_ID_C = new SwitchId("00:40");
     private static final long FLOW_E_BANDWIDTH = 10000L;
     private static SwitchManagerTopologyConfig topologyConfig;
 
@@ -143,18 +146,25 @@ public class ValidationServiceImplTest {
         assertTrue(response.getMisconfiguredMeters().isEmpty());
         assertFalse(response.getProperMeters().isEmpty());
         assertEquals(32L, (long) response.getProperMeters().get(0).getMeterId());
+        assertMeter(response.getProperMeters().get(0), 32, 10000, 10500, new String[]{"KBPS", "BURST", "STATS"});
         assertTrue(response.getExcessMeters().isEmpty());
     }
 
     @Test
     public void validateMetersMisconfiguredMeters() {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
+        String[] actualFlags = new String[]{"PKTPS", "BURST", "STATS"};
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
-                Lists.newArrayList(new MeterEntry(32, 10000, 10498, "OF_13", new String[]{"KBPS", "BURST", "STATS"})));
+                Lists.newArrayList(new MeterEntry(32, 10002, 10498, "OF_13", actualFlags)));
         assertTrue(response.getMissingMeters().isEmpty());
         assertFalse(response.getMisconfiguredMeters().isEmpty());
+        assertEquals(10002, (long) response.getMisconfiguredMeters().get(0).getActual().getRate());
+        assertEquals(10000, (long) response.getMisconfiguredMeters().get(0).getExpected().getRate());
         assertEquals(10498L, (long) response.getMisconfiguredMeters().get(0).getActual().getBurstSize());
         assertEquals(10500L, (long) response.getMisconfiguredMeters().get(0).getExpected().getBurstSize());
+        assertArrayEquals(actualFlags, response.getMisconfiguredMeters().get(0).getActual().getFlags());
+        assertArrayEquals(new String[]{"KBPS", "BURST", "STATS"},
+                response.getMisconfiguredMeters().get(0).getExpected().getFlags());
         assertTrue(response.getProperMeters().isEmpty());
         assertTrue(response.getExcessMeters().isEmpty());
     }
@@ -165,11 +175,23 @@ public class ValidationServiceImplTest {
         ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_B,
                 Lists.newArrayList(new MeterEntry(33, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})));
         assertFalse(response.getMissingMeters().isEmpty());
-        assertEquals(32L, (long) response.getMissingMeters().get(0).getMeterId());
+        assertMeter(response.getMissingMeters().get(0), 32, 10000, 10500, new String[]{"KBPS", "BURST", "STATS"});
         assertTrue(response.getMisconfiguredMeters().isEmpty());
         assertTrue(response.getProperMeters().isEmpty());
         assertFalse(response.getExcessMeters().isEmpty());
-        assertEquals(33L, (long) response.getExcessMeters().get(0).getMeterId());
+        assertMeter(response.getExcessMeters().get(0), 33, 10000, 10500, new String[]{"KBPS", "BURST", "STATS"});
+    }
+
+    @Test
+    public void validateExcessMeters() {
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), topologyConfig);
+        ValidateMetersResult response = validationService.validateMeters(SWITCH_ID_A,
+                Lists.newArrayList(new MeterEntry(100, 10000, 10500, "OF_13", new String[]{"KBPS", "BURST", "STATS"})));
+        assertTrue(response.getMissingMeters().isEmpty());
+        assertTrue(response.getMisconfiguredMeters().isEmpty());
+        assertTrue(response.getProperMeters().isEmpty());
+        assertEquals(1, response.getExcessMeters().size());
+        assertMeter(response.getExcessMeters().get(0), 100, 10000, 10500, new String[]{"KBPS", "BURST", "STATS"});
     }
 
     @Test
@@ -197,6 +219,8 @@ public class ValidationServiceImplTest {
         assertTrue(response.getMisconfiguredMeters().isEmpty());
         assertFalse(response.getProperMeters().isEmpty());
         assertEquals(32L, (long) response.getProperMeters().get(0).getMeterId());
+        assertMeter(response.getProperMeters().get(0), 32, rateESwitch, burstSizeESwitch,
+                new String[]{"KBPS", "BURST", "STATS"});
         assertTrue(response.getExcessMeters().isEmpty());
     }
 
@@ -215,6 +239,14 @@ public class ValidationServiceImplTest {
         assertEquals(10500L, (long) response.getMisconfiguredMeters().get(0).getExpected().getBurstSize());
         assertTrue(response.getProperMeters().isEmpty());
         assertTrue(response.getExcessMeters().isEmpty());
+    }
+
+    private void assertMeter(MeterInfoEntry meterInfoEntry, long expectedId, long expectedRate, long expectedBurstSize,
+                             String[] expectedFlags) {
+        assertEquals(expectedId, (long) meterInfoEntry.getMeterId());
+        assertEquals(expectedRate, (long) meterInfoEntry.getRate());
+        assertEquals(expectedBurstSize, (long) meterInfoEntry.getBurstSize());
+        assertEquals(expectedFlags, meterInfoEntry.getFlags());
     }
 
     private PersistenceManagerBuilder persistenceManager() {
