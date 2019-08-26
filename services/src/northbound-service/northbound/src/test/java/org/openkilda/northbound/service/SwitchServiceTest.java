@@ -78,7 +78,7 @@ public class SwitchServiceTest {
         RulesSyncEntry rulesSyncEntry = new RulesSyncEntry(singletonList(missingRule), singletonList(misconfiguredRule),
                 singletonList(properRule), singletonList(excessRule), singletonList(missingRule),
                 singletonList(excessRule));
-        SwitchSyncResponse rules = new SwitchSyncResponse(rulesSyncEntry, MetersSyncEntry.builder().build());
+        SwitchSyncResponse rules = new SwitchSyncResponse(switchId, rulesSyncEntry, MetersSyncEntry.builder().build());
         messageExchanger.mockResponse(correlationId, rules);
 
         RulesSyncResult result = switchService.syncRules(switchId).get();
@@ -102,7 +102,7 @@ public class SwitchServiceTest {
         RulesSyncEntry rulesEntry = new RulesSyncEntry(singletonList(missingRule), singletonList(misconfiguredRule),
                 singletonList(properRule), singletonList(excessRule), singletonList(missingRule),
                 singletonList(excessRule));
-        InfoData validationResult = new SwitchSyncResponse(rulesEntry,
+        InfoData validationResult = new SwitchSyncResponse(switchId, rulesEntry,
                 MetersSyncEntry.builder().proper(singletonList(getMeterInfo(properRule))).build());
         messageExchanger.mockResponse(correlationId, validationResult);
 

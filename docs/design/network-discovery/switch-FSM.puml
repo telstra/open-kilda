@@ -25,7 +25,14 @@ title Switch FSM
 [*] --> INIT
 
 INIT --> OFFLINE : history / setup port workers
-INIT --> SETUP : online
+INIT --> SYNCHRONIZE : online
+
+SYNCHRONIZE --> SETUP : synchronized
+SYNCHRONIZE : enter / emit command to sync switch
+SYNCHRONIZE : received-sync-response / process sync response
+SYNCHRONIZE : received-sync-error / process error response
+SYNCHRONIZE : received-sync-timeout / process timeout
+SYNCHRONIZE : synchronized / synchronize
 
 SETUP : enter / create or update DB record
 SETUP : enter / save features
@@ -34,7 +41,7 @@ SETUP : enter / emit online for ALL ports
 SETUP : enter / emit port-del for REMOVED ports
 SETUP : enter / emit port-down for DOWN ports
 SETUP : enter / emit port-up for UP ports
-SETUP -r-> ONLINE : next
+SETUP --> ONLINE : next
 
 ONLINE : port-add / setup port FSM
 ONLINE : port-add / emit online for port
@@ -47,7 +54,7 @@ ONLINE --> OFFLINE : offline
 
 OFFLINE : enter / update status in DB
 OFFLINE : enter / emit offline for portAll()
-OFFLINE --> SETUP : online
+OFFLINE --> SYNCHRONIZE : online
 OFFLINE --> DELETED: switch-remove / kill ports FSM
 DELETED -> [*]
 

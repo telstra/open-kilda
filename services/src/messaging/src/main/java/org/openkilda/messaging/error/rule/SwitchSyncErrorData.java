@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,30 +17,32 @@ package org.openkilda.messaging.error.rule;
 
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Value;
 
 /**
- * Defines the payload of a Message representing an error of dumping rules.
+ * Defines the payload of a Message representing an error of sync switch rules.
  */
+@Value
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class DumpRulesErrorData extends ErrorData  {
+public class SwitchSyncErrorData extends ErrorData {
 
-    /**
-     * Instance constructor.
-     *
-     * @param errorType        error type
-     * @param errorMessage     error message
-     * @param errorDescription error exception
-     */
+    @JsonIgnore
+    private SwitchId switchId;
+
     @JsonCreator
-    public DumpRulesErrorData(@JsonProperty("error-type") final ErrorType errorType,
-                     @JsonProperty("error-message") final String errorMessage,
-                     @JsonProperty("error-description") final String errorDescription) {
+    public SwitchSyncErrorData(SwitchId switchId,
+                               @JsonProperty("error-type") ErrorType errorType,
+                               @JsonProperty("error-message") String errorMessage,
+                               @JsonProperty("error-description") String errorDescription) {
         super(errorType, errorMessage, errorDescription);
+        this.switchId = switchId;
     }
 }

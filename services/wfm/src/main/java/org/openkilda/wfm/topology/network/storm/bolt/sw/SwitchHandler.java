@@ -15,8 +15,10 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.sw;
 
+import org.openkilda.messaging.error.rule.SwitchSyncErrorData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.Isl;
 import org.openkilda.model.SwitchId;
@@ -43,12 +45,19 @@ import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortRemoveComm
 import org.openkilda.wfm.topology.network.storm.bolt.port.command.PortSetupCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.speaker.SpeakerRouter;
 import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchCommand;
+import org.openkilda.wfm.topology.network.storm.bolt.swmanager.SwitchManagerWorker;
+import org.openkilda.wfm.topology.network.storm.bolt.swmanager.command.SwitchManagerSynchronizeSwitchCommand;
 import org.openkilda.wfm.topology.network.storm.spout.NetworkHistory;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 
 public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
     public static final String BOLT_ID = ComponentId.SWITCH_HANDLER.toString();
@@ -56,6 +65,11 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
     public static final String FIELD_ID_DATAPATH = SpeakerRouter.FIELD_ID_DATAPATH;
     public static final String FIELD_ID_PORT_NUMBER = "port-number";
     public static final String FIELD_ID_COMMAND = "command";
+
+    public static final String FIELD_ID_KEY = MessageKafkaTranslator.FIELD_ID_KEY;
+
+    public static final String STREAM_SWMANAGER_ID = "swmanager";
+    public static final Fields STREAM_SWMANAGER_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_COMMAND, FIELD_ID_CONTEXT);
 
     public static final String STREAM_PORT_ID = "port";
     public static final Fields STREAM_PORT_FIELDS = new Fields(FIELD_ID_DATAPATH, FIELD_ID_PORT_NUMBER,
@@ -69,6 +83,7 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
     private final PersistenceManager persistenceManager;
 
     private transient NetworkSwitchService service;
+    private transient Set<String> awaitingResponses;
 
     public SwitchHandler(NetworkOptions options, PersistenceManager persistenceManager) {
         this.options = options;
@@ -81,6 +96,8 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
 
         if (SpeakerRouter.BOLT_ID.equals(source)) {
             handleSpeakerInput(input);
+        } else if (SwitchManagerWorker.BOLT_ID.equals(source)) {
+            handleSwitchManagerWorkerInput(input);
         } else if (NetworkHistory.SPOUT_ID.equals(source)) {
             handleHistoryInput(input);
         } else {
@@ -89,24 +106,33 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
     }
 
     private void handleHistoryInput(Tuple input) throws PipelineException {
-        SwitchCommand command = pullValue(input, NetworkHistory.FIELD_ID_PAYLOAD, SwitchCommand.class);
-        command.apply(this);
+        handleCommand(input, NetworkHistory.FIELD_ID_PAYLOAD);
     }
 
     private void handleSpeakerInput(Tuple input) throws PipelineException {
-        SwitchCommand command = pullValue(input, SpeakerRouter.FIELD_ID_COMMAND, SwitchCommand.class);
+        handleCommand(input, SpeakerRouter.FIELD_ID_COMMAND);
+    }
+
+    private void handleSwitchManagerWorkerInput(Tuple input) throws PipelineException {
+        handleCommand(input, SwitchManagerWorker.FIELD_ID_PAYLOAD);
+    }
+
+    private void handleCommand(Tuple input, String field) throws PipelineException {
+        SwitchCommand command = pullValue(input, field, SwitchCommand.class);
         command.apply(this);
     }
 
     @Override
     protected void init() {
         service = new NetworkSwitchService(this, persistenceManager, options);
+        awaitingResponses = new HashSet<>();
     }
 
     @Override
     public void declareOutputFields(OutputFieldsDeclarer streamManager) {
         streamManager.declareStream(STREAM_PORT_ID, STREAM_PORT_FIELDS);
         streamManager.declareStream(STREAM_BFD_PORT_ID, STREAM_BFD_PORT_FIELDS);
+        streamManager.declareStream(STREAM_SWMANAGER_ID, STREAM_SWMANAGER_FIELDS);
     }
 
     @Override
@@ -151,6 +177,21 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
         emit(STREAM_BFD_PORT_ID, getCurrentTuple(), makeBfdPortTuple(new BfdPortOnlineModeCommand(endpoint, mode)));
     }
 
+    @Override
+    public void sendSwitchSynchronizeRequest(SwitchId switchId) {
+        emit(STREAM_SWMANAGER_ID, getCurrentTuple(), makeSwitchManagerWorkerTuple(switchId));
+    }
+
+    @Override
+    public void syncOperationsCompleted(SwitchId switchId) {
+        service.syncOperationsCompleted(switchId);
+    }
+
+    @Override
+    public void startSwitchSynchronization(SwitchId switchId) {
+        service.startSwitchSynchronization(switchId);
+    }
+
     private Values makePortTuple(PortCommand command) {
         Endpoint endpoint = command.getEndpoint();
         CommandContext context = forkContext(endpoint.toString());
@@ -163,10 +204,52 @@ public class SwitchHandler extends AbstractBolt implements ISwitchCarrier {
         return new Values(endpoint.getDatapath(), command, context);
     }
 
+    private Values makeSwitchManagerWorkerTuple(SwitchId switchId) {
+        String key = UUID.randomUUID().toString();
+        awaitingResponses.add(key);
+        return new Values(key, new SwitchManagerSynchronizeSwitchCommand(key, switchId), getCommandContext());
+    }
+
     // SwitchCommand processing
 
     public void processSwitchEvent(SwitchInfoData payload) {
         service.switchEvent(payload);
+    }
+
+    /**
+     * Process SwitchManager response.
+     */
+    public void processSwitchManagerResponse(SwitchSyncResponse payload) {
+        if (isAwaitingResponse()) {
+            service.switchManagerResponse(payload);
+        }
+    }
+
+    /**
+     * Process SwitchManager error response.
+     */
+    public void processSwitchManagerErrorResponse(SwitchSyncErrorData payload) {
+        if (isAwaitingResponse()) {
+            service.switchManagerErrorResponse(payload);
+        }
+    }
+
+    /**
+     * Process SwitchManager timeout.
+     */
+    public void processSwitchManagerTimeout(SwitchId switchId) {
+        if (isAwaitingResponse()) {
+            service.switchManagerTimeout(switchId);
+        }
+    }
+
+    private boolean isAwaitingResponse() {
+        String key = getCurrentTuple().getStringByField(FIELD_ID_KEY);
+        if (awaitingResponses.contains(key)) {
+            awaitingResponses.remove(key);
+            return true;
+        }
+        return false;
     }
 
     public void processSwitchBecomeUnmanaged(SwitchId datapath) {
