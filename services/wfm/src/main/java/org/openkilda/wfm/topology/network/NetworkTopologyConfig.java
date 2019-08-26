@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -62,6 +62,14 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
         return getKafkaTopics().getNetworkIslStatusTopic();
     }
 
+    default String getKafkaSwitchManagerResponseTopic() {
+        return getKafkaTopics().getNorthboundTopic();
+    }
+
+    default String getKafkaSwitchManagerRequestTopic() {
+        return getKafkaTopics().getTopoSwitchManagerNetworkTopic();
+    }
+
     @Key("bfd.port.offset")
     @Default("200")
     int getBfdPortOffset();
@@ -69,6 +77,10 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
     @Key("speaker.io.timeout.seconds")
     @Default("60")
     int getSpeakerIoTimeoutSeconds();
+
+    @Key("swmanager.io.timeout.seconds")
+    @Default("10")
+    int getSwitchManagerIoTimeoutSeconds();
 
     @Key("port.up.down.throttling.delay.seconds.min")
     int getPortUpDownThrottlingDelaySecondsMin();
@@ -78,6 +90,18 @@ public interface NetworkTopologyConfig extends AbstractTopologyConfig {
 
     @Key("port.up.down.throttling.delay.seconds.cool.down")
     int getPortUpDownThrottlingDelaySecondsCoolDown();
+
+    @Key("network.process.meters.when.switch.sync")
+    @Default("true")
+    boolean isProcessMetersWhenSwitchSync();
+
+    @Key("network.remove.excess.when.switch.sync")
+    @Default("true")
+    boolean isRemoveExcessWhenSwitchSync();
+
+    @Key("network.count.sync.attempts")
+    @Default("2")
+    int getCountSynchronizationAttempts();
 
     @Configuration
     @Key("discovery")

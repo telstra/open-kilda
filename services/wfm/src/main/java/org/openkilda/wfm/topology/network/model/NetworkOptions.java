@@ -46,6 +46,12 @@ public class NetworkOptions implements Serializable {
 
     private long dbRepeatMaxDurationSeconds;
 
+    private boolean isProcessMetersWhenSwitchSync;
+
+    private boolean isRemoveExcessWhenSwitchSync;
+
+    private int countSynchronizationAttempts;
+
     public NetworkOptions(NetworkTopologyConfig topologyConfig) {
         discoveryInterval = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryInterval());
         discoveryPacketTtl = TimeUnit.SECONDS.toNanos(topologyConfig.getDiscoveryPacketTtl());
@@ -60,5 +66,10 @@ public class NetworkOptions implements Serializable {
 
         NetworkTopologyConfig.DiscoveryConfig discoveryConfig = topologyConfig.getDiscoveryConfig();
         dbRepeatMaxDurationSeconds = discoveryConfig.getDbRepeatsTimeFrameSeconds();
+
+        isProcessMetersWhenSwitchSync = topologyConfig.isProcessMetersWhenSwitchSync();
+        isRemoveExcessWhenSwitchSync = topologyConfig.isRemoveExcessWhenSwitchSync();
+
+        countSynchronizationAttempts = topologyConfig.getCountSynchronizationAttempts();
     }
 }

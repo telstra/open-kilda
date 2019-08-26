@@ -42,6 +42,7 @@ import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.error.rule.SwitchSyncErrorData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.FlowReinstallResponse;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
@@ -368,7 +369,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                     request.isRemoveExcess() ? validateMetersResult.getExcessMeters() : emptyList());
         }
 
-        SwitchSyncResponse response = new SwitchSyncResponse(rulesEntry, metersEntry);
+        SwitchSyncResponse response = new SwitchSyncResponse(switchId, rulesEntry, metersEntry);
         InfoMessage message = new InfoMessage(response, System.currentTimeMillis(), key);
 
         carrier.cancelTimeoutCallback(key);
@@ -387,7 +388,7 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
     }
 
     private void sendException(Exception e) {
-        ErrorData errorData = new ErrorData(ErrorType.INTERNAL_ERROR, e.getMessage(),
+        ErrorData errorData = new SwitchSyncErrorData(switchId, ErrorType.INTERNAL_ERROR, e.getMessage(),
                 "Error in SwitchSyncFsm");
         ErrorMessage errorMessage = new ErrorMessage(errorData, System.currentTimeMillis(), key);
         fire(ERROR, errorMessage);
