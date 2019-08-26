@@ -21,6 +21,7 @@ import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.model.Isl;
 import org.openkilda.model.IslDownReason;
+import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
@@ -169,6 +170,10 @@ public class NetworkIntegrationCarrier
     @Override
     public void setBfdPortOnlineMode(Endpoint endpoint, boolean mode) {
         bfdPortService.updateOnlineMode(endpoint, mode);
+    }
+
+    @Override
+    public void sendSwitchSynchronizeRequest(String key, SwitchId switchId) {
     }
 
     @Override
