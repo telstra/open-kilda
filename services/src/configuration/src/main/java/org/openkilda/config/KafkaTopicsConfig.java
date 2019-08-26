@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -195,6 +195,10 @@ public interface KafkaTopicsConfig {
     @Key("topo.switch.manager.nb")
     @Default("kilda.nb.swmanager_request.priv")
     String getTopoSwitchManagerNbTopic();
+
+    @Key("topo.switch.manager.network")
+    @Default("kilda.network.swmanager_request.priv")
+    String getTopoSwitchManagerNetworkTopic();
 
     @Key("topo.switch.manager")
     @Default("kilda.topo.switch.manager.storm")
