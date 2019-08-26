@@ -16,6 +16,7 @@
 package org.openkilda.messaging.info.switches;
 
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -26,15 +27,20 @@ import lombok.Value;
 @Builder
 public class SwitchSyncResponse extends InfoData {
 
+    @JsonProperty("switch_id")
+    private SwitchId switchId;
+
     @JsonProperty("rules")
-    RulesSyncEntry rules;
+    private RulesSyncEntry rules;
 
     @JsonProperty("meters")
-    MetersSyncEntry meters;
+    private MetersSyncEntry meters;
 
     @JsonCreator
-    public SwitchSyncResponse(@JsonProperty("rules") RulesSyncEntry rules,
+    public SwitchSyncResponse(@JsonProperty("switch_id") SwitchId switchId,
+                              @JsonProperty("rules") RulesSyncEntry rules,
                               @JsonProperty("meters") MetersSyncEntry meters) {
+        this.switchId = switchId;
         this.rules = rules;
         this.meters = meters;
     }

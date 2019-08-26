@@ -15,8 +15,10 @@
 
 package org.openkilda.wfm.topology.network.service;
 
+import org.openkilda.messaging.error.rule.SwitchSyncErrorData;
 import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -103,6 +105,52 @@ public class NetworkSwitchService {
             SwitchFsm fsm = locateControllerCreateIfAbsent(payload.getSwitchId());
             controllerExecutor.fire(fsm, event, fsmContextBuilder.build());
         }
+    }
+
+    /**
+     * Handle switch synchronization response from SwitchManager topology.
+     */
+    public void switchManagerResponse(SwitchSyncResponse payload) {
+        log.info("Switch service receive switch synchronization response for {}", payload.getSwitchId());
+        SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder =
+                SwitchFsmContext.builder(carrier).switchSyncResponse(payload);
+        SwitchFsm fsm = locateController(payload.getSwitchId());
+        controllerExecutor.fire(fsm, SwitchFsmEvent.SYNC_RESPONSE, fsmContextBuilder.build());
+    }
+
+    /**
+     * Handle switch synchronization error response from SwitchManager topology.
+     */
+    public void switchManagerErrorResponse(SwitchSyncErrorData payload) {
+        log.error("Switch service receive switch synchronization error response for {}: {}",
+                payload.getSwitchId(), payload);
+        processSwitchSyncError(payload.getSwitchId());
+    }
+
+    /**
+     * Handle switch synchronization timeout response from SwitchManager topology.
+     */
+    public void switchManagerTimeout(SwitchId switchId) {
+        log.error("Switch service receive switch synchronization timeout for {}:", switchId);
+        processSwitchSyncError(switchId);
+    }
+
+    /**
+     * Handle switch FSM command to stop switch sync operations.
+     */
+    public void syncOperationsCompleted(SwitchId switchId) {
+        SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder = SwitchFsmContext.builder(carrier);
+        SwitchFsm fsm = locateController(switchId);
+        controllerExecutor.fire(fsm, SwitchFsmEvent.SYNCHRONIZED, fsmContextBuilder.build());
+    }
+
+    /**
+     * Handle switch FSM command to start switch synchronization.
+     */
+    public void startSwitchSynchronization(SwitchId switchId) {
+        SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder = SwitchFsmContext.builder(carrier);
+        SwitchFsm fsm = locateController(switchId);
+        controllerExecutor.fire(fsm, SwitchFsmEvent.SYNCHRONIZE, fsmContextBuilder.build());
     }
 
     /**
@@ -200,5 +248,11 @@ public class NetworkSwitchService {
                     logWrapper.onSwitchAdd(key);
                     return controllerFactory.produce(persistenceManager, datapath, options);
                 });
+    }
+
+    private void processSwitchSyncError(SwitchId switchId) {
+        SwitchFsmContext.SwitchFsmContextBuilder fsmContextBuilder = SwitchFsmContext.builder(carrier);
+        SwitchFsm fsm = locateController(switchId);
+        controllerExecutor.fire(fsm, SwitchFsmEvent.SYNC_ERROR, fsmContextBuilder.build());
     }
 }

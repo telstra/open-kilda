@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,6 +15,9 @@
 
 package org.openkilda.wfm.topology.network.controller.sw;
 
+import org.openkilda.messaging.info.switches.MetersSyncEntry;
+import org.openkilda.messaging.info.switches.RulesSyncEntry;
+import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.messaging.model.SpeakerSwitchView;
@@ -68,10 +71,15 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     private final SwitchPropertiesRepository switchPropertiesRepository;
 
     private final SwitchId switchId;
-    private final Integer bfdLogicalPortOffset;
 
     private final Set<SwitchFeature> features = new HashSet<>();
     private final Map<Integer, AbstractPort> portByNumber = new HashMap<>();
+
+    private final NetworkOptions options;
+
+    private int syncAttempts;
+
+    private SpeakerSwitchView speakerData;
 
     public static SwitchFsmFactory factory() {
         return new SwitchFsmFactory();
@@ -84,8 +92,9 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         this.switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
 
         this.switchId = switchId;
-        this.bfdLogicalPortOffset = options.getBfdLogicalPortOffset();
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
+
+        this.options = options;
     }
 
     // -- FSM actions --
@@ -98,6 +107,33 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
             port.setHistory(outgoingLink);
             portAdd(port, context);
         }
+    }
+
+    public void synchronizeEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                                 SwitchFsmContext context) {
+        speakerData = context.getSpeakerData();
+        syncAttempts = options.getCountSynchronizationAttempts();
+        checkSyncAttempts(context);
+    }
+
+    public void synchronizeSwitch(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                                  SwitchFsmContext context) {
+        context.getOutput().sendSwitchSynchronizeRequest(switchId);
+    }
+
+    public void switchSynchronized(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                                   SwitchFsmContext context) {
+        processSynchronizationSwitch(context);
+    }
+
+    public void switchSynchronizedError(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                                        SwitchFsmContext context) {
+        processSyncAttempts(context);
+    }
+
+    public void switchSynchronizedTimeout(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event,
+                                          SwitchFsmContext context) {
+        processSyncAttempts(context);
     }
 
     public void setupEnter(SwitchFsmState from, SwitchFsmState to, SwitchFsmEvent event, SwitchFsmContext context) {
@@ -189,9 +225,68 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     // -- private/service methods --
 
+    private void processSynchronizationSwitch(SwitchFsmContext context) {
+        SwitchSyncResponse syncResponse = context.getSwitchSyncResponse();
+        if (isSwitchSynchronized(syncResponse)) {
+            context.getOutput().syncOperationsCompleted(switchId);
+        } else {
+            processSyncAttempts(context);
+        }
+    }
+
+    private boolean isSwitchSynchronized(SwitchSyncResponse syncResponse) {
+        RulesSyncEntry rules = syncResponse.getRules();
+        boolean missingRulesCheck = missingRulesCheck(rules);
+        boolean misconfiguredRulesCheck = misconfiguredRulesCheck(rules);
+        boolean excessRulesCheck = excessRulesCheck(rules);
+        MetersSyncEntry meters = syncResponse.getMeters();
+        boolean missingMetersCheck = missingMetersCheck(meters);
+        boolean excessMetersCheck = excessMetersCheck(meters);
+
+        return missingRulesCheck && misconfiguredRulesCheck && excessRulesCheck
+                && missingMetersCheck && excessMetersCheck;
+    }
+
+    private boolean missingRulesCheck(RulesSyncEntry rules) {
+        return rules.getMissing().isEmpty() || rules.getInstalled().containsAll(rules.getMissing());
+    }
+
+    private boolean misconfiguredRulesCheck(RulesSyncEntry rules) {
+        return rules.getMisconfigured().isEmpty()
+                || (rules.getInstalled().containsAll(rules.getMisconfigured())
+                && rules.getRemoved().containsAll(rules.getMisconfigured()));
+    }
+
+    private boolean excessRulesCheck(RulesSyncEntry rules) {
+        return !options.isRemoveExcessWhenSwitchSync()
+                || rules.getExcess().isEmpty() || rules.getRemoved().containsAll(rules.getExcess());
+    }
+
+    private boolean missingMetersCheck(MetersSyncEntry meters) {
+        return meters.getMissing().isEmpty() || meters.getInstalled().containsAll(meters.getMissing());
+    }
+
+    private boolean excessMetersCheck(MetersSyncEntry meters) {
+        return !options.isRemoveExcessWhenSwitchSync()
+                || meters.getExcess().isEmpty() || meters.getRemoved().containsAll(meters.getExcess());
+    }
+
+    private void processSyncAttempts(SwitchFsmContext context) {
+        syncAttempts--;
+        checkSyncAttempts(context);
+    }
+
+    private void checkSyncAttempts(SwitchFsmContext context) {
+        if (syncAttempts <= 0) {
+            context.getOutput().syncOperationsCompleted(switchId);
+        } else {
+            context.getOutput().startSwitchSynchronization(switchId);
+        }
+    }
+
     private void updatePorts(SwitchFsmContext context, boolean isForced) {
-        SpeakerSwitchView speakerData = context.getSpeakerData();
         // set features for correct port (re)identification
+        SpeakerSwitchView speakerData = getSpeakerData(context);
         updateFeatures(speakerData.getFeatures());
 
         Set<Integer> removedPorts = new HashSet<>(portByNumber.keySet());
@@ -263,7 +358,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         Switch sw = switchRepository.findById(switchId)
                 .orElseGet(() -> Switch.builder().switchId(switchId).build());
 
-        SpeakerSwitchView speakerData = context.getSpeakerData();
+        SpeakerSwitchView speakerData = getSpeakerData(context);
         InetSocketAddress socketAddress = speakerData.getSwitchSocketAddress();
         sw.setAddress(socketAddress.getAddress().getHostAddress());
         sw.setHostname(socketAddress.getHostName());
@@ -287,6 +382,13 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
         persistSwitchProperties(sw);
         switchRepository.createOrUpdate(sw);
+    }
+
+    private SpeakerSwitchView getSpeakerData(SwitchFsmContext context) {
+        if (context.getSpeakerData() != null) {
+            return context.getSpeakerData();
+        }
+        return speakerData;
     }
 
     private void persistSwitchProperties(Switch sw) {
@@ -324,7 +426,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
             record = new PhysicalPort(endpoint);
         } else {
             // at this moment we know only 2 kind of ports - physical and logical-BFD
-            record = new LogicalBfdPort(endpoint, endpoint.getPortNumber() - bfdLogicalPortOffset);
+            record = new LogicalBfdPort(endpoint, endpoint.getPortNumber() - options.getBfdLogicalPortOffset());
         }
 
         return record;
@@ -338,7 +440,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
      */
     private boolean isPhysicalPort(int portNumber) {
         if (features.contains(SwitchFeature.BFD)) {
-            return portNumber < bfdLogicalPortOffset;
+            return portNumber < options.getBfdLogicalPortOffset();
         }
         return true;
     }
@@ -358,8 +460,18 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
             builder.transition()
                     .from(SwitchFsmState.INIT).to(SwitchFsmState.OFFLINE).on(SwitchFsmEvent.HISTORY)
                     .callMethod("applyHistory");
-            builder.transition()
-                    .from(SwitchFsmState.INIT).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.ONLINE);
+            builder.transition().from(SwitchFsmState.INIT).to(SwitchFsmState.SYNC).on(SwitchFsmEvent.ONLINE);
+
+            // SYNCHRONIZE
+            builder.internalTransition().within(SwitchFsmState.SYNC).on(SwitchFsmEvent.SYNCHRONIZE)
+                    .callMethod("synchronizeSwitch");
+            builder.internalTransition().within(SwitchFsmState.SYNC).on(SwitchFsmEvent.SYNC_RESPONSE)
+                    .callMethod("switchSynchronized");
+            builder.internalTransition().within(SwitchFsmState.SYNC).on(SwitchFsmEvent.SYNC_ERROR)
+                    .callMethod("switchSynchronizedError");
+            builder.transition().from(SwitchFsmState.SYNC).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.SYNCHRONIZED);
+            builder.onEntry(SwitchFsmState.SYNC)
+                    .callMethod("synchronizeEnter");
 
             // SETUP
             builder.transition()
@@ -383,7 +495,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                     .callMethod("onlineEnter");
 
             // OFFLINE
-            builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.SETUP).on(SwitchFsmEvent.ONLINE);
+            builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.SYNC).on(SwitchFsmEvent.ONLINE);
             builder.transition().from(SwitchFsmState.OFFLINE).to(SwitchFsmState.DELETED)
                     .on(SwitchFsmEvent.SWITCH_REMOVE)
                     .callMethod("removePortsFsm");
@@ -410,6 +522,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
         private SpeakerSwitchView speakerData;
         private HistoryFacts history;
+        private SwitchSyncResponse switchSyncResponse;
 
         private Integer portNumber;
         private Boolean portEnabled;
@@ -424,6 +537,11 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
         HISTORY,
 
+        SYNCHRONIZE,
+        SYNCHRONIZED,
+        SYNC_RESPONSE,
+        SYNC_ERROR,
+
         ONLINE,
         OFFLINE,
 
@@ -432,6 +550,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
     public enum SwitchFsmState {
         INIT,
+        SYNC,
         OFFLINE,
         ONLINE,
         SETUP,
