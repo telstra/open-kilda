@@ -19,6 +19,7 @@ public enum ComponentId {
     MONOTONIC_TICK("monotonic.tick"),
 
     INPUT_SPEAKER("input.speaker"),
+    INPUT_SWMANAGER("input.swmanager"),
     NETWORK_HISTORY("network-history"),
 
     WATCH_LIST("watch-list-handler"),
@@ -26,6 +27,7 @@ public enum ComponentId {
     DECISION_MAKER("decision-maker-handler"),
 
     SPEAKER_ROUTER("speaker.router"),
+    SWMANAGER_ROUTER("swmanager.router"),
     SWITCH_HANDLER("switch-handler"),
     PORT_HANDLER("port-handler"),
     BFD_PORT_HANDLER("bfd-port-handler"),
@@ -34,6 +36,9 @@ public enum ComponentId {
 
     SPEAKER_ENCODER("speaker.encoder"),
     SPEAKER_OUTPUT("speaker.output"),
+
+    SWMANAGER_ENCODER("swmanager.encoder"),
+    SWMANAGER_OUTPUT("swmanager.output"),
 
     REROUTE_ENCODER("reroute.encoder"),
     REROUTE_OUTPUT("reroute.output"),
