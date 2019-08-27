@@ -7,7 +7,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
-import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -58,8 +57,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     @Tags([VIRTUAL, SMOKE])
-    def "Pre-installed rules are not deleted from a new switch connected to the controller"() {
-        given: "A switch with some rules installed (including default) and not connected to the controller"
+    def "Pre-installed flow rules are not deleted from a new switch connected to the controller"() {
+        given: "A switch with proper flow rules installed (including default) and not connected to the controller"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
 
@@ -71,7 +70,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         lockKeeper.knockoutSwitch(srcSwitch)
         Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northbound.getActiveSwitches()*.switchId) }
-        flowHelper.deleteFlow(flow.id)
 
         when: "Connect the switch to the controller"
         lockKeeper.reviveSwitch(srcSwitch)
@@ -80,14 +78,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         then: "Previously installed rules are not deleted from the switch"
         compareRules(northbound.getSwitchRules(srcSwitch.dpId).flowEntries, defaultPlusFlowRules)
 
-        and: "Delete previously installed rules and meters on the srcSwitch"
-        northbound.deleteSwitchRules(srcSwitch.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
-        northbound.getAllMeters(srcSwitch.dpId).meterEntries*.meterId.findAll { it >= MIN_FLOW_METER_ID }.each {
-            northbound.deleteMeter(srcSwitch.dpId, it)
-        }
-        Wrappers.wait(RULES_DELETION_TIME) {
-            assert northbound.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwitch.defaultCookies.size()
-        }
+        and: "Cleanup: Delete the flow"
+        flowHelper.deleteFlow(flow.id)
     }
 
     @Unroll
