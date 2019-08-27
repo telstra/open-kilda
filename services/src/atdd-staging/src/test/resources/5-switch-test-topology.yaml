@@ -3,6 +3,7 @@ switches:
       dp_id: 00:00:00:00:00:01
       of_version: OF_13
       status: active
+      region: 1
       out_ports:
         - port: 10
           vlan_range: 1..5, 22, 35..40
@@ -13,6 +14,7 @@ switches:
       dp_id: 00:00:00:00:00:02
       of_version: OF_13
       status: active
+      region: 1
       out_ports:
         - port: 10
           vlan_range: 1..30
@@ -21,6 +23,7 @@ switches:
       dp_id: 00:00:00:00:00:03
       of_version: OF_13
       status: active
+      region: 1
       out_ports:
         - port: 10
           vlan_range: 1..10
@@ -31,6 +34,7 @@ switches:
       dp_id: 00:00:00:00:00:04
       of_version: OF_13
       status: active
+      region: 1
       out_ports:
         - port: 10
           vlan_range: 50
@@ -39,6 +43,7 @@ switches:
       dp_id: 00:00:00:00:00:05
       of_version: OF_13
       status: inactive
+      region: 1
 
 isls:
     - src_switch: sw1

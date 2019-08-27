@@ -37,10 +37,10 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
     @Value("#{'\${floodlight.regions}'.split(',')}")
     List<String> regions
 
-    @Value("#{'\${floodlight.controllers.management}'.split(',')}")
+    @Value("#{'\${floodlight.controllers.management.openflow}'.split(',')}")
     List<String> managementControllers
 
-    @Value("#{'\${floodlight.controllers.stat}'.split(',')}")
+    @Value("#{'\${floodlight.controllers.stat.openflow}'.split(',')}")
     List<String> statControllers
 
     CustomTopology createRandomTopology(int switchesAmount, int islsAmount) {

@@ -945,7 +945,7 @@ srcLldpDevices=#newSrcEnabled, dstLldpDevices=#newDstEnabled"() {
     List<SwitchPair> getUniqueSwitchPairs() {
         def tgSwitches = topology.activeTraffGens*.switchConnected
                                  .findAll { it.features.contains(SwitchFeature.MULTI_TABLE) }
-        def unpickedTgSwitches = tgSwitches.unique(false) { [it.description, it.details.hardware].sort() }
+        def unpickedTgSwitches = tgSwitches.unique(false) { [it.description, it.nbFormat().hardware].sort() }
         List<SwitchPair> switchPairs = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.findAll {
             it.src in tgSwitches && it.dst in tgSwitches
         }

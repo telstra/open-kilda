@@ -1,0 +1,46 @@
+version: '2.1'
+services:
+
+  floodlight_2:
+    container_name: floodlight_2
+    build:
+      context: services/src/floodlight-service/floodlight-modules
+    image: "kilda/floodlight:${full_build_number:-latest}"
+    command: ["floodlight", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=2", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_2"]
+    ports:
+      - "6753:6653"
+      - "8281:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      logstash:
+        condition: service_started
+    cap_add:
+      - NET_ADMIN
+    networks:
+      default:
+        aliases:
+         - floodlight_2.pendev
+    mem_limit: ${FL_2_MEM_LIMIT:-1073741824}
+
+  floodlight_stats:
+    container_name: floodlight_stats
+    build:
+      context: services/src/floodlight-service/floodlight-modules
+    image: "kilda/floodlight:${full_build_number:-latest}"
+    command: ["floodlightStats", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1"]
+    ports:
+      - "6654:6653"
+      - "8082:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      logstash:
+        condition: service_started
+    cap_add:
+      - NET_ADMIN
+    networks:
+      default:
+        aliases:
+          - floodlight_stats.pendev
+    mem_limit: ${FL_STATS_MEM_LIMIT:-1073741824}

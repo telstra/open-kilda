@@ -19,6 +19,8 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
+import org.openkilda.messaging.info.event.SwitchChangeType;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
@@ -48,7 +50,7 @@ import java.util.Collections;
 
 public class JsonSerializationTest {
 
-    private static final String SWITCH_ID = "switch-test";
+    private static final String SWITCH_ID = "de:ad:be:ef:de:ad:be:ef";
     private static final String FLOW_ID = "flow-test";
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -93,7 +95,8 @@ public class JsonSerializationTest {
 
     @Test
     public void linksDtoTest() throws IOException {
-        LinkDto dto = new LinkDto(-1, 1, 0, 0, 0, LinkStatus.DISCOVERED, LinkStatus.DISCOVERED, 0, false, false,
+        LinkDto dto = new LinkDto(-1, 1, 0, 0, 0, LinkStatus.DISCOVERED,
+                LinkStatus.DISCOVERED, 0, false, false,
                 "bfd-session-status", singletonList(new PathDto(SWITCH_ID, 1, 0, 10L)));
         assertEquals(dto, pass(dto, LinkDto.class));
     }
@@ -152,7 +155,8 @@ public class JsonSerializationTest {
 
     @Test
     public void switchDtoTest() throws IOException {
-        SwitchDto dto = new SwitchDto(SWITCH_ID, "address-test", 37040, "host", "desc", "state", false, "of_version",
+        SwitchDto dto = new SwitchDto(new SwitchId(SWITCH_ID), "address-test", 37040, "host", "desc",
+                SwitchChangeType.ACTIVATED, false, "of_version",
                 "manufacturer", "hardware", "software", "serial_number");
         assertEquals(dto, pass(dto, SwitchDto.class));
     }

@@ -9,6 +9,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
@@ -65,8 +66,8 @@ class MflStatSpec extends HealthCheckSpecification {
             assert initStat.size() >= 1
         }
 
-        when: "Set only management controller on the src switch"
-        lockKeeper.setController(srcSwitch, managementControllers[0])
+        when: "Leave src switch only with management controller and disconnect from stats"
+        def statsBlockData = lockKeeper.knockoutSwitch(srcSwitch, statsFlManager)
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -81,8 +82,9 @@ class MflStatSpec extends HealthCheckSpecification {
             assert statFromMgmtController.entrySet()[-2].value < statFromMgmtController.entrySet()[-1].value
         }
 
-        when: "Set only statistic controller on the src switch"
-        lockKeeper.setController(srcSwitch, statControllers[0])
+        when: "Leave src switch only with stats controller and disconnect from management"
+        lockKeeper.reviveSwitch(srcSwitch, statsBlockData)
+        def mgmtBlockData = lockKeeper.knockoutSwitch(srcSwitch, mgmtFlManager)
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -96,8 +98,8 @@ class MflStatSpec extends HealthCheckSpecification {
             assert statFromStatsController.entrySet()[-2].value < statFromStatsController.entrySet()[-1].value
         }
 
-        when: "Disconnect the src switch from the management and statistic controllers"
-        lockKeeper.knockoutSwitch(srcSwitch)
+        when: "Disconnect the src switch from both management and statistic controllers"
+        statsBlockData = lockKeeper.knockoutSwitch(srcSwitch, statsFlManager)
         Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northbound.getActiveSwitches()*.switchId) }
 
         and: "Generate traffic on the given flow"
@@ -113,7 +115,8 @@ class MflStatSpec extends HealthCheckSpecification {
         }
 
         when: "Restore default controllers on the src switches"
-        lockKeeper.reviveSwitch(srcSwitch)
+        lockKeeper.reviveSwitch(srcSwitch, statsBlockData)
+        lockKeeper.reviveSwitch(srcSwitch, mgmtBlockData)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert srcSwitch.dpId in northbound.getActiveSwitches()*.switchId
             assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.empty
@@ -156,14 +159,14 @@ class MflStatSpec extends HealthCheckSpecification {
             assert initStat.size() >= 1
         }
 
-        when: "Set only management controller on the src switch"
-        lockKeeper.setController(srcSwitch, managementControllers[0])
+        when: "Src switch is only left with management controller (no stats controller)"
+        def statsBlockData = lockKeeper.knockoutSwitch(srcSwitch, statsFlManager)
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
         assert traffExam.waitExam(exam).hasTraffic()
 
-        then: "Stat on the src switch should be collected because management controller is set"
+        then: "Stat on the src switch should be collected because management controller is still set"
         def statFromMgmtController
         //first 60 seconds - trying to retrieve stats from management controller, next 60 seconds from stat controller
         Wrappers.wait(statsRouterInterval * 2 + WAIT_OFFSET, waitInterval) {
@@ -172,8 +175,9 @@ class MflStatSpec extends HealthCheckSpecification {
             assert statFromMgmtController.entrySet()[-2].value < statFromMgmtController.entrySet()[-1].value
         }
 
-        when: "Set only statistic controller on the src switch"
-        lockKeeper.setController(srcSwitch, statControllers[0])
+        when: "Set only statistic controller on the src switch and disconnect from management"
+        lockKeeper.reviveSwitch(srcSwitch, statsBlockData)
+        def mgmtBlockData = lockKeeper.knockoutSwitch(srcSwitch, mgmtFlManager)
 
         and: "Generate traffic on the given flow"
         exam.setResources(traffExam.startExam(exam, true))
@@ -187,8 +191,8 @@ class MflStatSpec extends HealthCheckSpecification {
             assert statFromStatsController.entrySet()[-2].value < statFromStatsController.entrySet()[-1].value
         }
 
-        when: "Disconnect the src switch from the management and statistic controllers"
-        lockKeeper.knockoutSwitch(srcSwitch)
+        when: "Disconnect the src switch from both management and statistic controllers"
+        statsBlockData = lockKeeper.knockoutSwitch(srcSwitch, statsFlManager)
         Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northbound.getActiveSwitches()*.switchId) }
 
         and: "Generate traffic on the given flow"
@@ -203,11 +207,13 @@ class MflStatSpec extends HealthCheckSpecification {
             sleep((waitInterval * 1000).toLong())
         }
 
-        when: "Restore default controllers on the src switches"
-        lockKeeper.reviveSwitch(srcSwitch)
+        when: "Restore default controllers on the src switch"
+        lockKeeper.reviveSwitch(srcSwitch, statsBlockData)
+        lockKeeper.reviveSwitch(srcSwitch, mgmtBlockData)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert srcSwitch.dpId in northbound.getActiveSwitches()*.switchId
             assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.empty
+            assert northbound.getFlowStatus(flow.flowId).status != FlowState.DOWN
         }
 
         then: "Old statistic should be collected"

@@ -26,7 +26,6 @@ import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.event.SwitchChangeType;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPairDto;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -35,6 +34,7 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
+import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.floodlight.FloodlightService;
@@ -200,8 +200,8 @@ public class StubServiceFactory {
 
         when(serviceMock.getActiveSwitches())
                 .thenAnswer(invocation -> topologyDefinition.getActiveSwitches().stream()
-                        .map(sw -> new SwitchInfoData(sw.getDpId(),
-                                SwitchChangeType.ACTIVATED, "", "", "", "", false))
+                        .map(sw -> new SwitchDto(sw.getDpId(), "", 0, "", "",
+                                SwitchChangeType.ACTIVATED, false, "", "", "", "", ""))
                         .collect(toList()));
 
         when(serviceMock.getActiveLinks())

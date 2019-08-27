@@ -80,11 +80,11 @@ class FlowRulesSpec extends HealthCheckSpecification {
             assert defaultPlusFlowRules.size() == srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRules
         }
 
-        lockKeeper.knockoutSwitch(srcSwitch)
+        def blockData = lockKeeper.knockoutSwitch(srcSwitch, mgmtFlManager)
         Wrappers.wait(WAIT_OFFSET) { assert !(srcSwitch.dpId in northbound.getActiveSwitches()*.switchId) }
 
         when: "Connect the switch to the controller"
-        lockKeeper.reviveSwitch(srcSwitch)
+        lockKeeper.reviveSwitch(srcSwitch, blockData)
         Wrappers.wait(WAIT_OFFSET) { assert srcSwitch.dpId in northbound.getActiveSwitches()*.switchId }
 
         then: "Previously installed rules are not deleted from the switch"

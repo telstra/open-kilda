@@ -31,8 +31,13 @@ kilda_floodlight_endpoint: "http://127.0.0.1"
 kilda_floodlight_rest_port: "8081"
 kilda_floodlight_username: "kilda"
 kilda_floodlight_password: "kilda"
-kilda_floodlight_controllers_management: "tcp:floodlight_one:6653"
-kilda_floodlight_controllers_stat: "tcp:floodlight_second:6653"
+kilda_floodlight_controllers_management_openflow: "tcp:floodlight_1.pendev:6653,tcp:floodlight_2.pendev:6653"
+kilda_floodlight_controllers_management_endpoints: "http://localhost:8081,http://localhost:8281"
+kilda_floodlight_controllers_management_containers: "floodlight_1,floodlight_2"
+kilda_floodlight_controllers_stat_openflow: "tcp:floodlight_stats.pendev:6653,tcp:floodlight_stats.pendev:6653"
+kilda_floodlight_controllers_stat_endpoints: "http://localhost:8082,http://localhost:8082"
+kilda_floodlight_controllers_stat_containers: "floodlight_stats,floodlight_stats"
+kilda_floodlight_regions: "1,2"
 kilda_floodlight_command_processor_deferred_requests_limit: 64
 kilda_floodlight_flow_meter_burst_coefficient: 1.05
 kilda_floodlight_consumer_executors: 20
@@ -44,9 +49,7 @@ kilda_floodlight_ovs_meters_enabled: true
 kilda_grpc_speaker_kafka_listener_threads: 1
 kilda_grpc_speaker_kafka_session_timeout: 30000
 
-kilda_aswitch_port: "5001"
-kilda_aswitch_endpoint: "http://127.0.0.1"
-kilda_mininet_endpoint: "http://127.0.0.1"
+kilda_lockkeeper_port: "5001"
 kilda_mininet_rest_port: "38080"
 kilda_topology_engine_endpoint: "http://127.0.0.1"
 kilda_topology_engine_rest_endpoint: "http://127.0.0.1"
@@ -124,7 +127,6 @@ kilda_pce_network_strategy: "SYMMETRIC_COST"
 kilda_floodlight_alive_timeout: 10
 kilda_floodlight_alive_interval: 2
 kilda_message_blacklist_timeout: 180
-kilda_floodlight_regions: "1"
 
 kilda_logging_json_file: False
 kilda_logging_logstash: True

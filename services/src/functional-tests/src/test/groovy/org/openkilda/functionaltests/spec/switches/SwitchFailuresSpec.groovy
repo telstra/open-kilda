@@ -1,39 +1,44 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static groovyx.gpars.dataflow.Dataflow.task
 import static org.junit.Assume.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.FlowHelperV2
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
+import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
-
-import java.util.concurrent.TimeUnit
 
 @Narrative("""
 This spec verifies different situations when Kilda switches suddenly disconnect from the controller.
 Note: For now it is only runnable on virtual env due to no ability to disconnect hardware switches
 """)
-@Tags(VIRTUAL)
 class SwitchFailuresSpec extends HealthCheckSpecification {
-    @Tags(SMOKE)
-    def "ISL is still able to properly fail even after switches were reconnected"() {
+
+    def "ISL is still able to properly fail even if switches have reconnected"() {
         given: "A flow"
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
+        assumeTrue("No a-switch ISL found for the test", isl.asBoolean())
         def flow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch)
         flowHelperV2.addFlow(flow)
 
         when: "Two neighbouring switches of the flow go down simultaneously"
-        lockKeeper.knockoutSwitch(isl.srcSwitch)
-        lockKeeper.knockoutSwitch(isl.dstSwitch)
+        def srcBlockData = lockKeeper.knockoutSwitch(isl.srcSwitch, mgmtFlManager)
+        def dstBlockData = lockKeeper.knockoutSwitch(isl.dstSwitch, mgmtFlManager)
         def timeSwitchesBroke = System.currentTimeMillis()
         def untilIslShouldFail = { timeSwitchesBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
@@ -41,8 +46,8 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         lockKeeper.removeFlows([isl.aswitch])
 
         and: "Switches go back up"
-        lockKeeper.reviveSwitch(isl.srcSwitch)
-        lockKeeper.reviveSwitch(isl.dstSwitch)
+        lockKeeper.reviveSwitch(isl.srcSwitch, srcBlockData)
+        lockKeeper.reviveSwitch(isl.dstSwitch, dstBlockData)
 
         then: "ISL still remains up right before discovery timeout should end"
         sleep(untilIslShouldFail() - 2000)
@@ -70,78 +75,119 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         }
     }
 
-    @Ignore("This is a known Kilda limitation and feature is not implemented yet.")
+    @Ignore("Not ready yet")
+    //expected to work only via v2 API
     def "System can handle situation when switch reconnects while flow is being created"() {
-        given: "Source and destination switches"
+        when: "Start creating a flow between switches and lose connection to src before rules are set"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        northboundV2.addFlow(flow)
+        sleep(50)
+        def blockData = lockKeeper.knockoutSwitch(srcSwitch, mgmtFlManager)
 
-        when: "Start creating a flow between these switches"
-        def flow = flowHelperv.randomFlow(srcSwitch, dstSwitch)
-        def addFlow = new Thread({ northbound.addFlow(flow) })
-        addFlow.start()
-
-        and: "One of the switches goes down without waiting for flow's UP status"
-        lockKeeper.knockoutSwitch(srcSwitch)
-        addFlow.join()
-
-        and: "Goes back up in 2 seconds"
-        TimeUnit.SECONDS.sleep(2)
-        lockKeeper.reviveSwitch(srcSwitch)
-
-        then: "The flow is UP and valid"
+        then: "Flow eventually goes DOWN"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-            northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
+            assert northbound.getSwitch(srcSwitch.dpId).state == SwitchChangeType.DEACTIVATED
+        }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
         }
 
-        and: "Rules are valid on the knocked out switch"
-        verifySwitchRules(srcSwitch.dpId)
+        and: "Flow has no path associated"
+        with(northbound.getFlowPath(flow.flowId)) {
+            forwardPath.empty
+            reversePath.empty
+        }
 
-        and: "Remove the flow"
-        flowHelper.deleteFlow(flow.id)
+        and: "Dst switch validation shows no missing rules"
+        with(northbound.validateSwitch(dstSwitch.dpId)) {
+            it.verifyRuleSectionsAreEmpty(["missing", "proper", "misconfigured"])
+            it.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "proper", "excess"])
+        }
+
+        when: "Try to validate flow"
+        northbound.validateFlow(flow.flowId)
+
+        then: "Error is returned, explaining that this is impossible for DOWN flows"
+        def e = thrown(HttpClientErrorException)
+        e.statusCode == HttpStatus.UNPROCESSABLE_ENTITY
+        e.responseBodyAsString.to(MessageError).errorDescription ==
+                "Could not validate flow: Flow $flow.flowId is in DOWN state"
+
+        when: "Switch returns back UP"
+        lockKeeper.reviveSwitch(srcSwitch, blockData)
+        Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(srcSwitch.dpId).state == SwitchChangeType.ACTIVATED }
+
+        then: "Flow is still down, because ISLs had not enough time to fail, so no ISLs are discovered and no reroute happen"
+        northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
+
+        when: "Reroute the flow"
+        def rerouteResponse = northboundV2.rerouteFlow(flow.flowId)
+
+        then: "Flow is rerouted and in UP state"
+        rerouteResponse.rerouted
+        Wrappers.wait(WAIT_OFFSET) { northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+
+        and: "Has a path now"
+        with(northbound.getFlowPath(flow.flowId)) {
+            !forwardPath.empty
+            !reversePath.empty
+        }
+
+        and: "Can be validated"
+        northbound.validateFlow(flow.flowId).each { assert it.discrepancies.empty }
+
+        and: "Flow can be removed"
+        flowHelper.deleteFlow(flow.flowId)
     }
 
-    @Ignore("This is a known Kilda limitation and feature is not implemented yet.")
-    def "System can handle situation when switch reconnects while flow is being rerouted"() {
+    @Ignore("Too unstable due to race condition when doing switch disconnect + reroute")
+    def "No discrepancies when target transit switch disconnects while flow is being rerouted to it"() {
         given: "A flow with alternative paths available"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
+        assumeTrue("This test is only viable for h&s reroutes", northbound.getFeatureToggles().flowsRerouteViaFlowHs)
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 2 } ?:
                 assumeTrue("No suiting switches found", false)
-        def flow = flowHelper.randomFlow(switchPair)
-        flowHelper.addFlow(flow)
-        def currentPath = PathHelper.convert(northbound.getFlowPath(flow.id))
+        def flow = flowHelperV2.randomFlow(switchPair)
+        northboundV2.addFlow(flow)
+        def originalPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
 
         and: "There is a more preferable alternative path"
-        def alternativePaths = switchPair.paths.findAll { it != currentPath }
-        def preferredPath = alternativePaths.first()
-        def uniqueSwitch = pathHelper.getInvolvedSwitches(preferredPath).find {
-            !pathHelper.getInvolvedSwitches(currentPath).contains(it)
+        Switch uniqueSwitch = null
+        def preferredPath = switchPair.paths.find { path ->
+            uniqueSwitch = pathHelper.getInvolvedSwitches(path).find {
+                !pathHelper.getInvolvedSwitches(originalPath).contains(it)
+            }
+            uniqueSwitch && path != originalPath
         }
-        assumeTrue("Didn't find a unique switch for alternative path", uniqueSwitch.asBoolean())
+        assert preferredPath.asBoolean(), "Didn't find a proper alternative path"
         switchPair.paths.findAll { it != preferredPath }.each { pathHelper.makePathMorePreferable(preferredPath, it) }
 
         when: "Init reroute of the flow to a better path"
-        def reroute = new Thread({ northbound.rerouteFlow(flow.id) })
-        reroute.start()
+        def task = task {
+            with(northboundV2.rerouteFlow(flow.flowId)) {
+                rerouted
+                path.nodes*.switchId.contains(uniqueSwitch.dpId)
+            }
+        }
 
         and: "Immediately disconnect a switch on the new path"
-        lockKeeper.knockoutSwitch(uniqueSwitch)
-        reroute.join()
-
-        and: "Reconnect it back in a couple of seconds"
-        TimeUnit.SECONDS.sleep(2)
-        lockKeeper.reviveSwitch(uniqueSwitch)
+        def blockData = lockKeeper.knockoutSwitch(uniqueSwitch, mgmtFlManager)
+        task.get()
 
         then: "The flow is UP and valid"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.id).status == FlowState.UP
-            northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
+            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
         }
+        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
-        and: "Rules are valid on the knocked out switch"
-        verifySwitchRules(uniqueSwitch.dpId)
+        and: "The flow did not actually change path and fell back to original path"
+        PathHelper.convert(northbound.getFlowPath(flow.flowId)) == originalPath
 
-        and: "Remove the flow and delete link props"
-        flowHelper.deleteFlow(flow.id)
+        and: "Revive switch, remove the flow"
+        lockKeeper.reviveSwitch(uniqueSwitch, blockData)
+        Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(uniqueSwitch.dpId).state == SwitchChangeType.ACTIVATED }
+        flowHelper.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
+        Wrappers.wait(discoveryInterval) { northbound.getAllLinks().each { it.state == IslChangeType.DISCOVERED } }
     }
 }

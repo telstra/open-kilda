@@ -46,7 +46,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         def swIsls = topology.getRelatedIsls(sw)
 
         // deactivate switch
-        lockKeeper.knockoutSwitch(sw)
+        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
         Wrappers.wait(WAIT_OFFSET) { assert !northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
         when: "Try to delete the switch"
@@ -59,7 +59,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
                 "Unplug and remove them first.*")
 
         and: "Cleanup: activate the switch back"
-        lockKeeper.reviveSwitch(sw)
+        lockKeeper.reviveSwitch(sw, blockData)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.activeSwitches.any { it.switchId == sw.dpId }
 
@@ -81,7 +81,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         }
 
         // deactivate switch
-        lockKeeper.knockoutSwitch(sw)
+        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
         Wrappers.wait(WAIT_OFFSET) { assert !northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
         when: "Try to delete the switch"
@@ -94,7 +94,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
                 "Remove them first.*")
 
         and: "Cleanup: activate the switch back and reset costs"
-        lockKeeper.reviveSwitch(sw)
+        lockKeeper.reviveSwitch(sw, blockData)
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
         swIsls.each { antiflap.portUp(sw.dpId, it.srcPort) }
@@ -113,7 +113,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         when: "Deactivate the switch"
         def swToDeactivate = topology.switches.find { it.dpId == flow.source.switchId }
-        lockKeeper.knockoutSwitch(swToDeactivate)
+        def blockData = lockKeeper.knockoutSwitch(swToDeactivate, mgmtFlManager)
         Wrappers.wait(WAIT_OFFSET) { assert !northbound.activeSwitches.any { it.switchId == flow.source.switchId } }
 
         and: "Try to delete the switch"
@@ -125,7 +125,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.matches(".*Switch '${flow.source.switchId}' has 1 assigned flows: \\[${flow.flowId}\\].*")
 
         and: "Cleanup: activate the switch back and remove the flow"
-        lockKeeper.reviveSwitch(swToDeactivate)
+        lockKeeper.reviveSwitch(swToDeactivate, blockData)
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == flow.source.switchId } }
         flowHelperV2.deleteFlow(flow.flowId)
 
@@ -153,7 +153,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         }
 
         // deactivate switch
-        lockKeeper.knockoutSwitch(sw)
+        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
         Wrappers.wait(WAIT_OFFSET) { assert !northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
         when: "Try to delete the switch"
@@ -165,7 +165,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         and: "Cleanup: activate the switch back, restore ISLs and reset costs"
         // restore switch
-        lockKeeper.reviveSwitch(sw)
+        lockKeeper.reviveSwitch(sw, blockData)
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
         // restore ISLs
@@ -200,8 +200,8 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         and: "Cleanup: restore the switch, ISLs and reset costs"
         // restore switch
-        lockKeeper.knockoutSwitch(sw)
-        lockKeeper.reviveSwitch(sw)
+        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
+        lockKeeper.reviveSwitch(sw, blockData)
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
         // restore ISLs

@@ -2,14 +2,16 @@ northbound.endpoint=http://localhost:8080
 northbound.username=kilda
 northbound.password=kilda
 
-floodlight.endpoint=http://localhost:8081
 floodlight.username=kilda
 floodlight.password=kilda
-floodlight.controller.uri=tcp:kilda:6653
-floodlight.controllers.management=tcp:floodlight_one.pendev:6653
-floodlight.controllers.stat=tcp:floodlight_second.pendev:6653
-floodlight.regions=1
-floodlight.alive.timeout=10
+floodlight.controllers.management.openflow=tcp:floodlight_1.pendev:6653,tcp:floodlight_2.pendev:6653
+floodlight.controllers.management.endpoints=http://localhost:8081,http://localhost:8281
+floodlight.controllers.management.containers=floodlight_1,floodlight_2
+floodlight.controllers.stat.openflow=tcp:floodlight_stats.pendev:6653,tcp:floodlight_stats.pendev:6653
+floodlight.controllers.stat.endpoints=http://localhost:8082,http://localhost:8082
+floodlight.controllers.stat.containers=floodlight_stats,floodlight_stats
+floodlight.regions=1,2
+floodlight.alive.timeout=5
 floodlight.alive.interval=2
 
 grpc.endpoint=http://localhost:8091

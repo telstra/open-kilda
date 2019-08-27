@@ -15,6 +15,9 @@
 
 package org.openkilda.northbound.dto.v1.switches;
 
+import org.openkilda.messaging.info.event.SwitchChangeType;
+import org.openkilda.model.SwitchId;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,7 +31,7 @@ import lombok.NoArgsConstructor;
 public class SwitchDto {
 
     @JsonProperty("switch_id")
-    private String switchId;
+    private SwitchId switchId;
 
     @JsonProperty("address")
     private String address;
@@ -43,7 +46,7 @@ public class SwitchDto {
     private String description;
 
     @JsonProperty("state")
-    private String state;
+    private SwitchChangeType state;
 
     @JsonProperty("under_maintenance")
     private boolean underMaintenance;

@@ -5,11 +5,14 @@ northbound.endpoint={{ getv "/kilda_northbound_endpoint" }}:{{ getv "/kilda_nort
 northbound.username={{ getv "/kilda_northbound_username" }}
 northbound.password={{ getv "/kilda_northbound_password" }}
 
-floodlight.endpoint={{ getv "/kilda_floodlight_endpoint" }}:{{ getv "/kilda_floodlight_rest_port" }}
 floodlight.username={{ getv "/kilda_floodlight_username" }}
 floodlight.password={{ getv "/kilda_floodlight_password" }}
-floodlight.controllers.management={{ getv "/kilda_floodlight_controllers_management" }}
-floodlight.controllers.stat={{ getv "/kilda_floodlight_controllers_stat" }}
+floodlight.controllers.management.openflow={{ getv "/kilda_floodlight_controllers_management_openflow" }}
+floodlight.controllers.management.endpoints= {{ getv "/kilda_floodlight_controllers_management_endpoints" }}
+floodlight.controllers.management.containers= {{ getv "/kilda_floodlight_controllers_management_containers" }}
+floodlight.controllers.stat.openflow={{ getv "/kilda_floodlight_controllers_stat_openflow" }}
+floodlight.controllers.stat.endpoints= {{ getv "/kilda_floodlight_controllers_stat_endpoints" }}
+floodlight.controllers.stat.containers= {{ getv "/kilda_floodlight_controllers_stat_containers" }}
 floodlight.regions={{ getv "/kilda_floodlight_regions" }}
 floodlight.alive.timeout={{ getv "/kilda_floodlight_alive_timeout" }}
 floodlight.alive.interval={{ getv "/kilda_floodlight_alive_interval" }}
@@ -28,7 +31,7 @@ kafka.bootstrap.server={{ getv "/kilda_kafka_hosts" }}
 kafka.topic.topo.disco=kilda.topo.disco.storm
 
 lab-api.endpoint={{ getv "/kilda_lab_api_endpoint" }}:{{ getv "/kilda_lab_api_port" }}
-lockkeeper.endpoint={{ getv "/kilda_aswitch_endpoint" }}:{{ getv "/kilda_aswitch_port" }}
+lockkeeper.port={{ getv "/kilda_lockkeeper_port" }}
 
 opentsdb.endpoint=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
 opentsdb.metric.prefix = {{ getv "/kilda_opentsdb_metric_prefix" }}

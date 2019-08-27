@@ -5,7 +5,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.messaging.info.event.SwitchInfoData
+import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.testing.service.grpc.GrpcService
 
 import groovy.transform.Memoized
@@ -19,7 +19,7 @@ class GrpcBaseSpecification extends HealthCheckSpecification {
     GrpcService grpc
 
     @Memoized
-    List<SwitchInfoData> getNoviflowSwitches() {
+    List<SwitchDto> getNoviflowSwitches() {
         northbound.activeSwitches.findAll {
             // it is not working properly if version <= 6.4
             def matcher = it.description =~ /NW[0-9]+.([0-9].[0-9])/

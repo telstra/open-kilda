@@ -27,9 +27,9 @@ import org.openkilda.atdd.staging.helpers.TopologyChecker.IslMatcher;
 import org.openkilda.atdd.staging.helpers.TopologyChecker.SwitchEntryMatcher;
 import org.openkilda.atdd.staging.helpers.TopologyChecker.SwitchMatcher;
 import org.openkilda.messaging.info.event.IslInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
+import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 import org.openkilda.testing.service.floodlight.FloodlightService;
@@ -63,7 +63,7 @@ public class TopologyVerificationSteps implements En {
 
     private List<TopologyDefinition.Switch> referenceSwitches;
     private List<TopologyDefinition.Isl> referenceLinks;
-    private List<SwitchInfoData> actualSwitches;
+    private List<SwitchDto> actualSwitches;
     private List<IslInfoData> actualLinks;
 
     private Scenario scenario;

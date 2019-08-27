@@ -229,8 +229,8 @@ switches"() {
         validateFlows(flow1, flow2)
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        validateSwitches(flow1SwitchPair)
-        validateSwitches(flow2SwitchPair)
+        validateSwitches(switchPairs[0])
+        validateSwitches(switchPairs[1])
 
         and: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
@@ -238,10 +238,14 @@ switches"() {
         where:
         endpointsPart << ["vlans", "ports", "switches"]
         description << ["src1 <-> dst2, dst1 <-> src2"] * 3
-        flow1SwitchPair << [getTopologyHelper().getNotNeighboringSwitchPair()] * 3
-        flow2SwitchPair << [getHalfDifferentNotNeighboringSwitchPair(flow1SwitchPair, "src")] * 3
-        flow1 << [getFirstFlow(flow1SwitchPair, flow2SwitchPair)] * 3
-        flow2 << [getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1)] * 3
+        switchPairs << [getTopologyHelper().getAllNotNeighboringSwitchPairs().inject(null) { result, switchPair ->
+            if (result) return result
+            def halfDifferent = getHalfDifferentNotNeighboringSwitchPair(switchPair, "src")
+            if (halfDifferent) result = [switchPair, halfDifferent]
+            return result
+        }] * 3
+        flow1 << [getFirstFlow(switchPairs[0], switchPairs[1])] * 3
+        flow2 << [getSecondFlow(switchPairs[0], switchPairs[1], flow1)] * 3
         [flow1Src, flow1Dst, flow2Src, flow2Dst] << [
                 [changePropertyValue(flow1.source, "vlanId", flow2.destination.vlanId),
                  changePropertyValue(flow1.destination, "vlanId", flow2.source.vlanId),
@@ -282,18 +286,22 @@ switches"() {
         validateFlows(flow1, flow2)
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
-        validateSwitches(flow1SwitchPair)
-        validateSwitches(flow2SwitchPair)
+        validateSwitches(switchPairs[0])
+        validateSwitches(switchPairs[1])
 
         and: "Delete flows"
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
 
         where:
         description << ["src1 <-> src2", "dst1 <-> dst2", "src1 <-> dst2", "dst1 <-> src2"]
-        flow1SwitchPair << [getTopologyHelper().getNotNeighboringSwitchPair()] * 4
-        flow2SwitchPair << [getHalfDifferentNotNeighboringSwitchPair(flow1SwitchPair, "src")] * 4
-        flow1 << [getFirstFlow(flow1SwitchPair, flow2SwitchPair)] * 4
-        flow2 << [getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1)] * 4
+        switchPairs << [getTopologyHelper().getAllNotNeighboringSwitchPairs().inject(null) { result, switchPair ->
+            if (result) return result
+            def halfDifferent = getHalfDifferentNotNeighboringSwitchPair(switchPair, "src")
+            if (halfDifferent) result = [switchPair, halfDifferent]
+            return result
+        }] * 4
+        flow1 << [getFirstFlow(switchPairs[0], switchPairs[1])] * 4
+        flow2 << [getSecondFlow(switchPairs[0], switchPairs[1], flow1)] * 4
         [flow1Src, flow1Dst, flow2Src, flow2Dst] << [
                 [flow2.source, flow1.destination, flow1.source, flow2.destination],
                 [flow1.source, flow2.destination, flow2.source, flow1.destination],

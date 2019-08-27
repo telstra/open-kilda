@@ -84,7 +84,7 @@ class TopologyHelper {
         def i = 0
         def topoSwitches = switches.collect {
             i++
-            new Switch("ofsw$i", it.switchId, it.switchView.ofVersion, switchStateToStatus(it.state), [], null, null)
+            new Switch("ofsw$i", it.switchId, it.ofVersion, switchStateToStatus(it.state), [], null, null)
         }
         def topoLinks = links.collect { link ->
             new Isl(topoSwitches.find { it.dpId == link.source.switchId }, link.source.portNo,

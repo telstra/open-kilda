@@ -149,7 +149,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         }
 
         when: "Deactivate/activate src switch"
-        lockKeeper.knockoutSwitch(sw)
+        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
             assert northbound.getAllLinks().findAll {
@@ -157,7 +157,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
             }.size() == (relatedIsls - islToManipulate).size() * 2
         }
 
-        lockKeeper.reviveSwitch(sw)
+        lockKeeper.reviveSwitch(sw, blockData)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
             def links = northbound.getAllLinks()

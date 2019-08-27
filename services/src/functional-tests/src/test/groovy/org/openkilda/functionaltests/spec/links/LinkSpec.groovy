@@ -195,7 +195,7 @@ class LinkSpec extends HealthCheckSpecification {
     def "ISL should immediately fail if the port went down while switch was disconnected"() {
         when: "A switch disconnects"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
-        lockKeeper.knockoutSwitch(isl.srcSwitch)
+        def blockData = lockKeeper.knockoutSwitch(isl.srcSwitch, mgmtFlManager)
         Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(isl.srcSwitch.dpId).state == SwitchChangeType.DEACTIVATED }
 
         and: "One of its ports goes down"
@@ -203,7 +203,7 @@ class LinkSpec extends HealthCheckSpecification {
         lockKeeper.portsDown([isl.aswitch.inPort])
 
         and: "The switch reconnects back with a port being down"
-        lockKeeper.reviveSwitch(isl.srcSwitch)
+        lockKeeper.reviveSwitch(isl.srcSwitch, blockData)
         Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(isl.srcSwitch.dpId).state == SwitchChangeType.ACTIVATED }
 
         then: "The related ISL immediately goes down"
@@ -214,13 +214,14 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         when: "The switch disconnects again"
-        lockKeeper.knockoutSwitch(isl.srcSwitch)
+        blockData = lockKeeper.knockoutSwitch(isl.srcSwitch, mgmtFlManager)
 
         and: "The DOWN port is brought back to UP state"
         lockKeeper.portsUp([isl.aswitch.inPort])
 
         and: "The switch reconnects back with a port being up"
-        lockKeeper.reviveSwitch(isl.srcSwitch)
+        lockKeeper.reviveSwitch(isl.srcSwitch, blockData)
+        Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(isl.srcSwitch.dpId).state == SwitchChangeType.ACTIVATED }
 
         then: "The related ISL is discovered again"
         Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
@@ -499,8 +500,8 @@ class LinkSpec extends HealthCheckSpecification {
         def isl = topology.islsForActiveSwitches.first()
 
         when: "Source and destination switches of the ISL suddenly disconnect"
-        lockKeeper.knockoutSwitch(isl.srcSwitch)
-        lockKeeper.knockoutSwitch(isl.dstSwitch)
+        def srcBlockData = lockKeeper.knockoutSwitch(isl.srcSwitch, mgmtFlManager)
+        def dstBlockData = lockKeeper.knockoutSwitch(isl.dstSwitch, mgmtFlManager)
 
         then: "ISL gets failed after discovery timeout"
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
@@ -510,8 +511,8 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         and: "Restore broken switches and revive ISL"
-        lockKeeper.reviveSwitch(isl.srcSwitch)
-        lockKeeper.reviveSwitch(isl.dstSwitch)
+        lockKeeper.reviveSwitch(isl.srcSwitch, srcBlockData)
+        lockKeeper.reviveSwitch(isl.dstSwitch, dstBlockData)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveSwitches()*.switchId.containsAll([isl.srcSwitch.dpId, isl.dstSwitch.dpId])
             northbound.getAllLinks().each {

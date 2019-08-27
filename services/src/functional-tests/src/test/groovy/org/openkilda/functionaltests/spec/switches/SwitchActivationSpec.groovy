@@ -65,11 +65,11 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             }
         }
 
-        lockKeeper.knockoutSwitch(switchPair.src)
+        def blockData = lockKeeper.knockoutSwitch(switchPair.src, mgmtFlManager)
         Wrappers.wait(WAIT_OFFSET) { assert !(switchPair.src.dpId in northbound.getActiveSwitches()*.switchId) }
 
         when: "Connect the switch to the controller"
-        lockKeeper.reviveSwitch(switchPair.src)
+        lockKeeper.reviveSwitch(switchPair.src, blockData)
         Wrappers.wait(WAIT_OFFSET) { assert switchPair.src.dpId in northbound.getActiveSwitches()*.switchId }
 
         then: "Missing flow rules/meters were synced during switch activation"
@@ -118,11 +118,11 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             }
         }
 
-        lockKeeper.knockoutSwitch(sw)
+        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
         Wrappers.wait(WAIT_OFFSET) { assert !(sw.dpId in northbound.getActiveSwitches()*.switchId) }
 
         when: "Connect the switch to the controller"
-        lockKeeper.reviveSwitch(sw)
+        lockKeeper.reviveSwitch(sw, blockData)
         Wrappers.wait(WAIT_OFFSET) { assert sw.dpId in northbound.getActiveSwitches()*.switchId }
 
         then: "Excess meters/rules were synced during switch activation"
@@ -140,7 +140,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         setup: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
         def sw = topology.activeSwitches.first()
         def isls = topology.getRelatedIsls(sw)
-        lockKeeper.knockoutSwitch(sw)
+        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
             assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.size() == isls.size() * 2
@@ -149,7 +149,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         northbound.deleteSwitch(sw.dpId, false)
 
         when: "New switch connects"
-        lockKeeper.reviveSwitch(sw)
+        lockKeeper.reviveSwitch(sw, blockData)
 
         then: "Switch is activated"
         Wrappers.wait(WAIT_OFFSET / 2) {
