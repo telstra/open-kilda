@@ -44,7 +44,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.sw.SwitchHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslBfdKillCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslBfdUpDownCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.uniisl.command.UniIslCommand;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -57,7 +57,7 @@ public class BfdPortHandler extends AbstractBolt
 
     public static final String FIELD_ID_DATAPATH = SwitchHandler.FIELD_ID_DATAPATH;
     public static final String FIELD_ID_PORT_NUMBER = SwitchHandler.FIELD_ID_PORT_NUMBER;
-    public static final String FIELD_ID_COMMAND_KEY = MessageTranslator.KEY_FIELD;
+    public static final String FIELD_ID_COMMAND_KEY = MessageKafkaTranslator.KEY_FIELD;
     public static final String FIELD_ID_COMMAND = SwitchHandler.FIELD_ID_COMMAND;
 
     public static final String STREAM_SPEAKER_ID = "speaker";

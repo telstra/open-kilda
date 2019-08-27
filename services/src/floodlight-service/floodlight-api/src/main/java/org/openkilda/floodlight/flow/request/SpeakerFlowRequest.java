@@ -50,7 +50,14 @@ public abstract class SpeakerFlowRequest extends AbstractMessage {
     @JsonProperty("switch_id")
     final SwitchId switchId;
 
-    public SpeakerFlowRequest(MessageContext context, UUID commandId, String flowId, SwitchId switchId) {
+    /**
+     * Whether use multitable pipeline or not.
+     */
+    @JsonProperty("multi_table")
+    final boolean multiTable;
+
+    public SpeakerFlowRequest(MessageContext context, UUID commandId, String flowId, SwitchId switchId,
+                              boolean multiTable) {
         super(context);
 
         requireNonNull(commandId, "Message id should be not null");
@@ -58,6 +65,7 @@ public abstract class SpeakerFlowRequest extends AbstractMessage {
         this.commandId = commandId;
         this.flowId = flowId;
         this.switchId = switchId;
+        this.multiTable = multiTable;
     }
 
 }

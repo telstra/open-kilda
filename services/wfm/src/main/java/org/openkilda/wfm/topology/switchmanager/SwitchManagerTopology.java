@@ -26,7 +26,7 @@ import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.switchmanager.bolt.SpeakerWorkerBolt;
 import org.openkilda.wfm.topology.switchmanager.bolt.SwitchManagerHub;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.TopologyBuilder;
@@ -41,7 +41,7 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
     private static final String NB_KAFKA_BOLT = "nb.bolt";
     private static final String SPEAKER_KAFKA_BOLT = "speaker.bolt";
 
-    private static final Fields FIELDS_KEY = new Fields(MessageTranslator.FIELD_ID_KEY);
+    private static final Fields FIELDS_KEY = new Fields(MessageKafkaTranslator.FIELD_ID_KEY);
 
     public SwitchManagerTopology(LaunchEnvironment env) {
         super(env, SwitchManagerTopologyConfig.class);

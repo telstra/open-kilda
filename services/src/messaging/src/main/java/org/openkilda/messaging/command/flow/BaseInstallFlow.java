@@ -61,6 +61,9 @@ public class BaseInstallFlow extends BaseFlow {
     @JsonProperty("output_port")
     protected Integer outputPort;
 
+    @JsonProperty("multi_table")
+    protected boolean multiTable;
+
     /**
      * Instance constructor.
      *
@@ -70,6 +73,7 @@ public class BaseInstallFlow extends BaseFlow {
      * @param switchId      switch id for flow installation
      * @param inPort        input port of the flow
      * @param outPort       output port of the flow
+     * @param multiTable    multitable flag
      * @throws IllegalArgumentException if mandatory parameter is null
      */
     @JsonCreator
@@ -78,10 +82,12 @@ public class BaseInstallFlow extends BaseFlow {
                            @JsonProperty("cookie") final Long cookie,
                            @JsonProperty("switch_id") final SwitchId switchId,
                            @JsonProperty("input_port") final Integer inPort,
-                           @JsonProperty("output_port") final Integer outPort) {
+                           @JsonProperty("output_port") final Integer outPort,
+                           @JsonProperty("multi_table") final boolean multiTable) {
         super(transactionId, id, cookie, switchId);
         setInputPort(inPort);
         setOutputPort(outPort);
+        setMultiTable(multiTable);
     }
 
     /**
@@ -131,6 +137,23 @@ public class BaseInstallFlow extends BaseFlow {
     }
 
     /**
+     * Get multiTable flag.
+     * @return multiTable flag
+     */
+    public boolean isMultiTable() {
+        return multiTable;
+    }
+
+    /**
+     * Set multiTable flag.
+     */
+    public void setMultiTable(boolean multiTable) {
+        this.multiTable = multiTable;
+    }
+
+
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -142,6 +165,7 @@ public class BaseInstallFlow extends BaseFlow {
                 .add("switch_id", switchId)
                 .add("input_port", inputPort)
                 .add("output_port", outputPort)
+                .add("multi_table", multiTable)
                 .toString();
     }
 
@@ -163,7 +187,8 @@ public class BaseInstallFlow extends BaseFlow {
                 && Objects.equals(getCookie(), that.getCookie())
                 && Objects.equals(getSwitchId(), that.getSwitchId())
                 && Objects.equals(getInputPort(), that.getInputPort())
-                && Objects.equals(getOutputPort(), that.getOutputPort());
+                && Objects.equals(getOutputPort(), that.getOutputPort())
+                && Objects.equals(isMultiTable(), that.isMultiTable());
     }
 
     /**
@@ -171,6 +196,6 @@ public class BaseInstallFlow extends BaseFlow {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort);
+        return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort, multiTable);
     }
 }

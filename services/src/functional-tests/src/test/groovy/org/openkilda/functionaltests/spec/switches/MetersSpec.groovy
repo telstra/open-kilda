@@ -50,8 +50,7 @@ class MetersSpec extends HealthCheckSpecification {
     double burstCoefficient
 
     @Unroll
-    @Tags([TOPOLOGY_DEPENDENT, SMOKE])
-    @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /Noviflow/)
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Able to delete a meter from a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
 
@@ -115,7 +114,7 @@ class MetersSpec extends HealthCheckSpecification {
      * System should recalculate the PKTPS value to KBPS on Centec switches.
      */
     @Unroll
-    @Tags(HARDWARE)
+    @Tags([HARDWARE, SMOKE_SWITCHES])
     def "Default meters should express bandwidth in kbps re-calculated from pktps on Centec switch(#sw.dpId)"() {
         expect: "Only the default meters should be present on the switch"
         def meters = northbound.getAllMeters(sw.dpId)
@@ -178,7 +177,7 @@ class MetersSpec extends HealthCheckSpecification {
 
     @Unroll
     @Tags([TOPOLOGY_DEPENDENT])
-    @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /Noviflow/)
+    @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /ignore_bandwidth=false/)
     def "Meters are created/deleted when creating/deleting a single-switch flow with ignore_bandwidth=#ignoreBandwidth \
 on a #switchType switch"() {
         assumeTrue("Unable to find required switches in topology", switches as boolean)
@@ -404,7 +403,7 @@ meters in flow rules at all (#data.flowType flow)"() {
 
     }
 
-    @Tags([HARDWARE, TOPOLOGY_DEPENDENT])
+    @Tags([HARDWARE, TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     @Unroll("Flow burst should be correctly set on Centec switches in case of #flowRate kbps flow bandwidth")
     def "Flow burst is correctly set on Centec switches"() {
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible Centec switch"
@@ -509,8 +508,7 @@ meters in flow rules at all (#data.flowType flow)"() {
     }
 
     @Unroll
-    @Tags([TOPOLOGY_DEPENDENT])
-    @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /Noviflow-Noviflow/)
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "System allows to reset meter values to defaults without reinstalling rules for #data.description flow"() {
         given: "Switches combination (#data.description)"
         assumeTrue("Desired switch combination is not available in current topology", data.switches.size() > 1)

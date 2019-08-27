@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,30 +17,29 @@ package org.openkilda.wfm.topology.utils;
 
 import static org.openkilda.wfm.AbstractBolt.FIELD_ID_CONTEXT;
 
-import org.openkilda.messaging.Message;
 import org.openkilda.wfm.CommandContext;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
 
 import java.util.List;
 
-@Slf4j
-public class MessageTranslator extends KafkaRecordTranslator<String, Message> {
+abstract class GenericKafkaRecordTranslator<R, D> extends KafkaRecordTranslator<String, R> {
     // use FIELD_ID_KEY instead
     @Deprecated
     public static final String KEY_FIELD = FIELD_ID_KEY;
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT);
 
     @Override
-    public List<Object> apply(ConsumerRecord<String, Message> record) {
-        Message message = record.value();
-        CommandContext commandContext = new CommandContext(message);
-
-        return new Values(record.key(), message, commandContext);
+    public List<Object> apply(ConsumerRecord<String, R> record) {
+        D payload = decodePayload(record.value());
+        return new Values(record.key(), payload, makeContext(payload));
     }
+
+    protected abstract D decodePayload(R payload);
+
+    protected abstract CommandContext makeContext(D payload);
 
     @Override
     public Fields getFieldsFor(String stream) {

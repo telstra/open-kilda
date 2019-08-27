@@ -41,7 +41,9 @@ import org.openkilda.wfm.topology.switchmanager.service.CommandBuilder;
 
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
+import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.math.NumberUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -120,7 +122,7 @@ public class CommandBuilderImpl implements CommandBuilder {
         switchRules.stream()
                 .filter(Cookie::isDefaultRule)
                 .map(cookie -> new BaseInstallFlow(transactionIdGenerator.generate(), "SWMANAGER_DEFAULT_RULE_INSTALL",
-                        cookie, switchId, 0, 0))
+                        cookie, switchId, 0, 0, false))
                 .forEach(commands::add);
 
         return commands;
@@ -136,24 +138,47 @@ public class CommandBuilderImpl implements CommandBuilder {
                 .collect(Collectors.toList());
     }
 
-    private RemoveFlow buildRemoveFlowWithoutMeterFromFlowEntry(SwitchId switchId, FlowEntry entry) {
+    @VisibleForTesting
+    RemoveFlow buildRemoveFlowWithoutMeterFromFlowEntry(SwitchId switchId, FlowEntry entry) {
         Optional<FlowMatchField> entryMatch = Optional.ofNullable(entry.getMatch());
+        Optional<FlowInstructions> instructions = Optional.ofNullable(entry.getInstructions());
+        Optional<FlowApplyActions> applyActions = instructions.map(FlowInstructions::getApplyActions);
 
         Integer inPort = entryMatch.map(FlowMatchField::getInPort).map(Integer::valueOf).orElse(null);
+
+        FlowEncapsulationType encapsulationType = FlowEncapsulationType.TRANSIT_VLAN;
+        Integer encapsulationId = null;
         Integer vlan = entryMatch.map(FlowMatchField::getVlanVid).map(Integer::valueOf).orElse(null);
+        if (vlan != null) {
+            encapsulationId = vlan;
+        } else {
+            Integer tunnelId = entryMatch.map(FlowMatchField::getTunnelId).map(Integer::valueOf).orElse(null);
+            if (tunnelId == null) {
+                tunnelId = applyActions.map(FlowApplyActions::getPushVxlan).map(Integer::valueOf).orElse(null);
+            }
+
+            if (tunnelId != null) {
+                encapsulationId = tunnelId;
+                encapsulationType = FlowEncapsulationType.VXLAN;
+            }
+        }
 
         Optional<FlowApplyActions> actions = Optional.ofNullable(entry.getInstructions())
                 .map(FlowInstructions::getApplyActions);
 
-        Integer outPort = actions.map(FlowApplyActions::getFlowOutput).map(Integer::valueOf).orElse(null);
+        Integer outPort = actions
+                .map(FlowApplyActions::getFlowOutput)
+                .filter(NumberUtils::isNumber)
+                .map(Integer::valueOf)
+                .orElse(null);
 
         SwitchId ingressSwitchId = entryMatch.map(FlowMatchField::getEthSrc).map(SwitchId::new).orElse(null);
 
-        DeleteRulesCriteria criteria = new DeleteRulesCriteria(entry.getCookie(), inPort, vlan,
-                0, outPort, FlowEncapsulationType.TRANSIT_VLAN, ingressSwitchId);
+        DeleteRulesCriteria criteria = new DeleteRulesCriteria(entry.getCookie(), inPort, encapsulationId,
+                0, outPort, encapsulationType, ingressSwitchId);
 
         return new RemoveFlow(transactionIdGenerator.generate(), "SWMANAGER_BATCH_REMOVE", entry.getCookie(),
-                switchId, null, criteria);
+                switchId, null, criteria, false);
     }
 
     private List<BaseInstallFlow> buildInstallCommandFromSegment(FlowPath flowPath, PathSegment segment) {

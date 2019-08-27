@@ -33,6 +33,6 @@ public class InfoDataTranslator extends KafkaRecordTranslator<String, InfoData> 
 
     @Override
     public Fields getFieldsFor(String stream) {
-        return new Fields(MessageTranslator.KEY_FIELD, MessageTranslator.FIELD_ID_PAYLOAD);
+        return new Fields(MessageKafkaTranslator.KEY_FIELD, MessageKafkaTranslator.FIELD_ID_PAYLOAD);
     }
 }

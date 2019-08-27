@@ -25,6 +25,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslConfig;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
@@ -67,7 +68,7 @@ public class Neo4jIslRepositoryTest extends Neo4jBasedTest {
 
     @BeforeClass
     public static void setUp() {
-        islRepository = new Neo4jIslRepository(neo4jSessionFactory, txManager);
+        islRepository = new Neo4jIslRepository(neo4jSessionFactory, txManager, IslConfig.builder().build());
         switchRepository = new Neo4jSwitchRepository(neo4jSessionFactory, txManager);
         flowRepository = new Neo4jFlowRepository(neo4jSessionFactory, txManager);
         flowPathRepository = new Neo4jFlowPathRepository(neo4jSessionFactory, txManager);

@@ -40,7 +40,7 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.floodlightrouter.ComponentType;
 import org.openkilda.wfm.topology.floodlightrouter.Stream;
 import org.openkilda.wfm.topology.floodlightrouter.service.RouterService;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Value;
@@ -98,7 +98,7 @@ public class DiscoveryBoltTest {
 
         componentNameToTaskId.forEach((key, value) -> taskIdToComponentName.put(value, key));
 
-        Fields kafkaSpoutFields = MessageTranslator.STREAM_FIELDS;
+        Fields kafkaSpoutFields = MessageKafkaTranslator.STREAM_FIELDS;
         streamFields.put(new StreamDescriptor(ComponentType.KILDA_TOPO_DISCO_KAFKA_SPOUT, Utils.DEFAULT_STREAM_ID),
                          kafkaSpoutFields);
         streamFields.put(new StreamDescriptor(ComponentType.SPEAKER_DISCO_KAFKA_SPOUT, Utils.DEFAULT_STREAM_ID),

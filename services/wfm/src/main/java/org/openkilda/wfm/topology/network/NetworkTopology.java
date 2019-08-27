@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.uniisl.UniIslHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.WatcherHandler;
 import org.openkilda.wfm.topology.network.storm.bolt.watchlist.WatchListHandler;
 import org.openkilda.wfm.topology.network.storm.spout.NetworkHistory;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -97,7 +97,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
     private void coordinator(TopologyBuilder topology) {
         topology.setSpout(CoordinatorSpout.ID, new CoordinatorSpout(), 1);
 
-        Fields keyGrouping = new Fields(MessageTranslator.KEY_FIELD);
+        Fields keyGrouping = new Fields(MessageKafkaTranslator.KEY_FIELD);
         topology.setBolt(CoordinatorBolt.ID, new CoordinatorBolt(), 1)
                 .allGrouping(CoordinatorSpout.ID)
                 .fieldsGrouping(SpeakerWorker.BOLT_ID, CoordinatorBolt.INCOME_STREAM, keyGrouping);
@@ -118,7 +118,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
                 .defaultTimeout((int) speakerIoTimeout)
                 .build();
         SpeakerWorker speakerWorker = new SpeakerWorker(workerConfig);
-        Fields keyGrouping = new Fields(MessageTranslator.KEY_FIELD);
+        Fields keyGrouping = new Fields(MessageKafkaTranslator.KEY_FIELD);
         topology.setBolt(SpeakerWorker.BOLT_ID, speakerWorker, scaleFactor)
                 .directGrouping(CoordinatorBolt.ID)
                 .fieldsGrouping(workerConfig.getHubComponent(), BfdPortHandler.STREAM_SPEAKER_ID, keyGrouping)
@@ -126,7 +126,7 @@ public class NetworkTopology extends AbstractTopology<NetworkTopologyConfig> {
     }
 
     private void speakerRouter(TopologyBuilder topology, int scaleFactor) {
-        Fields keyGrouping = new Fields(MessageTranslator.KEY_FIELD);
+        Fields keyGrouping = new Fields(MessageKafkaTranslator.KEY_FIELD);
         SpeakerRouter bolt = new SpeakerRouter();
         topology.setBolt(SpeakerRouter.BOLT_ID, bolt, scaleFactor)
                 .fieldsGrouping(ComponentId.INPUT_SPEAKER.toString(), keyGrouping);

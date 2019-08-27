@@ -504,7 +504,9 @@ switches"() {
         then: "An error is received (409 code)"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 409
-        // TODO check error message
+        exc.responseBodyAsString.to(MessageError).errorMessage.contains("Can not swap endpoints for flows: " +
+                "Requested flow '$flow1.id' conflicts with existing flow '$flow3.id'.")
+
         and: "Delete flows"
         [flow1, flow2, flow3].each { flowHelper.deleteFlow(it.id) }
 
@@ -665,7 +667,7 @@ switches"() {
         altPaths.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -684,7 +686,7 @@ switches"() {
         altPaths.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -715,7 +717,7 @@ switches"() {
         validateSwitches(flow2SwitchPair)
 
         and: "Restore topology and delete flows"
-        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -748,7 +750,7 @@ switches"() {
         altPaths.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -767,7 +769,7 @@ switches"() {
         altPaths.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -794,7 +796,7 @@ switches"() {
                 "Switch ${flow2SwitchPair.src.dpId} doesn't have links with enough bandwidth"
 
         and: "Restore topology and delete flows"
-        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -827,7 +829,7 @@ switches"() {
         altPaths.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -846,7 +848,7 @@ switches"() {
         altPaths.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -877,7 +879,7 @@ switches"() {
         validateSwitches(flow2SwitchPair)
 
         and: "Restore topology and delete flows"
-        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -903,7 +905,7 @@ switches"() {
         flow1SwitchPair.paths.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -927,7 +929,7 @@ switches"() {
                 "Switch ${flow1SwitchPair.src.dpId} doesn't have links with enough bandwidth"
 
         and: "Restore topology and delete flows"
-        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         [flow1, flow2].each { flowHelper.deleteFlow(it.id) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -1065,9 +1067,8 @@ switches"() {
         verifyEndpoints(response, flow1Src, flow1Dst, flow2Src, flow2Dst)
         verifyEndpoints(flow1.id, flow2.id, flow1Src, flow1Dst, flow2Src, flow2Dst)
 
-        //TODO(andriidovhan) uncomment when pr2503 is merged
-//        and: "Flows validation doesn't show any discrepancies"
-//        validateFlows(flow1, flow2)
+        and: "Flows validation doesn't show any discrepancies"
+        validateFlows(flow1, flow2)
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(switchPair)
@@ -1077,7 +1078,9 @@ switches"() {
 
         where:
         description << ["src1 <-> src2", "dst1 <-> dst2"]
-        switchPair << [getTopologyHelper().getAllNeighboringSwitchPairs().find { it.src.noviflow && it.dst.noviflow }] * 2
+        switchPair << [getTopologyHelper().getAllNeighboringSwitchPairs().find {
+            it.src.noviflow && !it.src.wb5164 && it.dst.noviflow && !it.dst.wb5164
+        }] * 2
         flow1 << [getFirstFlow(switchPair, switchPair)] * 2
         flow2 << [getSecondFlow(switchPair, switchPair, flow1)] * 2
         [flow1Src, flow1Dst, flow2Src, flow2Dst] << [

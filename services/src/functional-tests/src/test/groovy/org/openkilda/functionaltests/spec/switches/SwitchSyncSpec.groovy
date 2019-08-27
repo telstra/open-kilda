@@ -27,8 +27,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
+import spock.lang.See
 import spock.lang.Unroll
 
+@See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-sync")
 class SwitchSyncSpec extends BaseSpecification {
 
     @Value("#{kafkaTopicsConfig.getSpeakerFlowTopic()}")
@@ -170,17 +172,17 @@ class SwitchSyncSpec extends BaseSpecification {
         producer.send(new ProducerRecord(flowTopic, srcSwitch.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), flow.id, excessRuleCookie, srcSwitch.dpId, 1, 2, 1, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
-                        OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, srcSwitch.dpId)).toJson()))
+                        OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, srcSwitch.dpId, false)).toJson()))
         involvedSwitches[1..-2].each { transitSw ->
             producer.send(new ProducerRecord(flowTopic, transitSw.toString(), buildMessage(
                     new InstallTransitFlow(UUID.randomUUID(), flow.id, excessRuleCookie, transitSw.dpId, 1, 2, 1,
-                            FlowEncapsulationType.TRANSIT_VLAN, transitSw.dpId))
+                            FlowEncapsulationType.TRANSIT_VLAN, transitSw.dpId, false))
                     .toJson()))
         }
         producer.send(new ProducerRecord(flowTopic, dstSwitch.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), flow.id, excessRuleCookie, dstSwitch.dpId, 1, 2, 1, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
-                        OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, dstSwitch.dpId)).toJson()))
+                        OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId, dstSwitch.dpId, false)).toJson()))
 
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
@@ -222,11 +224,14 @@ class SwitchSyncSpec extends BaseSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
-    @Ignore("sync is not working yet, fix in pr2591")
     @Tags(HARDWARE)
     def "Able to synchronize switch with 'vxlan' rule(install missing rules and meters)"() {
-        given: "Two active Noviflow switches"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.src.noviflow && it.dst.noviflow }
+        given: "Two active not neighboring Noviflow switches"
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
+            swP.src.noviflow && !swP.src.wb5164 && swP.dst.noviflow && !swP.dst.wb5164 && swP.paths.find { path ->
+                pathHelper.getInvolvedSwitches(path).every { it.noviflow && !it.wb5164 }
+            }
+        } ?: assumeTrue("Unable to find required switches in topology", false)
 
         and: "Create a flow with vxlan encapsulation"
         def flow = flowHelper.randomFlow(switchPair)
@@ -234,7 +239,9 @@ class SwitchSyncSpec extends BaseSpecification {
         flowHelper.addFlow(flow)
 
         and: "Reproduce situation when switches have missing rules and meters"
+        def flowInfoFromDb = database.getFlow(flow.id)
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)
+        def transitSwitchIds = involvedSwitches[-1..-2]*.dpId
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
                 !(it.cookie in sw.defaultCookies)
@@ -259,14 +266,14 @@ class SwitchSyncSpec extends BaseSpecification {
 
         then: "System detects missing rules and meters, then installs them"
         involvedSwitches.each {
-            assert syncResultsMap[it.dpId].rules.proper.size() == 0
+            assert syncResultsMap[it.dpId].rules.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 0
             assert syncResultsMap[it.dpId].rules.excess.size() == 0
             assert syncResultsMap[it.dpId].rules.missing.containsAll(cookiesMap[it.dpId])
             assert syncResultsMap[it.dpId].rules.removed.size() == 0
             assert syncResultsMap[it.dpId].rules.installed.containsAll(cookiesMap[it.dpId])
         }
         [switchPair.src, switchPair.dst].each {
-            assert syncResultsMap[it.dpId].meters.proper.size() == 0
+            assert syncResultsMap[it.dpId].meters.proper.findAll { !Cookie.isDefaultRule(it) }.size() == 0
             assert syncResultsMap[it.dpId].meters.excess.size() == 0
             assert syncResultsMap[it.dpId].meters.missing*.meterId == metersMap[it.dpId]
             assert syncResultsMap[it.dpId].meters.removed.size() == 0
@@ -282,7 +289,37 @@ class SwitchSyncSpec extends BaseSpecification {
             }
         }
 
-        //TODO(andriidovhan) verify that synced rules are indeed vxlan rules when pr2503 is merged
+        and: "Rules are synced correctly"
+        // ingressRule should contain "pushVxlan"
+        // egressRule should contain "tunnel-id"
+        with(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+            assert rules.find {
+                it.cookie == flowInfoFromDb.forwardPath.cookie.value
+            }.instructions.applyActions.pushVxlan
+            assert rules.find {
+                it.cookie == flowInfoFromDb.reversePath.cookie.value
+            }.match.tunnelId
+        }
+
+        with(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+            assert rules.find {
+                it.cookie == flowInfoFromDb.forwardPath.cookie.value
+            }.match.tunnelId
+            assert rules.find {
+                it.cookie == flowInfoFromDb.reversePath.cookie.value
+            }.instructions.applyActions.pushVxlan
+        }
+
+        transitSwitchIds.each { swId ->
+            with(northbound.getSwitchRules(swId).flowEntries) { rules ->
+                assert rules.find {
+                    it.cookie == flowInfoFromDb.forwardPath.cookie.value
+                }.match.tunnelId
+                assert rules.find {
+                    it.cookie == flowInfoFromDb.reversePath.cookie.value
+                }.match.tunnelId
+            }
+        }
 
         and: "Delete the flow"
         flowHelper.deleteFlow(flow.id)

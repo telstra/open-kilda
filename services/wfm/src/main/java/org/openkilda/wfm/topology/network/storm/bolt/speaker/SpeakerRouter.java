@@ -52,7 +52,7 @@ import org.openkilda.wfm.topology.network.storm.bolt.sw.command.SwitchUnmanagedE
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherSpeakerDiscoveryCommand;
 import org.openkilda.wfm.topology.network.storm.bolt.watcher.command.WatcherSpeakerSendConfirmationCommand;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -64,8 +64,8 @@ import org.apache.storm.tuple.Values;
 public class SpeakerRouter extends AbstractBolt {
     public static final String BOLT_ID = ComponentId.SPEAKER_ROUTER.toString();
 
-    public static final String FIELD_ID_KEY = MessageTranslator.KEY_FIELD;
-    public static final String FIELD_ID_INPUT = MessageTranslator.FIELD_ID_PAYLOAD;
+    public static final String FIELD_ID_KEY = MessageKafkaTranslator.KEY_FIELD;
+    public static final String FIELD_ID_INPUT = MessageKafkaTranslator.FIELD_ID_PAYLOAD;
     public static final String FIELD_ID_DATAPATH = "switch";
     public static final String FIELD_ID_PORT_NUMBER = "port-number";
     public static final String FIELD_ID_ISL_SOURCE = "isl-source";

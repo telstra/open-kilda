@@ -21,7 +21,7 @@ import org.openkilda.wfm.LaunchEnvironment;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.reroute.bolts.FlowThrottlingBolt;
 import org.openkilda.wfm.topology.reroute.bolts.RerouteBolt;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
@@ -38,7 +38,7 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
     private static final String BOLT_ID_KAFKA_FLOWHS = "kafka-flowhs-bolt";
 
     public static final Fields KAFKA_FIELDS =
-            new Fields(MessageTranslator.KEY_FIELD, MessageTranslator.FIELD_ID_PAYLOAD);
+            new Fields(MessageKafkaTranslator.KEY_FIELD, MessageKafkaTranslator.FIELD_ID_PAYLOAD);
 
     public RerouteTopology(LaunchEnvironment env) {
         super(env, RerouteTopologyConfig.class);

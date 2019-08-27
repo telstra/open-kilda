@@ -15,6 +15,8 @@
 
 package org.openkilda.persistence.repositories.impl;
 
+import org.openkilda.model.IslConfig;
+import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
 import org.openkilda.persistence.repositories.ConnectedDeviceRepository;
@@ -39,6 +41,8 @@ import org.openkilda.persistence.repositories.history.FlowStateRepository;
 import org.openkilda.persistence.repositories.history.HistoryLogRepository;
 import org.openkilda.persistence.repositories.history.StateLogRepository;
 
+import java.time.Duration;
+
 /**
  * Neo4j OGM implementation of {@link RepositoryFactory}.
  */
@@ -46,10 +50,17 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
 
     private final Neo4jSessionFactory sessionFactory;
     private final TransactionManager transactionManager;
+    private final IslConfig islConfig;
 
-    public Neo4jRepositoryFactory(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager) {
+    public Neo4jRepositoryFactory(Neo4jSessionFactory sessionFactory, TransactionManager transactionManager,
+                                  NetworkConfig networkConfig) {
         this.sessionFactory = sessionFactory;
         this.transactionManager = transactionManager;
+        this.islConfig = IslConfig.builder()
+                .unstableIslTimeout(Duration.ofSeconds(networkConfig.getIslUnstableTimeoutSec()))
+                .underMaintenanceCostRaise(networkConfig.getIslCostWhenUnderMaintenance())
+                .unstableCostRaise(networkConfig.getIslCostWhenPortDown())
+                .build();
     }
 
     @Override
@@ -79,7 +90,7 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
 
     @Override
     public IslRepository createIslRepository() {
-        return new Neo4jIslRepository(sessionFactory, transactionManager);
+        return new Neo4jIslRepository(sessionFactory, transactionManager, islConfig);
     }
 
     @Override

@@ -36,7 +36,7 @@ import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
 import org.openkilda.wfm.topology.flow.FlowTopology;
 import org.openkilda.wfm.topology.flow.StreamType;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -71,7 +71,7 @@ public class SplitterBolt extends BaseRichBolt {
         Message message = null;
 
         try {
-            message = (Message) tuple.getValueByField(MessageTranslator.FIELD_ID_PAYLOAD);
+            message = (Message) tuple.getValueByField(MessageKafkaTranslator.FIELD_ID_PAYLOAD);
 
             if (message == null
                     || !(message instanceof CommandMessage || message instanceof InfoMessage)) {

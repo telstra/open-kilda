@@ -22,8 +22,10 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
+import spock.lang.See
 import spock.lang.Unroll
 
+@See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-ping")
 @Narrative("""
 This spec tests all the functionality related to flow pings. 
 Flow ping feature sends a 'ping' packet at the one end of the flow, expecting that this packet will 

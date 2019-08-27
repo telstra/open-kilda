@@ -53,8 +53,9 @@ public class RemoveRule extends SpeakerFlowRequest {
                       @JsonProperty("switch_id") final SwitchId switchId,
                       @JsonProperty("cookie") final Cookie cookie,
                       @JsonProperty("criteria") DeleteRulesCriteria criteria,
-                      @JsonProperty("meter_id") MeterId meterId) {
-        super(messageContext, commandId, flowId, switchId);
+                      @JsonProperty("meter_id") MeterId meterId,
+                      @JsonProperty("multi_table") boolean multiTable) {
+        super(messageContext, commandId, flowId, switchId, multiTable);
         this.criteria = criteria;
         this.cookie = cookie;
         this.meterId = meterId;

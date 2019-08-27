@@ -21,6 +21,7 @@ import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.Isl;
+import org.openkilda.model.IslConfig;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -68,7 +69,7 @@ public class Neo4jTxConcurrencyTest extends Neo4jBasedTest {
         switchRepository = new Neo4jSwitchRepository(neo4jSessionFactory, txManager);
         flowRepository = new Neo4jFlowRepository(neo4jSessionFactory, txManager);
         flowPathRepository = new Neo4jFlowPathRepository(neo4jSessionFactory, txManager);
-        islRepository = new Neo4jIslRepository(neo4jSessionFactory, txManager);
+        islRepository = new Neo4jIslRepository(neo4jSessionFactory, txManager, IslConfig.builder().build());
     }
 
     @Test

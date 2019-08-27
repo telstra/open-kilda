@@ -85,6 +85,7 @@ public class InstallEgressFlow extends InstallTransitFlow {
      * @param outputVlanId   output vlan id value
      * @param outputVlanType output vlan tag action
      * @param ingressSwitchId id of the ingress switch
+     * @param multiTable     multitable flag
      * @throws IllegalArgumentException if any of mandatory parameters is null
      */
     @JsonCreator
@@ -99,9 +100,10 @@ public class InstallEgressFlow extends InstallTransitFlow {
                                          transitEncapsulationType,
                              @JsonProperty("output_vlan_id") final Integer outputVlanId,
                              @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
-                             @JsonProperty("ingress_switch_id") final SwitchId ingressSwitchId) {
+                             @JsonProperty("ingress_switch_id") final SwitchId ingressSwitchId,
+                             @JsonProperty("multi_table") final boolean multiTable) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
-                transitEncapsulationType, ingressSwitchId);
+                transitEncapsulationType, ingressSwitchId, multiTable);
         setOutputVlanId(outputVlanId);
         setOutputVlanType(outputVlanType);
     }
@@ -170,6 +172,7 @@ public class InstallEgressFlow extends InstallTransitFlow {
                 .add("transit_encapsulation_type", transitEncapsulationType)
                 .add("output_vlan_id", outputVlanId)
                 .add("output_vlan_type", outputVlanType)
+                .add("multi_table", multiTable)
                 .toString();
     }
 
@@ -195,7 +198,8 @@ public class InstallEgressFlow extends InstallTransitFlow {
                 && Objects.equals(getTransitEncapsulationId(), that.getTransitEncapsulationId())
                 && Objects.equals(getTransitEncapsulationType(), that.getTransitEncapsulationType())
                 && Objects.equals(getOutputVlanId(), that.getOutputVlanId())
-                && Objects.equals(getOutputVlanType(), that.getOutputVlanType());
+                && Objects.equals(getOutputVlanType(), that.getOutputVlanType())
+                && Objects.equals(isMultiTable(), that.isMultiTable());
     }
 
     /**
@@ -204,6 +208,6 @@ public class InstallEgressFlow extends InstallTransitFlow {
     @Override
     public int hashCode() {
         return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort, transitEncapsulationId,
-                transitEncapsulationType, outputVlanType, outputVlanId);
+                transitEncapsulationType, outputVlanType, outputVlanId, multiTable);
     }
 }

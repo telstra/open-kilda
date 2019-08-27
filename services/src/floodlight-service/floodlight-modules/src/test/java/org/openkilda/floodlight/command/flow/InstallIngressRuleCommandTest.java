@@ -94,7 +94,8 @@ public class InstallIngressRuleCommandTest {
                 OutputVlanType.REPLACE,
                 new MeterId(meterId),
                 outTunnelId,
-                TRANSIT_VLAN);
+                TRANSIT_VLAN,
+                false);
 
         OFFlowMod result = command.getInstallRuleCommand(iofSwitch, featureDetectorService);
         assertEquals(scheme.ingressReplaceFlowMod(inPort, outPort, inVlan, outTunnelId, meterId, cookie,
@@ -121,7 +122,8 @@ public class InstallIngressRuleCommandTest {
                 OutputVlanType.REPLACE,
                 new MeterId(meterId),
                 outTunnelId,
-                VXLAN);
+                VXLAN,
+                false);
 
         OFFlowMod result = command.getInstallRuleCommand(iofSwitch, featureDetectorService);
         assertEquals(scheme.ingressReplaceFlowMod(inPort, outPort, inVlan, outTunnelId, meterId, cookie,
@@ -149,7 +151,8 @@ public class InstallIngressRuleCommandTest {
                 OutputVlanType.PUSH,
                 new MeterId(meterId),
                 outTunnelId,
-                TRANSIT_VLAN);
+                TRANSIT_VLAN,
+                false);
 
         OFFlowMod result = command.getInstallRuleCommand(iofSwitch, featureDetectorService);
         assertEquals(scheme.ingressNoMatchVlanIdFlowMod(inPort, outPort, outTunnelId, meterId, cookie,
@@ -177,7 +180,8 @@ public class InstallIngressRuleCommandTest {
                 OutputVlanType.PUSH,
                 new MeterId(meterId),
                 outTunnelId,
-                VXLAN);
+                VXLAN,
+                false);
 
         OFFlowMod result = command.getInstallRuleCommand(iofSwitch, featureDetectorService);
         assertEquals(scheme.ingressNoMatchVlanIdFlowMod(inPort, outPort, outTunnelId, meterId, cookie,

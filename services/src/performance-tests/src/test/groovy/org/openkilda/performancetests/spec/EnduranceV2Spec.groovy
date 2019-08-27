@@ -43,6 +43,10 @@ class EnduranceV2Spec extends BaseSpecification {
     @Autowired
     FlowHelperV2 flowHelperV2
 
+    def setup() {
+        topoHelper.purgeTopology()
+    }
+
     /**
      * Deploy topology and create certain amount of flows in the system. Define amount of events to happen during the
      * test and their chances to happen.
@@ -93,7 +97,7 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
         Wrappers.wait(WAIT_OFFSET * 2) {
             northbound.getAllLinks().every { it.state == IslChangeType.DISCOVERED }
         }
-        Wrappers.wait(WAIT_OFFSET + preset.switchesAmount) {
+        Wrappers.wait(60 + preset.switchesAmount) {
             def soft = new SoftAssertions()
             flows.each { flow ->
                 soft.checkSucceeds { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }

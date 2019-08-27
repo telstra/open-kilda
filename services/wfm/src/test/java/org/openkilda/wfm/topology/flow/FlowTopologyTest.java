@@ -62,6 +62,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.Neo4jConfig;
 import org.openkilda.persistence.Neo4jPersistenceManager;
+import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
@@ -120,7 +121,9 @@ public class FlowTopologyTest extends AbstractStormTest {
         launchEnvironment.setupOverlay(configOverlay);
 
         Neo4jConfig neo4jConfig = launchEnvironment.getConfigurationProvider().getConfiguration(Neo4jConfig.class);
-        persistenceManager = new Neo4jPersistenceManager(neo4jConfig);
+        NetworkConfig networkConfig
+                = launchEnvironment.getConfigurationProvider().getConfiguration(NetworkConfig.class);
+        persistenceManager = new Neo4jPersistenceManager(neo4jConfig, networkConfig);
 
         flowTopology = new FlowTopology(launchEnvironment);
         topologyConfig = flowTopology.getConfig();
@@ -847,7 +850,8 @@ public class FlowTopologyTest extends AbstractStormTest {
     private InstallOneSwitchFlow baseInstallFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Install flow");
         InstallOneSwitchFlow commandData = new InstallOneSwitchFlow(TRANSACTION_ID, flowId,
-                COOKIE, new SwitchId("ff:04"), 1, 2, 0, 0, OutputVlanType.NONE, 10000L, 0L);
+                COOKIE, new SwitchId("ff:04"), 1, 2, 0, 0, OutputVlanType.NONE, 10000L, 0L,
+                false);
         CommandMessage commandMessage = new CommandMessage(commandData, 0, "install-flow", Destination.WFM);
         //sendTopologyEngineMessage(commandMessage);
         //sendSpeakerMessage(commandMessage);
@@ -858,7 +862,7 @@ public class FlowTopologyTest extends AbstractStormTest {
     private RemoveFlow removeFlowCommand(final String flowId) throws IOException {
         System.out.println("TOPOLOGY: Remove flow");
         RemoveFlow commandData = new RemoveFlow(TRANSACTION_ID, flowId, COOKIE, new SwitchId("ff:04"), 0L,
-                DeleteRulesCriteria.builder().cookie(COOKIE).build());
+                DeleteRulesCriteria.builder().cookie(COOKIE).build(), false);
         CommandMessage commandMessage = new CommandMessage(commandData, 0, "remove-flow", Destination.WFM);
         //sendTopologyEngineMessage(commandMessage);
         sendFlowMessage(commandMessage);

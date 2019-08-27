@@ -31,7 +31,7 @@ import org.openkilda.wfm.topology.reroute.RerouteTopology;
 import org.openkilda.wfm.topology.reroute.StreamType;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 import org.openkilda.wfm.topology.reroute.service.RerouteService;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.task.OutputCollector;
@@ -73,7 +73,7 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
      */
     @Override
     protected void handleInput(Tuple tuple) throws PipelineException {
-        CommandMessage message = pullValue(tuple, MessageTranslator.FIELD_ID_PAYLOAD, CommandMessage.class);
+        CommandMessage message = pullValue(tuple, MessageKafkaTranslator.FIELD_ID_PAYLOAD, CommandMessage.class);
         CommandData commandData = message.getData();
         String correlationId = message.getCorrelationId();
         if (commandData instanceof RerouteAffectedFlows) {

@@ -65,8 +65,9 @@ public class FlowRemoveCommand extends FlowCommand {
                              @JsonProperty("cookie") Cookie cookie,
                              @JsonProperty("switch_id") SwitchId switchId,
                              @JsonProperty("meter_id") MeterId meterId,
-                             @JsonProperty("criteria") DeleteRulesCriteria criteria) {
-        super(commandId, flowId, messageContext, cookie, switchId);
+                             @JsonProperty("criteria") DeleteRulesCriteria criteria,
+                             @JsonProperty("multi_table") boolean multiTable) {
+        super(commandId, flowId, messageContext, cookie, switchId, multiTable);
         this.meterId = meterId;
         this.criteria = criteria;
     }

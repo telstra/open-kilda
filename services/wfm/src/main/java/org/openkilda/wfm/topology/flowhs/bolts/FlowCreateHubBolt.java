@@ -38,7 +38,7 @@ import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateService;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -80,14 +80,14 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
 
     @Override
     protected void onRequest(Tuple input) throws PipelineException {
-        currentKey = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
+        currentKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         FlowRequest payload = (FlowRequest) input.getValueByField(FIELD_ID_PAYLOAD);
         service.handleRequest(currentKey, pullContext(input), payload);
     }
 
     @Override
     protected void onWorkerResponse(Tuple input) {
-        String operationKey = input.getStringByField(MessageTranslator.FIELD_ID_KEY);
+        String operationKey = input.getStringByField(MessageKafkaTranslator.FIELD_ID_KEY);
         currentKey = KeyProvider.getParentKey(operationKey);
         FlowResponse flowResponse = (FlowResponse) input.getValueByField(FIELD_ID_PAYLOAD);
         service.handleAsyncResponse(currentKey, flowResponse);
@@ -125,9 +125,9 @@ public class FlowCreateHubBolt extends HubBolt implements FlowCreateHubCarrier {
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         super.declareOutputFields(declarer);
 
-        declarer.declareStream(HUB_TO_SPEAKER_WORKER.name(), MessageTranslator.STREAM_FIELDS);
-        declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), MessageTranslator.STREAM_FIELDS);
-        declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), MessageTranslator.STREAM_FIELDS);
+        declarer.declareStream(HUB_TO_SPEAKER_WORKER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(HUB_TO_NB_RESPONSE_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+        declarer.declareStream(HUB_TO_HISTORY_BOLT.name(), MessageKafkaTranslator.STREAM_FIELDS);
     }
 
     @Getter

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.Constants.DEFAULT_COST
@@ -239,17 +240,16 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Ignore
-    @Tags(HARDWARE)  // not tested
+    @Tags(HARDWARE)
     def "Intentional flow reroute with VXLAN encapsulation is not causing any packet loss"() {
         given: "A vxlan flow"
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected.findAll {
-            it.noviflow
+            it.noviflow && !it.wb5164
         }*.dpId ?: assumeTrue("Should be at least two active traffgens connected to NoviFlow switches", false)
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
             allTraffgenSwitchIds.contains(swP.src.dpId) && allTraffgenSwitchIds.contains(swP.dst.dpId) &&
                     swP.paths.findAll { path ->
-                        pathHelper.getInvolvedSwitches(path).find { it.noviflow }
+                        pathHelper.getInvolvedSwitches(path).every { it.noviflow  && !it.wb5164 }
                     }.size() > 1
         } ?: assumeTrue("Unable to find required switches/paths in topology",false)
         def availablePaths = switchPair.paths.findAll { pathHelper.getInvolvedSwitches(it).find { it.noviflow }}

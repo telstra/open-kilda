@@ -140,7 +140,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         and: "Rules are valid on the knocked out switch"
         verifySwitchRules(uniqueSwitch.dpId)
 
-        and: "Remove the flow and reset costs"
+        and: "Remove the flow and delete link props"
         flowHelper.deleteFlow(flow.id)
         northbound.deleteLinkProps(northbound.getAllLinkProps())
     }

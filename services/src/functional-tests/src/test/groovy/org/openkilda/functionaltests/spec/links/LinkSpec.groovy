@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
@@ -9,7 +8,6 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -17,16 +15,21 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import groovy.transform.Memoized
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Unroll
 
 class LinkSpec extends HealthCheckSpecification {
+    @Value('${antiflap.cooldown}')
+    int antiflapCooldown
+
     @Tags(SMOKE)
     def "Link (not BFD) status is properly changed when link connectivity is broken (not port down)"() {
         given: "A link going through a-switch"
@@ -145,7 +148,7 @@ class LinkSpec extends HealthCheckSpecification {
         switchPair.paths.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
 
         then: "All flows go to 'Down' status"
@@ -169,7 +172,7 @@ class LinkSpec extends HealthCheckSpecification {
         [flow3, flow4].each { assert !(it.id in linkFlows*.id) }
 
         when: "Bring ports up"
-        broughtDownPorts.each { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
 
         then: "All flows go to 'Up' status"
         Wrappers.wait(rerouteDelay + discoveryInterval + PATH_INSTALLATION_TIME) {
@@ -186,6 +189,7 @@ class LinkSpec extends HealthCheckSpecification {
         when: "A switch disconnects"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
         lockKeeper.knockoutSwitch(isl.srcSwitch)
+        Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(isl.srcSwitch.dpId).state == SwitchChangeType.DEACTIVATED }
 
         and: "One of its ports goes down"
         //Bring down port on a-switch, which will lead to a port down on the Kilda switch
@@ -193,6 +197,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         and: "The switch reconnects back with a port being down"
         lockKeeper.reviveSwitch(isl.srcSwitch)
+        Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(isl.srcSwitch.dpId).state == SwitchChangeType.ACTIVATED }
 
         then: "The related ISL immediately goes down"
         Wrappers.wait(WAIT_OFFSET) {
@@ -211,7 +216,7 @@ class LinkSpec extends HealthCheckSpecification {
         lockKeeper.reviveSwitch(isl.srcSwitch)
 
         then: "The related ISL is discovered again"
-        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+        Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
@@ -302,7 +307,7 @@ class LinkSpec extends HealthCheckSpecification {
     def "Able to delete an inactive #islDescription link and re-discover it back afterwards"() {
         given: "An inactive link"
         assumeTrue("Unable to locate $islDescription ISL for this test", isl as boolean)
-        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
 
         when: "Try to delete the link"
@@ -314,7 +319,7 @@ class LinkSpec extends HealthCheckSpecification {
         !islUtils.getIslInfo(isl.reversed)
 
         when: "Removed link becomes active again (port brought UP)"
-        northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
 
         then: "The link is rediscovered in both directions"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {

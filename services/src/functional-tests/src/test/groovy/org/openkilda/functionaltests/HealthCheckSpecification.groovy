@@ -16,12 +16,13 @@ class HealthCheckSpecification extends BaseSpecification {
         northbound.getHealthCheck().components["kafka"] == "operational"
 
         and: "All switches and links are active. No flows and link props are present"
-        def links = northbound.getAllLinks()
+        def links = null
         verifyAll {
             Wrappers.wait(WAIT_OFFSET) {
+                links = northbound.getAllLinks()
                 assert northbound.activeSwitches.size() == topology.activeSwitches.size()
+                assert links.findAll { it.state != IslChangeType.DISCOVERED }.empty
             }
-            links.findAll { it.state != IslChangeType.DISCOVERED }.empty
             def topoLinks = topology.islsForActiveSwitches.collectMany { isl ->
                 [islUtils.getIslInfo(links, isl).orElseThrow { new IslNotFoundException(isl.toString()) },
                  islUtils.getIslInfo(links, isl.reversed).orElseThrow {

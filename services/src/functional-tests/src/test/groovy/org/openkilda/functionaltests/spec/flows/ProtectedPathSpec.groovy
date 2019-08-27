@@ -24,10 +24,12 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
+import spock.lang.See
 import spock.lang.Unroll
 
 import javax.inject.Provider
 
+@See("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/protected-paths")
 @Narrative("""Protected path - it is pre-calculated, reserved, and deployed (except ingress rule),
 so we can switch traffic fast.
 
@@ -216,7 +218,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         when: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
-        northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -229,7 +231,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         }
 
         when: "Restore port status"
-        northbound.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
@@ -330,7 +332,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
-        northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -346,7 +348,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         }
 
         when: "Restore port status"
-        northbound.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
         }
@@ -515,7 +517,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         when: "Break ISL on the protected path (bring port down) to init the recalculate procedure"
         def islToBreakProtectedPath = protectedIsls[0]
-        northbound.portDown(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
+        antiflap.portDown(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
 
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.FAILED
@@ -558,7 +560,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         originInfoBrokenIsl.availableBandwidth == currentInfoBrokenIsl.availableBandwidth
 
         when: "Restore port status"
-        northbound.portUp(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
+        antiflap.portUp(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.DISCOVERED
         }
@@ -582,7 +584,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -605,7 +607,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 " Couldn't find non overlapping protected path"
 
         and: "Restore topology, delete flows and reset costs"
-        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
@@ -637,7 +639,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 .each { path ->
                     def src = path.first()
                     broughtDownPorts.add(src)
-                    northbound.portDown(src.switchId, src.portNo)
+                    antiflap.portDown(src.switchId, src.portNo)
                 }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -656,7 +658,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 " Couldn't find non overlapping protected path"
 
         and: "Restore topology, delete flows and reset costs"
-        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -874,7 +876,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -888,7 +890,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
         def protectedIsls = pathHelper.getInvolvedIsls(currentProtectedPath)
         def currentIsls = pathHelper.getInvolvedIsls(currentPath)
-        northbound.portDown(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
+        antiflap.portDown(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
 
         then: "Flow state is changed to DEGRADED"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED }
@@ -898,7 +900,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         }
 
         when: "Break ISL on the main path (bring port down) for changing the flow state to DOWN"
-        northbound.portDown(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
+        antiflap.portDown(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
 
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN }
@@ -917,8 +919,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 "Could not swap paths: Protected flow path $flow.id is not in ACTIVE state"
 
         when: "Restore ISL for the main path only"
-        northbound.portUp(currentIsls[0].srcSwitch.dpId, currentIsls[0].srcPort)
-        northbound.portUp(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
+        antiflap.portUp(currentIsls[0].srcSwitch.dpId, currentIsls[0].srcPort)
+        antiflap.portUp(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
 
         //TODO (andriidovhan) FlowState should be DEGRADED and mainFlowPathStatus should be "Up" when pr2430 is merged
         then: "Flow state is still DEGRADED"
@@ -940,8 +942,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 "Could not swap paths: Protected flow path $flow.id is not in ACTIVE state"
 
         when: "Restore ISL for the protected path"
-        northbound.portUp(protectedIsls[0].srcSwitch.dpId, protectedIsls[0].srcPort)
-        northbound.portUp(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
+        antiflap.portUp(protectedIsls[0].srcSwitch.dpId, protectedIsls[0].srcPort)
+        antiflap.portUp(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
 
         then: "Flow state is changed to UP"
         //it often fails in scope of the whole spec on the hardware env, that's why '* 1.5' is added
@@ -950,7 +952,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         }
 
         and: "Cleanup: Restore topology, delete flows and reset costs"
-        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -980,7 +982,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            northbound.portDown(src.switchId, src.portNo)
+            antiflap.portDown(src.switchId, src.portNo)
         }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -990,7 +992,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "ISL on a protected path is broken(bring port down) for changing the flow state to DEGRADED"
         def protectedIslToBreak = pathHelper.getInvolvedIsls(currentProtectedPath)[0]
-        northbound.portDown(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
+        antiflap.portDown(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
 
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED }
 
@@ -1005,7 +1007,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         assert northbound.getLink(currentIsl).cost > northbound.getLink(alternativeIsl).cost
 
         and: "Make alternative path available(bring port up on the source switch)"
-        northbound.portUp(alternativeIsl.srcSwitch.dpId, alternativeIsl.srcPort)
+        antiflap.portUp(alternativeIsl.srcSwitch.dpId, alternativeIsl.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(alternativeIsl).get().state == IslChangeType.DISCOVERED
         }
@@ -1019,8 +1021,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         pathHelper.convert(newFlowPathInfo.protectedPath) == alternativePath
 
         and: "Cleanup: Restore topology, delete flow and reset costs"
-        northbound.portUp(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
-        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        antiflap.portUp(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
+        broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(protectedIslToBreak).get().state != IslChangeType.FAILED
@@ -1051,7 +1053,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 .each { path ->
                     def src = path.first()
                     broughtDownPorts.add(src)
-                    northbound.portDown(src.switchId, src.portNo)
+                    antiflap.portDown(src.switchId, src.portNo)
                 }
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().findAll {
@@ -1069,7 +1071,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         and: "Cleanup: Restore topology, delete flow and reset costs"
-        broughtDownPorts.every { northbound.portUp(it.switchId, it.portNo) }
+        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }

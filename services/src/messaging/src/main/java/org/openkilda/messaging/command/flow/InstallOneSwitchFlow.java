@@ -102,6 +102,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
      * @param outputVlanType output vlan tag action
      * @param bandwidth flow bandwidth
      * @param meterId source meter id
+     * @param multiTable multitable flag
      * @throws IllegalArgumentException if any of arguments is null
      */
     @JsonCreator
@@ -115,8 +116,9 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                                 @JsonProperty("output_vlan_id") final Integer outputVlanId,
                                 @JsonProperty("output_vlan_type") final OutputVlanType outputVlanType,
                                 @JsonProperty("bandwidth") final Long bandwidth,
-                                @JsonProperty("meter_id") final Long meterId) {
-        super(transactionId, id, cookie, switchId, inputPort, outputPort);
+                                @JsonProperty("meter_id") final Long meterId,
+                                @JsonProperty("multi_table") final boolean multiTable) {
+        super(transactionId, id, cookie, switchId, inputPort, outputPort, multiTable);
         setInputVlanId(inputVlanId);
         setOutputVlanId(outputVlanId);
         setOutputVlanType(outputVlanType);
@@ -257,6 +259,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                 .add("output_vlan_type", outputVlanType)
                 .add("bandwidth", bandwidth)
                 .add("meter_id", meterId)
+                .add("multi_table", multiTable)
                 .toString();
     }
 
@@ -283,7 +286,8 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                 && Objects.equals(getOutputVlanId(), that.getOutputVlanId())
                 && Objects.equals(getOutputVlanType(), that.getOutputVlanType())
                 && Objects.equals(getBandwidth(), that.getBandwidth())
-                && Objects.equals(getMeterId(), that.getMeterId());
+                && Objects.equals(getMeterId(), that.getMeterId())
+                && Objects.equals(isMultiTable(), that.isMultiTable());
     }
 
     /**
@@ -292,6 +296,6 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     @Override
     public int hashCode() {
         return Objects.hash(transactionId, id, cookie, switchId, inputPort, outputPort,
-                inputVlanId, outputVlanId, outputVlanType, bandwidth, meterId);
+                inputVlanId, outputVlanId, outputVlanType, bandwidth, meterId, multiTable);
     }
 }

@@ -75,7 +75,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         def swIsls = topology.getRelatedIsls(sw)
 
         // deactivate all active ISLs on switch
-        swIsls.each { northbound.portDown(sw.dpId, it.srcPort) }
+        swIsls.each { antiflap.portDown(sw.dpId, it.srcPort) }
         Wrappers.wait(WAIT_OFFSET) {
             swIsls.each { assert islUtils.getIslInfo(it).get().state == IslChangeType.FAILED }
         }
@@ -97,7 +97,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         lockKeeper.reviveSwitch(sw)
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
-        swIsls.each { northbound.portUp(sw.dpId, it.srcPort) }
+        swIsls.each { antiflap.portUp(sw.dpId, it.srcPort) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
@@ -142,7 +142,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         def swIsls = topology.getRelatedIsls(sw)
 
         // deactivate all active ISLs on switch
-        swIsls.each { northbound.portDown(sw.dpId, it.srcPort) }
+        swIsls.each { antiflap.portDown(sw.dpId, it.srcPort) }
         Wrappers.wait(WAIT_OFFSET) {
             swIsls.each { assert islUtils.getIslInfo(it).get().state == IslChangeType.FAILED }
         }
@@ -169,7 +169,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
         // restore ISLs
-        swIsls.each { northbound.portUp(sw.dpId, it.srcPort) }
+        swIsls.each { antiflap.portUp(sw.dpId, it.srcPort) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
@@ -205,9 +205,9 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.activeSwitches.any { it.switchId == sw.dpId } }
 
         // restore ISLs
-        swIsls.each { northbound.portDown(it.srcSwitch.dpId, it.srcPort) }
+        swIsls.each { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
         TimeUnit.SECONDS.sleep(antiflapMin)
-        swIsls.each { northbound.portUp(it.srcSwitch.dpId, it.srcPort) }
+        swIsls.each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             swIsls.collectMany { [it, it.reversed] }

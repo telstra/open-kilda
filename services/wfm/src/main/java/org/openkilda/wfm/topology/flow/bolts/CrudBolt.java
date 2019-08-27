@@ -96,7 +96,7 @@ import org.openkilda.wfm.topology.flow.service.FlowService;
 import org.openkilda.wfm.topology.flow.validation.FlowValidationException;
 import org.openkilda.wfm.topology.flow.validation.FlowValidator;
 import org.openkilda.wfm.topology.flow.validation.SwitchValidationException;
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -163,7 +163,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
         outputFieldsDeclarer.declareStream(StreamType.METER_MODE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.RESPONSE.toString(), AbstractTopology.fieldMessage);
         outputFieldsDeclarer.declareStream(StreamType.ERROR.toString(), FlowTopology.fieldsMessageErrorType);
-        outputFieldsDeclarer.declareStream(StreamType.HISTORY.toString(), MessageTranslator.STREAM_FIELDS);
+        outputFieldsDeclarer.declareStream(StreamType.HISTORY.toString(), MessageKafkaTranslator.STREAM_FIELDS);
         // FIXME(dbogun): use proper tuple format
         outputFieldsDeclarer.declareStream(STREAM_ID_CTRL, AbstractTopology.fieldMessage);
     }
@@ -654,7 +654,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
     }
 
     private void handleDumpRequest(CommandMessage message, Tuple tuple) {
-        List<FlowData> flows = flowService.getFlows();
+        List<FlowData> flows = flowService.getAllFlows();
         logger.debug("Dump flows: found {} items", flows.size());
 
         String requestId = message.getCorrelationId();
@@ -674,7 +674,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
     }
 
     private void handleReadRequest(String flowId, CommandMessage message, Tuple tuple) {
-        FlowData flowData = flowService.getFlow(flowId)
+        FlowData flowData = flowService.getFlowById(flowId)
                 .orElseThrow(() -> new ClientException(message.getCorrelationId(), System.currentTimeMillis(),
                         ErrorType.NOT_FOUND, "Can not get flow", String.format("Flow %s not found", flowId)));
 

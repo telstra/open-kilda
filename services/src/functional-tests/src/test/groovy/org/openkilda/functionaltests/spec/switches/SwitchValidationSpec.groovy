@@ -30,7 +30,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
+import spock.lang.See
 
+@See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-validate")
 @Narrative("""This test suite checks the switch validate feature on a flow that contains 2+ switches.
 Description of fields:
 - missing - those meters/rules, which are NOT present on a switch, but are present in db
@@ -507,17 +509,17 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         producer.send(new ProducerRecord(flowTopic, switchPair.dst.dpId.toString(), buildMessage(
                 new InstallEgressFlow(UUID.randomUUID(), flow.id, 1L, switchPair.dst.dpId, 1, 2, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,1,
-                        OutputVlanType.REPLACE, switchPair.dst.dpId)).toJson()))
+                        OutputVlanType.REPLACE, switchPair.dst.dpId, false)).toJson()))
         involvedSwitches[1..-1].findAll { !it.description.contains("OF_12") }.each { transitSw ->
             producer.send(new ProducerRecord(flowTopic, transitSw.toString(), buildMessage(
                     new InstallTransitFlow(UUID.randomUUID(), flow.id, 1L, transitSw, 1, 2, 1,
-                    FlowEncapsulationType.TRANSIT_VLAN, switchPair.dst.dpId)).toJson()))
+                    FlowEncapsulationType.TRANSIT_VLAN, switchPair.dst.dpId, false)).toJson()))
         }
         producer.send(new ProducerRecord(flowTopic, switchPair.src.dpId.toString(), buildMessage(
                 new InstallIngressFlow(UUID.randomUUID(), flow.id, 1L, switchPair.src.dpId, 1, 2, 1, 1,
                         FlowEncapsulationType.TRANSIT_VLAN,
                         OutputVlanType.REPLACE, flow.maximumBandwidth, excessMeterId,
-                        switchPair.dst.dpId)).toJson()))
+                        switchPair.dst.dpId, false)).toJson()))
         producer.flush()
 
         then: "System detects excess rules and store them in the 'excess' section"

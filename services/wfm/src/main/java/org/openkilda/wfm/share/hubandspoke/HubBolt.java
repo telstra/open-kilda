@@ -17,7 +17,7 @@ package org.openkilda.wfm.share.hubandspoke;
 
 import static java.util.Objects.requireNonNull;
 
-import org.openkilda.wfm.topology.utils.MessageTranslator;
+import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -60,7 +60,7 @@ public abstract class HubBolt extends CoordinatedBolt {
     @Override
     protected void handleInput(Tuple input) throws Exception {
         if (hubConfig.getRequestSenderComponent().equals(input.getSourceComponent())) {
-            registerCallback(input.getStringByField(MessageTranslator.KEY_FIELD), input);
+            registerCallback(input.getStringByField(MessageKafkaTranslator.KEY_FIELD), input);
             onRequest(input);
         } else if (hubConfig.getWorkerComponent().equals(input.getSourceComponent())) {
             onWorkerResponse(input);

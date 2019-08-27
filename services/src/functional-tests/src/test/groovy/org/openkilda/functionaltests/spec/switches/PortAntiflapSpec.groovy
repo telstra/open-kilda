@@ -106,7 +106,7 @@ timeout"() {
         assert islPort
 
         when: "Port goes down"
-        northbound.portDown(sw.dpId, islPort)
+        antiflap.portDown(sw.dpId, islPort)
 
         then: "Related ISL goes down in about 'antiflapMin' seconds"
         Wrappers.wait(antiflapMin + 2) {
@@ -114,8 +114,8 @@ timeout"() {
         }
 
         and: "Cleanup: bring port up"
-        northbound.portUp(sw.dpId, islPort)
-        Wrappers.wait(antiflapCooldown + discoveryInterval + WAIT_OFFSET) {
+        antiflap.portUp(sw.dpId, islPort)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
     }

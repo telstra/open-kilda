@@ -29,6 +29,7 @@ verify their consistency after restart.
  * Aborting it in the middle of execution may lead to Kilda malfunction.
  */
 @Tags(VIRTUAL)
+@Ignore
 class StormLcmSpec extends HealthCheckSpecification {
     @Shared
     WfmManipulator wfmManipulator

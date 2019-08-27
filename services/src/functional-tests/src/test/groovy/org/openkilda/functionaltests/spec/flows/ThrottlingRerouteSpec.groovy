@@ -86,9 +86,9 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         and: "cleanup: restore broken paths and delete flows"
         flows.each { flowHelper.deleteFlow(it.id) }
         brokenIsls.each {
-            northbound.portUp(it.srcSwitch.dpId, it.srcPort)
+            antiflap.portUp(it.srcSwitch.dpId, it.srcPort)
         }
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
     }
@@ -118,7 +118,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
             new Thread({
                 while (!stop) {
                     def brokenIsl = breakFlow(flowPath)
-                    northbound.portUp(brokenIsl.srcSwitch.dpId, brokenIsl.srcPort)
+                    antiflap.portUp(brokenIsl.srcSwitch.dpId, brokenIsl.srcPort)
                     Wrappers.wait(antiflapCooldown + WAIT_OFFSET) {
                         assert northbound.getLink(brokenIsl).state == IslChangeType.DISCOVERED
                     }
@@ -192,7 +192,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "cleanup: restore broken path"
-        northbound.portUp(brokenIsl.srcSwitch.dpId, brokenIsl.srcPort)
+        antiflap.portUp(brokenIsl.srcSwitch.dpId, brokenIsl.srcPort)
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(brokenIsl).state == IslChangeType.DISCOVERED }
     }
 
@@ -213,7 +213,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
             it.srcSwitch.dpId == sw && it.srcPort == port
         }
         assert brokenIsl, "This should not be possible. Trying to switch port on ISL which is not present in config?"
-        northbound.portDown(sw, port)
+        antiflap.portDown(sw, port)
         Wrappers.wait(WAIT_OFFSET, 0) {
             assert northbound.getLink(brokenIsl).state == IslChangeType.FAILED
         }

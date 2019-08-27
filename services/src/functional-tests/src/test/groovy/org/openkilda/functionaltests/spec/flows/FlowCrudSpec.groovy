@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.junit.Assume.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
@@ -49,12 +50,15 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
+import spock.lang.See
 import spock.lang.Shared
 import spock.lang.Unroll
 
 import javax.inject.Provider
 
 @Slf4j
+@See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/usecase/flow-crud-create-full.png",
+        "https://github.com/telstra/open-kilda/blob/develop/docs/design/usecase/flow-crud-delete-full.png"])
 @Narrative("Verify CRUD operations and health of most typical types of flows on different types of switches.")
 class FlowCrudSpec extends HealthCheckSpecification {
 
@@ -75,7 +79,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTags([
-        @IterationTag(tags = [SMOKE], iterationNameRegex = /vlan /),
+        @IterationTag(tags = [SMOKE_SWITCHES], take = 1),
+        @IterationTag(tags = [SMOKE], iterationNameRegex = /random vlans/),
         @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /and vlan only on/)
     ])
     @Unroll("Valid #data.description has traffic and no rule discrepancies \
@@ -480,7 +485,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         given: "A switch that has no connection to other switches"
         def isolatedSwitch = topology.activeSwitches[1]
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
-            northbound.portDown(isolatedSwitch.dpId, port)
+            antiflap.portDown(isolatedSwitch.dpId, port)
         }
         //wait until ISLs are actually got failed
         Wrappers.wait(WAIT_OFFSET) {
@@ -504,10 +509,10 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "Cleanup: restore connection to the isolated switch and reset costs"
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
-            northbound.portUp(isolatedSwitch.dpId, port)
+            antiflap.portUp(isolatedSwitch.dpId, port)
         }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED }
+            northbound.getAllLinks().each { assert it.state == DISCOVERED }
         }
         database.resetCosts()
 
@@ -598,7 +603,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         flowHelper.addFlow(flow)
 
         when: "Try to edit port to isl port"
-        flowHelper.updateFlow(flow.id, flow.tap { it."$data.switchType".portNumber = isl."$data.port" })
+        northbound.updateFlow(flow.id, flow.tap { it."$data.switchType".portNumber = isl."$data.port" })
 
         then:
         def exc = thrown(HttpClientErrorException)
@@ -631,7 +636,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
         assumeTrue("Unable to find required isl", isl as boolean)
-        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         islUtils.waitForIslStatus([isl, isl.reversed], FAILED)
 
         when: "Try to create a flow using ISL src port"
@@ -646,7 +651,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 getPortViolationError("create", isl.srcPort, isl.srcSwitch.dpId)
 
         and: "Cleanup: Restore state of the ISL"
-        northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
     }
 
@@ -819,6 +824,57 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "Cleanup: Delete the flows and excess meters"
         flows.each { flowHelper.deleteFlow(it) }
+    }
+
+    def "System takes isl time_unstable info into account while creating a flow"() {
+        given: "Two active not neighboring switches with two possible paths at least"
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
+            it.paths.unique { it.first().portNo }.size() > 1
+        } ?: assumeTrue("No suiting switches found", false)
+
+        and: "Select two possible paths for further manipulation with them"
+        def firstPath = switchPair.paths.min { it.size() }
+        def secondPath = switchPair.paths.findAll { it != firstPath }.max { it.size() }
+        def altPaths = switchPair.paths.findAll {
+            it != firstPath && it.first().portNo != firstPath.first().portNo &&
+                    it != secondPath && it.first().portNo != secondPath.first().portNo
+        }.sort { it.size() }
+
+        and: "Make all alternative paths unavailable (bring ports down on the srcSwitch)"
+        List<PathNode> broughtDownPorts = []
+        altPaths.unique { it.first() }.each { path ->
+            def src = path.first()
+            broughtDownPorts.add(src)
+            antiflap.portDown(src.switchId, src.portNo)
+        }
+        Wrappers.wait(antiflapMin + WAIT_OFFSET) {
+            assert northbound.getAllLinks().findAll {
+                it.state == FAILED
+            }.size() == broughtDownPorts.size() * 2
+        }
+
+        and: "Make the first selected path unstable by bringing port down/up"
+        // after bringing port down/up, the isl will be marked as unstable by updating the 'time_unstable' field in DB
+        def islToBreak = pathHelper.getInvolvedIsls(firstPath).first()
+        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == FAILED }
+        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == DISCOVERED }
+
+        when: "Create a flow"
+        def flow = flowHelper.randomFlow(switchPair)
+        flowHelper.addFlow(flow)
+
+        then: "Flow is created on the link from the second selected path"
+        PathHelper.convert(northbound.getFlowPath(flow.id)).first().portNo == secondPath.first().portNo
+
+        and: "Restore topology, delete the flow and reset costs"
+        broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
+        flowHelper.deleteFlow(flow.id)
+        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+            northbound.getAllLinks().each { assert it.state != FAILED }
+        }
+        database.resetCosts()
     }
 
     @Shared

@@ -35,7 +35,6 @@ import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -92,7 +91,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     @Unroll
-    @Tags([SMOKE, SMOKE_SWITCHES])
+    @Tags([SMOKE])
+    @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /delete-action=DROP_ALL\)/)
     def "Able to delete rules from a switch (delete-action=#data.deleteRulesAction)"() {
         given: "A switch with some flow rules installed"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -230,7 +230,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         and: "Cleanup: delete the flow"
         flowHelper.deleteFlow(flow.id)
     }
-    
+
     @Unroll("Able to delete switch rules by #data.description")
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Able to delete switch rules by cookie/priority"() {
@@ -567,7 +567,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
-    @Tags(SMOKE)
+    @Tags([SMOKE, SMOKE_SWITCHES])
     def "Traffic counters in ingress rule are reset on flow rerouting"() {
         given: "Two active neighboring switches and two possible flow paths at least"
         List<List<PathNode>> possibleFlowPaths = []
@@ -597,7 +597,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
         // Switches may have parallel links, so we need to get involved ISLs.
         def islToFail = pathHelper.getInvolvedIsls(flowPath).first()
-        northbound.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "The flow was rerouted after reroute timeout"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
@@ -611,7 +611,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         checkTrafficCountersInRules(flow.destination, false)
 
         and: "Revive the ISL back (bring switch port up), delete the flow and reset costs"
-        northbound.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         flowHelper.deleteFlow(flow.id)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -619,11 +619,14 @@ class FlowRulesSpec extends HealthCheckSpecification {
         database.resetCosts()
     }
 
-    @Ignore("sync is not working yet, fix in pr2591")
     @Tags(HARDWARE)
     def "Able to synchronize rules for a flow with VXLAN encapsulation"() {
-        given: "Two active Noviflow switches"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.src.noviflow && it.dst.noviflow }
+        given: "Two active not neighboring Noviflow switches"
+        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
+            swP.src.noviflow && !swP.src.wb5164 && swP.dst.noviflow && !swP.dst.wb5164 && swP.paths.find { path ->
+                pathHelper.getInvolvedSwitches(path).every { it.noviflow && !it.wb5164 }
+            }
+        } ?: assumeTrue("Unable to find required switches in topology", false)
 
         and: "Create a flow with vxlan encapsulation"
         def flow = flowHelper.randomFlow(switchPair)
@@ -631,7 +634,9 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flowHelper.addFlow(flow)
 
         and: "Reproduce situation when switches have missing rules by deleting flow rules from them"
+        def flowInfoFromDb = database.getFlow(flow.id)
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.id)*.dpId
+        def transitSwitchIds = involvedSwitches[-1..-2]
         def defaultPlusFlowRulesMap = involvedSwitches.collectEntries { switchId ->
             [switchId, northbound.getSwitchRules(switchId).flowEntries]
         }
@@ -655,13 +660,44 @@ class FlowRulesSpec extends HealthCheckSpecification {
                 compareRules(northbound.getSwitchRules(switchId).flowEntries, defaultPlusFlowRulesMap[switchId])
             }
         }
-        //TODO(andriidovhan) verify that synced rules are indeed vxlan rules when pr2503 is merged
+
+        and: "Rules are synced correctly"
+        // ingressRule should contain "pushVxlan"
+        // egressRule should contain "tunnel-id"
+        with(northbound.getSwitchRules(switchPair.src.dpId).flowEntries) { rules ->
+            assert rules.find {
+                it.cookie == flowInfoFromDb.forwardPath.cookie.value
+            }.instructions.applyActions.pushVxlan
+            assert rules.find {
+                it.cookie == flowInfoFromDb.reversePath.cookie.value
+            }.match.tunnelId
+        }
+
+        with(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) { rules ->
+            assert rules.find {
+                it.cookie == flowInfoFromDb.forwardPath.cookie.value
+            }.match.tunnelId
+            assert rules.find {
+                it.cookie == flowInfoFromDb.reversePath.cookie.value
+            }.instructions.applyActions.pushVxlan
+        }
+
+        transitSwitchIds.each { swId ->
+            with(northbound.getSwitchRules(swId).flowEntries) { rules ->
+                assert rules.find {
+                    it.cookie == flowInfoFromDb.forwardPath.cookie.value
+                }.match.tunnelId
+                assert rules.find {
+                    it.cookie == flowInfoFromDb.reversePath.cookie.value
+                }.match.tunnelId
+            }
+        }
 
         and: "No missing rules were found after rules validation"
         involvedSwitches.each { switchId ->
             with(northbound.validateSwitchRules(switchId)) {
                 verifyAll {
-                    properRules.size() == flowRulesCount
+                    properRules.findAll { !Cookie.isDefaultRule(it) }.size() == flowRulesCount
                     missingRules.empty
                     excessRules.empty
                 }

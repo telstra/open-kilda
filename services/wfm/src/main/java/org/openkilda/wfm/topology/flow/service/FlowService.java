@@ -66,6 +66,7 @@ import org.openkilda.wfm.share.flow.resources.ResourceNotAvailableException;
 import org.openkilda.wfm.share.flow.service.FlowCommandFactory;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
+import org.openkilda.wfm.topology.flow.model.FlowData;
 import org.openkilda.wfm.topology.flow.model.FlowPathPair;
 import org.openkilda.wfm.topology.flow.model.FlowPathWithEncapsulation;
 import org.openkilda.wfm.topology.flow.model.FlowPathsWithEncapsulation;
@@ -86,6 +87,7 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
 import net.jodah.failsafe.RetryPolicy;
 import net.jodah.failsafe.SyncFailsafe;
+import org.neo4j.driver.v1.exceptions.ClientException;
 import org.neo4j.driver.v1.exceptions.TransientException;
 
 import java.time.Instant;
@@ -490,12 +492,15 @@ public class FlowService extends BaseFlowService {
             FlowNotFoundException, ResourceAllocationException {
         dashboardLogger.onFlowPathReroute(flowId, pathIds, forceToReroute);
 
-        RerouteResult result = null;
+        RerouteResult result;
         try {
-            result = (RerouteResult) getFailsafe().get(() ->
-                    transactionManager.doInTransaction(() -> doReroute(flowId, forceToReroute, pathIds)));
-        } catch (FailsafeException e) {
-            unwrapFaisafeException(e);
+            result = doRerouteWithRetries(flowId, forceToReroute, pathIds);
+        } catch (UnroutableFlowException e) {
+            dashboardLogger.onFailedFlowReroute(flowId, "Path was not found. " + e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            dashboardLogger.onFailedFlowReroute(flowId, e.getMessage());
+            throw e;
         }
 
         log.warn("Reroute finished. Paths to create: {}. Paths to remove: {}",
@@ -519,6 +524,18 @@ public class FlowService extends BaseFlowService {
                 createFlowPathStatusRequests(result.getToCreateFlow(), FlowPathStatus.INACTIVE));
 
         return new ReroutedFlowPaths(result.getInitialFlow(), result.getUpdatedFlow());
+    }
+
+    private RerouteResult doRerouteWithRetries(String flowId, boolean forceToReroute, Set<PathId> pathIds)
+            throws ResourceAllocationException, FlowNotFoundException, UnroutableFlowException {
+        RerouteResult result = null;
+        try {
+            result = (RerouteResult) getFailsafe().get(() ->
+                    transactionManager.doInTransaction(() -> doReroute(flowId, forceToReroute, pathIds)));
+        } catch (FailsafeException e) {
+            unwrapFaisafeException(e);
+        }
+        return result;
     }
 
     private RerouteResult doReroute(String flowId, boolean forceToReroute, Set<PathId> pathIds)
@@ -825,6 +842,26 @@ public class FlowService extends BaseFlowService {
         return flowRepository.findFlowsIdByGroupId(groupId).stream()
                 .filter(id -> !id.equals(flowId))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Loads a flow by specified flow id.
+     */
+    public Optional<FlowData> getFlowById(String flowId) {
+        // NB: workaround for an issue with OGM/neo4j, when ClientException 'Unable to load NODE with id' is thrown
+        return (Optional<FlowData>) getReadOperationFailsafe().get(() ->
+                transactionManager.doInTransaction(() -> getFlow(flowId))
+        );
+    }
+
+    /**
+     * Loads all available flows.
+     */
+    public List<FlowData> getAllFlows() {
+        // NB: workaround for an issue with OGM/neo4j, when ClientException 'Unable to load NODE with id' is thrown
+        return (List<FlowData>) getReadOperationFailsafe().get(() ->
+                transactionManager.doInTransaction(() -> getFlows())
+        );
     }
 
     private FlowPathPair buildFlowPathPair(FlowPair flowPair, FlowResources flowResources, Instant timeCreate) {
@@ -1270,6 +1307,15 @@ public class FlowService extends BaseFlowService {
         }
 
         return commands;
+    }
+
+    private SyncFailsafe getReadOperationFailsafe() {
+        return Failsafe.with(new RetryPolicy()
+                .retryOn(ClientException.class)
+                .withDelay(RETRY_DELAY, TimeUnit.MILLISECONDS)
+                .withMaxRetries(MAX_TRANSACTION_RETRY_COUNT))
+                .onRetry(e -> log.warn("Retrying transaction finished with exception", e))
+                .onRetriesExceeded(e -> log.warn("TX retry attempts exceed with error", e));
     }
 
     private SyncFailsafe getFailsafe() {
