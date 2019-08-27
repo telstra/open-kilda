@@ -8,6 +8,7 @@ import org.openkilda.functionaltests.extension.healthcheck.HealthCheck
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.testing.model.topology.TopologyDefinition.Status
+import org.openkilda.testing.tools.SoftAssertions
 
 class HealthCheckSpecification extends BaseSpecification {
 
@@ -51,5 +52,17 @@ class HealthCheckSpecification extends BaseSpecification {
                 }.isEmpty()
             }.empty
         }
+
+        and: "Every switch is connected to the expected region"
+        def regionVerifications = new SoftAssertions()
+        mgmtFlManager.getRegions().forEach { region ->
+            def expectedSwitchIds = topology.activeSwitches.findAll { it.region == region }*.dpId
+            if (!expectedSwitchIds.empty) {
+                regionVerifications.checkSucceeds {
+                    assert mgmtFlManager.getFloodlightService(region).switches*.switchId.sort() == expectedSwitchIds.sort()
+                }
+            }
+        }
+        regionVerifications.verify()
     }
 }

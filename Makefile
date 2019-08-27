@@ -41,7 +41,7 @@ up-test-mode:
 	@echo ~~
 	@echo
 	cp -n .env.example .env
-	OK_TESTS="DISABLE_LOGIN" docker-compose up -d
+	OK_TESTS="DISABLE_LOGIN" docker-compose -f docker-compose.yml -f docker-compose.test.yml up -d
 	docker-compose logs -f wfm
 	$(MAKE) -C tools/elk-dashboards
 
@@ -80,7 +80,7 @@ sonar: update-props
 
 .PHONY: clean-test
 clean-test:
-	docker-compose down
+	docker-compose -f docker-compose.yml -f docker-compose.test.yml down
 	docker-compose rm -fv
 	docker volume list -q | grep kilda | xargs -r docker volume  rm
 

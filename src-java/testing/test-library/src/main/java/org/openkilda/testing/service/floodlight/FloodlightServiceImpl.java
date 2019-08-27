@@ -18,9 +18,12 @@ package org.openkilda.testing.service.floodlight;
 import static java.lang.String.format;
 
 import org.openkilda.model.SwitchId;
+import org.openkilda.testing.config.DefaultServiceConfig;
 import org.openkilda.testing.model.controller.CoreFlowEntry;
 import org.openkilda.testing.model.controller.DpIdEntriesList;
 import org.openkilda.testing.model.controller.StaticFlowEntry;
+import org.openkilda.testing.service.floodlight.model.ChangeRoleRequest;
+import org.openkilda.testing.service.floodlight.model.ControllerRole;
 import org.openkilda.testing.service.floodlight.model.FlowEntriesMap;
 import org.openkilda.testing.service.floodlight.model.MetersEntriesMap;
 import org.openkilda.testing.service.floodlight.model.SwitchEntry;
@@ -29,6 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpServerErrorException;
@@ -36,6 +41,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class FloodlightServiceImpl implements FloodlightService {
@@ -45,6 +51,13 @@ public class FloodlightServiceImpl implements FloodlightService {
     @Autowired
     @Qualifier("floodlightRestTemplate")
     private RestTemplate restTemplate;
+
+    public FloodlightServiceImpl() {
+    }
+
+    public FloodlightServiceImpl(String endpoint) {
+        restTemplate = DefaultServiceConfig.buildLoggingRestTemplate(endpoint);
+    }
 
     @Override
     public String addStaticFlow(StaticFlowEntry flow) {
@@ -94,5 +107,11 @@ public class FloodlightServiceImpl implements FloodlightService {
 
             throw ex;
         }
+    }
+
+    @Override
+    public Map setRole(SwitchId dpid, ControllerRole role) {
+        return restTemplate.exchange("/wm/core/switch/{switch_id}/role/json", HttpMethod.POST,
+                new HttpEntity<>(new ChangeRoleRequest(role)), Map.class, dpid).getBody();
     }
 }

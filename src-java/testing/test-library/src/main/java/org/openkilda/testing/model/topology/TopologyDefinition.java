@@ -205,6 +205,8 @@ public class TopologyDefinition {
         @NonNull
         private Status status;
         @NonNull
+        private String region;
+        @NonNull
         private List<OutPort> outPorts;
         private Integer maxPort;
 
@@ -220,6 +222,7 @@ public class TopologyDefinition {
                 @JsonProperty("dp_id") SwitchId dpId,
                 @JsonProperty("of_version") String ofVersion,
                 @JsonProperty("status") Status status,
+                @JsonProperty("region") String region,
                 @JsonProperty("out_ports") List<OutPort> outPorts,
                 @JsonProperty("max_port") Integer maxPort,
                 @JsonProperty("controller") String controller) {
@@ -230,7 +233,7 @@ public class TopologyDefinition {
                 maxPort = DEFAULT_MAX_PORT;
             }
 
-            return new Switch(name, dpId, ofVersion, status, outPorts, maxPort, controller);
+            return new Switch(name, dpId, ofVersion, status, region, outPorts, maxPort, controller);
         }
 
         @JsonIgnore

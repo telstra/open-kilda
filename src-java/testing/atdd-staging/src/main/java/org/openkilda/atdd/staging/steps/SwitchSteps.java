@@ -19,8 +19,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.openkilda.atdd.staging.helpers.TopologyUnderTest;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.rule.SwitchFlowEntries;
+import org.openkilda.northbound.dto.v1.switches.SwitchDto;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 import org.openkilda.testing.service.northbound.NorthboundService;
@@ -48,7 +48,7 @@ public class SwitchSteps {
     @Autowired
     private TopologyUnderTest topologyUnderTest;
 
-    private List<SwitchInfoData> allSwitchesResponse;
+    private List<SwitchDto> allSwitchesResponse;
     private SwitchFlowEntries switchRulesResponse;
 
     @When("^request all available switches from Northbound$")

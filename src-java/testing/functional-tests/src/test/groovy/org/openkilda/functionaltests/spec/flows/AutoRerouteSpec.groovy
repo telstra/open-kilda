@@ -111,7 +111,8 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.id))
 
         when: "An intermediate switch is disconnected"
-        lockKeeper.knockoutSwitch(findSw(flowPath[1].switchId))
+        def sw = findSw(flowPath[1].switchId)
+        def blockData = lockKeeper.knockoutSwitch(sw, mgmtFlManager)
 
         then: "All ISLs going through the intermediate switch are 'FAILED'"
         Wrappers.wait(discoveryTimeout * 1.5 + WAIT_OFFSET) {
@@ -129,7 +130,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "Connect the intermediate switch back and delete the flow"
-        lockKeeper.reviveSwitch(findSw(flowPath[1].switchId))
+        lockKeeper.reviveSwitch(sw, blockData)
         Wrappers.wait(WAIT_OFFSET) { assert flowPath[1].switchId in northbound.getActiveSwitches()*.switchId }
         northbound.deleteSwitchRules(flowPath[1].switchId, DeleteRulesAction.IGNORE_DEFAULTS) || true
         flowHelper.deleteFlow(flow.id)
@@ -232,13 +233,13 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         when: "Disconnect one of the switches not used by flow"
         def involvedSwitches = pathHelper.getInvolvedSwitches(flowPath)
         def switchToDisconnect = topology.getActiveSwitches().find { !involvedSwitches.contains(it) }
-        lockKeeper.knockoutSwitch(switchToDisconnect)
+        def blockData = lockKeeper.knockoutSwitch(switchToDisconnect, mgmtFlManager)
 
         then: "The switch is really disconnected from the controller"
         Wrappers.wait(WAIT_OFFSET) { assert !(switchToDisconnect.dpId in northbound.getActiveSwitches()*.switchId) }
 
         when: "Connect the switch back to the controller"
-        lockKeeper.reviveSwitch(switchToDisconnect)
+        lockKeeper.reviveSwitch(switchToDisconnect, blockData)
 
         then: "The switch is really connected to the controller"
         Wrappers.wait(WAIT_OFFSET) { assert switchToDisconnect.dpId in northbound.getActiveSwitches()*.switchId }

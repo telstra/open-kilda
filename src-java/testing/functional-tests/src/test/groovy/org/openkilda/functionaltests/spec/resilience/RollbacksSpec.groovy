@@ -61,8 +61,7 @@ and at least 1 path must remain safe"
         northbound.deleteLinkProps(northbound.getAllLinkProps())
         switchPair.paths.findAll { it != failoverPath }.each { pathHelper.makePathMorePreferable(failoverPath, it) }
         //disconnect the switch, but make it look like 'active'
-        lockKeeper.knockoutSwitch(switchToBreak)
-        def switchIsOut = true
+        def blockData = lockKeeper.knockoutSwitch(switchToBreak, mgmtFlManager)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getSwitch(switchToBreak.dpId).state == SwitchChangeType.DEACTIVATED
         }
@@ -103,9 +102,9 @@ and at least 1 path must remain safe"
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        if(switchIsOut) {
+        if(blockData) {
             database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.INACTIVE)
-            lockKeeper.reviveSwitch(switchToBreak)
+            lockKeeper.reviveSwitch(switchToBreak, blockData)
             Wrappers.wait(WAIT_OFFSET) {
                 assert northbound.getSwitch(switchToBreak.dpId).state == SwitchChangeType.ACTIVATED
             }
