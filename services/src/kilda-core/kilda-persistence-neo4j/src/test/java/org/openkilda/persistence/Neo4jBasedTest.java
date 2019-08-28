@@ -25,6 +25,9 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.neo4j.ogm.testutil.TestServer;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.time.Instant;
 import java.util.Collections;
 
@@ -95,16 +98,20 @@ public abstract class Neo4jBasedTest {
     }
 
     protected Switch buildTestSwitch(long switchId) {
-        return Switch.builder()
-                .switchId(new SwitchId(switchId))
-                .address("test_addr_" + switchId)
-                .controller("test_ctrl")
-                .description("test_description")
-                .hostname("test_host_" + switchId)
-                .status(SwitchStatus.ACTIVE)
-                .timeCreate(Instant.now())
-                .timeModify(Instant.now())
-                .features(Collections.emptySet())
-                .build();
+        try {
+            return Switch.builder()
+                    .switchId(new SwitchId(switchId))
+                    .socketAddress(new InetSocketAddress(InetAddress.getByName("1.1.1.1"), 30070))
+                    .controller("test_ctrl")
+                    .description("test_description")
+                    .hostname("test_host_" + switchId)
+                    .status(SwitchStatus.ACTIVE)
+                    .timeCreate(Instant.now())
+                    .timeModify(Instant.now())
+                    .features(Collections.emptySet())
+                    .build();
+        } catch (UnknownHostException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

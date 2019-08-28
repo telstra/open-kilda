@@ -368,7 +368,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                 .orElseGet(() -> Switch.builder().switchId(switchId).build());
 
         InetSocketAddress socketAddress = speakerData.getSwitchSocketAddress();
-        sw.setAddress(socketAddress.getAddress().getHostAddress());
+
+        sw.setSocketAddress(socketAddress);
         sw.setHostname(socketAddress.getHostName());
 
         SpeakerSwitchDescription description = speakerData.getDescription();

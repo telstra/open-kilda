@@ -316,7 +316,7 @@ public final class BfdPortFsm extends
         if (!sw.isPresent()) {
             throw new SwitchReferenceLookupException(datapath, "persistent record is missing");
         }
-        return makeSwitchReference(datapath, sw.get().getAddress());
+        return makeSwitchReference(datapath, sw.get().getSocketAddress().getAddress().getHostAddress());
     }
 
     private SwitchReference makeSwitchReference(SwitchId datapath, String ipAddress)

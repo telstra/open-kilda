@@ -46,6 +46,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.Optional;
 
@@ -70,15 +71,15 @@ public class NetworkBfdPortServiceTest {
 
     private final Switch alphaSwitch = Switch.builder()
             .switchId(alphaEndpoint.getDatapath())
-            .address(alphaAddress)
+            .socketAddress(getSocketAddress(alphaAddress, 30070))
             .build();
     private final Switch betaSwitch = Switch.builder()
             .switchId(betaEndpoint.getDatapath())
-            .address(betaAddress)
+            .socketAddress(getSocketAddress(betaAddress, 30071))
             .build();
     private final Switch gammaSwitch = Switch.builder()
             .switchId(gammaEndpoint.getDatapath())
-            .address(gammaAddress)
+            .socketAddress(getSocketAddress(gammaAddress, 30072))
             .build();
 
     private final String setupRequestKey = "bfd-setup-speaker-key";
@@ -801,5 +802,13 @@ public class NetworkBfdPortServiceTest {
     private void mockBfdSessionLookup(BfdSession session) {
         when(bfdSessionRepository.findBySwitchIdAndPort(session.getSwitchId(), session.getPort()))
                 .thenReturn(Optional.of(session));
+    }
+
+    private InetSocketAddress getSocketAddress(String host, int port) {
+        try {
+            return new InetSocketAddress(InetAddress.getByName(host), port);
+        } catch (UnknownHostException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }
