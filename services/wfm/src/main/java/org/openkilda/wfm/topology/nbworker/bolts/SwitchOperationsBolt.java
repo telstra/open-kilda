@@ -27,6 +27,7 @@ import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
+import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -89,22 +90,22 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         return (List<InfoData>) result;
     }
 
-    private List<SwitchInfoData> getSwitches() {
+    private List<GetSwitchResponse> getSwitches() {
         return switchOperationsService.getAllSwitches();
     }
 
-    private List<SwitchInfoData> getSwitch(GetSwitchRequest request) {
+    private List<GetSwitchResponse> getSwitch(GetSwitchRequest request) {
         SwitchId switchId = request.getSwitchId();
 
         try {
-            return Collections.singletonList(SwitchMapper.INSTANCE.map(switchOperationsService.getSwitch(switchId)));
+            return Collections.singletonList(switchOperationsService.getSwitch(switchId));
         } catch (SwitchNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch was not found.");
         }
     }
 
-    private List<SwitchInfoData> updateSwitchUnderMaintenanceFlag(UpdateSwitchUnderMaintenanceRequest request,
-                                                                  Tuple tuple) {
+    private List<GetSwitchResponse> updateSwitchUnderMaintenanceFlag(UpdateSwitchUnderMaintenanceRequest request,
+                                                                     Tuple tuple) {
         SwitchId switchId = request.getSwitchId();
         boolean underMaintenance = request.isUnderMaintenance();
         boolean evacuate = request.isEvacuate();
@@ -132,7 +133,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
             });
         }
 
-        return Collections.singletonList(SwitchMapper.INSTANCE.map(sw));
+        return Collections.singletonList(new GetSwitchResponse(sw));
     }
 
     private DeleteSwitchResponse deleteSwitch(DeleteSwitchRequest request) {

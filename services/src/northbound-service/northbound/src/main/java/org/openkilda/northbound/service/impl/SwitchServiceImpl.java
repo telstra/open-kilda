@@ -50,6 +50,7 @@ import org.openkilda.messaging.nbtopology.request.GetSwitchRequest;
 import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
+import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.switches.PortConfigurationPayload;
 import org.openkilda.model.PortStatus;
@@ -118,7 +119,8 @@ public class SwitchServiceImpl implements SwitchService {
 
         return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
                 .thenApply(messages -> messages.stream()
-                        .map(SwitchInfoData.class::cast)
+                        .map(GetSwitchResponse.class::cast)
+                        .map(GetSwitchResponse::getPayload)
                         .map(switchMapper::toSwitchDto)
                         .collect(Collectors.toList()));
     }
@@ -134,7 +136,8 @@ public class SwitchServiceImpl implements SwitchService {
 
         return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
                 .thenApply(messages -> messages.stream()
-                        .map(SwitchInfoData.class::cast)
+                        .map(GetSwitchResponse.class::cast)
+                        .map(GetSwitchResponse::getPayload)
                         .map(switchMapper::toSwitchDto)
                         .collect(Collectors.toList()).get(0));
     }
@@ -363,7 +366,8 @@ public class SwitchServiceImpl implements SwitchService {
 
         return messagingChannel.sendAndGetChunked(nbworkerTopic, request)
                 .thenApply(messages -> messages.stream()
-                        .map(SwitchInfoData.class::cast)
+                        .map(GetSwitchResponse.class::cast)
+                        .map(GetSwitchResponse::getPayload)
                         .map(switchMapper::toSwitchDto)
                         .collect(Collectors.toList()).get(0));
     }

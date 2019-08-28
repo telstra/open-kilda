@@ -33,6 +33,9 @@ public class SwitchDto {
     @JsonProperty("address")
     private String address;
 
+    @JsonProperty("port")
+    private int port;
+
     @JsonProperty("hostname")
     private String hostname;
 
