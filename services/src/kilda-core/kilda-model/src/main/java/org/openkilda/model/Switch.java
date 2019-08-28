@@ -73,6 +73,8 @@ public class Switch implements Serializable {
 
     private String address;
 
+    private int tcpPort;
+
     private String hostname;
 
     private String controller;
