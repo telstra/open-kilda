@@ -15,6 +15,7 @@
 
 package org.openkilda.model;
 
+import org.openkilda.converters.NetworkAddressConverter;
 import org.openkilda.converters.SwitchFeatureConverter;
 
 import lombok.AccessLevel;
@@ -71,7 +72,8 @@ public class Switch implements Serializable {
     @Convert(graphPropertyType = String.class)
     private SwitchStatus status;
 
-    private String address;
+    @Convert(NetworkAddressConverter.class)
+    private NetworkAddress address;
 
     private String hostname;
 
@@ -102,7 +104,7 @@ public class Switch implements Serializable {
     private Instant timeModify;
 
     @Builder(toBuilder = true)
-    public Switch(@NonNull SwitchId switchId, SwitchStatus status, String address,
+    public Switch(@NonNull SwitchId switchId, SwitchStatus status, NetworkAddress address,
                   String hostname, String controller, String description, boolean underMaintenance,
                   Instant timeCreate, Instant timeModify, Set<SwitchFeature> features) {
         this.switchId = switchId;

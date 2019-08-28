@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.model.BfdSession;
+import org.openkilda.model.NetworkAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -70,15 +71,15 @@ public class NetworkBfdPortServiceTest {
 
     private final Switch alphaSwitch = Switch.builder()
             .switchId(alphaEndpoint.getDatapath())
-            .address(alphaAddress)
+            .address(NetworkAddress.builder().address(alphaAddress).build())
             .build();
     private final Switch betaSwitch = Switch.builder()
             .switchId(betaEndpoint.getDatapath())
-            .address(betaAddress)
+            .address(NetworkAddress.builder().address(betaAddress).build())
             .build();
     private final Switch gammaSwitch = Switch.builder()
             .switchId(gammaEndpoint.getDatapath())
-            .address(gammaAddress)
+            .address(NetworkAddress.builder().address(gammaAddress).build())
             .build();
 
     private final String setupRequestKey = "bfd-setup-speaker-key";

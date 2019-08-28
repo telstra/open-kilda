@@ -15,6 +15,7 @@
 
 package org.openkilda.persistence;
 
+import org.openkilda.model.NetworkAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
@@ -97,7 +98,7 @@ public abstract class Neo4jBasedTest {
     protected Switch buildTestSwitch(long switchId) {
         return Switch.builder()
                 .switchId(new SwitchId(switchId))
-                .address("test_addr_" + switchId)
+                .address(new NetworkAddress("test_addr_" + switchId, 30070))
                 .controller("test_ctrl")
                 .description("test_description")
                 .hostname("test_host_" + switchId)

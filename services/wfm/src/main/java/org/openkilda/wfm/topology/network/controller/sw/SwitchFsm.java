@@ -19,6 +19,7 @@ import org.openkilda.messaging.model.SpeakerSwitchDescription;
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
 import org.openkilda.messaging.model.SpeakerSwitchView;
 import org.openkilda.model.Isl;
+import org.openkilda.model.NetworkAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
@@ -265,7 +266,11 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
 
         SpeakerSwitchView speakerData = context.getSpeakerData();
         InetSocketAddress socketAddress = speakerData.getSwitchSocketAddress();
-        sw.setAddress(socketAddress.getAddress().getHostAddress());
+
+        sw.setAddress(NetworkAddress.builder()
+                .address(socketAddress.getAddress().getHostAddress())
+                .port(socketAddress.getPort())
+                .build());
         sw.setHostname(socketAddress.getHostName());
 
         SpeakerSwitchDescription description = speakerData.getDescription();
