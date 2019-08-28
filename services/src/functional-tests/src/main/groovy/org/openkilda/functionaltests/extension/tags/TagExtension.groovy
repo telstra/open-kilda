@@ -67,7 +67,10 @@ class TagExtension extends AbstractGlobalExtension {
             def tags = collectAllTags(feature)
             def iterationTags = (feature.featureMethod.getAnnotation(IterationTags)?.value()?.toList() ?: [] +
                     feature.featureMethod.getAnnotation(IterationTag)).findAll()
-            if (iterationTags) {
+            if(!iterationTags) {
+                feature.excluded = !matches(tagsExpression, tags)
+            }
+            else {
                 feature.addIterationInterceptor(new IMethodInterceptor() {
                     /*This stores how many times did we match a certain iteration tag.
                      Use this when calculating 'take' limitation for the iteration tag*/
