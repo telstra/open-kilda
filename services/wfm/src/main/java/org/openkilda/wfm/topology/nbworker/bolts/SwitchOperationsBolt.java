@@ -20,7 +20,6 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.event.DeactivateSwitchInfoData;
-import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.model.SwitchPropertiesDto;
 import org.openkilda.messaging.nbtopology.request.BaseRequest;
 import org.openkilda.messaging.nbtopology.request.DeleteSwitchRequest;
@@ -30,6 +29,7 @@ import org.openkilda.messaging.nbtopology.request.GetSwitchesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchPropertiesRequest;
 import org.openkilda.messaging.nbtopology.request.UpdateSwitchUnderMaintenanceRequest;
 import org.openkilda.messaging.nbtopology.response.DeleteSwitchResponse;
+import org.openkilda.messaging.nbtopology.response.GetSwitchResponse;
 import org.openkilda.messaging.nbtopology.response.SwitchPropertiesResponse;
 import org.openkilda.model.FeatureToggles;
 import org.openkilda.model.Switch;
@@ -39,7 +39,6 @@ import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.IllegalSwitchStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
-import org.openkilda.wfm.share.mappers.SwitchMapper;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
 import org.openkilda.wfm.topology.nbworker.services.SwitchOperationsService;
@@ -97,22 +96,22 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
         return (List<InfoData>) result;
     }
 
-    private List<SwitchInfoData> getSwitches() {
+    private List<GetSwitchResponse> getSwitches() {
         return switchOperationsService.getAllSwitches();
     }
 
-    private List<SwitchInfoData> getSwitch(GetSwitchRequest request) {
+    private List<GetSwitchResponse> getSwitch(GetSwitchRequest request) {
         SwitchId switchId = request.getSwitchId();
 
         try {
-            return Collections.singletonList(SwitchMapper.INSTANCE.map(switchOperationsService.getSwitch(switchId)));
+            return Collections.singletonList(switchOperationsService.getSwitch(switchId));
         } catch (SwitchNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch was not found.");
         }
     }
 
-    private List<SwitchInfoData> updateSwitchUnderMaintenanceFlag(UpdateSwitchUnderMaintenanceRequest request,
-                                                                  Tuple tuple) {
+    private List<GetSwitchResponse> updateSwitchUnderMaintenanceFlag(UpdateSwitchUnderMaintenanceRequest request,
+                                                                     Tuple tuple) {
         SwitchId switchId = request.getSwitchId();
         boolean underMaintenance = request.isUnderMaintenance();
         boolean evacuate = request.isEvacuate();
@@ -140,7 +139,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt {
             });
         }
 
-        return Collections.singletonList(SwitchMapper.INSTANCE.map(sw));
+        return Collections.singletonList(new GetSwitchResponse(sw));
     }
 
     private DeleteSwitchResponse deleteSwitch(DeleteSwitchRequest request) {
