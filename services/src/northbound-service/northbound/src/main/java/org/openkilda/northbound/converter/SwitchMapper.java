@@ -15,7 +15,7 @@
 
 package org.openkilda.northbound.converter;
 
-import org.openkilda.messaging.info.event.SwitchInfoData;
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
 import org.openkilda.messaging.info.switches.MetersSyncEntry;
@@ -25,7 +25,9 @@ import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
 import org.openkilda.messaging.payload.history.PortHistoryPayload;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto;
 import org.openkilda.northbound.dto.v1.switches.MeterMisconfiguredInfoDto;
 import org.openkilda.northbound.dto.v1.switches.MetersSyncDto;
@@ -48,33 +50,33 @@ import java.util.Date;
 @Mapper(componentModel = "spring", uses = {FlowMapper.class}, imports = {Date.class})
 public interface SwitchMapper {
 
+    @Mapping(source = "ofDescriptionManufacturer", target = "manufacturer")
+    @Mapping(source = "ofDescriptionHardware", target = "hardware")
+    @Mapping(source = "ofDescriptionSoftware", target = "software")
+    @Mapping(source = "ofDescriptionSerialNumber", target = "serialNumber")
+    @Mapping(source = "status", target = "state")
+    @Mapping(source = "socketAddress.address.hostAddress", target = "address")
+    @Mapping(source = "socketAddress.port", target = "port")
+    SwitchDto toSwitchDto(Switch data);
+
     /**
-     * Convert {@link SwitchInfoData} to {@link SwitchDto}.
+     * Convert {@link SwitchStatus} to {@link String} representation.
      */
-    default SwitchDto toSwitchDto(SwitchInfoData data) {
-        if (data == null) {
+    default String convertStatus(SwitchStatus status) {
+        if (status == null) {
             return null;
         }
-        SwitchDto dto = SwitchDto.builder()
-                .switchId(data.getSwitchId().toString())
-                .address(data.getAddress())
-                .hostname(data.getHostname())
-                .description(data.getDescription())
-                .state(data.getState().toString())
-                .underMaintenance(data.isUnderMaintenance())
-                .build();
 
-        if (data.getSwitchView() != null) {
-            dto.setOfVersion(data.getSwitchView().getOfVersion());
-            if (data.getSwitchView().getDescription() != null) {
-                dto.setManufacturer(data.getSwitchView().getDescription().getManufacturer());
-                dto.setHardware(data.getSwitchView().getDescription().getHardware());
-                dto.setSoftware(data.getSwitchView().getDescription().getSoftware());
-                dto.setSerialNumber(data.getSwitchView().getDescription().getSerialNumber());
-            }
+        switch (status) {
+            case ACTIVE:
+                return SwitchChangeType.ACTIVATED.name();
+            case INACTIVE:
+                return SwitchChangeType.DEACTIVATED.name();
+            case REMOVED:
+                return SwitchChangeType.REMOVED.name();
+            default:
+                throw new IllegalArgumentException("Unsupported Switch status: " + status);
         }
-
-        return dto;
     }
 
     @Mapping(source = "rules.excess", target = "excessRules")
