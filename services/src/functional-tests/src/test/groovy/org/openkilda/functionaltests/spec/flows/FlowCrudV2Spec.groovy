@@ -97,6 +97,7 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         assumeTrue("There should be at least two active traffgens for test execution",
                 topology.activeTraffGens.size() >= 2)
         def traffExam = traffExamProvider.get()
+        def allLinksInfoBefore = northbound.getAllLinks().collectEntries { [it.id, it.availableBandwidth] }.sort()
         flowHelperV2.addFlow(flow)
         def path = PathHelper.convert(northbound.getFlowPath(flow.flowId))
         def switches = pathHelper.getInvolvedSwitches(path)
@@ -133,7 +134,10 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
         !northbound.getAllFlows().find { it.flowId == flow.flowId }
 
         and: "ISL bandwidth is restored"
-        Wrappers.wait(WAIT_OFFSET) { northbound.getAllLinks().each { assert it.availableBandwidth == it.speed } }
+        Wrappers.wait(WAIT_OFFSET) {
+            def allLinksInfoAfter = northbound.getAllLinks().collectEntries { [it.id, it.availableBandwidth] }.sort()
+            assert allLinksInfoBefore == allLinksInfoAfter
+        }
 
         and: "No rule discrepancies on every switch of the flow"
         switches.each { sw -> Wrappers.wait(WAIT_OFFSET) { verifySwitchRules(sw.dpId) } }
@@ -265,9 +269,6 @@ class FlowCrudV2Spec extends HealthCheckSpecification {
 
         then: "The flow is not present in NB"
         !northbound.getAllFlows().find { it.id == flow.flowId }
-
-        and: "ISL bandwidth is restored"
-        Wrappers.wait(WAIT_OFFSET) { northbound.getAllLinks().each { assert it.availableBandwidth == it.speed } }
 
         and: "No rule discrepancies on the switch after delete"
         Wrappers.wait(WAIT_OFFSET) { verifySwitchRules(flow.source.switchId) }
