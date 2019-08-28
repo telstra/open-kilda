@@ -152,7 +152,7 @@ public class JsonSerializationTest {
 
     @Test
     public void switchDtoTest() throws IOException {
-        SwitchDto dto = new SwitchDto(SWITCH_ID, "address-test", "host", "desc", "state", false, "of_version",
+        SwitchDto dto = new SwitchDto(SWITCH_ID, "address-test", 37040, "host", "desc", "state", false, "of_version",
                 "manufacturer", "hardware", "software", "serial_number");
         assertEquals(dto, pass(dto, SwitchDto.class));
     }

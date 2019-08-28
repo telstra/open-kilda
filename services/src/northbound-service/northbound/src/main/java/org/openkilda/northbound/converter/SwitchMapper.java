@@ -15,6 +15,7 @@
 
 package org.openkilda.northbound.converter;
 
+import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
@@ -24,7 +25,9 @@ import org.openkilda.messaging.info.switches.RulesSyncEntry;
 import org.openkilda.messaging.info.switches.RulesValidationEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.messaging.info.switches.SwitchValidationResponse;
+import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.model.SwitchStatus;
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto;
 import org.openkilda.northbound.dto.v1.switches.MeterMisconfiguredInfoDto;
 import org.openkilda.northbound.dto.v1.switches.MetersSyncDto;
@@ -38,8 +41,10 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 
+import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring", uses = {FlowMapper.class})
 public interface SwitchMapper {
@@ -71,6 +76,37 @@ public interface SwitchMapper {
         }
 
         return dto;
+    }
+
+    @Mapping(source = "ofDescriptionManufacturer", target = "manufacturer")
+    @Mapping(source = "ofDescriptionHardware", target = "hardware")
+    @Mapping(source = "ofDescriptionSoftware", target = "software")
+    @Mapping(source = "ofDescriptionSerialNumber", target = "serialNumber")
+    SwitchDto toSwitchDto(Switch data);
+
+    @AfterMapping
+    default void setSwitchState(Switch data, @MappingTarget SwitchDto.SwitchDtoBuilder target) {
+        target.state(convertStatus(data.getStatus()));
+    }
+
+    /**
+     * Convert {@link SwitchStatus} to {@link String} representation.
+     */
+    default String convertStatus(SwitchStatus status) {
+        if (status == null) {
+            return null;
+        }
+
+        switch (status) {
+            case ACTIVE:
+                return SwitchChangeType.ACTIVATED.name();
+            case INACTIVE:
+                return SwitchChangeType.DEACTIVATED.name();
+            case REMOVED:
+                return SwitchChangeType.REMOVED.name();
+            default:
+                throw new IllegalArgumentException("Unsupported Switch status: " + status);
+        }
     }
 
     @Mapping(source = "rules.excess", target = "excessRules")
