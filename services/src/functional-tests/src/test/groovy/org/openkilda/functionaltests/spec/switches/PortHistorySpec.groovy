@@ -41,8 +41,11 @@ class PortHistorySpec extends HealthCheckSpecification {
         then: "Port history is created on the src switch"
         def timestampAfterDown = System.currentTimeMillis()
         with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterDown)) {
-            it.size() == 1
-            checkPortHistory(it[0], isl.srcSwitch.dpId, isl.srcPort, "PORT_DOWN")
+            it.size() == 2
+            def antiFlapActivatedEvent = it.find { it.event == "ANTI_FLAP_ACTIVATED" }
+            checkPortHistory(antiFlapActivatedEvent, isl.srcSwitch.dpId, isl.srcPort, "ANTI_FLAP_ACTIVATED")
+            def portDownEvent = it.find { it.event == "PORT_DOWN" }
+            checkPortHistory(portDownEvent, isl.srcSwitch.dpId, isl.srcPort, "PORT_DOWN")
         }
 
         when: "Execute port UP on the src switch"
@@ -54,8 +57,11 @@ class PortHistorySpec extends HealthCheckSpecification {
         then: "Port history is updated on the src switch"
         def timestampAfterUp = System.currentTimeMillis()
         with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfterUp)) {
-            it.size() == 2
-            checkPortHistory(it[1], isl.srcSwitch.dpId, isl.srcPort, "PORT_UP")
+            it.size() == 4
+            def antiFlapDeactivatedEvent = it.find { it.event == "ANTI_FLAP_DEACTIVATED" }
+            checkPortHistory(antiFlapDeactivatedEvent, isl.srcSwitch.dpId, isl.srcPort, "ANTI_FLAP_DEACTIVATED")
+            def portUpEvent = it.find { it.event == "PORT_UP" }
+            checkPortHistory(portUpEvent, isl.srcSwitch.dpId, isl.srcPort, "PORT_UP")
         }
 
         and: "Port history on the dst switch is not empty when link is direct"
@@ -67,7 +73,7 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         where:
         [islDescription, historySizeOnDstSw, isl] << [
-                ["direct", 2, getTopology().islsForActiveSwitches.find { !it.aswitch }],
+                ["direct", 4, getTopology().islsForActiveSwitches.find { !it.aswitch }],
                 ["a-switch", 0, getTopology().islsForActiveSwitches.find {
                     it.aswitch?.inPort && it.aswitch?.outPort
                 }]
@@ -91,7 +97,7 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         def timestampAfter = System.currentTimeMillis()
         def portHistory = northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter)
-        assert portHistory.size() == 2
+        assert portHistory.size() == 4
 
         when: "Get port history on the src switch for incorrect timeline"
         def portH = northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampAfter, timestampBefore)
@@ -125,7 +131,7 @@ class PortHistorySpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
         def timestampAfter = System.currentTimeMillis()
-        northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 2
+        northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 4
 
         and: "Deactivate the src switch"
         def switchToDisconnect = isl.srcSwitch
@@ -135,7 +141,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         }
 
         then: "Port history on the src switch is still available"
-        northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 2
+        northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 4
 
         and: "Cleanup: Revive the src switch"
         lockKeeper.reviveSwitch(switchToDisconnect)
@@ -149,7 +155,7 @@ class PortHistorySpec extends HealthCheckSpecification {
             id != null
             switchId == switchId
             portNumber == port
-            it.event == event.toUpperCase() // PORT_UP, PORT_DOWN
+            it.event == event.toUpperCase() // PORT_UP, PORT_DOWN, ANTI_FLAP_ACTIVATED, ANTI_FLAP_DEACTIVATED
             date != null
         }
     }

@@ -8,8 +8,10 @@ INIT --> DOWN : port-down
 
 UP -> DOWN : port-down
 UP : enter / report "become UP"
+UP : enter / send the event to port history
 
 DOWN -> UP : port-up
 DOWN : enter / report "become DOWN"
+DOWN : enter / send the event to port history
 
 @enduml
