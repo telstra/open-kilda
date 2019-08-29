@@ -40,9 +40,12 @@ WarmingUpEnded -> Nothing : else
 note top on link #lightgreen: happy-path
 
 CoolingDown: enter / emit port-down
+CoolingDown: enter / save to history antiflap activated
 CoolingDown: exit [last-up] / emit port-up
+CoolingDown: exit / save to history antiflap deactivated
 CoolingDown: port-up / save port-up-time
 CoolingDown: port-down / save port-down-time
+CoolingDown: tick [(now() - last_stats_sent) > stats_send_interval] / send antiflap stats to history
 CoolingDown -u-> Nothing : tick [now() - last-event \n> delay_cooldown]
 note top on link #lightgreen: no events during cool down
 @enduml

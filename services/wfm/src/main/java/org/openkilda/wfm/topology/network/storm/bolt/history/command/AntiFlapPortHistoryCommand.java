@@ -13,13 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.share.history.model;
+package org.openkilda.wfm.topology.network.storm.bolt.history.command;
 
-public enum PortHistoryEvent {
-    PORT_UP,
-    PORT_DOWN,
+import org.openkilda.wfm.share.history.model.PortHistoryEvent;
+import org.openkilda.wfm.share.model.Endpoint;
 
-    ANTI_FLAP_ACTIVATED,
-    ANTI_FLAP_PERIODIC_STATS,
-    ANTI_FLAP_DEACTIVATED
+import java.time.Instant;
+
+public class AntiFlapPortHistoryCommand extends PortHistoryCommand {
+    public AntiFlapPortHistoryCommand(Endpoint endpoint, PortHistoryEvent event, Instant time) {
+        super(endpoint, event, time);
+    }
 }

@@ -21,6 +21,8 @@ port.up.down.throttling.delay.seconds.cool.down = {{ getv "/kilda_port_up_down_t
 
 bfd.port.offset = {{ getv "/kilda_bfd_port_offset" }}
 
+port.antiflap.stats.dumping.interval.seconds = 60
+
 opentsdb.hosts = http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
 opentsdb.timeout = {{ getv "/kilda_opentsdb_timeout" }}
 opentsdb.num.spouts = {{ getv "/kilda_opentsdb_num_spouts" }}
