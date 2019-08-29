@@ -27,6 +27,7 @@ class Context(object):
 
     root = os.path.join(os.sep, 'var', 'run', const.PROJECT_NAME)
     service = None
+    action = None
     _init_done = False
 
     def __init__(self, iface, rest_bind):
@@ -96,6 +97,10 @@ class Context(object):
 
     def set_service_adapter(self, adapter):
         self.service = adapter
+        return self
+
+    def set_action_adapter(self, adapter):
+        self.action = adapter
         return self
 
 

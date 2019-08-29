@@ -164,3 +164,12 @@ class SystemResourceDamagedError(SystemResourceError):
     def __str__(self):
         return 'Can\'t operate with resource kind={0} name={1!r}: {2}'.format(
                 *self.args)
+
+
+class SystemCompatibilityError(SystemResourceError):
+    def __init__(self, kind, name, details):
+        super().__init__(kind, name, details)
+
+    def __str__(self):
+        return ('Unable to configure system resource kind={0} name={1!r}'
+                ' - {2}').format(*self.args)
