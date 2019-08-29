@@ -58,6 +58,7 @@ import org.openkilda.northbound.dto.v1.switches.PortDto;
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult;
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchDto;
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncRequest;
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult;
 import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
@@ -612,6 +613,19 @@ public class NorthboundServiceImpl implements NorthboundService {
         return restTemplate.exchange(
                 "/api/v1/network/paths?src_switch={src_switch}&dst_switch={dst_switch}", HttpMethod.GET,
                 new HttpEntity(buildHeadersWithCorrelationId()), PathsDto.class, srcSwitch, dstSwitch).getBody();
+    }
+
+    @Override
+    public SwitchPropertiesDto getSwitchProperties(SwitchId switchId) {
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/properties", HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), SwitchPropertiesDto.class, switchId).getBody();
+    }
+
+    @Override
+    public SwitchPropertiesDto updateSwitchProperties(SwitchId switchId, SwitchPropertiesDto switchFeatures) {
+        return restTemplate.exchange("/api/v1/switches/{switch_id}/properties", HttpMethod.PUT,
+                new HttpEntity<>(switchFeatures, buildHeadersWithCorrelationId()), SwitchPropertiesDto.class,
+                switchId).getBody();
     }
 
     private HttpHeaders buildHeadersWithCorrelationId() {

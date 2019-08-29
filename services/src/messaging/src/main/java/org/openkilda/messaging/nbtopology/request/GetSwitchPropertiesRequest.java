@@ -13,14 +13,24 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.repositories;
+package org.openkilda.messaging.nbtopology.request;
 
-import org.openkilda.model.SwitchFeatures;
+import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
 import org.openkilda.model.SwitchId;
 
-import java.util.Optional;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+import lombok.ToString;
 
-public interface SwitchFeaturesRepository extends Repository<SwitchFeatures> {
-    Optional<SwitchFeatures> findBySwitchId(SwitchId switchId);
+@SuppressWarnings("squid:MaximumInheritanceDepth")
+@ReadRequest
+@Getter
+@ToString
+public class GetSwitchPropertiesRequest extends SwitchesBaseRequest {
+    @JsonProperty("switch_id")
+    private SwitchId switchId;
 
+    public GetSwitchPropertiesRequest(@JsonProperty("switch_id") SwitchId switchId) {
+        this.switchId = switchId;
+    }
 }

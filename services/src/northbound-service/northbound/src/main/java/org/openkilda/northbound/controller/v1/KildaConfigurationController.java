@@ -51,7 +51,7 @@ public class KildaConfigurationController extends BaseController {
     }
 
     @PatchMapping
-    @ApiOperation(value = "Update kilda configuration")
+    @ApiOperation(value = "Update kilda configuration", response = KildaConfigurationDto.class)
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<KildaConfigurationDto> updateKildaConfiguration(@RequestBody KildaConfigurationDto dto) {
         return kildaConfigurationService.updateKildaConfiguration(dto);

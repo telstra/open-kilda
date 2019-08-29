@@ -47,7 +47,7 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeatures;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.pce.Path;
@@ -58,7 +58,6 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchFeaturesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.wfm.CommandContext;
@@ -67,6 +66,7 @@ import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
 
+import com.google.common.collect.Sets;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -105,15 +105,13 @@ public class FlowRerouteServiceTest extends AbstractFlowTest {
 
         SwitchRepository switchRepository = mock(SwitchRepository.class);
         when(switchRepository.reload(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(switchRepository.findById(any())).thenReturn(
+                Optional.of(Switch.builder().switchId(new SwitchId(1)).features(Sets.newHashSet(SwitchFeature.METERS))
+                        .build()));
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
 
         FeatureTogglesRepository featureTogglesRepository = mock(FeatureTogglesRepository.class);
         when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
-
-        SwitchFeaturesRepository featuresRepository = mock(SwitchFeaturesRepository.class);
-        when(featuresRepository.findBySwitchId(any(SwitchId.class)))
-                .thenReturn(Optional.of(SwitchFeatures.builder().build()));
-        when(repositoryFactory.createSwitchFeaturesRepository()).thenReturn(featuresRepository);
 
         FlowEventRepository flowEventRepository = mock(FlowEventRepository.class);
         when(flowEventRepository.existsByTaskId(any())).thenReturn(false);
