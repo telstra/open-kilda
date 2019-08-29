@@ -243,7 +243,7 @@ services:
     build:
       context: services/src/floodlight-service/floodlight-modules
     image: "kilda/floodlight:${full_build_number:-latest}"
-    command: ["floodlight", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1"]
+    command: ["floodlight", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1"]
     ports:
       - "6653:6653"
       - "8180:8080"
@@ -270,7 +270,7 @@ services:
     build:
       context: services/src/floodlight-service/floodlight-modules
     image: "kilda/floodlight:${full_build_number:-latest}"
-    command: ["floodlightStats", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1"]
+    command: ["floodlightStats", "-Dorg.openkilda.floodlight.KafkaChannel.floodlight-region=1", "-Dorg.openkilda.floodlight.KafkaChannel.kafka-groupid=floodlight_1"]
     ports:
       - "6654:6653"
       - "8181:8080"
