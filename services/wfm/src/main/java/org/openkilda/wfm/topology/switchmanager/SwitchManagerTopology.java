@@ -68,8 +68,7 @@ public class SwitchManagerTopology extends AbstractTopology<SwitchManagerTopolog
                 .build();
         builder.setSpout(HUB_SPOUT, buildKafkaSpout(topologyConfig.getKafkaSwitchManagerNbTopic(), HUB_SPOUT));
         builder.setBolt(SwitchManagerHub.ID, new SwitchManagerHub(hubConfig, persistenceManager,
-                topologyConfig.getFlowMeterMinBurstSizeInKbits(), topologyConfig.getFlowMeterBurstCoefficient(),
-                        configurationProvider.getConfiguration(FlowResourcesConfig.class)),
+                topologyConfig, configurationProvider.getConfiguration(FlowResourcesConfig.class)),
                 topologyConfig.getNewParallelism())
                 .fieldsGrouping(HUB_SPOUT, FIELDS_KEY)
                 .directGrouping(SpeakerWorkerBolt.ID, SwitchManagerHub.INCOME_STREAM)
