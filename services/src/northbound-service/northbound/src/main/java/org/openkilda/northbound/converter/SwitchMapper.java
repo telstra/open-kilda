@@ -77,6 +77,10 @@ public interface SwitchMapper {
         return dto;
     }
 
+    @Mapping(source = "ofDescriptionManufacturer", target = "manufacturer")
+    @Mapping(source = "ofDescriptionHardware", target = "hardware")
+    @Mapping(source = "ofDescriptionSoftware", target = "software")
+    @Mapping(source = "ofDescriptionSerialNumber", target = "serialNumber")
     SwitchDto toSwitchDto(Switch data);
 
     @AfterMapping
