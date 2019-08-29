@@ -20,5 +20,6 @@ public enum PortHistoryEvent {
     PORT_DOWN,
 
     ANTI_FLAP_ACTIVATED,
+    ANTI_FLAP_PERIODIC_STATS,
     ANTI_FLAP_DEACTIVATED
 }

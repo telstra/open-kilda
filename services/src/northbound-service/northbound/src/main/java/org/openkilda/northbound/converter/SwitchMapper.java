@@ -115,6 +115,8 @@ public interface SwitchMapper {
                     + ".collect(java.util.stream.Collectors.toSet()))")
     org.openkilda.messaging.model.SwitchPropertiesDto map(SwitchPropertiesDto entry);
 
+    @Mapping(source = "upEventsCount", target = "upCount")
+    @Mapping(source = "downEventsCount", target = "downCount")
     @Mapping(target = "date", expression = "java(Date.from(response.getTime()))")
     PortHistoryResponse map(PortHistoryPayload response);
 

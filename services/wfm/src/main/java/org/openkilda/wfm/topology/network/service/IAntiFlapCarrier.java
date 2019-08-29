@@ -15,10 +15,18 @@
 
 package org.openkilda.wfm.topology.network.service;
 
+import org.openkilda.wfm.share.history.model.PortHistoryEvent;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
+
+import java.time.Instant;
 
 public interface IAntiFlapCarrier {
 
     void filteredLinkStatus(Endpoint endpoint, LinkStatus status);
+
+    void sendAntiFlapPortHistoryEvent(Endpoint endpoint, PortHistoryEvent event, Instant time);
+
+    void sendAntiFlapStatsPortHistoryEvent(Endpoint endpoint, PortHistoryEvent event, Instant time,
+                                           int upEvents, int downEvents);
 }
