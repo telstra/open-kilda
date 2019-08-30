@@ -1,4 +1,4 @@
-/* Copyright 2017 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.v1.flows.FlowApplicationsDto;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PingInput;
@@ -357,5 +358,48 @@ public class FlowController extends BaseController {
                 () -> Instant.ofEpochSecond(timeTo).minus(1, ChronoUnit.DAYS).getEpochSecond()
         );
         return flowService.listFlowEvents(flowId, timeFrom, timeTo);
+    }
+
+    /**
+     * Get enabled flow applications.
+     *
+     * @param flowId        flow id.
+     * @return enabled flow applications.
+     */
+    @ApiOperation(value = "Gets enabled flow applications", response = FlowApplicationsDto.class)
+    @GetMapping(value = "/{flow-id:.+}/applications")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowApplicationsDto> getFlowApplications(@PathVariable(name = "flow-id") String flowId) {
+        return flowService.getFlowApplications(flowId);
+    }
+
+    /**
+     * Add flow application for the flow.
+     *
+     * @param flowId        flow id.
+     * @param app           flow application.
+     * @return enabled flow applications.
+     */
+    @ApiOperation(value = "Add flow application for the flow", response = FlowApplicationsDto.class)
+    @PatchMapping(value = "/{flow-id:.+}/applications/{application}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowApplicationsDto> addFlowApp(@PathVariable(name = "flow-id") String flowId,
+                                                             @PathVariable(name = "application") String app) {
+        return flowService.addFlowApplication(flowId, app);
+    }
+
+    /**
+     * Remove flow application for the flow.
+     *
+     * @param flowId        flow id
+     * @param app           flow application.
+     * @return enabled flow applications.
+     */
+    @ApiOperation(value = "Remove flow application for the flow", response = FlowApplicationsDto.class)
+    @DeleteMapping(value = "/{flow-id:.+}/applications/{application}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowApplicationsDto> removeFlowApp(@PathVariable(name = "flow-id") String flowId,
+                                                                @PathVariable(name = "application") String app) {
+        return flowService.removeFlowApplications(flowId, app);
     }
 }

@@ -21,12 +21,16 @@ import static org.openkilda.northbound.utils.async.AsyncUtils.collectResponses;
 
 import org.openkilda.config.provider.ConfigurationProvider;
 import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.flow.FlowAddApplicationRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
+import org.openkilda.messaging.command.flow.FlowEnabledApplicationsReadRequest;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.FlowReadRequest;
+import org.openkilda.messaging.command.flow.FlowRemoveApplicationRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowUpdateRequest;
 import org.openkilda.messaging.command.flow.FlowsDumpRequest;
@@ -81,6 +85,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.PathMapper;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.v1.flows.FlowApplicationsDto;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
 import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto;
@@ -175,6 +180,9 @@ public class FlowServiceImpl implements FlowService {
      */
     @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
     private String nbWorkerTopic;
+
+    @Value("#{kafkaTopicsConfig.getTopoApplicationsNbTopic()}")
+    private String applicationsTopic;
 
     @Value("${neo4j.uri}")
     private String neoUri;
@@ -1147,4 +1155,27 @@ public class FlowServiceImpl implements FlowService {
                         flowMapper.toSwapOutput(response.getSecondFlow().getPayload())));
     }
 
+    @Override
+    public CompletableFuture<FlowApplicationsDto> getFlowApplications(String flowId) {
+        logger.debug("Get flow applications request for the flow {}", flowId);
+        return processFlowApplicationsRequest(new FlowEnabledApplicationsReadRequest(flowId));
+    }
+
+    @Override
+    public CompletableFuture<FlowApplicationsDto> addFlowApplication(String flowId, String application) {
+        logger.debug("Add flow application request for the flow {}", flowId);
+        return processFlowApplicationsRequest(new FlowAddApplicationRequest(flowId, application));
+    }
+
+    @Override
+    public CompletableFuture<FlowApplicationsDto> removeFlowApplications(String flowId, String application) {
+        logger.debug("Remove flow application request for the flow {}", flowId);
+        return processFlowApplicationsRequest(new FlowRemoveApplicationRequest(flowId, application));
+    }
+
+    private CompletableFuture<FlowApplicationsDto> processFlowApplicationsRequest(CommandData data) {
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(applicationsTopic, request)
+                .thenApply(FlowApplicationsDto.class::cast);
+    }
 }
