@@ -39,6 +39,7 @@ import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.flow.FlowEnabledApplicationsResponse;
 import org.openkilda.messaging.info.flow.FlowHistoryData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
@@ -1176,6 +1177,7 @@ public class FlowServiceImpl implements FlowService {
     private CompletableFuture<FlowApplicationsDto> processFlowApplicationsRequest(CommandData data) {
         CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), RequestCorrelationId.getId());
         return messagingChannel.sendAndGet(applicationsTopic, request)
-                .thenApply(FlowApplicationsDto.class::cast);
+                .thenApply(FlowEnabledApplicationsResponse.class::cast)
+                .thenApply(flowMapper::toFlowApplicationsDto);
     }
 }
