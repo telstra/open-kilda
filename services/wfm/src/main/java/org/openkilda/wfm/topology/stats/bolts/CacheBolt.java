@@ -26,6 +26,7 @@ import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsEntry;
+import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
@@ -40,6 +41,7 @@ import org.openkilda.wfm.topology.stats.StatsComponentType;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.Commands;
 import org.openkilda.wfm.topology.stats.bolts.CacheFilterBolt.FieldsNames;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -49,6 +51,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 public class CacheBolt extends AbstractBolt {
@@ -82,17 +85,7 @@ public class CacheBolt extends AbstractBolt {
     private void initFlowCache(FlowRepository flowRepository) {
         try {
             flowRepository.findAll().stream()
-                    .flatMap(flow -> {
-                        FlowPath forward = flow.getForwardPath();
-                        forward.setSrcSwitch(flow.getSrcSwitch());
-                        forward.setDestSwitch(flow.getDestSwitch());
-
-                        FlowPath reverse = flow.getReversePath();
-                        reverse.setSrcSwitch(flow.getDestSwitch());
-                        reverse.setDestSwitch(flow.getSrcSwitch());
-
-                        return Stream.of(forward, reverse);
-                    })
+                    .flatMap(this::extractAllFlowPaths)
                     .forEach(path -> {
                         CacheFlowEntry entry = new CacheFlowEntry(
                                 path.getFlow().getFlowId(),
@@ -114,6 +107,19 @@ public class CacheBolt extends AbstractBolt {
         } catch (Exception ex) {
             logger.error("Error on initFlowCache", ex);
         }
+    }
+
+    private Stream<FlowPath> extractAllFlowPaths(Flow flow) {
+        return Stream.concat(
+                Stream.of(flow.getForwardPath(), flow.getProtectedForwardPath()).filter(Objects::nonNull).peek(p -> {
+                    p.setSrcSwitch(flow.getSrcSwitch());
+                    p.setDestSwitch(flow.getDestSwitch());
+                }),
+                Stream.of(flow.getReversePath(), flow.getProtectedReversePath()).filter(Objects::nonNull).peek(p -> {
+                    p.setSrcSwitch(flow.getDestSwitch());
+                    p.setDestSwitch(flow.getSrcSwitch());
+                })
+        );
     }
 
     /**
@@ -188,7 +194,8 @@ public class CacheBolt extends AbstractBolt {
         logger.debug("updated cookieToFlow: {}", cookieToFlow);
     }
 
-    private Map<Long, CacheFlowEntry> createCookieToFlowCache(FlowStatsData data) {
+    @VisibleForTesting
+    Map<Long, CacheFlowEntry> createCookieToFlowCache(FlowStatsData data) {
         Map<Long, CacheFlowEntry> cache = new HashMap<>();
 
         for (FlowStatsEntry entry : data.getStats()) {
