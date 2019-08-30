@@ -13,24 +13,17 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.apps;
+package org.openkilda.wfm.topology.applications;
 
-import org.openkilda.messaging.command.CommandData;
+import org.openkilda.wfm.topology.AbstractTopologyConfig;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+public interface AppsTopologyConfig extends AbstractTopologyConfig {
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@EqualsAndHashCode(callSuper = false)
-@JsonNaming(value = SnakeCaseStrategy.class)
-public class FlowAppsReadRequest extends CommandData {
-    private String flowId;
+    default String getKafkaApplicationsNbTopic() {
+        return getKafkaTopics().getTopoAppsNbTopic();
+    }
+
+    default String getKafkaNorthboundTopic() {
+        return getKafkaTopics().getNorthboundTopic();
+    }
 }

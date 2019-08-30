@@ -17,6 +17,8 @@ package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRequest.Type;
+import org.openkilda.messaging.info.apps.AppsEntry;
+import org.openkilda.messaging.info.apps.FlowAppsResponse;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
@@ -34,6 +36,8 @@ import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.FlowPathStatus;
+import org.openkilda.northbound.dto.v1.flows.AppsDto;
+import org.openkilda.northbound.dto.v1.flows.FlowAppsDto;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput;
@@ -157,6 +161,10 @@ public interface FlowMapper {
     @Mapping(target = "sourceVlan", expression = "java(request.getSource().getVlanId())")
     @Mapping(target = "destinationVlan", expression = "java(request.getDestination().getVlanId())")
     SwapFlowDto toSwapFlowDto(SwapFlowPayload request);
+
+    FlowAppsDto toFlowAppsDto(FlowAppsResponse response);
+
+    AppsDto toAppsDto(AppsEntry entry);
 
     /**
      * Convert {@link FlowState} to {@link String}.

@@ -33,8 +33,6 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode(callSuper = false)
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class FlowRemoveAppRequest extends CommandData {
-    private static final long serialVersionUID = 1L;
-
     private String flowId;
     private String application;
     private SwitchId switchId;

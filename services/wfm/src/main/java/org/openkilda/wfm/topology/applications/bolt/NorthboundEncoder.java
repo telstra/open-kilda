@@ -13,24 +13,11 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.apps;
+package org.openkilda.wfm.topology.applications.bolt;
 
-import org.openkilda.messaging.command.CommandData;
+import org.openkilda.wfm.share.bolt.KafkaEncoder;
+import org.openkilda.wfm.topology.applications.AppsTopology.ComponentId;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@EqualsAndHashCode(callSuper = false)
-@JsonNaming(value = SnakeCaseStrategy.class)
-public class FlowAppsReadRequest extends CommandData {
-    private String flowId;
+public class NorthboundEncoder extends KafkaEncoder {
+    public static final String BOLT_ID = ComponentId.NORTHBOUND_ENCODER.toString();
 }

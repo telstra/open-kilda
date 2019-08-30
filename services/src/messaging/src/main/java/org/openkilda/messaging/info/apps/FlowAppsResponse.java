@@ -13,10 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.command.apps;
+package org.openkilda.messaging.info.apps;
 
-import org.openkilda.messaging.command.CommandData;
-import org.openkilda.model.SwitchId;
+import org.openkilda.messaging.info.InfoData;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -26,16 +25,16 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class FlowAddAppRequest extends CommandData {
+public class FlowAppsResponse extends InfoData {
     private String flowId;
-    private String application;
-    private SwitchId switchId;
-    private Integer portNumber;
-    private Integer vlanId;
+    private List<AppsEntry> srcApps;
+    private List<AppsEntry> dstApps;
 }
