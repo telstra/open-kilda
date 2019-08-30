@@ -356,7 +356,7 @@ public class DatabaseSupportImpl implements Database {
     @Override
     public List<Object> dumpAllNodes() {
         Session session = ((Neo4jSessionFactory) transactionManager).getSession();
-        String query = "MATCH (n) return n";
+        String query = "MATCH (n) RETURN n";
         Result result = session.query(query, Collections.emptyMap());
         return Lists.newArrayList(result.queryResults()).stream()
                 .map(n -> n.get("n")).collect(toList());
@@ -365,10 +365,30 @@ public class DatabaseSupportImpl implements Database {
     @Override
     public List<Map<String, Object>> dumpAllRelations() {
         Session session = ((Neo4jSessionFactory) transactionManager).getSession();
-        String query = "MATCH ()-[r]->() return r";
+        String query = "MATCH ()-[r]->() RETURN r";
         Result result = session.query(query, Collections.emptyMap());
         return Lists.newArrayList(result.queryResults()).stream()
                 .map(r -> ((RelationshipModel) r.get("r")).getPropertyList().stream()
+                        .collect(toMap(Property::getKey, Property::getValue)))
+                .collect(toList());
+    }
+
+    @Override
+    public List<Object> dumpAllSwitches() {
+        Session session = ((Neo4jSessionFactory) transactionManager).getSession();
+        String query = "MATCH (s:switch) RETURN s";
+        Result result = session.query(query, Collections.emptyMap());
+        return Lists.newArrayList(result.queryResults()).stream()
+                .map(n -> n.get("s")).collect(toList());
+    }
+
+    @Override
+    public List<Object> dumpAllIsls() {
+        Session session = ((Neo4jSessionFactory) transactionManager).getSession();
+        String query = "MATCH ()-[i:isl]->() RETURN i";
+        Result result = session.query(query, Collections.emptyMap());
+        return Lists.newArrayList(result.queryResults()).stream()
+                .map(r -> ((RelationshipModel) r.get("i")).getPropertyList().stream()
                         .collect(toMap(Property::getKey, Property::getValue)))
                 .collect(toList());
     }
