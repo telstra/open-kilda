@@ -20,7 +20,11 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.northbound.utils.async.AsyncUtils.collectResponses;
 
 import org.openkilda.messaging.Destination;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
+import org.openkilda.messaging.command.apps.FlowAddAppRequest;
+import org.openkilda.messaging.command.apps.FlowAppsReadRequest;
+import org.openkilda.messaging.command.apps.FlowRemoveAppRequest;
 import org.openkilda.messaging.command.flow.FlowCreateRequest;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
@@ -35,6 +39,7 @@ import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.apps.FlowAppsResponse;
 import org.openkilda.messaging.info.flow.FlowHistoryData;
 import org.openkilda.messaging.info.flow.FlowInfoData;
 import org.openkilda.messaging.info.flow.FlowOperation;
@@ -69,10 +74,13 @@ import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.messaging.payload.history.FlowEventPayload;
+import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.PathMapper;
 import org.openkilda.northbound.dto.BatchResults;
+import org.openkilda.northbound.dto.v1.flows.FlowAddAppDto;
+import org.openkilda.northbound.dto.v1.flows.FlowAppsDto;
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto;
@@ -133,6 +141,12 @@ public class FlowServiceImpl implements FlowService {
      */
     @Value("#{kafkaTopicsConfig.getPingTopic()}")
     private String pingTopic;
+
+    /**
+     * The kafka topic for `apps` topology.
+     */
+    @Value("#{kafkaTopicsConfig.getTopoAppsNbTopic()}")
+    private String appsTopic;
 
     @Value("${neo4j.uri}")
     private String neoUri;
@@ -664,5 +678,57 @@ public class FlowServiceImpl implements FlowService {
         return messagingChannel.sendAndGet(nbworkerTopic, message)
                 .thenApply(org.openkilda.messaging.nbtopology.response.FlowConnectedDevicesResponse.class::cast)
                 .thenApply(connectedDeviceMapper::toResponse);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<FlowAppsDto> getFlowApplications(String flowId) {
+        logger.debug("Get flow applications request for the flow {}", flowId);
+        return processFlowAppsRequest(FlowAppsReadRequest.builder().flowId(flowId).build());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<FlowAppsDto> addFlowApplication(String flowId, String application,
+                                                             FlowAddAppDto flowAddAppDto) {
+        logger.debug("Add flow application request for the flow {}", flowId);
+        FlowAddAppRequest.FlowAddAppRequestBuilder flowAddAppRequestBuilder = FlowAddAppRequest.builder()
+                .flowId(flowId)
+                .application(application);
+
+        if (flowAddAppDto != null && flowAddAppDto.getEndpoint() != null) {
+            flowAddAppRequestBuilder.switchId(flowAddAppDto.getEndpoint().getSwitchId())
+                    .portNumber(flowAddAppDto.getEndpoint().getPortNumber())
+                    .vlanId(flowAddAppDto.getEndpoint().getVlanId());
+        }
+
+        return processFlowAppsRequest(flowAddAppRequestBuilder.build());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public CompletableFuture<FlowAppsDto> removeFlowApplications(String flowId, String application,
+                                                                 SwitchId switchId, Integer port, Integer vlan) {
+        logger.debug("Remove flow application request for the flow {}", flowId);
+        FlowRemoveAppRequest flowRemoveAppRequest = FlowRemoveAppRequest.builder().flowId(flowId)
+                .application(application)
+                .switchId(switchId)
+                .portNumber(port)
+                .vlanId(vlan)
+                .build();
+        return processFlowAppsRequest(flowRemoveAppRequest);
+    }
+
+    private CompletableFuture<FlowAppsDto> processFlowAppsRequest(CommandData data) {
+        CommandMessage request = new CommandMessage(data, System.currentTimeMillis(), RequestCorrelationId.getId());
+        return messagingChannel.sendAndGet(appsTopic, request)
+                .thenApply(FlowAppsResponse.class::cast)
+                .thenApply(flowMapper::toFlowAppsDto);
     }
 }

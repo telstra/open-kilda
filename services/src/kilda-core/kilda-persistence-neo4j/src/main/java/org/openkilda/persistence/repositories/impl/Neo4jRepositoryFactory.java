@@ -18,8 +18,10 @@ package org.openkilda.persistence.repositories.impl;
 import org.openkilda.model.IslConfig;
 import org.openkilda.persistence.NetworkConfig;
 import org.openkilda.persistence.TransactionManager;
+import org.openkilda.persistence.repositories.ApplicationRepository;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
 import org.openkilda.persistence.repositories.ConnectedDeviceRepository;
+import org.openkilda.persistence.repositories.ExclusionIdRepository;
 import org.openkilda.persistence.repositories.FeatureTogglesRepository;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
@@ -172,5 +174,15 @@ public class Neo4jRepositoryFactory implements RepositoryFactory {
     @Override
     public PortPropertiesRepository createPortPropertiesRepository() {
         return new Neo4jPortPropertiesRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public ApplicationRepository createApplicationRepository() {
+        return new Neo4jApplicationRepository(sessionFactory, transactionManager);
+    }
+
+    @Override
+    public ExclusionIdRepository createExclusionIdRepository() {
+        return new Neo4jExclusionIdRepository(sessionFactory, transactionManager);
     }
 }

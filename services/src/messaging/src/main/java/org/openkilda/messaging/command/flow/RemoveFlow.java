@@ -75,8 +75,8 @@ public class RemoveFlow extends BaseFlow {
      * @param ruleType type of flow
      * @throws IllegalArgumentException if any of parameters parameters is null
      */
-    @JsonCreator
     @Builder
+    @JsonCreator
     public RemoveFlow(@JsonProperty(TRANSACTION_ID) UUID transactionId,
                       @JsonProperty(FLOW_ID) String flowId,
                       @JsonProperty("cookie") Long cookie,

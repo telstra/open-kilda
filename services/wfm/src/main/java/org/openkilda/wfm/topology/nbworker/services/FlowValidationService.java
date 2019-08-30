@@ -21,6 +21,7 @@ import org.openkilda.messaging.nbtopology.response.FlowValidationResponse;
 import org.openkilda.messaging.nbtopology.response.PathDiscrepancyEntity;
 import org.openkilda.model.EncapsulationId;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowApplication;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.Meter;
@@ -184,7 +185,8 @@ public class FlowValidationService {
 
         EncapsulationId encapsulationId = null;
 
-        if (!flow.isOneSwitchFlow()) {
+        if (flowPath.getApplications() != null && flowPath.getApplications().contains(FlowApplication.TELESCOPE)
+                || !flow.isOneSwitchFlow()) {
             Optional<EncapsulationResources> encapsulationResources =
                     flowResourcesManager.getEncapsulationResources(flowPath.getPathId(), oppositePath.getPathId(),
                             flow.getEncapsulationType());
@@ -273,6 +275,10 @@ public class FlowValidationService {
         if (matched.getOutVlan() != expected.getOutVlan()) {
             discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "outVlan",
                     String.valueOf(expected.getOutVlan()), String.valueOf(matched.getOutVlan())));
+        }
+        if (matched.getWriteMetadata() != expected.getWriteMetadata()) {
+            discrepancies.add(new PathDiscrepancyEntity(expected.toString(), "writeMetadata",
+                    String.valueOf(expected.getWriteMetadata()), String.valueOf(matched.getWriteMetadata())));
         }
         //meters on OF_12 switches are not supported, so skip them.
         if ((matched.getVersion() == null || matched.getVersion().compareTo("OF_12") > 0)

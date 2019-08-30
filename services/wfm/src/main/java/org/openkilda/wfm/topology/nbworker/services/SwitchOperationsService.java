@@ -286,6 +286,10 @@ public class SwitchOperationsService implements ILinkOperationsServiceCarrier {
             final boolean previousMultiTableFlag = switchProperties.isMultiTable();
             switchProperties.setMultiTable(update.isMultiTable());
             switchProperties.setSupportedTransitEncapsulation(update.getSupportedTransitEncapsulation());
+            switchProperties.setTelescopePort(update.getTelescopePort());
+            switchProperties.setTelescopeIngressVlan(update.getTelescopeIngressVlan());
+            switchProperties.setTelescopeEgressVlan(update.getTelescopeEgressVlan());
+
             switchPropertiesRepository.createOrUpdate(switchProperties);
             if (previousMultiTableFlag != update.isMultiTable()) {
                 carrier.requestSwitchSync(switchId);

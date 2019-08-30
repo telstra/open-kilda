@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -20,7 +20,9 @@ import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.messaging.command.flow.RuleType;
 import org.openkilda.messaging.command.switches.ConnectModeRequest;
 import org.openkilda.messaging.command.switches.DeleteRulesCriteria;
+import org.openkilda.model.FlowApplication;
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.Metadata;
 import org.openkilda.model.OutputVlanType;
 
 import net.floodlightcontroller.core.IOFSwitch;
@@ -30,11 +32,15 @@ import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFMeterConfig;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 
 import java.net.InetAddress;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface ISwitchManager extends IFloodlightService {
     /**
@@ -277,13 +283,16 @@ public interface ISwitchManager extends IFloodlightService {
      * @param encapsulationType flow encapsulation type
      * @param enableLldp        if True LLDP packets will be send to LLDP rule
      * @param multiTable multitable pipeline flag
+     * @param applications flow applications
+     * @param appMetadata flow applications metadata
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
     long installIngressFlow(DatapathId dpid, DatapathId dstDpid, String flowId, Long cookie, int inputPort,
                             int outputPort, int inputVlanId,
                             int transitTunnelId, OutputVlanType outputVlanType, long meterId,
-                            FlowEncapsulationType encapsulationType, boolean enableLldp, boolean multiTable)
+                            FlowEncapsulationType encapsulationType, boolean enableLldp, boolean multiTable,
+                            Set<FlowApplication> applications, Metadata appMetadata)
             throws SwitchOperationException;
 
     /**
@@ -313,13 +322,14 @@ public interface ISwitchManager extends IFloodlightService {
      * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
      * @param encapsulationType flow encapsulation type
      * @param multiTable multitable pipeline flag
+     * @param applications flow applications
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
     long installEgressFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
                            int transitTunnelId, int outputVlanId, OutputVlanType outputVlanType,
                            FlowEncapsulationType encapsulationType,
-                           boolean multiTable)
+                           boolean multiTable, Set<FlowApplication> applications, Metadata appMetadata)
             throws SwitchOperationException;
 
     /**
@@ -351,13 +361,14 @@ public interface ISwitchManager extends IFloodlightService {
      * @param outputVlanType type of action to apply to the outputVlanId if greater than 0
      * @param enableLldp     if True LLDP packets will be send to LLDP rule
      * @param multiTable multitable pipeline flag
+     * @param applications flow applications
      * @return transaction id
      * @throws SwitchOperationException Switch not found
      */
-    long installOneSwitchFlow(final DatapathId dpid, final String flowId, final Long cookie,
-                                                      final int inputPort, final int outputPort, int inputVlanId,
-                                                      int outputVlanId, final OutputVlanType outputVlanType,
-                                                      final long meterId, boolean enableLldp, boolean multiTable)
+    long installOneSwitchFlow(DatapathId dpid, String flowId, Long cookie, int inputPort, int outputPort,
+                              int inputVlanId, int outputVlanId, OutputVlanType outputVlanType, long meterId,
+                              boolean enableLldp, boolean multiTable,
+                              Set<FlowApplication> applications, Metadata appMetadata)
             throws SwitchOperationException;
 
     /**
@@ -537,4 +548,64 @@ public interface ISwitchManager extends IFloodlightService {
      * @return true if tracking is enabled.
      */
     boolean isTrackingEnabled();
+
+    /**
+     * Install exclusion.
+     *
+     * @param dpid              switch id.
+     * @param srcIp             source IP address.
+     * @param srcPort           source port.
+     * @param dstIp             destination IP address.
+     * @param dstPort           destination port.
+     * @param proto             IP protocol.
+     * @param ethType           Ethernet type.
+     * @param metadata          metadata. Used to match by flow.
+     * @return transaction id.
+     * @throws SwitchOperationException Switch not found.
+     */
+    long installExclusion(DatapathId dpid, Long cookie, IPv4Address srcIp, Integer srcPort,
+                          IPv4Address dstIp, Integer dstPort, IpProtocol proto, EthType ethType,
+                          Metadata metadata, int timeout)
+            throws SwitchOperationException;
+
+    /**
+     * Remove exclusion.
+     *
+     * @param dpid              switch id.
+     * @param srcIp             source IP address.
+     * @param srcPort           source port.
+     * @param dstIp             destination IP address.
+     * @param dstPort           destination port.
+     * @param proto             IP protocol.
+     * @param ethType           Ethernet type.
+     * @param metadata          metadata. Used to match by flow.
+     * @return transaction id.
+     * @throws SwitchOperationException Switch not found.
+     */
+    long removeExclusion(DatapathId dpid, Long cookie, IPv4Address srcIp, Integer srcPort,
+                         IPv4Address dstIp, Integer dstPort, IpProtocol proto, EthType ethType, Metadata metadata)
+            throws SwitchOperationException;
+
+    /**
+     *Install Telescope flow.
+     *
+     * @param dpid              switch id.
+     * @param cookie            cookie.
+     * @param metadata          metadata. Used to match by flow.
+     * @return transaction id.
+     * @throws SwitchOperationException Switch not found.
+     */
+    Long installTelescopeFlow(DatapathId dpid, long cookie, Metadata metadata, int telescopePort, int telescopeVlan)
+            throws SwitchOperationException;
+
+    /**
+     *Remove Telescope flow.
+     *
+     * @param dpid              switch id.
+     * @param cookie            cookie.
+     * @param metadata          metadata. Used to match by flow.
+     * @return transaction id.
+     * @throws SwitchOperationException Switch not found.
+     */
+    Long removeTelescopeFlow(DatapathId dpid, long cookie, Metadata metadata) throws SwitchOperationException;
 }
