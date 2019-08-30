@@ -32,11 +32,13 @@ import org.openkilda.model.OutputVlanType;
 
 import org.junit.Test;
 
+import java.util.HashSet;
 import java.util.UUID;
 
 public class InstallOneSwitchFlowTest {
     private InstallOneSwitchFlow flow = new InstallOneSwitchFlow(UUID.randomUUID(), flowName, 0L, switchId,
-            inputPort, outputPort, inputVlanId, outputVlanId, outputVlanType, bandwidth, meterId, false, false);
+            inputPort, outputPort, inputVlanId, outputVlanId, outputVlanType, bandwidth, meterId,
+            false, false, new HashSet<>());
 
     @Test
     public void toStringTest() {

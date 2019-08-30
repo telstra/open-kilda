@@ -51,6 +51,8 @@ public class FlowResourcesManager {
     private final MeterPool meterPool;
     private final Map<FlowEncapsulationType, EncapsulationResourcesProvider> encapsulationResourcesProviders;
 
+    private final ExclusionIdPool exclusionIdPool;
+
     public FlowResourcesManager(PersistenceManager persistenceManager, FlowResourcesConfig config) {
         transactionManager = persistenceManager.getTransactionManager();
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
@@ -65,6 +67,8 @@ public class FlowResourcesManager {
                 .put(FlowEncapsulationType.VXLAN, new VxlanPool(persistenceManager,
                         config.getMinFlowVxlan(), config.getMaxFlowVxlan()))
                 .build();
+
+        exclusionIdPool = new ExclusionIdPool(persistenceManager);
     }
 
     /**
@@ -222,5 +226,13 @@ public class FlowResourcesManager {
                                                                       PathId oppositePathId,
                                                                       FlowEncapsulationType encapsulationType) {
         return getEncapsulationResourcesProvider(encapsulationType).get(pathId, oppositePathId);
+    }
+
+    /**
+     * Deallocate the flow exclusion id resources.
+     */
+    public void deallocateExclusionIdResources(String flowId) {
+        log.debug("Deallocate exclusion is resources for flow {}.", flowId);
+        exclusionIdPool.deallocate(flowId);
     }
 }

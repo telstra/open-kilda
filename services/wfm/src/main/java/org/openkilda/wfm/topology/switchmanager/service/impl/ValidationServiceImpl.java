@@ -22,8 +22,10 @@ import org.openkilda.messaging.info.meter.MeterEntry;
 import org.openkilda.messaging.info.rule.FlowEntry;
 import org.openkilda.messaging.info.switches.MeterInfoEntry;
 import org.openkilda.messaging.info.switches.MeterMisconfiguredInfoEntry;
+import org.openkilda.model.ApplicationRule;
 import org.openkilda.model.Cookie;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowApplication;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.LldpResources;
 import org.openkilda.model.Meter;
@@ -31,6 +33,7 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.repositories.ApplicationRepository;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.wfm.topology.switchmanager.SwitchManagerTopologyConfig;
 import org.openkilda.wfm.topology.switchmanager.model.SimpleMeterEntry;
@@ -56,6 +59,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ValidationServiceImpl implements ValidationService {
     private FlowPathRepository flowPathRepository;
+    private ApplicationRepository applicationRepository;
     private final long flowMeterMinBurstSizeInKbits;
     private final double flowMeterBurstCoefficient;
     private final int lldpRateLimit;
@@ -64,6 +68,7 @@ public class ValidationServiceImpl implements ValidationService {
 
     public ValidationServiceImpl(PersistenceManager persistenceManager, SwitchManagerTopologyConfig topologyConfig) {
         this.flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
+        this.applicationRepository = persistenceManager.getRepositoryFactory().createApplicationRepository();
         this.flowMeterMinBurstSizeInKbits = topologyConfig.getFlowMeterMinBurstSizeInKbits();
         this.flowMeterBurstCoefficient = topologyConfig.getFlowMeterBurstCoefficient();
         this.lldpRateLimit = topologyConfig.getLldpRateLimit();
@@ -92,6 +97,19 @@ public class ValidationServiceImpl implements ValidationService {
         paths.stream().filter(path -> mustHaveLldpRule(switchId, path))
                 .map(FlowPath::getLldpResources)
                 .map(LldpResources::getCookie)
+                .map(Cookie::getValue)
+                .forEach(expectedCookies::add);
+
+        paths.stream()
+                .filter(path -> path.getApplications() != null
+                        && path.getApplications().contains(FlowApplication.TELESCOPE))
+                .map(FlowPath::getCookie)
+                .map(cookie -> Cookie.buildTelescopeCookie(cookie.getUnmaskedValue(), cookie.isMaskedAsForward()))
+                .map(Cookie::getValue)
+                .forEach(expectedCookies::add);
+
+        applicationRepository.findBySwitchId(switchId).stream()
+                .map(ApplicationRule::getCookie)
                 .map(Cookie::getValue)
                 .forEach(expectedCookies::add);
 
@@ -141,6 +159,18 @@ public class ValidationServiceImpl implements ValidationService {
         }
 
         Set<Long> misconfiguredRules = new HashSet<>();
+        presentRules.forEach(rule -> {
+            Cookie cookie = new Cookie(rule.getCookie());
+            long telescopeCookie =
+                    Cookie.buildTelescopeCookie(cookie.getUnmaskedValue(), cookie.isMaskedAsForward()).getValue();
+            Long writeMetadata = rule.getInstructions().getWriteMetadata();
+            if (Cookie.isMaskedAsFlowCookie(cookie.getValue()) && properRules.contains(cookie.getValue())
+                    && expectedCookies.contains(telescopeCookie) == (writeMetadata == null)) {
+
+                misconfiguredRules.add(cookie.getValue());
+                properRules.remove(cookie.getValue());
+            }
+        });
 
         validateDefaultRules(presentRules, expectedDefaultRules, missingRules, properRules, excessRules,
                 misconfiguredRules);

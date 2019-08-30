@@ -20,6 +20,7 @@ import static org.openkilda.messaging.Utils.FLOW_ID;
 import static org.openkilda.messaging.Utils.TRANSACTION_ID;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.model.FlowApplication;
 import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
@@ -30,6 +31,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -95,6 +97,12 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
     private boolean enableLldp;
 
     /**
+     * Enabled applications.
+     */
+    @JsonProperty("applications")
+    protected Set<FlowApplication> applications;
+
+    /**
      * Instance constructor.
      *
      * @param transactionId transaction id
@@ -109,6 +117,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
      * @param bandwidth flow bandwidth
      * @param meterId source meter id
      * @param multiTable multitable flag
+     * @param applications   the applications on which the actions is performed.
      * @throws IllegalArgumentException if any of arguments is null
      */
     @JsonCreator
@@ -124,7 +133,8 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
                                 @JsonProperty("bandwidth") final Long bandwidth,
                                 @JsonProperty("meter_id") final Long meterId,
                                 @JsonProperty("multi_table") final boolean multiTable,
-                                @JsonProperty("enable_lldp") final boolean enableLldp) {
+                                @JsonProperty("enable_lldp") final boolean enableLldp,
+                                @JsonProperty("applications") Set<FlowApplication> applications) {
         super(transactionId, id, cookie, switchId, inputPort, outputPort, multiTable);
         setInputVlanId(inputVlanId);
         setOutputVlanId(outputVlanId);
@@ -132,6 +142,7 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
         setBandwidth(bandwidth);
         setMeterId(meterId);
         setEnableLldp(enableLldp);
+        setApplications(applications);
     }
 
     /**
@@ -262,6 +273,20 @@ public class InstallOneSwitchFlow extends BaseInstallFlow {
      */
     public void setEnableLldp(boolean enableLldp) {
         this.enableLldp = enableLldp;
+    }
+
+    /**
+     * Get applications.
+     */
+    public Set<FlowApplication> getApplications() {
+        return applications;
+    }
+
+    /**
+     * Set applications.
+     */
+    public void setApplications(Set<FlowApplication> applications) {
+        this.applications = applications;
     }
 
     /**

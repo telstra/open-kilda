@@ -691,7 +691,7 @@ public class CrudBolt extends BaseRichBolt implements ICtrlBolt {
     private void handleDeallocateResourcesRequest(CommandMessage message, Tuple tuple) {
         try {
             DeallocateFlowResourcesRequest request = (DeallocateFlowResourcesRequest) message.getData();
-            flowService.deallocateResources(request.getPathId(),
+            flowService.deallocateResources(request.getFlowId(), request.getPathId(),
                     request.getUnmaskedCookie(), request.getUnmaskedLldpCookie(), request.getEncapsulationType());
 
             logger.info("Flow resources deallocated: {}", request);

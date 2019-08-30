@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2019 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -249,7 +249,7 @@ public class FlowCommandFactory {
                 flowPath.getCookie().getValue(), switchId, inputPortNo, outPort,
                 encapsulationResources.getTransitEncapsulationId(),
                 encapsulationResources.getEncapsulationType(), outVlan, getOutputVlanType(flow, flowPath),
-                multiTable);
+                multiTable, flowPath.getApplications());
     }
 
     private RemoveFlow buildRemoveEgressFlow(Flow flow, FlowPath flowPath, int inputPortNo,
@@ -381,7 +381,7 @@ public class FlowCommandFactory {
                 flowPath.getCookie().getValue(), switchId, inPort,
                 outputPortNo, inVlan, encapsulationResources.getTransitEncapsulationId(),
                 encapsulationResources.getEncapsulationType(), getOutputVlanType(flow, flowPath),
-                flow.getBandwidth(), meterId, egressSwitchId, multiTable, enableLldp);
+                flow.getBandwidth(), meterId, egressSwitchId, multiTable, enableLldp, flowPath.getApplications());
     }
 
     private RemoveFlow buildRemoveIngressFlow(Flow flow, FlowPath flowPath, Integer outputPortNo, boolean multiTable,
@@ -436,8 +436,8 @@ public class FlowCommandFactory {
         Long meterId = Optional.ofNullable(flowPath.getMeterId()).map(MeterId::getValue).orElse(null);
         return new InstallOneSwitchFlow(transactionIdGenerator.generate(),
                 flow.getFlowId(), flowPath.getCookie().getValue(), switchId, inPort,
-                outPort, inVlan, outVlan,
-                getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId, multiTable, enableLldp);
+                outPort, inVlan, outVlan, getOutputVlanType(flow, flowPath), flow.getBandwidth(), meterId, multiTable,
+                enableLldp, flowPath.getApplications());
     }
 
     private OutputVlanType getOutputVlanType(Flow flow, FlowPath flowPath) {

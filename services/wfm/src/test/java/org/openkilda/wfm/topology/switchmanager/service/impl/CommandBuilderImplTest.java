@@ -26,7 +26,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
-import org.openkilda.messaging.command.flow.BaseInstallFlow;
+import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.flow.InstallEgressFlow;
 import org.openkilda.messaging.command.flow.InstallIngressFlow;
 import org.openkilda.messaging.command.flow.InstallOneSwitchFlow;
@@ -85,8 +85,8 @@ public class CommandBuilderImplTest {
     }
 
     @Test
-    public void testCommandBuilder() {
-        List<BaseInstallFlow> response = commandBuilder
+    public void testCommandBuilder() throws Exception {
+        List<CommandData> response = commandBuilder
                 .buildCommandsToSyncMissingRules(SWITCH_ID_B, Arrays.asList(1L, 2L, 3L, 4L));
         assertEquals(4, response.size());
         assertTrue(response.get(0) instanceof InstallEgressFlow);
