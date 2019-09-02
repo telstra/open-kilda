@@ -19,10 +19,13 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
 import org.openkilda.persistence.ferma.repositories.FermaRepositoryFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.orientechnologies.orient.core.db.ODatabaseType;
 import com.orientechnologies.orient.core.db.OrientDB;
 import com.syncleus.ferma.ext.orientdb.OrientTransactionFactory;
 import com.syncleus.ferma.ext.orientdb.impl.OrientTransactionFactoryImpl;
+import com.syncleus.ferma.tx.Tx;
+import com.syncleus.ferma.tx.TxFactory;
 import org.apache.tinkerpop.gremlin.orientdb.OrientGraphFactory;
 
 /**
@@ -30,7 +33,8 @@ import org.apache.tinkerpop.gremlin.orientdb.OrientGraphFactory;
  */
 public class OrientDbPersistenceManager implements AutoCloseable {
     private final OrientDbConfig config;
-    private final OrientDB orientDb;
+    @VisibleForTesting
+    public final OrientDB orientDb;
 
     private transient volatile FermaTransactionManager transactionManager;
 
@@ -71,6 +75,11 @@ public class OrientDbPersistenceManager implements AutoCloseable {
         if (transactionManager != null) {
             synchronized (this) {
                 if (transactionManager != null) {
+                    Tx tx = Tx.getActive();
+                    if (tx != null) {
+                        System.err.println("Closing an open TX on closing TX factory...");
+                        tx.close();
+                    }
                     ((OrientTransactionFactory) transactionManager.getTxFactory()).getFactory().close();
                     transactionManager = null;
                 }

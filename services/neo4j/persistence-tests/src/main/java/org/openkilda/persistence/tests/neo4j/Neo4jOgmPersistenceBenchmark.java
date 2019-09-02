@@ -13,22 +13,16 @@
  *   limitations under the License.
  */
 
-package org.openkilda.persistence.tests.orientdb;
+package org.openkilda.persistence.tests.neo4j;
 
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.PathId;
+import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.TransactionManager;
-import org.openkilda.persistence.ferma.OrientDbPersistenceManager;
-import org.openkilda.persistence.ferma.model.Flow;
-import org.openkilda.persistence.ferma.model.FlowImpl;
-import org.openkilda.persistence.ferma.model.FlowPath;
-import org.openkilda.persistence.ferma.model.FlowPathImpl;
-import org.openkilda.persistence.ferma.repositories.FermaRepositoryFactory;
-import org.openkilda.persistence.ferma.repositories.FlowRepository;
-import org.openkilda.persistence.ferma.repositories.frames.FlowFrame;
-import org.openkilda.persistence.ferma.repositories.frames.FlowPathFrame;
+import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 
-import net.jodah.failsafe.RetryPolicy;
-import org.apache.tinkerpop.gremlin.orientdb.OrientElement;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -51,21 +45,19 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class OrientDbPersistenceBenchmark {
-
+public class Neo4jOgmPersistenceBenchmark {
     @State(Scope.Benchmark)
-    public static class SharedOrientDdPersistence {
-        EmbeddedOrientDbPersistence persistence;
+    public static class SharedNeo4jPersistence {
+        EmbeddedNeo4jOgmPersistence persistence;
 
         @Setup
-        public void setUp() throws Exception {
-            persistence = new EmbeddedOrientDbPersistence(true);
+        public void setUp() {
+            persistence = new EmbeddedNeo4jOgmPersistence(true);
         }
 
         @TearDown
@@ -75,15 +67,15 @@ public class OrientDbPersistenceBenchmark {
     }
 
     @State(Scope.Thread)
-    public static class OrientDbPersistenceResources {
-        OrientDbPersistenceManager persistenceManager;
+    public static class Neo4jPersistenceResources {
+        PersistenceManager persistenceManager;
         TransactionManager transactionManager;
-        FermaRepositoryFactory repositoryFactory;
+        RepositoryFactory repositoryFactory;
         List<String> flowIds;
 
         @Setup(Level.Iteration)
-        public void setUp(SharedOrientDdPersistence sharedOrientDbPersistence) {
-            persistenceManager = sharedOrientDbPersistence.persistence.createPersistenceManager();
+        public void setUp(SharedNeo4jPersistence sharedNeo4jPersistence) {
+            persistenceManager = sharedNeo4jPersistence.persistence.createPersistenceManager();
             transactionManager = persistenceManager.getTransactionManager();
             repositoryFactory = persistenceManager.getRepositoryFactory();
 
@@ -115,7 +107,7 @@ public class OrientDbPersistenceBenchmark {
     @Fork(1)
     @Warmup(iterations = 1)
     @Measurement(iterations = 3)
-    public void linearReadBenchmark(OrientDbPersistenceResources persistence, Blackhole blackhole) {
+    public void linearReadBenchmark(Neo4jPersistenceResources persistence, Blackhole blackhole) {
         persistence.transactionManager.doInTransaction(() -> {
             FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
             IntStream.range(0, 9).mapToObj(i -> persistence.flowIds.get(i))
@@ -134,7 +126,7 @@ public class OrientDbPersistenceBenchmark {
     @Fork(1)
     @Warmup(iterations = 1)
     @Measurement(iterations = 3)
-    public void linearReadWithRelatedBenchmark(OrientDbPersistenceResources persistence, Blackhole blackhole) {
+    public void linearReadWithRelatedBenchmark(Neo4jPersistenceResources persistence, Blackhole blackhole) {
         persistence.transactionManager.doInTransaction(() -> {
             FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
             IntStream.range(0, 9).mapToObj(i -> persistence.flowIds.get(i))
@@ -153,16 +145,16 @@ public class OrientDbPersistenceBenchmark {
     @Fork(1)
     @Warmup(iterations = 1)
     @Measurement(iterations = 10)
-    public void createBenchmark(OrientDbPersistenceResources persistence, BenchmarkIndexes threadIndex) {
+    public void createBenchmark(Neo4jPersistenceResources persistence, BenchmarkIndexes threadIndex) {
         int benchmarkIndex = threadIndex.benchmarkIndex.getAndIncrement();
         persistence.transactionManager.doInTransaction(() -> {
             FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
             Flow flow = flowRepository.findById(persistence.flowIds.get(0))
                     .orElseThrow(() -> new IllegalStateException("Unable to find a flow"));
-            Flow cloned = FlowImpl.clone(flow).flowId(flow.getFlowId() + "_clone_" + benchmarkIndex).build();
-            flow.getPaths().forEach(path -> cloned.addPaths(FlowPathImpl.clone(path).flow(cloned)
+            Flow cloned = flow.toBuilder().flowId(flow.getFlowId() + "_clone_" + benchmarkIndex).build();
+            flow.getPaths().forEach(path -> cloned.addPaths(path.toBuilder().flow(cloned)
                     .pathId(new PathId(path.getPathId().toString() + "_clone_" + benchmarkIndex)).build()));
-            flowRepository.create(cloned);
+            flowRepository.createOrUpdate(cloned);
         });
     }
 
@@ -172,27 +164,22 @@ public class OrientDbPersistenceBenchmark {
     @Fork(1)
     @Warmup(iterations = 1)
     @Measurement(iterations = 10)
-    public void replaceRelatedBenchmark(OrientDbPersistenceResources persistence, BenchmarkIndexes threadIndex) {
+    public void replaceRelatedBenchmark(Neo4jPersistenceResources persistence, BenchmarkIndexes threadIndex) {
         int benchmarkIndex = threadIndex.benchmarkIndex.getAndIncrement();
         persistence.transactionManager.doInTransaction(() -> {
             FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
             Flow flow = flowRepository.findById(persistence.flowIds.get(0))
                     .orElseThrow(() -> new IllegalStateException("Unable to find a flow"));
-
-            OrientElement element = (OrientElement) ((FlowFrame) flow).getElement();
-            element.lock(true);
-
-            Set<FlowPath> cloned = flow.getPaths().stream()
-                    .peek(path -> ((OrientElement) ((FlowPathFrame) path).getElement()).lock(true))
-                    .map(path -> FlowPathImpl.clone(path)
-                            .flow(flow).pathId(new PathId(path.getPathId().toString() + "_clone_" + benchmarkIndex)).build())
-                    .collect(Collectors.toSet());
-
-            flow.setForwardPath(null);
-            flow.setReversePath(null);
-            flow.setProtectedForwardPath(null);
-            flow.setProtectedReversePath(null);
-            flow.setPaths(cloned);
+            FlowPath[] cloned = flow.getPaths().stream()
+                    .map(path -> path.toBuilder().flow(flow)
+                            .pathId(new PathId(path.getPathId().toString() + "_clone_" + benchmarkIndex)).build())
+                    .toArray(FlowPath[]::new);
+            flow.setForwardPath((FlowPath) null);
+            flow.setReversePath((FlowPath) null);
+            flow.setProtectedForwardPath((FlowPath) null);
+            flow.setProtectedReversePath((FlowPath) null);
+            flow.addPaths(cloned);
+            flowRepository.createOrUpdate(flow);
         });
     }
 
@@ -202,16 +189,13 @@ public class OrientDbPersistenceBenchmark {
     @Fork(1)
     @Warmup(iterations = 1)
     @Measurement(iterations = 10)
-    public void singleUpdateBenchmark(OrientDbPersistenceResources persistence, BenchmarkIndexes threadIndex) {
+    public void singleUpdateBenchmark(Neo4jPersistenceResources persistence, BenchmarkIndexes threadIndex) {
         persistence.transactionManager.doInTransaction(() -> {
             FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
             Flow flow = flowRepository.findById(persistence.flowIds.get(threadIndex.iterationIndex.getAndIncrement()))
                     .orElseThrow(() -> new IllegalStateException("Unable to find a flow"));
-
-            OrientElement element = (OrientElement) ((FlowFrame) flow).getElement();
-            element.lock(true);
-
             flow.setTimeModify(Instant.now());
+            flowRepository.createOrUpdate(flow);
         });
     }
 
@@ -221,18 +205,15 @@ public class OrientDbPersistenceBenchmark {
     @Fork(1)
     @Warmup(iterations = 1)
     @Measurement(iterations = 10)
-    public void linearUpdateBenchmark(OrientDbPersistenceResources persistence) {
+    public void linearUpdateBenchmark(Neo4jPersistenceResources persistence) {
         persistence.transactionManager.doInTransaction(() -> {
             FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
             IntStream.range(0, 9).mapToObj(i -> persistence.flowIds.get(i))
                     .forEach(flowId -> {
                         Flow flow = flowRepository.findById(flowId)
                                 .orElseThrow(() -> new IllegalStateException("Unable to find a flow"));
-
-                        OrientElement element = (OrientElement) ((FlowFrame) flow).getElement();
-                        element.lock(true);
-
                         flow.setTimeModify(Instant.now());
+                        flowRepository.createOrUpdate(flow);
                     });
         });
     }
@@ -243,21 +224,18 @@ public class OrientDbPersistenceBenchmark {
     @Fork(1)
     @Warmup(iterations = 1)
     @Measurement(iterations = 3)
-    public void updateMultiplePropertiesBenchmark(OrientDbPersistenceResources persistence) {
+    public void updateMultiplePropertiesBenchmark(Neo4jPersistenceResources persistence) {
         persistence.transactionManager.doInTransaction(() -> {
             FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
             Flow flow = flowRepository.findById(persistence.flowIds.get(0))
                     .orElseThrow(() -> new IllegalStateException("Unable to find a flow"));
-
-            OrientElement element = (OrientElement) ((FlowFrame) flow).getElement();
-            element.lock(true);
-
             flow.setBandwidth(flow.getBandwidth() + 1);
             flow.setDescription("another_" + flow.getDescription());
             flow.setPriority(Optional.ofNullable(flow.getPriority()).orElse(0) + 1);
             flow.setMaxLatency(Optional.ofNullable(flow.getMaxLatency()).orElse(0) + 1);
             flow.setGroupId("next_" + flow.getGroupId());
             flow.setTimeModify(Instant.now());
+            flowRepository.createOrUpdate(flow);
         });
     }
 
@@ -268,28 +246,22 @@ public class OrientDbPersistenceBenchmark {
     @Warmup(iterations = 1)
     @Measurement(iterations = 10)
     @Threads(10)
-    public void concurrentUpdateBenchmark(OrientDbPersistenceResources persistence, BenchmarkIndexes threadIndex) {
+    public void concurrentUpdateBenchmark(Neo4jPersistenceResources persistence, BenchmarkIndexes threadIndex) {
         int iterationIndex = threadIndex.iterationIndex.getAndIncrement() * 5;
-        RetryPolicy retry = new RetryPolicy()
-                .retryOn(Exception.class)
-                .withMaxRetries(5);
-        persistence.transactionManager.doInTransaction(retry, () -> {
-            FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
-            List<Flow> flows = IntStream.range(iterationIndex, iterationIndex + 9)
-                    .mapToObj(i -> flowRepository.findById(persistence.flowIds.get(i))
-                            .orElseThrow(() -> new IllegalStateException("Unable to find a flow")))
-                    .collect(Collectors.toList());
-            for (Flow flow : flows) {
-                OrientElement element = (OrientElement) ((FlowFrame) flow).getElement();
-                element.lock(true);
-                flow.setTimeModify(Instant.now());
-            }
-        });
+        FlowRepository flowRepository = persistence.repositoryFactory.createFlowRepository();
+        List<Flow> flows = IntStream.range(iterationIndex, iterationIndex + 9)
+                .mapToObj(i -> flowRepository.findById(persistence.flowIds.get(i))
+                        .orElseThrow(() -> new IllegalStateException("Unable to find a flow")))
+                .collect(Collectors.toList());
+        for (Flow flow : flows) {
+            flow.setTimeModify(Instant.now());
+            flowRepository.createOrUpdate(flow);
+        }
     }
 
     public static void main(String[] args) throws RunnerException {
         Options opt = new OptionsBuilder()
-                .include(OrientDbPersistenceBenchmark.class.getSimpleName())
+                .include(Neo4jOgmPersistenceBenchmark.class.getSimpleName())
                 .build();
         new Runner(opt).run();
     }

@@ -18,14 +18,13 @@ package org.openkilda.persistence.tests.neo4j;
 import static java.lang.String.format;
 
 import org.openkilda.model.SwitchId;
-import org.openkilda.persistence.Neo4jConfig;
-import org.openkilda.persistence.Neo4jPersistenceManager;
-import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.ferma.Neo4jWithFermaPersistenceManager;
 
+import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.ogm.testutil.TestServer;
+import org.neo4j.tinkerpop.api.Neo4jFactory;
+import org.neo4j.tinkerpop.api.Neo4jGraphAPI;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -33,6 +32,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.file.Files;
+import java.util.Collections;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -40,70 +42,49 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @Slf4j
-public class EmbeddedNeo4jPersistence implements AutoCloseable {
-    public final TestServer testServer;
+public class EmbeddedNeo4jWithFermaPersistence implements AutoCloseable {
+    public final Neo4jGraphAPI graphApi;
 
-    public EmbeddedNeo4jPersistence() {
+    public EmbeddedNeo4jWithFermaPersistence(boolean loadTestData) throws IOException {
         Logger.getLogger("").setLevel(Level.SEVERE);
 
-        testServer = new TestServer(true, true, 5);
+        Map<String, String> config = ImmutableMap.of("apoc.import.file.enabled", "true");
 
-        loadTestData();
+        graphApi = Neo4jFactory.Builder.open(Files.createTempDirectory("neo4j").toAbsolutePath().toString(), config);
 
-        try (PersistenceManager persistenceManager = createPersistenceManager()) {
-            if (!persistenceManager.getRepositoryFactory().createSwitchRepository().exists(new SwitchId(2))) {
-                throw new IllegalStateException("Failed to load to Neo4j");
+        runQueriesInFile("/org/openkilda/persistence/tests/neo4j/schema");
+
+        if (loadTestData) {
+            loadTestData();
+
+            try (Neo4jWithFermaPersistenceManager persistenceManager = createPersistenceManager()) {
+                if (!persistenceManager.getRepositoryFactory().createSwitchRepository().exists(new SwitchId(2))) {
+                    throw new IllegalStateException("Failed to load to Neo4j");
+                }
             }
         }
     }
 
-    public PersistenceManager createPersistenceManager() {
-        return new Neo4jPersistenceManager(new Neo4jConfig() {
-            @Override
-            public String getUri() {
-                return testServer.getUri();
-            }
-
-            @Override
-            public String getLogin() {
-                return testServer.getUsername();
-            }
-
-            @Override
-            public String getPassword() {
-                return testServer.getPassword();
-            }
-
-            @Override
-            public int getConnectionPoolSize() {
-                return 50;
-            }
-
-            @Override
-            public String getIndexesAuto() {
-                return "validate";
-            }
-        });
+    public Neo4jWithFermaPersistenceManager createPersistenceManager() {
+        return new Neo4jWithFermaPersistenceManager(graphApi);
     }
 
     @Override
     public void close() {
-        testServer.shutdown();
+        graphApi.shutdown();
     }
 
     private void loadTestData() {
-        runQueriesInFile("/org/openkilda/persistence/tests/neo4j/schema");
         runCypherFiles(IntStream.range(0, 22)
                 .mapToObj(i -> format("/org/openkilda/persistence/tests/neo4j/data-%02d", i)));
     }
 
     private void runQueriesInFile(String file) {
-        GraphDatabaseService graphDatabaseService = testServer.getGraphDatabaseService();
         try (InputStream is = getClass().getResourceAsStream(file)) {
             BufferedReader br = new BufferedReader(new InputStreamReader(is));
             String line;
             while ((line = br.readLine()) != null) {
-                graphDatabaseService.execute(line);
+                graphApi.execute(line, Collections.emptyMap());
             }
         } catch (IOException e) {
             throw new IllegalStateException("Unable to read a file: " + file, e);
@@ -123,7 +104,6 @@ public class EmbeddedNeo4jPersistence implements AutoCloseable {
             return format("'%s'", tmpCopy.getAbsoluteFile().toURI());
         }).collect(Collectors.joining(","));
 
-        GraphDatabaseService graphDatabaseService = testServer.getGraphDatabaseService();
-        graphDatabaseService.execute(format("CALL apoc.cypher.runFiles([%s])", fileList));
+        graphApi.execute(format("CALL apoc.cypher.runFiles([%s])", fileList), Collections.emptyMap());
     }
 }

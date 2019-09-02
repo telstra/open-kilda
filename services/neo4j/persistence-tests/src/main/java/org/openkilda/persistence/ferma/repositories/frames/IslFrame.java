@@ -37,6 +37,9 @@ public abstract class IslFrame extends AbstractEdgeFrame implements Isl {
     static final String SRC_PORT_PROPERTY = "src_port";
     static final String DST_PORT_PROPERTY = "dst_port";
 
+    public static final String STATUS_PROPERTY = "status";
+    public static final String COST_PROPERTY = "cost";
+
     @Override
     public int getSrcPort() {
         return ((Long) getProperty(SRC_PORT_PROPERTY)).intValue();
@@ -75,12 +78,12 @@ public abstract class IslFrame extends AbstractEdgeFrame implements Isl {
 
     @Override
     public int getCost() {
-        return ((Long) getProperty("cost")).intValue();
+        return ((Long) getProperty(COST_PROPERTY)).intValue();
     }
 
     @Override
     public void setCost(int cost) {
-        setProperty("cost", (long) cost);
+        setProperty(COST_PROPERTY, (long) cost);
     }
 
     @Property("max_bandwidth")
@@ -109,7 +112,7 @@ public abstract class IslFrame extends AbstractEdgeFrame implements Isl {
 
     @Override
     public IslStatus getStatus() {
-        String value = getProperty("status");
+        String value = getProperty(STATUS_PROPERTY);
         if (value == null || value.trim().isEmpty()) {
             return null;
         }
@@ -118,7 +121,7 @@ public abstract class IslFrame extends AbstractEdgeFrame implements Isl {
 
     @Override
     public void setStatus(IslStatus status) {
-        setProperty("status", status == null ? null : status.name().toLowerCase());
+        setProperty(STATUS_PROPERTY, status == null ? null : status.name().toLowerCase());
     }
 
     @Override

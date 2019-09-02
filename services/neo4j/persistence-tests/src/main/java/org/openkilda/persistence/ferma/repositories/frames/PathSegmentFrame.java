@@ -20,12 +20,14 @@ import org.openkilda.persistence.ferma.model.FlowPath;
 import org.openkilda.persistence.ferma.model.PathSegment;
 import org.openkilda.persistence.ferma.model.Switch;
 
+import com.syncleus.ferma.AbstractElementFrame;
 import com.syncleus.ferma.AbstractVertexFrame;
+import com.syncleus.ferma.DelegatingFramedGraph;
 import com.syncleus.ferma.FramedGraph;
-import com.syncleus.ferma.TVertex;
 import com.syncleus.ferma.VertexFrame;
 import com.syncleus.ferma.annotations.GraphElement;
 import com.syncleus.ferma.annotations.Property;
+import org.apache.tinkerpop.gremlin.neo4j.structure.Neo4jVertex;
 import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
@@ -38,6 +40,32 @@ public abstract class PathSegmentFrame extends AbstractVertexFrame implements Pa
 
     static final String SRC_PORT_PROPERTY = "src_port";
     static final String DST_PORT_PROPERTY = "dst_port";
+
+    private Vertex cachedElement;
+
+    @Override
+    public Vertex getElement() {
+        // A workaround for the issue with neo4j-gremlin and Ferma integration.
+        if (cachedElement == null) {
+            try {
+                java.lang.reflect.Field field = AbstractElementFrame.class.getDeclaredField("element");
+                field.setAccessible(true);
+                Object value = field.get(this);
+                field.setAccessible(false);
+                if (value instanceof Neo4jVertex) {
+                    cachedElement = (Vertex) value;
+                }
+            } catch (NoSuchFieldException | IllegalAccessException ex) {
+                // just ignore
+            }
+
+            if (cachedElement == null) {
+                cachedElement = super.getElement();
+            }
+        }
+
+        return cachedElement;
+    }
 
     @Override
     public int getSrcPort() {
@@ -160,7 +188,7 @@ public abstract class PathSegmentFrame extends AbstractVertexFrame implements Pa
 
     public static PathSegmentFrame addNew(FramedGraph graph, PathSegment newSegment) {
         // A workaround for improper implementation of the untyped mode in OrientTransactionFactoryImpl.
-        Vertex element = graph.addFramedVertex(TVertex.DEFAULT_INITIALIZER, T.label, FRAME_LABEL).getElement();
+        Vertex element = ((DelegatingFramedGraph) graph).getBaseGraph().addVertex(T.label, FRAME_LABEL);
         PathSegmentFrame frame = graph.frameElementExplicit(element, PathSegmentFrame.class);
         frame.updateWith(newSegment);
         return frame;

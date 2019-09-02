@@ -19,12 +19,14 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.ferma.model.Switch;
 
+import com.syncleus.ferma.AbstractElementFrame;
 import com.syncleus.ferma.AbstractVertexFrame;
+import com.syncleus.ferma.DelegatingFramedGraph;
 import com.syncleus.ferma.FramedGraph;
-import com.syncleus.ferma.TVertex;
 import com.syncleus.ferma.annotations.GraphElement;
 import com.syncleus.ferma.annotations.Property;
 import lombok.NonNull;
+import org.apache.tinkerpop.gremlin.neo4j.structure.Neo4jVertex;
 import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
@@ -35,6 +37,33 @@ public abstract class SwitchFrame extends AbstractVertexFrame implements Switch 
     public static final String FRAME_LABEL = "switch";
 
     public static final String SWITCH_ID_PROPERTY = "name";
+    public static final String STATUS_PROPERTY = "state";
+
+    private Vertex cachedElement;
+
+    @Override
+    public Vertex getElement() {
+        // A workaround for the issue with neo4j-gremlin and Ferma integration.
+        if (cachedElement == null) {
+            try {
+                java.lang.reflect.Field field = AbstractElementFrame.class.getDeclaredField("element");
+                field.setAccessible(true);
+                Object value = field.get(this);
+                field.setAccessible(false);
+                if (value instanceof Neo4jVertex) {
+                    cachedElement = (Vertex) value;
+                }
+            } catch (NoSuchFieldException | IllegalAccessException ex) {
+                // just ignore
+            }
+
+            if (cachedElement == null) {
+                cachedElement = super.getElement();
+            }
+        }
+
+        return cachedElement;
+    }
 
     @Override
     public SwitchId getSwitchId() {
@@ -49,7 +78,7 @@ public abstract class SwitchFrame extends AbstractVertexFrame implements Switch 
 
     @Override
     public SwitchStatus getStatus() {
-        String value = getProperty("state");
+        String value = getProperty(STATUS_PROPERTY);
         if (value == null || value.trim().isEmpty()) {
             return null;
         }
@@ -58,7 +87,7 @@ public abstract class SwitchFrame extends AbstractVertexFrame implements Switch 
 
     @Override
     public void setStatus(SwitchStatus status) {
-        setProperty("state", status == null ? null : status.name().toLowerCase());
+        setProperty(STATUS_PROPERTY, status == null ? null : status.name().toLowerCase());
     }
 
     @Property("address")
@@ -193,7 +222,7 @@ public abstract class SwitchFrame extends AbstractVertexFrame implements Switch 
 
     public static SwitchFrame addNew(FramedGraph graph, Switch newSwitch) {
         // A workaround for improper implementation of the untyped mode in OrientTransactionFactoryImpl.
-        Vertex element = graph.addFramedVertex(TVertex.DEFAULT_INITIALIZER, T.label, FRAME_LABEL).getElement();
+        Vertex element = ((DelegatingFramedGraph) graph).getBaseGraph().addVertex(T.label, FRAME_LABEL);
         SwitchFrame frame = graph.frameElementExplicit(element, SwitchFrame.class);
         frame.setSwitchId(newSwitch.getSwitchId());
         frame.setTimeCreate(newSwitch.getTimeCreate());

@@ -24,13 +24,15 @@ import org.openkilda.persistence.ferma.model.FlowPath;
 import org.openkilda.persistence.ferma.model.PathSegment;
 import org.openkilda.persistence.ferma.model.Switch;
 
+import com.syncleus.ferma.AbstractElementFrame;
 import com.syncleus.ferma.AbstractVertexFrame;
+import com.syncleus.ferma.DelegatingFramedGraph;
 import com.syncleus.ferma.FramedGraph;
-import com.syncleus.ferma.TVertex;
 import com.syncleus.ferma.VertexFrame;
 import com.syncleus.ferma.annotations.GraphElement;
 import com.syncleus.ferma.annotations.Property;
 import lombok.NonNull;
+import org.apache.tinkerpop.gremlin.neo4j.structure.Neo4jVertex;
 import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
@@ -49,6 +51,32 @@ public abstract class FlowPathFrame extends AbstractVertexFrame implements FlowP
     static final String OWNS_SEGMENTS_EDGE = "owns";
 
     public static final String PATH_ID_PROPERTY = "path_id";
+
+    private Vertex cachedElement;
+
+    @Override
+    public Vertex getElement() {
+        // A workaround for the issue with neo4j-gremlin and Ferma integration.
+        if (cachedElement == null) {
+            try {
+                java.lang.reflect.Field field = AbstractElementFrame.class.getDeclaredField("element");
+                field.setAccessible(true);
+                Object value = field.get(this);
+                field.setAccessible(false);
+                if (value instanceof Neo4jVertex) {
+                    cachedElement = (Vertex) value;
+                }
+            } catch (NoSuchFieldException | IllegalAccessException ex) {
+                // just ignore
+            }
+
+            if (cachedElement == null) {
+                cachedElement = super.getElement();
+            }
+        }
+
+        return cachedElement;
+    }
 
     @Override
     public PathId getPathId() {
@@ -252,7 +280,7 @@ public abstract class FlowPathFrame extends AbstractVertexFrame implements FlowP
 
     public static FlowPathFrame addNew(FramedGraph graph, FlowPath newPath) {
         // A workaround for improper implementation of the untyped mode in OrientTransactionFactoryImpl.
-        Vertex element = graph.addFramedVertex(TVertex.DEFAULT_INITIALIZER, T.label, FRAME_LABEL).getElement();
+        Vertex element = ((DelegatingFramedGraph) graph).getBaseGraph().addVertex(T.label, FRAME_LABEL);
         FlowPathFrame frame = graph.frameElementExplicit(element, FlowPathFrame.class);
         frame.setPathId(newPath.getPathId());
         frame.setTimeCreate(newPath.getTimeCreate());

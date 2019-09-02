@@ -25,11 +25,6 @@ import com.orientechnologies.orient.core.db.ODatabaseType;
 import com.orientechnologies.orient.core.db.OrientDB;
 import com.orientechnologies.orient.core.db.OrientDBConfig;
 import com.orientechnologies.orient.graph.graphml.OGraphMLReader;
-import com.orientechnologies.orient.server.OServer;
-import com.orientechnologies.orient.server.OServerMain;
-import com.orientechnologies.orient.server.config.OServerConfiguration;
-import com.orientechnologies.orient.server.config.OServerNetworkConfiguration;
-import com.orientechnologies.orient.server.config.OServerUserConfiguration;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,27 +34,26 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @Slf4j
-public class EmbeddedOrientDbPersistence implements OrientDbPersistence, AutoCloseable {
-    static final String ORIENT_DB_PATH = "memory:./databases/";
+public class RemoteOrientDbPersistence implements OrientDbPersistence, AutoCloseable {
     static final String ORIENT_DB_NAME = "test";
 
-    public final OServer server;
+    private final String url;
+    private final String user;
+    private final String password;
     public final OrientDB orientDb;
 
-    public EmbeddedOrientDbPersistence(boolean loadTestData) throws Exception {
+    public RemoteOrientDbPersistence(String url, String user, String password, boolean loadTestData) {
         Logger.getLogger("").setLevel(Level.SEVERE);
 
-        OServerConfiguration cfg = new OServerConfiguration();
-        cfg.network = new OServerNetworkConfiguration(cfg);
-        cfg.users = new OServerUserConfiguration[]{
-                new OServerUserConfiguration("root", "root", "*")};
+        this.url = url;
+        this.user = user;
+        this.password = password;
 
-        server = OServerMain.create();
-        server.startup(cfg).activate();
+        System.out.println("open orientdb");
 
-        orientDb = new OrientDB(ORIENT_DB_PATH, null, null,
-                OrientDBConfig.defaultConfig());
-        if (orientDb.createIfNotExists(ORIENT_DB_NAME, ODatabaseType.MEMORY)) {
+        orientDb = new OrientDB(url, user, password, OrientDBConfig.defaultConfig());
+        if (orientDb.createIfNotExists(ORIENT_DB_NAME, ODatabaseType.PLOCAL)) {
+            System.out.println("create a " + ORIENT_DB_NAME);
             try (ODatabaseSession session = orientDb.open(ORIENT_DB_NAME, "admin", "admin")) {
                 session.execute("sql", "CREATE CLASS isl EXTENDS E");
                 session.execute("sql", "CREATE CLASS switch EXTENDS V");
@@ -79,6 +73,11 @@ public class EmbeddedOrientDbPersistence implements OrientDbPersistence, AutoClo
                     throw new IllegalStateException("Failed to load to OrientDB");
                 }
             }
+        } else {
+            try (ODatabaseSession session = orientDb.open(ORIENT_DB_NAME, "admin", "admin")) {
+                session.execute("sql", "TRUNCATE CLASS isl UNSAFE");
+                session.execute("sql", "TRUNCATE CLASS switch UNSAFE");
+            }
         }
     }
 
@@ -87,7 +86,7 @@ public class EmbeddedOrientDbPersistence implements OrientDbPersistence, AutoClo
         return new OrientDbPersistenceManager(new OrientDbConfig() {
             @Override
             public String getDbPath() {
-                return ORIENT_DB_PATH;
+                return url;
             }
 
             @Override
@@ -97,26 +96,26 @@ public class EmbeddedOrientDbPersistence implements OrientDbPersistence, AutoClo
 
             @Override
             public String getDbType() {
-                return ODatabaseType.MEMORY.name();
+                return ODatabaseType.PLOCAL.name();
             }
 
             @Override
             public String getUser() {
-                return "admin";
+                return user;
             }
 
             @Override
             public String getPassword() {
-                return "admin";
+                return password;
             }
         }, orientDb);
     }
 
     @Override
     public void close() {
-        orientDb.drop(ORIENT_DB_NAME);
+        System.out.println("closing orientdb");
+        //orientDb.drop(ORIENT_DB_NAME);
         orientDb.close();
-        server.shutdown();
     }
 
     private void loadTestData(ODatabaseSession databaseSession) {

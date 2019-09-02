@@ -23,12 +23,15 @@ import org.openkilda.persistence.ferma.model.Flow;
 import org.openkilda.persistence.ferma.model.FlowPath;
 import org.openkilda.persistence.ferma.model.Switch;
 
+import com.syncleus.ferma.AbstractElementFrame;
 import com.syncleus.ferma.AbstractVertexFrame;
+import com.syncleus.ferma.DelegatingFramedGraph;
 import com.syncleus.ferma.FramedGraph;
-import com.syncleus.ferma.TVertex;
+import com.syncleus.ferma.Traversable;
 import com.syncleus.ferma.VertexFrame;
 import com.syncleus.ferma.annotations.GraphElement;
 import com.syncleus.ferma.annotations.Property;
+import org.apache.tinkerpop.gremlin.neo4j.structure.Neo4jVertex;
 import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
@@ -54,6 +57,32 @@ public abstract class FlowFrame extends AbstractVertexFrame implements Flow {
     public static final String GROUP_ID_PROPERTY = "group_id";
     public static final String PERIODIC_PINGS_PROPERTY = "periodic_pings";
     public static final String STATUS_PROPERTY = "status";
+
+    private Vertex cachedElement;
+
+    @Override
+    public Vertex getElement() {
+        // A workaround for the issue with neo4j-gremlin and Ferma integration.
+        if (cachedElement == null) {
+            try {
+                java.lang.reflect.Field field = AbstractElementFrame.class.getDeclaredField("element");
+                field.setAccessible(true);
+                Object value = field.get(this);
+                field.setAccessible(false);
+                if (value instanceof Neo4jVertex) {
+                    cachedElement = (Vertex) value;
+                }
+            } catch (NoSuchFieldException | IllegalAccessException ex) {
+                // just ignore
+            }
+
+            if (cachedElement == null) {
+                cachedElement = super.getElement();
+            }
+        }
+
+        return cachedElement;
+    }
 
     @Property(FLOW_ID_PROPERTY)
     @Override
@@ -415,7 +444,7 @@ public abstract class FlowFrame extends AbstractVertexFrame implements Flow {
 
     public static FlowFrame addNew(FramedGraph graph, Flow newFlow) {
         // A workaround for improper implementation of the untyped mode in OrientTransactionFactoryImpl.
-        Vertex element = graph.addFramedVertex(TVertex.DEFAULT_INITIALIZER, T.label, FRAME_LABEL).getElement();
+        Vertex element = ((DelegatingFramedGraph) graph).getBaseGraph().addVertex(T.label, FRAME_LABEL);
         FlowFrame frame = graph.frameElementExplicit(element, FlowFrame.class);
         frame.setFlowId(newFlow.getFlowId());
         frame.setTimeCreate(newFlow.getTimeCreate());
@@ -424,8 +453,15 @@ public abstract class FlowFrame extends AbstractVertexFrame implements Flow {
     }
 
     public static FlowFrame load(FramedGraph graph, String flowId) {
-        return graph.traverse(input -> input.V().hasLabel(FRAME_LABEL).has(FLOW_ID_PROPERTY, flowId))
-                .nextOrDefaultExplicit(FlowFrame.class, null);
+        /*long t1 = Instant.now().toEpochMilli(), t2 = 0;
+        try {*/
+        final Traversable<?, ?> traverse = graph.traverse(input -> input.V().hasLabel(FRAME_LABEL).has(FLOW_ID_PROPERTY, flowId));
+        org.apache.tinkerpop.gremlin.structure.Element obj = (org.apache.tinkerpop.gremlin.structure.Element) traverse.getRawTraversal().next();
+        //t2 = Instant.now().toEpochMilli();
+        return graph.frameElementExplicit(obj, FlowFrame.class);
+        /*} finally {
+            System.out.println("Times: " + t1 + ", " + t2 + ", " + Instant.now().toEpochMilli());
+        }*/
     }
 
     public static void delete(FramedGraph graph, Flow flow) {

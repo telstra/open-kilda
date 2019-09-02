@@ -13,16 +13,10 @@
  *   limitations under the License.
  */
 
-package org.neo4j.harness;
+package org.openkilda.persistence.tests.orientdb;
 
-import org.neo4j.harness.internal.InProcessServerBuilder;
+import org.openkilda.persistence.ferma.OrientDbPersistenceManager;
 
-/**
- * This is for {@code org.neo4j.ogm.testutil.TestServer#newInProcessBuilder} to pass
- * additional configuration parameters and register needed procedures.
- */
-public class EnterpriseInProcessServerBuilder extends InProcessServerBuilder {
-    public EnterpriseInProcessServerBuilder() {
-        withConfig("apoc.import.file.enabled", "true");
-    }
+public interface OrientDbPersistence extends AutoCloseable {
+    OrientDbPersistenceManager createPersistenceManager();
 }
