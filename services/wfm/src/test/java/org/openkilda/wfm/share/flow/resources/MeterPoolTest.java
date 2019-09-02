@@ -17,21 +17,33 @@ package org.openkilda.wfm.share.flow.resources;
 
 import static java.lang.String.format;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
+import org.openkilda.model.FlowMeter;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.persistence.repositories.FlowMeterRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.Neo4jBasedTest;
 
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Collection;
+
 public class MeterPoolTest extends Neo4jBasedTest {
     private static final SwitchId SWITCH_ID = new SwitchId("ff:00");
+    private static final String FLOW_1 = "flow_1";
+    private static final String FLOW_2 = "flow_2";
+    private static final String FLOW_3 = "flow_3";
+    private static final PathId PATH_ID_1 = new PathId("path_1");
+    private static final PathId PATH_ID_2 = new PathId("path_2");
+    private static final PathId PATH_ID_3 = new PathId("path_3");
 
     private MeterPool meterPool;
+    private FlowMeterRepository flowMeterRepository;
 
     @Before
     public void setUp() {
@@ -39,23 +51,22 @@ public class MeterPoolTest extends Neo4jBasedTest {
 
         SwitchRepository switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         switchRepository.createOrUpdate(Switch.builder().switchId(SWITCH_ID).build());
+        flowMeterRepository = persistenceManager.getRepositoryFactory().createFlowMeterRepository();
     }
 
     @Test
     public void meterPoolTest() {
-        long first = meterPool.allocate(SWITCH_ID, "flow_1", new PathId("path_1")).getValue();
+        long first = meterPool.allocate(SWITCH_ID, FLOW_1, PATH_ID_1).getValue();
         assertEquals(31, first);
 
-        PathId path2 = new PathId("path_2");
-        long second = meterPool.allocate(SWITCH_ID, "flow_2", path2).getValue();
+        long second = meterPool.allocate(SWITCH_ID, FLOW_2, PATH_ID_2).getValue();
         assertEquals(32, second);
 
-        PathId path3 = new PathId("path_3");
-        long third = meterPool.allocate(SWITCH_ID, "flow_3", path3).getValue();
+        long third = meterPool.allocate(SWITCH_ID, FLOW_3, PATH_ID_3).getValue();
         assertEquals(33, third);
 
-        meterPool.deallocate(path3);
-        meterPool.deallocate(path2);
+        meterPool.deallocate(PATH_ID_3);
+        meterPool.deallocate(PATH_ID_2);
 
         long fourth = meterPool.allocate(SWITCH_ID, "flow_4", new PathId("path_4")).getValue();
         assertEquals(32, fourth);
@@ -72,5 +83,27 @@ public class MeterPoolTest extends Neo4jBasedTest {
         for (int i = 31; i <= 41; i++) {
             meterPool.allocate(SWITCH_ID, format("flow_%d", i), new PathId(format("path_%d", i)));
         }
+    }
+
+    @Test
+    public void createTwoMeterForOnePathTest() {
+        long first = meterPool.allocate(SWITCH_ID, FLOW_1, PATH_ID_1).getValue();
+        long second = meterPool.allocate(SWITCH_ID, FLOW_1, PATH_ID_1).getValue();
+        assertNotEquals(first, second);
+        assertEquals(2, flowMeterRepository.findAll().size());
+    }
+
+    @Test
+    public void deallocateMetersByPathTest() {
+        meterPool.allocate(SWITCH_ID, FLOW_1, PATH_ID_1);
+        meterPool.allocate(SWITCH_ID, FLOW_1, PATH_ID_1);
+        meterPool.allocate(SWITCH_ID, FLOW_2, PATH_ID_2);
+        long meterId = meterPool.allocate(SWITCH_ID, FLOW_3, PATH_ID_3).getValue();
+        assertEquals(4, flowMeterRepository.findAll().size());
+
+        meterPool.deallocate(PATH_ID_1, PATH_ID_2);
+        Collection<FlowMeter> flowMeters = flowMeterRepository.findAll();
+        assertEquals(1, flowMeters.size());
+        assertEquals(meterId, flowMeters.iterator().next().getMeterId().getValue());
     }
 }

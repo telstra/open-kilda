@@ -58,4 +58,15 @@ public class CookiePoolTest extends Neo4jBasedTest {
             assertTrue(cookiePool.allocate(format("flow_%d", i)) > 0);
         }
     }
+
+    @Test
+    public void cookieLldp() {
+        // checks that we able to create two cookies for one flow
+        String flowId = "flow_1";
+        long flowCookie = cookiePool.allocate(flowId);
+        assertEquals(5, flowCookie);
+
+        long lldpCookie = cookiePool.allocate(flowId);
+        assertEquals(6, lldpCookie);
+    }
 }

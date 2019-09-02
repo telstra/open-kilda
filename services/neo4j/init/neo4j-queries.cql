@@ -10,7 +10,7 @@ CREATE CONSTRAINT ON (`flow`:`flow`) ASSERT `flow`.`flow_id` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_history`:`flow_history`) ASSERT `flow_history`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_meter`:`flow_meter`) ASSERT `flow_meter`.`unique_index` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_meter`:`flow_meter`) ASSERT `flow_meter`.`entityId` IS UNIQUE;
-CREATE CONSTRAINT ON (`flow_meter`:`flow_meter`) ASSERT `flow_meter`.`path_id` IS UNIQUE;
+CREATE INDEX ON :`flow_meter`(`path_id`);
 CREATE CONSTRAINT ON (`flow_path`:`flow_path`) ASSERT `flow_path`.`entityId` IS UNIQUE;
 CREATE CONSTRAINT ON (`flow_path`:`flow_path`) ASSERT `flow_path`.`path_id` IS UNIQUE;
 CREATE CONSTRAINT ON (`history_log`:`history_log`) ASSERT `history_log`.`entityId` IS UNIQUE;
@@ -37,6 +37,3 @@ CREATE CONSTRAINT ON (`connected_device`:`connected_device`) ASSERT `connected_d
 CREATE INDEX ON :`connected_device` (`flow_id`);
 CREATE INDEX ON :`connected_device` (`source`);
 CREATE INDEX ON :`connected_device` (`mac_address`);
-CREATE CONSTRAINT ON (`lldp_resources`:`lldp_resources`) ASSERT `lldp_resources`.`entityId` IS UNIQUE;
-CREATE CONSTRAINT ON (`lldp_resources`:`lldp_resources`) ASSERT `lldp_resources`.`flow_id` IS UNIQUE;
-
