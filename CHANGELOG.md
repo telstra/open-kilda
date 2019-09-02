@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.33.0 (27/08/2019)
+
+### Features:
+-  [#2644](https://github.com/telstra/open-kilda/pull/2644) Add multitable flag for fl commands
+
+### Bug Fixes:
+-  [#2721](https://github.com/telstra/open-kilda/pull/2721) Fix CommandBuilder in the SwitchManager topology. [**storm-topologies**]
+-  [#2724](https://github.com/telstra/open-kilda/pull/2724) Add retry when neo4j's ClientException is thrown [**storm-topologies**]
+-  [#2729](https://github.com/telstra/open-kilda/pull/2729) Force stats topology cache sync to work with H&S requests [**storm-topologies**]
+
+### Improvements:
+-  [#2566](https://github.com/telstra/open-kilda/pull/2566) Minor change for which tests are tagged as SMOKE_SWITCHES [**tests**]
+-  [#2711](https://github.com/telstra/open-kilda/pull/2711) Add 'purgeTopology' setup step in performance tests [**tests**]
+-  [#2713](https://github.com/telstra/open-kilda/pull/2713) Adjust all tests to properly handle antiflap cooldown. [**tests**]
+-  [#2653](https://github.com/telstra/open-kilda/pull/2653) extend vxlanFlow tests (APIv1) by checking rules [**tests**]
+-  [#2723](https://github.com/telstra/open-kilda/pull/2723) add "See" annotation [**tests**]
+-  [#2675](https://github.com/telstra/open-kilda/pull/2675) Get rid from ISL cost manipulation in DB. (Issue: [#2263](https://github.com/telstra/open-kilda/issues/2263)) [**storm-topologies**]
+-  [#2687](https://github.com/telstra/open-kilda/pull/2687) refactor flowHelperV2,flowCrud,swapEndpoint files [**tests**]
+
+### Other changes:
+-  [#2715](https://github.com/telstra/open-kilda/pull/2715) Fixed RemoveFlow constructor error [**floodlight**]
+-  [#2719](https://github.com/telstra/open-kilda/pull/2719) Revert "Take into account bugfix label while generating changelog"
+-  [#2720](https://github.com/telstra/open-kilda/pull/2720) Take into account bugfix label while generating changelog
+-  [#2722](https://github.com/telstra/open-kilda/pull/2722) Add missing flow reroute fail event in flow dashboard [**storm-topologies**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.32.0...v1.33.0).
+
+### Affected Components:
+flow-hs, swmanager, flow, fl, network, stats
+
 ## v1.32.0 (20/08/2019)
 
 ### Features:
