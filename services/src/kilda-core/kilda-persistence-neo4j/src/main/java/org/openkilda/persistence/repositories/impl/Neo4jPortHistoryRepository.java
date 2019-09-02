@@ -24,7 +24,6 @@ import org.neo4j.ogm.cypher.ComparisonOperator;
 import org.neo4j.ogm.cypher.Filter;
 import org.neo4j.ogm.cypher.Filters;
 import org.neo4j.ogm.cypher.query.SortOrder;
-import org.neo4j.ogm.cypher.query.SortOrder.Direction;
 
 import java.time.Instant;
 import java.util.Collection;
@@ -46,7 +45,7 @@ public class Neo4jPortHistoryRepository extends Neo4jGenericRepository<PortHisto
                 .and(new Filter(PORT_NUMBER_PROPERTY_NAME, ComparisonOperator.EQUALS, portNumber))
                 .and(new Filter(TIME_PROPERTY_NAME, ComparisonOperator.GREATER_THAN, start))
                 .and(new Filter(TIME_PROPERTY_NAME, ComparisonOperator.LESS_THAN_EQUAL, end));
-        return getSession().loadAll(getEntityType(), filters, new SortOrder(Direction.DESC, TIME_PROPERTY_NAME));
+        return getSession().loadAll(getEntityType(), filters, new SortOrder(TIME_PROPERTY_NAME));
     }
 
     @Override

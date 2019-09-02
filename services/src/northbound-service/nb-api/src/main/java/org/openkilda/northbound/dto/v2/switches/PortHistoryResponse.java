@@ -17,6 +17,7 @@ package org.openkilda.northbound.dto.v2.switches;
 
 import org.openkilda.model.SwitchId;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -24,6 +25,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Value;
 
+import java.util.Date;
 import java.util.UUID;
 
 @Value
@@ -36,7 +38,8 @@ public class PortHistoryResponse {
     SwitchId switchId;
     int portNumber;
     String event;
-    long time;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+    Date date;
     int upCount;
     int downCount;
 }

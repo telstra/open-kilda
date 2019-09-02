@@ -133,7 +133,6 @@ public abstract class HistoryMapper {
     @Mapping(target = "portNumber", expression = "java(data.getEndpoint().getPortNumber())")
     public abstract PortHistory map(PortHistoryData data);
 
-    @Mapping(target = "time", expression = "java(portHistory.getTime().getEpochSecond())")
     public abstract PortHistoryPayload map(PortHistory portHistory);
 
     /**

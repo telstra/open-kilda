@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Data
@@ -33,7 +34,7 @@ public class PortHistoryPayload extends InfoData {
     private SwitchId switchId;
     private int portNumber;
     private String event;
-    private long time;
+    private Instant time;
     private int upEventsCount;
     private int downEventsCount;
 

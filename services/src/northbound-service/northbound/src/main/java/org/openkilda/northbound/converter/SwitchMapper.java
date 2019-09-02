@@ -43,7 +43,9 @@ import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring", uses = {FlowMapper.class})
+import java.util.Date;
+
+@Mapper(componentModel = "spring", uses = {FlowMapper.class}, imports = {Date.class})
 public interface SwitchMapper {
 
     /**
@@ -113,6 +115,7 @@ public interface SwitchMapper {
                     + ".collect(java.util.stream.Collectors.toSet()))")
     org.openkilda.messaging.model.SwitchPropertiesDto map(SwitchPropertiesDto entry);
 
+    @Mapping(target = "date", expression = "java(Date.from(response.getTime()))")
     PortHistoryResponse map(PortHistoryPayload response);
 
     default String toSwithId(SwitchId switchId) {

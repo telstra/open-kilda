@@ -19,6 +19,7 @@ import org.openkilda.model.OutputVlanType;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 /**
  * Utils for flow commands.
@@ -27,7 +28,8 @@ public final class Utils {
     /**
      * Common object mapper.
      */
-    public static final ObjectMapper MAPPER = new ObjectMapper();
+    public static final ObjectMapper MAPPER = new ObjectMapper()
+            .registerModules(new JavaTimeModule());
     /**
      * The request timestamp attribute.
      */
