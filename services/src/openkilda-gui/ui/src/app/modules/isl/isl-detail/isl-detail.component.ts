@@ -72,7 +72,7 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
     islForm: FormGroup;
     showCostEditing: boolean = false;
     showBandwidthEditing : boolean = false;
-    currentGraphName : string = "ISL Latency Graph";
+    currentGraphName : string = "Round Trip Latency Graph";
     dateMessage:string;
      clipBoardItems = {
         sourceSwitchName:"",
@@ -132,7 +132,7 @@ import { OtpComponent } from 'src/app/common/components/otp/otp.component';
       fromDate: [dateRange.from],
       toDate: [dateRange.to],
       download_sample: ["30s"],
-      graph: ["latency"],
+      graph: ["rtt"],
       metric: ["bits"],
       auto_reload: [""],
       auto_reload_time: ["", Validators.compose([Validators.pattern("[0-9]*")])]
@@ -419,6 +419,9 @@ get f() {
     if(this.filterForm.controls.graph.value == "latency"){
       this.currentGraphName = "ISL Latency Graph";
     } 
+    if(this.filterForm.controls.graph.value == "rtt"){
+      this.currentGraphName = "Rount Trip Latency Graph";
+    } 
     this.loadGraphData();
   }
 
@@ -454,7 +457,7 @@ get f() {
 
 
   loadGraphData(){
-     if(this.filterForm.value.graph === 'latency'){
+     if(this.filterForm.value.graph === 'latency' || this.filterForm.value.graph === 'rtt'){
               this.callGraphAPI();
           }  
         else{

@@ -51,7 +51,7 @@
             <div class='form-group row'>
               <label class='col-sm-3 col-form-label required'>Switch:</label>
               <div class='col-sm-6'>
-                <ng-select [virtualScroll]="virtualScrollFlag" dropdownPosition="top" placeholder="Select source switch" formControlName="source_switch" (change)="getPorts('source_switch')" [items]="sourceSwitches"
+                <ng-select [virtualScroll]="virtualScrollFlag" searchable="true" dropdownPosition="bottom" placeholder="Select source switch" formControlName="source_switch" (change)="getPorts('source_switch')" [items]="sourceSwitches"
                   bindLabel="label" bindValue="value"></ng-select>
                   <div *ngIf="submitted && f.source_switch.errors" class="invalid-feedback">
                   <div *ngIf="f.source_switch.errors.required">Please select source switch</div>
@@ -62,7 +62,7 @@
             <div class='form-group row'>
               <label class='col-sm-3 col-form-label required'>Port:</label>
               <div class='col-sm-6'> 
-                <ng-select [virtualScroll]="virtualScrollFlag" dropdownPosition="top" placeholder="Select source port" (change)="getVLAN('source_port')" formControlName="source_port" [items]="sourcePorts" bindLabel="label" bindValue="value"></ng-select>
+                <ng-select [virtualScroll]="virtualScrollFlag" searchable="true" dropdownPosition="bottom" placeholder="Select source port" (change)="getVLAN('source_port')" formControlName="source_port" [items]="sourcePorts" bindLabel="label" bindValue="value"></ng-select>
                 <div *ngIf="submitted && f.source_port.errors" class="invalid-feedback">
                   <div *ngIf="f.source_port.errors.required">Please select source port</div>
                 </div>
@@ -71,7 +71,7 @@
             <div class='form-group row'>
               <label class='col-sm-3 col-form-label'>Vlan:</label>
               <div class='col-sm-6'>
-                <ng-select [virtualScroll]="virtualScrollFlag" dropdownPosition="top" placeholder="Select source VLAN" formControlName="source_vlan" [items]="vlanPorts" bindLabel="label" bindValue="value"></ng-select>
+                <ng-select [virtualScroll]="virtualScrollFlag" searchable="true" dropdownPosition="bottom" placeholder="Select source VLAN" formControlName="source_vlan" [items]="vlanPorts" bindLabel="label" bindValue="value"></ng-select>
                  <div *ngIf="submitted && f.source_vlan.errors" class="invalid-feedback">
                   <div *ngIf="f.source_vlan.errors.required">Please select source VLAN</div>
                 </div>
@@ -87,7 +87,7 @@
             <div class='form-group row'>
               <label class='col-sm-3 col-form-label required'>Switch:</label>
               <div class='col-sm-6'>
-                <ng-select dropdownPosition="top" placeholder="Select destination switch" formControlName="target_switch" (change)="getPorts('target_switch')" [items]="targetSwitches"
+                <ng-select dropdownPosition="bottom" searchable="true" placeholder="Select destination switch" formControlName="target_switch" (change)="getPorts('target_switch')" [items]="targetSwitches"
                   bindLabel="label" bindValue="value"></ng-select>
                   <div *ngIf="submitted && f.target_switch.errors" class="invalid-feedback">
                   <div *ngIf="f.target_switch.errors.required">Please select destination switch</div>
@@ -98,7 +98,7 @@
             <div class='form-group row'>
               <label class='col-sm-3 col-form-label required'>Port:</label>
               <div class='col-sm-6'>
-                <ng-select [virtualScroll]="virtualScrollFlag" dropdownPosition="top" placeholder="Select destination port" (change)="getVLAN('target_port')" formControlName="target_port" [items]="targetPorts" bindLabel="label" bindValue="value"></ng-select>
+                <ng-select [virtualScroll]="virtualScrollFlag" searchable="true" dropdownPosition="bottom" placeholder="Select destination port" (change)="getVLAN('target_port')" formControlName="target_port" [items]="targetPorts" bindLabel="label" bindValue="value"></ng-select>
                 <div *ngIf="submitted && f.target_port.errors" class="invalid-feedback">
                   <div *ngIf="f.target_port.errors.required">Please select destination port</div>
                 </div>
@@ -107,7 +107,7 @@
             <div class='form-group row'>
               <label class='col-sm-3 col-form-label'>Vlan:</label>
               <div class='col-sm-6'>
-                <ng-select [virtualScroll]="virtualScrollFlag" dropdownPosition="top" placeholder="Select destination VLAN" formControlName="target_vlan" [items]="vlanPorts" bindLabel="label" bindValue="value"></ng-select>
+                <ng-select [virtualScroll]="virtualScrollFlag" searchable="true" dropdownPosition="bottom" placeholder="Select destination VLAN" formControlName="target_vlan" [items]="vlanPorts" bindLabel="label" bindValue="value"></ng-select>
                 <div *ngIf="submitted && f.target_vlan.errors" class="invalid-feedback">
                   <div *ngIf="f.target_vlan.errors.required">Please select destination VLAN</div>
                 </div>

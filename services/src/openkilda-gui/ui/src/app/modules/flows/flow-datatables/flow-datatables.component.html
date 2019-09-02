@@ -64,6 +64,7 @@
             <input  value="{{ srcSwitch }}" class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedSrcSwitchName" id="expandedSrcSwitchName"/>
           
         </th>
+        <th> <span title="Source Switch">Src Switch ID</span></th>
         <th >
           <span title="Source Port">
             Src Port
@@ -88,6 +89,7 @@
             <input  value="{{ dstSwitch }}" class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedTargetSwitchName" id="expandedTargetSwitchName"/>
           
         </th>
+        <th > <span  title="Destination Switch">Dst Switch ID</span></th>
         <th >
           <span title="Destination Port">
             Dst Port
@@ -156,6 +158,7 @@
               </ng-template>
             </context-menu>
         </td>
+        <td title="{{row.src_switch}}">{{row.source_switch || "-"}}</td>
         <td title="{{row.src_port}}">{{row.src_port || "-"}}</td>
         <td>{{row.src_vlan || "-"}}</td>
         <td title="{{row.target_switch_name}}" [contextMenu]="copyTargetSwitch">
@@ -166,6 +169,7 @@
             </ng-template>
           </context-menu>
         </td>
+         <td title="{{row.target_switch}}">{{row.target_switch || "-"}}</td>
         <td>{{row.dst_port || "-"}}</td>
         <td>{{row.dst_vlan || "-"}}</td>
         <td>{{row.maximum_bandwidth / 1000  || "-"}}</td>
