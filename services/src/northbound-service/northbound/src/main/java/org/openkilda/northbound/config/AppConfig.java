@@ -22,7 +22,9 @@ import org.openkilda.config.EnvironmentConfig;
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.config.naming.KafkaNamingForConfigurationValueProcessor;
 import org.openkilda.config.naming.KafkaNamingStrategy;
+import org.openkilda.messaging.Utils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sabre.oss.conf4j.processor.ConfigurationValueProcessor;
 import com.sabre.oss.conf4j.spring.annotation.ConfigurationType;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -59,5 +61,11 @@ public class AppConfig {
 
         // Apply the environment prefix to Kafka topics and groups in the configuration.
         return singletonList(new KafkaNamingForConfigurationValueProcessor(namingStrategy));
+    }
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        // fixme(ncherevko): do we really think it is a perfect location for such mapper?
+        return Utils.MAPPER;
     }
 }

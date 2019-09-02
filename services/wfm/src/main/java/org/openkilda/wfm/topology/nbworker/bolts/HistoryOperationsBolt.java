@@ -68,7 +68,7 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
 
     private List<InfoData> getPortHistory(PortHistoryRequest request) {
         return historyService.listPortHistory(request.getSwitchId(), request.getPortNumber(),
-                Instant.ofEpochSecond(request.getStart()), Instant.ofEpochSecond(request.getEnd()))
+               request.getStart(), request.getEnd())
                 .stream()
                 .map(HistoryMapper.INSTANCE::map)
                 .collect(Collectors.toList());

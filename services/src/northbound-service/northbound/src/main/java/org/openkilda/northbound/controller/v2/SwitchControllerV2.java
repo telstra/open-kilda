@@ -23,6 +23,8 @@ import org.openkilda.northbound.service.SwitchService;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -59,12 +62,14 @@ public class SwitchControllerV2 extends BaseController {
             @PathVariable("switch_id") SwitchId switchId,
             @PathVariable("port") int port,
             @ApiParam(value = "default: the day before timeTo.")
-            @RequestParam(value = "timeFrom", required = false) Optional<Long> optionalFrom,
+            @RequestParam(value = "timeFrom", required = false) @DateTimeFormat(iso = ISO.DATE_TIME)
+                    Optional<Date> optionalFrom,
             @ApiParam(value = "default: now.")
-            @RequestParam(value = "timeTo", required = false) Optional<Long> optionalTo) {
-        long timeTo = optionalTo.orElseGet(() -> Instant.now().getEpochSecond());
-        long timeFrom = optionalFrom.orElseGet(() ->
-                Instant.ofEpochSecond(timeTo).minus(1, ChronoUnit.DAYS).getEpochSecond());
+            @RequestParam(value = "timeTo", required = false) @DateTimeFormat(iso = ISO.DATE_TIME)
+                    Optional<Date> optionalTo) {
+        Instant timeTo = optionalTo.map(Date::toInstant).orElseGet(() -> Instant.now());
+        Instant timeFrom = optionalFrom.map(Date::toInstant).orElseGet(() ->
+                timeTo.minus(1, ChronoUnit.DAYS));
 
         return switchService.getPortHistory(switchId, port, timeFrom, timeTo);
     }

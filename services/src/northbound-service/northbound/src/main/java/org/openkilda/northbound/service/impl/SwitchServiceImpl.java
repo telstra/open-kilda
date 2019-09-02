@@ -86,6 +86,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -358,7 +359,7 @@ public class SwitchServiceImpl implements SwitchService {
 
     @Override
     public CompletableFuture<List<PortHistoryResponse>> getPortHistory(SwitchId switchId, int port,
-                                                                       long from, long to) {
+                                                                       Instant from, Instant to) {
         PortHistoryRequest request = new PortHistoryRequest(switchId, port, from, to);
         Message message = new CommandMessage(request, System.currentTimeMillis(), RequestCorrelationId.getId());
         return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
